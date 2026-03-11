@@ -9,7 +9,7 @@ export interface Card {
   image: string
   rarity: "R" | "SR" | "UR" | "LR"
   type: "unit" | "troops" | "magic" | "action" | "ultimateGear" | "ultimateGuardian" | "ultimateElemental" | "item" | "scenario"
-  element: "Aquos" | "Ventus" | "Pyrus" | "Terra" | "Darkus" | "Haos"
+  element: "Aquos" | "Ventus" | "Pyrus" | "Terra" | "Darkus" | "Haos" | "Void"
   dp: number
   ability: string
   abilityDescription: string
