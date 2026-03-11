@@ -91,6 +91,8 @@ export interface PlayerProfile {
 }
 
 // Available profile icons
+export const CARD_BACK_IMAGE = "/images/cards/card-back.png"
+
 export const PROFILE_ICONS = [
   { id: "hrotti", name: "Hrotti", image: "/images/icons/hrotti-icon.png" },
   { id: "tsubasa", name: "Tsubasa", image: "/images/icons/tsubasa-icon.png" },
