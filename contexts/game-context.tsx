@@ -793,6 +793,40 @@ const ALL_CARDS: Card[] = [
     category: "Aquos Ultimate Gear user",
   },
   {
+    id: "fehnon-lr",
+    name: "Fehnon Hoskie",
+    image: "/images/cards/fehnon-lr.jpg",
+    rarity: "LR",
+    type: "unit",
+    element: "Aquos",
+    dp: 4,
+    ability: "Ruptura do Núcleo Supremo",
+    abilityDescription:
+      "Sempre que uma unidade do oponente for destruída em batalha por esta unidade, cause 2 DP de dano direto aos LP do oponente.",
+    attack: "Laceração do Mundo",
+    attackDescription:
+      "Ao declarar um ataque: Compre 1 carta. Se for uma Unidade ou Action Function, este personagem ganha +3DP até o final dessa fase de batalha, e pode atacar novamente.",
+    category: "Aquos Ultimate Gear user",
+    requiresEquip: "ODEN SWORD",
+  },
+  {
+    id: "morgana-lr",
+    name: "Morgana Pendragon",
+    image: "/images/cards/morgana-lr.jpg",
+    rarity: "LR",
+    type: "unit",
+    element: "Darkus",
+    dp: 4,
+    ability: "Domínio de Horizontes",
+    abilityDescription:
+      "Enquanto esta carta estiver em campo, o oponente não pode ativar nenhuma carta Action Function ou Trap Function durante todos os seus turnos.",
+    attack: "Sinfonia da Discórdia Pendragon",
+    attackDescription:
+      "Uma vez a cada 2 turnos, escolha 1 carta de Ação ou Armadilha no Cemitério do oponente. Você pode ativar o efeito dessa carta como se fosse sua, sem pagar o custo de DP. Após o uso, em vez de voltar ao cemitério original, a carta é embaralhada no seu deck e o oponente perde 2 PV por ter sua 'estratégia roubada'.",
+    category: "Darkness Ultimate Gear user",
+    requiresEquip: "TWILIGH AVALON",
+  },
+  {
     id: "ullrbogi",
     name: "Ultimate Gear: Ullrbogi",
     image: "/images/ullrbogi.png",
