@@ -734,7 +734,7 @@ const ALL_CARDS: Card[] = [
     name: "Calem Hidenori",
     image: "/images/cards/calem-lr.png",
     rarity: "LR",
-    type: "ultimateGuardian",
+    type: "unit",
     element: "Void",
     dp: 4,
     ability: "Legião do Guardião Alado",
@@ -944,8 +944,8 @@ const ALL_CARDS: Card[] = [
     category: "Scenario Card",
   },
   {
-  id: "bandagens-duplas",
-  name: "Bandagens Duplas",
+    id: "bandagens-duplas",
+    name: "Bandagens Duplas",
     image: "/images/bandagens-duplas.png",
     rarity: "R",
     type: "item",
@@ -1317,13 +1317,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   const [mobileMode, setMobileModeState] = useState(false)
-  
+
   // Helper to get localStorage with fallback keys (old format vs new format)
   const getLS = (key: string): string | null => {
     // Try new format first (gear-perks-*), then old format (gearperks-*)
     return localStorage.getItem(`gear-perks-${key}`) || localStorage.getItem(`gearperks-${key}`) || null
   }
-  
+
   // Save to localStorage with unified key format
   const setLS = (key: string, value: string) => {
     localStorage.setItem(`gearperks-${key}`, value)
@@ -1362,7 +1362,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             setCollection(profileData.collection ?? [])
             setDecks(profileData.decks ?? [])
             setMatchHistory(profileData.duel_history ?? [])
-            
+
             const loadedProfile: PlayerProfile = {
               id: profileData.id,
               name: profileData.player_name || "Jogador",
@@ -1381,7 +1381,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             setLS("decks", JSON.stringify(profileData.decks ?? []))
             setLS("history", JSON.stringify(profileData.duel_history ?? []))
             setLS("profile", JSON.stringify(loadedProfile))
-            
+
             cloudLoaded = true
           }
         } catch (err) {
@@ -1399,16 +1399,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
         if (savedCoins) setCoins(Number.parseInt(savedCoins))
         if (savedCollection) {
-          try { setCollection(JSON.parse(savedCollection)) } catch {}
+          try { setCollection(JSON.parse(savedCollection)) } catch { }
         }
         if (savedDecks) {
-          try { setDecks(JSON.parse(savedDecks)) } catch {}
+          try { setDecks(JSON.parse(savedDecks)) } catch { }
         }
         if (savedHistory) {
-          try { setMatchHistory(JSON.parse(savedHistory)) } catch {}
+          try { setMatchHistory(JSON.parse(savedHistory)) } catch { }
         }
         if (savedProfile) {
-          try { setPlayerProfile(JSON.parse(savedProfile)) } catch {}
+          try { setPlayerProfile(JSON.parse(savedProfile)) } catch { }
         }
       }
 
@@ -1423,7 +1423,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           })
           const newGifts = parsed.filter((p) => !INITIAL_GIFT_BOXES.find((g) => g.id === p.id))
           setGiftBoxes([...merged, ...newGifts])
-        } catch {}
+        } catch { }
       }
 
       // Player ID
@@ -1447,13 +1447,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
           } else {
             setFriends(parsed)
           }
-        } catch {}
+        } catch { }
       }
 
       const savedRequests = getLS("friendrequests")
       const savedFP = getLS("fp")
       const savedSpendableFP = getLS("spendablefp")
-      if (savedRequests) { try { setFriendRequests(JSON.parse(savedRequests)) } catch {} }
+      if (savedRequests) { try { setFriendRequests(JSON.parse(savedRequests)) } catch { } }
       if (savedFP) setFriendPoints(Number.parseInt(savedFP))
       if (savedSpendableFP) setSpendableFP(Number.parseInt(savedSpendableFP))
 
@@ -1464,18 +1464,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
         try {
           const playmatIds = JSON.parse(savedOwnedPlaymats)
           setOwnedPlaymats(ALL_PLAYMATS.filter((p) => playmatIds.includes(p.id)))
-        } catch {}
+        } catch { }
       }
       if (savedGlobalPlaymat) {
         setGlobalPlaymatId(savedGlobalPlaymat)
       }
-      
+
       // Redeemed codes
       const savedRedeemedCodes = getLS("redeemed-codes")
       if (savedRedeemedCodes) {
-        try { setRedeemedCodes(JSON.parse(savedRedeemedCodes)) } catch {}
+        try { setRedeemedCodes(JSON.parse(savedRedeemedCodes)) } catch { }
       }
-      
+
       // Mobile mode
       const savedMobileMode = getLS("mobile-mode")
       if (savedMobileMode === "true") {
@@ -1490,43 +1490,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("coins", coins.toString())
   }, [coins])
-  
+
   useEffect(() => {
     setLS("collection", JSON.stringify(collection))
   }, [collection])
-  
+
   useEffect(() => {
     setLS("decks", JSON.stringify(decks))
   }, [decks])
-  
+
   useEffect(() => {
     setLS("history", JSON.stringify(matchHistory))
   }, [matchHistory])
-  
+
   useEffect(() => {
     setLS("giftboxes", JSON.stringify(giftBoxes))
   }, [giftBoxes])
-  
+
   useEffect(() => {
     if (playerId) setLS("playerid", playerId)
   }, [playerId])
-  
+
   useEffect(() => {
     setLS("profile", JSON.stringify(playerProfile))
   }, [playerProfile])
-  
+
   useEffect(() => {
     setLS("friends", JSON.stringify(friends))
   }, [friends])
-  
+
   useEffect(() => {
     setLS("friendrequests", JSON.stringify(friendRequests))
   }, [friendRequests])
-  
+
   useEffect(() => {
     setLS("fp", friendPoints.toString())
   }, [friendPoints])
-  
+
   useEffect(() => {
     setLS("spendablefp", spendableFP.toString())
   }, [spendableFP])
@@ -1899,10 +1899,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       console.error("[v0] Failed to create Supabase client:", clientError)
       return { success: false, error: "Erro de conexao com o servidor. Verifique sua internet." }
     }
-    
+
     const code = generateUniqueCode()
     const passwordHash = await simpleHash(password)
-    
+
     // Generate a valid UUID for user_id
     const userUUID = crypto.randomUUID()
 
@@ -1910,7 +1910,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[v0] Registering with code:", code, "userUUID:", userUUID)
       console.log("[v0] Supabase URL configured:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
-      
+
       // First, save the unique code
       const { data: codeData, error: codeError } = await supabase.from("unique_codes").insert({
         user_id: userUUID,
@@ -1946,14 +1946,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
 
       const { data: profileResult, error: profileError } = await supabase.from("player_profiles").insert(profileData).select().single()
-      
+
       console.log("[v0] player_profiles insert result:", { data: profileResult, error: profileError })
-      
+
       if (profileError) {
         console.error("[v0] Error saving player profile:", profileError)
         // Continue anyway, the code was created successfully
       }
-      
+
       // Update local playerId with the new UUID
       setPlayerId(userUUID)
       localStorage.setItem("gear-perks-player-id", userUUID)
@@ -2017,7 +2017,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setFriendRequests([])
         setFriendPoints(0)
         setSpendableFP(0)
-        
+
         // Update player profile
         const loadedProfile: PlayerProfile = {
           id: profileData.id,
@@ -2131,7 +2131,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Save to Supabase if we have a unique code
     if (accountAuth.uniqueCode) {
       const supabase = createClient()
-      
+
       const profileUpdate = {
         player_name: playerProfile.name,
         player_title: playerProfile.title,
@@ -2171,7 +2171,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setLS("decks", JSON.stringify(decks))
       setLS("history", JSON.stringify(matchHistory))
       setLS("profile", JSON.stringify(playerProfile))
-      
+
       setAccountAuth((prev) => ({ ...prev, lastSaved: now }))
       localStorage.setItem("gear-perks-auth", JSON.stringify({ ...accountAuth, lastSaved: now }))
     }
@@ -2209,30 +2209,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   const getPlaymatForDeck = (deck: Deck): Playmat | null => {
-  // If deck uses global playmat or has no specific setting
-  if (deck.useGlobalPlaymat !== false && globalPlaymatId) {
-  return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+    // If deck uses global playmat or has no specific setting
+    if (deck.useGlobalPlaymat !== false && globalPlaymatId) {
+      return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+    }
+    // If deck has specific playmat
+    if (deck.playmatId) {
+      return ownedPlaymats.find((p) => p.id === deck.playmatId) || null
+    }
+    // Fallback to global
+    if (globalPlaymatId) {
+      return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+    }
+    return null
   }
-  // If deck has specific playmat
-  if (deck.playmatId) {
-  return ownedPlaymats.find((p) => p.id === deck.playmatId) || null
-  }
-  // Fallback to global
-  if (globalPlaymatId) {
-  return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
-  }
-  return null
-  }
-  
+
   // Redeem promotional codes
   const redeemCode = (code: string): { success: boolean; message: string } => {
     const normalizedCode = code.toUpperCase().trim()
-    
+
     // Check if code was already redeemed
     if (redeemedCodes.includes(normalizedCode)) {
       return { success: false, message: "Este codigo ja foi resgatado!" }
     }
-    
+
     // ALLCARDS - Unlocks all cards with 4 copies each
     if (normalizedCode === "ALLCARDS") {
       // Get all cards with 4 copies each
@@ -2242,23 +2242,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
           allCardsWithCopies.push({ ...card })
         }
       })
-      
+
       // Add to collection and persist immediately
       setCollection(allCardsWithCopies)
       setLS("collection", JSON.stringify(allCardsWithCopies))
-      
+
       // Mark code as redeemed and persist immediately
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
       setLS("redeemed-codes", JSON.stringify(newRedeemedCodes))
-      
+
       return { success: true, message: `Todas as ${ALL_CARDS.length} cartas foram desbloqueadas com 4 copias cada!` }
     }
-    
+
     // Invalid code
     return { success: false, message: "Codigo invalido!" }
   }
-  
+
   // Delete all account data but keep logged in
   const deleteAccountData = async (): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -2283,7 +2283,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         showcaseCards: [],
         hasCompletedSetup: false,
       })
-      
+
       // Clear localStorage data
       localStorage.removeItem("gearperks-coins")
       localStorage.removeItem("gearperks-collection")
@@ -2298,13 +2298,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks_owned_playmats")
       localStorage.removeItem("gearperks_global_playmat")
       localStorage.removeItem("gearperks-redeemed-codes")
-      
+
       // If logged in with Supabase, also clear cloud data
       if (accountAuth.isLoggedIn && accountAuth.uniqueCode) {
         try {
           const { createClient } = await import("@/lib/supabase/client")
           const supabase = createClient()
-          
+
           // Update the player profile in the cloud with reset data
           await supabase
             .from("player_profiles")
@@ -2326,7 +2326,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           console.error("Error clearing cloud data:", err)
         }
       }
-      
+
       return { success: true }
     } catch (err) {
       console.error("Error deleting account data:", err)
@@ -2377,26 +2377,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
         linkEmailToCode,
         logoutAccount,
         saveProgressManually,
-  // Added playmat-related values
-  allPlaymats: ALL_PLAYMATS,
-  ownedPlaymats,
-  globalPlaymatId,
-  setGlobalPlaymat,
-  getPlaymatForDeck,
-  // Code redemption
-  redeemCode,
-  redeemedCodes,
-  deleteAccountData,
-  mobileMode,
-  setMobileMode: (enabled: boolean) => {
-    setMobileModeState(enabled)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("gearperks-mobile-mode", enabled ? "true" : "false")
-      localStorage.setItem("gear-perks-mobile-mode", enabled ? "true" : "false")
-    }
-  },
-  }}
-  >
+        // Added playmat-related values
+        allPlaymats: ALL_PLAYMATS,
+        ownedPlaymats,
+        globalPlaymatId,
+        setGlobalPlaymat,
+        getPlaymatForDeck,
+        // Code redemption
+        redeemCode,
+        redeemedCodes,
+        deleteAccountData,
+        mobileMode,
+        setMobileMode: (enabled: boolean) => {
+          setMobileModeState(enabled)
+          if (typeof window !== "undefined") {
+            localStorage.setItem("gearperks-mobile-mode", enabled ? "true" : "false")
+            localStorage.setItem("gear-perks-mobile-mode", enabled ? "true" : "false")
+          }
+        },
+      }}
+    >
       {children}
     </GameContext.Provider>
   )
