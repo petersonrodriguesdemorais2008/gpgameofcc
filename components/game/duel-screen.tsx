@@ -6,7 +6,7 @@ import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
 // REMOVED: import { useGame, type Deck as GameDeck, type Card as GameCard } from "@/contexts/game-context"
-import { useGame } from "@/contexts/game-context"
+import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords } from "lucide-react"
 import Image from "next/image"
@@ -1044,6 +1044,37 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
       return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +${dpBonus} DP!${bonusMessage}` }
     },
+  },
+
+  // ========== TRAP CARDS ==========
+
+  "contra-ataque-surpresa": {
+    id: "contra-ataque-surpresa",
+    name: "Contra-Ataque Surpresa",
+    requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Contra-Ataque Surpresa!" }),
+  },
+  "escudo-de-mana": {
+    id: "escudo-de-mana",
+    name: "Escudo de Mana",
+    requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Escudo de Mana!" }),
+  },
+  "portao-da-fortaleza": {
+    id: "portao-da-fortaleza",
+    name: "Portão da Fortaleza",
+    requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Portão da Fortaleza!" }),
+  },
+  "brincadeira-de-mau-gosto": {
+    id: "brincadeira-de-mau-gosto",
+    name: "Brincadeira de Mau Gosto",
+    requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Brincadeira de Mau Gosto!" }),
   },
 }
 
@@ -2616,6 +2647,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     } else if (zone === "function") {
       if (playerField.functionZone[slotIndex] !== null) return
 
+      // Trap cards are placed face-down and not activated immediately
+      if (cardToPlace.type === "trap") {
+        setPlayerField((prev) => {
+          const newFunctionZone = [...prev.functionZone]
+          newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: true }
+          return {
+            ...prev,
+            functionZone: newFunctionZone,
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
+          }
+        })
+        setSelectedHandCard(null)
+        setDraggedHandCard(null)
+        return
+      }
+
       // Get the effect configuration for this card
       const effect = getFunctionCardEffect(cardToPlace)
 
@@ -3470,9 +3517,56 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           // Attack an enemy unit
           const defender = enemyField.unitZone[attackState.targetInfo.index]
           if (defender) {
+            // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
+            const trapPortaoIndex = enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown);
+            if (trapPortaoIndex !== -1) {
+              // Trap activated: Portão da Fortaleza
+              setEnemyField(prev => {
+                const newFuncs = [...prev.functionZone];
+                newFuncs[trapPortaoIndex] = { ...newFuncs[trapPortaoIndex]!, isFaceDown: false };
+
+                // Enemy discards a random card from hand to activate (if possible)
+                const newHand = [...prev.hand];
+                if (newHand.length > 0) {
+                  const discardIdx = Math.floor(Math.random() * newHand.length);
+                  const discarded = newHand.splice(discardIdx, 1)[0];
+                  return { ...prev, functionZone: newFuncs, hand: newHand, graveyard: [...prev.graveyard, discarded] };
+                }
+                return { ...prev, functionZone: newFuncs };
+              });
+
+              // Return attacker to hand
+              setPlayerField(prev => {
+                const newUnitZone = [...prev.unitZone];
+                newUnitZone[attackState.attackerIndex!] = null;
+                return { ...prev, unitZone: newUnitZone, hand: [...prev.hand, attacker] };
+              });
+              showEffectFeedback("Armadilha Ativada! Portão da Fortaleza negou o ataque e devolveu sua unidade para a mão!", "error");
+
+              setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null });
+              return;
+            }
+
             const attackerDp = attacker.currentDp || attacker.dp
             const defenderDp = defender.currentDp || defender.dp
             const newDefenderDp = defenderDp - attackerDp
+
+            // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
+            if (attackerDp > 0) {
+              const trapContraAtaqueIndex = enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown);
+              if (trapContraAtaqueIndex !== -1) {
+                setEnemyField(prev => {
+                  const newFuncs = [...prev.functionZone];
+                  newFuncs[trapContraAtaqueIndex] = { ...newFuncs[trapContraAtaqueIndex]!, isFaceDown: false };
+                  return { ...prev, functionZone: newFuncs };
+                });
+                setPlayerField(prev => ({
+                  ...prev,
+                  life: Math.max(0, prev.life - attackerDp)
+                }));
+                showEffectFeedback(`Armadilha Ativada! Contra-Ataque Surpresa devolveu ${attackerDp} de dano aos seus LP!`, "error");
+              }
+            }
             const targetIndex = attackState.targetInfo.index
 
             // Get target element position for explosion
@@ -4541,8 +4635,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           </div>
           <div
             className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${isPlayerTurn
-                ? "bg-green-600/20 border-green-500 text-green-400"
-                : "bg-red-600/20 border-red-500 text-red-400"
+              ? "bg-green-600/20 border-green-500 text-green-400"
+              : "bg-red-600/20 border-red-500 text-red-400"
               }`}
           >
             {isPlayerTurn ? t("yourTurn") : t("enemyTurn")}
@@ -4688,17 +4782,29 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                           }
                         }}
                         className={`w-14 h-20 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${isUgTarget || (julgamentoVazioTargetMode.active && card)
-                            ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
-                            : "border-purple-600/40"
+                          ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                          : "border-purple-600/40"
                           }`}
                       >
                         {card && (
-                          <Image
-                            src={card.image || "/placeholder.svg"}
-                            alt={card.name}
-                            fill
-                            className="object-cover rounded"
-                          />
+                          <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
+                            <div className="absolute inset-0 [backface-visibility:hidden]">
+                              <Image
+                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                alt="Face down card"
+                                fill
+                                className="object-cover rounded"
+                              />
+                            </div>
+                            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                              <Image
+                                src={card.image || "/placeholder.svg"}
+                                alt={card.name}
+                                fill
+                                className="object-cover rounded"
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
                     )
@@ -4723,13 +4829,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         }
                       }}
                       className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
-                          (julgamentoVazioTargetMode.active && card)
-                          ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
-                          : attackTarget?.type === "unit" && attackTarget.index === i
-                            ? "border-red-500 ring-2 ring-red-400 scale-105"
-                            : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
-                              ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
-                              : "border-red-700/40"
+                        (julgamentoVazioTargetMode.active && card)
+                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                        : attackTarget?.type === "unit" && attackTarget.index === i
+                          ? "border-red-500 ring-2 ring-red-400 scale-105"
+                          : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
+                            ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
+                            : "border-red-700/40"
                         }`}
                     >
                       {card && (
@@ -4761,8 +4867,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               <div
                 data-direct-attack
                 className={`px-6 py-1 rounded-full border-2 border-dashed transition-all text-sm font-bold ${attackTarget?.type === "direct"
-                    ? "border-red-500 bg-red-500/30 text-red-300 scale-105"
-                    : "border-slate-500/50 text-slate-500"
+                  ? "border-red-500 bg-red-500/30 text-red-300 scale-105"
+                  : "border-slate-500/50 text-slate-500"
                   }`}
               >
                 {attackTarget?.type === "direct" ? "ATAQUE DIRETO!" : ""}
@@ -4804,18 +4910,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                           }
                         }}
                         className={`w-14 h-20 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
-                            ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                            : isDropTarget
-                              ? "border-green-400/70 bg-green-500/30 scale-105"
-                              : selectedHandCard !== null && isUnitCard(playerField.hand[selectedHandCard])
-                                ? "border-green-500 bg-green-900/40 cursor-pointer"
-                                : draggedHandCard && isUnitCard(draggedHandCard.card)
-                                  ? "border-blue-400/50 bg-blue-500/20"
-                                  : itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card
-                                    ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
-                                    : canAttack
-                                      ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
-                                      : "border-blue-700/40"
+                          ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                          : isDropTarget
+                            ? "border-green-400/70 bg-green-500/30 scale-105"
+                            : selectedHandCard !== null && isUnitCard(playerField.hand[selectedHandCard])
+                              ? "border-green-500 bg-green-900/40 cursor-pointer"
+                              : draggedHandCard && isUnitCard(draggedHandCard.card)
+                                ? "border-blue-400/50 bg-blue-500/20"
+                                : itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card
+                                  ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
+                                  : canAttack
+                                    ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
+                                    : "border-blue-700/40"
                           }`}
                       >
                         {/* Yellow glow for playable/attackable cards */}
@@ -4882,28 +4988,47 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
                         className={`w-14 h-20 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
-                            ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                            : isDropTarget
-                              ? "border-green-400/70 bg-green-500/30 scale-105"
-                              : selectedHandCard !== null && !isUnitCard(playerField.hand[selectedHandCard])
-                                ? "border-green-500 bg-green-900/40"
-                                : draggedHandCard && !isUnitCard(draggedHandCard.card)
-                                  ? "border-purple-400/50 bg-purple-500/20"
-                                  : "border-purple-600/40"
+                          ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                          : isDropTarget
+                            ? "border-green-400/70 bg-green-500/30 scale-105"
+                            : selectedHandCard !== null && !isUnitCard(playerField.hand[selectedHandCard])
+                              ? "border-green-500 bg-green-900/40"
+                              : draggedHandCard && !isUnitCard(draggedHandCard.card)
+                                ? "border-purple-400/50 bg-purple-500/20"
+                                : "border-purple-600/40"
                           }`}
                       >
                         {card && (
-                          <Image
-                            src={card.image || "/placeholder.svg"}
-                            alt={card.name}
-                            fill
-                            className="object-cover rounded"
-                            onMouseDown={() => handleCardPressStart(card)}
-                            onMouseUp={handleCardPressEnd}
-                            onMouseLeave={handleCardPressEnd}
-                            onTouchStart={() => handleCardPressStart(card)}
-                            onTouchEnd={handleCardPressEnd}
-                          />
+                          <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
+                            {/* Back of Card */}
+                            <div className="absolute inset-0 [backface-visibility:hidden]">
+                              <Image
+                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                alt="Face down card"
+                                fill
+                                className="object-cover rounded"
+                                onMouseDown={() => handleCardPressStart(card)}
+                                onMouseUp={handleCardPressEnd}
+                                onMouseLeave={handleCardPressEnd}
+                                onTouchStart={() => handleCardPressStart(card)}
+                                onTouchEnd={handleCardPressEnd}
+                              />
+                            </div>
+                            {/* Front of Card */}
+                            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                              <Image
+                                src={card.image || "/placeholder.svg"}
+                                alt={card.name}
+                                fill
+                                className="object-cover rounded"
+                                onMouseDown={() => handleCardPressStart(card)}
+                                onMouseUp={handleCardPressEnd}
+                                onMouseLeave={handleCardPressEnd}
+                                onTouchStart={() => handleCardPressStart(card)}
+                                onTouchEnd={handleCardPressEnd}
+                              />
+                            </div>
+                          </div>
                         )}
                         {!card && isDropTarget && (
                           <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
@@ -4922,12 +5047,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     data-player-scenario-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
                     className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
-                        ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                        : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
-                          ? "border-green-500 bg-green-900/40 cursor-pointer"
-                          : draggedHandCard && draggedHandCard.card.type === "scenario"
-                            ? "border-amber-400/50 bg-amber-500/20"
-                            : "border-amber-600/40"
+                      ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                      : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
+                        ? "border-green-500 bg-green-900/40 cursor-pointer"
+                        : draggedHandCard && draggedHandCard.card.type === "scenario"
+                          ? "border-amber-400/50 bg-amber-500/20"
+                          : "border-amber-600/40"
                       }`}
                   >
                     {playerField.scenarioZone ? (
@@ -4951,12 +5076,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     data-player-ultimate-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
                     className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 mx-auto ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
-                        ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                        : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
-                          ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
-                          : draggedHandCard && isUltimateCard(draggedHandCard.card)
-                            ? "border-emerald-400/50 bg-emerald-500/20"
-                            : "border-emerald-600/40"
+                      ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                      : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
+                        ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
+                        : draggedHandCard && isUltimateCard(draggedHandCard.card)
+                          ? "border-emerald-400/50 bg-emerald-500/20"
+                          : "border-emerald-600/40"
                       }`}
                   >
                     {playerField.ultimateZone ? (
@@ -5130,10 +5255,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   )}
                   <div
                     className={`relative w-20 h-28 rounded-xl border-3 shadow-xl bg-slate-900 transition-all duration-150 ${isSelected
-                        ? "border-yellow-400 ring-4 ring-yellow-400/40 shadow-yellow-500/50"
-                        : canPlay
-                          ? "border-yellow-400/70 hover:border-yellow-400 hover:shadow-2xl hover:-translate-y-4 hover:scale-105 shadow-yellow-500/30"
-                          : "border-slate-600/50"
+                      ? "border-yellow-400 ring-4 ring-yellow-400/40 shadow-yellow-500/50"
+                      : canPlay
+                        ? "border-yellow-400/70 hover:border-yellow-400 hover:shadow-2xl hover:-translate-y-4 hover:scale-105 shadow-yellow-500/30"
+                        : "border-slate-600/50"
                       }`}
                   >
                     <div className="relative w-full h-full overflow-hidden rounded-lg">
@@ -5168,8 +5293,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             }`} />
           {/* Card */}
           <div className={`relative w-20 h-28 rounded-xl border-3 shadow-2xl overflow-hidden bg-slate-900 transition-all duration-100 ${dropTarget
-              ? 'border-green-400 shadow-green-500/60'
-              : 'border-yellow-400 shadow-yellow-500/50'
+            ? 'border-green-400 shadow-green-500/60'
+            : 'border-yellow-400 shadow-yellow-500/50'
             }`}>
             <img
               src={draggedHandCard.card.image || "/placeholder.svg"}
@@ -5256,10 +5381,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               {isUnitCard(inspectedCard) && (
                 <div className="flex flex-col items-center gap-1 mt-2">
                   <div className={`text-xl font-semibold ${(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp
-                      ? "text-green-400"
-                      : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
-                        ? "text-red-400"
-                        : "text-cyan-400"
+                    ? "text-green-400"
+                    : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
+                      ? "text-red-400"
+                      : "text-cyan-400"
                     }`}>
                     {(inspectedCard as FieldCard).currentDp !== undefined ? (inspectedCard as FieldCard).currentDp : inspectedCard.dp} DP
                   </div>
@@ -5339,8 +5464,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       {/* Effect Feedback Toast */}
       {effectFeedback && (
         <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${effectFeedback.type === "success"
-            ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
-            : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
+          ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
+          : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
           }`}>
           {effectFeedback.message}
         </div>

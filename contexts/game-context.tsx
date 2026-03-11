@@ -8,7 +8,7 @@ export interface Card {
   name: string
   image: string
   rarity: "R" | "SR" | "UR" | "LR"
-  type: "unit" | "troops" | "magic" | "action" | "ultimateGear" | "ultimateGuardian" | "ultimateElemental" | "item" | "scenario"
+  type: "unit" | "troops" | "magic" | "trap" | "action" | "ultimateGear" | "ultimateGuardian" | "ultimateElemental" | "item" | "scenario"
   element: "Aquos" | "Ventus" | "Pyrus" | "Terra" | "Darkus" | "Haos" | "Void"
   dp: number
   ability: string
@@ -18,6 +18,7 @@ export interface Card {
   category: string
   requiresEquip?: string
   requiresUnit?: string
+  isFaceDown?: boolean
 }
 
 export interface Playmat {
@@ -1194,6 +1195,58 @@ const ALL_CARDS: Card[] = [
       "Essa carta cura 2LP do jogador de dano já sofrido, em seguida compre uma carta, se for de unidade, ela cura +1DP do jogador.",
     attack: "",
     category: "Item Funcion Card",
+  },
+  {
+    id: "contra-ataque-surpresa",
+    name: "Contra-Ataque Surpresa",
+    image: "/images/cards/contra-ataque-surpresa.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Pyrus",
+    dp: 0,
+    ability: "Contra-Ataque",
+    abilityDescription: "Quando sua unidade recebe dano de batalha, O oponente recebe o mesmo valor de dano em seus LP.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "escudo-de-mana",
+    name: "Escudo de Mana",
+    image: "/images/cards/escudo-de-mana.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Aquos",
+    dp: 0,
+    ability: "Proteção",
+    abilityDescription: "Quando o oponente ativa uma Magic Function ou Item Function de dano, Anule o efeito da carta e destrua-a.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "portao-da-fortaleza",
+    name: "Portão da Fortaleza",
+    image: "/images/cards/portao-da-fortaleza.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Terra",
+    dp: 0,
+    ability: "Defesa Sólida",
+    abilityDescription: "Quando uma unidade do oponente declara um ataque contra sua unidade, Negue o ataque e mande a unidade atacante do oponente diretamente para a mão dele. Descarte uma carta da mão para ativar essa armadilha.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "brincadeira-de-mau-gosto",
+    name: "Brincadeira de Mau Gosto",
+    image: "/images/cards/brincadeira-de-mau-gosto.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Darkus",
+    dp: 0,
+    ability: "Sabotagem",
+    abilityDescription: "Ative quando o oponente usar uma carta de Item Funcion ou uma Action Funcion: Negue o efeito da carta que o oponente ativou, e selecione uma Unidade do oponente e ela perde -2DP, caso ele não tenha Unidades, o oponente é obrigado a revelar a mão dele para você.",
+    attack: "",
+    category: "Trap Funcion Card",
   },
   {
     id: "ordem-de-laceracao",
