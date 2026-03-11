@@ -1041,7 +1041,7 @@ const ALL_CARDS: Card[] = [
     dp: 0,
     ability: "Rolagem Elemental",
     abilityDescription:
-      "Jogue um dado (efeito bônus se for do elemento específico): 1-2: uma unidade sua ganha +3DP. Se for (Neutral): compre +1 carta. 3-4: uma unidade sua ganha +4DP. Se for (Lightness): você ganha +2LP. 5-6: uma unidade sua ganha +5DP e você ganha +3LP. Requer uma carta de unidade dos elementos (Neutral, Lightness ou Ventus). Se você tiver e não cair no elemento da sua unidade, nada acontece.",
+      "Jogue um dado (efeito bônus se for do elemento específico): 1-2: uma unidade sua ganha +3DP. Se for (Neutral/Void): compre +1 carta. 3-4: uma unidade sua ganha +4DP. Se for (Lightness): você ganha +2LP. 5-6: uma unidade sua ganha +5DP e você ganha +3LP. Requer uma carta de unidade dos elementos (Neutral, Void, Lightness ou Ventus). Se você tiver e não cair no elemento da sua unidade, nada acontece.",
     attack: "",
     category: "Item Funcion Card",
   },

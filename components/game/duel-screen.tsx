@@ -101,8 +101,8 @@ interface FunctionCardEffect {
   requiresDice?: boolean // For dice-rolling effects
   choiceOptions?: { id: string; label: string; description: string }[]
   targetConfig?: {
-  enemyUnits?: number // Number of enemy units to select
-  allyUnits?: number // Number of ally units to select
+    enemyUnits?: number // Number of enemy units to select
+    allyUnits?: number // Number of ally units to select
   }
   canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
   resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
@@ -141,7 +141,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
       const hasPlayerUnits = context.playerField.unitZone.some((u) => u !== null)
-      
+
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "Nenhuma unidade inimiga no campo" }
       }
@@ -154,21 +154,21 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       if (!targets?.enemyUnitIndices?.length || !targets?.allyUnitIndices?.length) {
         return { success: false, message: "Alvos invalidos" }
       }
-      
+
       const enemyIndex = targets.enemyUnitIndices[0]
       const allyIndex = targets.allyUnitIndices[0]
       const enemyUnit = context.enemyField.unitZone[enemyIndex]
       const allyUnit = context.playerField.unitZone[allyIndex]
-      
+
       if (!enemyUnit || !allyUnit) {
         return { success: false, message: "Unidades nao encontradas" }
       }
-      
+
       // Get ORIGINAL DP (base dp, not currentDp which may have buffs/debuffs)
       const dpBonus = enemyUnit.dp
       const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
       const newDp = allyCurrentDp + dpBonus
-      
+
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
@@ -179,11 +179,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         }
         return { ...prev, unitZone: newUnitZone }
       })
-      
+
       return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -> ${newDp})` }
     },
   },
-  
+
   "bandagem-restauradora": {
     id: "bandagem-restauradora",
     name: "Bandagem Restauradora",
@@ -191,7 +191,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20 // Max LP
-      
+
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
@@ -201,22 +201,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(2, maxLife - currentLife) // Heal up to 2, but don't exceed max
-      
+
       if (healAmount <= 0) {
         return { success: false, message: "Nao ha dano para curar" }
       }
-      
+
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      
+
       context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
-      
+
       return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
-  
+
   "adaga-energizada": {
     id: "adaga-energizada",
     name: "Adaga Energizada",
@@ -224,7 +224,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       // Count enemy units on the field
       const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
-      
+
       if (enemyUnitCount < 2) {
         return { canActivate: false, reason: "O oponente precisa ter 2 ou mais unidades no campo" }
       }
@@ -235,16 +235,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const damage = 4
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-      
+
       context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
-      
+
       return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
-  
+
   "bandagens-duplas": {
     id: "bandagens-duplas",
     name: "Bandagens Duplas",
@@ -252,7 +252,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20 // Max LP
-      
+
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
@@ -262,22 +262,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(4, maxLife - currentLife) // Heal up to 4, but don't exceed max
-      
+
       if (healAmount <= 0) {
         return { success: false, message: "Nao ha dano para curar" }
       }
-      
+
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      
+
       context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
-      
+
       return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
-  
+
   "cristal-recuperador": {
     id: "cristal-recuperador",
     name: "Cristal Recuperador",
@@ -288,7 +288,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
-      
+
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
@@ -299,22 +299,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const maxLife = 20
       const healAmount = Math.min(3, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      
+
       context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
-      
+
       // Return special flag to indicate we need to draw and potentially heal more
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
         needsDrawAndCheck: true,
         currentLife: newLife,
       }
     },
   },
-  
+
   "cauda-de-dragao-assada": {
     id: "cauda-de-dragao-assada",
     name: "Cauda de Dragão Assada",
@@ -322,7 +322,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       // Count player units on the field
       const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
-      
+
       if (playerUnitCount < 2) {
         return { canActivate: false, reason: "Voce precisa ter 2 ou mais unidades no campo" }
       }
@@ -333,7 +333,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const currentLife = context.playerField.life
       const healAmount = Math.min(2, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      
+
       // Buff all player units with +1 DP
       context.setPlayerField((prev) => ({
         ...prev,
@@ -346,13 +346,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
         }),
       }))
-      
+
       const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
       const healMsg = healAmount > 0 ? ` +${healAmount} LP (${currentLife} -> ${newLife})` : ""
       return { success: true, message: `+1 DP para ${unitCount} unidades!${healMsg}` }
     },
   },
-  
+
   "projetil-de-impacto": {
     id: "projetil-de-impacto",
     name: "Projétil de Impacto",
@@ -366,16 +366,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const damage = 2
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-      
+
       context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
-      
+
       return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
-  
+
   "veu-dos-lacos-cruzados": {
     id: "veu-dos-lacos-cruzados",
     name: "Véu dos Laços Cruzados",
@@ -390,10 +390,10 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     canActivate: (context) => {
       // Check if player has Fehnon Hoskie or Jaden Hainaegi on field
-      const hasRequiredUnit = context.playerField.unitZone.some((u) => 
+      const hasRequiredUnit = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Fehnon Hoskie" || u.name === "Jaden Hainaegi")
       )
-      
+
       if (!hasRequiredUnit) {
         return { canActivate: false, reason: "Voce precisa ter Fehnon Hoskie ou Jaden Hainaegi no campo" }
       }
@@ -401,23 +401,23 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
-      
+
       if (chosenOption === "buff") {
         // Buff option: +2 DP to Fehnon or Jaden
         if (!targets?.allyUnitIndices?.length) {
           return { success: false, message: "Selecione uma unidade Fehnon ou Jaden" }
         }
-        
+
         const allyIndex = targets.allyUnitIndices[0]
         const allyUnit = context.playerField.unitZone[allyIndex]
-        
+
         if (!allyUnit || (allyUnit.name !== "Fehnon Hoskie" && allyUnit.name !== "Jaden Hainaegi")) {
           return { success: false, message: "Selecione Fehnon Hoskie ou Jaden Hainaegi" }
         }
-        
+
         const currentDp = allyUnit.currentDp || allyUnit.dp
         const newDp = currentDp + 2
-        
+
         context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[allyIndex]) {
@@ -428,24 +428,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
           return { ...prev, unitZone: newUnitZone }
         })
-        
+
         return { success: true, message: `${allyUnit.name} recebeu +2 DP! (${currentDp} -> ${newDp})` }
       } else if (chosenOption === "debuff") {
         // Debuff option: -2 DP to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
           return { success: false, message: "Selecione uma unidade inimiga" }
         }
-        
+
         const enemyIndex = targets.enemyUnitIndices[0]
         const enemyUnit = context.enemyField.unitZone[enemyIndex]
-        
+
         if (!enemyUnit) {
           return { success: false, message: "Unidade inimiga nao encontrada" }
         }
-        
+
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 2)
-        
+
         context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[enemyIndex]) {
@@ -456,14 +456,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
           return { ...prev, unitZone: newUnitZone }
         })
-        
+
         return { success: true, message: `${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
       }
-      
+
       return { success: false, message: "Escolha uma opcao" }
     },
   },
-  
+
   "nucleo-explosivo": {
     id: "nucleo-explosivo",
     name: "Núcleo Explosivo",
@@ -471,7 +471,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       // Check if opponent has at least 1 unit on field
       const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
-      
+
       if (enemyUnitCount === 0) {
         return { canActivate: false, reason: "O oponente precisa ter ao menos 1 unidade no campo" }
       }
@@ -480,7 +480,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     resolve: (context) => {
       // Deal 1 damage to each enemy unit
       let unitsHit = 0
-      
+
       context.setEnemyField((prev) => ({
         ...prev,
         unitZone: prev.unitZone.map((unit) => {
@@ -494,11 +494,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
         }),
       }))
-      
+
       return { success: true, message: `1 de dano em ${unitsHit} unidade(s) inimigas!` }
     },
   },
-  
+
   "kit-medico-improvisado": {
     id: "kit-medico-improvisado",
     name: "Kit Médico Improvisado",
@@ -507,7 +507,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
-      
+
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
@@ -518,22 +518,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const maxLife = 20
       const healAmount = Math.min(2, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      
+
       context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
-      
+
       // Return special flag to indicate we need to draw and check for Unit type
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
         needsDrawAndCheckUnit: true,
         currentLife: newLife,
       }
     },
   },
-  
+
   "soro-recuperador": {
     id: "soro-recuperador",
     name: "Soro Recuperador",
@@ -542,7 +542,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
-      
+
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
@@ -553,32 +553,32 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const maxLife = 20
       const healAmount = Math.min(3, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      
+
       context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
-      
+
       // Return special flag to indicate we need to draw (no bonus check)
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
         needsDrawOnly: true,
         currentLife: newLife,
       }
     },
   },
-  
+
   "ordem-de-laceracao": {
     id: "ordem-de-laceracao",
     name: "Ordem de Laceração",
     requiresTargets: false,
     canActivate: (context) => {
       // Check if player has Fehnon Hoskie on field
-      const hasFehnon = context.playerField.unitZone.some((u) => 
+      const hasFehnon = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Fehnon Hoskie"
       )
-      
+
       if (!hasFehnon) {
         return { canActivate: false, reason: "Voce precisa ter Fehnon Hoskie no campo" }
       }
@@ -589,26 +589,26 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const damage = 3
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-      
+
       context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
-      
+
       return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
-  
+
   "sinfonia-relampago": {
     id: "sinfonia-relampago",
     name: "Sinfonia Relâmpago",
     requiresTargets: false,
     canActivate: (context) => {
       // Check if player has Morgana Pendragon on field
-      const hasMorgana = context.playerField.unitZone.some((u) => 
+      const hasMorgana = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Morgana Pendragon"
       )
-      
+
       if (!hasMorgana) {
         return { canActivate: false, reason: "Voce precisa ter Morgana Pendragon no campo" }
       }
@@ -619,16 +619,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const damage = 4
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-      
+
       context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
-      
+
       return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
-  
+
   "fafnisbani": {
     id: "fafnisbani",
     name: "Fafnisbani",
@@ -639,52 +639,52 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       { id: "lp", label: "Atacar LP", description: "Causa 3 de dano direto ao LP do oponente" },
     ],
     canActivate: (context) => {
-  // Check if player has Scandinavian Angel Hrotti on field (any variant name)
-  const hasHrotti = context.playerField.unitZone.some((u) =>
-  u !== null && (u.name === "Scandinavian Angel Hrotti" || u.name?.toLowerCase().includes("hrotti"))
-  )
-  
-  if (!hasHrotti) {
-  return { canActivate: false, reason: "Voce precisa ter Scandinavian Angel Hrotti no campo" }
-  }
-  return { canActivate: true }
-  },
+      // Check if player has Scandinavian Angel Hrotti on field (any variant name)
+      const hasHrotti = context.playerField.unitZone.some((u) =>
+        u !== null && (u.name === "Scandinavian Angel Hrotti" || u.name?.toLowerCase().includes("hrotti"))
+      )
+
+      if (!hasHrotti) {
+        return { canActivate: false, reason: "Voce precisa ter Scandinavian Angel Hrotti no campo" }
+      }
+      return { canActivate: true }
+    },
     resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
-      
+
       if (chosenOption === "lp") {
         // Direct damage to LP
         const damage = 3
         const currentEnemyLife = context.enemyField.life
         const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-        
+
         context.setEnemyField((prev) => ({
           ...prev,
           life: newEnemyLife,
         }))
-        
+
         return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
       } else if (chosenOption === "unit") {
         // Damage to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
           return { success: false, message: "Selecione uma unidade inimiga" }
         }
-        
+
         const enemyIndex = targets.enemyUnitIndices[0]
         const enemyUnit = context.enemyField.unitZone[enemyIndex]
-        
+
         if (!enemyUnit) {
           return { success: false, message: "Unidade inimiga nao encontrada" }
         }
-        
+
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
-        
+
         context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
-          
+
           if (isDestroyed) {
             // Unit is destroyed - send to graveyard
             if (newUnitZone[enemyIndex]) {
@@ -702,17 +702,17 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
           return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
         })
-        
+
         if (isDestroyed) {
           return { success: true, message: `Fafnisbani! ${enemyUnit.name} foi destruido!` }
         }
         return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -> ${newDp})` }
       }
-      
+
       return { success: false, message: "Escolha uma opcao" }
     },
   },
-  
+
   "devorar-o-mundo": {
     id: "devorar-o-mundo",
     name: "Devorar o Mundo",
@@ -724,10 +724,10 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     ],
     canActivate: (context) => {
       // Check if player has Scandinavian Angel Logi on field (any variant name)
-      const hasLogi = context.playerField.unitZone.some((u) => 
+      const hasLogi = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Scandinavian Angel Logi" || u.name?.toLowerCase().includes("logi"))
       )
-      
+
       if (!hasLogi) {
         return { canActivate: false, reason: "Voce precisa ter Scandinavian Angel Logi no campo" }
       }
@@ -735,40 +735,40 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
-      
+
       if (chosenOption === "lp") {
         // Direct damage to LP
         const damage = 4
         const currentEnemyLife = context.enemyField.life
         const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-        
+
         context.setEnemyField((prev) => ({
           ...prev,
           life: newEnemyLife,
         }))
-        
+
         return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
       } else if (chosenOption === "unit") {
         // Damage to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
           return { success: false, message: "Selecione uma unidade inimiga" }
         }
-        
+
         const enemyIndex = targets.enemyUnitIndices[0]
         const enemyUnit = context.enemyField.unitZone[enemyIndex]
-        
+
         if (!enemyUnit) {
           return { success: false, message: "Unidade inimiga nao encontrada" }
         }
-        
+
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 4)
         const isDestroyed = newDp <= 0
-        
+
         context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
-          
+
           if (isDestroyed) {
             // Unit is destroyed - send to graveyard
             if (newUnitZone[enemyIndex]) {
@@ -786,19 +786,19 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
           return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
         })
-        
+
         if (isDestroyed) {
           return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} foi destruido!` }
         }
         return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -> ${newDp})` }
       }
-      
+
       return { success: false, message: "Escolha uma opcao" }
     },
   },
-  
+
   // ========== DICE FUNCTION CARDS ==========
-  
+
   "dados-do-destino-gentil": {
     id: "dados-do-destino-gentil",
     name: "Dados do Destino Gentil",
@@ -818,26 +818,26 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
-      
+
       const allyIndex = targets.allyUnitIndices[0]
       const allyUnit = context.playerField.unitZone[allyIndex]
-      
+
       if (!allyUnit) {
         return { success: false, message: "Unidade nao encontrada" }
       }
-      
+
       const diceResult = targets.diceResult || 1
       const currentDp = allyUnit.currentDp || allyUnit.dp
-      
+
       if (diceResult >= 1 && diceResult <= 3) {
         // 1-3: -3 DP
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
-        
+
         context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
-          
+
           if (isDestroyed) {
             if (newUnitZone[allyIndex]) {
               newGraveyard.push(newUnitZone[allyIndex]!)
@@ -850,7 +850,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
           return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
         })
-        
+
         if (isDestroyed) {
           return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP e foi destruida!` }
         }
@@ -858,7 +858,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       } else {
         // 4-6: +5 DP
         const newDp = currentDp + 5
-        
+
         context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[allyIndex]) {
@@ -866,12 +866,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           }
           return { ...prev, unitZone: newUnitZone }
         })
-        
+
         return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} ganhou +5 DP! (${currentDp} -> ${newDp})` }
       }
     },
   },
-  
+
   "dados-elementais-alpha": {
     id: "dados-elementais-alpha",
     name: "Dados Elementais Alpha",
@@ -883,7 +883,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: (context) => {
       // Check for units with Darkness, Fire, or Aquos elements
       const validElements = ["darkness", "fire", "aquos"]
-      const hasValidUnit = context.playerField.unitZone.some((u) => 
+      const hasValidUnit = context.playerField.unitZone.some((u) =>
         u !== null && validElements.includes(u.element?.toLowerCase() || "")
       )
       if (!hasValidUnit) {
@@ -895,26 +895,26 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
-      
+
       const allyIndex = targets.allyUnitIndices[0]
       const allyUnit = context.playerField.unitZone[allyIndex]
-      
+
       if (!allyUnit) {
         return { success: false, message: "Unidade nao encontrada" }
       }
-      
+
       const validElements = ["darkness", "fire", "aquos"]
       const unitElement = allyUnit.element?.toLowerCase() || ""
-      
+
       if (!validElements.includes(unitElement)) {
         return { success: false, message: "Unidade deve ser Darkness, Fire ou Aquos" }
       }
-      
+
       const diceResult = targets.diceResult || 1
       const currentDp = allyUnit.currentDp || allyUnit.dp
       let dpBonus = 0
       let bonusMessage = ""
-      
+
       if (diceResult >= 1 && diceResult <= 2) {
         dpBonus = 3
         if (unitElement === "darkness") {
@@ -944,7 +944,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           bonusMessage = " Bonus Aquos: +3 LP!"
         }
       }
-      
+
       const newDp = currentDp + dpBonus
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
@@ -953,11 +953,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         }
         return { ...prev, unitZone: newUnitZone }
       })
-      
+
       return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +${dpBonus} DP!${bonusMessage}` }
     },
   },
-  
+
   "dados-elementais-omega": {
     id: "dados-elementais-omega",
     name: "Dados Elementais Omega",
@@ -967,13 +967,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       allyUnits: 1,
     },
     canActivate: (context) => {
-      // Check for units with Neutral, Lightness, or Ventus elements
-      const validElements = ["neutral", "lightness", "ventus"]
-      const hasValidUnit = context.playerField.unitZone.some((u) => 
+      // Check for units with Neutral, Lightness, Ventus, or Void elements (Void is treated as Neutral)
+      const validElements = ["neutral", "lightness", "ventus", "void"]
+      const hasValidUnit = context.playerField.unitZone.some((u) =>
         u !== null && validElements.includes(u.element?.toLowerCase() || "")
       )
       if (!hasValidUnit) {
-        return { canActivate: false, reason: "Precisa de unidade Neutral, Lightness ou Ventus em campo" }
+        return { canActivate: false, reason: "Precisa de unidade Neutral, Lightness, Ventus ou Void em campo" }
       }
       return { canActivate: true }
     },
@@ -981,26 +981,28 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
-      
+
       const allyIndex = targets.allyUnitIndices[0]
       const allyUnit = context.playerField.unitZone[allyIndex]
-      
+
       if (!allyUnit) {
         return { success: false, message: "Unidade nao encontrada" }
       }
-      
-      const validElements = ["neutral", "lightness", "ventus"]
-      const unitElement = allyUnit.element?.toLowerCase() || ""
-      
-      if (!validElements.includes(unitElement)) {
-        return { success: false, message: "Unidade deve ser Neutral, Lightness ou Ventus" }
+
+      const validElements = ["neutral", "lightness", "ventus", "void"]
+      const rawElement = allyUnit.element?.toLowerCase() || ""
+      // Treat Void as Neutral for dice bonus purposes
+      const unitElement = rawElement === "void" ? "neutral" : rawElement
+
+      if (!validElements.includes(rawElement)) {
+        return { success: false, message: "Unidade deve ser Neutral, Lightness, Ventus ou Void" }
       }
-      
+
       const diceResult = targets.diceResult || 1
       const currentDp = allyUnit.currentDp || allyUnit.dp
       let dpBonus = 0
       let bonusMessage = ""
-      
+
       if (diceResult >= 1 && diceResult <= 2) {
         dpBonus = 3
         if (unitElement === "neutral") {
@@ -1030,7 +1032,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           bonusMessage = " Bonus Ventus: +3 LP!"
         }
       }
-      
+
       const newDp = currentDp + dpBonus
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
@@ -1039,7 +1041,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         }
         return { ...prev, unitZone: newUnitZone }
       })
-      
+
       return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +${dpBonus} DP!${bonusMessage}` }
     },
   },
@@ -1063,7 +1065,7 @@ const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCar
   if (FUNCTION_CARD_EFFECTS[baseId]) {
     return FUNCTION_CARD_EFFECTS[baseId]
   }
-  
+
   // Fallback: try to match by card name
   const effectByName = Object.values(FUNCTION_CARD_EFFECTS).find(
     (effect) => effect.name === card.name
@@ -1152,15 +1154,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const typedDecks = decks as DeckWithImages[]
   const [selectedDeck, setSelectedDeck] = useState<DeckWithImages | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
-  
+
   // Multiplayer state
   const [multiplayerRoomData, setMultiplayerRoomData] = useState<RoomData | null>(null)
   const [showOnlineDuel, setShowOnlineDuel] = useState(false)
-  
+
   const [turn, setTurn] = useState(1)
   const [phase, setPhase] = useState<Phase>("draw")
   const [isPlayerTurn, setIsPlayerTurn] = useState(true)
-  
+
   // Draw card animation state
   const [drawAnimation, setDrawAnimation] = useState<{
     visible: boolean
@@ -1200,14 +1202,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     targetInfo: null, // Initialize targetInfo
   })
   const [attackTarget, setAttackTarget] = useState<{ type: "direct" | "unit"; index?: number } | null>(null)
-const [itemSelectionMode, setItemSelectionMode] = useState<{
-  active: boolean
-  itemCard: GameCard | null
-  step: "selectEnemy" | "selectAlly" | "selectChoice"
-  selectedEnemyIndex: number | null
-  chosenOption: string | null
+  const [itemSelectionMode, setItemSelectionMode] = useState<{
+    active: boolean
+    itemCard: GameCard | null
+    step: "selectEnemy" | "selectAlly" | "selectChoice"
+    selectedEnemyIndex: number | null
+    chosenOption: string | null
   }>({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
-  
+
   // State for choice modal (for cards like Véu dos Laços Cruzados)
   const [choiceModal, setChoiceModal] = useState<{
     visible: boolean
@@ -1222,7 +1224,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   const explosionCanvasRef = useRef<HTMLCanvasElement>(null)
   const activeParticlesRef = useRef<Map<string, { particles: Particle[], startTime: number, element: string, x: number, y: number }>>(new Map())
   const [impactFlash, setImpactFlash] = useState<{ active: boolean; color: string }>({ active: false, color: "#ffffff" })
-  
+
   // Destruction animation state
   const [destructionAnimation, setDestructionAnimation] = useState<{
     id: string
@@ -1232,7 +1234,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     y: number
     element: string
   } | null>(null)
-  
+
   // Dice roll animation state
   const [diceAnimation, setDiceAnimation] = useState<{
     visible: boolean
@@ -1327,7 +1329,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     }
 
     prevUnitZoneRef.current = currentNames
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerField.unitZone, playerField.ultimateZone])
 
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
@@ -1346,10 +1348,10 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
   // Helper to show effect feedback
   const showEffectFeedback = useCallback((message: string, type: "success" | "error") => {
-  setEffectFeedback({ active: true, message, type })
-  setTimeout(() => setEffectFeedback(null), 2000)
+    setEffectFeedback({ active: true, message, type })
+    setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
-  
+
   // Helper to show draw card animation
   const showDrawAnimation = useCallback((card: GameCard) => {
     setDrawAnimation({
@@ -1360,7 +1362,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     })
     setTimeout(() => setDrawAnimation(null), 1300)
   }, [])
-  
+
   // Helper to show destruction animation
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     const id = `destruction-${Date.now()}`
@@ -1374,7 +1376,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     })
     setTimeout(() => setDestructionAnimation(null), 1200)
   }, [])
-  
+
   // Helper to roll dice with animation
   const rollDice = useCallback((cardName: string): Promise<number> => {
     return new Promise((resolve) => {
@@ -1386,7 +1388,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         cardName,
         onComplete: null,
       })
-      
+
       // Roll for 2 seconds then show result
       setTimeout(() => {
         const result = Math.floor(Math.random() * 6) + 1
@@ -1395,7 +1397,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           rolling: false,
           result,
         } : null)
-        
+
         // Wait for result display then resolve
         setTimeout(() => {
           setDiceAnimation(null)
@@ -1404,7 +1406,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       }, 2000)
     })
   }, [])
-  
+
   // Helper to resolve effect with dice roll if needed
   const resolveEffectWithDice = useCallback(async (
     effect: FunctionCardEffect,
@@ -1418,7 +1420,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     }
     return effect.resolve(effectContext, targets)
   }, [rollDice])
-  
+
   // If mode is "player", show the multiplayer lobby system
   if (mode === "player" && !showOnlineDuel) {
     return (
@@ -1431,7 +1433,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       />
     )
   }
-  
+
   // If online duel started, show the online duel screen
   if (mode === "player" && showOnlineDuel && multiplayerRoomData) {
     return (
@@ -2049,16 +2051,16 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     const animate = () => {
       const now = Date.now()
       const activeEffects = activeParticlesRef.current
-      
+
       // Check if no effects
       if (activeEffects.size === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
       }
-      
+
       // Get effects as array for iteration
       const localEffects = Array.from(activeEffects.entries())
-      
+
       // Check if all effects are done
       const allDone = localEffects.every(([, effect]) => now - effect.startTime > duration)
       if (allDone) {
@@ -2070,15 +2072,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
       localEffects.forEach(([effectId, effect]) => {
         const elapsed = now - effect.startTime
-        
+
         // Skip if this effect is done
         if (elapsed > duration) return
-        
+
         const colors = getElementColors(effect.element)
         const el = effect.element?.toLowerCase()
 
         // ELEMENT-SPECIFIC EPIC EFFECTS
-        
+
         // AQUO/AQUOS - Water ripple waves
         if (el === "aquos" || el === "aquo") {
           // Multiple expanding water ripples
@@ -2532,7 +2534,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
-    ultimateZone: null,
+      ultimateZone: null,
       graveyard: [],
     }))
 
@@ -2548,7 +2550,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
-    ultimateZone: null,
+      ultimateZone: null,
       graveyard: [],
     }))
 
@@ -2563,15 +2565,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   }
 
   const drawCard = () => {
-  if (playerField.deck.length === 0) return
-  
-  const drawnCard = playerField.deck[0]
-  showDrawAnimation(drawnCard)
-  setPlayerField((prev) => ({
-  ...prev,
-  hand: [...prev.hand, drawnCard],
-  deck: prev.deck.slice(1),
-  }))
+    if (playerField.deck.length === 0) return
+
+    const drawnCard = playerField.deck[0]
+    showDrawAnimation(drawnCard)
+    setPlayerField((prev) => ({
+      ...prev,
+      hand: [...prev.hand, drawnCard],
+      deck: prev.deck.slice(1),
+    }))
   }
 
   const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
@@ -2580,7 +2582,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
     const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
     if (cardIndex === null || cardIndex === undefined) return
-    
+
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace) return
 
@@ -2616,7 +2618,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
       // Get the effect configuration for this card
       const effect = getFunctionCardEffect(cardToPlace)
-      
+
       // Special handling for Function cards by name (backup)
       const isAmplificador = cardToPlace.name === "Amplificador de Poder"
       const isBandagem = cardToPlace.name === "Bandagem Restauradora"
@@ -2633,30 +2635,30 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       const isSinfoniaRelampago = cardToPlace.name === "Sinfonia Relâmpago"
       const isFafnisbani = cardToPlace.name === "Fafnisbani"
       const isDevorarOMundo = cardToPlace.name === "Devorar o Mundo"
-      
+
       if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo) {
-      // Use found effect or fallback to the correct one by name
-      let effectToUse = effect
-      if (!effectToUse) {
-      if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
-      else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
-      else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+        // Use found effect or fallback to the correct one by name
+        let effectToUse = effect
+        if (!effectToUse) {
+          if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+          else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+          else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
           else if (isBandagensDuplas) effectToUse = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
           else if (isCristalRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
-      else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
-      else if (isProjetilDeImpacto) effectToUse = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
-      else if (isVeuDosLacos) effectToUse = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
-      else if (isNucleoExplosivo) effectToUse = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
-      else if (isKitMedico) effectToUse = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
-      else if (isSoroRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["soro-recuperador"]
-      else if (isOrdemDeLaceracao) effectToUse = FUNCTION_CARD_EFFECTS["ordem-de-laceracao"]
-      else if (isSinfoniaRelampago) effectToUse = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
-      else if (isFafnisbani) effectToUse = FUNCTION_CARD_EFFECTS["fafnisbani"]
-      else if (isDevorarOMundo) effectToUse = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
-      }
-      
-      if (!effectToUse) return // Safety check
-        
+          else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
+          else if (isProjetilDeImpacto) effectToUse = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
+          else if (isVeuDosLacos) effectToUse = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+          else if (isNucleoExplosivo) effectToUse = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
+          else if (isKitMedico) effectToUse = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
+          else if (isSoroRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["soro-recuperador"]
+          else if (isOrdemDeLaceracao) effectToUse = FUNCTION_CARD_EFFECTS["ordem-de-laceracao"]
+          else if (isSinfoniaRelampago) effectToUse = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
+          else if (isFafnisbani) effectToUse = FUNCTION_CARD_EFFECTS["fafnisbani"]
+          else if (isDevorarOMundo) effectToUse = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
+        }
+
+        if (!effectToUse) return // Safety check
+
         // Create effect context
         const effectContext: EffectContext = {
           playerField,
@@ -2664,7 +2666,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           setPlayerField,
           setEnemyField,
         }
-        
+
         // Check if card can be activated
         const { canActivate, reason } = effectToUse.canActivate(effectContext)
         if (!canActivate) {
@@ -2672,83 +2674,83 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
           return // Card cannot be played
         }
-        
-  // If effect requires a choice first, show choice modal
-  if (effectToUse.requiresChoice && effectToUse.choiceOptions) {
-  setChoiceModal({
-  visible: true,
-  cardName: cardToPlace.name,
-  options: effectToUse.choiceOptions,
-  onChoose: (optionId: string) => {
-  setChoiceModal(null)
-  
-  // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
-  if (optionId === "lp") {
-    const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
-    if (result.success) {
-      showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
-      setPlayerField((prev) => ({
-        ...prev,
-        hand: prev.hand.filter((_, i) => i !== cardIndex),
-        graveyard: [...prev.graveyard, cardToPlace],
-      }))
-    } else {
-      showEffectFeedback(`${cardToPlace.name}: ${result.message || "Falha"}`, "error")
-    }
-    setSelectedHandCard(null)
-    setDraggedHandCard(null)
-    return
-  }
-  
-  // Now enter target selection mode with the chosen option
-  const step = optionId === "buff" ? "selectAlly" : "selectEnemy"
-  setItemSelectionMode({
-  active: true,
-  itemCard: cardToPlace,
-  step: step,
-  selectedEnemyIndex: null,
-  chosenOption: optionId,
-  })
-  setPlayerField((prev) => ({
-  ...prev,
-  hand: prev.hand.filter((_, i) => i !== cardIndex),
-  }))
-  setSelectedHandCard(null)
-  setDraggedHandCard(null)
-  },
-  })
-  return
-  }
-  
-  // If effect requires targets, enter selection mode
-  if (effectToUse.requiresTargets && effectToUse.targetConfig) {
-  // Determine the correct step based on target config
-  // If only needs ally units (like dice cards), go straight to selectAlly
-  const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits > 0
-  const initialStep = needsEnemyFirst ? "selectEnemy" : "selectAlly"
-  
-  setItemSelectionMode({
-  active: true,
-  itemCard: cardToPlace,
-  step: initialStep,
-  selectedEnemyIndex: null,
-  chosenOption: null,
-  })
-  setPlayerField((prev) => ({
-  ...prev,
-  hand: prev.hand.filter((_, i) => i !== cardIndex),
-  }))
-  setSelectedHandCard(null)
-  setDraggedHandCard(null)
-  return
-  }
-        
+
+        // If effect requires a choice first, show choice modal
+        if (effectToUse.requiresChoice && effectToUse.choiceOptions) {
+          setChoiceModal({
+            visible: true,
+            cardName: cardToPlace.name,
+            options: effectToUse.choiceOptions,
+            onChoose: (optionId: string) => {
+              setChoiceModal(null)
+
+              // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
+              if (optionId === "lp") {
+                const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
+                if (result.success) {
+                  showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
+                  setPlayerField((prev) => ({
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }))
+                } else {
+                  showEffectFeedback(`${cardToPlace.name}: ${result.message || "Falha"}`, "error")
+                }
+                setSelectedHandCard(null)
+                setDraggedHandCard(null)
+                return
+              }
+
+              // Now enter target selection mode with the chosen option
+              const step = optionId === "buff" ? "selectAlly" : "selectEnemy"
+              setItemSelectionMode({
+                active: true,
+                itemCard: cardToPlace,
+                step: step,
+                selectedEnemyIndex: null,
+                chosenOption: optionId,
+              })
+              setPlayerField((prev) => ({
+                ...prev,
+                hand: prev.hand.filter((_, i) => i !== cardIndex),
+              }))
+              setSelectedHandCard(null)
+              setDraggedHandCard(null)
+            },
+          })
+          return
+        }
+
+        // If effect requires targets, enter selection mode
+        if (effectToUse.requiresTargets && effectToUse.targetConfig) {
+          // Determine the correct step based on target config
+          // If only needs ally units (like dice cards), go straight to selectAlly
+          const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits > 0
+          const initialStep = needsEnemyFirst ? "selectEnemy" : "selectAlly"
+
+          setItemSelectionMode({
+            active: true,
+            itemCard: cardToPlace,
+            step: initialStep,
+            selectedEnemyIndex: null,
+            chosenOption: null,
+          })
+          setPlayerField((prev) => ({
+            ...prev,
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
+          }))
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
+          return
+        }
+
         // Effect doesn't require targets - resolve immediately
         const result = effectToUse.resolve(effectContext)
         if (result.success) {
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
-          
+
           // Special handling for Cristal Recuperador - draw a card and check if Function type
           if (result.needsDrawAndCheck) {
             setTimeout(() => {
@@ -2761,15 +2763,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
-                
+
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
                 const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
-                
+
                 // Check if drawn card is a Function type (item)
                 const isFunctionCard = drawnCard.type === "item"
                 let finalLife = result.currentLife || prev.life
-                
+
                 if (isFunctionCard) {
                   const maxLife = 20
                   const bonusHeal = Math.min(1, maxLife - finalLife)
@@ -2780,7 +2782,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 } else {
                   showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
                 }
-                
+
                 return {
                   ...prev,
                   deck: newDeck,
@@ -2790,12 +2792,12 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 }
               })
             }, 500) // Small delay for visual feedback
-            
+
             setSelectedHandCard(null)
             setDraggedHandCard(null)
             return
           }
-          
+
           // Special handling for Kit Médico Improvisado - draw and check if Unit type for bonus
           if (result.needsDrawAndCheckUnit) {
             setTimeout(() => {
@@ -2808,15 +2810,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
-                
+
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
                 const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
-                
+
                 // Check if drawn card is a Unit type
                 const isUnitCard = drawnCard.type === "unit"
                 let finalLife = result.currentLife || prev.life
-                
+
                 if (isUnitCard) {
                   const maxLife = 20
                   const bonusHeal = Math.min(1, maxLife - finalLife)
@@ -2827,7 +2829,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 } else {
                   showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
                 }
-                
+
                 return {
                   ...prev,
                   deck: newDeck,
@@ -2837,12 +2839,12 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 }
               })
             }, 500)
-            
+
             setSelectedHandCard(null)
             setDraggedHandCard(null)
             return
           }
-          
+
           // Special handling for Soro Recuperador - just draw, no bonus check
           if (result.needsDrawOnly) {
             setTimeout(() => {
@@ -2855,13 +2857,13 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
-                
+
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
                 const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
-                
+
                 showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
-                
+
                 return {
                   ...prev,
                   deck: newDeck,
@@ -2870,12 +2872,12 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 }
               })
             }, 500)
-            
+
             setSelectedHandCard(null)
             setDraggedHandCard(null)
             return
           }
-          
+
           // Send card to graveyard after resolution
           setPlayerField((prev) => ({
             ...prev,
@@ -2912,7 +2914,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
     const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
     if (cardIndex === null || cardIndex === undefined) return
-    
+
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace || cardToPlace.type !== "scenario") return
     if (playerField.scenarioZone !== null) return
@@ -3256,53 +3258,53 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   }
 
   const advancePhase = () => {
-  if (!isPlayerTurn) return
-  if (phase === "draw") {
-  // Compra uma carta automaticamente ao sair da fase de draw
-  if (playerField.deck.length > 0) {
-  const drawnCard = playerField.deck[0]
-  showDrawAnimation(drawnCard)
-  setPlayerField((prev) => ({
-  ...prev,
-  hand: [...prev.hand, drawnCard],
-  deck: prev.deck.slice(1),
-  }))
-  }
-  setPhase("main")
-  } else if (phase === "main") {
-  // ULLRBOGI: +3 DP to Ullr when entering battle phase
-  if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
-    const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
-    if (ullrIdx !== -1) {
-      setPlayerField((prev) => {
-        const newUnits = [...prev.unitZone]
-        const unit = newUnits[ullrIdx]
-        if (unit) {
-          newUnits[ullrIdx] = { ...unit, currentDp: unit.currentDp + 3 }
-          showEffectFeedback(`ULLRBOGI: ${unit.name} +3 DP na fase de batalha!`, "success")
+    if (!isPlayerTurn) return
+    if (phase === "draw") {
+      // Compra uma carta automaticamente ao sair da fase de draw
+      if (playerField.deck.length > 0) {
+        const drawnCard = playerField.deck[0]
+        showDrawAnimation(drawnCard)
+        setPlayerField((prev) => ({
+          ...prev,
+          hand: [...prev.hand, drawnCard],
+          deck: prev.deck.slice(1),
+        }))
+      }
+      setPhase("main")
+    } else if (phase === "main") {
+      // ULLRBOGI: +3 DP to Ullr when entering battle phase
+      if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
+        const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+        if (ullrIdx !== -1) {
+          setPlayerField((prev) => {
+            const newUnits = [...prev.unitZone]
+            const unit = newUnits[ullrIdx]
+            if (unit) {
+              newUnits[ullrIdx] = { ...unit, currentDp: unit.currentDp + 3 }
+              showEffectFeedback(`ULLRBOGI: ${unit.name} +3 DP na fase de batalha!`, "success")
+            }
+            return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+          })
         }
-        return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
-      })
-    }
-  }
-  setPhase("battle")
-  } else if (phase === "battle") {
-  // ULLRBOGI: remove +3 DP from Ullr when leaving battle phase
-  if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
-    const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
-    if (ullrIdx !== -1) {
-      setPlayerField((prev) => {
-        const newUnits = [...prev.unitZone]
-        const unit = newUnits[ullrIdx]
-        if (unit) {
-          newUnits[ullrIdx] = { ...unit, currentDp: Math.max(0, unit.currentDp - 3) }
+      }
+      setPhase("battle")
+    } else if (phase === "battle") {
+      // ULLRBOGI: remove +3 DP from Ullr when leaving battle phase
+      if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
+        const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+        if (ullrIdx !== -1) {
+          setPlayerField((prev) => {
+            const newUnits = [...prev.unitZone]
+            const unit = newUnits[ullrIdx]
+            if (unit) {
+              newUnits[ullrIdx] = { ...unit, currentDp: Math.max(0, unit.currentDp - 3) }
+            }
+            return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+          })
         }
-        return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
-      })
+      }
+      endTurn()
     }
-  }
-  endTurn()
-  }
   }
 
   const handleAttackStart = useCallback(
@@ -3477,43 +3479,43 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             const targetElement = document.querySelector(`[data-enemy-unit="${targetIndex}"]`)
             const targetRect = targetElement?.getBoundingClientRect()
 
-  setEnemyField((prev) => {
-  const newUnitZone = [...prev.unitZone]
-  const newGraveyard = [...prev.graveyard]
+            setEnemyField((prev) => {
+              const newUnitZone = [...prev.unitZone]
+              const newGraveyard = [...prev.graveyard]
 
-  // PROTONIX SWORD protection: unit equipped with it cannot be destroyed in battle (stays at 1 DP)
-  const isProtectedByProtonix = prev.ultimateZone &&
-    prev.ultimateZone.ability === "PROTONIX SWORD" &&
-    prev.ultimateZone.requiresUnit === defender.name
+              // PROTONIX SWORD protection: unit equipped with it cannot be destroyed in battle (stays at 1 DP)
+              const isProtectedByProtonix = prev.ultimateZone &&
+                prev.ultimateZone.ability === "PROTONIX SWORD" &&
+                prev.ultimateZone.requiresUnit === defender.name
 
-  if (newDefenderDp <= 0) {
-  if (isProtectedByProtonix) {
-    // Protected: stays at 1 DP instead of being destroyed
-    newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
-    showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
-  } else {
-    if (targetRect) {
-    showDestructionAnimation(
-      defender,
-      targetRect.left + targetRect.width / 2,
-      targetRect.top + targetRect.height / 2
-    )
-    setTimeout(() => {
-      triggerExplosion(
-      targetRect.left + targetRect.width / 2,
-      targetRect.top + targetRect.height / 2,
-      attacker.element || "neutral",
-      )
-    }, 400)
-    }
-    newGraveyard.push(defender)
-    newUnitZone[targetIndex] = null
-  }
-  } else {
-  newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
-  }
-  return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
-  })
+              if (newDefenderDp <= 0) {
+                if (isProtectedByProtonix) {
+                  // Protected: stays at 1 DP instead of being destroyed
+                  newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
+                  showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
+                } else {
+                  if (targetRect) {
+                    showDestructionAnimation(
+                      defender,
+                      targetRect.left + targetRect.width / 2,
+                      targetRect.top + targetRect.height / 2
+                    )
+                    setTimeout(() => {
+                      triggerExplosion(
+                        targetRect.left + targetRect.width / 2,
+                        targetRect.top + targetRect.height / 2,
+                        attacker.element || "neutral",
+                      )
+                    }, 400)
+                  }
+                  newGraveyard.push(defender)
+                  newUnitZone[targetIndex] = null
+                }
+              } else {
+                newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
+              }
+              return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+            })
 
             // CALEM SR: Vácuo de Essência - deal 1DP direct on kill
             if (newDefenderDp <= 0 && attacker.id === "calem-sr") {
@@ -3615,7 +3617,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     dragPosRef.current = { x: clientX, y: clientY, rotation: 0 }
     setDraggedHandCard({ index, card })
     setSelectedHandCard(index)
-    
+
     // Update ghost position immediately
     if (draggedCardRef.current) {
       draggedCardRef.current.style.transform = `translate(${clientX - 40}px, ${clientY - 56}px) rotate(0deg) scale(1.1)`
@@ -3624,19 +3626,19 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
   const handleHandCardDragMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!draggedHandCard || !draggedCardRef.current) return
-    
+
     e.preventDefault()
 
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
-    
+
     // Calculate rotation based on horizontal movement
     const deltaX = clientX - dragPosRef.current.x
     const targetRotation = Math.max(-10, Math.min(10, deltaX * 0.8))
     dragPosRef.current.rotation = targetRotation * 0.4 + dragPosRef.current.rotation * 0.6
     dragPosRef.current.x = clientX
     dragPosRef.current.y = clientY
-    
+
     // Update DOM directly for smooth movement (no React re-render)
     const isOverTarget = dropTarget !== null
     draggedCardRef.current.style.transform = `translate(${clientX - 40}px, ${clientY - 56}px) rotate(${isOverTarget ? 0 : dragPosRef.current.rotation}deg) scale(${isOverTarget ? 1.2 : 1.1})`
@@ -3645,7 +3647,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     const now = Date.now()
     if (!dragPosRef.current.lastCheck || now - dragPosRef.current.lastCheck > 50) {
       dragPosRef.current.lastCheck = now
-      
+
       const elements = document.elementsFromPoint(clientX, clientY)
       let foundTarget: { type: "unit" | "function" | "scenario" | "ultimate"; index: number } | null = null
 
@@ -3654,7 +3656,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         const funcSlot = el.closest("[data-player-func-slot]")
         const scenarioSlot = el.closest("[data-player-scenario-slot]")
         const ultimateSlot = el.closest("[data-player-ultimate-slot]")
-        
+
         if (ultimateSlot && isUltimateCard(draggedHandCard.card)) {
           if (!playerField.ultimateZone) {
             foundTarget = { type: "ultimate", index: 0 }
@@ -3692,9 +3694,9 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       setDropTarget(null)
       return
     }
-    
+
     if (dropTarget) {
-      const targetSelector = dropTarget.type === "unit" 
+      const targetSelector = dropTarget.type === "unit"
         ? `[data-player-unit-slot="${dropTarget.index}"]`
         : dropTarget.type === "function"
           ? `[data-player-func-slot="${dropTarget.index}"]`
@@ -3703,12 +3705,12 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             : `[data-player-scenario-slot]`
       const targetElement = document.querySelector(targetSelector)
       const targetRect = targetElement?.getBoundingClientRect()
-      
+
       const cardIndex = draggedHandCard.index
       const targetType = dropTarget.type
       const targetIndex = dropTarget.index
       const cardToPlay = draggedHandCard.card
-      
+
       // Remove card from hand IMMEDIATELY by passing index directly
       if (targetType === "ultimate") {
         placeUltimateCard(cardIndex)
@@ -3718,18 +3720,18 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         placeCard(targetType, targetIndex, cardIndex)
       }
       setSelectedHandCard(null)
-      
+
       // Show materialize animation if we have target position
       if (targetRect) {
         const targetX = targetRect.left + targetRect.width / 2
         const targetY = targetRect.top + targetRect.height / 2
-        
+
         setDroppingCard({
           card: cardToPlay,
           targetX,
           targetY,
         })
-        
+
         setTimeout(() => {
           setDroppingCard(null)
         }, 500)
@@ -4149,93 +4151,93 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     })
   }
 
-const handleEnemyUnitSelect = (index: number) => {
-  if (!itemSelectionMode.active || itemSelectionMode.step !== "selectEnemy") return
-  const enemyUnit = enemyField.unitZone[index]
-  if (!enemyUnit) return
-  
-  // If this is Véu dos Laços Cruzados with "debuff" option, resolve immediately
-  if (itemSelectionMode.chosenOption === "debuff" && itemSelectionMode.itemCard) {
-    let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
-    if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
-      effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+  const handleEnemyUnitSelect = (index: number) => {
+    if (!itemSelectionMode.active || itemSelectionMode.step !== "selectEnemy") return
+    const enemyUnit = enemyField.unitZone[index]
+    if (!enemyUnit) return
+
+    // If this is Véu dos Laços Cruzados with "debuff" option, resolve immediately
+    if (itemSelectionMode.chosenOption === "debuff" && itemSelectionMode.itemCard) {
+      let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
+      if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
+        effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+      }
+
+      if (effect) {
+        const effectContext: EffectContext = {
+          playerField,
+          enemyField,
+          setPlayerField,
+          setEnemyField,
+        }
+
+        const targets: EffectTargets = {
+          enemyUnitIndices: [index],
+          allyUnitIndices: [],
+          chosenOption: "debuff",
+        }
+
+        const cardToUse = itemSelectionMode.itemCard
+        setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+
+        // Use async resolve for dice cards
+        resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
+          if (result.success) {
+            showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
+            setPlayerField((prev) => ({
+              ...prev,
+              graveyard: [...prev.graveyard, cardToUse],
+            }))
+          } else {
+            showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
+          }
+        })
+        return
+      }
     }
-    
-  if (effect) {
-  const effectContext: EffectContext = {
-  playerField,
-  enemyField,
-  setPlayerField,
-  setEnemyField,
-  }
-  
-  const targets: EffectTargets = {
-  enemyUnitIndices: [index],
-  allyUnitIndices: [],
-  chosenOption: "debuff",
-  }
-  
-  const cardToUse = itemSelectionMode.itemCard
-  setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
-  
-  // Use async resolve for dice cards
-  resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
-    if (result.success) {
-      showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
-      setPlayerField((prev) => ({
-        ...prev,
-        graveyard: [...prev.graveyard, cardToUse],
-      }))
-    } else {
-      showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
-    }
-  })
-  return
-  }
-  }
-  
-  setItemSelectionMode((prev) => ({
-  ...prev,
-  step: "selectAlly",
-  selectedEnemyIndex: index,
-  }))
+
+    setItemSelectionMode((prev) => ({
+      ...prev,
+      step: "selectAlly",
+      selectedEnemyIndex: index,
+    }))
   }
 
-const handleAllyUnitSelect = (index: number) => {
-  if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
-  if (!itemSelectionMode.itemCard) return
-  
-  // Check if this is a dice card (they don't need selectedEnemyIndex)
-  const cardId = getBaseCardId(itemSelectionMode.itemCard.id || "")
-  const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
-  
-  // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
-  const isVeuBuff = itemSelectionMode.chosenOption === "buff"
-  
-  // Skip the selectedEnemyIndex check for dice cards and buff options
-  if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard) return
-  
-  const allyUnit = playerField.unitZone[index]
-  if (!allyUnit) return
-  
-  // For Véu dos Laços Cruzados buff, check if unit is Fehnon or Jaden
-  if (isVeuBuff && allyUnit.name !== "Fehnon Hoskie" && allyUnit.name !== "Jaden Hainaegi") {
-    showEffectFeedback("Selecione Fehnon Hoskie ou Jaden Hainaegi", "error")
-    return
-  }
-  
-  // Use centralized effect resolver
-  let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
-  
-  // Fallback: find effect by name
-  if (!effect) {
-  const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
-  const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
-  const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
-  const isBandagensDuplas = itemSelectionMode.itemCard.name === "Bandagens Duplas"
-  const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
-  const isCaudaDeDragao = itemSelectionMode.itemCard.name === "Cauda de Dragão Assada"
-  const isProjetilDeImpacto = itemSelectionMode.itemCard.name === "Projétil de Impacto"
+  const handleAllyUnitSelect = (index: number) => {
+    if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
+    if (!itemSelectionMode.itemCard) return
+
+    // Check if this is a dice card (they don't need selectedEnemyIndex)
+    const cardId = getBaseCardId(itemSelectionMode.itemCard.id || "")
+    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+
+    // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
+    const isVeuBuff = itemSelectionMode.chosenOption === "buff"
+
+    // Skip the selectedEnemyIndex check for dice cards and buff options
+    if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard) return
+
+    const allyUnit = playerField.unitZone[index]
+    if (!allyUnit) return
+
+    // For Véu dos Laços Cruzados buff, check if unit is Fehnon or Jaden
+    if (isVeuBuff && allyUnit.name !== "Fehnon Hoskie" && allyUnit.name !== "Jaden Hainaegi") {
+      showEffectFeedback("Selecione Fehnon Hoskie ou Jaden Hainaegi", "error")
+      return
+    }
+
+    // Use centralized effect resolver
+    let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
+
+    // Fallback: find effect by name
+    if (!effect) {
+      const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
+      const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
+      const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
+      const isBandagensDuplas = itemSelectionMode.itemCard.name === "Bandagens Duplas"
+      const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
+      const isCaudaDeDragao = itemSelectionMode.itemCard.name === "Cauda de Dragão Assada"
+      const isProjetilDeImpacto = itemSelectionMode.itemCard.name === "Projétil de Impacto"
       const isVeuDosLacos = itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados"
       const isNucleoExplosivo = itemSelectionMode.itemCard.name === "Núcleo Explosivo"
       const isKitMedico = itemSelectionMode.itemCard.name === "Kit Médico Improvisado"
@@ -4265,39 +4267,39 @@ const handleAllyUnitSelect = (index: number) => {
       else if (isDadosDestinoGentil) effect = FUNCTION_CARD_EFFECTS["dados-do-destino-gentil"]
       else if (isDadosElementaisAlpha) effect = FUNCTION_CARD_EFFECTS["dados-elementais-alpha"]
       else if (isDadosElementaisOmega) effect = FUNCTION_CARD_EFFECTS["dados-elementais-omega"]
-      }
-    
-  if (effect) {
-  const effectContext: EffectContext = {
-  playerField,
-  enemyField,
-  setPlayerField,
-  setEnemyField,
-  }
-  
-  const targets: EffectTargets = {
-  enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
-  allyUnitIndices: [index],
-  chosenOption: itemSelectionMode.chosenOption || undefined,
-  }
-  
-  const cardToUse = itemSelectionMode.itemCard
-  setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
-  
-  // Use async resolve for dice cards
-  resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
-    if (result.success) {
-      showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
-      setPlayerField((prev) => ({
-        ...prev,
-        graveyard: [...prev.graveyard, cardToUse],
-      }))
-    } else {
-      showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
     }
-  })
-  return
-  }
+
+    if (effect) {
+      const effectContext: EffectContext = {
+        playerField,
+        enemyField,
+        setPlayerField,
+        setEnemyField,
+      }
+
+      const targets: EffectTargets = {
+        enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
+        allyUnitIndices: [index],
+        chosenOption: itemSelectionMode.chosenOption || undefined,
+      }
+
+      const cardToUse = itemSelectionMode.itemCard
+      setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+
+      // Use async resolve for dice cards
+      resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
+        if (result.success) {
+          showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
+          setPlayerField((prev) => ({
+            ...prev,
+            graveyard: [...prev.graveyard, cardToUse],
+          }))
+        } else {
+          showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
+        }
+      })
+      return
+    }
   }
 
   const cancelItemSelection = () => {
@@ -4417,9 +4419,9 @@ const handleAllyUnitSelect = (index: number) => {
     >
       {/* Impact Flash Overlay - Epic cinematic effect */}
       {impactFlash.active && (
-        <div 
+        <div
           className="absolute inset-0 z-50 pointer-events-none"
-          style={{ 
+          style={{
             background: `radial-gradient(circle at center, ${impactFlash.color} 0%, transparent 70%)`,
             animation: "epicFlash 0.25s ease-out forwards"
           }}
@@ -4477,7 +4479,7 @@ const handleAllyUnitSelect = (index: number) => {
               </feMerge>
             </filter>
           </defs>
-          
+
           {/* Outer glow */}
           <line
             x1={arrowPos.x1}
@@ -4489,7 +4491,7 @@ const handleAllyUnitSelect = (index: number) => {
             opacity="0.18"
             strokeLinecap="round"
           />
-          
+
           {/* Main arrow with border effect */}
           <line
             x1={arrowPos.x1}
@@ -4501,7 +4503,7 @@ const handleAllyUnitSelect = (index: number) => {
             strokeLinecap="round"
             opacity="0.7"
           />
-          
+
           {/* Main arrow */}
           <line
             ref={arrowRef}
@@ -4538,11 +4540,10 @@ const handleAllyUnitSelect = (index: number) => {
             <span className="block text-2xl font-bold text-amber-400">{turn}</span>
           </div>
           <div
-            className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${
-              isPlayerTurn
+            className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${isPlayerTurn
                 ? "bg-green-600/20 border-green-500 text-green-400"
                 : "bg-red-600/20 border-red-500 text-red-400"
-            }`}
+              }`}
           >
             {isPlayerTurn ? t("yourTurn") : t("enemyTurn")}
           </div>
@@ -4613,7 +4614,7 @@ const handleAllyUnitSelect = (index: number) => {
               {/* Enemy Deck, Graveyard, Scenario and Ultimate */}
               <div className="flex items-start gap-1">
                 <div className="flex flex-col gap-1">
-                  <div 
+                  <div
                     className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
                     onClick={() => setGraveyardView("enemy")}
                   >
@@ -4686,11 +4687,10 @@ const handleAllyUnitSelect = (index: number) => {
                             handleJulgamentoVazioTarget("function", i)
                           }
                         }}
-                        className={`w-14 h-20 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${
-                          isUgTarget || (julgamentoVazioTargetMode.active && card)
+                        className={`w-14 h-20 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${isUgTarget || (julgamentoVazioTargetMode.active && card)
                             ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                             : "border-purple-600/40"
-                        }`}
+                          }`}
                       >
                         {card && (
                           <Image
@@ -4703,56 +4703,55 @@ const handleAllyUnitSelect = (index: number) => {
                       </div>
                     )
                   })}
-              </div>
+                </div>
 
-              {/* Enemy Unit Zone */}
-              <div className="flex justify-center items-center gap-1.5">
-                {enemyField.unitZone.map((card, i) => (
-                  <div
-                    key={i}
-                    data-enemy-unit={i}
-                    onClick={() => {
-                      if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
-                        handleUgTargetEnemyCard("unit", i)
-                      } else if (ugTargetMode.active && ugTargetMode.type === "julgamento_divino" && card) {
-                        handleJulgamentoDivinoTarget(i)
-                      } else if (julgamentoVazioTargetMode.active && card) {
-                        handleJulgamentoVazioTarget("unit", i)
-                      } else if (itemSelectionMode.active && itemSelectionMode.step === "selectEnemy") {
-                        handleEnemyUnitSelect(i)
-                      }
-                    }}
-                    className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${
-                      (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
-                      (julgamentoVazioTargetMode.active && card)
-                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
-                        : attackTarget?.type === "unit" && attackTarget.index === i
-                          ? "border-red-500 ring-2 ring-red-400 scale-105"
-                          : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
-                            ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
-                            : "border-red-700/40"
-                    }`}
-                  >
-                    {card && (
-                      <>
-                        <Image 
-                          src={card.image || "/placeholder.svg"} 
-                          alt={card.name} 
-                          fill 
-                          className="object-cover"
-                          onMouseDown={() => handleCardPressStart(card)}
-                          onMouseUp={handleCardPressEnd}
-                          onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() => handleCardPressStart(card)}
-                          onTouchEnd={handleCardPressEnd}
-                        />
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
-                          {(card as FieldCard).currentDp} DP
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {/* Enemy Unit Zone */}
+                <div className="flex justify-center items-center gap-1.5">
+                  {enemyField.unitZone.map((card, i) => (
+                    <div
+                      key={i}
+                      data-enemy-unit={i}
+                      onClick={() => {
+                        if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                          handleUgTargetEnemyCard("unit", i)
+                        } else if (ugTargetMode.active && ugTargetMode.type === "julgamento_divino" && card) {
+                          handleJulgamentoDivinoTarget(i)
+                        } else if (julgamentoVazioTargetMode.active && card) {
+                          handleJulgamentoVazioTarget("unit", i)
+                        } else if (itemSelectionMode.active && itemSelectionMode.step === "selectEnemy") {
+                          handleEnemyUnitSelect(i)
+                        }
+                      }}
+                      className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
+                          (julgamentoVazioTargetMode.active && card)
+                          ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                          : attackTarget?.type === "unit" && attackTarget.index === i
+                            ? "border-red-500 ring-2 ring-red-400 scale-105"
+                            : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
+                              ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
+                              : "border-red-700/40"
+                        }`}
+                    >
+                      {card && (
+                        <>
+                          <Image
+                            src={card.image || "/placeholder.svg"}
+                            alt={card.name}
+                            fill
+                            className="object-cover"
+                            onMouseDown={() => handleCardPressStart(card)}
+                            onMouseUp={handleCardPressEnd}
+                            onMouseLeave={handleCardPressEnd}
+                            onTouchStart={() => handleCardPressStart(card)}
+                            onTouchEnd={handleCardPressEnd}
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
+                            {(card as FieldCard).currentDp} DP
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -4761,11 +4760,10 @@ const handleAllyUnitSelect = (index: number) => {
             <div className="flex flex-col items-center gap-1 py-1">
               <div
                 data-direct-attack
-                className={`px-6 py-1 rounded-full border-2 border-dashed transition-all text-sm font-bold ${
-                  attackTarget?.type === "direct"
+                className={`px-6 py-1 rounded-full border-2 border-dashed transition-all text-sm font-bold ${attackTarget?.type === "direct"
                     ? "border-red-500 bg-red-500/30 text-red-300 scale-105"
                     : "border-slate-500/50 text-slate-500"
-                }`}
+                  }`}
               >
                 {attackTarget?.type === "direct" ? "ATAQUE DIRETO!" : ""}
               </div>
@@ -4805,8 +4803,7 @@ const handleAllyUnitSelect = (index: number) => {
                             handleAllyUnitSelect(i)
                           }
                         }}
-                        className={`w-14 h-20 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-200 ${
-                          dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                        className={`w-14 h-20 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
                             ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                             : isDropTarget
                               ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -4819,7 +4816,7 @@ const handleAllyUnitSelect = (index: number) => {
                                     : canAttack
                                       ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
                                       : "border-blue-700/40"
-                        }`}
+                          }`}
                       >
                         {/* Yellow glow for playable/attackable cards */}
                         {canAttack && (
@@ -4870,51 +4867,50 @@ const handleAllyUnitSelect = (index: number) => {
                   })}
                 </div>
 
-              {/* Player Function Zone */}
-              <div className="flex justify-center items-center gap-1.5">
-                {playerField.functionZone.map((card, i) => {
-                  const isDropTarget =
-                    draggedHandCard &&
-                    !isUnitCard(draggedHandCard.card) &&
-                    !card &&
-                    draggedHandCard.currentY < window.innerHeight * 0.6
+                {/* Player Function Zone */}
+                <div className="flex justify-center items-center gap-1.5">
+                  {playerField.functionZone.map((card, i) => {
+                    const isDropTarget =
+                      draggedHandCard &&
+                      !isUnitCard(draggedHandCard.card) &&
+                      !card &&
+                      draggedHandCard.currentY < window.innerHeight * 0.6
 
-                  return (
-                    <div
-                      key={i}
-                      data-player-func-slot={i}
-                      onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                      className={`w-14 h-20 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden ${
-                        dropTarget?.type === "function" && dropTarget?.index === i && !card
-                          ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                          : isDropTarget
-                            ? "border-green-400/70 bg-green-500/30 scale-105"
-                            : selectedHandCard !== null && !isUnitCard(playerField.hand[selectedHandCard])
-                              ? "border-green-500 bg-green-900/40"
-                              : draggedHandCard && !isUnitCard(draggedHandCard.card)
-                                ? "border-purple-400/50 bg-purple-500/20"
-                                : "border-purple-600/40"
-                      }`}
-                    >
-                      {card && (
-                        <Image
-                          src={card.image || "/placeholder.svg"}
-                          alt={card.name}
-                          fill
-                          className="object-cover rounded"
-                          onMouseDown={() => handleCardPressStart(card)}
-                          onMouseUp={handleCardPressEnd}
-                          onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() => handleCardPressStart(card)}
-                          onTouchEnd={handleCardPressEnd}
-                        />
-                      )}
-                      {!card && isDropTarget && (
-                        <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
-                      )}
-                    </div>
-                  )
-                })}
+                    return (
+                      <div
+                        key={i}
+                        data-player-func-slot={i}
+                        onClick={() => selectedHandCard !== null && placeCard("function", i)}
+                        className={`w-14 h-20 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                            ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                            : isDropTarget
+                              ? "border-green-400/70 bg-green-500/30 scale-105"
+                              : selectedHandCard !== null && !isUnitCard(playerField.hand[selectedHandCard])
+                                ? "border-green-500 bg-green-900/40"
+                                : draggedHandCard && !isUnitCard(draggedHandCard.card)
+                                  ? "border-purple-400/50 bg-purple-500/20"
+                                  : "border-purple-600/40"
+                          }`}
+                      >
+                        {card && (
+                          <Image
+                            src={card.image || "/placeholder.svg"}
+                            alt={card.name}
+                            fill
+                            className="object-cover rounded"
+                            onMouseDown={() => handleCardPressStart(card)}
+                            onMouseUp={handleCardPressEnd}
+                            onMouseLeave={handleCardPressEnd}
+                            onTouchStart={() => handleCardPressStart(card)}
+                            onTouchEnd={handleCardPressEnd}
+                          />
+                        )}
+                        {!card && isDropTarget && (
+                          <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -4922,18 +4918,17 @@ const handleAllyUnitSelect = (index: number) => {
               <div className="flex items-start gap-1">
                 <div className="flex flex-col gap-1">
                   {/* Player Scenario Zone - Horizontal slot, aligned with unit zone */}
-                  <div 
+                  <div
                     data-player-scenario-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
-                    className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${
-                      dropTarget?.type === "scenario" && !playerField.scenarioZone
+                    className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
                         ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                         : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
                           ? "border-green-500 bg-green-900/40 cursor-pointer"
                           : draggedHandCard && draggedHandCard.card.type === "scenario"
                             ? "border-amber-400/50 bg-amber-500/20"
                             : "border-amber-600/40"
-                    }`}
+                      }`}
                   >
                     {playerField.scenarioZone ? (
                       <Image
@@ -4952,18 +4947,17 @@ const handleAllyUnitSelect = (index: number) => {
                     )}
                   </div>
                   {/* Player Ultimate Zone - single green slot below scenario */}
-                  <div 
+                  <div
                     data-player-ultimate-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                    className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 mx-auto ${
-                      dropTarget?.type === "ultimate" && !playerField.ultimateZone
+                    className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 mx-auto ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
                         ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                         : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
                           ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
                           : draggedHandCard && isUltimateCard(draggedHandCard.card)
                             ? "border-emerald-400/50 bg-emerald-500/20"
                             : "border-emerald-600/40"
-                    }`}
+                      }`}
                   >
                     {playerField.ultimateZone ? (
                       <>
@@ -4986,25 +4980,25 @@ const handleAllyUnitSelect = (index: number) => {
                           (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO") &&
                           playerField.ultimateZone.requiresUnit &&
                           findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
-                          >
-                            ATIVAR
-                          </button>
-                        )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
+                              className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
+                            >
+                              ATIVAR
+                            </button>
+                          )}
                         {/* Activate button for Julgamento Divino (MIGUEL ARCANJO - once per turn) */}
                         {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active &&
                           playerField.ultimateZone.ability === "MIGUEL ARCANJO" &&
                           playerField.ultimateZone.requiresUnit &&
                           findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                            className="absolute -top-8 left-1/2 -translate-x-1/2 bg-purple-600 hover:bg-purple-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-purple-500/50 animate-pulse whitespace-nowrap z-10"
-                          >
-                            JULGAMENTO
-                          </button>
-                        )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
+                              className="absolute -top-8 left-1/2 -translate-x-1/2 bg-purple-600 hover:bg-purple-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-purple-500/50 animate-pulse whitespace-nowrap z-10"
+                            >
+                              JULGAMENTO
+                            </button>
+                          )}
                       </>
                     ) : null}
                     {!playerField.ultimateZone && dropTarget?.type === "ultimate" && (
@@ -5016,7 +5010,7 @@ const handleAllyUnitSelect = (index: number) => {
                   <div className="w-14 h-20 bg-blue-700/80 rounded text-sm text-white flex items-center justify-center font-bold border border-blue-500/50">
                     {playerField.deck.length}
                   </div>
-                  <div 
+                  <div
                     className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
                     onClick={() => setGraveyardView("player")}
                   >
@@ -5084,7 +5078,7 @@ const handleAllyUnitSelect = (index: number) => {
               const translateY = Math.abs(offset) * 5
               const isSelected = selectedHandCard === i
               const isDragging = draggedHandCard?.index === i
-              
+
               // Check if card can be played: must be player turn, main phase, and have space in appropriate zone
               const hasSpaceInZone = isUltimateCard(card)
                 ? playerField.ultimateZone === null
@@ -5119,9 +5113,8 @@ const handleAllyUnitSelect = (index: number) => {
                       setSelectedHandCard(i === selectedHandCard ? null : i)
                     }
                   }}
-                  className={`relative cursor-grab active:cursor-grabbing select-none ${
-                    isDragging ? "opacity-0 scale-75" : "opacity-100"
-                  } ${!canPlay ? "opacity-60 cursor-not-allowed" : ""}`}
+                  className={`relative cursor-grab active:cursor-grabbing select-none ${isDragging ? "opacity-0 scale-75" : "opacity-100"
+                    } ${!canPlay ? "opacity-60 cursor-not-allowed" : ""}`}
                   style={{
                     transform: `rotate(${rotation}deg) translateY(${isSelected ? -24 : translateY}px) scale(${isSelected ? 1.08 : 1})`,
                     zIndex: isSelected ? 100 : 50 - Math.abs(offset),
@@ -5136,13 +5129,12 @@ const handleAllyUnitSelect = (index: number) => {
                     <div className="absolute -inset-2 bg-yellow-400/50 rounded-2xl blur-lg" />
                   )}
                   <div
-                    className={`relative w-20 h-28 rounded-xl border-3 shadow-xl bg-slate-900 transition-all duration-150 ${
-                      isSelected
+                    className={`relative w-20 h-28 rounded-xl border-3 shadow-xl bg-slate-900 transition-all duration-150 ${isSelected
                         ? "border-yellow-400 ring-4 ring-yellow-400/40 shadow-yellow-500/50"
                         : canPlay
                           ? "border-yellow-400/70 hover:border-yellow-400 hover:shadow-2xl hover:-translate-y-4 hover:scale-105 shadow-yellow-500/30"
                           : "border-slate-600/50"
-                    }`}
+                      }`}
                   >
                     <div className="relative w-full h-full overflow-hidden rounded-lg">
                       <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-contain" />
@@ -5172,15 +5164,13 @@ const handleAllyUnitSelect = (index: number) => {
           }}
         >
           {/* Glow */}
-          <div className={`absolute -inset-3 rounded-xl blur-xl transition-all duration-150 ${
-            dropTarget ? 'bg-green-400/60' : 'bg-yellow-400/40'
-          }`} />
+          <div className={`absolute -inset-3 rounded-xl blur-xl transition-all duration-150 ${dropTarget ? 'bg-green-400/60' : 'bg-yellow-400/40'
+            }`} />
           {/* Card */}
-          <div className={`relative w-20 h-28 rounded-xl border-3 shadow-2xl overflow-hidden bg-slate-900 transition-all duration-100 ${
-            dropTarget 
-              ? 'border-green-400 shadow-green-500/60' 
+          <div className={`relative w-20 h-28 rounded-xl border-3 shadow-2xl overflow-hidden bg-slate-900 transition-all duration-100 ${dropTarget
+              ? 'border-green-400 shadow-green-500/60'
               : 'border-yellow-400 shadow-yellow-500/50'
-          }`}>
+            }`}>
             <img
               src={draggedHandCard.card.image || "/placeholder.svg"}
               alt={draggedHandCard.card.name}
@@ -5190,7 +5180,7 @@ const handleAllyUnitSelect = (index: number) => {
           </div>
         </div>
       )}
-      
+
       {/* Card materialize in slot animation */}
       {droppingCard && (
         <div
@@ -5201,24 +5191,24 @@ const handleAllyUnitSelect = (index: number) => {
           }}
         >
           {/* Ring effect */}
-          <div 
+          <div
             className="absolute inset-0 flex items-center justify-center"
             style={{ animation: 'summonRing 500ms ease-out forwards' }}
           >
             <div className="w-20 h-20 rounded-full border-2 border-cyan-400/80" />
           </div>
           {/* Glow burst */}
-          <div 
+          <div
             className="absolute inset-0 flex items-center justify-center"
             style={{ animation: 'summonGlow 450ms ease-out forwards' }}
           >
             <div className="w-16 h-16 bg-cyan-400/50 rounded-full blur-2xl" />
           </div>
           {/* Card materializing */}
-          <div 
+          <div
             className="relative rounded-lg border-2 border-cyan-400 shadow-xl shadow-cyan-500/60 overflow-hidden bg-slate-900"
-            style={{ 
-              width: '64px', 
+            style={{
+              width: '64px',
               height: '88px',
               animation: 'cardMaterialize 500ms ease-out forwards',
               transformStyle: 'preserve-3d',
@@ -5236,12 +5226,12 @@ const handleAllyUnitSelect = (index: number) => {
 
       {/* Card Inspection Overlay - Press and hold to view */}
       {inspectedCard && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
           onClick={() => setInspectedCard(null)}
           onTouchEnd={() => setInspectedCard(null)}
         >
-          <div 
+          <div
             className="relative"
             style={{ animation: 'cardInspectIn 250ms ease-out forwards' }}
           >
@@ -5251,7 +5241,7 @@ const handleAllyUnitSelect = (index: number) => {
             <div className="absolute -inset-4 bg-white/5 blur-xl rounded-2xl" />
             {/* Card - Much larger */}
             <div className="relative rounded-3xl border-4 border-white/40 shadow-2xl overflow-hidden bg-slate-900"
-                 style={{ width: '280px', height: '392px' }}>
+              style={{ width: '280px', height: '392px' }}>
               <img
                 src={inspectedCard.image || "/placeholder.svg"}
                 alt={inspectedCard.name}
@@ -5265,13 +5255,12 @@ const handleAllyUnitSelect = (index: number) => {
               <div className="text-white font-bold text-2xl drop-shadow-lg">{inspectedCard.name}</div>
               {isUnitCard(inspectedCard) && (
                 <div className="flex flex-col items-center gap-1 mt-2">
-                  <div className={`text-xl font-semibold ${
-                    (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp 
-                      ? "text-green-400" 
-                      : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp 
-                        ? "text-red-400" 
+                  <div className={`text-xl font-semibold ${(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp
+                      ? "text-green-400"
+                      : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
+                        ? "text-red-400"
                         : "text-cyan-400"
-                  }`}>
+                    }`}>
                     {(inspectedCard as FieldCard).currentDp !== undefined ? (inspectedCard as FieldCard).currentDp : inspectedCard.dp} DP
                   </div>
                   {(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp !== inspectedCard.dp && (
@@ -5295,11 +5284,11 @@ const handleAllyUnitSelect = (index: number) => {
 
       {/* Graveyard View Modal */}
       {graveyardView && (
-        <div 
+        <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85"
           onClick={() => setGraveyardView(null)}
         >
-          <div 
+          <div
             className="relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 p-6 max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5312,7 +5301,7 @@ const handleAllyUnitSelect = (index: number) => {
               ) : (
                 <div className="grid grid-cols-4 gap-2">
                   {(graveyardView === "player" ? playerField.graveyard : enemyField.graveyard).map((card, i) => (
-                    <div 
+                    <div
                       key={i}
                       className="relative w-16 h-22 rounded-lg border-2 border-purple-500/50 overflow-hidden bg-slate-800 cursor-pointer hover:border-purple-400 hover:scale-105 transition-all"
                       style={{ height: '88px' }}
@@ -5348,282 +5337,281 @@ const handleAllyUnitSelect = (index: number) => {
       )}
 
       {/* Effect Feedback Toast */}
-  {effectFeedback && (
-  <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${
-  effectFeedback.type === "success"
-  ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
-  : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
-  }`}>
-  {effectFeedback.message}
-  </div>
-  )}
-  
-  {/* Draw Card Animation - Card pulled from deck to hand */}
-  {drawAnimation && (
-  <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-    {/* Card moving from deck position to hand */}
-    <div className="draw-card-container">
-      {/* Glow effect - follows card */}
-      <div className="draw-card-glow" />
-      
-      {/* The card itself */}
-      <div className="draw-card-frame">
-        {/* Card back */}
-        <div className="draw-card-back">
-          <div className="absolute inset-1.5 border border-cyan-500/40 rounded" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 opacity-70" />
-          </div>
+      {effectFeedback && (
+        <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${effectFeedback.type === "success"
+            ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
+            : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
+          }`}>
+          {effectFeedback.message}
         </div>
-        
-        {/* Card front */}
-        <div className="draw-card-front">
-          <img 
-            src={drawAnimation.cardImage} 
-            alt={drawAnimation.cardName}
-            className="w-full h-full object-cover"
-          />
-          {/* Shine effect */}
-          <div className="draw-card-shine" />
-        </div>
-      </div>
-    </div>
-    
-    {/* Card name - appears at peak */}
-    <div className="draw-card-name">
-      <span className="text-white font-bold text-sm drop-shadow-lg">
-        {drawAnimation.cardName}
-      </span>
-    </div>
-  </div>
-  )}
-  
-  {/* Dice Roll Animation */}
-  {diceAnimation && (
-  <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-    {/* Dark overlay */}
-    <div className="absolute inset-0 bg-black/60 animate-fade-in" />
-    
-    {/* Dice container */}
-    <div className="relative flex flex-col items-center gap-6">
-      {/* Card name */}
-      <div className="bg-gradient-to-r from-amber-900/90 to-orange-900/90 px-6 py-2 rounded-xl border border-amber-500/50 shadow-2xl">
-        <p className="text-amber-400 font-bold text-lg">{diceAnimation.cardName}</p>
-      </div>
-      
-      {/* 3D Dice */}
-      <div className={`dice-scene ${diceAnimation.rolling ? 'dice-rolling' : ''}`}>
-        <div className={`dice-cube ${!diceAnimation.rolling && diceAnimation.result ? `dice-face-${diceAnimation.result}` : ''}`}>
-          <div className="dice-face dice-face-1">
-            <span className="dice-dot"></span>
+      )}
+
+      {/* Draw Card Animation - Card pulled from deck to hand */}
+      {drawAnimation && (
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+          {/* Card moving from deck position to hand */}
+          <div className="draw-card-container">
+            {/* Glow effect - follows card */}
+            <div className="draw-card-glow" />
+
+            {/* The card itself */}
+            <div className="draw-card-frame">
+              {/* Card back */}
+              <div className="draw-card-back">
+                <div className="absolute inset-1.5 border border-cyan-500/40 rounded" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 opacity-70" />
+                </div>
+              </div>
+
+              {/* Card front */}
+              <div className="draw-card-front">
+                <img
+                  src={drawAnimation.cardImage}
+                  alt={drawAnimation.cardName}
+                  className="w-full h-full object-cover"
+                />
+                {/* Shine effect */}
+                <div className="draw-card-shine" />
+              </div>
+            </div>
           </div>
-          <div className="dice-face dice-face-2">
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-          </div>
-          <div className="dice-face dice-face-3">
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-          </div>
-          <div className="dice-face dice-face-4">
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-          </div>
-          <div className="dice-face dice-face-5">
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-          </div>
-          <div className="dice-face dice-face-6">
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-            <span className="dice-dot"></span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Result display */}
-      {!diceAnimation.rolling && diceAnimation.result && (
-        <div className="dice-result-display">
-          <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-4 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
-            <p className="text-white font-bold text-3xl text-center">
-              {diceAnimation.result}
-            </p>
-            <p className="text-cyan-200 text-sm text-center mt-1">
-              {diceAnimation.result <= 3 ? "Resultado Baixo" : "Resultado Alto"}
-            </p>
+
+          {/* Card name - appears at peak */}
+          <div className="draw-card-name">
+            <span className="text-white font-bold text-sm drop-shadow-lg">
+              {drawAnimation.cardName}
+            </span>
           </div>
         </div>
       )}
-      
-      {/* Rolling text */}
-      {diceAnimation.rolling && (
-        <p className="text-white font-bold text-xl animate-pulse">Rolando...</p>
+
+      {/* Dice Roll Animation */}
+      {diceAnimation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-black/60 animate-fade-in" />
+
+          {/* Dice container */}
+          <div className="relative flex flex-col items-center gap-6">
+            {/* Card name */}
+            <div className="bg-gradient-to-r from-amber-900/90 to-orange-900/90 px-6 py-2 rounded-xl border border-amber-500/50 shadow-2xl">
+              <p className="text-amber-400 font-bold text-lg">{diceAnimation.cardName}</p>
+            </div>
+
+            {/* 3D Dice */}
+            <div className={`dice-scene ${diceAnimation.rolling ? 'dice-rolling' : ''}`}>
+              <div className={`dice-cube ${!diceAnimation.rolling && diceAnimation.result ? `dice-face-${diceAnimation.result}` : ''}`}>
+                <div className="dice-face dice-face-1">
+                  <span className="dice-dot"></span>
+                </div>
+                <div className="dice-face dice-face-2">
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                </div>
+                <div className="dice-face dice-face-3">
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                </div>
+                <div className="dice-face dice-face-4">
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                </div>
+                <div className="dice-face dice-face-5">
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                </div>
+                <div className="dice-face dice-face-6">
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                  <span className="dice-dot"></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Result display */}
+            {!diceAnimation.rolling && diceAnimation.result && (
+              <div className="dice-result-display">
+                <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-4 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+                  <p className="text-white font-bold text-3xl text-center">
+                    {diceAnimation.result}
+                  </p>
+                  <p className="text-cyan-200 text-sm text-center mt-1">
+                    {diceAnimation.result <= 3 ? "Resultado Baixo" : "Resultado Alto"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Rolling text */}
+            {diceAnimation.rolling && (
+              <p className="text-white font-bold text-xl animate-pulse">Rolando...</p>
+            )}
+          </div>
+        </div>
       )}
-    </div>
-  </div>
-  )}
-  
-  {/* Card Destruction Animation */}
-  {destructionAnimation && (
-  <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-    {/* Shatter card animation at destruction position */}
-    <div 
-      className="destruction-container"
-      style={{
-        left: destructionAnimation.x,
-        top: destructionAnimation.y,
-      }}
-    >
-      {/* Card image that shatters */}
-      <div className="destruction-card">
-        <img 
-          src={destructionAnimation.cardImage} 
-          alt={destructionAnimation.cardName}
-          className="w-full h-full object-cover rounded"
-        />
-      </div>
-      
-      {/* Shatter fragments */}
-      {[...Array(12)].map((_, i) => (
-        <div 
-          key={i}
-          className={`destruction-fragment destruction-fragment-${i + 1}`}
-          style={{
-            backgroundImage: `url(${destructionAnimation.cardImage})`,
-            backgroundSize: '100% 100%',
-          }}
-        />
-      ))}
-      
-      {/* Flash effect */}
-      <div className="destruction-flash" />
-      
-      {/* Card name */}
-      <div className="destruction-name">
-        <span className="text-red-400 font-bold text-xs uppercase tracking-wider">
-          {destructionAnimation.cardName}
-        </span>
-      </div>
-    </div>
-  </div>
-  )}
-  
-  {/* Choice Modal for cards like Véu dos Laços Cruzados */}
-  {choiceModal && choiceModal.visible && (
-  <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4">
-      <h3 className="text-purple-400 font-bold text-xl mb-4">{choiceModal.cardName}</h3>
-      <p className="text-white/80 text-sm mb-5">Escolha um dos efeitos:</p>
-      <div className="flex flex-col gap-3">
-        {choiceModal.options.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => choiceModal.onChoose(option.id)}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
+
+      {/* Card Destruction Animation */}
+      {destructionAnimation && (
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+          {/* Shatter card animation at destruction position */}
+          <div
+            className="destruction-container"
+            style={{
+              left: destructionAnimation.x,
+              top: destructionAnimation.y,
+            }}
           >
-            <div className="text-lg">{option.label}</div>
-            <div className="text-xs text-white/70 mt-1">{option.description}</div>
-          </button>
-        ))}
-      </div>
-      <Button
-        onClick={() => setChoiceModal(null)}
-        size="sm"
-        variant="outline"
-        className="mt-4 border-red-500/50 text-red-400 hover:bg-red-950/50"
-      >
-        Cancelar
-      </Button>
-    </div>
-  </div>
-  )}
-  
-        {/* UG Target Selection Mode overlay */}
-        {ugTargetMode.active && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/50 rounded-xl px-4 py-3 text-center">
-            <h3 className="text-yellow-400 font-bold text-sm mb-1">
-              {ugTargetMode.type === "oden_sword" ? "ODEN SWORD"
-                : ugTargetMode.type === "twiligh_avalon" ? "TWILIGH AVALON"
+            {/* Card image that shatters */}
+            <div className="destruction-card">
+              <img
+                src={destructionAnimation.cardImage}
+                alt={destructionAnimation.cardName}
+                className="w-full h-full object-cover rounded"
+              />
+            </div>
+
+            {/* Shatter fragments */}
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={i}
+                className={`destruction-fragment destruction-fragment-${i + 1}`}
+                style={{
+                  backgroundImage: `url(${destructionAnimation.cardImage})`,
+                  backgroundSize: '100% 100%',
+                }}
+              />
+            ))}
+
+            {/* Flash effect */}
+            <div className="destruction-flash" />
+
+            {/* Card name */}
+            <div className="destruction-name">
+              <span className="text-red-400 font-bold text-xs uppercase tracking-wider">
+                {destructionAnimation.cardName}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Choice Modal for cards like Véu dos Laços Cruzados */}
+      {choiceModal && choiceModal.visible && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4">
+            <h3 className="text-purple-400 font-bold text-xl mb-4">{choiceModal.cardName}</h3>
+            <p className="text-white/80 text-sm mb-5">Escolha um dos efeitos:</p>
+            <div className="flex flex-col gap-3">
+              {choiceModal.options.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => choiceModal.onChoose(option.id)}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
+                >
+                  <div className="text-lg">{option.label}</div>
+                  <div className="text-xs text-white/70 mt-1">{option.description}</div>
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={() => setChoiceModal(null)}
+              size="sm"
+              variant="outline"
+              className="mt-4 border-red-500/50 text-red-400 hover:bg-red-950/50"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* UG Target Selection Mode overlay */}
+      {ugTargetMode.active && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/50 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-yellow-400 font-bold text-sm mb-1">
+            {ugTargetMode.type === "oden_sword" ? "ODEN SWORD"
+              : ugTargetMode.type === "twiligh_avalon" ? "TWILIGH AVALON"
                 : ugTargetMode.type === "mefisto" ? "MEFISTO FÓLES"
-                : "JULGAMENTO DIVINO"}
-            </h3>
-            <p className="text-yellow-200/80 text-xs mb-2">
-              {ugTargetMode.type === "oden_sword"
-                ? "Selecione uma Function inimiga para destruir"
-                : ugTargetMode.type === "mefisto"
+                  : "JULGAMENTO DIVINO"}
+          </h3>
+          <p className="text-yellow-200/80 text-xs mb-2">
+            {ugTargetMode.type === "oden_sword"
+              ? "Selecione uma Function inimiga para destruir"
+              : ugTargetMode.type === "mefisto"
                 ? "Selecione 1 carta inimiga para destruir"
                 : ugTargetMode.type === "julgamento_divino"
-                ? "Selecione uma Unidade inimiga para -1DP"
-                : "Selecione uma carta inimiga para devolver a mao"
-              }
-            </p>
-            <button
-              onClick={cancelUgTargetMode}
-              className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
-            >
-              CANCELAR
-            </button>
-          </div>
-        )}
+                  ? "Selecione uma Unidade inimiga para -1DP"
+                  : "Selecione uma carta inimiga para devolver a mao"
+            }
+          </p>
+          <button
+            onClick={cancelUgTargetMode}
+            className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
+          >
+            CANCELAR
+          </button>
+        </div>
+      )}
 
-        {julgamentoVazioTargetMode.active && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-violet-500/60 rounded-xl px-4 py-3 text-center">
-            <h3 className="text-violet-300 font-bold text-sm mb-1">JULGAMENTO DO VAZIO ETERNO</h3>
-            <p className="text-violet-200/80 text-xs mb-2">Selecione 1 carta inimiga para destruir</p>
-            <button
-              onClick={() => setJulgamentoVazioTargetMode({ active: false, attackerIndex: null })}
-              className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
-            >
-              CANCELAR
-            </button>
-          </div>
-        )}
+      {julgamentoVazioTargetMode.active && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-violet-500/60 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-violet-300 font-bold text-sm mb-1">JULGAMENTO DO VAZIO ETERNO</h3>
+          <p className="text-violet-200/80 text-xs mb-2">Selecione 1 carta inimiga para destruir</p>
+          <button
+            onClick={() => setJulgamentoVazioTargetMode({ active: false, attackerIndex: null })}
+            className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
+          >
+            CANCELAR
+          </button>
+        </div>
+      )}
 
-        {itemSelectionMode.active && itemSelectionMode.itemCard && (
+      {itemSelectionMode.active && itemSelectionMode.itemCard && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
-  {(() => {
-    const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
-    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
-    
-    if (isDiceCard) {
-      return (
-        <p className="text-white text-sm">
-          Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para rolar o dado
-        </p>
-      )
-    }
-    
-    if (itemSelectionMode.step === "selectEnemy") {
-      return (
-        <p className="text-white text-sm">
-          {itemSelectionMode.chosenOption === "debuff" 
-            ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
-            : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
-          }
-        </p>
-      )
-    }
-    
-    return (
-      <p className="text-white text-sm">
-        {itemSelectionMode.chosenOption === "buff"
-          ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
-          : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para aplicar o efeito</>
-        }
-      </p>
-    )
-  })()}
+            {(() => {
+              const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
+              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+
+              if (isDiceCard) {
+                return (
+                  <p className="text-white text-sm">
+                    Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para rolar o dado
+                  </p>
+                )
+              }
+
+              if (itemSelectionMode.step === "selectEnemy") {
+                return (
+                  <p className="text-white text-sm">
+                    {itemSelectionMode.chosenOption === "debuff"
+                      ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+                      : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
+                    }
+                  </p>
+                )
+              }
+
+              return (
+                <p className="text-white text-sm">
+                  {itemSelectionMode.chosenOption === "buff"
+                    ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
+                    : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para aplicar o efeito</>
+                  }
+                </p>
+              )
+            })()}
             <Button
               onClick={cancelItemSelection}
               size="sm"
