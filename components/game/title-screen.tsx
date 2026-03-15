@@ -209,6 +209,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   return (
     <div
       onClick={handleEnter}
+      suppressHydrationWarning={true}
       className="fixed inset-0 cursor-pointer select-none overflow-hidden"
       style={{
         opacity: leaving ? 0 : visible ? 1 : 0,

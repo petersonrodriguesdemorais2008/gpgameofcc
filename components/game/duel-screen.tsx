@@ -8,10 +8,11 @@ import { useLanguage } from "@/contexts/language-context"
 // REMOVED: import { useGame, type Deck as GameDeck, type Card as GameCard } from "@/contexts/game-context"
 import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Swords } from "lucide-react"
+import { ArrowLeft, Swords, X } from "lucide-react"
 import Image from "next/image"
 import { MultiplayerLobby } from "./multiplayer-lobby"
 import { OnlineDuelScreen } from "./online-duel-screen"
+import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 
 interface DuelScreenProps {
   mode: "bot" | "player"
@@ -41,15 +42,22 @@ interface FieldCard extends GameCard {
   canAttackTurn: number // Made required, not optional
 }
 
+interface FunctionZoneCard extends GameCard {
+  isFaceDown?: boolean
+  isRevealing?: boolean
+  isSettingDown?: boolean
+}
+
 interface FieldState {
   unitZone: (FieldCard | null)[]
-  functionZone: (GameCard | null)[]
+  functionZone: (FunctionZoneCard | null)[]
   equipZone: GameCard | null
   scenarioZone: GameCard | null
   ultimateZone: FieldCard | null
   hand: GameCard[]
   deck: GameCard[]
   graveyard: GameCard[]
+  tap: GameCard[]
   life: number
 }
 
@@ -81,6 +89,11 @@ interface Particle {
   size: number
   alpha: number
   color: string
+  gravity?: number
+  heat?: number
+  shape?: string
+  rotation?: number
+  rv?: number
 }
 
 // Define interface for Deck with image and playmat image
@@ -98,14 +111,16 @@ interface FunctionCardEffect {
   name: string
   requiresTargets: boolean
   requiresChoice?: boolean
-  requiresDice?: boolean // For dice-rolling effects
   choiceOptions?: { id: string; label: string; description: string }[]
   targetConfig?: {
-    enemyUnits?: number // Number of enemy units to select
-    allyUnits?: number // Number of ally units to select
+    enemyUnits?: number
+    allyUnits?: number
+    ownFunctions?: number
   }
-  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
+  requiresDice?: boolean
+  needsDrawAfterResolve?: boolean
   resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
+  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
 }
 
 interface EffectContext {
@@ -122,10 +137,17 @@ interface EffectTargets {
   diceResult?: number // Result of dice roll (1-6)
 }
 
+// Global projectile delay
+const PROJECTILE_DURATION = 600;
+
 interface EffectResult {
   success: boolean
   message?: string
   cardToDiscard?: GameCard
+  needsDrawAndCheck?: boolean
+  needsDrawAndCheckUnit?: boolean
+  needsDrawOnly?: boolean
+  currentLife?: number
 }
 
 // Registry of all Function card effects
@@ -1106,7 +1128,7 @@ const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCar
 
 // Helper to check if a Function card can be activated
 const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
-  const effect = getFunctionCardEffect(cardId)
+  const effect = getFunctionCardEffect({ id: cardId })
   if (!effect) {
     return { canActivate: true } // Unknown cards can be placed normally
   }
@@ -1139,11 +1161,11 @@ const getElementColors = (element: string): string[] => {
     case "light":
       return ["#ffd700", "#ffff00", "#fffacd", "#fff8dc", "#ffefd5"]
     case "void":
-      return ["#1a1a2e", "#16213e", "#0f3460", "#533483", "#e94560"]
+      return ["#c0c0c0", "#e0e0e0", "#a9a9a9", "#dcdcdc", "#ffffff"] // Silver-Gray
     case "terra":
       return ["#8b4513", "#a0522d", "#cd853f", "#d2691e", "#deb887"]
     case "neutral":
-      return ["#c0c0c0", "#a9a9a9", "#808080", "#d3d3d3", "#dcdcdc"]
+      return ["#f5f5f5", "#e5e5e5", "#d5d5d5", "#c5c5c5", "#b5b5b5"]
     default:
       return ["#ffffff", "#f0f0f0", "#e0e0e0", "#d0d0d0", "#c0c0c0"]
   }
@@ -1169,7 +1191,7 @@ const getElementGlow = (element: string): string => {
     case "light":
       return "rgba(255, 215, 0, 0.8)"
     case "void":
-      return "rgba(233, 69, 96, 0.8)"
+      return "rgba(192, 192, 192, 0.8)" // Silver-Gray
     case "terra":
       return "rgba(139, 69, 19, 0.8)"
     default:
@@ -1211,6 +1233,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     hand: [],
     deck: [],
     graveyard: [],
+    tap: [],
     life: 20,
   })
   const [enemyField, setEnemyField] = useState<FieldState>({
@@ -1222,6 +1245,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     hand: [],
     deck: [],
     graveyard: [],
+    tap: [],
     life: 20,
   })
   const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
@@ -1249,12 +1273,267 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     onChoose: (optionId: string) => void
   } | null>(null)
 
+  // Attack arrow state
   const [arrowPos, setArrowPos] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 })
+  const [activeProjectiles, setActiveProjectiles] = useState<Omit<AttackAnimationProps, "onComplete">[]>([])
 
   const [explosionEffects, setExplosionEffects] = useState<ExplosionEffect[]>([])
   const explosionCanvasRef = useRef<HTMLCanvasElement>(null)
   const activeParticlesRef = useRef<Map<string, { particles: Particle[], startTime: number, element: string, x: number, y: number }>>(new Map())
   const [impactFlash, setImpactFlash] = useState<{ active: boolean; color: string }>({ active: false, color: "#ffffff" })
+  const [screenShake, setScreenShake] = useState({ active: false, intensity: 0 })
+  const positionRef = useRef({ startX: 0, startY: 0, currentX: 0, currentY: 0, lastTargetCheck: 0 })
+  const arrowRef = useRef<SVGLineElement>(null)
+  const rafRef = useRef<number | null>(null)
+  const fieldRef = useRef<HTMLDivElement>(null)
+  const enemyUnitRectsRef = useRef<DOMRect[]>([])
+  const isDraggingRef = useRef(false) // Track drag state
+  const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
+
+  const triggerScreenShake = useCallback((intensity: number = 5, duration: number = 150) => {
+    setScreenShake({ active: true, intensity })
+    setTimeout(() => setScreenShake({ active: false, intensity: 0 }), duration)
+  }, [])
+
+  const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) => {
+    const colors = getElementColors(element)
+    const particles: Particle[] = []
+    const el = element?.toLowerCase()
+
+    // Screen shake on impact
+    const shakeIntensity = el === "fire" || el === "terra" || el === "pyrus" ? 8 : 4
+    triggerScreenShake(shakeIntensity, 150)
+
+    // AQUO/AQUOS - Hyper-focused liquid water power
+    if (el === "aquos" || el === "aquo") {
+      // Arcing droplets that fall with gravity
+      for (let i = 0; i < 35; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 0.5 + Math.random() * 2.5
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2.0, // Initial splash up
+          size: 1.5 + Math.random() * 3.5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1,
+          gravity: 0.15, // Physics marker
+        } as any)
+      }
+      // Glowing splash center
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: targetX + (Math.random() - 0.5) * 12,
+          y: targetY + (Math.random() - 0.5) * 12,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: -1.5 - Math.random() * 1.5,
+          size: 3 + Math.random() * 3,
+          color: "#ffffff",
+          alpha: 0.8,
+          gravity: 0.1,
+        } as any)
+      }
+    }
+    // FIRE/PYRUS - Hyper-focused intense fire power
+    else if (el === "fire" || el === "pyrus") {
+      // Intense hot center with rising heat
+      for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 2 + Math.random() * 4.5
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 6 + Math.random() * 9,
+          color: i % 3 === 0 ? "#ffffff" : colors[0],
+          alpha: 1,
+          heat: -0.05, // Rising heat physics
+        } as any)
+      }
+      // Embers that drift up
+      for (let i = 0; i < 15; i++) {
+        particles.push({
+          x: targetX + (Math.random() - 0.5) * 8,
+          y: targetY + (Math.random() - 0.5) * 8,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -0.8 - Math.random() * 1.5,
+          size: 1.5 + Math.random() * 3,
+          color: "#ffcc00",
+          alpha: 0.8,
+          heat: -0.1,
+        } as any)
+      }
+    }
+    // VENTUS - Hyper-focused localized swirl
+    else if (el === "ventus") {
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 3.5 + Math.random() * 5.5 // Reduced speed
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.3 - 1.5,
+          size: 1.5 + Math.random() * 3.5,
+          color: "#adff2f",
+          alpha: 1,
+        })
+      }
+      // Tighter air blades
+      for (let i = 0; i < 8; i++) {
+        const angle = Math.random() * Math.PI * 2
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * 8.5,
+          vy: Math.sin(angle) * 8.5,
+          size: 10 + Math.random() * 12,
+          color: "rgba(255, 255, 255, 0.3)",
+          alpha: 0.4,
+        })
+      }
+    }
+    // DARKNESS - Hyper-focused purple shadow power
+    else if (el === "darkness" || el === "darkus" || el === "dark") {
+      // Swirling shadow particles - tighter range
+      for (let i = 0; i < 45; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const dist = 30 + Math.random() * 35
+        const x = targetX + Math.cos(angle) * dist
+        const y = targetY + Math.sin(angle) * dist
+        particles.push({
+          x, y,
+          vx: (targetX - x) * 0.14,
+          vy: (targetY - y) * 0.14,
+          size: 2 + Math.random() * 4,
+          color: i % 4 === 0 ? "#000000" : colors[Math.floor(Math.random() * colors.length)], // Purple shadow blend
+          alpha: 1,
+        })
+      }
+    }
+    // LIGHTNESS - Hyper-focused refracting rays
+    else if (el === "lightness" || el === "haos" || el === "light") {
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 3 + Math.random() * 9 // Reduced speed
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 1 + Math.random() * 2.5,
+          color: "#ffffff",
+          alpha: 1,
+        })
+      }
+      // Tighter golden sparks
+      for (let i = 0; i < 15; i++) {
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: (Math.random() - 0.5) * 4.5,
+          vy: (Math.random() - 0.5) * 4.5,
+          size: 1.5 + Math.random() * 3,
+          color: "#ffd700",
+          alpha: 1,
+        })
+      }
+    }
+    // TERRA - Hyper-focused rock impact
+    else if (el === "terra") {
+      // Debris - concentrated
+      for (let i = 0; i < 25; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 1.5 + Math.random() * 4.5 // Reduced speed
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2.5,
+          size: 4 + Math.random() * 9,
+          color: "#8b4513",
+          alpha: 1,
+        })
+      }
+      // Tighter dust clouds
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: targetX + (Math.random() - 0.5) * 15,
+          y: targetY + (Math.random() - 0.5) * 8,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -0.4 - Math.random() * 0.8,
+          size: 10 + Math.random() * 15,
+          color: "rgba(139, 69, 19, 0.3)",
+          alpha: 0.5,
+        })
+      }
+    }
+    // VOID - Hyper-focused silver-gray shard power
+    else if (el === "void") {
+      // Silver and gray triangle shards
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 2.5 + Math.random() * 7
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 2 + Math.random() * 5,
+          color: i % 2 === 0 ? "#c0c0c0" : "#dcdcdc",
+          alpha: 1,
+          shape: "shard", // Shard shape marker
+          rotation: Math.random() * Math.PI * 2,
+          rv: (Math.random() - 0.5) * 0.2,
+        } as any)
+      }
+    }
+    // DEFAULT - Hyper-focused burst
+    else {
+      for (let i = 0; i < 35; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 1.6 + Math.random() * 4.5 // Reduced speed
+        particles.push({
+          x: targetX,
+          y: targetY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 2.5 + Math.random() * 4.5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1,
+        })
+      }
+    }
+
+    const effectId = `explosion-${Date.now()}`
+    const startTime = Date.now()
+    setExplosionEffects((prev) => [...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
+
+    // Enhanced impact flash logic
+    const flashColors: Record<string, string> = {
+      aquos: "rgba(0, 191, 255, 0.5)",
+      aquo: "rgba(0, 191, 255, 0.5)",
+      fire: "rgba(255, 69, 0, 0.6)",
+      pyrus: "rgba(255, 69, 0, 0.6)",
+      ventus: "rgba(50, 205, 50, 0.5)",
+      darkness: "rgba(128, 0, 128, 0.6)",
+      darkus: "rgba(128, 0, 128, 0.6)",
+      dark: "rgba(128, 0, 128, 0.6)",
+      lightness: "rgba(255, 215, 0, 0.6)",
+      haos: "rgba(255, 215, 0, 0.6)",
+      light: "rgba(255, 215, 0, 0.6)",
+      void: "rgba(192, 192, 192, 0.6)",
+      terra: "rgba(139, 69, 19, 0.6)",
+    }
+    setImpactFlash({ active: true, color: flashColors[el] || "rgba(255, 255, 255, 0.4)" })
+    setTimeout(() => setImpactFlash({ active: false, color: "#ffffff" }), 100) // Even snappier flash
+
+    setTimeout(() => {
+      setExplosionEffects((prev) => prev.filter((e) => e.id !== effectId))
+    }, 1100) // Much snappier decay for localized feel
+  }, [triggerScreenShake])
 
   // Destruction animation state
   const [destructionAnimation, setDestructionAnimation] = useState<{
@@ -1278,6 +1557,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [draggedHandCard, setDraggedHandCard] = useState<{
     index: number
     card: GameCard
+    currentY?: number
   } | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [droppingCard, setDroppingCard] = useState<{
@@ -1287,6 +1567,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   } | null>(null)
   const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
   const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
+  const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
 
   // Ultimate Gear effect tracking
@@ -1364,22 +1645,47 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [playerField.unitZone, playerField.ultimateZone])
 
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const animationInProgressRef = useRef(false)
+  const attackIdRef = useRef(0)
   const draggedCardRef = useRef<HTMLDivElement>(null)
   const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
 
-  const positionRef = useRef({ startX: 0, startY: 0, currentX: 0, currentY: 0, lastTargetCheck: 0 })
-  const arrowRef = useRef<SVGLineElement>(null)
-  const rafRef = useRef<number | null>(null)
-  const fieldRef = useRef<HTMLDivElement>(null)
-  const enemyUnitRectsRef = useRef<DOMRect[]>([])
-  const isDraggingRef = useRef(false) // Track drag state
-  const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
+  const handleAnimationComplete = useCallback((id: string) => {
+    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
+  }, [])
+
+  const triggerCameraShake = useCallback(() => {
+    const startTime = Date.now()
+    const duration = 150
+    const intensity = 3
+
+    const shake = () => {
+      const elapsed = Date.now() - startTime
+      if (elapsed < duration) {
+        if (fieldRef.current) {
+          const x = (Math.random() - 0.5) * intensity
+          const y = (Math.random() - 0.5) * intensity
+          fieldRef.current.style.transform = `translate(${x}px, ${y}px)`
+        }
+        requestAnimationFrame(shake)
+      } else {
+        if (fieldRef.current) fieldRef.current.style.transform = ""
+      }
+    }
+    requestAnimationFrame(shake)
+  }, [])
+
+  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
+    triggerCameraShake()
+    triggerExplosion(x, y, element)
+  }, [triggerCameraShake, triggerExplosion])
+
 
   const gameResultRecordedRef = useRef(false)
 
   // Helper to show effect feedback
-  const showEffectFeedback = useCallback((message: string, type: "success" | "error") => {
-    setEffectFeedback({ active: true, message, type })
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
+    setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
     setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
 
@@ -1438,6 +1744,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     })
   }, [])
 
+
   // Helper to resolve effect with dice roll if needed
   const resolveEffectWithDice = useCallback(async (
     effect: FunctionCardEffect,
@@ -1479,1019 +1786,218 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     )
   }
 
-  const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) => {
-    const colors = getElementColors(element)
-    const particles: Particle[] = []
-    const el = element?.toLowerCase()
-
-    // AQUO/AQUOS - Concentrated water impact
-    if (el === "aquos" || el === "aquo") {
-      // Central water burst - contained
-      for (let i = 0; i < 40; i++) {
-        const angle = (Math.PI * 2 * i) / 40 + Math.random() * 0.15
-        const speed = 1.5 + Math.random() * 3
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 2,
-          size: 4 + Math.random() * 8,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 1,
-        })
-      }
-      // Glowing water droplets - smaller area
-      for (let i = 0; i < 30; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 2 + Math.random() * 3
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 3,
-          size: 2 + Math.random() * 4,
-          color: "#00ffff",
-          alpha: 1,
-        })
-      }
-      // Bubbles rising - contained
-      for (let i = 0; i < 20; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 30,
-          y: targetY + Math.random() * 15,
-          vx: (Math.random() - 0.5) * 1,
-          vy: -1 - Math.random() * 2,
-          size: 5 + Math.random() * 8,
-          color: "rgba(0, 255, 255, 0.7)",
-          alpha: 0.8,
-        })
-      }
-      // Water wave ring - single focused
-      for (let i = 0; i < 30; i++) {
-        const angle = (Math.PI * 2 * i) / 30
-        const speed = 1.5 + Math.random() * 2
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed * 0.4,
-          size: 3 + Math.random() * 4,
-          color: "#00ffff",
-          alpha: 0.9,
-        })
-      }
-      // Core energy burst - small
-      for (let i = 0; i < 15; i++) {
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: (Math.random() - 0.5) * 1.5,
-          size: 10 + Math.random() * 15,
-          color: "rgba(255, 255, 255, 0.9)",
-          alpha: 0.9,
-        })
-      }
-    }
-    // FIRE/PYRUS - Inferno explosion with blazing flames
-    else if (el === "fire" || el === "pyrus") {
-      // Core inferno burst - white hot center
-      for (let i = 0; i < 30; i++) {
-        const angle = (Math.PI * 2 * i) / 30
-        const speed = 3 + Math.random() * 5
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 20 + Math.random() * 30,
-          color: "#ffffff",
-          alpha: 1,
-        })
-      }
-      // Main fire explosion - intense flames
-      for (let i = 0; i < 90; i++) {
-        const angle = (Math.PI * 2 * i) / 90 + Math.random() * 0.25
-        const speed = 7 + Math.random() * 14
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 6,
-          size: 10 + Math.random() * 18,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 1,
-        })
-      }
-      // Towering flames rising
-      for (let i = 0; i < 60; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 70,
-          y: targetY,
-          vx: (Math.random() - 0.5) * 4,
-          vy: -8 - Math.random() * 14,
-          size: 18 + Math.random() * 30,
-          color: i % 3 === 0 ? "#ff4500" : i % 3 === 1 ? "#ff6600" : "#ffcc00",
-          alpha: 1,
-        })
-      }
-      // Intense embers shower
-      for (let i = 0; i < 80; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 10 + Math.random() * 14
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 10,
-          size: 2 + Math.random() * 5,
-          color: Math.random() > 0.5 ? "#ffff00" : "#ffffff",
-          alpha: 1,
-        })
-      }
-      // Fire rings expanding
-      for (let ring = 0; ring < 3; ring++) {
-        for (let i = 0; i < 40; i++) {
-          const angle = (Math.PI * 2 * i) / 40
-          const speed = (4 + ring * 3) + Math.random() * 3
-          particles.push({
-            x: targetX,
-            y: targetY,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            size: 5 + Math.random() * 8,
-            color: ring === 0 ? "#ff4500" : ring === 1 ? "#ff8c00" : "#ffa500",
-            alpha: 0.9,
-          })
-        }
-      }
-      // Dark smoke plumes
-      for (let i = 0; i < 25; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 60,
-          y: targetY,
-          vx: (Math.random() - 0.5) * 3,
-          vy: -3 - Math.random() * 5,
-          size: 45 + Math.random() * 55,
-          color: "rgba(40, 40, 40, 0.5)",
-          alpha: 0.7,
-        })
-      }
-    }
-    // VENTUS - Raging tempest cyclone
-    else if (el === "ventus") {
-      // Central cyclone core
-      for (let i = 0; i < 30; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 30,
-          y: targetY + (Math.random() - 0.5) * 30,
-          vx: (Math.random() - 0.5) * 3,
-          vy: (Math.random() - 0.5) * 3,
-          size: 25 + Math.random() * 35,
-          color: "rgba(144, 238, 144, 0.5)",
-          alpha: 0.7,
-        })
-      }
-      // Spiral wind particles - double helix
-      for (let helix = 0; helix < 2; helix++) {
-        for (let i = 0; i < 60; i++) {
-          const spiralAngle = (i / 60) * Math.PI * 8 + helix * Math.PI
-          const radius = 5 + (i / 60) * 80
-          const speed = 5 + Math.random() * 8
-          particles.push({
-            x: targetX + Math.cos(spiralAngle) * radius * 0.4,
-            y: targetY + Math.sin(spiralAngle) * radius * 0.4,
-            vx: Math.cos(spiralAngle + Math.PI / 2) * speed,
-            vy: Math.sin(spiralAngle + Math.PI / 2) * speed - 4,
-            size: 5 + Math.random() * 10,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            alpha: 0.9,
-          })
-        }
-      }
-      // Powerful wind gusts
-      for (let i = 0; i < 50; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 12 + Math.random() * 10
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed * 0.5 - 5,
-          size: 3 + Math.random() * 5,
-          color: "#adff2f",
-          alpha: 1,
-        })
-      }
-      // Leaves and debris storm
-      for (let i = 0; i < 45; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 6 + Math.random() * 9
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 60,
-          y: targetY + (Math.random() - 0.5) * 60,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 7 + Math.random() * 12,
-          color: i % 4 === 0 ? "#228b22" : i % 4 === 1 ? "#90ee90" : i % 4 === 2 ? "#32cd32" : "#7cfc00",
-          alpha: 0.9,
-        })
-      }
-      // Wind streaks
-      for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * 15,
-          vy: Math.sin(angle) * 15,
-          size: 2 + Math.random() * 3,
-          color: "#ffffff",
-          alpha: 0.8,
-        })
-      }
-    }
-    // DARK/DARKNESS - Abyssal void devastation
-    else if (el === "darkness" || el === "darkus" || el === "dark") {
-      // Void core implosion then explosion
-      for (let i = 0; i < 25; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 40,
-          y: targetY + (Math.random() - 0.5) * 40,
-          vx: (Math.random() - 0.5) * 2,
-          vy: (Math.random() - 0.5) * 2,
-          size: 35 + Math.random() * 45,
-          color: "rgba(10, 0, 20, 0.9)",
-          alpha: 0.95,
-        })
-      }
-      // Dark energy burst
-      for (let i = 0; i < 70; i++) {
-        const angle = (Math.PI * 2 * i) / 70
-        const speed = 6 + Math.random() * 10
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 10 + Math.random() * 16,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 0.95,
-        })
-      }
-      // Shadow tendrils reaching out - more dramatic
-      for (let i = 0; i < 12; i++) {
-        const baseAngle = (Math.PI * 2 * i) / 12
-        for (let j = 0; j < 15; j++) {
-          const dist = j * 7
-          particles.push({
-            x: targetX + Math.cos(baseAngle) * dist * 0.3,
-            y: targetY + Math.sin(baseAngle) * dist * 0.3,
-            vx: Math.cos(baseAngle) * (3 + j * 0.6),
-            vy: Math.sin(baseAngle) * (3 + j * 0.6),
-            size: 14 - j * 0.7,
-            color: j % 3 === 0 ? "#4b0082" : j % 3 === 1 ? "#9932cc" : "#800080",
-            alpha: 0.9 - j * 0.04,
-          })
-        }
-      }
-      // Dark mist expanding
-      for (let i = 0; i < 35; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 100,
-          y: targetY + (Math.random() - 0.5) * 100,
-          vx: (Math.random() - 0.5) * 3,
-          vy: (Math.random() - 0.5) * 3,
-          size: 50 + Math.random() * 60,
-          color: "rgba(30, 0, 50, 0.6)",
-          alpha: 0.7,
-        })
-      }
-      // Purple energy sparks
-      for (let i = 0; i < 50; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 9 + Math.random() * 8
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 3 + Math.random() * 4,
-          color: Math.random() > 0.5 ? "#da70d6" : "#ff00ff",
-          alpha: 1,
-        })
-      }
-      // Cursed runes floating
-      for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const dist = 30 + Math.random() * 50
-        particles.push({
-          x: targetX + Math.cos(angle) * dist,
-          y: targetY + Math.sin(angle) * dist,
-          vx: Math.cos(angle) * 2,
-          vy: Math.sin(angle) * 2 - 1,
-          size: 8 + Math.random() * 12,
-          color: "#9400d3",
-          alpha: 0.85,
-        })
-      }
-    }
-    // LIGHT/LIGHTNESS - Divine judgment radiance
-    else if (el === "lightness" || el === "haos" || el === "light") {
-      // Blinding core flash
-      for (let i = 0; i < 40; i++) {
-        const angle = (Math.PI * 2 * i) / 40
-        const speed = 2 + Math.random() * 4
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 30 + Math.random() * 40,
-          color: "#ffffff",
-          alpha: 1,
-        })
-      }
-      // Radiant burst
-      for (let i = 0; i < 80; i++) {
-        const angle = (Math.PI * 2 * i) / 80
-        const speed = 7 + Math.random() * 12
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 8 + Math.random() * 14,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 1,
-        })
-      }
-      // Holy rays extending outward - more rays
-      for (let i = 0; i < 16; i++) {
-        const rayAngle = (Math.PI * 2 * i) / 16
-        for (let j = 0; j < 12; j++) {
-          particles.push({
-            x: targetX,
-            y: targetY,
-            vx: Math.cos(rayAngle) * (5 + j * 2.5),
-            vy: Math.sin(rayAngle) * (5 + j * 2.5),
-            size: 18 - j * 1.2,
-            color: j % 2 === 0 ? "#ffffff" : "#ffd700",
-            alpha: 1 - j * 0.06,
-          })
-        }
-      }
-      // Divine sparkles shower
-      for (let i = 0; i < 70; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 4 + Math.random() * 8
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 80,
-          y: targetY + (Math.random() - 0.5) * 80,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 3,
-          size: 3 + Math.random() * 6,
-          color: Math.random() > 0.3 ? "#ffffff" : "#fffacd",
-          alpha: 1,
-        })
-      }
-      // Golden halo rings
-      for (let ring = 0; ring < 3; ring++) {
-        for (let i = 0; i < 40; i++) {
-          const angle = (Math.PI * 2 * i) / 40
-          const radius = (40 + ring * 25) + Math.random() * 15
-          particles.push({
-            x: targetX + Math.cos(angle) * radius * 0.3,
-            y: targetY + Math.sin(angle) * radius * 0.3,
-            vx: Math.cos(angle) * (3 + ring),
-            vy: Math.sin(angle) * (3 + ring),
-            size: 5 + Math.random() * 7,
-            color: ring === 0 ? "#ffd700" : ring === 1 ? "#ffff00" : "#fffacd",
-            alpha: 0.9,
-          })
-        }
-      }
-      // Ascending light particles
-      for (let i = 0; i < 30; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 100,
-          y: targetY,
-          vx: (Math.random() - 0.5) * 2,
-          vy: -5 - Math.random() * 8,
-          size: 6 + Math.random() * 10,
-          color: "#ffffff",
-          alpha: 0.9,
-        })
-      }
-    }
-    // VOID - Reality-shattering dimensional rift
-    else if (el === "void") {
-      // Dimensional core collapse
-      for (let i = 0; i < 25; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 40,
-          y: targetY + (Math.random() - 0.5) * 40,
-          vx: (Math.random() - 0.5) * 2,
-          vy: (Math.random() - 0.5) * 2,
-          size: 40 + Math.random() * 50,
-          color: "rgba(5, 5, 20, 0.9)",
-          alpha: 0.95,
-        })
-      }
-      // Void rift explosion
-      for (let i = 0; i < 70; i++) {
-        const angle = (Math.PI * 2 * i) / 70 + Math.random() * 0.2
-        const speed = 6 + Math.random() * 11
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 8 + Math.random() * 14,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 0.95,
-        })
-      }
-      // Reality fractures - multiple jagged cracks
-      for (let i = 0; i < 10; i++) {
-        const baseAngle = (Math.PI * 2 * i) / 10
-        for (let j = 0; j < 15; j++) {
-          const jitter = (Math.random() - 0.5) * 0.6
-          particles.push({
-            x: targetX,
-            y: targetY,
-            vx: Math.cos(baseAngle + jitter) * (4 + j * 1.3),
-            vy: Math.sin(baseAngle + jitter) * (4 + j * 1.3),
-            size: 5 + Math.random() * 5,
-            color: j % 4 === 0 ? "#e94560" : j % 4 === 1 ? "#533483" : j % 4 === 2 ? "#0f3460" : "#ff1493",
-            alpha: 1 - j * 0.04,
-          })
-        }
-      }
-      // Cosmic star particles
-      for (let i = 0; i < 60; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 5 + Math.random() * 8
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 120,
-          y: targetY + (Math.random() - 0.5) * 120,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 2 + Math.random() * 4,
-          color: Math.random() > 0.6 ? "#e94560" : Math.random() > 0.3 ? "#ffffff" : "#ff69b4",
-          alpha: 1,
-        })
-      }
-      // Dimensional energy rings
-      for (let ring = 0; ring < 3; ring++) {
-        for (let i = 0; i < 35; i++) {
-          const angle = (Math.PI * 2 * i) / 35
-          const speed = (4 + ring * 2) + Math.random() * 3
-          particles.push({
-            x: targetX,
-            y: targetY,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            size: 4 + Math.random() * 6,
-            color: ring === 0 ? "#e94560" : ring === 1 ? "#533483" : "#ff1493",
-            alpha: 0.9,
-          })
-        }
-      }
-      // Void mist
-      for (let i = 0; i < 20; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 80,
-          y: targetY + (Math.random() - 0.5) * 80,
-          vx: (Math.random() - 0.5) * 2,
-          vy: (Math.random() - 0.5) * 2,
-          size: 45 + Math.random() * 55,
-          color: "rgba(83, 52, 131, 0.5)",
-          alpha: 0.65,
-        })
-      }
-    }
-    // DEFAULT - Generic powerful explosion
-    else {
-      for (let i = 0; i < 60; i++) {
-        const angle = (Math.PI * 2 * i) / 60 + Math.random() * 0.3
-        const speed = 5 + Math.random() * 10
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 4,
-          size: 5 + Math.random() * 12,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 1,
-        })
-      }
-      // White core
-      for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 2 + Math.random() * 4
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 15 + Math.random() * 25,
-          color: "#ffffff",
-          alpha: 0.8,
-        })
-      }
-      // Sparks
-      for (let i = 0; i < 30; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 8 + Math.random() * 8
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 4,
-          size: 2 + Math.random() * 4,
-          color: "#ffffff",
-          alpha: 1,
-        })
-      }
-    }
-
-    const effectId = `explosion-${Date.now()}`
-    const startTime = Date.now()
-    setExplosionEffects((prev) => [...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
-
-    // Trigger impact flash based on element
-    const flashColors: Record<string, string> = {
-      aquos: "rgba(0, 191, 255, 0.4)",
-      aquo: "rgba(0, 191, 255, 0.4)",
-      fire: "rgba(255, 100, 0, 0.5)",
-      pyrus: "rgba(255, 100, 0, 0.5)",
-      ventus: "rgba(50, 205, 50, 0.35)",
-      darkness: "rgba(128, 0, 128, 0.45)",
-      darkus: "rgba(128, 0, 128, 0.45)",
-      dark: "rgba(128, 0, 128, 0.45)",
-      lightness: "rgba(255, 255, 200, 0.5)",
-      haos: "rgba(255, 255, 200, 0.5)",
-      light: "rgba(255, 255, 200, 0.5)",
-      void: "rgba(233, 69, 96, 0.45)",
-    }
-    setImpactFlash({ active: true, color: flashColors[el] || "rgba(255, 255, 255, 0.3)" })
-    setTimeout(() => setImpactFlash({ active: false, color: "#ffffff" }), 200)
-
-    setTimeout(() => {
-      setExplosionEffects((prev) => prev.filter((e) => e.id !== effectId))
-    }, 3000)
-  }, [])
-
   useEffect(() => {
-    // Add new effects to the ref (only new ones that don't exist yet)
-    for (const effect of explosionEffects) {
-      if (!activeParticlesRef.current.has(effect.id)) {
-        activeParticlesRef.current.set(effect.id, {
-          particles: effect.particles.map((p) => ({ ...p })),
-          startTime: effect.startTime,
-          element: effect.element,
-          x: effect.x,
-          y: effect.y,
-        })
+    if (explosionEffects.length === 0) {
+      const canvas = explosionCanvasRef.current
+      if (canvas) {
+        const ctx = canvas.getContext("2d")
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
       }
+      return
     }
-
-    // Remove effects that are no longer in the state
-    const currentIds = new Set(explosionEffects.map((e) => e.id))
-    for (const id of activeParticlesRef.current.keys()) {
-      if (!currentIds.has(id)) {
-        activeParticlesRef.current.delete(id)
-      }
-    }
-
-    if (activeParticlesRef.current.size === 0) return
 
     const canvas = explosionCanvasRef.current
     if (!canvas) return
-
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-
     let animationId: number
-    const duration = 2600 // Animation duration in ms for epic element effects
+    const duration = 1100
 
     const animate = () => {
       const now = Date.now()
       const activeEffects = activeParticlesRef.current
 
-      // Check if no effects
+      // Add new effects
+      explosionEffects.forEach((effect) => {
+        if (!activeEffects.has(effect.id)) {
+          activeEffects.set(effect.id, {
+            particles: effect.particles.map((p) => ({ ...p })),
+            startTime: effect.startTime,
+            element: effect.element,
+            x: effect.x,
+            y: effect.y
+          })
+        }
+      })
+
+      // Cleanup
+      for (const [id, effect] of activeEffects.entries()) {
+        if (now - effect.startTime > duration) {
+          activeEffects.delete(id)
+        }
+      }
+
       if (activeEffects.size === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
       }
 
-      // Get effects as array for iteration
-      const localEffects = Array.from(activeEffects.entries())
-
-      // Check if all effects are done
-      const allDone = localEffects.every(([, effect]) => now - effect.startTime > duration)
-      if (allDone) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        return
+      // Resize and Clear
+      if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
       }
-
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      localEffects.forEach(([effectId, effect]) => {
+      activeEffects.forEach((effect) => {
         const elapsed = now - effect.startTime
-
-        // Skip if this effect is done
         if (elapsed > duration) return
 
-        const colors = getElementColors(effect.element)
         const el = effect.element?.toLowerCase()
+        const colors = getElementColors(effect.element)
 
-        // ELEMENT-SPECIFIC EPIC EFFECTS
-
-        // AQUO/AQUOS - Water ripple waves
+        // Element Visual Backgrounds
         if (el === "aquos" || el === "aquo") {
-          // Multiple expanding water ripples
-          for (let ring = 0; ring < 4; ring++) {
-            const ringProgress = Math.min(1, (elapsed - ring * 80) / 500)
+          for (let ring = 0; ring < 5; ring++) {
+            const ringProgress = Math.min(1, (elapsed - ring * 80) / 350)
             if (ringProgress > 0 && ringProgress < 1) {
-              const ringRadius = ringProgress * 180
-              const ringAlpha = (1 - ringProgress) * 0.5
+              const ringRadius = ringProgress * 65
               ctx.save()
-              ctx.globalAlpha = ringAlpha
-              ctx.strokeStyle = ring % 2 === 0 ? "#00bfff" : "#40e0d0"
-              ctx.lineWidth = 3 * (1 - ringProgress)
-              ctx.shadowColor = "#00ffff"
-              ctx.shadowBlur = 15
-              ctx.beginPath()
-              ctx.arc(effect.x, effect.y, ringRadius, 0, Math.PI * 2)
-              ctx.stroke()
-              ctx.restore()
-            }
-          }
-          // Water splash central glow
-          const splashAlpha = Math.max(0, 1 - elapsed / 300)
-          if (splashAlpha > 0) {
-            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 80)
-            gradient.addColorStop(0, `rgba(0, 255, 255, ${splashAlpha * 0.8})`)
-            gradient.addColorStop(0.5, `rgba(0, 191, 255, ${splashAlpha * 0.4})`)
-            gradient.addColorStop(1, "transparent")
-            ctx.fillStyle = gradient
-            ctx.fillRect(effect.x - 80, effect.y - 80, 160, 160)
-          }
-        }
-        // FIRE/PYRUS - Intense flame burst
-        else if (el === "fire" || el === "pyrus") {
-          // Fire shockwave
-          const fireProgress = Math.min(1, elapsed / 350)
-          if (fireProgress < 1) {
-            const ringRadius = fireProgress * 160
-            ctx.save()
-            ctx.globalAlpha = (1 - fireProgress) * 0.7
-            ctx.strokeStyle = "#ff6600"
-            ctx.lineWidth = 6 * (1 - fireProgress)
-            ctx.shadowColor = "#ff4500"
-            ctx.shadowBlur = 30
-            ctx.beginPath()
-            ctx.arc(effect.x, effect.y, ringRadius, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-          }
-          // Intense fire core glow
-          const fireAlpha = Math.max(0, 1 - elapsed / 250)
-          if (fireAlpha > 0) {
-            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 100)
-            gradient.addColorStop(0, `rgba(255, 255, 200, ${fireAlpha})`)
-            gradient.addColorStop(0.3, `rgba(255, 140, 0, ${fireAlpha * 0.8})`)
-            gradient.addColorStop(0.6, `rgba(255, 69, 0, ${fireAlpha * 0.5})`)
-            gradient.addColorStop(1, "transparent")
-            ctx.fillStyle = gradient
-            ctx.fillRect(effect.x - 100, effect.y - 100, 200, 200)
-          }
-          // Heat distortion lines
-          for (let i = 0; i < 8; i++) {
-            const lineAngle = (Math.PI * 2 * i) / 8
-            const lineProgress = Math.min(1, elapsed / 400)
-            if (lineProgress < 1) {
-              ctx.save()
-              ctx.globalAlpha = (1 - lineProgress) * 0.6
-              ctx.strokeStyle = "#ffcc00"
-              ctx.lineWidth = 2
-              ctx.shadowColor = "#ff6600"
+              ctx.globalAlpha = (1 - ringProgress) * 0.4
+              ctx.strokeStyle = colors[ring % colors.length]
+              ctx.lineWidth = 1 + (1 - ringProgress) * 3
+              ctx.shadowColor = "#00bfff"
               ctx.shadowBlur = 10
               ctx.beginPath()
-              ctx.moveTo(effect.x, effect.y)
-              ctx.lineTo(
-                effect.x + Math.cos(lineAngle) * lineProgress * 120,
-                effect.y + Math.sin(lineAngle) * lineProgress * 120
-              )
+              for (let a = 0; a < Math.PI * 2; a += 0.2) {
+                const r = ringRadius + Math.sin(a * 4 + elapsed * 0.01) * 3
+                const rx = effect.x + Math.cos(a) * r
+                const ry = effect.y + Math.sin(a) * r
+                if (a === 0) ctx.moveTo(rx, ry)
+                else ctx.lineTo(rx, ry)
+              }
+              ctx.closePath()
               ctx.stroke()
               ctx.restore()
             }
           }
-        }
-        // VENTUS - Swirling wind vortex
-        else if (el === "ventus") {
-          // Spiral wind effect
-          const spiralProgress = Math.min(1, elapsed / 600)
+        } else if (el === "fire" || el === "pyrus") {
+           const rp = Math.min(1, elapsed / 300)
+           if (rp < 1) {
+             ctx.save()
+             ctx.globalAlpha = (1 - rp) * 0.8
+             ctx.strokeStyle = "#ff4500"
+             ctx.lineWidth = 2 + (1 - rp) * 8
+             ctx.beginPath()
+             for (let a = 0; a < Math.PI * 2; a += 0.3) {
+               const r = rp * 75 + (Math.random() - 0.5) * 10
+               ctx.lineTo(effect.x + Math.cos(a) * r, effect.y + Math.sin(a) * r)
+             }
+             ctx.closePath()
+             ctx.stroke()
+             ctx.restore()
+           }
+        } else if (el === "darkness" || el === "dark" || el === "darkus") {
+          const prog = Math.min(1, elapsed / 550)
+          if (prog < 1) {
+            ctx.save()
+            const voidAlpha = 1 - prog
+            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 65)
+            gradient.addColorStop(0, `rgba(75,0,130,${voidAlpha * 0.9})`)
+            gradient.addColorStop(1, "transparent")
+            ctx.fillStyle = gradient
+            ctx.fillRect(effect.x - 65, effect.y - 65, 130, 130)
+            for (let i = 0; i < 8; i++) {
+              const tAngle = (Math.PI * 2 * i) / 8 + elapsed * 0.002
+              const tLen = 60 * (1 - elapsed / 450)
+              if (tLen > 0) {
+                ctx.strokeStyle = "rgba(128,0,128,0.4)"
+                ctx.beginPath()
+                ctx.moveTo(effect.x, effect.y)
+                ctx.lineTo(effect.x + Math.cos(tAngle) * tLen, effect.y + Math.sin(tAngle) * tLen)
+                ctx.stroke()
+              }
+            }
+            ctx.restore()
+          }
+        } else if (el === "lightness" || el === "haos" || el === "light") {
+          const progress = Math.min(1, elapsed / 400)
+          ctx.save()
+          ctx.strokeStyle = "#ffd700"
+          ctx.setLineDash([5, 5])
+          const flareLen = 40 * (1 - progress)
+          ctx.beginPath()
+          ctx.moveTo(effect.x - flareLen, effect.y); ctx.lineTo(effect.x + flareLen, effect.y)
+          ctx.moveTo(effect.x, effect.y - flareLen); ctx.lineTo(effect.x, effect.y + flareLen)
+          ctx.stroke()
+          ctx.restore()
+        } else if (el === "ventus") {
+          const spiralProgress = Math.min(1, elapsed / 400)
           if (spiralProgress < 1) {
             ctx.save()
             ctx.globalAlpha = (1 - spiralProgress) * 0.6
             ctx.strokeStyle = "#32cd32"
-            ctx.lineWidth = 2
-            ctx.shadowColor = "#00ff00"
-            ctx.shadowBlur = 15
             ctx.beginPath()
-            for (let angle = 0; angle < Math.PI * 6; angle += 0.1) {
-              const radius = angle * 8 * spiralProgress
-              const x = effect.x + Math.cos(angle + elapsed * 0.01) * radius
-              const y = effect.y + Math.sin(angle + elapsed * 0.01) * radius
-              if (angle === 0) ctx.moveTo(x, y)
-              else ctx.lineTo(x, y)
+            for (let angle = 0; angle < Math.PI * 4; angle += 0.2) {
+              const radius = angle * 4 * spiralProgress
+              ctx.lineTo(effect.x + Math.cos(angle + elapsed * 0.018) * radius, effect.y + Math.sin(angle + elapsed * 0.018) * radius)
             }
             ctx.stroke()
             ctx.restore()
           }
-          // Wind gusts
-          for (let i = 0; i < 6; i++) {
-            const gustAngle = (Math.PI * 2 * i) / 6 + elapsed * 0.005
-            const gustProgress = Math.min(1, (elapsed - i * 50) / 400)
-            if (gustProgress > 0 && gustProgress < 1) {
-              ctx.save()
-              ctx.globalAlpha = (1 - gustProgress) * 0.5
-              ctx.strokeStyle = "#7cfc00"
-              ctx.lineWidth = 3
-              ctx.beginPath()
-              ctx.moveTo(effect.x, effect.y)
-              const endX = effect.x + Math.cos(gustAngle) * gustProgress * 140
-              const endY = effect.y + Math.sin(gustAngle) * gustProgress * 140
-              ctx.quadraticCurveTo(
-                effect.x + Math.cos(gustAngle + 0.5) * gustProgress * 70,
-                effect.y + Math.sin(gustAngle + 0.5) * gustProgress * 70,
-                endX, endY
-              )
-              ctx.stroke()
-              ctx.restore()
-            }
-          }
-        }
-        // DARK/DARKNESS - Shadow tendrils and void
-        else if (el === "darkness" || el === "darkus" || el === "dark") {
-          // Dark void core - pulsing darkness
-          const voidPulse = Math.sin(elapsed * 0.02) * 0.3 + 0.7
-          const voidAlpha = Math.max(0, 1 - elapsed / 800) * voidPulse
-          if (voidAlpha > 0) {
-            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 90)
-            gradient.addColorStop(0, `rgba(20, 0, 40, ${voidAlpha})`)
-            gradient.addColorStop(0.5, `rgba(75, 0, 130, ${voidAlpha * 0.6})`)
-            gradient.addColorStop(1, "transparent")
-            ctx.fillStyle = gradient
-            ctx.fillRect(effect.x - 90, effect.y - 90, 180, 180)
-          }
-          // Shadow tendrils extending
-          for (let i = 0; i < 8; i++) {
-            const tendrilAngle = (Math.PI * 2 * i) / 8
-            const tendrilProgress = Math.min(1, elapsed / 500)
-            if (tendrilProgress < 1) {
-              ctx.save()
-              ctx.globalAlpha = (1 - tendrilProgress) * 0.7
-              ctx.strokeStyle = "#9932cc"
-              ctx.lineWidth = 4 * (1 - tendrilProgress * 0.5)
-              ctx.shadowColor = "#800080"
-              ctx.shadowBlur = 20
-              ctx.beginPath()
-              ctx.moveTo(effect.x, effect.y)
-              // Wavy tendril
-              const segments = 5
-              for (let s = 1; s <= segments; s++) {
-                const segProgress = s / segments
-                const wave = Math.sin(s * 2 + elapsed * 0.01) * 15
-                ctx.lineTo(
-                  effect.x + Math.cos(tendrilAngle) * tendrilProgress * 100 * segProgress + Math.cos(tendrilAngle + Math.PI / 2) * wave,
-                  effect.y + Math.sin(tendrilAngle) * tendrilProgress * 100 * segProgress + Math.sin(tendrilAngle + Math.PI / 2) * wave
-                )
-              }
-              ctx.stroke()
-              ctx.restore()
-            }
-          }
-          // Purple lightning
-          if (elapsed < 400 && Math.random() > 0.7) {
-            ctx.save()
-            ctx.globalAlpha = 0.8
-            ctx.strokeStyle = "#da70d6"
-            ctx.lineWidth = 2
-            ctx.shadowColor = "#9932cc"
-            ctx.shadowBlur = 15
-            const startAngle = Math.random() * Math.PI * 2
-            ctx.beginPath()
-            ctx.moveTo(effect.x, effect.y)
-            let lx = effect.x, ly = effect.y
-            for (let j = 0; j < 5; j++) {
-              lx += Math.cos(startAngle) * 20 + (Math.random() - 0.5) * 30
-              ly += Math.sin(startAngle) * 20 + (Math.random() - 0.5) * 30
-              ctx.lineTo(lx, ly)
-            }
-            ctx.stroke()
-            ctx.restore()
-          }
-        }
-        // LIGHT/LIGHTNESS - Divine radiance
-        else if (el === "lightness" || el === "haos" || el === "light") {
-          // Brilliant flash
-          const flashAlpha = Math.max(0, 1 - elapsed / 200)
-          if (flashAlpha > 0) {
-            ctx.save()
-            ctx.globalAlpha = flashAlpha
-            ctx.fillStyle = "#ffffff"
-            ctx.shadowColor = "#ffd700"
-            ctx.shadowBlur = 60
-            ctx.beginPath()
-            ctx.arc(effect.x, effect.y, 50 * (1 - elapsed / 300), 0, Math.PI * 2)
-            ctx.fill()
-            ctx.restore()
-          }
-          // Divine rays
-          for (let i = 0; i < 12; i++) {
-            const rayAngle = (Math.PI * 2 * i) / 12
-            const rayProgress = Math.min(1, elapsed / 450)
-            if (rayProgress < 1) {
-              ctx.save()
-              ctx.globalAlpha = (1 - rayProgress) * 0.6
-              ctx.strokeStyle = i % 2 === 0 ? "#ffd700" : "#ffffff"
-              ctx.lineWidth = 4 * (1 - rayProgress)
-              ctx.shadowColor = "#ffff00"
-              ctx.shadowBlur = 20
-              ctx.beginPath()
-              ctx.moveTo(effect.x, effect.y)
-              ctx.lineTo(
-                effect.x + Math.cos(rayAngle) * rayProgress * 150,
-                effect.y + Math.sin(rayAngle) * rayProgress * 150
-              )
-              ctx.stroke()
-              ctx.restore()
-            }
-          }
-          // Holy aura
-          const auraAlpha = Math.max(0, 1 - elapsed / 600)
-          if (auraAlpha > 0) {
-            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 130)
-            gradient.addColorStop(0, `rgba(255, 255, 255, ${auraAlpha * 0.9})`)
-            gradient.addColorStop(0.4, `rgba(255, 215, 0, ${auraAlpha * 0.5})`)
-            gradient.addColorStop(0.7, `rgba(255, 255, 200, ${auraAlpha * 0.2})`)
-            gradient.addColorStop(1, "transparent")
-            ctx.fillStyle = gradient
-            ctx.fillRect(effect.x - 130, effect.y - 130, 260, 260)
-          }
-        }
-        // VOID - Reality distortion
-        else if (el === "void") {
-          // Void rift - distorted space
-          const riftProgress = Math.min(1, elapsed / 600)
-          if (riftProgress < 1) {
-            // Multiple distortion rings
-            for (let ring = 0; ring < 3; ring++) {
-              const ringOff = ring * 100
-              const rp = Math.min(1, (elapsed - ringOff) / 500)
-              if (rp > 0 && rp < 1) {
-                ctx.save()
-                ctx.globalAlpha = (1 - rp) * 0.6
-                ctx.strokeStyle = ring === 0 ? "#e94560" : ring === 1 ? "#533483" : "#0f3460"
-                ctx.lineWidth = 3
-                ctx.shadowColor = "#e94560"
-                ctx.shadowBlur = 15
-                ctx.setLineDash([5, 5])
-                ctx.beginPath()
-                ctx.arc(effect.x, effect.y, rp * 140, 0, Math.PI * 2)
-                ctx.stroke()
-                ctx.restore()
-              }
-            }
-          }
-          // Cosmic cracks
-          for (let i = 0; i < 6; i++) {
-            const crackAngle = (Math.PI * 2 * i) / 6
-            const crackProgress = Math.min(1, elapsed / 400)
+        } else if (el === "void") {
+          for (let i = 0; i < 5; i++) {
+            const crackAngle = (Math.PI * 2 * i) / 5
+            const crackProgress = Math.min(1, elapsed / 350)
             if (crackProgress < 1) {
               ctx.save()
               ctx.globalAlpha = (1 - crackProgress) * 0.8
-              ctx.strokeStyle = "#e94560"
-              ctx.lineWidth = 2
-              ctx.shadowColor = "#e94560"
-              ctx.shadowBlur = 10
+              ctx.strokeStyle = "#c0c0c0"
               ctx.beginPath()
               ctx.moveTo(effect.x, effect.y)
               let cx = effect.x, cy = effect.y
-              for (let j = 0; j < 6; j++) {
-                cx += Math.cos(crackAngle + (Math.random() - 0.5) * 0.8) * 20
-                cy += Math.sin(crackAngle + (Math.random() - 0.5) * 0.8) * 20
+              for (let j = 0; j < 3; j++) {
+                cx += Math.cos(crackAngle + (Math.random() - 0.5) * 0.8) * 15
+                cy += Math.sin(crackAngle + (Math.random() - 0.5) * 0.8) * 15
                 ctx.lineTo(cx, cy)
               }
               ctx.stroke()
               ctx.restore()
             }
           }
-          // Dark core
-          const coreAlpha = Math.max(0, 1 - elapsed / 700)
-          if (coreAlpha > 0) {
-            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 80)
-            gradient.addColorStop(0, `rgba(10, 10, 30, ${coreAlpha})`)
-            gradient.addColorStop(0.5, `rgba(83, 52, 131, ${coreAlpha * 0.5})`)
-            gradient.addColorStop(1, "transparent")
-            ctx.fillStyle = gradient
-            ctx.fillRect(effect.x - 80, effect.y - 80, 160, 160)
-          }
-        }
-        // DEFAULT - Generic epic shockwave
-        else {
-          const shockwaveProgress = Math.min(1, elapsed / 400)
-          if (shockwaveProgress < 1) {
-            const ringRadius = shockwaveProgress * 150
-            const ringAlpha = (1 - shockwaveProgress) * 0.6
-            ctx.save()
-            ctx.globalAlpha = ringAlpha
-            ctx.strokeStyle = colors[0]
-            ctx.lineWidth = 4 * (1 - shockwaveProgress)
-            ctx.shadowColor = colors[0]
-            ctx.shadowBlur = 20
-            ctx.beginPath()
-            ctx.arc(effect.x, effect.y, ringRadius, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-          }
-          const flashAlpha = Math.max(0, 1 - elapsed / 150)
-          if (flashAlpha > 0) {
-            ctx.save()
-            ctx.globalAlpha = flashAlpha * 0.8
-            ctx.fillStyle = "#ffffff"
-            ctx.shadowColor = colors[0]
-            ctx.shadowBlur = 50
-            ctx.beginPath()
-            ctx.arc(effect.x, effect.y, 30 * (1 - elapsed / 200), 0, Math.PI * 2)
-            ctx.fill()
-            ctx.restore()
-          }
         }
 
-        // Draw all particles with enhanced rendering
-        effect.particles.forEach((p) => {
-          // Element-specific physics
-          if (el === "aquos" || el === "aquo") {
-            p.vy += 0.08 // Lighter gravity for water
-            p.vx *= 0.97
-          } else if (el === "fire" || el === "pyrus") {
-            p.vy -= 0.02 // Fire rises
-            p.vy += 0.05
-            p.vx *= 0.96
-          } else if (el === "ventus") {
-            p.vx *= 0.99 // Wind carries longer
-            p.vy += 0.03
-          } else if (el === "darkness" || el === "darkus" || el === "dark") {
-            p.vy += 0.05 // Slow floating
-            p.vx *= 0.98
-          } else if (el === "lightness" || el === "haos" || el === "light") {
-            p.vy += 0.02 // Very light, floaty
-            p.vx *= 0.995
-          } else if (el === "void") {
-            // Erratic movement
-            p.vx += (Math.random() - 0.5) * 0.3
-            p.vy += (Math.random() - 0.5) * 0.3
-            p.vy += 0.04
-          } else {
-            p.vy += 0.12
-            p.vx *= 0.98
-          }
+        // Particles
+        effect.particles.forEach((p: any) => {
+          if (p.gravity) p.vy += p.gravity
+          if (p.heat) p.vy += p.heat
+          if (p.rotation !== undefined) p.rotation += (p.rv || 0.1)
 
           p.x += p.vx
           p.y += p.vy
-          p.alpha -= 0.012
+          p.alpha -= 0.02
           p.size *= 0.97
 
           if (p.alpha > 0 && p.size > 0.5) {
             ctx.save()
-            ctx.globalAlpha = Math.max(0, p.alpha)
+            ctx.translate(p.x, p.y)
+            if (p.rotation !== undefined) ctx.rotate(p.rotation)
+            ctx.globalAlpha = p.alpha
             ctx.fillStyle = p.color
-            ctx.shadowColor = p.color
-            ctx.shadowBlur = p.size > 10 ? 30 : 15
-            ctx.beginPath()
-            ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI * 2)
-            ctx.fill()
+            if (el === "haos" || el === "light" || el === "fire" || el === "pyrus") {
+              ctx.shadowColor = p.color
+              ctx.shadowBlur = 10
+            }
+            if (p.shape === "shard") {
+              ctx.beginPath()
+              ctx.moveTo(0, -p.size); ctx.lineTo(p.size, p.size); ctx.lineTo(-p.size, p.size); ctx.closePath()
+              ctx.fill()
+            } else {
+              ctx.beginPath(); ctx.arc(0, 0, p.size, 0, Math.PI * 2); ctx.fill()
+            }
             ctx.restore()
           }
         })
 
-        // Central glow for all elements
-        const glowAlpha = Math.max(0, 1 - elapsed / 700)
+        // Central glow
+        const glowAlpha = Math.max(0, 1 - elapsed / 600)
         if (glowAlpha > 0) {
-          const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 140)
+          const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 100)
           gradient.addColorStop(0, getElementGlow(effect.element).replace("0.8", String(glowAlpha * 0.6)))
-          gradient.addColorStop(0.5, getElementGlow(effect.element).replace("0.8", String(glowAlpha * 0.25)))
           gradient.addColorStop(1, "transparent")
           ctx.fillStyle = gradient
-          ctx.fillRect(effect.x - 140, effect.y - 140, 280, 280)
+          ctx.fillRect(effect.x - 100, effect.y - 100, 200, 200)
         }
       })
 
@@ -2499,11 +2005,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
 
     animationId = requestAnimationFrame(animate)
-
-    return () => {
-      if (animationId) cancelAnimationFrame(animationId)
-    }
-  }, [explosionEffects]) // Dependency array includes explosionEffects to re-run when effects are added/removed
+    return () => cancelAnimationFrame(animationId)
+  }, [explosionEffects])
 
   const canPlayerAttack = () => {
     if (phase !== "battle") return false
@@ -2530,6 +2033,103 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       card.type === "ultimateGuardian" ||
       card.type === "troops"
     )
+  }
+
+  // Brotherhood Helpers
+  const isAvalonUnit = (card: GameCard) => {
+    const name = card.name.toLowerCase()
+    return name.includes("arthur") || 
+           name.includes("morgana") || 
+           name.includes("galahad") || 
+           name.includes("vivian") || 
+           name.includes("merlin") || 
+           name.includes("mordred") || 
+           name.includes("cavaleiro verde") || 
+           name.includes("caveiro afogado") // Sic: handle typo in card name
+  }
+
+  const isGreatOrderUnit = (card: GameCard) => {
+    const name = card.name.toLowerCase()
+    return name.includes("fehnon") || name.includes("tsubasa")
+  }
+
+  const isScandinavianAngel = (card: GameCard) => {
+    return card.name.toLowerCase().includes("scandinavian angel")
+  }
+
+  const isTormentaProminence = (card: GameCard) => {
+    return card.name.toLowerCase().includes("jaden")
+  }
+
+  const isTroopUnit = (card: GameCard) => {
+    return card.type === "troops"
+  }
+
+  const calculateCardDP = (card: GameCard, ownerField: FieldState, isEnemy: boolean): number => {
+    let dp = card.dp
+    
+    // Check scenarios (both can be active at the same time in some games, but here we check both fields)
+    const scenarios = [
+      { card: playerField.scenarioZone, isPlayer: true },
+      { card: enemyField.scenarioZone, isPlayer: false }
+    ]
+
+    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) => {
+      if (!scenario) return
+
+      const ability = scenario.ability
+      const isCardOwner = !isEnemy === scenarioOwnerIsPlayer
+
+      if (ability === "RUÍNAS ABANDONADAS") {
+        let applied = false
+        if (isGreatOrderUnit(card)) {
+          dp += 2
+          applied = true
+        }
+        if (!applied && isTroopUnit(card)) {
+          dp += 2
+        }
+      } else if (ability === "REINO DE CAMELOT") {
+        let applied = false
+        if (isAvalonUnit(card)) {
+          dp += 3
+          applied = true
+        }
+        if (!applied && card.element === "Darkus") {
+          dp += 2
+          applied = true
+        }
+        // Debuff: Only if this scenario belongs to the OPPONENT of this card
+        if (!applied && !isCardOwner) {
+          dp -= 2
+        }
+      } else if (ability === "ARENA ESCANDINAVA") {
+        let applied = false
+        if (isScandinavianAngel(card)) {
+          dp += 3
+          applied = true
+        }
+        if (!applied && !isCardOwner) {
+          dp -= 1
+        }
+      } else if (ability === "VILA DA PÓLVORA") {
+        let applied = false
+        if (isTormentaProminence(card)) {
+          dp += 2
+          applied = true
+        }
+        if (!applied && card.element === "Pyrus") {
+          dp += 1
+          applied = true
+        }
+        if (!applied && !isCardOwner) {
+          dp -= 3
+        }
+      }
+    })
+
+    // Clamp DP to minimum 0
+    return Math.max(0, dp)
   }
 
   const canUnitAttackNow = (card: FieldCard | null): boolean => {
@@ -2561,6 +2161,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       ...prev,
       hand,
       deck: remainingDeck,
+      tap: deck.tapCards ? [...deck.tapCards] : [],
       life: 20,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
@@ -2577,6 +2178,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       ...prev,
       hand: botHand,
       deck: botRemaining,
+      tap: deck.tapCards ? [...deck.tapCards] : [],
       life: 20,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
@@ -2629,7 +2231,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
       const fieldCard: FieldCard = {
         ...cardToPlace,
-        currentDp: cardToPlace.dp,
+        currentDp: calculateCardDP(cardToPlace, playerField, false),
         canAttack: false,
         hasAttacked: false,
         canAttackTurn: turn, // Store current turn when card is placed
@@ -2966,11 +2568,51 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!cardToPlace || cardToPlace.type !== "scenario") return
     if (playerField.scenarioZone !== null) return
 
-    setPlayerField((prev) => ({
-      ...prev,
-      scenarioZone: cardToPlace,
-      hand: prev.hand.filter((_, i) => i !== cardIndex),
-    }))
+    setPlayerField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
+      let newDeck = prev.deck
+      let finalScenarioZone = cardToPlace
+
+      // Ruinas Abandonadas and Arena Escandinava: Draw 1 card when played
+      if (cardToPlace.ability === "RUÍNAS ABANDONADAS" || cardToPlace.ability === "ARENA ESCANDINAVA") {
+        if (newDeck.length > 0) {
+          const drawn = newDeck[0]
+          newDeck = newDeck.slice(1)
+          newHand.push(drawn)
+          setTimeout(() => {
+            showDrawAnimation(drawn)
+            showEffectFeedback(`${cardToPlace.name}: Comprou 1 carta!`, "success")
+          }, 300)
+        }
+      }
+
+      // Prepare updated zones with scenario buffs
+      const updatedPlayerUnitZone = prev.unitZone.map(u => {
+        if (!u) return null
+        return { ...u, currentDp: calculateCardDP(u, prev, false) }
+      })
+
+      // Also update enemy units if scenario provides debuffs/buffs
+      setEnemyField(enemyPrev => ({
+        ...enemyPrev,
+        unitZone: enemyPrev.unitZone.map(u => {
+          if (!u) return null
+          return { ...u, currentDp: calculateCardDP(u, enemyPrev, true) }
+        })
+      }))
+
+      if (cardToPlace.ability === "REINO DE CAMELOT" || cardToPlace.ability === "VILA DA PÓLVORA") {
+        setTimeout(() => showEffectFeedback(`${cardToPlace.name} ativado! O campo mudou!`, "success"), 500)
+      }
+
+      return {
+        ...prev,
+        scenarioZone: finalScenarioZone,
+        hand: newHand,
+        deck: newDeck,
+        unitZone: updatedPlayerUnitZone,
+      }
+    })
 
     setSelectedHandCard(null)
     setDraggedHandCard(null)
@@ -3162,6 +2804,68 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     }
+  }
+
+  // Play a card from TAP (Tactical Access Pile)
+  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number) => {
+    if (!isPlayerTurn || phase !== "main") return
+
+    // Every 3 turns restriction
+    const isTapAvailable = turn > 0 && turn % 3 === 0
+    if (!isTapAvailable) {
+      showEffectFeedback("TAP Pile disponivel apenas a cada 3 turnos!", "error")
+      return
+    }
+
+    const card = playerField.tap[cardIndex]
+    if (!card) return
+
+    // Check space
+    if (zone === "unit" && playerField.unitZone[targetIndex!] !== null) return
+    if (zone === "function" && playerField.functionZone[targetIndex!] !== null) return
+    if (zone === "scenario" && playerField.scenarioZone !== null) return
+    if (zone === "ultimate" && playerField.ultimateZone !== null) return
+
+    setPlayerField((prev) => {
+      const newTap = prev.tap.filter((_, i) => i !== cardIndex)
+
+      if (zone === "unit") {
+        const newUnitZone = [...prev.unitZone]
+        newUnitZone[targetIndex!] = {
+          ...card,
+          currentDp: card.dp,
+          canAttack: false,
+          hasAttacked: false,
+          canAttackTurn: turn,
+        }
+        return { ...prev, unitZone: newUnitZone, tap: newTap }
+      } else if (zone === "function") {
+        const newFunctionZone = [...prev.functionZone]
+        const isTrap = card.type === "trap"
+        newFunctionZone[targetIndex!] = {
+          ...card,
+          isFaceDown: isTrap,
+        } as FunctionZoneCard
+        return { ...prev, functionZone: newFunctionZone, tap: newTap }
+      } else if (zone === "scenario") {
+        return { ...prev, scenarioZone: card, tap: newTap }
+      } else if (zone === "ultimate") {
+        return {
+          ...prev,
+          ultimateZone: {
+            ...card,
+            currentDp: card.dp,
+            canAttack: false,
+            hasAttacked: false,
+            canAttackTurn: turn,
+          },
+          tap: newTap,
+        }
+      }
+      return prev
+    })
+
+    setTapView(null)
   }
 
   // Handle UG target selection for any enemy card (TWILIGH AVALON / MEFISTO)
@@ -3439,13 +3143,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   )
 
   const handleAttackEnd = useCallback(() => {
-    if (!isDraggingRef.current) return
+    if (!isDraggingRef.current || animationInProgressRef.current) return
     isDraggingRef.current = false
+    animationInProgressRef.current = true
+    attackIdRef.current++
+    const currentAttackId = attackIdRef.current
 
     if (attackState.isAttacking && attackState.attackerIndex !== null && attackState.targetInfo) {
       const attacker = playerField.unitZone[attackState.attackerIndex]
       if (attacker) {
-
         // CALEM SR: Pulso da Nulidade - draw on attack every 3 turns
         if (attacker.id === "calem-sr" && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
@@ -3498,7 +3204,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: Selecione uma carta do oponente para destruir!", "warning")
               return
             } else {
-              // No targets → +4DP
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
@@ -3513,180 +3218,221 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // Generate projectile animation
+        const attackerElement = document.querySelector(`[data-player-unit="${attackState.attackerIndex}"]`)
+        const attackerRect = attackerElement?.getBoundingClientRect()
+        const startX = attackerRect ? attackerRect.left + attackerRect.width / 2 : window.innerWidth / 2
+        const startY = attackerRect ? attackerRect.top + attackerRect.height / 2 : window.innerHeight / 2
+
+        let targetX = startX
+        let targetY = startY
+
         if (attackState.targetInfo.type === "unit" && attackState.targetInfo.index !== undefined) {
-          // Attack an enemy unit
-          const defender = enemyField.unitZone[attackState.targetInfo.index]
-          if (defender) {
-            // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
-            const trapPortaoIndex = enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown);
-            if (trapPortaoIndex !== -1) {
-              // Trap activated: Portão da Fortaleza
-              setEnemyField(prev => {
-                const newFuncs = [...prev.functionZone];
-                newFuncs[trapPortaoIndex] = { ...newFuncs[trapPortaoIndex]!, isFaceDown: false };
-
-                // Enemy discards a random card from hand to activate (if possible)
-                const newHand = [...prev.hand];
-                if (newHand.length > 0) {
-                  const discardIdx = Math.floor(Math.random() * newHand.length);
-                  const discarded = newHand.splice(discardIdx, 1)[0];
-                  return { ...prev, functionZone: newFuncs, hand: newHand, graveyard: [...prev.graveyard, discarded] };
-                }
-                return { ...prev, functionZone: newFuncs };
-              });
-
-              // Return attacker to hand
-              setPlayerField(prev => {
-                const newUnitZone = [...prev.unitZone];
-                newUnitZone[attackState.attackerIndex!] = null;
-                return { ...prev, unitZone: newUnitZone, hand: [...prev.hand, attacker] };
-              });
-              showEffectFeedback("Armadilha Ativada! Portão da Fortaleza negou o ataque e devolveu sua unidade para a mão!", "error");
-
-              setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null });
-              return;
-            }
-
-            const attackerDp = attacker.currentDp || attacker.dp
-            const defenderDp = defender.currentDp || defender.dp
-            const newDefenderDp = defenderDp - attackerDp
-
-            // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
-            if (attackerDp > 0) {
-              const trapContraAtaqueIndex = enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown);
-              if (trapContraAtaqueIndex !== -1) {
-                setEnemyField(prev => {
-                  const newFuncs = [...prev.functionZone];
-                  newFuncs[trapContraAtaqueIndex] = { ...newFuncs[trapContraAtaqueIndex]!, isFaceDown: false };
-                  return { ...prev, functionZone: newFuncs };
-                });
-                setPlayerField(prev => ({
-                  ...prev,
-                  life: Math.max(0, prev.life - attackerDp)
-                }));
-                showEffectFeedback(`Armadilha Ativada! Contra-Ataque Surpresa devolveu ${attackerDp} de dano aos seus LP!`, "error");
-              }
-            }
-            const targetIndex = attackState.targetInfo.index
-
-            // Get target element position for explosion
-            const targetElement = document.querySelector(`[data-enemy-unit="${targetIndex}"]`)
-            const targetRect = targetElement?.getBoundingClientRect()
-
-            setEnemyField((prev) => {
-              const newUnitZone = [...prev.unitZone]
-              const newGraveyard = [...prev.graveyard]
-
-              // PROTONIX SWORD protection: unit equipped with it cannot be destroyed in battle (stays at 1 DP)
-              const isProtectedByProtonix = prev.ultimateZone &&
-                prev.ultimateZone.ability === "PROTONIX SWORD" &&
-                prev.ultimateZone.requiresUnit === defender.name
-
-              if (newDefenderDp <= 0) {
-                if (isProtectedByProtonix) {
-                  // Protected: stays at 1 DP instead of being destroyed
-                  newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
-                  showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
-                } else {
-                  if (targetRect) {
-                    showDestructionAnimation(
-                      defender,
-                      targetRect.left + targetRect.width / 2,
-                      targetRect.top + targetRect.height / 2
-                    )
-                    setTimeout(() => {
-                      triggerExplosion(
-                        targetRect.left + targetRect.width / 2,
-                        targetRect.top + targetRect.height / 2,
-                        attacker.element || "neutral",
-                      )
-                    }, 400)
-                  }
-                  newGraveyard.push(defender)
-                  newUnitZone[targetIndex] = null
-                }
-              } else {
-                newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
-              }
-              return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
-            })
-
-            // CALEM SR: Vácuo de Essência - deal 1DP direct on kill
-            if (newDefenderDp <= 0 && attacker.id === "calem-sr") {
-              setTimeout(() => {
-                setEnemyField((prev) => ({ ...prev, life: prev.life - 1 }))
-                showEffectFeedback("VÁCUO DE ESSÊNCIA: 1DP de dano direto ao oponente!", "warning")
-              }, 600)
-            }
-
-            // CALEM UR: Horizonte de Eventos - +2DP on kill (until end of turn, kept as buff)
-            if (newDefenderDp <= 0 && attacker.id === "calem-ur") {
-              setPlayerField((prev) => {
-                const newUnitZone = [...prev.unitZone]
-                const idx = attackState.attackerIndex!
-                if (newUnitZone[idx]) {
-                  const cur = newUnitZone[idx]!
-                  newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 2 }
-                }
-                return { ...prev, unitZone: newUnitZone }
-              })
-              showEffectFeedback("HORIZONTE DE EVENTOS: Calem +2DP até o final do turno!", "success")
-            }
-
-            // CALEM LR: Legião do Guardião Alado - +3DP on kill
-            if (newDefenderDp <= 0 && attacker.id === "calem-lr") {
-              setPlayerField((prev) => {
-                const newUnitZone = [...prev.unitZone]
-                const idx = attackState.attackerIndex!
-                if (newUnitZone[idx]) {
-                  const cur = newUnitZone[idx]!
-                  newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
-                }
-                return { ...prev, unitZone: newUnitZone }
-              })
-              showEffectFeedback("LEGIÃO DO GUARDIÃO ALADO: Calem +3DP!", "success")
-            }
-
-            // Determine if attacker can attack again (Calem UR double attack)
-            const keepAttackReady = calemUrDoubleAttack && attacker.id === "calem-ur"
-
-            setPlayerField((prev) => {
-              const newUnitZone = [...prev.unitZone]
-              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
-              return { ...prev, unitZone: newUnitZone }
-            })
-            if (keepAttackReady) setCalemUrDoubleAttack(false)
+          const targetElement = document.querySelector(`[data-enemy-unit="${attackState.targetInfo.index}"]`)
+          const targetRect = targetElement?.getBoundingClientRect()
+          if (targetRect) {
+            targetX = targetRect.left + targetRect.width / 2
+            targetY = targetRect.top + targetRect.height / 2
           }
         } else if (attackState.targetInfo.type === "direct") {
-          // Direct attack to opponent's Life Points
           const directZone = document.querySelector("[data-direct-attack]")
           const directRect = directZone?.getBoundingClientRect()
           if (directRect) {
-            triggerExplosion(
-              // Use triggerExplosion instead of createExplosionEffect
-              directRect.left + directRect.width / 2,
-              directRect.top + directRect.height / 2,
-              attacker.element || "neutral",
-            )
+            targetX = directRect.left + directRect.width / 2
+            targetY = directRect.top + directRect.height / 2
           }
-
-          setEnemyField((prev) => ({
-            ...prev,
-            life: prev.life - (attacker.currentDp || attacker.dp), // Reduce life by attacker's DP
-          }))
-          setPlayerField((prev) => {
-            const newUnitZone = [...prev.unitZone]
-            // Mark attacker as having attacked
-            newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
-            return { ...prev, unitZone: newUnitZone }
-          })
         }
-      }
-    }
 
-    // Reset attack state regardless of whether an attack was successful
-    setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
-  }, [attackState, playerField.unitZone, enemyField.unitZone, triggerExplosion])
+        const projId = `proj-${Date.now()}-${currentAttackId}`
+        setActiveProjectiles((prev) => [
+          ...prev,
+          { 
+            id: projId, 
+            startX, 
+            startY, 
+            targetX, 
+            targetY, 
+            element: attacker.element || "neutral",
+            attackerImage: attacker.image,
+            isDirect: attackState.targetInfo!.type === "direct"
+          },
+        ])
+
+        // Hide arrow immediately — before any animation
+        setAttackState({ isAttacking: false, attackerIndex: attackState.attackerIndex, targetInfo: attackState.targetInfo })
+
+        setTimeout(() => {
+          // Reset fully after projectile lands
+          if (attackState.targetInfo!.type === "unit" && attackState.targetInfo!.index !== undefined) {
+            const defender = enemyField.unitZone[attackState.targetInfo!.index]
+            if (defender) {
+              // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
+              const trapPortaoIndex = enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
+              if (trapPortaoIndex !== -1) {
+                setEnemyField(prev => {
+                  const newFuncs = [...prev.functionZone]
+                  newFuncs[trapPortaoIndex] = { ...newFuncs[trapPortaoIndex]!, isFaceDown: false }
+                  const newHand = [...prev.hand]
+                  if (newHand.length > 0) {
+                    const discardIdx = Math.floor(Math.random() * newHand.length)
+                    const discarded = newHand.splice(discardIdx, 1)[0]
+                    return { ...prev, functionZone: newFuncs, hand: newHand, graveyard: [...prev.graveyard, discarded] }
+                  }
+                  return { ...prev, functionZone: newFuncs }
+                })
+                setPlayerField(prev => {
+                  const newUnitZone = [...prev.unitZone]
+                  newUnitZone[attackState.attackerIndex!] = null
+                  return { ...prev, unitZone: newUnitZone, hand: [...prev.hand, attacker] }
+                })
+                showEffectFeedback("Armadilha Ativada! Portão da Fortaleza negou o ataque e devolveu sua unidade para a mão!", "error")
+                setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
+                animationInProgressRef.current = false
+                return
+              }
+
+              const attackerDp = attacker.currentDp || attacker.dp
+              const defenderDp = defender.currentDp || defender.dp
+              const newDefenderDp = defenderDp - attackerDp
+
+              // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
+              if (attackerDp > 0) {
+                const trapContraAtaqueIndex = enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown)
+                if (trapContraAtaqueIndex !== -1) {
+                  setEnemyField(prev => {
+                    const newFuncs = [...prev.functionZone]
+                    newFuncs[trapContraAtaqueIndex] = { ...newFuncs[trapContraAtaqueIndex]!, isFaceDown: false }
+                    return { ...prev, functionZone: newFuncs }
+                  })
+                  setPlayerField(prev => ({
+                    ...prev,
+                    life: Math.max(0, prev.life - attackerDp)
+                  }))
+                  showEffectFeedback(`Armadilha Ativada! Contra-Ataque Surpresa devolveu ${attackerDp} de dano aos seus LP!`, "error")
+                }
+              }
+
+              const targetIndex = attackState.targetInfo!.index
+              const targetElement = document.querySelector(`[data-enemy-unit="${targetIndex}"]`)
+              const targetRect = targetElement?.getBoundingClientRect()
+
+              setEnemyField((prev) => {
+                const newUnitZone = [...prev.unitZone]
+                const newGraveyard = [...prev.graveyard]
+                const isProtectedByProtonix = prev.ultimateZone &&
+                  prev.ultimateZone.ability === "PROTONIX SWORD" &&
+                  prev.ultimateZone.requiresUnit === defender.name
+
+                if (newDefenderDp <= 0) {
+                  if (isProtectedByProtonix) {
+                    newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
+                    showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
+                  } else {
+                    if (targetRect) {
+                      showDestructionAnimation(
+                        defender,
+                        targetRect.left + targetRect.width / 2,
+                        targetRect.top + targetRect.height / 2
+                      )
+                      setTimeout(() => {
+                        triggerExplosion(
+                          targetRect.left + targetRect.width / 2,
+                          targetRect.top + targetRect.height / 2,
+                          attacker.element || "neutral",
+                        )
+                      }, 400)
+                    }
+                    newGraveyard.push(defender)
+                    newUnitZone[targetIndex] = null
+                  }
+                } else {
+                  newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
+                  if (targetRect) {
+                    triggerExplosion(
+                      targetRect.left + targetRect.width / 2,
+                      targetRect.top + targetRect.height / 2,
+                      attacker.element || "neutral",
+                    )
+                  }
+                }
+                return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+              })
+
+              if (newDefenderDp <= 0 && attacker.id === "calem-sr") {
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
+                  showEffectFeedback("VÁCUO DE ESSÊNCIA: 1DP de dano direto ao oponente!", "warning")
+                }, 600)
+              }
+
+              if (newDefenderDp <= 0 && attacker.id === "calem-ur") {
+                setPlayerField((prev) => {
+                  const newUnitZone = [...prev.unitZone]
+                  const idx = attackState.attackerIndex!
+                  if (newUnitZone[idx]) {
+                    const cur = newUnitZone[idx]!
+                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 2 }
+                  }
+                  return { ...prev, unitZone: newUnitZone }
+                })
+                showEffectFeedback("HORIZONTE DE EVENTOS: Calem +2DP até o final do turno!", "success")
+              }
+
+              if (newDefenderDp <= 0 && attacker.id === "calem-lr") {
+                setPlayerField((prev) => {
+                  const newUnitZone = [...prev.unitZone]
+                  const idx = attackState.attackerIndex!
+                  if (newUnitZone[idx]) {
+                    const cur = newUnitZone[idx]!
+                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
+                  }
+                  return { ...prev, unitZone: newUnitZone }
+                })
+                showEffectFeedback("LEGIÃO DO GUARDIÃO ALADO: Calem +3DP!", "success")
+              }
+
+              const keepAttackReady = calemUrDoubleAttack && attacker.id === "calem-ur"
+              setPlayerField((prev) => {
+                const newUnitZone = [...prev.unitZone]
+                newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
+                return { ...prev, unitZone: newUnitZone }
+              })
+              if (keepAttackReady) setCalemUrDoubleAttack(false)
+            }
+          } else if (attackState.targetInfo!.type === "direct") {
+            const directZone = document.querySelector("[data-direct-attack]")
+            const directRect = directZone?.getBoundingClientRect()
+            if (directRect) {
+              triggerExplosion(
+                directRect.left + directRect.width / 2,
+                directRect.top + directRect.height / 2,
+                attacker.element || "neutral",
+              )
+            }
+            setEnemyField((prev) => ({
+              ...prev,
+              life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
+            }))
+            setPlayerField((prev) => {
+              const newUnitZone = [...prev.unitZone]
+              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
+              return { ...prev, unitZone: newUnitZone }
+            })
+          }
+          setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
+          setTimeout(() => {
+            animationInProgressRef.current = false
+          }, 100)
+        }, PROJECTILE_DURATION)
+      } else {
+        setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
+        animationInProgressRef.current = false
+      }
+    } else {
+      setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
+      animationInProgressRef.current = false
+    }
+  }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, setEnemyField, setPlayerField, setAttackState, showEffectFeedback])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -3708,8 +3454,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
-    dragPosRef.current = { x: clientX, y: clientY, rotation: 0 }
-    setDraggedHandCard({ index, card })
+    dragPosRef.current = { x: clientX, y: clientY, rotation: 0, lastCheck: 0 }
+    setDraggedHandCard({ index, card, currentY: clientY })
     setSelectedHandCard(index)
 
     // Update ghost position immediately
@@ -3877,9 +3623,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           if (card && card.type === "scenario" && !newScenarioZone) {
             newScenarioZone = card
             newHand.splice(i, 1)
+
+            // Bot scenario effects
+            if (card.ability === "RUÍNAS ABANDONADAS" || card.ability === "ARENA ESCANDINAVA") {
+              const drawn = prev.deck[0]
+              if (drawn) {
+                newHand.push(drawn)
+                setEnemyField(e => ({ ...e, deck: e.deck.slice(1) }))
+                showEffectFeedback(`Bot: ${card.name} ativado! Bot comprou 1 carta.`, "warning")
+              }
+            }
             break // Only one scenario at a time
           }
         }
+
+        // Apply scenario buffs to bot units if a scenario was played OR if units are placed
+        // (We ensure DP is correct when units are placed later in this function)
 
         // Bot plays Ultimate cards (ultimateGear, ultimateGuardian) ONLY in Ultimate zone
         for (let i = newHand.length - 1; i >= 0; i--) {
@@ -3928,7 +3687,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             if (emptySlot !== -1) {
               newUnitZone[emptySlot] = {
                 ...card,
-                currentDp: card.dp,
+                currentDp: calculateCardDP(card, prev, true),
                 canAttack: false,
                 hasAttacked: false,
                 canAttackTurn: turn,
@@ -3950,11 +3709,46 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // Bot plays cards from TAP if space exists and hand is low or no units
+        if (prev.tap.length > 0) {
+          const emptyUnitSlot = newUnitZone.findIndex(s => s === null)
+          if (emptyUnitSlot !== -1) {
+            const tapUnitIdx = prev.tap.findIndex(c => isUnitCard(c) && !isUltimateCard(c))
+            if (tapUnitIdx !== -1) {
+              const card = prev.tap[tapUnitIdx]
+              newUnitZone[emptyUnitSlot] = {
+                ...card,
+                currentDp: calculateCardDP(card, prev, true),
+                canAttack: false,
+                hasAttacked: false,
+                canAttackTurn: turn,
+              }
+              prev.tap.splice(tapUnitIdx, 1)
+            }
+          }
+
+          if (!newUltimateZone) {
+            const tapUltIdx = prev.tap.findIndex(c => isUltimateCard(c))
+            if (tapUltIdx !== -1) {
+              const card = prev.tap[tapUltIdx]
+              newUltimateZone = {
+                ...card,
+                currentDp: card.dp,
+                canAttack: false,
+                hasAttacked: false,
+                canAttackTurn: turn,
+              }
+              prev.tap.splice(tapUltIdx, 1)
+              setEnemyUgAbilityUsed(false)
+            }
+          }
+        }
+
         return {
           ...prev,
           hand: newHand,
           unitZone: newUnitZone as (FieldCard | null)[],
-          functionZone: newFunctionZone,
+          functionZone: newFunctionZone as FunctionZoneCard[],
           scenarioZone: newScenarioZone,
           ultimateZone: newUltimateZone,
         }
@@ -4472,7 +4266,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   if (gameResult) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black/90">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black/90" suppressHydrationWarning>
         <h1 className={`text-6xl font-bold mb-8 ${gameResult === "won" ? "text-green-400" : "text-red-400"}`}>
           {gameResult === "won" ? t("victory") : t("defeat")}
         </h1>
@@ -4486,6 +4280,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   return (
     <div
       ref={fieldRef}
+      suppressHydrationWarning={true}
       className="relative h-screen flex flex-col overflow-hidden select-none touch-none"
       style={{
         background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 25%, #0f0f2f 50%, #1a1a3a 75%, #0a0a1a 100%)",
@@ -4511,6 +4306,17 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         handleHandCardDragEnd()
       }}
     >
+      {/* Active Projectiles */}
+      {activeProjectiles.map((proj) => (
+        <ElementalAttackAnimation
+          key={proj.id}
+          {...proj}
+          portalTarget={fieldRef.current}
+          onImpact={handleImpact}
+          onComplete={handleAnimationComplete}
+        />
+      ))}
+
       {/* Impact Flash Overlay - Epic cinematic effect */}
       {impactFlash.active && (
         <div
@@ -4707,15 +4513,53 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <div className="flex justify-center items-center gap-3">
               {/* Enemy Deck, Graveyard, Scenario and Ultimate */}
               <div className="flex items-start gap-1">
-                <div className="flex flex-col gap-1">
-                  <div
-                    className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
-                    onClick={() => setGraveyardView("enemy")}
-                  >
-                    {enemyField.graveyard.length}
+                <div className="flex gap-1">
+                  <div className="flex flex-col gap-1">
+                    <div
+                      className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
+                      onClick={() => setGraveyardView("enemy")}
+                    >
+                      {enemyField.graveyard.length}
+                    </div>
+                    <div className="w-14 h-20 relative">
+                      {enemyField.deck.length > 0 ? (
+                        <>
+                          {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) => (
+                            <div
+                              key={i}
+                              className="absolute inset-0 rounded border border-black/40 shadow-sm overflow-hidden bg-red-900"
+                              style={{
+                                transform: `translateY(-${i * 1.5}px)`,
+                                zIndex: 10 - i,
+                              }}
+                            >
+                              <Image
+                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                alt="Deck"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ))}
+                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                            <span className="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full border border-white/20 font-bold backdrop-blur-sm">
+                              {enemyField.deck.length}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 rounded border-2 border-dashed border-red-900/40 flex items-center justify-center">
+                          <span className="text-red-900/40 text-[8px] font-bold">VAZIO</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="w-14 h-20 bg-red-700/80 rounded text-sm text-white flex items-center justify-center font-bold border border-red-500/50">
-                    {enemyField.deck.length}
+                  <div
+                    className="w-14 h-20 bg-orange-600/80 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border border-orange-400/50 cursor-pointer hover:bg-orange-500/80 transition-animation"
+                    onClick={() => setTapView("enemy")}
+                  >
+                    <span className="opacity-70">TAP</span>
+                    <span>{enemyField.tap.length}</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -4895,7 +4739,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       draggedHandCard &&
                       isUnitCard(draggedHandCard.card) &&
                       !card &&
-                      draggedHandCard.currentY < window.innerHeight * 0.6
+                      draggedHandCard.currentY! < window.innerHeight * 0.6
                     const canAttack = card && canUnitAttackNow(card as FieldCard)
 
                     return (
@@ -4980,7 +4824,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       draggedHandCard &&
                       !isUnitCard(draggedHandCard.card) &&
                       !card &&
-                      draggedHandCard.currentY < window.innerHeight * 0.6
+                      draggedHandCard.currentY! < window.innerHeight * 0.6
 
                     return (
                       <div
@@ -5131,16 +4975,95 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <div className="w-14 h-20 bg-blue-700/80 rounded text-sm text-white flex items-center justify-center font-bold border border-blue-500/50">
-                    {playerField.deck.length}
+                <div className="flex gap-1">
+                  <div className="flex flex-col gap-1">
+                    <div className="w-14 h-20 relative">
+                      {playerField.deck.length > 0 ? (
+                        <>
+                          {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) => (
+                            <div
+                              key={i}
+                              className="absolute inset-0 rounded border border-black/40 shadow-sm overflow-hidden bg-blue-900"
+                              style={{
+                                transform: `translateY(-${i * 1.5}px)`,
+                                zIndex: 10 - i,
+                              }}
+                            >
+                              <Image
+                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                alt="Deck"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ))}
+                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                            <span className="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full border border-white/20 font-bold backdrop-blur-sm">
+                              {playerField.deck.length}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 rounded border-2 border-dashed border-blue-900/40 flex items-center justify-center">
+                          <span className="text-blue-900/40 text-[8px] font-bold">VAZIO</span>
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
+                      onClick={() => setGraveyardView("player")}
+                    >
+                      {playerField.graveyard.length}
+                    </div>
                   </div>
-                  <div
-                    className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
-                    onClick={() => setGraveyardView("player")}
-                  >
-                    {playerField.graveyard.length}
-                  </div>
+                    {/* TAP Pile Button with availability glow and card preview */}
+                    {(() => {
+                      const isTapAvailable = turn > 0 && turn % 3 === 0 && isPlayerTurn && phase === "main"
+                      return (
+                        <div className="relative group/tap">
+                          <div
+                            className={`w-14 h-20 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
+                              ? "bg-orange-600/90 border-orange-400"
+                              : "bg-slate-800/80 border-slate-700/50 opacity-60 grayscale-[0.5]"
+                              }`}
+                            onClick={() => setTapView("player")}
+                          >
+                            {isTapAvailable && (
+                              <div className="absolute -inset-1 bg-orange-500/20 rounded pointer-events-none" />
+                            )}
+                            <span className={`opacity-70 ${isTapAvailable ? "text-orange-200" : ""}`}>TAP</span>
+                            <span className={isTapAvailable ? "text-xl mt-1" : ""}>{playerField.tap.length}</span>
+                            {isTapAvailable && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-white" />
+                            )}
+                          </div>
+
+                          {/* TAP Card Preview - Only shown when available */}
+                          {isTapAvailable && playerField.tap.length > 0 && (
+                            <div className="absolute left-full top-0 ml-4 flex gap-1 animate-in slide-in-from-left-4 fade-in duration-500 pointer-events-none">
+                              {playerField.tap.slice(0, 3).map((card, idx) => (
+                                <div 
+                                  key={idx} 
+                                  className="w-10 h-14 rounded border border-orange-500/50 overflow-hidden shadow-lg shadow-black/50 bg-slate-900"
+                                  style={{ 
+                                    transform: `translateX(-${idx * 15}px) rotate(${idx * 5 - 5}deg)`,
+                                    zIndex: 5 - idx 
+                                  }}
+                                >
+                                  <Image src={card.image || "/placeholder.svg"} alt="" fill className="object-cover" />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                                </div>
+                              ))}
+                              {playerField.tap.length > 3 && (
+                                <div className="w-6 h-14 flex items-center justify-center text-[8px] font-black text-orange-400 bg-black/40 rounded border border-orange-500/20 backdrop-blur-sm -ml-4">
+                                  +{playerField.tap.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                 </div>
               </div>
             </div>
@@ -5218,18 +5141,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 <div
                   key={`hand-${card.id}-${i}`}
                   onMouseDown={(e) => {
+                    handleCardPressStart(card)
                     if (canPlay) {
                       handleHandCardDragStart(i, e)
                     }
-                    handleCardPressStart(card)
                   }}
                   onMouseUp={handleCardPressEnd}
                   onMouseLeave={handleCardPressEnd}
                   onTouchStart={(e) => {
+                    handleCardPressStart(card)
                     if (canPlay) {
                       handleHandCardDragStart(i, e)
                     }
-                    handleCardPressStart(card)
                   }}
                   onTouchEnd={handleCardPressEnd}
                   onClick={() => {
@@ -5745,6 +5668,161 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             >
               Cancelar
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* TAP Modal - Redesigned with premium aesthetics */}
+      {tapView && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+          <div className="bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-orange-500/40 rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-orange-600/10 to-transparent">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 via-red-600 to-orange-700 flex items-center justify-center shadow-lg transform rotate-3">
+                  <Swords className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-4xl font-black text-white tracking-widest uppercase italic">TAP</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTapView(null)}
+                className="text-slate-500 hover:text-white hover:bg-white/5 rounded-full w-12 h-12 transition-all"
+              >
+                <X className="w-8 h-8" />
+              </Button>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-10 scrollbar-hide">
+              {(() => {
+                const isAvailable = turn > 0 && turn % 3 === 0 && isPlayerTurn && phase === "main"
+                const activeTap = tapView === "player" ? playerField.tap : enemyField.tap
+
+                if (activeTap.length === 0) {
+                  return (
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-700 gap-5 opacity-50">
+                      <div className="w-20 h-20 rounded-full border-4 border-dashed border-slate-800 flex items-center justify-center">
+                        <Swords className="w-10 h-10" />
+                      </div>
+                      <p className="font-bold text-xl tracking-wider">TAP AREA DEPLETED</p>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-10 justify-items-center">
+                    {activeTap.map((card, i) => {
+                      const isPlayable = tapView === "player" && isAvailable
+                      return (
+                        <div 
+                          key={i} 
+                          className="relative group perspective-1000"
+                          onMouseDown={() => handleCardPressStart(card)}
+                          onMouseUp={handleCardPressEnd}
+                          onMouseLeave={handleCardPressEnd}
+                          onTouchStart={() => handleCardPressStart(card)}
+                          onTouchEnd={handleCardPressEnd}
+                        >
+                          <div
+                            className={`relative w-40 h-56 rounded-xl overflow-hidden border-2 transition-all duration-500 transform-gpu ${isPlayable
+                              ? "border-orange-500/40 cursor-pointer group-hover:scale-110 group-hover:-translate-y-4 group-hover:border-orange-400 group-hover:shadow-[0_20px_40px_rgba(249,115,22,0.3)] shadow-[0_0_20px_rgba(249,115,22,0.1)]"
+                              : "border-slate-800/50 opacity-40 grayscale-[0.8]"
+                              }`}
+                            onClick={() => {
+                              if (isPlayable) {
+                                if (isUltimateCard(card)) playCardFromTap(i, "ultimate")
+                                else if (card.type === "scenario") playCardFromTap(i, "scenario")
+                                else if (isUnitCard(card)) {
+                                  const emptyIdx = playerField.unitZone.findIndex(s => s === null)
+                                  if (emptyIdx !== -1) playCardFromTap(i, "unit", emptyIdx)
+                                  else showEffectFeedback("Sem espaço na zona de unidades!", "error")
+                                } else {
+                                  const emptyIdx = playerField.functionZone.findIndex(s => s === null)
+                                  if (emptyIdx !== -1) playCardFromTap(i, "function", emptyIdx)
+                                  else showEffectFeedback("Sem espaço na zona de funções!", "error")
+                                }
+                              }
+                            }}
+                          >
+                            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+
+                            {/* Available Glow Overlay */}
+                            {isPlayable && (
+                              <div className="absolute inset-0 bg-gradient-to-t from-orange-600/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end pb-4">
+                                <div className="bg-orange-500 text-white font-black px-4 py-2 rounded-xl text-xs shadow-2xl tracking-widest">
+                                  DEPLOY
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Shine Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-all duration-700 -translate-x-full group-hover:translate-x-full" />
+                          </div>
+
+                          {/* Card Info */}
+                          <div className="mt-4 text-center transition-all duration-300 group-hover:opacity-100 opacity-80">
+                            <div className="text-white font-black text-xs uppercase tracking-tight truncate w-40">{card.name}</div>
+                            <div className={`text-[9px] font-black uppercase mt-1 tracking-[0.2em] ${isPlayable ? "text-orange-500" : "text-slate-600"}`}>
+                              {card.type}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Footer / Status - Empty for practicality */}
+            <div className="p-4 bg-white/5 border-t border-white/5" />
+          </div>
+        </div>
+      )}
+      {/* Card Inspection Overlay */}
+      {inspectedCard && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+          onClick={() => setInspectedCard(null)}
+          onTouchEnd={() => setInspectedCard(null)}
+        >
+          <div style={{ animation: "cardInspectIn 250ms ease-out forwards" }} className="relative flex flex-col items-center">
+            {/* Glow de fundo */}
+            <div className="absolute -inset-20 bg-gradient-to-br from-cyan-500/15 to-purple-500/15 blur-3xl rounded-full" />
+
+            {/* Carta grande */}
+            <div
+              className="relative rounded-3xl border-4 border-white/40 shadow-2xl overflow-hidden bg-slate-900"
+              style={{ width: "280px", height: "392px" }}
+            >
+              <Image
+                src={inspectedCard.image || "/placeholder.svg"}
+                alt={inspectedCard.name}
+                fill
+                className="object-contain"
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+            </div>
+
+            {/* Nome e DP */}
+            <div className="mt-8 text-center bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10">
+              <div className="text-white font-bold text-2xl tracking-wide">{inspectedCard.name}</div>
+              {isUnitCard(inspectedCard) && (
+                <div className="text-cyan-400 text-lg font-bold mt-1">
+                  DP: {(inspectedCard as any).currentDp || inspectedCard.dp}
+                </div>
+              )}
+              <p className="text-slate-400 text-sm mt-2 max-w-xs line-clamp-2 italic">
+                {(inspectedCard as any).description || inspectedCard.ability || "Tactical Unit Profile"}
+              </p>
+            </div>
+
+            <div className="mt-6 text-white/50 text-sm animate-pulse flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-white/20" />
+              Toque para fechar
+            </div>
           </div>
         </div>
       )}
