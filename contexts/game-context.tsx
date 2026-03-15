@@ -1324,6 +1324,62 @@ const ALL_CARDS: Card[] = [
     category: "Action Funcion Card",
     requiresUnit: "fehnon,jaden",
   },
+  {
+    id: "investida-coordenada",
+    name: "Investida Coordenada",
+    image: "/images/cards/investida-coordenada.png",
+    rarity: "SR",
+    type: "action",
+    element: "Haos",
+    dp: 0,
+    ability: "Investida Coordenada",
+    abilityDescription:
+      "Se você tiver 2 ou mais Unidades da mesma Irmandade em seu campo, escolha uma Unidade inimiga: ela perde -2DP até o fim do turno.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
+  {
+    id: "lacos-da-ordem",
+    name: "Laços da Ordem",
+    image: "/images/cards/lacos-da-ordem.png",
+    rarity: "SR",
+    type: "action",
+    element: "Void",
+    dp: 0,
+    ability: "Laços da Ordem",
+    abilityDescription:
+      "Ative esta carta apenas se você possuir 2 ou mais Unidades da Irmandade \"The Great Order\" (Fehnon, Morgana ou Calem) em campo: Recupere uma carta Action Function do seu Cemitério. Se possuir o trio completo em campo, compre uma carta do deck; se for uma Função, escolha uma Unidade sua e adicione +2DP a ela.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
+  {
+    id: "estrategia-real",
+    name: "Estratégia Real",
+    image: "/images/cards/estrategia-real.png",
+    rarity: "SR",
+    type: "action",
+    element: "Darkus",
+    dp: 0,
+    ability: "Estratégia Real",
+    abilityDescription:
+      "Compre uma carta. Se você tiver o \"Rei Arthur\" em campo, compre duas cartas.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
+  {
+    id: "ventos-de-camelot",
+    name: "Ventos de Camelot",
+    image: "/images/cards/ventos-de-camelot.png",
+    rarity: "SR",
+    type: "action",
+    element: "Ventus",
+    dp: 0,
+    ability: "Ventos de Camelot",
+    abilityDescription:
+      "Selecione uma Unidade do Elemento Ventus ou Lightness no seu campo. Ela pode atacar duas vezes nessa fase de batalha, mas você não pode usar Magic Functions até o final desse turno.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
 ]
 
 const ALL_PLAYMATS: Playmat[] = [

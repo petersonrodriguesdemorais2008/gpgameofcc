@@ -1098,6 +1098,269 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     canActivate: () => ({ canActivate: true }),
     resolve: () => ({ success: true, message: "Armadilha ativada: Brincadeira de Mau Gosto!" }),
   },
+
+  // ========== NEW ACTION FUNCTION CARDS ==========
+
+  "investida-coordenada": {
+    id: "investida-coordenada",
+    name: "Investida Coordenada",
+    requiresTargets: true,
+    targetConfig: {
+      enemyUnits: 1,
+    },
+    canActivate: (context) => {
+      // Check if player has 2+ units of the same brotherhood
+      const units = context.playerField.unitZone.filter((u) => u !== null) as FieldCard[]
+
+      // Brotherhood check functions
+      const brotherhoods = [
+        // Avalon: Arthur, Morgana, Galahad, Vivian, Merlin, Mordred, Cavaleiro Verde, Caveiro Afogado
+        (name: string) => name.includes("arthur") || name.includes("morgana") || name.includes("galahad") || name.includes("vivian") || name.includes("merlin") || name.includes("mordred") || name.includes("cavaleiro verde") || name.includes("caveiro afogado"),
+        // The Great Order: Fehnon, Morgana, Calem
+        (name: string) => name.includes("fehnon") || name.includes("morgana") || name.includes("calem"),
+        // Scandinavian Angels
+        (name: string) => name.includes("scandinavian angel"),
+        // Tormenta Prominence: Jaden
+        (name: string) => name.includes("jaden"),
+      ]
+
+      const hasBrotherhood = brotherhoods.some((checkFn) => {
+        const count = units.filter((u) => checkFn(u.name.toLowerCase())).length
+        return count >= 2
+      })
+
+      if (!hasBrotherhood) {
+        return { canActivate: false, reason: "Você precisa ter 2 ou mais Unidades da mesma Irmandade em campo" }
+      }
+
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "O oponente não possui unidades no campo" }
+      }
+
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma unidade inimiga" }
+      }
+
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+
+      if (!enemyUnit) {
+        return { success: false, message: "Unidade inimiga não encontrada" }
+      }
+
+      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 2)
+
+      context.setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (newDp <= 0) {
+          if (newUnitZone[enemyIndex]) {
+            newGraveyard.push(newUnitZone[enemyIndex]!)
+          }
+          newUnitZone[enemyIndex] = null
+        } else if (newUnitZone[enemyIndex]) {
+          newUnitZone[enemyIndex] = {
+            ...newUnitZone[enemyIndex]!,
+            currentDp: newDp,
+          }
+        }
+        return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+      })
+
+      if (newDp <= 0) {
+        return { success: true, message: `Investida Coordenada! ${enemyUnit.name} foi destruída!` }
+      }
+      return { success: true, message: `Investida Coordenada! ${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
+    },
+  },
+
+  "lacos-da-ordem": {
+    id: "lacos-da-ordem",
+    name: "Laços da Ordem",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if player has 2+ Great Order units (Fehnon, Morgana, Calem)
+      const greatOrderNames = ["fehnon", "morgana", "calem"]
+      const greatOrderCount = context.playerField.unitZone.filter((u) => {
+        if (u === null) return false
+        const name = u.name.toLowerCase()
+        return greatOrderNames.some((n) => name.includes(n))
+      }).length
+
+      if (greatOrderCount < 2) {
+        return { canActivate: false, reason: "Você precisa ter 2 ou mais Unidades de The Great Order (Fehnon, Morgana ou Calem) em campo" }
+      }
+
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const greatOrderNames = ["fehnon", "morgana", "calem"]
+
+      // Check for trio (all 3)
+      const hasFehnon = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("fehnon"))
+      const hasMorgana = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("morgana"))
+      const hasCalem = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("calem"))
+      const hasTrio = hasFehnon && hasMorgana && hasCalem
+
+      // Base effect: recover an Action Function from graveyard
+      const actionCards = context.playerField.graveyard.filter((c) => c.type === "action")
+      let recoveredCard: typeof actionCards[0] | null = null
+
+      if (actionCards.length > 0) {
+        recoveredCard = actionCards[0]
+        context.setPlayerField((prev) => {
+          const graveyardCopy = [...prev.graveyard]
+          const cardIndex = graveyardCopy.findIndex((c) => c.id === recoveredCard!.id)
+          if (cardIndex !== -1) {
+            graveyardCopy.splice(cardIndex, 1)
+          }
+          return {
+            ...prev,
+            hand: [...prev.hand, recoveredCard!],
+            graveyard: graveyardCopy,
+          }
+        })
+      }
+
+      let message = recoveredCard
+        ? `Recuperou "${recoveredCard.name}" do Cemitério!`
+        : "Nenhuma Action Function no Cemitério para recuperar."
+
+      // Trio bonus: draw a card, if it's a Function type, +2DP to a unit
+      if (hasTrio && context.playerField.deck.length > 0) {
+        const drawnCard = context.playerField.deck[0]
+        const isFunction = drawnCard.type === "action" || drawnCard.type === "magic" || drawnCard.type === "trap"
+
+        if (isFunction) {
+          // Draw the card and give +2DP to the first unit on field
+          const firstUnitIndex = context.playerField.unitZone.findIndex((u) => u !== null)
+
+          context.setPlayerField((prev) => {
+            const newUnitZone = [...prev.unitZone]
+            if (firstUnitIndex !== -1 && newUnitZone[firstUnitIndex]) {
+              const unit = newUnitZone[firstUnitIndex]!
+              newUnitZone[firstUnitIndex] = {
+                ...unit,
+                currentDp: (unit.currentDp || unit.dp) + 2,
+              }
+            }
+            return {
+              ...prev,
+              hand: [...prev.hand, drawnCard],
+              deck: prev.deck.slice(1),
+              unitZone: newUnitZone,
+            }
+          })
+
+          const unitName = firstUnitIndex !== -1 && context.playerField.unitZone[firstUnitIndex]
+            ? context.playerField.unitZone[firstUnitIndex]!.name
+            : "unidade"
+          message += ` Trio completo! Comprou "${drawnCard.name}" (Função) e ${unitName} ganhou +2DP!`
+        } else {
+          context.setPlayerField((prev) => ({
+            ...prev,
+            hand: [...prev.hand, drawnCard],
+            deck: prev.deck.slice(1),
+          }))
+          message += ` Trio completo! Comprou "${drawnCard.name}" (não é Função, sem bônus de DP).`
+        }
+      }
+
+      return { success: true, message }
+    },
+  },
+
+  "estrategia-real": {
+    id: "estrategia-real",
+    name: "Estratégia Real",
+    requiresTargets: false,
+    canActivate: (context) => {
+      if (context.playerField.deck.length === 0) {
+        return { canActivate: false, reason: "Seu deck está vazio" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Check if player has Rei Arthur on field
+      const hasArthur = context.playerField.unitZone.some((u) =>
+        u !== null && u.name === "Rei Arthur"
+      )
+
+      const drawCount = hasArthur ? 2 : 1
+      const actualDraw = Math.min(drawCount, context.playerField.deck.length)
+      const drawnCards = context.playerField.deck.slice(0, actualDraw)
+
+      context.setPlayerField((prev) => ({
+        ...prev,
+        hand: [...prev.hand, ...drawnCards],
+        deck: prev.deck.slice(actualDraw),
+      }))
+
+      if (hasArthur) {
+        return { success: true, message: `Estratégia Real! Rei Arthur em campo: comprou ${actualDraw} cartas!` }
+      }
+      return { success: true, message: `Estratégia Real! Comprou 1 carta.` }
+    },
+  },
+
+  "ventos-de-camelot": {
+    id: "ventos-de-camelot",
+    name: "Ventos de Camelot",
+    requiresTargets: true,
+    targetConfig: {
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      // Check if player has a Ventus or Haos (Lightness) unit on field
+      const hasValidUnit = context.playerField.unitZone.some((u) => {
+        if (u === null) return false
+        const el = u.element?.toLowerCase() || ""
+        return el === "ventus" || el === "haos" || el === "lightness"
+      })
+
+      if (!hasValidUnit) {
+        return { canActivate: false, reason: "Você precisa ter uma Unidade Ventus ou Lightness em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma Unidade Ventus ou Lightness sua" }
+      }
+
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+
+      if (!allyUnit) {
+        return { success: false, message: "Unidade não encontrada" }
+      }
+
+      const el = allyUnit.element?.toLowerCase() || ""
+      if (el !== "ventus" && el !== "haos" && el !== "lightness") {
+        return { success: false, message: "Selecione uma Unidade Ventus ou Lightness" }
+      }
+
+      // Allow the unit to attack twice (reset hasAttacked and canAttack)
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = {
+            ...newUnitZone[allyIndex]!,
+            canAttack: true,
+            hasAttacked: false,
+          }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+
+      return { success: true, message: `Ventos de Camelot! ${allyUnit.name} pode atacar duas vezes nesta fase de batalha! Magic Functions bloqueadas neste turno.` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -2284,8 +2547,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isSinfoniaRelampago = cardToPlace.name === "Sinfonia Relâmpago"
       const isFafnisbani = cardToPlace.name === "Fafnisbani"
       const isDevorarOMundo = cardToPlace.name === "Devorar o Mundo"
+      const isInvestidaCoordenada = cardToPlace.name === "Investida Coordenada"
+      const isLacosDaOrdem = cardToPlace.name === "Laços da Ordem"
+      const isEstrategiaReal = cardToPlace.name === "Estratégia Real"
+      const isVentosDeCamelot = cardToPlace.name === "Ventos de Camelot"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2304,6 +2571,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isSinfoniaRelampago) effectToUse = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
           else if (isFafnisbani) effectToUse = FUNCTION_CARD_EFFECTS["fafnisbani"]
           else if (isDevorarOMundo) effectToUse = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
+          else if (isInvestidaCoordenada) effectToUse = FUNCTION_CARD_EFFECTS["investida-coordenada"]
+          else if (isLacosDaOrdem) effectToUse = FUNCTION_CARD_EFFECTS["lacos-da-ordem"]
+          else if (isEstrategiaReal) effectToUse = FUNCTION_CARD_EFFECTS["estrategia-real"]
+          else if (isVentosDeCamelot) effectToUse = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
         }
 
         if (!effectToUse) return // Safety check
@@ -4137,6 +4408,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isDadosDestinoGentil = itemSelectionMode.itemCard.name === "Dados do Destino Gentil"
       const isDadosElementaisAlpha = itemSelectionMode.itemCard.name === "Dados Elementais Alpha"
       const isDadosElementaisOmega = itemSelectionMode.itemCard.name === "Dados Elementais Omega"
+      const isInvestidaCoordenada2 = itemSelectionMode.itemCard.name === "Investida Coordenada"
+      const isLacosDaOrdem2 = itemSelectionMode.itemCard.name === "Laços da Ordem"
+      const isEstrategiaReal2 = itemSelectionMode.itemCard.name === "Estratégia Real"
+      const isVentosDeCamelot2 = itemSelectionMode.itemCard.name === "Ventos de Camelot"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4155,6 +4430,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isDadosDestinoGentil) effect = FUNCTION_CARD_EFFECTS["dados-do-destino-gentil"]
       else if (isDadosElementaisAlpha) effect = FUNCTION_CARD_EFFECTS["dados-elementais-alpha"]
       else if (isDadosElementaisOmega) effect = FUNCTION_CARD_EFFECTS["dados-elementais-omega"]
+      else if (isInvestidaCoordenada2) effect = FUNCTION_CARD_EFFECTS["investida-coordenada"]
+      else if (isLacosDaOrdem2) effect = FUNCTION_CARD_EFFECTS["lacos-da-ordem"]
+      else if (isEstrategiaReal2) effect = FUNCTION_CARD_EFFECTS["estrategia-real"]
+      else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
     }
 
     if (effect) {
