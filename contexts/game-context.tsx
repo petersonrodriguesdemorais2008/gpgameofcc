@@ -1383,7 +1383,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "troca-de-guarda",
     name: "Troca de Guarda",
-    image: "/images/cards/troca-de-guarda.png",
+    image: "/images/cards/troca-de-guarda.jpg",
     rarity: "SR",
     type: "action",
     element: "Darkus",
