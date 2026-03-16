@@ -138,7 +138,7 @@ interface EffectTargets {
 }
 
 // Global projectile delay
-const PROJECTILE_DURATION = 600;
+const PROJECTILE_DURATION = 500 // Synchronized with ElementalAttackAnimation (150ms charge + 350ms travel)
 
 interface EffectResult {
   success: boolean
@@ -1565,6 +1565,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     life: 20,
   })
   const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
+  const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }>({})
+
+  // Constants for card animations
+  const CARD_JUMP_DURATION = 350 // Duration of the "jump" movement
+  const CARD_JUMP_DELAY = 150 // Wait for charge phase before jumping
   const [gameResult, setGameResult] = useState<"won" | "lost" | null>(null)
 
   const [attackState, setAttackState] = useState<AttackState>({
@@ -1970,31 +1975,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
-  const triggerCameraShake = useCallback(() => {
-    const startTime = Date.now()
-    const duration = 150
-    const intensity = 3
-
-    const shake = () => {
-      const elapsed = Date.now() - startTime
-      if (elapsed < duration) {
-        if (fieldRef.current) {
-          const x = (Math.random() - 0.5) * intensity
-          const y = (Math.random() - 0.5) * intensity
-          fieldRef.current.style.transform = `translate(${x}px, ${y}px)`
-        }
-        requestAnimationFrame(shake)
-      } else {
-        if (fieldRef.current) fieldRef.current.style.transform = ""
-      }
-    }
-    requestAnimationFrame(shake)
-  }, [])
-
-  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
-    triggerCameraShake()
-    triggerExplosion(x, y, element)
-  }, [triggerCameraShake, triggerExplosion])
+  const handleImpact = useCallback(
+    (id: string, x: number, y: number, element: string) => {
+      setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
+      triggerExplosion(x, y, element)
+    },
+    [triggerExplosion],
+  )
 
 
   const gameResultRecordedRef = useRef(false)
@@ -3689,6 +3676,27 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           },
         ])
 
+        // Trigger Card Jump Animation
+        const key = `player-${attackState.attackerIndex}`
+        const diffX = (targetX - startX) * 0.4 // Move 40% of the way
+        const diffY = (targetY - startY) * 0.4
+        
+        setTimeout(() => {
+          setCardAnimations(prev => ({
+            ...prev,
+            [key]: `translate3d(${diffX}px, ${diffY}px, 0) scale(1.1) rotate(${Math.random() * 4 - 2}deg)`
+          }))
+          
+          // Reset card position after impact
+          setTimeout(() => {
+            setCardAnimations(prev => {
+              const next = { ...prev }
+              delete next[key]
+              return next
+            })
+          }, CARD_JUMP_DURATION)
+        }, CARD_JUMP_DELAY)
+
         // Hide arrow immediately — before any animation
         setAttackState({ isAttacking: false, attackerIndex: attackState.attackerIndex, targetInfo: attackState.targetInfo })
 
@@ -4728,7 +4736,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     <div
       ref={fieldRef}
       suppressHydrationWarning={true}
-      className="relative h-screen flex flex-col overflow-hidden select-none touch-none"
+      className={`relative h-screen flex flex-col overflow-hidden select-none touch-none ${screenShake.active ? "animate-shake" : ""}`}
       style={{
         background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 25%, #0f0f2f 50%, #1a1a3a 75%, #0a0a1a 100%)",
       }}
@@ -5214,6 +5222,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                                     ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
                                     : "border-blue-700/40"
                           }`}
+                        style={{
+                          transform: cardAnimations[`player-${i}`] || "none",
+                          zIndex: cardAnimations[`player-${i}`] ? 50 : 1,
+                        }}
                       >
                         {/* Yellow glow for playable/attackable cards */}
                         {canAttack && (
@@ -6273,6 +6285,25 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           </div>
         </div>
       )}
+
+      <style jsx global>{`
+        @keyframes shake {
+          0% { transform: translate(1px, 1px) rotate(0deg); }
+          10% { transform: translate(-1px, -2px) rotate(-1deg); }
+          20% { transform: translate(-3px, 0px) rotate(1deg); }
+          30% { transform: translate(3px, 2px) rotate(0deg); }
+          40% { transform: translate(1px, -1px) rotate(1deg); }
+          50% { transform: translate(-1px, 2px) rotate(-1deg); }
+          60% { transform: translate(-3px, 1px) rotate(0deg); }
+          70% { transform: translate(3px, 1px) rotate(-1deg); }
+          80% { transform: translate(-1px, -1px) rotate(1deg); }
+          90% { transform: translate(1px, 2px) rotate(0deg); }
+          100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .animate-shake {
+          animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+      `}</style>
     </div>
   )
 }
