@@ -4370,11 +4370,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
 
-    // If this is Véu dos Laços Cruzados with "debuff" option, resolve immediately
-    if (itemSelectionMode.chosenOption === "debuff" && itemSelectionMode.itemCard) {
+    // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
+    const isEnemyOnlyCard = itemSelectionMode.itemCard.name === "Investida Coordenada"
+    if ((itemSelectionMode.chosenOption === "debuff" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
         effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+      } else if (!effect && isEnemyOnlyCard) {
+        effect = FUNCTION_CARD_EFFECTS["investida-coordenada"]
       }
 
       if (effect) {
@@ -4388,7 +4391,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         const targets: EffectTargets = {
           enemyUnitIndices: [index],
           allyUnitIndices: [],
-          chosenOption: "debuff",
+          chosenOption: itemSelectionMode.chosenOption || undefined,
         }
 
         const cardToUse = itemSelectionMode.itemCard
@@ -4428,8 +4431,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
-    // Skip the selectedEnemyIndex check for dice cards and buff options
-    if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard) return
+    // For cards that ONLY target an ally
+    const isAllyOnlyCard = itemSelectionMode.itemCard.name === "Ventos de Camelot" || itemSelectionMode.itemCard.name === "Troca de Guarda"
+
+    // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
+    if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
 
     const allyUnit = playerField.unitZone[index]
     if (!allyUnit) return
