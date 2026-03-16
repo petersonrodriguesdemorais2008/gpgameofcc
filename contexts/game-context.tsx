@@ -1380,6 +1380,20 @@ const ALL_CARDS: Card[] = [
     attack: "",
     category: "Action Funcion Card",
   },
+  {
+    id: "troca-de-guarda",
+    name: "Troca de Guarda",
+    image: "/images/cards/troca-de-guarda.png",
+    rarity: "SR",
+    type: "action",
+    element: "Darkus",
+    dp: 0,
+    ability: "Troca de Guarda",
+    abilityDescription:
+      "Retorne uma de suas Unidades do Elemento Darkness ativa em seu campo para sua mão.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
 ]
 
 const ALL_PLAYMATS: Playmat[] = [
