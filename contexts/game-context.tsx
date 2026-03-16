@@ -1383,7 +1383,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "troca-de-guarda",
     name: "Troca de Guarda",
-    image: "/images/cards/troca-de-guarda.jpg",
+    image: "/images/cards/troca-de-guarda.png",
     rarity: "SR",
     type: "action",
     element: "Darkus",
@@ -1397,7 +1397,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "alvorada-de-albion",
     name: "Alvorada de Albion",
-    image: "/images/cards/alvorada-de-albion.jpg",
+    image: "/images/cards/alvorada-de-albion.png",
     rarity: "UR",
     type: "action", // Functions are technically action type but remain on field due to resolve logic
     element: "Void",
@@ -1411,7 +1411,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "a-grande-ordem",
     name: "A Grande Ordem",
-    image: "/images/cards/a-grande-ordem.jpg",
+    image: "/images/cards/a-grande-ordem.png",
     rarity: "UR",
     type: "action",
     element: "Void",
