@@ -1394,6 +1394,34 @@ const ALL_CARDS: Card[] = [
     attack: "",
     category: "Action Funcion Card",
   },
+  {
+    id: "alvorada-de-albion",
+    name: "Alvorada de Albion",
+    image: "/images/cards/alvorada-de-albion.png",
+    rarity: "UR",
+    type: "action", // Functions are technically action type but remain on field due to resolve logic
+    element: "Void",
+    dp: 0,
+    ability: "Alvorada de Albion",
+    abilityDescription:
+      "Brotherhood Function (Permanece em campo).\n- Rei Arthur recebe +3DP; Tropas Darkness +2DP.\n- Hora das Sombras: Compre uma carta ao jogar.\n- Soberania: O debuff de REINO DE CAMELOT contra inimigos dobra (-4DP).",
+    attack: "",
+    category: "Brotherhood Function Card",
+  },
+  {
+    id: "a-grande-ordem",
+    name: "A Grande Ordem",
+    image: "/images/cards/a-grande-ordem.png",
+    rarity: "UR",
+    type: "action",
+    element: "Void",
+    dp: 0,
+    ability: "A Grande Ordem",
+    abilityDescription:
+      "Brotherhood Function (Permanece em campo).\n- Unidades Fehnon, Morgana ou Calem recebem +3DP.\n- União: Ao baixar um destes membros, busque outro no deck e adicione à mão.\n- Melodia: (Desativado no ambiente online.)",
+    attack: "",
+    category: "Brotherhood Function Card",
+  },
 ]
 
 const ALL_PLAYMATS: Playmat[] = [

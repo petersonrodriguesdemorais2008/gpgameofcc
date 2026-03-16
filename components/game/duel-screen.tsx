@@ -2384,13 +2384,36 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const calculateCardDP = (card: GameCard, ownerField: FieldState, isEnemy: boolean): number => {
     let dp = card.dp
     
+    // Use the ownerField properly to check what continuous functions they have
+    const ownerFunctions = ownerField.functionZone.filter(f => f && !f.isFaceDown);
+    const hasAlvorada = ownerFunctions.some(f => f?.name === "Alvorada de Albion");
+    const hasGrandeOrdem = ownerFunctions.some(f => f?.name === "A Grande Ordem");
+
+    // Apply Brotherhood Function Auras
+    if (hasGrandeOrdem) {
+      const name = card.name.toLowerCase();
+      if (name.includes("fehnon") || name.includes("morgana") || name.includes("calem")) {
+        dp += 3;
+      }
+    }
+
+    if (hasAlvorada) {
+      const name = card.name.toLowerCase();
+      if (name.includes("arthur")) {
+        dp += 3;
+      }
+      if (isTroopUnit(card) && card.element === "Darkus") {
+        dp += 2;
+      }
+    }
+
     // Check scenarios (both can be active at the same time in some games, but here we check both fields)
     const scenarios = [
-      { card: playerField.scenarioZone, isPlayer: true },
-      { card: enemyField.scenarioZone, isPlayer: false }
+      { card: playerField.scenarioZone, isPlayer: true, field: playerField },
+      { card: enemyField.scenarioZone, isPlayer: false, field: enemyField }
     ]
 
-    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) => {
+    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer, field: scenarioField }) => {
       if (!scenario) return
 
       const ability = scenario.ability
@@ -2417,7 +2440,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         // Debuff: Only if this scenario belongs to the OPPONENT of this card
         if (!applied && !isCardOwner) {
-          dp -= 2
+          // Check if the scenario owner has Alvorada de Albion
+          const scenarioOwnerHasAlvorada = scenarioField.functionZone.some(f => f && !f.isFaceDown && f.name === "Alvorada de Albion");
+          dp -= (scenarioOwnerHasAlvorada ? 4 : 2);
         }
       } else if (ability === "ARENA ESCANDINAVA") {
         let applied = false
@@ -2562,6 +2587,57 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+
+      // União da Grande Ordem check
+      const cardNameLower = cardToPlace.name.toLowerCase()
+      const isGreatOrderMember = cardNameLower.includes("fehnon") || cardNameLower.includes("morgana") || cardNameLower.includes("calem")
+      const hasGrandeOrdem = playerField.functionZone.some(f => f && !f.isFaceDown && f.name === "A Grande Ordem")
+      
+      if (hasGrandeOrdem && isGreatOrderMember) {
+         const searchedNames = ["fehnon", "morgana", "calem"].filter(m => !cardNameLower.includes(m))
+         const searchOptions = playerField.deck.filter(c => searchedNames.some(m => c.name.toLowerCase().includes(m)))
+         
+         const uniqueOptions: { id: string, label: string, description: string }[] = []
+         const seenNames = new Set()
+         for (const c of searchOptions) {
+            if (!seenNames.has(c.name)) {
+               uniqueOptions.push({ id: c.id, label: c.name, description: `Adicionar ${c.name} à mão` })
+               seenNames.add(c.name)
+            }
+         }
+         
+         if (uniqueOptions.length > 0) {
+           setChoiceModal({
+             visible: true,
+             cardName: "A Grande Ordem (União)",
+             options: [
+               ...uniqueOptions,
+               { id: "cancel", label: "Cancelar", description: "Não buscar nada" }
+             ],
+             onChoose: (optionId: string) => {
+               setChoiceModal(null)
+               if (optionId === "cancel") return
+               
+               setPlayerField(prev => {
+                  const targetCardIndex = prev.deck.findIndex(c => c.id === optionId)
+                  if (targetCardIndex === -1) return prev
+                  
+                  const cardToDraw = prev.deck[targetCardIndex]
+                  const newDeck = [...prev.deck]
+                  newDeck.splice(targetCardIndex, 1)
+                  newDeck.sort(() => Math.random() - 0.5) // Shuffle
+                  
+                  setTimeout(() => showEffectFeedback(`A Grande Ordem: ${cardToDraw.name} adicionado à mão!`, "success"), 500)
+                  return {
+                    ...prev,
+                    hand: [...prev.hand, cardToDraw],
+                    deck: newDeck
+                  }
+               })
+             }
+           })
+         }
+      }
     } else if (zone === "function") {
       if (playerField.functionZone[slotIndex] !== null) return
 
@@ -2574,6 +2650,35 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             ...prev,
             functionZone: newFunctionZone,
             hand: prev.hand.filter((_, i) => i !== cardIndex),
+          }
+        })
+        setSelectedHandCard(null)
+        setDraggedHandCard(null)
+        return
+      }
+
+      // Special handling for Brotherhood Functions - they stay on field
+      if (cardToPlace.name === "Alvorada de Albion" || cardToPlace.name === "A Grande Ordem") {
+        setPlayerField((prev) => {
+          const newFunctionZone = [...prev.functionZone]
+          newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: false }
+          
+          let newHand = prev.hand.filter((_, i) => i !== cardIndex)
+          let newDeck = [...prev.deck]
+          
+          // Hora das Sombras: Draw a card when played
+          if (cardToPlace.name === "Alvorada de Albion" && newDeck.length > 0) {
+            const drawnCard = newDeck[0]
+            newDeck = newDeck.slice(1)
+            newHand.push(drawnCard)
+            setTimeout(() => showEffectFeedback("Hora das Sombras: 1 carta comprada!", "success"), 500)
+          }
+
+          return {
+            ...prev,
+            functionZone: newFunctionZone,
+            hand: newHand,
+            deck: newDeck,
           }
         })
         setSelectedHandCard(null)
@@ -4371,7 +4476,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!enemyUnit) return
 
     // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
-    const isEnemyOnlyCard = itemSelectionMode.itemCard.name === "Investida Coordenada"
+    const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
     if ((itemSelectionMode.chosenOption === "debuff" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
@@ -4432,7 +4537,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard.name === "Ventos de Camelot" || itemSelectionMode.itemCard.name === "Troca de Guarda"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
