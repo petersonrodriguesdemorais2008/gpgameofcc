@@ -1198,6 +1198,34 @@ const ALL_CARDS: Card[] = [
     category: "Item Funcion Card",
   },
   {
+    id: "flecha-de-balista",
+    name: "Flecha de Balista",
+    image: "/images/cards/Flecha_de_Balista.png",
+    rarity: "SR",
+    type: "item",
+    element: "Pyrus",
+    dp: 0,
+    ability: "Tiro Perfurante",
+    abilityDescription:
+      "Cause 2DP de dano diretamente a uma Unidade do oponente (ignora ativações de Traps Functions do oponente).",
+    attack: "",
+    category: "Item Funcion Card",
+  },
+  {
+    id: "pedra-de-afiar",
+    name: "Pedra de Afiar",
+    image: "/images/cards/Pedra_de_Afiar.png",
+    rarity: "SR",
+    type: "item",
+    element: "Haos",
+    dp: 0,
+    ability: "Afiamento Estratégico",
+    abilityDescription:
+      "Se você tiver uma Unidade Principal no campo sem nenhuma Gear, procure no seu Deck por uma Ultimate Gear que possa ser equipada nela e adicione-a à sua mão, em seguida embaralhe o seu Deck. Se você já tiver uma Ultimate Gear equipada, você pode descartar esta carta e causar -1DP direto aos LP do oponente.",
+    attack: "",
+    category: "Item Funcion Card",
+  },
+  {
     id: "contra-ataque-surpresa",
     name: "Contra-Ataque Surpresa",
     image: "/images/cards/contra-ataque-surpresa.png",
@@ -1383,7 +1411,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "troca-de-guarda",
     name: "Troca de Guarda",
-    image: "/images/cards/troca-de-guarda.png",
+    image: "/images/cards/troca-de-guarda.jpg",
     rarity: "SR",
     type: "action",
     element: "Darkus",
