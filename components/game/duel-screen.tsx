@@ -1475,41 +1475,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const hasUltimateGear = context.playerField.ultimateZone !== null
 
       if (hasUltimateGear) {
-        // Already has UG equipped: discard and deal -1DP to enemy LP
+        // Already has UG equipped: deal -1DP direct to enemy LP
         context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
         return { success: true, message: `Pedra de Afiar: Ultimate Gear já equipada! -1DP direto aos LP do oponente!` }
       }
 
-      // Find a main unit on field without gear to search for matching UG
-      const mainUnit = context.playerField.unitZone.find((u) =>
-        u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
-      )
-      if (!mainUnit) return { success: false, message: "Sem Unidade Principal no campo" }
-
-      // Search deck for Ultimate Gear that requires this unit
-      const matchingGear = context.playerField.deck.find((c) =>
-        c.type === "ultimateGear" && c.requiresUnit === mainUnit.name
-      )
-
-      if (!matchingGear) {
-        return { success: false, message: `Nenhuma Ultimate Gear compatível com ${mainUnit.name} no Deck` }
-      }
-
-      context.setPlayerField((prev) => {
-        const newDeck = prev.deck.filter((c) => c.id !== matchingGear.id)
-        // Shuffle remaining deck
-        for (let i = newDeck.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
-        }
-        return {
-          ...prev,
-          hand: [...prev.hand, matchingGear],
-          deck: newDeck,
-        }
-      })
-
-      return { success: true, message: `Pedra de Afiar! ${matchingGear.name} adicionada à mão! Deck embaralhado.` }
+      // No UG: signal to open deck search modal - return special flag
+      // The actual search+add happens in the placeCard handler via deckSearchModal
+      return { success: true, message: "PEDRA_AFIAR_SEARCH" }
     },
   },
 }
@@ -1690,6 +1663,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     cardName: string
     options: { id: string; label: string; description: string }[]
     onChoose: (optionId: string) => void
+  } | null>(null)
+
+  // Deck search modal (Pedra de Afiar and future search effects)
+  const [deckSearchModal, setDeckSearchModal] = useState<{
+    visible: boolean
+    title: string
+    cards: GameCard[]
+    onSelect: (card: GameCard) => void
+    onCancel: () => void
   } | null>(null)
 
   // Attack arrow state
@@ -2917,6 +2899,46 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         // Effect doesn't require targets - resolve immediately
         const result = effectToUse.resolve(effectContext)
         if (result.success) {
+
+          // Special handling for Pedra de Afiar - open deck search modal
+          if (result.message === "PEDRA_AFIAR_SEARCH") {
+            // Collect all Ultimate Gear cards in the player's deck
+            const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
+            if (ugCardsInDeck.length === 0) {
+              showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
+              return
+            }
+            // Remove card from hand now
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
+              graveyard: [...prev.graveyard, cardToPlace],
+            }))
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            // Open search modal
+            setDeckSearchModal({
+              visible: true,
+              title: "Pedra de Afiar — Escolha uma Ultimate Gear",
+              cards: ugCardsInDeck,
+              onSelect: (chosenCard) => {
+                setDeckSearchModal(null)
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+                  // Shuffle deck
+                  for (let i = newDeck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+                  }
+                  return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
+                })
+                showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+              },
+              onCancel: () => setDeckSearchModal(null),
+            })
+            return
+          }
+
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
 
@@ -6147,6 +6169,66 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             >
               Cancelar
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Deck Search Modal (Pedra de Afiar) */}
+      {deckSearchModal && deckSearchModal.visible && (
+        <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-[90]">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-amber-500/50 shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-900/30 to-transparent">
+              <h3 className="text-amber-400 font-bold text-lg text-center">⚔️ Pedra de Afiar</h3>
+              <p className="text-white/60 text-xs text-center mt-1">Escolha uma Ultimate Gear do seu Deck</p>
+            </div>
+
+            {/* Card list */}
+            <div className="p-4 max-h-72 overflow-y-auto flex flex-col gap-3">
+              {deckSearchModal.cards.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => deckSearchModal.onSelect(card)}
+                  className="flex items-center gap-3 bg-slate-700/60 hover:bg-amber-900/40 border border-slate-600/50 hover:border-amber-500/60 rounded-xl p-3 transition-all group text-left"
+                >
+                  {/* Card image */}
+                  <div className="w-12 h-16 rounded-lg overflow-hidden border border-amber-500/30 flex-shrink-0 relative">
+                    <img
+                      src={card.image || "/placeholder.svg"}
+                      alt={card.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Card info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-bold text-sm truncate group-hover:text-amber-300 transition-colors">
+                      {card.name}
+                    </div>
+                    <div className="text-amber-400/70 text-xs mt-0.5">{card.category || "Ultimate Gear"}</div>
+                    {card.requiresUnit && (
+                      <div className="text-slate-400 text-[10px] mt-1">
+                        Equipa em: <span className="text-cyan-400">{card.requiresUnit}</span>
+                      </div>
+                    )}
+                    {card.abilityDescription && (
+                      <div className="text-white/40 text-[9px] mt-1 line-clamp-2">{card.abilityDescription}</div>
+                    )}
+                  </div>
+                  {/* Arrow */}
+                  <div className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity text-lg flex-shrink-0">→</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-white/10">
+              <button
+                onClick={deckSearchModal.onCancel}
+                className="w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm font-bold hover:bg-red-950/40 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
