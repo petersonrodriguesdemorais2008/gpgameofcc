@@ -1955,6 +1955,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     onComplete: ((result: number) => void) | null
   } | null>(null)
 
+  const [lacerationAnimation, setLacerationAnimation] = useState(false)
+
   const [draggedHandCard, setDraggedHandCard] = useState<{
     index: number
     card: GameCard
@@ -2965,6 +2967,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
+
+          // ORDEM DE LACERAÇÃO: trigger slash animation
+          if (cardToPlace.name === "Ordem de Laceração") {
+            setLacerationAnimation(true)
+            setTimeout(() => setLacerationAnimation(false), 1800)
+          }
 
           // Special handling for Cristal Recuperador - draw a card and check if Function type
           if (result.needsDrawAndCheck) {
@@ -6156,6 +6164,180 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
+      {/* Ordem de Laceração — Blue Slash Animation */}
+      {lacerationAnimation && (
+        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
+          {/* Dark tint */}
+          <div className="absolute inset-0 bg-black/30 laceration-bg-flash" />
+
+          {/* Fehnon silhouette flash top-left */}
+          <div className="absolute left-[8%] bottom-[30%] laceration-char-flash">
+            <div className="w-16 h-24 bg-gradient-to-t from-cyan-400/80 to-transparent rounded-full blur-sm" />
+          </div>
+
+          {/* Slash 1 — diagonal from left, thick */}
+          <div
+            className="absolute laceration-slash-1"
+            style={{
+              left: "-10%", top: "28%",
+              width: "130%", height: "6px",
+              background: "linear-gradient(90deg, transparent 0%, #38bdf8 20%, #ffffff 50%, #7dd3fc 75%, transparent 100%)",
+              transform: "rotate(-12deg)",
+              boxShadow: "0 0 16px 6px rgba(56,189,248,0.9), 0 0 40px 12px rgba(56,189,248,0.5)",
+              filter: "blur(0.5px)",
+            }}
+          />
+          {/* Slash 1 afterglow */}
+          <div
+            className="absolute laceration-slash-1-glow"
+            style={{
+              left: "-10%", top: "26%",
+              width: "130%", height: "14px",
+              background: "linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.3) 25%, rgba(255,255,255,0.15) 50%, rgba(56,189,248,0.25) 75%, transparent 100%)",
+              transform: "rotate(-12deg)",
+              filter: "blur(3px)",
+            }}
+          />
+
+          {/* Slash 2 — steeper, slightly lower */}
+          <div
+            className="absolute laceration-slash-2"
+            style={{
+              left: "-10%", top: "40%",
+              width: "130%", height: "5px",
+              background: "linear-gradient(90deg, transparent 0%, #0ea5e9 15%, #e0f2fe 50%, #38bdf8 80%, transparent 100%)",
+              transform: "rotate(-8deg)",
+              boxShadow: "0 0 14px 5px rgba(14,165,233,0.9), 0 0 35px 10px rgba(14,165,233,0.5)",
+            }}
+          />
+          <div
+            className="absolute laceration-slash-2-glow"
+            style={{
+              left: "-10%", top: "38.5%",
+              width: "130%", height: "12px",
+              background: "linear-gradient(90deg, transparent 0%, rgba(14,165,233,0.25) 25%, rgba(255,255,255,0.12) 50%, rgba(14,165,233,0.2) 75%, transparent 100%)",
+              transform: "rotate(-8deg)",
+              filter: "blur(3px)",
+            }}
+          />
+
+          {/* Slash 3 — thin fast upper */}
+          <div
+            className="absolute laceration-slash-3"
+            style={{
+              left: "-10%", top: "18%",
+              width: "100%", height: "3px",
+              background: "linear-gradient(90deg, transparent 0%, #bae6fd 30%, #ffffff 55%, #bae6fd 75%, transparent 100%)",
+              transform: "rotate(-14deg)",
+              boxShadow: "0 0 10px 4px rgba(186,230,253,0.8)",
+            }}
+          />
+
+          {/* Slash 4 — wide sweeping lower */}
+          <div
+            className="absolute laceration-slash-4"
+            style={{
+              left: "-10%", top: "55%",
+              width: "120%", height: "8px",
+              background: "linear-gradient(90deg, transparent 0%, #0284c7 10%, #7dd3fc 40%, #ffffff 55%, #7dd3fc 75%, transparent 100%)",
+              transform: "rotate(-6deg)",
+              boxShadow: "0 0 20px 8px rgba(2,132,199,0.8), 0 0 50px 15px rgba(2,132,199,0.4)",
+            }}
+          />
+          <div
+            className="absolute laceration-slash-4-glow"
+            style={{
+              left: "-10%", top: "52%",
+              width: "120%", height: "18px",
+              background: "linear-gradient(90deg, transparent 0%, rgba(2,132,199,0.2) 20%, rgba(255,255,255,0.1) 50%, rgba(2,132,199,0.15) 75%, transparent 100%)",
+              transform: "rotate(-6deg)",
+              filter: "blur(4px)",
+            }}
+          />
+
+          {/* Slash 5 — ultra-fast thin finishing strike */}
+          <div
+            className="absolute laceration-slash-5"
+            style={{
+              left: "-10%", top: "34%",
+              width: "140%", height: "4px",
+              background: "linear-gradient(90deg, transparent 0%, #93c5fd 20%, #dbeafe 50%, #93c5fd 80%, transparent 100%)",
+              transform: "rotate(-10deg)",
+              boxShadow: "0 0 12px 5px rgba(147,197,253,0.9), 0 0 30px 8px rgba(147,197,253,0.5)",
+            }}
+          />
+
+          {/* Impact sparks at right side (where slashes converge) */}
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute laceration-spark"
+              style={{
+                right: `${8 + (i % 4) * 4}%`,
+                top: `${22 + i * 4}%`,
+                width: `${2 + (i % 3)}px`,
+                height: `${6 + (i % 4) * 3}px`,
+                background: "linear-gradient(180deg, #ffffff, #38bdf8)",
+                borderRadius: "2px",
+                transform: `rotate(${-20 + i * 8}deg)`,
+                boxShadow: "0 0 6px 2px rgba(56,189,248,0.8)",
+                animationDelay: `${0.3 + i * 0.04}s`,
+              }}
+            />
+          ))}
+
+          {/* Central energy burst */}
+          <div
+            className="absolute laceration-burst"
+            style={{
+              left: "45%", top: "35%",
+              width: "120px", height: "120px",
+              marginLeft: "-60px", marginTop: "-60px",
+              background: "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(56,189,248,0.6) 35%, transparent 70%)",
+              borderRadius: "50%",
+            }}
+          />
+
+          {/* Damage number */}
+          <div
+            className="absolute laceration-dmg-number"
+            style={{ left: "50%", top: "20%", transform: "translateX(-50%)" }}
+          >
+            <span
+              style={{
+                fontSize: "56px",
+                fontWeight: 900,
+                color: "#ffffff",
+                textShadow: "0 0 20px #38bdf8, 0 0 40px #38bdf8, 0 0 80px rgba(56,189,248,0.8), 0 2px 4px rgba(0,0,0,0.9)",
+                letterSpacing: "-2px",
+                fontFamily: "system-ui, sans-serif",
+              }}
+            >
+              -3 LP
+            </span>
+          </div>
+
+          {/* Card name */}
+          <div
+            className="absolute laceration-card-name"
+            style={{ left: "50%", top: "8%", transform: "translateX(-50%)", whiteSpace: "nowrap" }}
+          >
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#bae6fd",
+                textShadow: "0 0 10px rgba(56,189,248,0.8), 0 1px 3px rgba(0,0,0,0.9)",
+                letterSpacing: "3px",
+                textTransform: "uppercase",
+              }}
+            >
+              Ordem de Laceração
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Card Destruction Animation */}
       {destructionAnimation && (
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
@@ -6553,6 +6735,122 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         .animate-shake {
           animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* ── ORDEM DE LACERAÇÃO ── */
+        @keyframes lacerationBgFlash {
+          0%   { opacity: 0; }
+          8%   { opacity: 1; }
+          60%  { opacity: 0.6; }
+          100% { opacity: 0; }
+        }
+        .laceration-bg-flash {
+          animation: lacerationBgFlash 1.8s ease-out forwards;
+        }
+
+        @keyframes lacerationCharFlash {
+          0%   { opacity: 0; transform: scale(0.8) translateY(10px); }
+          15%  { opacity: 1; transform: scale(1.1) translateY(-4px); }
+          40%  { opacity: 0.7; }
+          100% { opacity: 0; transform: scale(0.9) translateY(0); }
+        }
+        .laceration-char-flash {
+          animation: lacerationCharFlash 1.8s ease-out forwards;
+        }
+
+        @keyframes slashSweep1 {
+          0%   { transform: rotate(-12deg) scaleX(0) translateX(-60%); opacity: 0; }
+          5%   { opacity: 1; }
+          18%  { transform: rotate(-12deg) scaleX(1) translateX(0%); opacity: 1; }
+          40%  { opacity: 0.4; }
+          60%  { opacity: 0; }
+          100% { opacity: 0; }
+        }
+        .laceration-slash-1 { animation: slashSweep1 1.8s cubic-bezier(0.05, 0.7, 0.1, 1) forwards; transform-origin: left center; }
+        .laceration-slash-1-glow { animation: slashSweep1 1.8s cubic-bezier(0.05, 0.7, 0.1, 1) 0.02s forwards; transform-origin: left center; }
+
+        @keyframes slashSweep2 {
+          0%   { transform: rotate(-8deg) scaleX(0) translateX(-60%); opacity: 0; }
+          12%  { opacity: 1; }
+          28%  { transform: rotate(-8deg) scaleX(1) translateX(0%); opacity: 1; }
+          50%  { opacity: 0.4; }
+          70%  { opacity: 0; }
+          100% { opacity: 0; }
+        }
+        .laceration-slash-2 { animation: slashSweep2 1.8s cubic-bezier(0.05, 0.7, 0.1, 1) 0.08s forwards; transform-origin: left center; }
+        .laceration-slash-2-glow { animation: slashSweep2 1.8s cubic-bezier(0.05, 0.7, 0.1, 1) 0.1s forwards; transform-origin: left center; }
+
+        @keyframes slashSweep3 {
+          0%,3% { transform: rotate(-14deg) scaleX(0); opacity: 0; }
+          4%    { opacity: 1; }
+          14%   { transform: rotate(-14deg) scaleX(1); opacity: 1; }
+          35%   { opacity: 0.3; }
+          50%   { opacity: 0; }
+          100%  { opacity: 0; }
+        }
+        .laceration-slash-3 { animation: slashSweep3 1.8s cubic-bezier(0.02, 0.8, 0.1, 1) 0.03s forwards; transform-origin: left center; }
+
+        @keyframes slashSweep4 {
+          0%,15% { transform: rotate(-6deg) scaleX(0); opacity: 0; }
+          16%    { opacity: 1; }
+          35%    { transform: rotate(-6deg) scaleX(1); opacity: 1; }
+          60%    { opacity: 0.5; }
+          80%    { opacity: 0; }
+          100%   { opacity: 0; }
+        }
+        .laceration-slash-4 { animation: slashSweep4 1.8s cubic-bezier(0.05, 0.65, 0.1, 1) 0.15s forwards; transform-origin: left center; }
+        .laceration-slash-4-glow { animation: slashSweep4 1.8s cubic-bezier(0.05, 0.65, 0.1, 1) 0.17s forwards; transform-origin: left center; }
+
+        @keyframes slashSweep5 {
+          0%,22% { transform: rotate(-10deg) scaleX(0); opacity: 0; }
+          23%    { opacity: 1; }
+          38%    { transform: rotate(-10deg) scaleX(1); opacity: 1; }
+          55%    { opacity: 0.3; }
+          70%    { opacity: 0; }
+          100%   { opacity: 0; }
+        }
+        .laceration-slash-5 { animation: slashSweep5 1.8s cubic-bezier(0.02, 0.9, 0.05, 1) 0.22s forwards; transform-origin: left center; }
+
+        @keyframes lacerationSpark {
+          0%,28%  { opacity: 0; transform: rotate(var(--r, 0deg)) scale(0); }
+          30%     { opacity: 1; transform: rotate(var(--r, 0deg)) scale(1); }
+          60%     { opacity: 0.8; transform: rotate(var(--r, 0deg)) scale(1.2) translateY(-8px); }
+          100%    { opacity: 0; transform: rotate(var(--r, 0deg)) scale(0.3) translateY(-20px); }
+        }
+        .laceration-spark {
+          animation: lacerationSpark 1.8s ease-out forwards;
+        }
+
+        @keyframes lacerationBurst {
+          0%,25%  { transform: scale(0); opacity: 0; }
+          32%     { transform: scale(1.4); opacity: 1; }
+          50%     { transform: scale(1); opacity: 0.7; }
+          70%     { transform: scale(1.6); opacity: 0.3; }
+          100%    { transform: scale(2); opacity: 0; }
+        }
+        .laceration-burst {
+          animation: lacerationBurst 1.8s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+        }
+
+        @keyframes lacerationDmgNumber {
+          0%,20%  { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.5); }
+          35%     { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1.3); }
+          55%     { transform: translateX(-50%) translateY(0px) scale(1); }
+          75%     { opacity: 1; }
+          100%    { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.8); }
+        }
+        .laceration-dmg-number {
+          animation: lacerationDmgNumber 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes lacerationCardName {
+          0%    { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+          15%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+          70%   { opacity: 1; }
+          100%  { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+        }
+        .laceration-card-name {
+          animation: lacerationCardName 1.8s ease-out forwards;
         }
       `}</style>
     </div>
