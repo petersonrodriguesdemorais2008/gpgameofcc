@@ -1415,6 +1415,71 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "dados-da-calamidade": {
+    id: "dados-da-calamidade",
+    name: "Dados da Calamidade",
+    requiresTargets: true,
+    requiresDice: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
+      if (!hasAllyUnits) {
+        return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma unidade sua" }
+      }
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const diceResult = targets.diceResult || 1
+      const currentDp = (allyUnit as any).currentDp || allyUnit.dp
+
+      // 1–2: lose 5DP
+      if (diceResult <= 2) {
+        const newDp = Math.max(0, currentDp - 5)
+        const isDestroyed = newDp <= 0
+        context.setPlayerField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (isDestroyed) {
+            const destroyed = newUnitZone[allyIndex]
+            newUnitZone[allyIndex] = null
+            return { ...prev, unitZone: newUnitZone as any, graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
+          }
+          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp } as any
+          return { ...prev, unitZone: newUnitZone as any }
+        })
+        if (isDestroyed) return { success: true, message: `Dado: ${diceResult}! Calamidade! ${allyUnit.name} perdeu 5DP e foi destruída!` }
+        return { success: true, message: `Dado: ${diceResult}! Calamidade! ${allyUnit.name} perdeu 5DP (${currentDp} → ${newDp})` }
+      }
+
+      // 3–4: nothing happens
+      if (diceResult <= 4) {
+        return { success: true, message: `Dado: ${diceResult}! Nada acontece desta vez.` }
+      }
+
+      // 5–6: +8DP now, -5DP after 2 turns (stored as pending debuff)
+      const newDp = currentDp + 8
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = {
+            ...newUnitZone[allyIndex]!,
+            currentDp: newDp,
+            calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2,
+            calamidadeDebuffIndex: allyIndex,
+          } as any
+        }
+        return { ...prev, unitZone: newUnitZone as any }
+      })
+      return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +8DP! (−5DP em 2 turnos)` }
+    },
+  },
+
   "flecha-de-balista": {
     id: "flecha-de-balista",
     name: "Flecha de Balista",
@@ -2643,8 +2708,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
       const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
+      const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2670,6 +2736,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
           else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
+          else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
         }
 
         if (!effectToUse) return // Safety check
@@ -4417,10 +4484,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     setPlayerField((prev) => ({
       ...prev,
-      // Reset hasAttacked + reset Horizonte de Eventos DP buff for calem-ur (restores base dp)
       unitZone: prev.unitZone.map((unit) => {
         if (!unit) return null
         if (unit.id === "calem-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
+        // Dados da Calamidade: apply -5DP debuff when the turn arrives
+        if ((unit as any).calamidadeDebuffTurn === turn + 1) {
+          const cur = (unit as any).currentDp || unit.dp
+          const newDp = Math.max(0, cur - 5)
+          showEffectFeedback(`Dados da Calamidade: ${unit.name} −5DP! (${cur} → ${newDp})`, "error")
+          const updated = { ...unit, currentDp: newDp, hasAttacked: false } as any
+          delete updated.calamidadeDebuffTurn
+          delete updated.calamidadeDebuffIndex
+          return updated
+        }
         return { ...unit, hasAttacked: false }
       }),
     }))
@@ -4644,6 +4720,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
       const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
+      const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4668,6 +4745,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
       else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
       else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
+      else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
     }
 
