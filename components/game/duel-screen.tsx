@@ -4585,14 +4585,17 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
 
-    // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
+    // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada/Flecha de Balista, resolve immediately
     const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
+      || itemSelectionMode.itemCard?.name === "Flecha de Balista"
     if ((itemSelectionMode.chosenOption === "debuff" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
         effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
-      } else if (!effect && isEnemyOnlyCard) {
+      } else if (!effect && itemSelectionMode.itemCard.name === "Investida Coordenada") {
         effect = FUNCTION_CARD_EFFECTS["investida-coordenada"]
+      } else if (!effect && itemSelectionMode.itemCard.name === "Flecha de Balista") {
+        effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
       }
 
       if (effect) {
