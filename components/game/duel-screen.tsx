@@ -6751,6 +6751,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           100%    { opacity: 0; transform: translateX(-50%) translateY(-28px) scale(0.85); }
         }
         .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+      `}</style>
     </div>
   )
 }
