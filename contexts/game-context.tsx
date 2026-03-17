@@ -608,7 +608,7 @@ const ALL_CARDS: Card[] = [
     name: "Jaden Hainaegi",
     image: "/images/jaden-20lr.png",
     rarity: "LR",
-    type: "ultimateGuardian",
+    type: "unit",
     element: "Pyrus",
     dp: 4,
     ability: "Magma Primordial",
@@ -617,8 +617,7 @@ const ALL_CARDS: Card[] = [
     attack: "Sol Carmesim",
     attackDescription:
       "Se esse ataque derrotar uma unidade, cause 2 DP de dano direto adicional ao oponente. Na fase de batalha do turno seguinte, todas as outras unidades inimigas recebem a mesma quantidade de dano (2DP) no próximo turno.",
-    category: "Fire Ultimate Guardian user",
-    requiresEquip: "IFRAID",
+    category: "Fire Ultimate Elemental user",
   },
   {
     id: "jaden-ur",
@@ -1194,34 +1193,6 @@ const ALL_CARDS: Card[] = [
     ability: "Cura Avançada",
     abilityDescription:
       "Essa carta cura 2LP do jogador de dano já sofrido, em seguida compre uma carta, se for de unidade, ela cura +1DP do jogador.",
-    attack: "",
-    category: "Item Funcion Card",
-  },
-  {
-    id: "flecha-de-balista",
-    name: "Flecha de Balista",
-    image: "/images/cards/Flecha_de_Balista.png",
-    rarity: "SR",
-    type: "item",
-    element: "Pyrus",
-    dp: 0,
-    ability: "Tiro Perfurante",
-    abilityDescription:
-      "Cause 2DP de dano diretamente a uma Unidade do oponente (ignora ativações de Traps Functions do oponente).",
-    attack: "",
-    category: "Item Funcion Card",
-  },
-  {
-    id: "pedra-de-afiar",
-    name: "Pedra de Afiar",
-    image: "/images/cards/Pedra_de_Afiar.png",
-    rarity: "SR",
-    type: "item",
-    element: "Haos",
-    dp: 0,
-    ability: "Afiamento Estratégico",
-    abilityDescription:
-      "Se você tiver uma Unidade Principal no campo sem nenhuma Gear, procure no seu Deck por uma Ultimate Gear que possa ser equipada nela e adicione-a à sua mão, em seguida embaralhe o seu Deck. Se você já tiver uma Ultimate Gear equipada, você pode descartar esta carta e causar -1DP direto aos LP do oponente.",
     attack: "",
     category: "Item Funcion Card",
   },
