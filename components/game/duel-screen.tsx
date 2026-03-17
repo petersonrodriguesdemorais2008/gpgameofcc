@@ -2820,7 +2820,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
 
-          // ORDEM DE LACERAÇÃO: trigger slash animation
+          // ORDEM DE LACERAÇÃO: trigger blue sword slash animation
           if (cardToPlace.name === "Ordem de Laceração") {
             setLacerationAnimation(true)
             setTimeout(() => setLacerationAnimation(false), 1800)
@@ -5978,51 +5978,75 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       {/* Ordem de Laceração — Blue Sword Slash Animation */}
       {lacerationAnimation && (
         <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 bg-black/30 laceration-bg-flash" />
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-black/40 laceration-bg-flash" />
 
-          {/* Slash 1 */}
-          <div className="absolute laceration-slash-1" style={{ left:"-10%", top:"28%", width:"130%", height:"6px", background:"linear-gradient(90deg,transparent 0%,#38bdf8 20%,#ffffff 50%,#7dd3fc 75%,transparent 100%)", transform:"rotate(-12deg)", boxShadow:"0 0 16px 6px rgba(56,189,248,0.9),0 0 40px 12px rgba(56,189,248,0.5)" }} />
-          <div className="absolute laceration-slash-1-glow" style={{ left:"-10%", top:"26%", width:"130%", height:"14px", background:"linear-gradient(90deg,transparent 0%,rgba(56,189,248,0.3) 25%,rgba(255,255,255,0.15) 50%,rgba(56,189,248,0.25) 75%,transparent 100%)", transform:"rotate(-12deg)", filter:"blur(3px)" }} />
+          {/* Slash 1 — thick diagonal, first strike */}
+          <div className="absolute laceration-slash-1" style={{ left:"-5%", top:"29%", width:"125%", height:"7px", background:"linear-gradient(90deg,transparent 0%,#0ea5e9 15%,#7dd3fc 35%,#ffffff 52%,#7dd3fc 68%,#0ea5e9 85%,transparent 100%)", transform:"rotate(-13deg)", boxShadow:"0 0 18px 7px rgba(56,189,248,1),0 0 45px 14px rgba(56,189,248,0.6),0 0 80px 20px rgba(56,189,248,0.3)" }} />
+          <div className="absolute laceration-slash-1-glow" style={{ left:"-5%", top:"26%", width:"125%", height:"18px", background:"linear-gradient(90deg,transparent 0%,rgba(56,189,248,0.4) 20%,rgba(255,255,255,0.2) 50%,rgba(56,189,248,0.35) 80%,transparent 100%)", transform:"rotate(-13deg)", filter:"blur(5px)" }} />
 
-          {/* Slash 2 */}
-          <div className="absolute laceration-slash-2" style={{ left:"-10%", top:"40%", width:"130%", height:"5px", background:"linear-gradient(90deg,transparent 0%,#0ea5e9 15%,#e0f2fe 50%,#38bdf8 80%,transparent 100%)", transform:"rotate(-8deg)", boxShadow:"0 0 14px 5px rgba(14,165,233,0.9),0 0 35px 10px rgba(14,165,233,0.5)" }} />
-          <div className="absolute laceration-slash-2-glow" style={{ left:"-10%", top:"38.5%", width:"130%", height:"12px", background:"linear-gradient(90deg,transparent 0%,rgba(14,165,233,0.25) 25%,rgba(255,255,255,0.12) 50%,rgba(14,165,233,0.2) 75%,transparent 100%)", transform:"rotate(-8deg)", filter:"blur(3px)" }} />
+          {/* Slash 2 — medium, second strike */}
+          <div className="absolute laceration-slash-2" style={{ left:"-5%", top:"41%", width:"125%", height:"5px", background:"linear-gradient(90deg,transparent 0%,#38bdf8 20%,#e0f2fe 50%,#38bdf8 80%,transparent 100%)", transform:"rotate(-9deg)", boxShadow:"0 0 14px 5px rgba(56,189,248,0.9),0 0 35px 10px rgba(56,189,248,0.5)" }} />
+          <div className="absolute laceration-slash-2-glow" style={{ left:"-5%", top:"39%", width:"125%", height:"13px", background:"linear-gradient(90deg,transparent 0%,rgba(56,189,248,0.3) 25%,rgba(255,255,255,0.15) 50%,rgba(56,189,248,0.25) 75%,transparent 100%)", transform:"rotate(-9deg)", filter:"blur(4px)" }} />
 
-          {/* Slash 3 */}
-          <div className="absolute laceration-slash-3" style={{ left:"-10%", top:"18%", width:"100%", height:"3px", background:"linear-gradient(90deg,transparent 0%,#bae6fd 30%,#ffffff 55%,#bae6fd 75%,transparent 100%)", transform:"rotate(-14deg)", boxShadow:"0 0 10px 4px rgba(186,230,253,0.8)" }} />
+          {/* Slash 3 — thin fast upper */}
+          <div className="absolute laceration-slash-3" style={{ left:"-5%", top:"19%", width:"105%", height:"3px", background:"linear-gradient(90deg,transparent 0%,#93c5fd 25%,#ffffff 52%,#93c5fd 78%,transparent 100%)", transform:"rotate(-15deg)", boxShadow:"0 0 10px 4px rgba(147,197,253,0.9),0 0 25px 7px rgba(147,197,253,0.5)" }} />
 
-          {/* Slash 4 */}
-          <div className="absolute laceration-slash-4" style={{ left:"-10%", top:"55%", width:"120%", height:"8px", background:"linear-gradient(90deg,transparent 0%,#0284c7 10%,#7dd3fc 40%,#ffffff 55%,#7dd3fc 75%,transparent 100%)", transform:"rotate(-6deg)", boxShadow:"0 0 20px 8px rgba(2,132,199,0.8),0 0 50px 15px rgba(2,132,199,0.4)" }} />
-          <div className="absolute laceration-slash-4-glow" style={{ left:"-10%", top:"52%", width:"120%", height:"18px", background:"linear-gradient(90deg,transparent 0%,rgba(2,132,199,0.2) 20%,rgba(255,255,255,0.1) 50%,rgba(2,132,199,0.15) 75%,transparent 100%)", transform:"rotate(-6deg)", filter:"blur(4px)" }} />
+          {/* Slash 4 — heaviest, final blow */}
+          <div className="absolute laceration-slash-4" style={{ left:"-5%", top:"56%", width:"120%", height:"9px", background:"linear-gradient(90deg,transparent 0%,#0284c7 8%,#38bdf8 30%,#ffffff 50%,#38bdf8 70%,#0284c7 92%,transparent 100%)", transform:"rotate(-7deg)", boxShadow:"0 0 22px 9px rgba(2,132,199,0.9),0 0 55px 18px rgba(2,132,199,0.5),0 0 90px 25px rgba(2,132,199,0.25)" }} />
+          <div className="absolute laceration-slash-4-glow" style={{ left:"-5%", top:"52%", width:"120%", height:"22px", background:"linear-gradient(90deg,transparent 0%,rgba(2,132,199,0.3) 18%,rgba(255,255,255,0.15) 50%,rgba(2,132,199,0.25) 82%,transparent 100%)", transform:"rotate(-7deg)", filter:"blur(6px)" }} />
 
-          {/* Slash 5 */}
-          <div className="absolute laceration-slash-5" style={{ left:"-10%", top:"34%", width:"140%", height:"4px", background:"linear-gradient(90deg,transparent 0%,#93c5fd 20%,#dbeafe 50%,#93c5fd 80%,transparent 100%)", transform:"rotate(-10deg)", boxShadow:"0 0 12px 5px rgba(147,197,253,0.9),0 0 30px 8px rgba(147,197,253,0.5)" }} />
+          {/* Slash 5 — thin finishing */}
+          <div className="absolute laceration-slash-5" style={{ left:"-5%", top:"35%", width:"135%", height:"4px", background:"linear-gradient(90deg,transparent 0%,#bae6fd 18%,#dbeafe 50%,#bae6fd 82%,transparent 100%)", transform:"rotate(-11deg)", boxShadow:"0 0 12px 5px rgba(186,230,253,0.9),0 0 28px 8px rgba(186,230,253,0.5)" }} />
 
-          {/* SVG scar marks */}
-          <svg className="absolute inset-0 w-full h-full laceration-scars" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter:"drop-shadow(0 0 6px rgba(56,189,248,0.9))" }}>
-            <line x1="5" y1="30" x2="78" y2="24" stroke="#38bdf8" strokeWidth="0.35" strokeLinecap="round" className="laceration-scar-1" />
-            <line x1="8" y1="41" x2="85" y2="36" stroke="#7dd3fc" strokeWidth="0.25" strokeLinecap="round" className="laceration-scar-2" />
-            <line x1="12" y1="20" x2="72" y2="15" stroke="#bae6fd" strokeWidth="0.2" strokeLinecap="round" className="laceration-scar-3" />
-            <line x1="3" y1="56" x2="82" y2="51" stroke="#0ea5e9" strokeWidth="0.3" strokeLinecap="round" className="laceration-scar-4" />
-            <line x1="10" y1="35" x2="92" y2="29" stroke="#e0f2fe" strokeWidth="0.2" strokeLinecap="round" className="laceration-scar-5" />
+          {/* SVG sword-cut scar marks — linger as wound traces */}
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter:"drop-shadow(0 0 4px rgba(56,189,248,0.8))" }}>
+            <line x1="4"  y1="31" x2="79" y2="25" stroke="#38bdf8" strokeWidth="0.3" strokeLinecap="round" className="lac-scar lac-scar-1" />
+            <line x1="7"  y1="42" x2="84" y2="37" stroke="#7dd3fc" strokeWidth="0.22" strokeLinecap="round" className="lac-scar lac-scar-2" />
+            <line x1="11" y1="21" x2="73" y2="16" stroke="#bae6fd" strokeWidth="0.18" strokeLinecap="round" className="lac-scar lac-scar-3" />
+            <line x1="2"  y1="57" x2="81" y2="52" stroke="#0ea5e9" strokeWidth="0.28" strokeLinecap="round" className="lac-scar lac-scar-4" />
+            <line x1="9"  y1="36" x2="91" y2="30" stroke="#e0f2fe" strokeWidth="0.18" strokeLinecap="round" className="lac-scar lac-scar-5" />
           </svg>
 
-          {/* Flash pulses */}
-          <div className="absolute inset-0 laceration-flash-1" style={{ background:"radial-gradient(ellipse 80% 30% at 50% 30%,rgba(56,189,248,0.35) 0%,transparent 70%)" }} />
-          <div className="absolute inset-0 laceration-flash-2" style={{ background:"radial-gradient(ellipse 80% 30% at 50% 42%,rgba(255,255,255,0.2) 0%,transparent 70%)" }} />
-          <div className="absolute inset-0 laceration-flash-3" style={{ background:"radial-gradient(ellipse 80% 30% at 50% 55%,rgba(56,189,248,0.3) 0%,transparent 70%)" }} />
+          {/* Flash bursts on each impact */}
+          <div className="absolute inset-0 lac-flash-1" style={{ background:"radial-gradient(ellipse 90% 25% at 50% 31%,rgba(56,189,248,0.5) 0%,transparent 70%)" }} />
+          <div className="absolute inset-0 lac-flash-2" style={{ background:"radial-gradient(ellipse 90% 22% at 50% 43%,rgba(255,255,255,0.3) 0%,transparent 70%)" }} />
+          <div className="absolute inset-0 lac-flash-3" style={{ background:"radial-gradient(ellipse 90% 28% at 50% 57%,rgba(56,189,248,0.45) 0%,transparent 70%)" }} />
 
-          {/* Sparks */}
-          {[...Array(16)].map((_, i) => (
-            <div key={i} className="absolute laceration-spark" style={{ left:`${30+(i%5)*10}%`, top:`${20+Math.floor(i/5)*12+(i%3)*4}%`, width:`${1+(i%3)}px`, height:`${8+(i%5)*4}px`, background: i%2===0 ? "linear-gradient(180deg,#ffffff 0%,#38bdf8 60%,transparent 100%)" : "linear-gradient(180deg,#e0f2fe 0%,#0284c7 60%,transparent 100%)", borderRadius:"1px 1px 0 0", transform:`rotate(${-30+i*12}deg)`, boxShadow:"0 0 4px 1px rgba(56,189,248,0.7)", animationDelay:`${0.25+i*0.03}s` }} />
+          {/* Sparks flying off the slashes */}
+          {[...Array(18)].map((_, i) => (
+            <div key={i} className="absolute lac-spark" style={{
+              left: `${20 + (i % 6) * 12}%`,
+              top:  `${18 + Math.floor(i / 6) * 14 + (i % 4) * 3}%`,
+              width:  `${1 + (i % 3)}px`,
+              height: `${7 + (i % 5) * 5}px`,
+              background: i % 3 === 0
+                ? "linear-gradient(180deg,#ffffff 0%,#38bdf8 55%,transparent 100%)"
+                : i % 3 === 1
+                  ? "linear-gradient(180deg,#e0f2fe 0%,#0284c7 60%,transparent 100%)"
+                  : "linear-gradient(180deg,#bae6fd 0%,#0ea5e9 65%,transparent 100%)",
+              borderRadius: "1px 1px 0 0",
+              transform: `rotate(${-35 + i * 11}deg)`,
+              boxShadow: "0 0 5px 2px rgba(56,189,248,0.7)",
+              animationDelay: `${0.22 + i * 0.028}s`,
+            }} />
           ))}
 
-          {/* Central burst */}
-          <div className="absolute laceration-burst" style={{ left:"45%", top:"38%", width:"100px", height:"100px", marginLeft:"-50px", marginTop:"-50px", background:"radial-gradient(circle,rgba(255,255,255,1) 0%,rgba(56,189,248,0.7) 30%,transparent 70%)", borderRadius:"50%" }} />
+          {/* Central energy burst at convergence point */}
+          <div className="absolute lac-burst" style={{ left:"48%", top:"39%", width:"110px", height:"110px", marginLeft:"-55px", marginTop:"-55px", background:"radial-gradient(circle,rgba(255,255,255,1) 0%,rgba(56,189,248,0.8) 28%,rgba(14,165,233,0.4) 55%,transparent 75%)", borderRadius:"50%" }} />
 
-          {/* -3 DP damage number */}
-          <div className="absolute laceration-dmg-number" style={{ left:"50%", top:"18%", transform:"translateX(-50%)" }}>
-            <span style={{ fontSize:"64px", fontWeight:900, color:"#ffffff", textShadow:"0 0 20px #38bdf8,0 0 40px rgba(56,189,248,0.9),0 0 80px rgba(56,189,248,0.5),0 3px 6px rgba(0,0,0,0.95)", letterSpacing:"-3px", fontFamily:"system-ui,sans-serif", display:"block" }}>
+          {/* -3 DP — white with cyan glow, no card name */}
+          <div className="absolute lac-dmg" style={{ left:"50%", top:"16%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
+            <span style={{
+              fontSize: "68px",
+              fontWeight: 900,
+              color: "#ffffff",
+              textShadow: "0 0 15px #38bdf8, 0 0 35px rgba(56,189,248,0.9), 0 0 70px rgba(56,189,248,0.6), 0 0 120px rgba(56,189,248,0.3), 0 3px 8px rgba(0,0,0,0.95)",
+              letterSpacing: "-4px",
+              fontFamily: "system-ui, sans-serif",
+              display: "block",
+              lineHeight: 1,
+            }}>
               -3 DP
             </span>
           </div>
@@ -6362,107 +6386,116 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* ── ORDEM DE LACERAÇÃO ── */
-        @keyframes lacerationBgFlash {
-          0%   { opacity: 0; }
-          6%   { opacity: 1; }
-          55%  { opacity: 0.5; }
-          100% { opacity: 0; }
+        /* ═══ ORDEM DE LACERAÇÃO — blue sword slashes ═══ */
+        @keyframes lacBgFlash {
+          0%   { opacity:0; }
+          5%   { opacity:1; }
+          50%  { opacity:0.5; }
+          100% { opacity:0; }
         }
-        .laceration-bg-flash { animation: lacerationBgFlash 1.8s ease-out forwards; }
+        .laceration-bg-flash { animation: lacBgFlash 1.8s ease-out forwards; }
 
-        @keyframes slashSweep1 {
-          0%       { transform: rotate(-12deg) scaleX(0); opacity: 0; }
-          2%       { opacity: 1; }
-          14%      { transform: rotate(-12deg) scaleX(1); opacity: 1; }
-          38%      { opacity: 0.5; }
-          58%,100% { opacity: 0; }
+        /* Slash sweeps — each one a sword cut travelling left→right */
+        @keyframes lacSlash1 {
+          0%       { transform:rotate(-13deg) scaleX(0); opacity:0; }
+          3%       { opacity:1; }
+          16%      { transform:rotate(-13deg) scaleX(1); opacity:1; }
+          40%      { opacity:0.6; }
+          60%,100% { opacity:0; }
         }
-        .laceration-slash-1      { animation: slashSweep1 1.8s cubic-bezier(0.04,0.8,0.1,1) 0s    forwards; transform-origin: left center; }
-        .laceration-slash-1-glow { animation: slashSweep1 1.8s cubic-bezier(0.04,0.8,0.1,1) 0.02s forwards; transform-origin: left center; }
+        .laceration-slash-1      { animation:lacSlash1 1.8s cubic-bezier(0.03,0.85,0.08,1) 0s    forwards; transform-origin:left center; }
+        .laceration-slash-1-glow { animation:lacSlash1 1.8s cubic-bezier(0.03,0.85,0.08,1) 0.02s forwards; transform-origin:left center; }
 
-        @keyframes slashSweep2 {
-          0%,10%   { transform: rotate(-8deg) scaleX(0); opacity: 0; }
-          12%      { opacity: 1; }
-          26%      { transform: rotate(-8deg) scaleX(1); opacity: 1; }
-          50%      { opacity: 0.4; }
-          68%,100% { opacity: 0; }
+        @keyframes lacSlash2 {
+          0%,9%    { transform:rotate(-9deg) scaleX(0); opacity:0; }
+          11%      { opacity:1; }
+          27%      { transform:rotate(-9deg) scaleX(1); opacity:1; }
+          52%      { opacity:0.5; }
+          70%,100% { opacity:0; }
         }
-        .laceration-slash-2      { animation: slashSweep2 1.8s cubic-bezier(0.04,0.8,0.1,1) 0.08s  forwards; transform-origin: left center; }
-        .laceration-slash-2-glow { animation: slashSweep2 1.8s cubic-bezier(0.04,0.8,0.1,1) 0.10s  forwards; transform-origin: left center; }
+        .laceration-slash-2      { animation:lacSlash2 1.8s cubic-bezier(0.03,0.85,0.08,1) 0.07s  forwards; transform-origin:left center; }
+        .laceration-slash-2-glow { animation:lacSlash2 1.8s cubic-bezier(0.03,0.85,0.08,1) 0.09s  forwards; transform-origin:left center; }
 
-        @keyframes slashSweep3 {
-          0%,3%    { transform: rotate(-14deg) scaleX(0); opacity: 0; }
-          5%       { opacity: 1; }
-          16%      { transform: rotate(-14deg) scaleX(1); opacity: 1; }
-          32%      { opacity: 0.3; }
-          48%,100% { opacity: 0; }
+        @keyframes lacSlash3 {
+          0%,2%    { transform:rotate(-15deg) scaleX(0); opacity:0; }
+          4%       { opacity:1; }
+          15%      { transform:rotate(-15deg) scaleX(1); opacity:1; }
+          34%      { opacity:0.4; }
+          50%,100% { opacity:0; }
         }
-        .laceration-slash-3 { animation: slashSweep3 1.8s cubic-bezier(0.03,0.9,0.08,1) 0.03s forwards; transform-origin: left center; }
+        .laceration-slash-3 { animation:lacSlash3 1.8s cubic-bezier(0.02,0.92,0.06,1) 0.02s forwards; transform-origin:left center; }
 
-        @keyframes slashSweep4 {
-          0%,17%   { transform: rotate(-6deg) scaleX(0); opacity: 0; }
-          19%      { opacity: 1; }
-          36%      { transform: rotate(-6deg) scaleX(1); opacity: 1; }
-          60%      { opacity: 0.5; }
-          78%,100% { opacity: 0; }
+        @keyframes lacSlash4 {
+          0%,16%   { transform:rotate(-7deg) scaleX(0); opacity:0; }
+          18%      { opacity:1; }
+          37%      { transform:rotate(-7deg) scaleX(1); opacity:1; }
+          62%      { opacity:0.6; }
+          80%,100% { opacity:0; }
         }
-        .laceration-slash-4      { animation: slashSweep4 1.8s cubic-bezier(0.04,0.7,0.1,1) 0.15s  forwards; transform-origin: left center; }
-        .laceration-slash-4-glow { animation: slashSweep4 1.8s cubic-bezier(0.04,0.7,0.1,1) 0.17s  forwards; transform-origin: left center; }
+        .laceration-slash-4      { animation:lacSlash4 1.8s cubic-bezier(0.03,0.78,0.08,1) 0.14s  forwards; transform-origin:left center; }
+        .laceration-slash-4-glow { animation:lacSlash4 1.8s cubic-bezier(0.03,0.78,0.08,1) 0.16s  forwards; transform-origin:left center; }
 
-        @keyframes slashSweep5 {
-          0%,24%   { transform: rotate(-10deg) scaleX(0); opacity: 0; }
-          26%      { opacity: 1; }
-          40%      { transform: rotate(-10deg) scaleX(1); opacity: 1; }
-          56%      { opacity: 0.3; }
-          70%,100% { opacity: 0; }
+        @keyframes lacSlash5 {
+          0%,23%   { transform:rotate(-11deg) scaleX(0); opacity:0; }
+          25%      { opacity:1; }
+          41%      { transform:rotate(-11deg) scaleX(1); opacity:1; }
+          58%      { opacity:0.3; }
+          72%,100% { opacity:0; }
         }
-        .laceration-slash-5 { animation: slashSweep5 1.8s cubic-bezier(0.02,0.95,0.05,1) 0.22s forwards; transform-origin: left center; }
+        .laceration-slash-5 { animation:lacSlash5 1.8s cubic-bezier(0.02,0.95,0.05,1) 0.21s forwards; transform-origin:left center; }
 
-        @keyframes lacerationScar {
-          0%,15% { stroke-dasharray: 0 200; opacity: 0; }
-          25%    { stroke-dasharray: 200 0; opacity: 0.9; }
-          65%    { opacity: 0.5; }
-          100%   { opacity: 0; }
+        /* SVG scar lines — wound marks that linger */
+        @keyframes lacScar {
+          0%,12%  { stroke-dashoffset:200; opacity:0; }
+          22%     { stroke-dashoffset:0;   opacity:0.9; }
+          60%     { opacity:0.55; }
+          100%    { opacity:0; }
         }
-        .laceration-scar-1 { animation: lacerationScar 1.8s ease-out 0.10s forwards; }
-        .laceration-scar-2 { animation: lacerationScar 1.8s ease-out 0.18s forwards; }
-        .laceration-scar-3 { animation: lacerationScar 1.8s ease-out 0.05s forwards; }
-        .laceration-scar-4 { animation: lacerationScar 1.8s ease-out 0.22s forwards; }
-        .laceration-scar-5 { animation: lacerationScar 1.8s ease-out 0.14s forwards; }
+        .lac-scar       { stroke-dasharray:200; stroke-dashoffset:200; }
+        .lac-scar-1     { animation:lacScar 1.8s ease-out 0.09s  forwards; }
+        .lac-scar-2     { animation:lacScar 1.8s ease-out 0.16s  forwards; }
+        .lac-scar-3     { animation:lacScar 1.8s ease-out 0.04s  forwards; }
+        .lac-scar-4     { animation:lacScar 1.8s ease-out 0.20s  forwards; }
+        .lac-scar-5     { animation:lacScar 1.8s ease-out 0.12s  forwards; }
 
-        @keyframes lacerationFlash1 { 0%,2%  { opacity:0; } 4%  { opacity:1; } 14%,100% { opacity:0; } }
-        @keyframes lacerationFlash2 { 0%,13% { opacity:0; } 16% { opacity:0.8; } 26%,100% { opacity:0; } }
-        @keyframes lacerationFlash3 { 0%,25% { opacity:0; } 28% { opacity:1; } 40%,100% { opacity:0; } }
-        .laceration-flash-1 { animation: lacerationFlash1 1.8s ease-out forwards; }
-        .laceration-flash-2 { animation: lacerationFlash2 1.8s ease-out forwards; }
-        .laceration-flash-3 { animation: lacerationFlash3 1.8s ease-out forwards; }
+        /* Flash pulses timed to each slash */
+        @keyframes lacFlash1 { 0%,3%  {opacity:0;} 5%  {opacity:1;} 15%,100% {opacity:0;} }
+        @keyframes lacFlash2 { 0%,12% {opacity:0;} 15% {opacity:0.85;} 27%,100% {opacity:0;} }
+        @keyframes lacFlash3 { 0%,24% {opacity:0;} 27% {opacity:1;} 42%,100% {opacity:0;} }
+        .lac-flash-1 { animation:lacFlash1 1.8s ease-out forwards; }
+        .lac-flash-2 { animation:lacFlash2 1.8s ease-out forwards; }
+        .lac-flash-3 { animation:lacFlash3 1.8s ease-out forwards; }
 
-        @keyframes lacerationSpark {
-          0%,26% { opacity:0; transform:scale(0) translateY(0); }
-          30%    { opacity:1; transform:scale(1) translateY(0); }
-          65%    { opacity:0.7; transform:scale(0.8) translateY(-12px); }
-          100%   { opacity:0; transform:scale(0.2) translateY(-24px); }
+        /* Sparks flying off blade impacts */
+        @keyframes lacSpark {
+          0%,24%  { opacity:0; transform:scale(0) translateY(0); }
+          28%     { opacity:1; transform:scale(1) translateY(0); }
+          65%     { opacity:0.7; transform:scale(0.75) translateY(-14px); }
+          100%    { opacity:0; transform:scale(0.15) translateY(-28px); }
         }
-        .laceration-spark { animation: lacerationSpark 1.8s ease-out forwards; }
+        .lac-spark { animation:lacSpark 1.8s ease-out forwards; }
 
-        @keyframes lacerationBurst {
-          0%,27% { transform:scale(0); opacity:0; }
-          33%    { transform:scale(1.5); opacity:1; }
-          52%    { transform:scale(0.9); opacity:0.6; }
-          72%    { transform:scale(1.8); opacity:0.2; }
-          100%   { transform:scale(2.4); opacity:0; }
+        /* Central energy burst */
+        @keyframes lacBurst {
+          0%,26%  { transform:scale(0); opacity:0; }
+          32%     { transform:scale(1.6); opacity:1; }
+          50%     { transform:scale(1); opacity:0.7; }
+          70%     { transform:scale(2); opacity:0.25; }
+          100%    { transform:scale(2.8); opacity:0; }
         }
-        .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
+        .lac-burst { animation:lacBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        @keyframes lacerationDmgNumber {
-          0%,18% { opacity:0; transform:translateX(-50%) translateY(24px) scale(0.4) rotate(-8deg); }
-          32%    { opacity:1; transform:translateX(-50%) translateY(-12px) scale(1.35) rotate(2deg); }
-          50%    { transform:translateX(-50%) translateY(0) scale(1) rotate(0deg); }
-          72%    { opacity:1; }
-          100%   { opacity:0; transform:translateX(-50%) translateY(-28px) scale(0.85); }
+        /* -3 DP number */
+        @keyframes lacDmg {
+          0%,16%  { opacity:0; transform:translateX(-50%) translateY(28px) scale(0.35) rotate(-10deg); }
+          30%     { opacity:1; transform:translateX(-50%) translateY(-14px) scale(1.4) rotate(3deg); }
+          48%     { transform:translateX(-50%) translateY(2px) scale(1.02) rotate(0deg); }
+          52%     { transform:translateX(-50%) translateY(0) scale(1) rotate(0deg); }
+          70%     { opacity:1; }
+          100%    { opacity:0; transform:translateX(-50%) translateY(-32px) scale(0.8); }
         }
-        .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+        .lac-dmg { animation:lacDmg 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+        }
       `}</style>
     </div>
   )
