@@ -5976,72 +5976,169 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       )}
 
       {/* Ordem de Laceração — Blue Sword Slash Animation */}
+      {/* Ordem de Laceração — Sword Slashes on Enemy Field */}
       {lacerationAnimation && (
         <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/40 laceration-bg-flash" />
 
-          {/* Slash 1 — thick diagonal, first strike */}
-          <div className="absolute laceration-slash-1" style={{ left:"-5%", top:"29%", width:"125%", height:"7px", background:"linear-gradient(90deg,transparent 0%,#0ea5e9 15%,#7dd3fc 35%,#ffffff 52%,#7dd3fc 68%,#0ea5e9 85%,transparent 100%)", transform:"rotate(-13deg)", boxShadow:"0 0 18px 7px rgba(56,189,248,1),0 0 45px 14px rgba(56,189,248,0.6),0 0 80px 20px rgba(56,189,248,0.3)" }} />
-          <div className="absolute laceration-slash-1-glow" style={{ left:"-5%", top:"26%", width:"125%", height:"18px", background:"linear-gradient(90deg,transparent 0%,rgba(56,189,248,0.4) 20%,rgba(255,255,255,0.2) 50%,rgba(56,189,248,0.35) 80%,transparent 100%)", transform:"rotate(-13deg)", filter:"blur(5px)" }} />
+          {/* Scoped to top 50% — enemy field area */}
+          <div className="absolute" style={{ left:0, top:0, right:0, height:"50%", overflow:"hidden" }}>
 
-          {/* Slash 2 — medium, second strike */}
-          <div className="absolute laceration-slash-2" style={{ left:"-5%", top:"41%", width:"125%", height:"5px", background:"linear-gradient(90deg,transparent 0%,#38bdf8 20%,#e0f2fe 50%,#38bdf8 80%,transparent 100%)", transform:"rotate(-9deg)", boxShadow:"0 0 14px 5px rgba(56,189,248,0.9),0 0 35px 10px rgba(56,189,248,0.5)" }} />
-          <div className="absolute laceration-slash-2-glow" style={{ left:"-5%", top:"39%", width:"125%", height:"13px", background:"linear-gradient(90deg,transparent 0%,rgba(56,189,248,0.3) 25%,rgba(255,255,255,0.15) 50%,rgba(56,189,248,0.25) 75%,transparent 100%)", transform:"rotate(-9deg)", filter:"blur(4px)" }} />
+            {/* Dark flash on enemy side */}
+            <div className="absolute inset-0 lac-bg" />
 
-          {/* Slash 3 — thin fast upper */}
-          <div className="absolute laceration-slash-3" style={{ left:"-5%", top:"19%", width:"105%", height:"3px", background:"linear-gradient(90deg,transparent 0%,#93c5fd 25%,#ffffff 52%,#93c5fd 78%,transparent 100%)", transform:"rotate(-15deg)", boxShadow:"0 0 10px 4px rgba(147,197,253,0.9),0 0 25px 7px rgba(147,197,253,0.5)" }} />
+            {/* ── SVG canvas for real sword-cut shapes ── */}
+            <svg
+              className="absolute inset-0 w-full h-full lac-svg"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                {/* Core blade gradient — bright white center, cyan edges */}
+                <linearGradient id="blade1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%"   stopColor="#38bdf8" stopOpacity="0" />
+                  <stop offset="20%"  stopColor="#38bdf8" stopOpacity="1" />
+                  <stop offset="48%"  stopColor="#ffffff" stopOpacity="1" />
+                  <stop offset="80%"  stopColor="#0ea5e9" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="blade2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%"   stopColor="#7dd3fc" stopOpacity="0" />
+                  <stop offset="15%"  stopColor="#7dd3fc" stopOpacity="1" />
+                  <stop offset="50%"  stopColor="#ffffff" stopOpacity="1" />
+                  <stop offset="85%"  stopColor="#0284c7" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="blade3" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stopColor="#bae6fd" stopOpacity="0" />
+                  <stop offset="30%"  stopColor="#bae6fd" stopOpacity="1" />
+                  <stop offset="55%"  stopColor="#ffffff" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#0369a1" stopOpacity="0" />
+                </linearGradient>
+                <filter id="bladeGlow">
+                  <feGaussianBlur stdDeviation="1.2" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="bladeGlowStrong">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
 
-          {/* Slash 4 — heaviest, final blow */}
-          <div className="absolute laceration-slash-4" style={{ left:"-5%", top:"56%", width:"120%", height:"9px", background:"linear-gradient(90deg,transparent 0%,#0284c7 8%,#38bdf8 30%,#ffffff 50%,#38bdf8 70%,#0284c7 92%,transparent 100%)", transform:"rotate(-7deg)", boxShadow:"0 0 22px 9px rgba(2,132,199,0.9),0 0 55px 18px rgba(2,132,199,0.5),0 0 90px 25px rgba(2,132,199,0.25)" }} />
-          <div className="absolute laceration-slash-4-glow" style={{ left:"-5%", top:"52%", width:"120%", height:"22px", background:"linear-gradient(90deg,transparent 0%,rgba(2,132,199,0.3) 18%,rgba(255,255,255,0.15) 50%,rgba(2,132,199,0.25) 82%,transparent 100%)", transform:"rotate(-7deg)", filter:"blur(6px)" }} />
+              {/* CUT 1 — main diagonal slash, top-left to bottom-right */}
+              {/* Glow layer */}
+              <line x1="-5" y1="18" x2="108" y2="55"
+                stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round"
+                filter="url(#bladeGlowStrong)" opacity="0.7"
+                className="lac-cut lac-cut-1-glow" />
+              {/* Core blade */}
+              <line x1="-5" y1="18" x2="108" y2="55"
+                stroke="url(#blade1)" strokeWidth="1.8" strokeLinecap="round"
+                filter="url(#bladeGlow)"
+                className="lac-cut lac-cut-1" />
+              {/* Bright white core */}
+              <line x1="-5" y1="18" x2="108" y2="55"
+                stroke="#ffffff" strokeWidth="0.5" strokeLinecap="round"
+                opacity="0.9"
+                className="lac-cut lac-cut-1-core" />
 
-          {/* Slash 5 — thin finishing */}
-          <div className="absolute laceration-slash-5" style={{ left:"-5%", top:"35%", width:"135%", height:"4px", background:"linear-gradient(90deg,transparent 0%,#bae6fd 18%,#dbeafe 50%,#bae6fd 82%,transparent 100%)", transform:"rotate(-11deg)", boxShadow:"0 0 12px 5px rgba(186,230,253,0.9),0 0 28px 8px rgba(186,230,253,0.5)" }} />
+              {/* CUT 2 — steep upward slash, left side angled sharply */}
+              <line x1="5" y1="90" x2="65" y2="10"
+                stroke="#38bdf8" strokeWidth="3" strokeLinecap="round"
+                filter="url(#bladeGlowStrong)" opacity="0.65"
+                className="lac-cut lac-cut-2-glow" />
+              <line x1="5" y1="90" x2="65" y2="10"
+                stroke="url(#blade2)" strokeWidth="1.5" strokeLinecap="round"
+                filter="url(#bladeGlow)"
+                className="lac-cut lac-cut-2" />
+              <line x1="5" y1="90" x2="65" y2="10"
+                stroke="#ffffff" strokeWidth="0.45" strokeLinecap="round"
+                opacity="0.85"
+                className="lac-cut lac-cut-2-core" />
 
-          {/* SVG sword-cut scar marks — linger as wound traces */}
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter:"drop-shadow(0 0 4px rgba(56,189,248,0.8))" }}>
-            <line x1="4"  y1="31" x2="79" y2="25" stroke="#38bdf8" strokeWidth="0.3" strokeLinecap="round" className="lac-scar lac-scar-1" />
-            <line x1="7"  y1="42" x2="84" y2="37" stroke="#7dd3fc" strokeWidth="0.22" strokeLinecap="round" className="lac-scar lac-scar-2" />
-            <line x1="11" y1="21" x2="73" y2="16" stroke="#bae6fd" strokeWidth="0.18" strokeLinecap="round" className="lac-scar lac-scar-3" />
-            <line x1="2"  y1="57" x2="81" y2="52" stroke="#0ea5e9" strokeWidth="0.28" strokeLinecap="round" className="lac-scar lac-scar-4" />
-            <line x1="9"  y1="36" x2="91" y2="30" stroke="#e0f2fe" strokeWidth="0.18" strokeLinecap="round" className="lac-scar lac-scar-5" />
-          </svg>
+              {/* CUT 3 — fast horizontal-ish thin slash upper zone */}
+              <line x1="-2" y1="28" x2="95" y2="20"
+                stroke="#7dd3fc" strokeWidth="2" strokeLinecap="round"
+                filter="url(#bladeGlow)" opacity="0.8"
+                className="lac-cut lac-cut-3-glow" />
+              <line x1="-2" y1="28" x2="95" y2="20"
+                stroke="url(#blade1)" strokeWidth="1" strokeLinecap="round"
+                className="lac-cut lac-cut-3" />
+              <line x1="-2" y1="28" x2="95" y2="20"
+                stroke="#ffffff" strokeWidth="0.35" strokeLinecap="round"
+                opacity="0.9"
+                className="lac-cut lac-cut-3-core" />
 
-          {/* Flash bursts on each impact */}
-          <div className="absolute inset-0 lac-flash-1" style={{ background:"radial-gradient(ellipse 90% 25% at 50% 31%,rgba(56,189,248,0.5) 0%,transparent 70%)" }} />
-          <div className="absolute inset-0 lac-flash-2" style={{ background:"radial-gradient(ellipse 90% 22% at 50% 43%,rgba(255,255,255,0.3) 0%,transparent 70%)" }} />
-          <div className="absolute inset-0 lac-flash-3" style={{ background:"radial-gradient(ellipse 90% 28% at 50% 57%,rgba(56,189,248,0.45) 0%,transparent 70%)" }} />
+              {/* CUT 4 — wide cross slash from right */}
+              <line x1="105" y1="15" x2="10" y2="75"
+                stroke="#0ea5e9" strokeWidth="3.2" strokeLinecap="round"
+                filter="url(#bladeGlowStrong)" opacity="0.6"
+                className="lac-cut lac-cut-4-glow" />
+              <line x1="105" y1="15" x2="10" y2="75"
+                stroke="url(#blade3)" strokeWidth="1.6" strokeLinecap="round"
+                filter="url(#bladeGlow)"
+                className="lac-cut lac-cut-4" />
+              <line x1="105" y1="15" x2="10" y2="75"
+                stroke="#e0f2fe" strokeWidth="0.5" strokeLinecap="round"
+                opacity="0.8"
+                className="lac-cut lac-cut-4-core" />
 
-          {/* Sparks flying off the slashes */}
-          {[...Array(18)].map((_, i) => (
-            <div key={i} className="absolute lac-spark" style={{
-              left: `${20 + (i % 6) * 12}%`,
-              top:  `${18 + Math.floor(i / 6) * 14 + (i % 4) * 3}%`,
-              width:  `${1 + (i % 3)}px`,
-              height: `${7 + (i % 5) * 5}px`,
-              background: i % 3 === 0
-                ? "linear-gradient(180deg,#ffffff 0%,#38bdf8 55%,transparent 100%)"
-                : i % 3 === 1
-                  ? "linear-gradient(180deg,#e0f2fe 0%,#0284c7 60%,transparent 100%)"
-                  : "linear-gradient(180deg,#bae6fd 0%,#0ea5e9 65%,transparent 100%)",
-              borderRadius: "1px 1px 0 0",
-              transform: `rotate(${-35 + i * 11}deg)`,
-              boxShadow: "0 0 5px 2px rgba(56,189,248,0.7)",
-              animationDelay: `${0.22 + i * 0.028}s`,
-            }} />
-          ))}
+              {/* CUT 5 — finishing thin stab-line near center */}
+              <line x1="30" y1="5" x2="75" y2="95"
+                stroke="#bae6fd" strokeWidth="1.4" strokeLinecap="round"
+                filter="url(#bladeGlow)" opacity="0.7"
+                className="lac-cut lac-cut-5-glow" />
+              <line x1="30" y1="5" x2="75" y2="95"
+                stroke="#ffffff" strokeWidth="0.5" strokeLinecap="round"
+                opacity="0.85"
+                className="lac-cut lac-cut-5" />
 
-          {/* Central energy burst at convergence point */}
-          <div className="absolute lac-burst" style={{ left:"48%", top:"39%", width:"110px", height:"110px", marginLeft:"-55px", marginTop:"-55px", background:"radial-gradient(circle,rgba(255,255,255,1) 0%,rgba(56,189,248,0.8) 28%,rgba(14,165,233,0.4) 55%,transparent 75%)", borderRadius:"50%" }} />
+              {/* Lingering scar marks — thinner, fade slowly */}
+              <line x1="-5" y1="18" x2="108" y2="55" stroke="#38bdf8" strokeWidth="0.4" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-1" />
+              <line x1="5"  y1="90" x2="65"  y2="10" stroke="#7dd3fc" strokeWidth="0.3" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-2" />
+              <line x1="-2" y1="28" x2="95"  y2="20" stroke="#bae6fd" strokeWidth="0.2" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-3" />
+              <line x1="105" y1="15" x2="10" y2="75" stroke="#0ea5e9" strokeWidth="0.35" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-4" />
+              <line x1="30"  y1="5"  x2="75" y2="95" stroke="#e0f2fe" strokeWidth="0.2" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-5" />
+            </svg>
 
-          {/* -3 DP — white with cyan glow, no card name */}
-          <div className="absolute lac-dmg" style={{ left:"50%", top:"16%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
+            {/* Flash impact rings at slash intersections */}
+            <div className="absolute lac-ring lac-ring-1" style={{ left:"52%", top:"40%", width:"90px", height:"90px", marginLeft:"-45px", marginTop:"-45px", border:"2px solid rgba(56,189,248,0.9)", borderRadius:"50%", boxShadow:"0 0 20px 8px rgba(56,189,248,0.5),inset 0 0 20px rgba(56,189,248,0.3)" }} />
+            <div className="absolute lac-ring lac-ring-2" style={{ left:"38%", top:"55%", width:"60px", height:"60px", marginLeft:"-30px", marginTop:"-30px", border:"1.5px solid rgba(125,211,252,0.8)", borderRadius:"50%", boxShadow:"0 0 15px 5px rgba(125,211,252,0.4)" }} />
+
+            {/* Sparks concentrated in enemy zone */}
+            {[...Array(20)].map((_, i) => (
+              <div key={i} className="absolute lac-spark" style={{
+                left: `${15 + (i % 7) * 11}%`,
+                top:  `${10 + (i % 5) * 14 + (i % 3) * 6}%`,
+                width:  `${1 + (i % 2)}px`,
+                height: `${6 + (i % 6) * 4}px`,
+                background: i % 3 === 0
+                  ? "linear-gradient(180deg,#ffffff 0%,#38bdf8 50%,transparent 100%)"
+                  : i % 3 === 1
+                    ? "linear-gradient(180deg,#e0f2fe 0%,#0284c7 55%,transparent 100%)"
+                    : "linear-gradient(180deg,#bae6fd 0%,#0ea5e9 60%,transparent 100%)",
+                borderRadius: "1px 1px 0 0",
+                transform: `rotate(${-40 + i * 13}deg)`,
+                boxShadow: "0 0 4px 1px rgba(56,189,248,0.8)",
+                animationDelay: `${0.18 + i * 0.03}s`,
+              }} />
+            ))}
+
+            {/* Central energy burst at crosspoint */}
+            <div className="absolute lac-burst" style={{ left:"50%", top:"45%", width:"100px", height:"100px", marginLeft:"-50px", marginTop:"-50px", background:"radial-gradient(circle,rgba(255,255,255,0.95) 0%,rgba(56,189,248,0.75) 25%,rgba(14,165,233,0.4) 55%,transparent 75%)", borderRadius:"50%" }} />
+
+            {/* Flash wash on whole enemy area */}
+            <div className="absolute inset-0 lac-flash-wash" style={{ background:"radial-gradient(ellipse 100% 80% at 50% 50%,rgba(56,189,248,0.18) 0%,transparent 70%)" }} />
+
+          </div>{/* end enemy-field scoped div */}
+
+          {/* -3 DP — appears at top of enemy zone */}
+          <div className="absolute lac-dmg" style={{ left:"50%", top:"6%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
             <span style={{
-              fontSize: "68px",
+              fontSize: "72px",
               fontWeight: 900,
               color: "#ffffff",
-              textShadow: "0 0 15px #38bdf8, 0 0 35px rgba(56,189,248,0.9), 0 0 70px rgba(56,189,248,0.6), 0 0 120px rgba(56,189,248,0.3), 0 3px 8px rgba(0,0,0,0.95)",
+              textShadow: "0 0 12px #38bdf8, 0 0 30px rgba(56,189,248,0.95), 0 0 65px rgba(56,189,248,0.6), 0 0 110px rgba(56,189,248,0.3), 0 4px 10px rgba(0,0,0,0.97)",
               letterSpacing: "-4px",
               fontFamily: "system-ui, sans-serif",
               display: "block",
@@ -6050,8 +6147,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               -3 DP
             </span>
           </div>
+
         </div>
       )}
+
 
       {/* Card Destruction Animation */}
       {destructionAnimation && (
@@ -6387,112 +6486,153 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         /* ═══ ORDEM DE LACERAÇÃO — blue sword slashes ═══ */
-        @keyframes lacBgFlash {
-          0%   { opacity:0; }
-          5%   { opacity:1; }
-          50%  { opacity:0.5; }
-          100% { opacity:0; }
-        }
-        .laceration-bg-flash { animation: lacBgFlash 1.8s ease-out forwards; }
+        /* ═══ ORDEM DE LACERAÇÃO — Sword Cut Slashes ═══ */
 
-        /* Slash sweeps — each one a sword cut travelling left→right */
-        @keyframes lacSlash1 {
-          0%       { transform:rotate(-13deg) scaleX(0); opacity:0; }
-          3%       { opacity:1; }
-          16%      { transform:rotate(-13deg) scaleX(1); opacity:1; }
-          40%      { opacity:0.6; }
-          60%,100% { opacity:0; }
+        /* Dark overlay on enemy field */
+        @keyframes lacBg {
+          0%   { opacity:0; background:rgba(0,0,0,0); }
+          5%   { opacity:1; background:rgba(0,30,60,0.55); }
+          45%  { opacity:1; background:rgba(0,20,50,0.4); }
+          100% { opacity:0; background:rgba(0,0,0,0); }
         }
-        .laceration-slash-1      { animation:lacSlash1 1.8s cubic-bezier(0.03,0.85,0.08,1) 0s    forwards; transform-origin:left center; }
-        .laceration-slash-1-glow { animation:lacSlash1 1.8s cubic-bezier(0.03,0.85,0.08,1) 0.02s forwards; transform-origin:left center; }
+        .lac-bg { animation:lacBg 1.8s ease-out forwards; }
 
-        @keyframes lacSlash2 {
-          0%,9%    { transform:rotate(-9deg) scaleX(0); opacity:0; }
-          11%      { opacity:1; }
-          27%      { transform:rotate(-9deg) scaleX(1); opacity:1; }
-          52%      { opacity:0.5; }
-          70%,100% { opacity:0; }
-        }
-        .laceration-slash-2      { animation:lacSlash2 1.8s cubic-bezier(0.03,0.85,0.08,1) 0.07s  forwards; transform-origin:left center; }
-        .laceration-slash-2-glow { animation:lacSlash2 1.8s cubic-bezier(0.03,0.85,0.08,1) 0.09s  forwards; transform-origin:left center; }
-
-        @keyframes lacSlash3 {
-          0%,2%    { transform:rotate(-15deg) scaleX(0); opacity:0; }
-          4%       { opacity:1; }
-          15%      { transform:rotate(-15deg) scaleX(1); opacity:1; }
-          34%      { opacity:0.4; }
-          50%,100% { opacity:0; }
-        }
-        .laceration-slash-3 { animation:lacSlash3 1.8s cubic-bezier(0.02,0.92,0.06,1) 0.02s forwards; transform-origin:left center; }
-
-        @keyframes lacSlash4 {
-          0%,16%   { transform:rotate(-7deg) scaleX(0); opacity:0; }
-          18%      { opacity:1; }
-          37%      { transform:rotate(-7deg) scaleX(1); opacity:1; }
-          62%      { opacity:0.6; }
-          80%,100% { opacity:0; }
-        }
-        .laceration-slash-4      { animation:lacSlash4 1.8s cubic-bezier(0.03,0.78,0.08,1) 0.14s  forwards; transform-origin:left center; }
-        .laceration-slash-4-glow { animation:lacSlash4 1.8s cubic-bezier(0.03,0.78,0.08,1) 0.16s  forwards; transform-origin:left center; }
-
-        @keyframes lacSlash5 {
-          0%,23%   { transform:rotate(-11deg) scaleX(0); opacity:0; }
-          25%      { opacity:1; }
-          41%      { transform:rotate(-11deg) scaleX(1); opacity:1; }
-          58%      { opacity:0.3; }
-          72%,100% { opacity:0; }
-        }
-        .laceration-slash-5 { animation:lacSlash5 1.8s cubic-bezier(0.02,0.95,0.05,1) 0.21s forwards; transform-origin:left center; }
-
-        /* SVG scar lines — wound marks that linger */
-        @keyframes lacScar {
-          0%,12%  { stroke-dashoffset:200; opacity:0; }
-          22%     { stroke-dashoffset:0;   opacity:0.9; }
-          60%     { opacity:0.55; }
+        /* SVG overall fade-out after slashes finish */
+        @keyframes lacSvgFade {
+          0%,75%  { opacity:1; }
           100%    { opacity:0; }
         }
-        .lac-scar       { stroke-dasharray:200; stroke-dashoffset:200; }
-        .lac-scar-1     { animation:lacScar 1.8s ease-out 0.09s  forwards; }
-        .lac-scar-2     { animation:lacScar 1.8s ease-out 0.16s  forwards; }
-        .lac-scar-3     { animation:lacScar 1.8s ease-out 0.04s  forwards; }
-        .lac-scar-4     { animation:lacScar 1.8s ease-out 0.20s  forwards; }
-        .lac-scar-5     { animation:lacScar 1.8s ease-out 0.12s  forwards; }
+        .lac-svg { animation:lacSvgFade 1.8s ease-out forwards; }
 
-        /* Flash pulses timed to each slash */
-        @keyframes lacFlash1 { 0%,3%  {opacity:0;} 5%  {opacity:1;} 15%,100% {opacity:0;} }
-        @keyframes lacFlash2 { 0%,12% {opacity:0;} 15% {opacity:0.85;} 27%,100% {opacity:0;} }
-        @keyframes lacFlash3 { 0%,24% {opacity:0;} 27% {opacity:1;} 42%,100% {opacity:0;} }
-        .lac-flash-1 { animation:lacFlash1 1.8s ease-out forwards; }
-        .lac-flash-2 { animation:lacFlash2 1.8s ease-out forwards; }
-        .lac-flash-3 { animation:lacFlash3 1.8s ease-out forwards; }
+        /* ── Sword cut strokes — each drawn via stroke-dashoffset ── */
 
-        /* Sparks flying off blade impacts */
+        /* Cut 1: diagonal top-left → bottom-right, first and hardest hit */
+        @keyframes lacCut1 {
+          0%       { stroke-dashoffset:160; opacity:0; }
+          3%       { opacity:1; }
+          18%      { stroke-dashoffset:0; opacity:1; }
+          50%      { opacity:0.7; }
+          75%,100% { opacity:0; }
+        }
+        .lac-cut-1      { stroke-dasharray:160; animation:lacCut1 1.8s cubic-bezier(0.02,0.9,0.05,1) 0s    forwards; }
+        .lac-cut-1-glow { stroke-dasharray:160; animation:lacCut1 1.8s cubic-bezier(0.02,0.9,0.05,1) 0s    forwards; }
+        .lac-cut-1-core { stroke-dasharray:160; animation:lacCut1 1.8s cubic-bezier(0.02,0.9,0.05,1) 0.01s forwards; }
+
+        /* Cut 2: steep upward slash from bottom-left */
+        @keyframes lacCut2 {
+          0%,8%    { stroke-dashoffset:100; opacity:0; }
+          10%      { opacity:1; }
+          26%      { stroke-dashoffset:0; opacity:1; }
+          55%      { opacity:0.65; }
+          78%,100% { opacity:0; }
+        }
+        .lac-cut-2      { stroke-dasharray:100; animation:lacCut2 1.8s cubic-bezier(0.02,0.92,0.05,1) 0.07s forwards; }
+        .lac-cut-2-glow { stroke-dasharray:100; animation:lacCut2 1.8s cubic-bezier(0.02,0.92,0.05,1) 0.07s forwards; }
+        .lac-cut-2-core { stroke-dasharray:100; animation:lacCut2 1.8s cubic-bezier(0.02,0.92,0.05,1) 0.08s forwards; }
+
+        /* Cut 3: fast near-horizontal thin slash at top */
+        @keyframes lacCut3 {
+          0%,2%    { stroke-dashoffset:100; opacity:0; }
+          4%       { opacity:1; }
+          15%      { stroke-dashoffset:0; opacity:1; }
+          38%      { opacity:0.5; }
+          60%,100% { opacity:0; }
+        }
+        .lac-cut-3      { stroke-dasharray:100; animation:lacCut3 1.8s cubic-bezier(0.01,0.95,0.04,1) 0.02s forwards; }
+        .lac-cut-3-glow { stroke-dasharray:100; animation:lacCut3 1.8s cubic-bezier(0.01,0.95,0.04,1) 0.02s forwards; }
+        .lac-cut-3-core { stroke-dasharray:100; animation:lacCut3 1.8s cubic-bezier(0.01,0.95,0.04,1) 0.03s forwards; }
+
+        /* Cut 4: wide cross slash from top-right → bottom-left */
+        @keyframes lacCut4 {
+          0%,15%   { stroke-dashoffset:120; opacity:0; }
+          17%      { opacity:1; }
+          35%      { stroke-dashoffset:0; opacity:1; }
+          62%      { opacity:0.7; }
+          82%,100% { opacity:0; }
+        }
+        .lac-cut-4      { stroke-dasharray:120; animation:lacCut4 1.8s cubic-bezier(0.02,0.88,0.06,1) 0.14s forwards; }
+        .lac-cut-4-glow { stroke-dasharray:120; animation:lacCut4 1.8s cubic-bezier(0.02,0.88,0.06,1) 0.14s forwards; }
+        .lac-cut-4-core { stroke-dasharray:120; animation:lacCut4 1.8s cubic-bezier(0.02,0.88,0.06,1) 0.15s forwards; }
+
+        /* Cut 5: vertical-ish finishing stab */
+        @keyframes lacCut5 {
+          0%,22%   { stroke-dashoffset:90; opacity:0; }
+          24%      { opacity:1; }
+          40%      { stroke-dashoffset:0; opacity:1; }
+          60%      { opacity:0.45; }
+          75%,100% { opacity:0; }
+        }
+        .lac-cut-5      { stroke-dasharray:90; animation:lacCut5 1.8s cubic-bezier(0.01,0.98,0.04,1) 0.21s forwards; }
+        .lac-cut-5-glow { stroke-dasharray:90; animation:lacCut5 1.8s cubic-bezier(0.01,0.98,0.04,1) 0.21s forwards; }
+
+        /* Scar marks — linger after slash disappears */
+        @keyframes lacScarMark {
+          0%,28%  { opacity:0; }
+          35%     { opacity:0.7; }
+          65%     { opacity:0.4; }
+          100%    { opacity:0; }
+        }
+        .lac-scar   { stroke-dasharray:200; stroke-dashoffset:0; }
+        .lac-scar-1 { animation:lacScarMark 1.8s ease-out 0.12s forwards; }
+        .lac-scar-2 { animation:lacScarMark 1.8s ease-out 0.20s forwards; }
+        .lac-scar-3 { animation:lacScarMark 1.8s ease-out 0.06s forwards; }
+        .lac-scar-4 { animation:lacScarMark 1.8s ease-out 0.26s forwards; }
+        .lac-scar-5 { animation:lacScarMark 1.8s ease-out 0.16s forwards; }
+
+        /* Impact rings */
+        @keyframes lacRing1 {
+          0%,28%  { transform:scale(0); opacity:0; }
+          34%     { transform:scale(1); opacity:1; }
+          65%     { transform:scale(1.8); opacity:0.3; }
+          100%    { transform:scale(2.5); opacity:0; }
+        }
+        @keyframes lacRing2 {
+          0%,38%  { transform:scale(0); opacity:0; }
+          44%     { transform:scale(1); opacity:0.8; }
+          70%     { transform:scale(1.6); opacity:0.25; }
+          100%    { transform:scale(2.2); opacity:0; }
+        }
+        .lac-ring-1 { animation:lacRing1 1.8s ease-out forwards; }
+        .lac-ring-2 { animation:lacRing2 1.8s ease-out forwards; }
+
+        /* Sparks */
         @keyframes lacSpark {
-          0%,24%  { opacity:0; transform:scale(0) translateY(0); }
-          28%     { opacity:1; transform:scale(1) translateY(0); }
-          65%     { opacity:0.7; transform:scale(0.75) translateY(-14px); }
-          100%    { opacity:0; transform:scale(0.15) translateY(-28px); }
+          0%,20%  { opacity:0; transform:scale(0) translateY(0); }
+          26%     { opacity:1; transform:scale(1) translateY(0); }
+          65%     { opacity:0.6; transform:scale(0.7) translateY(-16px); }
+          100%    { opacity:0; transform:scale(0.1) translateY(-30px); }
         }
         .lac-spark { animation:lacSpark 1.8s ease-out forwards; }
 
-        /* Central energy burst */
+        /* Burst */
         @keyframes lacBurst {
-          0%,26%  { transform:scale(0); opacity:0; }
-          32%     { transform:scale(1.6); opacity:1; }
-          50%     { transform:scale(1); opacity:0.7; }
-          70%     { transform:scale(2); opacity:0.25; }
-          100%    { transform:scale(2.8); opacity:0; }
+          0%,25%  { transform:scale(0); opacity:0; }
+          31%     { transform:scale(1.7); opacity:1; }
+          50%     { transform:scale(1); opacity:0.65; }
+          72%     { transform:scale(2.2); opacity:0.2; }
+          100%    { transform:scale(3); opacity:0; }
         }
         .lac-burst { animation:lacBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* -3 DP number */
+        /* Flash wash */
+        @keyframes lacFlashWash {
+          0%,3%   { opacity:0; }
+          6%      { opacity:1; }
+          35%     { opacity:0.6; }
+          100%    { opacity:0; }
+        }
+        .lac-flash-wash { animation:lacFlashWash 1.8s ease-out forwards; }
+
+        /* Damage number */
         @keyframes lacDmg {
-          0%,16%  { opacity:0; transform:translateX(-50%) translateY(28px) scale(0.35) rotate(-10deg); }
-          30%     { opacity:1; transform:translateX(-50%) translateY(-14px) scale(1.4) rotate(3deg); }
-          48%     { transform:translateX(-50%) translateY(2px) scale(1.02) rotate(0deg); }
+          0%,14%  { opacity:0; transform:translateX(-50%) translateY(30px) scale(0.3) rotate(-12deg); }
+          28%     { opacity:1; transform:translateX(-50%) translateY(-16px) scale(1.45) rotate(4deg); }
+          46%     { transform:translateX(-50%) translateY(2px) scale(1.03) rotate(0deg); }
           52%     { transform:translateX(-50%) translateY(0) scale(1) rotate(0deg); }
-          70%     { opacity:1; }
-          100%    { opacity:0; transform:translateX(-50%) translateY(-32px) scale(0.8); }
+          68%     { opacity:1; }
+          100%    { opacity:0; transform:translateX(-50%) translateY(-35px) scale(0.78); }
+        }
+        .lac-dmg { animation:lacDmg 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
         }
         .lac-dmg { animation:lacDmg 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
         }
