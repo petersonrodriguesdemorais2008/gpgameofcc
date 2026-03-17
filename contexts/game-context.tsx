@@ -608,7 +608,7 @@ const ALL_CARDS: Card[] = [
     name: "Jaden Hainaegi",
     image: "/images/jaden-20lr.png",
     rarity: "LR",
-    type: "unit",
+    type: "ultimateGuardian",
     element: "Pyrus",
     dp: 4,
     ability: "Magma Primordial",
@@ -617,7 +617,8 @@ const ALL_CARDS: Card[] = [
     attack: "Sol Carmesim",
     attackDescription:
       "Se esse ataque derrotar uma unidade, cause 2 DP de dano direto adicional ao oponente. Na fase de batalha do turno seguinte, todas as outras unidades inimigas recebem a mesma quantidade de dano (2DP) no próximo turno.",
-    category: "Fire Ultimate Elemental user",
+    category: "Fire Ultimate Guardian user",
+    requiresEquip: "IFRAID",
   },
   {
     id: "jaden-ur",
@@ -1126,6 +1127,20 @@ const ALL_CARDS: Card[] = [
     ability: "Rolagem Cataclísmica",
     abilityDescription:
       "Jogue um dado: 1-3: nenhuma unidade recebe bônus. 4-6: uma unidade sua ganha +6DP. Se sair 6, cause -3DP em uma unidade inimiga.",
+    attack: "",
+    category: "Item Funcion Card",
+  },
+  {
+    id: "dados-da-calamidade",
+    name: "Dados da Calamidade",
+    image: "/images/cards/dados-da-calamidade.png",
+    rarity: "SR",
+    type: "item",
+    element: "Pyrus",
+    dp: 0,
+    ability: "Rolagem da Calamidade",
+    abilityDescription:
+      "Jogue um dado: 1-2: Uma unidade sua perde -5DP. 3-4: Nada acontece. 5-6: Uma unidade sua ganha +8DP, mas após 2 turnos perde -5DP.",
     attack: "",
     category: "Item Funcion Card",
   },
