@@ -2873,6 +2873,30 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           return
         }
 
+        // FLECHA DE BALISTA: direct enemy unit selection, bypasses requiresTargets system entirely
+        if (cardToPlace.name === "Flecha de Balista") {
+          const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
+          if (!hasEnemyUnits) {
+            showEffectFeedback("Flecha de Balista: O oponente não tem Unidades no campo!", "error")
+            return
+          }
+          // Remove from hand, enter enemy selection mode
+          setPlayerField((prev) => ({
+            ...prev,
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
+          }))
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
+          setItemSelectionMode({
+            active: true,
+            itemCard: cardToPlace,
+            step: "selectEnemy",
+            selectedEnemyIndex: null,
+            chosenOption: "flecha_direct", // flag to identify this card in handleEnemyUnitSelect
+          })
+          return
+        }
+
         // If effect requires targets, enter selection mode
         if (effectToUse.requiresTargets && effectToUse.targetConfig) {
           // Determine the correct step based on target config
@@ -4607,7 +4631,41 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
 
-    // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada/Flecha de Balista, resolve immediately
+    // FLECHA DE BALISTA: direct enemy unit damage, ignores traps entirely
+    if (itemSelectionMode.chosenOption === "flecha_direct" && itemSelectionMode.itemCard) {
+      const cardToUse = itemSelectionMode.itemCard
+      setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+
+      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 2)
+      const isDestroyed = newDp <= 0
+
+      setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (isDestroyed) {
+          newGraveyard.push(enemyUnit)
+          newUnitZone[index] = null
+        } else {
+          newUnitZone[index] = { ...enemyUnit, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
+      })
+
+      setPlayerField((prev) => ({
+        ...prev,
+        graveyard: [...prev.graveyard, cardToUse],
+      }))
+
+      if (isDestroyed) {
+        showEffectFeedback(`Flecha de Balista! ${enemyUnit.name} destruída!`, "success")
+      } else {
+        showEffectFeedback(`Flecha de Balista! ${enemyUnit.name} -2DP! (${currentDp} → ${newDp})`, "success")
+      }
+      return
+    }
+
+    // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
     const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
       || itemSelectionMode.itemCard?.name === "Flecha de Balista"
     if ((itemSelectionMode.chosenOption === "debuff" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
@@ -6293,9 +6351,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               if (itemSelectionMode.step === "selectEnemy") {
                 return (
                   <p className="text-white text-sm">
-                    {itemSelectionMode.chosenOption === "debuff"
-                      ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
-                      : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
+                    {itemSelectionMode.chosenOption === "flecha_direct"
+                      ? <>Selecione uma <span className="text-red-400 font-bold">Unidade Inimiga</span> — dano de <span className="text-orange-400 font-bold">2DP</span> ignorando Traps</>
+                      : itemSelectionMode.chosenOption === "debuff"
+                        ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+                        : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
                     }
                   </p>
                 )
