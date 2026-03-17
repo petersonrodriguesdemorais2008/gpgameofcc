@@ -1700,78 +1700,86 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const el = element?.toLowerCase().trim() || "neutral"
     const particles: Particle[] = []
 
-    // Screen shake per element weight
+    // Screen shake — heavier for earth/fire, lighter for others
     const shakeMap: Record<string, number> = { pyrus:7, fire:7, terra:8, subterra:8, darkus:5, darkness:5, dark:5, void:4 }
     triggerScreenShake(shakeMap[el] ?? 3, 130)
 
-    // ── AQUOS — water droplets with gravity
+    // ── AQUOS ── water droplets with gravity arc
     if (el === "aquos" || el === "aquo" || el === "water") {
       for (let i = 0; i < 28; i++) {
-        const a = Math.random() * Math.PI * 2
+        const a = (Math.random() * Math.PI * 2)
         const spd = 1.2 + Math.random() * 3.5
-        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd-2.5,
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd - 2.5,
           size:2+Math.random()*4, color:["#00bfff","#40e0d0","#87ceeb"][i%3], alpha:1, gravity:0.18 } as any)
       }
+      // White foam burst
       for (let i = 0; i < 10; i++) {
         particles.push({ x:targetX+(Math.random()-0.5)*10, y:targetY+(Math.random()-0.5)*10,
           vx:(Math.random()-0.5)*1.2, vy:-2-Math.random()*2,
           size:3+Math.random()*4, color:"#e0ffff", alpha:0.9, gravity:0.12 } as any)
       }
     }
-    // ── PYRUS/FIRE — rising embers + hot core
+    // ── PYRUS/FIRE ── rising embers + hot core
     else if (el === "fire" || el === "pyrus") {
+      // Core burst
       for (let i = 0; i < 22; i++) {
         const a = Math.random()*Math.PI*2; const spd = 1.5+Math.random()*4
         particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd-1,
           size:5+Math.random()*8, color:["#ff4500","#ff6a00","#ff8c00","#ffd700"][i%4], alpha:1, heat:-0.06 } as any)
       }
+      // Rising embers
       for (let i = 0; i < 18; i++) {
         particles.push({ x:targetX+(Math.random()-0.5)*16, y:targetY+(Math.random()-0.5)*8,
           vx:(Math.random()-0.5)*1.5, vy:-1-Math.random()*2.5,
           size:1.5+Math.random()*2.5, color:i%2===0?"#ffcc00":"#ff8c00", alpha:0.9, heat:-0.08 } as any)
       }
     }
-    // ── VENTUS — spiraling wind + flat shockwave
+    // ── VENTUS ── tight spiraling wind
     else if (el === "ventus" || el === "wind") {
       for (let i = 0; i < 30; i++) {
         const a = Math.random()*Math.PI*2; const spd = 2.5+Math.random()*5
         particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd*0.4-1.2,
           size:1.5+Math.random()*3, color:["#adff2f","#7fff00","#90ee90","#ffffff"][i%4], alpha:0.9 })
       }
+      // Flat shockwave rings
       for (let i = 0; i < 6; i++) {
         const a = Math.random()*Math.PI*2
         particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*6, vy:Math.sin(a)*2,
           size:8+Math.random()*8, color:"rgba(173,255,47,0.25)", alpha:0.5 })
       }
     }
-    // ── DARKUS — implosion then outburst
+    // ── DARKUS/DARKNESS ── implosion then burst
     else if (el === "darkus" || el === "darkness" || el === "dark") {
       for (let i = 0; i < 32; i++) {
         const a = Math.random()*Math.PI*2; const dist = 35+Math.random()*30
         particles.push({ x:targetX+Math.cos(a)*dist, y:targetY+Math.sin(a)*dist,
-          vx:(targetX-(targetX+Math.cos(a)*dist))*0.12, vy:(targetY-(targetY+Math.sin(a)*dist))*0.12,
-          size:2+Math.random()*4, color:["#7b2d8b","#4b0082","#9400d3","#000000"][i%4], alpha:1 })
+          vx:(targetX-(targetX+Math.cos(a)*dist))*0.12,
+          vy:(targetY-(targetY+Math.sin(a)*dist))*0.12,
+          size:2+Math.random()*4,
+          color:["#7b2d8b","#4b0082","#9400d3","#000000"][i%4], alpha:1 })
       }
+      // Purple sparks outward
       for (let i = 0; i < 12; i++) {
         const a = (i/12)*Math.PI*2
         particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*4, vy:Math.sin(a)*4,
           size:3+Math.random()*3, color:"#da70d6", alpha:0.85 })
       }
     }
-    // ── HAOS/LIGHTNESS — radiant rays + falling golden sparks
+    // ── HAOS/LIGHTNESS ── radiant rays + golden sparks
     else if (el === "haos" || el === "lightness" || el === "light") {
       for (let i = 0; i < 24; i++) {
         const a = Math.random()*Math.PI*2; const spd = 2+Math.random()*6
         particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
           size:1+Math.random()*2.5, color:"#ffffff", alpha:1 })
       }
+      // Golden falling sparks
       for (let i = 0; i < 20; i++) {
         particles.push({ x:targetX+(Math.random()-0.5)*30, y:targetY+(Math.random()-0.5)*10,
           vx:(Math.random()-0.5)*2, vy:-1.5-Math.random()*3,
           size:1.5+Math.random()*2.5, color:i%3===0?"#fff8dc":"#ffd700", alpha:1, gravity:0.08 } as any)
       }
     }
-    // ── VOID — silver shards spinning outward
+    // ── VOID ── silver shards + implosion flash
     else if (el === "void") {
       for (let i = 0; i < 36; i++) {
         const a = Math.random()*Math.PI*2; const spd = 2+Math.random()*6
@@ -1780,7 +1788,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           shape:"shard", rotation:Math.random()*Math.PI*2, rv:(Math.random()-0.5)*0.25 } as any)
       }
     }
-    // ── TERRA/SUBTERRA — rock debris + dust
+    // ── TERRA/SUBTERRA ── debris + dust
     else if (el === "terra" || el === "subterra") {
       for (let i = 0; i < 22; i++) {
         const a = Math.random()*Math.PI*2; const spd = 1.5+Math.random()*4
@@ -1793,7 +1801,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           size:8+Math.random()*12, color:"rgba(139,69,19,0.3)", alpha:0.5, gravity:0.05 } as any)
       }
     }
-    // ── DEFAULT
+    // ── DEFAULT ──
     else {
       for (let i = 0; i < 24; i++) {
         const a = Math.random()*Math.PI*2; const spd = 1.5+Math.random()*4
@@ -1823,12 +1831,181 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }, 1000)
   }, [triggerScreenShake])
 
+  // Destruction animation state
+  const [destructionAnimation, setDestructionAnimation] = useState<{
+    id: string
+    cardName: string
+    cardImage: string
+    x: number
+    y: number
+    element: string
+  } | null>(null)
+
+  // Dice roll animation state
+  const [diceAnimation, setDiceAnimation] = useState<{
+    visible: boolean
+    rolling: boolean
+    result: number | null
+    cardName: string
+    onComplete: ((result: number) => void) | null
+  } | null>(null)
+
+  // Ordem de Laceração slash animation
+  const [lacerationAnimation, setLacerationAnimation] = useState(false)
+
+  // Drag & drop hand cards
+  const [draggedHandCard, setDraggedHandCard] = useState<{
+    index: number
+    card: GameCard
+    currentY?: number
+  } | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+  const [droppingCard, setDroppingCard] = useState<{
+    card: GameCard
+    targetX: number
+    targetY: number
+  } | null>(null)
+
+  // Card inspection & graveyard/tap modals
+  const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
+  const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
+  const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
+
+  // Effect feedback toast
+  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
+
+  // Ultimate Gear ability tracking
+  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
+  const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
+  const [ugTargetMode, setUgTargetMode] = useState<{
+    active: boolean
+    ugCard: GameCard | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
+  }>({ active: false, ugCard: null, type: null })
+
+  // Miguel Arcanjo: Julgamento Divino — once per turn
+  const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
+
+  // Calem SR: Pulso da Nulidade — once every 3 turns
+  const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
+  // Calem UR: Impacto sem Fé — once every 3 turns + double attack flag
+  const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null>(null)
+  const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
+  // Calem LR: Julgamento do Vazio Eterno — target selection mode
+  const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
+
+  // Fornbrenna fire count snapshot
+  const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
+
+  // Refs
+  const prevUnitZoneRef = useRef<(string | null)[]>([])
+  const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const animationInProgressRef = useRef(false)
+  const attackIdRef = useRef(0)
+  const draggedCardRef = useRef<HTMLDivElement>(null)
+  const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
+
+  useEffect(() => {
+    if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
+      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null)
+      return
+    }
+    const ug = playerField.ultimateZone
+    const requiredUnit = ug.requiresUnit!
+    const ability = ug.ability
+    const prevNames = prevUnitZoneRef.current
+    const currentNames = playerField.unitZone.map((u) => u?.name || null)
+    const wasPresent = prevNames.some((n) => n === requiredUnit)
+    const isNowPresent = currentNames.some((n) => n === requiredUnit)
+    if (!wasPresent && isNowPresent) {
+      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
+      if (unitIdx !== -1) {
+        setPlayerField((prev) => {
+          const newUnits = [...prev.unitZone]
+          const unit = newUnits[unitIdx]
+          if (!unit) return prev
+          let bonus = 0; let msg = ""
+          if (ability === "ODEN SWORD")       { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
+          else if (ability === "PROTONIX SWORD") { bonus = 2; msg = `${requiredUnit} +2 DP (Protonix Sword)!` }
+          else if (ability === "TWILIGH AVALON") { bonus = 2; msg = `${requiredUnit} +2 DP (Twiligh Avalon)!` }
+          else if (ability === "ULLRBOGI")    { msg = `${requiredUnit} recebera +3 DP nas fases de batalha (Ullrbogi)!` }
+          else if (ability === "MIGUEL ARCANJO") { bonus = 4; msg = `${requiredUnit} +4 DP! Protecao de Funcoes ativada! (Miguel Arcanjo)` }
+          else if (ability === "MEFISTO")     { bonus = 2; msg = `${requiredUnit} +2 DP! (Mefisto Foles)` }
+          else if (ability === "FORNBRENNA")  {
+            const fireCount = countFireUnitsUsed(prev)
+            bonus = fireCount * 2
+            setFornbrennaFireCount(fireCount)
+            msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
+          }
+          if (bonus > 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
+          if (msg) showEffectFeedback(msg, "success")
+          return { ...prev, unitZone: newUnits as any }
+        })
+      }
+    }
+    prevUnitZoneRef.current = currentNames
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerField.unitZone, playerField.ultimateZone])
+
+  const handleAnimationComplete = useCallback((id: string) => {
+    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
+  }, [])
+
+  const handleImpact = useCallback(
+    (id: string, x: number, y: number, element: string) => {
+      setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
+      triggerExplosion(x, y, element)
+    },
+    [triggerExplosion],
+  )
+
+  const gameResultRecordedRef = useRef(false)
+
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
+    setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
+    setTimeout(() => setEffectFeedback(null), 2000)
+  }, [])
+
+  const showDrawAnimation = useCallback((card: GameCard) => {
+    setDrawAnimation({ visible: true, cardName: card.name, cardImage: card.image, cardType: card.type })
+    setTimeout(() => setDrawAnimation(null), 1300)
+  }, [])
+
+  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
+    const id = `destruction-${Date.now()}`
+    setDestructionAnimation({ id, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
+    setTimeout(() => setDestructionAnimation(null), 1200)
+  }, [])
+
+  const rollDice = useCallback((cardName: string): Promise<number> => {
+    return new Promise((resolve) => {
+      setDiceAnimation({ visible: true, rolling: true, result: null, cardName, onComplete: null })
+      setTimeout(() => {
+        const result = Math.floor(Math.random() * 6) + 1
+        setDiceAnimation((prev) => prev ? { ...prev, rolling: false, result } : null)
+        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1500)
+      }, 2000)
+    })
+  }, [])
+
+  const resolveEffectWithDice = useCallback(async (
+    effect: FunctionCardEffect, effectContext: EffectContext,
+    targets: EffectTargets, cardName: string
+  ): Promise<EffectResult> => {
+    if (effect.requiresDice) {
+      const diceResult = await rollDice(cardName)
+      return effect.resolve(effectContext, { ...targets, diceResult })
+    }
+    return effect.resolve(effectContext, targets)
+  }, [rollDice])
+
   useEffect(() => {
     if (explosionEffects.length === 0) {
       const canvas = explosionCanvasRef.current
       if (canvas) { const ctx = canvas.getContext("2d"); if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height) }
       return
     }
+
     const canvas = explosionCanvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
@@ -1862,53 +2039,55 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         const elapsed = now - effect.startTime
         if (elapsed > duration) return
         const el = effect.element?.toLowerCase()
-        const t = elapsed / duration
+        const t = elapsed / duration // 0→1
         const cx = effect.x; const cy = effect.y
 
-        // ── Per-element background effects ──
+        // ── Per-element canvas background effects ──
         if (el === "aquos" || el === "aquo") {
           // Expanding wavy water ring
-          const ringT = Math.min(1, t * 2.5)
+          const maxR = 60; const ringT = Math.min(1, t * 2.5)
           ctx.save()
           ctx.globalAlpha = (1 - ringT) * 0.55
           ctx.strokeStyle = "#00d4ff"; ctx.lineWidth = 2 + (1-ringT)*4
           ctx.shadowColor = "#00bfff"; ctx.shadowBlur = 12
           ctx.beginPath()
           for (let a = 0; a < Math.PI*2; a += 0.15) {
-            const r = ringT*60 + Math.sin(a*5 + elapsed*0.008)*4
-            a === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r) : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+            const r = ringT * maxR + Math.sin(a*5 + elapsed*0.008)*4
+            const px = cx + Math.cos(a)*r; const py = cy + Math.sin(a)*r
+            a === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py)
           }
-          ctx.closePath(); ctx.stroke()
+          ctx.closePath(); ctx.stroke(); ctx.restore()
+          // Second thinner ring delayed
           const rt2 = Math.min(1, Math.max(0,(t-0.15)*3))
           if (rt2 > 0) {
-            ctx.globalAlpha = (1-rt2)*0.3
-            ctx.strokeStyle = "#40e0d0"; ctx.lineWidth = 1.5; ctx.shadowBlur = 0
-            ctx.beginPath(); ctx.arc(cx, cy, rt2*40, 0, Math.PI*2); ctx.stroke()
+            ctx.save(); ctx.globalAlpha = (1-rt2)*0.35
+            ctx.strokeStyle = "#40e0d0"; ctx.lineWidth = 1.5
+            ctx.beginPath(); ctx.arc(cx, cy, rt2*45, 0, Math.PI*2); ctx.stroke(); ctx.restore()
           }
-          ctx.restore()
         }
         else if (el === "fire" || el === "pyrus") {
-          // Jagged fire burst
+          // Jagged fire burst outline
           const fp = Math.min(1, t*2.2)
           ctx.save(); ctx.globalAlpha = (1-fp)*0.7
           ctx.strokeStyle = "#ff4500"; ctx.lineWidth = 3+(1-fp)*5
           ctx.shadowColor = "#ff6a00"; ctx.shadowBlur = 20
           ctx.beginPath()
           for (let a = 0; a < Math.PI*2; a += 0.25) {
-            const r = fp*60 + (Math.random()-0.5)*10
+            const r = fp*62 + (Math.random()-0.5)*12
             ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
           }
-          ctx.closePath(); ctx.stroke()
+          ctx.closePath(); ctx.stroke(); ctx.restore()
+          // Inner glow
           if (fp < 0.6) {
-            ctx.shadowBlur = 0
-            const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,fp*38)
-            grad.addColorStop(0,`rgba(255,255,200,${(0.6-fp)*0.8})`); grad.addColorStop(1,"transparent")
-            ctx.fillStyle = grad; ctx.fillRect(cx-42,cy-42,84,84)
+            ctx.save()
+            const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,fp*40)
+            grad.addColorStop(0,`rgba(255,255,200,${(0.6-fp)*0.9})`)
+            grad.addColorStop(1,"transparent")
+            ctx.fillStyle = grad; ctx.fillRect(cx-45,cy-45,90,90); ctx.restore()
           }
-          ctx.restore()
         }
         else if (el === "ventus" || el === "wind") {
-          // Logarithmic spiral + flat ellipse shockwave
+          // Logarithmic spiral
           const sp = Math.min(1, t*2)
           ctx.save(); ctx.globalAlpha = (1-sp)*0.55
           ctx.strokeStyle = "#7fff00"; ctx.lineWidth = 1.5
@@ -1916,54 +2095,65 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           ctx.beginPath()
           for (let a = 0; a < Math.PI*5; a += 0.12) {
             const r = a * 3.5 * sp
-            ctx.lineTo(cx+Math.cos(a+elapsed*0.015)*r, cy+Math.sin(a+elapsed*0.015)*r)
+            ctx.lineTo(cx+Math.cos(a + elapsed*0.015)*r, cy+Math.sin(a + elapsed*0.015)*r)
           }
           ctx.stroke()
-          const sw = Math.min(1, Math.max(0,(t-0.1)*2.5))
+          // Horizontal shockwave ellipse
+          const sw = Math.min(1,(t-0.1)*2.5)
           if (sw > 0) {
-            ctx.globalAlpha = (1-sw)*0.4; ctx.strokeStyle = "#adff2f"; ctx.lineWidth = 2; ctx.shadowBlur = 0
-            ctx.beginPath(); ctx.ellipse(cx, cy, sw*65, sw*20, 0, 0, Math.PI*2); ctx.stroke()
+            ctx.globalAlpha = (1-sw)*0.4
+            ctx.strokeStyle = "#adff2f"; ctx.lineWidth = 2
+            ctx.beginPath(); ctx.ellipse(cx,cy,sw*70,sw*22,0,0,Math.PI*2); ctx.stroke()
           }
           ctx.restore()
         }
         else if (el === "darkus" || el === "darkness" || el === "dark") {
-          // Void pulse + rotating tentacles
+          // Dark void pulse
           const dp = Math.min(1, t*1.8)
           ctx.save()
-          const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,dp*65)
-          grad.addColorStop(0,`rgba(60,0,100,${(1-dp)*0.85})`); grad.addColorStop(0.5,`rgba(30,0,60,${(1-dp)*0.5})`); grad.addColorStop(1,"transparent")
-          ctx.fillStyle = grad; ctx.fillRect(cx-70,cy-70,140,140)
+          const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,dp*70)
+          grad.addColorStop(0,`rgba(60,0,100,${(1-dp)*0.85})`)
+          grad.addColorStop(0.5,`rgba(30,0,60,${(1-dp)*0.5})`)
+          grad.addColorStop(1,"transparent")
+          ctx.fillStyle = grad; ctx.fillRect(cx-75,cy-75,150,150)
+          // Rotating tentacle lines
           for (let i = 0; i < 8; i++) {
             const ang = (Math.PI*2*i/8) + elapsed*0.003
-            const len = 55*(1-dp)
+            const len = 58*(1-dp)
             if (len > 2) {
-              ctx.strokeStyle = `rgba(${100+i*8},0,${130+i*5},0.5)`; ctx.lineWidth = 1.5
-              ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*len, cy+Math.sin(ang)*len); ctx.stroke()
+              ctx.strokeStyle = `rgba(${100+i*8},0,${130+i*5},0.5)`
+              ctx.lineWidth = 1.5; ctx.beginPath()
+              ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*len, cy+Math.sin(ang)*len)
+              ctx.stroke()
             }
           }
           ctx.restore()
         }
         else if (el === "haos" || el === "lightness" || el === "light") {
-          // 12 star rays + central flash
+          // Star-burst rays
           const lp = Math.min(1, t*2)
           ctx.save(); ctx.globalAlpha = (1-lp)*0.8
           ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 2
           ctx.shadowColor = "#fff8dc"; ctx.shadowBlur = 18
           for (let i = 0; i < 12; i++) {
             const ang = (Math.PI*2*i/12)
-            ctx.beginPath(); ctx.moveTo(cx+Math.cos(ang)*8, cy+Math.sin(ang)*8)
-            ctx.lineTo(cx+Math.cos(ang)*lp*52, cy+Math.sin(ang)*lp*52); ctx.stroke()
+            const len = lp * 55
+            ctx.beginPath()
+            ctx.moveTo(cx + Math.cos(ang)*8, cy + Math.sin(ang)*8)
+            ctx.lineTo(cx + Math.cos(ang)*len, cy + Math.sin(ang)*len)
+            ctx.stroke()
           }
+          // Central bright flash
           if (t < 0.25) {
-            ctx.shadowBlur = 0
-            const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,34*(1-t*4))
-            cg.addColorStop(0,`rgba(255,255,220,${(0.25-t)*3.2})`); cg.addColorStop(1,"transparent")
-            ctx.fillStyle = cg; ctx.fillRect(cx-38,cy-38,76,76)
+            const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,35*(1-t*4))
+            grad.addColorStop(0,`rgba(255,255,220,${(0.25-t)*3.5})`)
+            grad.addColorStop(1,"transparent")
+            ctx.fillStyle = grad; ctx.fillRect(cx-40,cy-40,80,80)
           }
           ctx.restore()
         }
         else if (el === "void") {
-          // Fracture cracks + inversion flash
+          // Fracture cracks radiating out
           const vp = Math.min(1, t*2.2)
           ctx.save(); ctx.globalAlpha = (1-vp)*0.8
           ctx.strokeStyle = "#b8b8cc"; ctx.lineWidth = 1.2
@@ -1979,15 +2169,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             }
             ctx.stroke()
           }
+          // Inversion flash
           if (t < 0.18) {
-            ctx.shadowBlur = 0; ctx.globalAlpha = (0.18-t)*4*0.6
+            ctx.globalAlpha = (0.18-t)*4*0.6
             ctx.fillStyle = "rgba(220,220,255,0.5)"
-            ctx.beginPath(); ctx.arc(cx,cy,38*(1-t*5),0,Math.PI*2); ctx.fill()
+            ctx.beginPath(); ctx.arc(cx,cy,40*(1-t*5),0,Math.PI*2); ctx.fill()
           }
           ctx.restore()
         }
         else if (el === "terra" || el === "subterra") {
-          // Ground crack lines + dust cloud
+          // Ground crack lines
           const tp = Math.min(1, t*2)
           ctx.save(); ctx.globalAlpha = (1-tp)*0.7
           ctx.strokeStyle = "#8b4513"; ctx.lineWidth = 2
@@ -2002,46 +2193,57 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             }
             ctx.stroke()
           }
-          const dc = Math.min(1, Math.max(0,(t-0.05)*3))
-          if (dc > 0 && dc < 1) {
-            ctx.shadowBlur = 0
-            const dg = ctx.createRadialGradient(cx,cy+10,0,cx,cy+10,dc*52)
-            dg.addColorStop(0,`rgba(160,90,20,${(1-dc)*0.4})`); dg.addColorStop(1,"transparent")
-            ctx.fillStyle = dg; ctx.fillRect(cx-58,cy-18,116,76)
-          }
           ctx.restore()
+          // Dust cloud
+          const dc = Math.min(1,(t-0.05)*3)
+          if (dc > 0 && dc < 1) {
+            ctx.save()
+            const grad = ctx.createRadialGradient(cx,cy+10,0,cx,cy+10,dc*55)
+            grad.addColorStop(0,`rgba(160,90,20,${(1-dc)*0.4})`)
+            grad.addColorStop(1,"transparent")
+            ctx.fillStyle = grad; ctx.fillRect(cx-60,cy-20,120,80); ctx.restore()
+          }
         }
 
-        // ── Particles ──
+        // ── Particles (shared) ──
         effect.particles.forEach((p: any) => {
           if (p.gravity) p.vy += p.gravity
           if (p.heat) p.vy += p.heat
           if (p.rotation !== undefined) p.rotation += (p.rv || 0.1)
           p.x += p.vx; p.y += p.vy; p.alpha -= 0.022; p.size *= 0.97
           if (p.alpha <= 0 || p.size < 0.4) return
+
           ctx.save()
           ctx.translate(p.x, p.y)
           if (p.rotation !== undefined) ctx.rotate(p.rotation)
           ctx.globalAlpha = p.alpha
           ctx.fillStyle = p.color
-          if (el==="haos"||el==="light"||el==="lightness"||el==="fire"||el==="pyrus") { ctx.shadowColor=p.color; ctx.shadowBlur=10 }
+
+          // Glow for bright elements
+          if (el==="haos"||el==="light"||el==="lightness"||el==="fire"||el==="pyrus") {
+            ctx.shadowColor = p.color; ctx.shadowBlur = 10
+          }
           if (el==="aquos"||el==="aquo") { ctx.shadowColor="#00d4ff"; ctx.shadowBlur=7 }
           if (el==="darkus"||el==="darkness"||el==="dark") { ctx.shadowColor="#9400d3"; ctx.shadowBlur=8 }
+
           if (p.shape === "shard") {
-            ctx.beginPath(); ctx.moveTo(0,-p.size); ctx.lineTo(p.size*0.6,p.size); ctx.lineTo(-p.size*0.6,p.size); ctx.closePath(); ctx.fill()
+            ctx.beginPath()
+            ctx.moveTo(0,-p.size); ctx.lineTo(p.size*0.6,p.size); ctx.lineTo(-p.size*0.6,p.size)
+            ctx.closePath(); ctx.fill()
           } else {
             ctx.beginPath(); ctx.arc(0,0,p.size,0,Math.PI*2); ctx.fill()
           }
           ctx.restore()
         })
 
-        // ── Residual glow ──
-        const ga = Math.max(0, 0.7 - t*1.4)
+        // ── Central residual glow ──
+        const ga = Math.max(0, 0.7 - t * 1.3)
         if (ga > 0) {
           const glowColor = getElementGlow(effect.element)
-          const gr = ctx.createRadialGradient(cx,cy,0,cx,cy,65)
-          gr.addColorStop(0, glowColor.replace("0.8", String(ga*0.5))); gr.addColorStop(1,"transparent")
-          ctx.fillStyle = gr; ctx.fillRect(cx-70,cy-70,140,140)
+          const gr = ctx.createRadialGradient(cx,cy,0,cx,cy,70)
+          gr.addColorStop(0, glowColor.replace("0.8", String(ga * 0.55)))
+          gr.addColorStop(1, "transparent")
+          ctx.fillStyle = gr; ctx.fillRect(cx-75,cy-75,150,150)
         }
       })
 
@@ -2051,7 +2253,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     animationId = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(animationId)
   }, [explosionEffects])
-
 
 
   const canPlayerAttack = () => {
