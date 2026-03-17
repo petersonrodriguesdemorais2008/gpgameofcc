@@ -1415,71 +1415,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  "dados-da-calamidade": {
-    id: "dados-da-calamidade",
-    name: "Dados da Calamidade",
-    requiresTargets: true,
-    requiresDice: true,
-    targetConfig: { allyUnits: 1 },
-    canActivate: (context) => {
-      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
-      if (!hasAllyUnits) {
-        return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
-      }
-      return { canActivate: true }
-    },
-    resolve: (context, targets) => {
-      if (!targets?.allyUnitIndices?.length) {
-        return { success: false, message: "Selecione uma unidade sua" }
-      }
-      const allyIndex = targets.allyUnitIndices[0]
-      const allyUnit = context.playerField.unitZone[allyIndex]
-      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
-
-      const diceResult = targets.diceResult || 1
-      const currentDp = (allyUnit as any).currentDp || allyUnit.dp
-
-      // 1–2: lose 5DP
-      if (diceResult <= 2) {
-        const newDp = Math.max(0, currentDp - 5)
-        const isDestroyed = newDp <= 0
-        context.setPlayerField((prev) => {
-          const newUnitZone = [...prev.unitZone]
-          if (isDestroyed) {
-            const destroyed = newUnitZone[allyIndex]
-            newUnitZone[allyIndex] = null
-            return { ...prev, unitZone: newUnitZone as any, graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
-          }
-          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp } as any
-          return { ...prev, unitZone: newUnitZone as any }
-        })
-        if (isDestroyed) return { success: true, message: `Dado: ${diceResult}! Calamidade! ${allyUnit.name} perdeu 5DP e foi destruída!` }
-        return { success: true, message: `Dado: ${diceResult}! Calamidade! ${allyUnit.name} perdeu 5DP (${currentDp} → ${newDp})` }
-      }
-
-      // 3–4: nothing happens
-      if (diceResult <= 4) {
-        return { success: true, message: `Dado: ${diceResult}! Nada acontece desta vez.` }
-      }
-
-      // 5–6: +8DP now, -5DP after 2 turns (stored as pending debuff)
-      const newDp = currentDp + 8
-      context.setPlayerField((prev) => {
-        const newUnitZone = [...prev.unitZone]
-        if (newUnitZone[allyIndex]) {
-          newUnitZone[allyIndex] = {
-            ...newUnitZone[allyIndex]!,
-            currentDp: newDp,
-            calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2,
-            calamidadeDebuffIndex: allyIndex,
-          } as any
-        }
-        return { ...prev, unitZone: newUnitZone as any }
-      })
-      return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +8DP! (−5DP em 2 turnos)` }
-    },
-  },
-
   "flecha-de-balista": {
     id: "flecha-de-balista",
     name: "Flecha de Balista",
@@ -1905,164 +1840,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     y: number
     element: string
   } | null>(null)
-
-  // Dice roll animation state
-  const [diceAnimation, setDiceAnimation] = useState<{
-    visible: boolean
-    rolling: boolean
-    result: number | null
-    cardName: string
-    onComplete: ((result: number) => void) | null
-  } | null>(null)
-
-  // Ordem de Laceração slash animation
-  const [lacerationAnimation, setLacerationAnimation] = useState(false)
-
-  // Drag & drop hand cards
-  const [draggedHandCard, setDraggedHandCard] = useState<{
-    index: number
-    card: GameCard
-    currentY?: number
-  } | null>(null)
-  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
-  const [droppingCard, setDroppingCard] = useState<{
-    card: GameCard
-    targetX: number
-    targetY: number
-  } | null>(null)
-
-  // Card inspection & graveyard/tap modals
-  const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
-  const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
-  const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
-
-  // Effect feedback toast
-  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
-
-  // Ultimate Gear ability tracking
-  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
-  const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
-  const [ugTargetMode, setUgTargetMode] = useState<{
-    active: boolean
-    ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
-  }>({ active: false, ugCard: null, type: null })
-
-  // Miguel Arcanjo: Julgamento Divino — once per turn
-  const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
-
-  // Calem SR: Pulso da Nulidade — once every 3 turns
-  const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
-  // Calem UR: Impacto sem Fé — once every 3 turns + double attack flag
-  const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null>(null)
-  const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
-  // Calem LR: Julgamento do Vazio Eterno — target selection mode
-  const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
-
-  // Fornbrenna fire count snapshot
-  const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
-
-  // Refs
-  const prevUnitZoneRef = useRef<(string | null)[]>([])
-  const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
-  const animationInProgressRef = useRef(false)
-  const attackIdRef = useRef(0)
-  const draggedCardRef = useRef<HTMLDivElement>(null)
-  const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
-
-  useEffect(() => {
-    if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
-      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null)
-      return
-    }
-    const ug = playerField.ultimateZone
-    const requiredUnit = ug.requiresUnit!
-    const ability = ug.ability
-    const prevNames = prevUnitZoneRef.current
-    const currentNames = playerField.unitZone.map((u) => u?.name || null)
-    const wasPresent = prevNames.some((n) => n === requiredUnit)
-    const isNowPresent = currentNames.some((n) => n === requiredUnit)
-    if (!wasPresent && isNowPresent) {
-      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
-      if (unitIdx !== -1) {
-        setPlayerField((prev) => {
-          const newUnits = [...prev.unitZone]
-          const unit = newUnits[unitIdx]
-          if (!unit) return prev
-          let bonus = 0; let msg = ""
-          if (ability === "ODEN SWORD")       { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
-          else if (ability === "PROTONIX SWORD") { bonus = 2; msg = `${requiredUnit} +2 DP (Protonix Sword)!` }
-          else if (ability === "TWILIGH AVALON") { bonus = 2; msg = `${requiredUnit} +2 DP (Twiligh Avalon)!` }
-          else if (ability === "ULLRBOGI")    { msg = `${requiredUnit} recebera +3 DP nas fases de batalha (Ullrbogi)!` }
-          else if (ability === "MIGUEL ARCANJO") { bonus = 4; msg = `${requiredUnit} +4 DP! Protecao de Funcoes ativada! (Miguel Arcanjo)` }
-          else if (ability === "MEFISTO")     { bonus = 2; msg = `${requiredUnit} +2 DP! (Mefisto Foles)` }
-          else if (ability === "FORNBRENNA")  {
-            const fireCount = countFireUnitsUsed(prev)
-            bonus = fireCount * 2
-            setFornbrennaFireCount(fireCount)
-            msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
-          }
-          if (bonus > 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
-          if (msg) showEffectFeedback(msg, "success")
-          return { ...prev, unitZone: newUnits as any }
-        })
-      }
-    }
-    prevUnitZoneRef.current = currentNames
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerField.unitZone, playerField.ultimateZone])
-
-  const handleAnimationComplete = useCallback((id: string) => {
-    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
-  }, [])
-
-  const handleImpact = useCallback(
-    (id: string, x: number, y: number, element: string) => {
-      setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
-      triggerExplosion(x, y, element)
-    },
-    [triggerExplosion],
-  )
-
-  const gameResultRecordedRef = useRef(false)
-
-  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
-    setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
-    setTimeout(() => setEffectFeedback(null), 2000)
-  }, [])
-
-  const showDrawAnimation = useCallback((card: GameCard) => {
-    setDrawAnimation({ visible: true, cardName: card.name, cardImage: card.image, cardType: card.type })
-    setTimeout(() => setDrawAnimation(null), 1300)
-  }, [])
-
-  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
-    const id = `destruction-${Date.now()}`
-    setDestructionAnimation({ id, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
-    setTimeout(() => setDestructionAnimation(null), 1200)
-  }, [])
-
-  const rollDice = useCallback((cardName: string): Promise<number> => {
-    return new Promise((resolve) => {
-      setDiceAnimation({ visible: true, rolling: true, result: null, cardName, onComplete: null })
-      setTimeout(() => {
-        const result = Math.floor(Math.random() * 6) + 1
-        setDiceAnimation((prev) => prev ? { ...prev, rolling: false, result } : null)
-        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1500)
-      }, 2000)
-    })
-  }, [])
-
-  const resolveEffectWithDice = useCallback(async (
-    effect: FunctionCardEffect, effectContext: EffectContext,
-    targets: EffectTargets, cardName: string
-  ): Promise<EffectResult> => {
-    if (effect.requiresDice) {
-      const diceResult = await rollDice(cardName)
-      return effect.resolve(effectContext, { ...targets, diceResult })
-    }
-    return effect.resolve(effectContext, targets)
-  }, [rollDice])
 
   useEffect(() => {
     if (explosionEffects.length === 0) {
@@ -2584,6 +2361,49 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
       })
 
+      // BALIN: Vigília Eterna — on enter, look top 3, pick 1 to hand, rest to bottom
+      if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
+        setTimeout(() => {
+          const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
+          if (top3.length === 0) return
+          if (top3.length === 1) {
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: [...prev.hand, top3[0]],
+              deck: prev.deck.slice(1),
+            }))
+            showEffectFeedback(`Vigília Eterna: ${top3[0].name} adicionada à mão!`, "success")
+            return
+          }
+          // Show choice: pick 1 of top 3
+          setChoiceModal({
+            visible: true,
+            cardName: "Vigília Eterna — Escolha 1 carta",
+            options: top3.map((c, i) => ({
+              id: String(i),
+              label: c.name,
+              description: c.rarity + " · " + (c.category || c.type),
+            })),
+            onChoose: (optionId: string) => {
+              setChoiceModal(null)
+              const pickedIdx = Number(optionId)
+              setPlayerField((prev) => {
+                // Remove top 3 from deck, add chosen to hand, put rest at bottom
+                const deckWithout = prev.deck.slice(top3.length)
+                const chosen = top3[pickedIdx]
+                const toBottom = top3.filter((_, i) => i !== pickedIdx)
+                showEffectFeedback(`Vigília Eterna: ${chosen.name} adicionada à mão!`, "success")
+                return {
+                  ...prev,
+                  hand: [...prev.hand, chosen],
+                  deck: [...deckWithout, ...toBottom],
+                }
+              })
+            },
+          })
+        }, 350)
+      }
+
       // União da Grande Ordem check
       const cardNameLower = cardToPlace.name.toLowerCase()
       const isGreatOrderMember = cardNameLower.includes("fehnon") || cardNameLower.includes("morgana") || cardNameLower.includes("calem")
@@ -2708,9 +2528,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
       const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
-      const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2736,7 +2555,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
           else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
-          else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
         }
 
         if (!effectToUse) return // Safety check
@@ -4484,19 +4302,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     setPlayerField((prev) => ({
       ...prev,
+      // Reset hasAttacked + reset Horizonte de Eventos DP buff for calem-ur (restores base dp)
       unitZone: prev.unitZone.map((unit) => {
         if (!unit) return null
         if (unit.id === "calem-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
-        // Dados da Calamidade: apply -5DP debuff when the turn arrives
-        if ((unit as any).calamidadeDebuffTurn === turn + 1) {
-          const cur = (unit as any).currentDp || unit.dp
-          const newDp = Math.max(0, cur - 5)
-          showEffectFeedback(`Dados da Calamidade: ${unit.name} −5DP! (${cur} → ${newDp})`, "error")
-          const updated = { ...unit, currentDp: newDp, hasAttacked: false } as any
-          delete updated.calamidadeDebuffTurn
-          delete updated.calamidadeDebuffIndex
-          return updated
-        }
         return { ...unit, hasAttacked: false }
       }),
     }))
@@ -4720,7 +4529,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
       const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
-      const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4745,7 +4553,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
       else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
       else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
-      else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
     }
 
@@ -6829,7 +6636,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           100%    { opacity: 0; transform: translateX(-50%) translateY(-28px) scale(0.85); }
         }
         .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-      `}</style>
     </div>
   )
 }
