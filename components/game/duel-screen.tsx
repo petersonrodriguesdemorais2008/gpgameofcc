@@ -1617,214 +1617,116 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [])
 
   const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) => {
-    const colors = getElementColors(element)
+    const el = element?.toLowerCase().trim() || "neutral"
     const particles: Particle[] = []
-    const el = element?.toLowerCase()
 
-    // Screen shake on impact
-    const shakeIntensity = el === "fire" || el === "terra" || el === "pyrus" ? 8 : 4
-    triggerScreenShake(shakeIntensity, 150)
+    // Screen shake — heavier for earth/fire, lighter for others
+    const shakeMap: Record<string, number> = { pyrus:7, fire:7, terra:8, subterra:8, darkus:5, darkness:5, dark:5, void:4 }
+    triggerScreenShake(shakeMap[el] ?? 3, 130)
 
-    // AQUO/AQUOS - Hyper-focused liquid water power
-    if (el === "aquos" || el === "aquo") {
-      // Arcing droplets that fall with gravity
-      for (let i = 0; i < 35; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 0.5 + Math.random() * 2.5
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 2.0, // Initial splash up
-          size: 1.5 + Math.random() * 3.5,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 1,
-          gravity: 0.15, // Physics marker
-        } as any)
+    // ── AQUOS ── water droplets with gravity arc
+    if (el === "aquos" || el === "aquo" || el === "water") {
+      for (let i = 0; i < 28; i++) {
+        const a = (Math.random() * Math.PI * 2)
+        const spd = 1.2 + Math.random() * 3.5
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd - 2.5,
+          size:2+Math.random()*4, color:["#00bfff","#40e0d0","#87ceeb"][i%3], alpha:1, gravity:0.18 } as any)
       }
-      // Glowing splash center
-      for (let i = 0; i < 12; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 12,
-          y: targetY + (Math.random() - 0.5) * 12,
-          vx: (Math.random() - 0.5) * 0.7,
-          vy: -1.5 - Math.random() * 1.5,
-          size: 3 + Math.random() * 3,
-          color: "#ffffff",
-          alpha: 0.8,
-          gravity: 0.1,
-        } as any)
+      // White foam burst
+      for (let i = 0; i < 10; i++) {
+        particles.push({ x:targetX+(Math.random()-0.5)*10, y:targetY+(Math.random()-0.5)*10,
+          vx:(Math.random()-0.5)*1.2, vy:-2-Math.random()*2,
+          size:3+Math.random()*4, color:"#e0ffff", alpha:0.9, gravity:0.12 } as any)
       }
     }
-    // FIRE/PYRUS - Hyper-focused intense fire power
+    // ── PYRUS/FIRE ── rising embers + hot core
     else if (el === "fire" || el === "pyrus") {
-      // Intense hot center with rising heat
+      // Core burst
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random()*Math.PI*2; const spd = 1.5+Math.random()*4
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd-1,
+          size:5+Math.random()*8, color:["#ff4500","#ff6a00","#ff8c00","#ffd700"][i%4], alpha:1, heat:-0.06 } as any)
+      }
+      // Rising embers
+      for (let i = 0; i < 18; i++) {
+        particles.push({ x:targetX+(Math.random()-0.5)*16, y:targetY+(Math.random()-0.5)*8,
+          vx:(Math.random()-0.5)*1.5, vy:-1-Math.random()*2.5,
+          size:1.5+Math.random()*2.5, color:i%2===0?"#ffcc00":"#ff8c00", alpha:0.9, heat:-0.08 } as any)
+      }
+    }
+    // ── VENTUS ── tight spiraling wind
+    else if (el === "ventus" || el === "wind") {
       for (let i = 0; i < 30; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 2 + Math.random() * 4.5
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 6 + Math.random() * 9,
-          color: i % 3 === 0 ? "#ffffff" : colors[0],
-          alpha: 1,
-          heat: -0.05, // Rising heat physics
-        } as any)
+        const a = Math.random()*Math.PI*2; const spd = 2.5+Math.random()*5
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd*0.4-1.2,
+          size:1.5+Math.random()*3, color:["#adff2f","#7fff00","#90ee90","#ffffff"][i%4], alpha:0.9 })
       }
-      // Embers that drift up
-      for (let i = 0; i < 15; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 8,
-          y: targetY + (Math.random() - 0.5) * 8,
-          vx: (Math.random() - 0.5) * 1.2,
-          vy: -0.8 - Math.random() * 1.5,
-          size: 1.5 + Math.random() * 3,
-          color: "#ffcc00",
-          alpha: 0.8,
-          heat: -0.1,
-        } as any)
+      // Flat shockwave rings
+      for (let i = 0; i < 6; i++) {
+        const a = Math.random()*Math.PI*2
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*6, vy:Math.sin(a)*2,
+          size:8+Math.random()*8, color:"rgba(173,255,47,0.25)", alpha:0.5 })
       }
     }
-    // VENTUS - Hyper-focused localized swirl
-    else if (el === "ventus") {
-      for (let i = 0; i < 40; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 3.5 + Math.random() * 5.5 // Reduced speed
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed * 0.3 - 1.5,
-          size: 1.5 + Math.random() * 3.5,
-          color: "#adff2f",
-          alpha: 1,
-        })
+    // ── DARKUS/DARKNESS ── implosion then burst
+    else if (el === "darkus" || el === "darkness" || el === "dark") {
+      for (let i = 0; i < 32; i++) {
+        const a = Math.random()*Math.PI*2; const dist = 35+Math.random()*30
+        particles.push({ x:targetX+Math.cos(a)*dist, y:targetY+Math.sin(a)*dist,
+          vx:(targetX-(targetX+Math.cos(a)*dist))*0.12,
+          vy:(targetY-(targetY+Math.sin(a)*dist))*0.12,
+          size:2+Math.random()*4,
+          color:["#7b2d8b","#4b0082","#9400d3","#000000"][i%4], alpha:1 })
       }
-      // Tighter air blades
-      for (let i = 0; i < 8; i++) {
-        const angle = Math.random() * Math.PI * 2
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * 8.5,
-          vy: Math.sin(angle) * 8.5,
-          size: 10 + Math.random() * 12,
-          color: "rgba(255, 255, 255, 0.3)",
-          alpha: 0.4,
-        })
-      }
-    }
-    // DARKNESS - Hyper-focused purple shadow power
-    else if (el === "darkness" || el === "darkus" || el === "dark") {
-      // Swirling shadow particles - tighter range
-      for (let i = 0; i < 45; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const dist = 30 + Math.random() * 35
-        const x = targetX + Math.cos(angle) * dist
-        const y = targetY + Math.sin(angle) * dist
-        particles.push({
-          x, y,
-          vx: (targetX - x) * 0.14,
-          vy: (targetY - y) * 0.14,
-          size: 2 + Math.random() * 4,
-          color: i % 4 === 0 ? "#000000" : colors[Math.floor(Math.random() * colors.length)], // Purple shadow blend
-          alpha: 1,
-        })
-      }
-    }
-    // LIGHTNESS - Hyper-focused refracting rays
-    else if (el === "lightness" || el === "haos" || el === "light") {
-      for (let i = 0; i < 40; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 3 + Math.random() * 9 // Reduced speed
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 1 + Math.random() * 2.5,
-          color: "#ffffff",
-          alpha: 1,
-        })
-      }
-      // Tighter golden sparks
-      for (let i = 0; i < 15; i++) {
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: (Math.random() - 0.5) * 4.5,
-          vy: (Math.random() - 0.5) * 4.5,
-          size: 1.5 + Math.random() * 3,
-          color: "#ffd700",
-          alpha: 1,
-        })
-      }
-    }
-    // TERRA - Hyper-focused rock impact
-    else if (el === "terra") {
-      // Debris - concentrated
-      for (let i = 0; i < 25; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 1.5 + Math.random() * 4.5 // Reduced speed
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 2.5,
-          size: 4 + Math.random() * 9,
-          color: "#8b4513",
-          alpha: 1,
-        })
-      }
-      // Tighter dust clouds
+      // Purple sparks outward
       for (let i = 0; i < 12; i++) {
-        particles.push({
-          x: targetX + (Math.random() - 0.5) * 15,
-          y: targetY + (Math.random() - 0.5) * 8,
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: -0.4 - Math.random() * 0.8,
-          size: 10 + Math.random() * 15,
-          color: "rgba(139, 69, 19, 0.3)",
-          alpha: 0.5,
-        })
+        const a = (i/12)*Math.PI*2
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*4, vy:Math.sin(a)*4,
+          size:3+Math.random()*3, color:"#da70d6", alpha:0.85 })
       }
     }
-    // VOID - Hyper-focused silver-gray shard power
+    // ── HAOS/LIGHTNESS ── radiant rays + golden sparks
+    else if (el === "haos" || el === "lightness" || el === "light") {
+      for (let i = 0; i < 24; i++) {
+        const a = Math.random()*Math.PI*2; const spd = 2+Math.random()*6
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+          size:1+Math.random()*2.5, color:"#ffffff", alpha:1 })
+      }
+      // Golden falling sparks
+      for (let i = 0; i < 20; i++) {
+        particles.push({ x:targetX+(Math.random()-0.5)*30, y:targetY+(Math.random()-0.5)*10,
+          vx:(Math.random()-0.5)*2, vy:-1.5-Math.random()*3,
+          size:1.5+Math.random()*2.5, color:i%3===0?"#fff8dc":"#ffd700", alpha:1, gravity:0.08 } as any)
+      }
+    }
+    // ── VOID ── silver shards + implosion flash
     else if (el === "void") {
-      // Silver and gray triangle shards
-      for (let i = 0; i < 40; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 2.5 + Math.random() * 7
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 2 + Math.random() * 5,
-          color: i % 2 === 0 ? "#c0c0c0" : "#dcdcdc",
-          alpha: 1,
-          shape: "shard", // Shard shape marker
-          rotation: Math.random() * Math.PI * 2,
-          rv: (Math.random() - 0.5) * 0.2,
-        } as any)
+      for (let i = 0; i < 36; i++) {
+        const a = Math.random()*Math.PI*2; const spd = 2+Math.random()*6
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+          size:2+Math.random()*5, color:i%3===0?"#c0c0c0":i%3===1?"#dcdcdc":"#a0a0a0", alpha:1,
+          shape:"shard", rotation:Math.random()*Math.PI*2, rv:(Math.random()-0.5)*0.25 } as any)
       }
     }
-    // DEFAULT - Hyper-focused burst
+    // ── TERRA/SUBTERRA ── debris + dust
+    else if (el === "terra" || el === "subterra") {
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random()*Math.PI*2; const spd = 1.5+Math.random()*4
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd-2,
+          size:4+Math.random()*9, color:["#8b4513","#a0522d","#cd853f","#d2691e"][i%4], alpha:1, gravity:0.2 } as any)
+      }
+      for (let i = 0; i < 10; i++) {
+        particles.push({ x:targetX+(Math.random()-0.5)*20, y:targetY,
+          vx:(Math.random()-0.5)*1.5, vy:-0.5-Math.random()*1,
+          size:8+Math.random()*12, color:"rgba(139,69,19,0.3)", alpha:0.5, gravity:0.05 } as any)
+      }
+    }
+    // ── DEFAULT ──
     else {
-      for (let i = 0; i < 35; i++) {
-        const angle = Math.random() * Math.PI * 2
-        const speed = 1.6 + Math.random() * 4.5 // Reduced speed
-        particles.push({
-          x: targetX,
-          y: targetY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 2.5 + Math.random() * 4.5,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          alpha: 1,
-        })
+      for (let i = 0; i < 24; i++) {
+        const a = Math.random()*Math.PI*2; const spd = 1.5+Math.random()*4
+        particles.push({ x:targetX, y:targetY, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+          size:2+Math.random()*4, color:"#ffffff", alpha:1 })
       }
     }
 
@@ -1832,28 +1734,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const startTime = Date.now()
     setExplosionEffects((prev) => [...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
 
-    // Enhanced impact flash logic
-    const flashColors: Record<string, string> = {
-      aquos: "rgba(0, 191, 255, 0.5)",
-      aquo: "rgba(0, 191, 255, 0.5)",
-      fire: "rgba(255, 69, 0, 0.6)",
-      pyrus: "rgba(255, 69, 0, 0.6)",
-      ventus: "rgba(50, 205, 50, 0.5)",
-      darkness: "rgba(128, 0, 128, 0.6)",
-      darkus: "rgba(128, 0, 128, 0.6)",
-      dark: "rgba(128, 0, 128, 0.6)",
-      lightness: "rgba(255, 215, 0, 0.6)",
-      haos: "rgba(255, 215, 0, 0.6)",
-      light: "rgba(255, 215, 0, 0.6)",
-      void: "rgba(192, 192, 192, 0.6)",
-      terra: "rgba(139, 69, 19, 0.6)",
+    const flashColors: Record<string,string> = {
+      aquos:"rgba(0,191,255,0.45)", aquo:"rgba(0,191,255,0.45)",
+      fire:"rgba(255,80,0,0.55)", pyrus:"rgba(255,80,0,0.55)",
+      ventus:"rgba(100,220,50,0.4)",
+      darkness:"rgba(120,0,180,0.55)", darkus:"rgba(120,0,180,0.55)", dark:"rgba(120,0,180,0.55)",
+      lightness:"rgba(255,220,0,0.5)", haos:"rgba(255,220,0,0.5)", light:"rgba(255,220,0,0.5)",
+      void:"rgba(180,180,200,0.5)",
+      terra:"rgba(120,60,10,0.5)", subterra:"rgba(120,60,10,0.5)",
     }
-    setImpactFlash({ active: true, color: flashColors[el] || "rgba(255, 255, 255, 0.4)" })
-    setTimeout(() => setImpactFlash({ active: false, color: "#ffffff" }), 100) // Even snappier flash
+    setImpactFlash({ active:true, color: flashColors[el] ?? "rgba(255,255,255,0.35)" })
+    setTimeout(() => setImpactFlash({ active:false, color:"#ffffff" }), 90)
 
     setTimeout(() => {
       setExplosionEffects((prev) => prev.filter((e) => e.id !== effectId))
-    }, 1100) // Much snappier decay for localized feel
+    }, 1000)
   }, [triggerScreenShake])
 
   // Destruction animation state
@@ -1866,238 +1761,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     element: string
   } | null>(null)
 
-  // Dice roll animation state
-  const [diceAnimation, setDiceAnimation] = useState<{
-    visible: boolean
-    rolling: boolean
-    result: number | null
-    cardName: string
-    onComplete: ((result: number) => void) | null
-  } | null>(null)
-
-  const [lacerationAnimation, setLacerationAnimation] = useState(false)
-
-  const [draggedHandCard, setDraggedHandCard] = useState<{
-    index: number
-    card: GameCard
-    currentY?: number
-  } | null>(null)
-  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
-  const [droppingCard, setDroppingCard] = useState<{
-    card: GameCard
-    targetX: number
-    targetY: number
-  } | null>(null)
-  const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
-  const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
-  const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
-  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
-
-  // Ultimate Gear effect tracking
-  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false) // One-time ability used (ODEN SWORD, TWILIGH AVALON, MEFISTO)
-  const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
-  const [ugTargetMode, setUgTargetMode] = useState<{
-    active: boolean
-    ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
-  }>({ active: false, ugCard: null, type: null })
-  // MIGUEL ARCANJO: Julgamento Divino - once per TURN (resets each turn)
-  const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
-  // CALEM SR: Pulso da Nulidade - once every 3 turns
-  const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
-  // CALEM UR: Impacto sem Fé - once every 3 turns + double attack flag
-  const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null>(null)
-  const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
-  // CALEM LR: Julgamento do Vazio Eterno - target mode
-  const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
-  const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0) // Snapshot of fire units used when Fornbrenna is placed
-
-  // Track last known unit zone state to detect when a matching unit is placed after UG
-  const prevUnitZoneRef = useRef<(string | null)[]>([])
-  useEffect(() => {
-    if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
-      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null)
-      return
-    }
-
-    const ug = playerField.ultimateZone
-    const requiredUnit = ug.requiresUnit!
-    const ability = ug.ability
-    const prevNames = prevUnitZoneRef.current
-    const currentNames = playerField.unitZone.map((u) => u?.name || null)
-
-    // Check if the required unit just appeared (wasn't there before)
-    const wasPresent = prevNames.some((n) => n === requiredUnit)
-    const isNowPresent = currentNames.some((n) => n === requiredUnit)
-
-    if (!wasPresent && isNowPresent) {
-      // Unit just appeared - apply passive DP bonus
-      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
-      if (unitIdx !== -1) {
-        setPlayerField((prev) => {
-          const newUnits = [...prev.unitZone]
-          const unit = newUnits[unitIdx]
-          if (!unit) return prev
-
-          let bonus = 0
-          let msg = ""
-          if (ability === "ODEN SWORD") { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
-          else if (ability === "PROTONIX SWORD") { bonus = 2; msg = `${requiredUnit} +2 DP (Protonix Sword)!` }
-          else if (ability === "TWILIGH AVALON") { bonus = 2; msg = `${requiredUnit} +2 DP (Twiligh Avalon)!` }
-          else if (ability === "ULLRBOGI") { msg = `${requiredUnit} recebera +3 DP nas fases de batalha (Ullrbogi)!` }
-          else if (ability === "MIGUEL ARCANJO") { bonus = 4; msg = `${requiredUnit} +4 DP! Protecao de Funcoes ativada! (Miguel Arcanjo)` }
-          else if (ability === "MEFISTO") { bonus = 2; msg = `${requiredUnit} +2 DP! (Mefisto Foles)` }
-          else if (ability === "FORNBRENNA") {
-            const fireCount = countFireUnitsUsed(prev)
-            bonus = fireCount * 2
-            setFornbrennaFireCount(fireCount)
-            msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
-          }
-
-          if (bonus > 0) {
-            newUnits[unitIdx] = { ...unit, currentDp: unit.currentDp + bonus }
-          }
-          if (msg) showEffectFeedback(msg, "success")
-          return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
-        })
-      }
-    }
-
-    prevUnitZoneRef.current = currentNames
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerField.unitZone, playerField.ultimateZone])
-
-  const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
-  const animationInProgressRef = useRef(false)
-  const attackIdRef = useRef(0)
-  const draggedCardRef = useRef<HTMLDivElement>(null)
-  const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
-
-  const handleAnimationComplete = useCallback((id: string) => {
-    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
-  }, [])
-
-  const handleImpact = useCallback(
-    (id: string, x: number, y: number, element: string) => {
-      setActiveProjectiles((prev) => prev.filter((p) => p.id !== id))
-      triggerExplosion(x, y, element)
-    },
-    [triggerExplosion],
-  )
-
-
-  const gameResultRecordedRef = useRef(false)
-
-  // Helper to show effect feedback
-  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
-    setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
-    setTimeout(() => setEffectFeedback(null), 2000)
-  }, [])
-
-  // Helper to show draw card animation
-  const showDrawAnimation = useCallback((card: GameCard) => {
-    setDrawAnimation({
-      visible: true,
-      cardName: card.name,
-      cardImage: card.image,
-      cardType: card.type,
-    })
-    setTimeout(() => setDrawAnimation(null), 1300)
-  }, [])
-
-  // Helper to show destruction animation
-  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
-    const id = `destruction-${Date.now()}`
-    setDestructionAnimation({
-      id,
-      cardName: card.name,
-      cardImage: card.image,
-      x,
-      y,
-      element: card.element || "neutral",
-    })
-    setTimeout(() => setDestructionAnimation(null), 1200)
-  }, [])
-
-  // Helper to roll dice with animation
-  const rollDice = useCallback((cardName: string): Promise<number> => {
-    return new Promise((resolve) => {
-      // Start animation
-      setDiceAnimation({
-        visible: true,
-        rolling: true,
-        result: null,
-        cardName,
-        onComplete: null,
-      })
-
-      // Roll for 2 seconds then show result
-      setTimeout(() => {
-        const result = Math.floor(Math.random() * 6) + 1
-        setDiceAnimation((prev) => prev ? {
-          ...prev,
-          rolling: false,
-          result,
-        } : null)
-
-        // Wait for result display then resolve
-        setTimeout(() => {
-          setDiceAnimation(null)
-          resolve(result)
-        }, 1500)
-      }, 2000)
-    })
-  }, [])
-
-
-  // Helper to resolve effect with dice roll if needed
-  const resolveEffectWithDice = useCallback(async (
-    effect: FunctionCardEffect,
-    effectContext: EffectContext,
-    targets: EffectTargets,
-    cardName: string
-  ): Promise<EffectResult> => {
-    if (effect.requiresDice) {
-      const diceResult = await rollDice(cardName)
-      return effect.resolve(effectContext, { ...targets, diceResult })
-    }
-    return effect.resolve(effectContext, targets)
-  }, [rollDice])
-
-  // If mode is "player", show the multiplayer lobby system
-  if (mode === "player" && !showOnlineDuel) {
-    return (
-      <MultiplayerLobby
-        onBack={onBack}
-        onStartDuel={(roomData) => {
-          setMultiplayerRoomData(roomData)
-          setShowOnlineDuel(true)
-        }}
-      />
-    )
-  }
-
-  // If online duel started, show the online duel screen
-  if (mode === "player" && showOnlineDuel && multiplayerRoomData) {
-    return (
-      <OnlineDuelScreen
-        roomData={multiplayerRoomData}
-        onBack={() => {
-          setShowOnlineDuel(false)
-          setMultiplayerRoomData(null)
-          onBack()
-        }}
-      />
-    )
-  }
-
   useEffect(() => {
     if (explosionEffects.length === 0) {
       const canvas = explosionCanvasRef.current
-      if (canvas) {
-        const ctx = canvas.getContext("2d")
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-      }
+      if (canvas) { const ctx = canvas.getContext("2d"); if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height) }
       return
     }
 
@@ -2107,202 +1774,238 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!ctx) return
 
     let animationId: number
-    const duration = 1100
+    const duration = 1000
 
     const animate = () => {
       const now = Date.now()
       const activeEffects = activeParticlesRef.current
 
-      // Add new effects
       explosionEffects.forEach((effect) => {
         if (!activeEffects.has(effect.id)) {
           activeEffects.set(effect.id, {
             particles: effect.particles.map((p) => ({ ...p })),
-            startTime: effect.startTime,
-            element: effect.element,
-            x: effect.x,
-            y: effect.y
+            startTime: effect.startTime, element: effect.element, x: effect.x, y: effect.y
           })
         }
       })
-
-      // Cleanup
       for (const [id, effect] of activeEffects.entries()) {
-        if (now - effect.startTime > duration) {
-          activeEffects.delete(id)
-        }
+        if (now - effect.startTime > duration) activeEffects.delete(id)
       }
-
-      if (activeEffects.size === 0) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        return
-      }
-
-      // Resize and Clear
+      if (activeEffects.size === 0) { ctx.clearRect(0,0,canvas.width,canvas.height); return }
       if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight
       }
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.clearRect(0,0,canvas.width,canvas.height)
 
       activeEffects.forEach((effect) => {
         const elapsed = now - effect.startTime
         if (elapsed > duration) return
-
         const el = effect.element?.toLowerCase()
-        const colors = getElementColors(effect.element)
+        const t = elapsed / duration // 0→1
+        const cx = effect.x; const cy = effect.y
 
-        // Element Visual Backgrounds
+        // ── Per-element canvas background effects ──
         if (el === "aquos" || el === "aquo") {
-          for (let ring = 0; ring < 5; ring++) {
-            const ringProgress = Math.min(1, (elapsed - ring * 80) / 350)
-            if (ringProgress > 0 && ringProgress < 1) {
-              const ringRadius = ringProgress * 65
-              ctx.save()
-              ctx.globalAlpha = (1 - ringProgress) * 0.4
-              ctx.strokeStyle = colors[ring % colors.length]
-              ctx.lineWidth = 1 + (1 - ringProgress) * 3
-              ctx.shadowColor = "#00bfff"
-              ctx.shadowBlur = 10
-              ctx.beginPath()
-              for (let a = 0; a < Math.PI * 2; a += 0.2) {
-                const r = ringRadius + Math.sin(a * 4 + elapsed * 0.01) * 3
-                const rx = effect.x + Math.cos(a) * r
-                const ry = effect.y + Math.sin(a) * r
-                if (a === 0) ctx.moveTo(rx, ry)
-                else ctx.lineTo(rx, ry)
-              }
-              ctx.closePath()
-              ctx.stroke()
-              ctx.restore()
-            }
-          }
-        } else if (el === "fire" || el === "pyrus") {
-           const rp = Math.min(1, elapsed / 300)
-           if (rp < 1) {
-             ctx.save()
-             ctx.globalAlpha = (1 - rp) * 0.8
-             ctx.strokeStyle = "#ff4500"
-             ctx.lineWidth = 2 + (1 - rp) * 8
-             ctx.beginPath()
-             for (let a = 0; a < Math.PI * 2; a += 0.3) {
-               const r = rp * 75 + (Math.random() - 0.5) * 10
-               ctx.lineTo(effect.x + Math.cos(a) * r, effect.y + Math.sin(a) * r)
-             }
-             ctx.closePath()
-             ctx.stroke()
-             ctx.restore()
-           }
-        } else if (el === "darkness" || el === "dark" || el === "darkus") {
-          const prog = Math.min(1, elapsed / 550)
-          if (prog < 1) {
-            ctx.save()
-            const voidAlpha = 1 - prog
-            const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 65)
-            gradient.addColorStop(0, `rgba(75,0,130,${voidAlpha * 0.9})`)
-            gradient.addColorStop(1, "transparent")
-            ctx.fillStyle = gradient
-            ctx.fillRect(effect.x - 65, effect.y - 65, 130, 130)
-            for (let i = 0; i < 8; i++) {
-              const tAngle = (Math.PI * 2 * i) / 8 + elapsed * 0.002
-              const tLen = 60 * (1 - elapsed / 450)
-              if (tLen > 0) {
-                ctx.strokeStyle = "rgba(128,0,128,0.4)"
-                ctx.beginPath()
-                ctx.moveTo(effect.x, effect.y)
-                ctx.lineTo(effect.x + Math.cos(tAngle) * tLen, effect.y + Math.sin(tAngle) * tLen)
-                ctx.stroke()
-              }
-            }
-            ctx.restore()
-          }
-        } else if (el === "lightness" || el === "haos" || el === "light") {
-          const progress = Math.min(1, elapsed / 400)
+          // Expanding wavy water ring
+          const maxR = 60; const ringT = Math.min(1, t * 2.5)
           ctx.save()
-          ctx.strokeStyle = "#ffd700"
-          ctx.setLineDash([5, 5])
-          const flareLen = 40 * (1 - progress)
+          ctx.globalAlpha = (1 - ringT) * 0.55
+          ctx.strokeStyle = "#00d4ff"; ctx.lineWidth = 2 + (1-ringT)*4
+          ctx.shadowColor = "#00bfff"; ctx.shadowBlur = 12
           ctx.beginPath()
-          ctx.moveTo(effect.x - flareLen, effect.y); ctx.lineTo(effect.x + flareLen, effect.y)
-          ctx.moveTo(effect.x, effect.y - flareLen); ctx.lineTo(effect.x, effect.y + flareLen)
-          ctx.stroke()
-          ctx.restore()
-        } else if (el === "ventus") {
-          const spiralProgress = Math.min(1, elapsed / 400)
-          if (spiralProgress < 1) {
+          for (let a = 0; a < Math.PI*2; a += 0.15) {
+            const r = ringT * maxR + Math.sin(a*5 + elapsed*0.008)*4
+            const px = cx + Math.cos(a)*r; const py = cy + Math.sin(a)*r
+            a === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py)
+          }
+          ctx.closePath(); ctx.stroke(); ctx.restore()
+          // Second thinner ring delayed
+          const rt2 = Math.min(1, Math.max(0,(t-0.15)*3))
+          if (rt2 > 0) {
+            ctx.save(); ctx.globalAlpha = (1-rt2)*0.35
+            ctx.strokeStyle = "#40e0d0"; ctx.lineWidth = 1.5
+            ctx.beginPath(); ctx.arc(cx, cy, rt2*45, 0, Math.PI*2); ctx.stroke(); ctx.restore()
+          }
+        }
+        else if (el === "fire" || el === "pyrus") {
+          // Jagged fire burst outline
+          const fp = Math.min(1, t*2.2)
+          ctx.save(); ctx.globalAlpha = (1-fp)*0.7
+          ctx.strokeStyle = "#ff4500"; ctx.lineWidth = 3+(1-fp)*5
+          ctx.shadowColor = "#ff6a00"; ctx.shadowBlur = 20
+          ctx.beginPath()
+          for (let a = 0; a < Math.PI*2; a += 0.25) {
+            const r = fp*62 + (Math.random()-0.5)*12
+            ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+          }
+          ctx.closePath(); ctx.stroke(); ctx.restore()
+          // Inner glow
+          if (fp < 0.6) {
             ctx.save()
-            ctx.globalAlpha = (1 - spiralProgress) * 0.6
-            ctx.strokeStyle = "#32cd32"
+            const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,fp*40)
+            grad.addColorStop(0,`rgba(255,255,200,${(0.6-fp)*0.9})`)
+            grad.addColorStop(1,"transparent")
+            ctx.fillStyle = grad; ctx.fillRect(cx-45,cy-45,90,90); ctx.restore()
+          }
+        }
+        else if (el === "ventus" || el === "wind") {
+          // Logarithmic spiral
+          const sp = Math.min(1, t*2)
+          ctx.save(); ctx.globalAlpha = (1-sp)*0.55
+          ctx.strokeStyle = "#7fff00"; ctx.lineWidth = 1.5
+          ctx.shadowColor = "#adff2f"; ctx.shadowBlur = 8
+          ctx.beginPath()
+          for (let a = 0; a < Math.PI*5; a += 0.12) {
+            const r = a * 3.5 * sp
+            ctx.lineTo(cx+Math.cos(a + elapsed*0.015)*r, cy+Math.sin(a + elapsed*0.015)*r)
+          }
+          ctx.stroke()
+          // Horizontal shockwave ellipse
+          const sw = Math.min(1,(t-0.1)*2.5)
+          if (sw > 0) {
+            ctx.globalAlpha = (1-sw)*0.4
+            ctx.strokeStyle = "#adff2f"; ctx.lineWidth = 2
+            ctx.beginPath(); ctx.ellipse(cx,cy,sw*70,sw*22,0,0,Math.PI*2); ctx.stroke()
+          }
+          ctx.restore()
+        }
+        else if (el === "darkus" || el === "darkness" || el === "dark") {
+          // Dark void pulse
+          const dp = Math.min(1, t*1.8)
+          ctx.save()
+          const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,dp*70)
+          grad.addColorStop(0,`rgba(60,0,100,${(1-dp)*0.85})`)
+          grad.addColorStop(0.5,`rgba(30,0,60,${(1-dp)*0.5})`)
+          grad.addColorStop(1,"transparent")
+          ctx.fillStyle = grad; ctx.fillRect(cx-75,cy-75,150,150)
+          // Rotating tentacle lines
+          for (let i = 0; i < 8; i++) {
+            const ang = (Math.PI*2*i/8) + elapsed*0.003
+            const len = 58*(1-dp)
+            if (len > 2) {
+              ctx.strokeStyle = `rgba(${100+i*8},0,${130+i*5},0.5)`
+              ctx.lineWidth = 1.5; ctx.beginPath()
+              ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*len, cy+Math.sin(ang)*len)
+              ctx.stroke()
+            }
+          }
+          ctx.restore()
+        }
+        else if (el === "haos" || el === "lightness" || el === "light") {
+          // Star-burst rays
+          const lp = Math.min(1, t*2)
+          ctx.save(); ctx.globalAlpha = (1-lp)*0.8
+          ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 2
+          ctx.shadowColor = "#fff8dc"; ctx.shadowBlur = 18
+          for (let i = 0; i < 12; i++) {
+            const ang = (Math.PI*2*i/12)
+            const len = lp * 55
             ctx.beginPath()
-            for (let angle = 0; angle < Math.PI * 4; angle += 0.2) {
-              const radius = angle * 4 * spiralProgress
-              ctx.lineTo(effect.x + Math.cos(angle + elapsed * 0.018) * radius, effect.y + Math.sin(angle + elapsed * 0.018) * radius)
+            ctx.moveTo(cx + Math.cos(ang)*8, cy + Math.sin(ang)*8)
+            ctx.lineTo(cx + Math.cos(ang)*len, cy + Math.sin(ang)*len)
+            ctx.stroke()
+          }
+          // Central bright flash
+          if (t < 0.25) {
+            const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,35*(1-t*4))
+            grad.addColorStop(0,`rgba(255,255,220,${(0.25-t)*3.5})`)
+            grad.addColorStop(1,"transparent")
+            ctx.fillStyle = grad; ctx.fillRect(cx-40,cy-40,80,80)
+          }
+          ctx.restore()
+        }
+        else if (el === "void") {
+          // Fracture cracks radiating out
+          const vp = Math.min(1, t*2.2)
+          ctx.save(); ctx.globalAlpha = (1-vp)*0.8
+          ctx.strokeStyle = "#b8b8cc"; ctx.lineWidth = 1.2
+          ctx.shadowColor = "#c8c8e0"; ctx.shadowBlur = 8
+          for (let i = 0; i < 6; i++) {
+            const baseAng = (Math.PI*2*i/6)
+            ctx.beginPath(); ctx.moveTo(cx,cy)
+            let lx=cx, ly=cy
+            for (let j = 0; j < 3; j++) {
+              lx += Math.cos(baseAng+(Math.random()-0.5)*0.7)*vp*18
+              ly += Math.sin(baseAng+(Math.random()-0.5)*0.7)*vp*18
+              ctx.lineTo(lx,ly)
             }
             ctx.stroke()
-            ctx.restore()
           }
-        } else if (el === "void") {
+          // Inversion flash
+          if (t < 0.18) {
+            ctx.globalAlpha = (0.18-t)*4*0.6
+            ctx.fillStyle = "rgba(220,220,255,0.5)"
+            ctx.beginPath(); ctx.arc(cx,cy,40*(1-t*5),0,Math.PI*2); ctx.fill()
+          }
+          ctx.restore()
+        }
+        else if (el === "terra" || el === "subterra") {
+          // Ground crack lines
+          const tp = Math.min(1, t*2)
+          ctx.save(); ctx.globalAlpha = (1-tp)*0.7
+          ctx.strokeStyle = "#8b4513"; ctx.lineWidth = 2
           for (let i = 0; i < 5; i++) {
-            const crackAngle = (Math.PI * 2 * i) / 5
-            const crackProgress = Math.min(1, elapsed / 350)
-            if (crackProgress < 1) {
-              ctx.save()
-              ctx.globalAlpha = (1 - crackProgress) * 0.8
-              ctx.strokeStyle = "#c0c0c0"
-              ctx.beginPath()
-              ctx.moveTo(effect.x, effect.y)
-              let cx = effect.x, cy = effect.y
-              for (let j = 0; j < 3; j++) {
-                cx += Math.cos(crackAngle + (Math.random() - 0.5) * 0.8) * 15
-                cy += Math.sin(crackAngle + (Math.random() - 0.5) * 0.8) * 15
-                ctx.lineTo(cx, cy)
-              }
-              ctx.stroke()
-              ctx.restore()
+            const ang = (Math.PI*2*i/5)+0.3
+            ctx.beginPath(); ctx.moveTo(cx,cy)
+            let lx=cx, ly=cy
+            for (let j = 0; j < 4; j++) {
+              lx += Math.cos(ang+(Math.random()-0.5)*0.9)*tp*16
+              ly += Math.sin(ang+(Math.random()-0.5)*0.9)*tp*16
+              ctx.lineTo(lx,ly)
             }
+            ctx.stroke()
+          }
+          ctx.restore()
+          // Dust cloud
+          const dc = Math.min(1,(t-0.05)*3)
+          if (dc > 0 && dc < 1) {
+            ctx.save()
+            const grad = ctx.createRadialGradient(cx,cy+10,0,cx,cy+10,dc*55)
+            grad.addColorStop(0,`rgba(160,90,20,${(1-dc)*0.4})`)
+            grad.addColorStop(1,"transparent")
+            ctx.fillStyle = grad; ctx.fillRect(cx-60,cy-20,120,80); ctx.restore()
           }
         }
 
-        // Particles
+        // ── Particles (shared) ──
         effect.particles.forEach((p: any) => {
           if (p.gravity) p.vy += p.gravity
           if (p.heat) p.vy += p.heat
           if (p.rotation !== undefined) p.rotation += (p.rv || 0.1)
+          p.x += p.vx; p.y += p.vy; p.alpha -= 0.022; p.size *= 0.97
+          if (p.alpha <= 0 || p.size < 0.4) return
 
-          p.x += p.vx
-          p.y += p.vy
-          p.alpha -= 0.02
-          p.size *= 0.97
+          ctx.save()
+          ctx.translate(p.x, p.y)
+          if (p.rotation !== undefined) ctx.rotate(p.rotation)
+          ctx.globalAlpha = p.alpha
+          ctx.fillStyle = p.color
 
-          if (p.alpha > 0 && p.size > 0.5) {
-            ctx.save()
-            ctx.translate(p.x, p.y)
-            if (p.rotation !== undefined) ctx.rotate(p.rotation)
-            ctx.globalAlpha = p.alpha
-            ctx.fillStyle = p.color
-            if (el === "haos" || el === "light" || el === "fire" || el === "pyrus") {
-              ctx.shadowColor = p.color
-              ctx.shadowBlur = 10
-            }
-            if (p.shape === "shard") {
-              ctx.beginPath()
-              ctx.moveTo(0, -p.size); ctx.lineTo(p.size, p.size); ctx.lineTo(-p.size, p.size); ctx.closePath()
-              ctx.fill()
-            } else {
-              ctx.beginPath(); ctx.arc(0, 0, p.size, 0, Math.PI * 2); ctx.fill()
-            }
-            ctx.restore()
+          // Glow for bright elements
+          if (el==="haos"||el==="light"||el==="lightness"||el==="fire"||el==="pyrus") {
+            ctx.shadowColor = p.color; ctx.shadowBlur = 10
           }
+          if (el==="aquos"||el==="aquo") { ctx.shadowColor="#00d4ff"; ctx.shadowBlur=7 }
+          if (el==="darkus"||el==="darkness"||el==="dark") { ctx.shadowColor="#9400d3"; ctx.shadowBlur=8 }
+
+          if (p.shape === "shard") {
+            ctx.beginPath()
+            ctx.moveTo(0,-p.size); ctx.lineTo(p.size*0.6,p.size); ctx.lineTo(-p.size*0.6,p.size)
+            ctx.closePath(); ctx.fill()
+          } else {
+            ctx.beginPath(); ctx.arc(0,0,p.size,0,Math.PI*2); ctx.fill()
+          }
+          ctx.restore()
         })
 
-        // Central glow
-        const glowAlpha = Math.max(0, 1 - elapsed / 600)
-        if (glowAlpha > 0) {
-          const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, 100)
-          gradient.addColorStop(0, getElementGlow(effect.element).replace("0.8", String(glowAlpha * 0.6)))
-          gradient.addColorStop(1, "transparent")
-          ctx.fillStyle = gradient
-          ctx.fillRect(effect.x - 100, effect.y - 100, 200, 200)
+        // ── Central residual glow ──
+        const ga = Math.max(0, 0.7 - t * 1.3)
+        if (ga > 0) {
+          const glowColor = getElementGlow(effect.element)
+          const gr = ctx.createRadialGradient(cx,cy,0,cx,cy,70)
+          gr.addColorStop(0, glowColor.replace("0.8", String(ga * 0.55)))
+          gr.addColorStop(1, "transparent")
+          ctx.fillStyle = gr; ctx.fillRect(cx-75,cy-75,150,150)
         }
       })
 
@@ -2312,6 +2015,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     animationId = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(animationId)
   }, [explosionEffects])
+
 
   const canPlayerAttack = () => {
     if (phase !== "battle") return false
