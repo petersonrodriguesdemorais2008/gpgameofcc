@@ -1414,6 +1414,77 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: `Troca de Guarda! ${allyUnit.name} retornou para sua mão.` }
     },
   },
+
+  "flecha-de-balista": {
+    id: "flecha-de-balista",
+    name: "Flecha de Balista",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "O oponente não tem Unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma Unidade inimiga" }
+      }
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+      if (!enemyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 2)
+      const isDestroyed = newDp <= 0
+
+      context.setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (isDestroyed) {
+          newGraveyard.push(enemyUnit)
+          newUnitZone[enemyIndex] = null
+        } else {
+          newUnitZone[enemyIndex] = { ...enemyUnit, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
+      })
+
+      if (isDestroyed) {
+        return { success: true, message: `Flecha de Balista! ${enemyUnit.name} destruída! (ignora Traps)` }
+      }
+      return { success: true, message: `Flecha de Balista! ${enemyUnit.name} -2DP! (${currentDp} → ${newDp}) (ignora Traps)` }
+    },
+  },
+
+  "pedra-de-afiar": {
+    id: "pedra-de-afiar",
+    name: "Pedra de Afiar",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const hasMainUnit = context.playerField.unitZone.some((u) =>
+        u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
+      )
+      if (!hasMainUnit) {
+        return { canActivate: false, reason: "Você precisa ter uma Unidade Principal no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const hasUltimateGear = context.playerField.ultimateZone !== null
+
+      if (hasUltimateGear) {
+        // Already has UG equipped: deal -1DP direct to enemy LP
+        context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
+        return { success: true, message: `Pedra de Afiar: Ultimate Gear já equipada! -1DP direto aos LP do oponente!` }
+      }
+
+      // No UG: signal to open deck search modal - return special flag
+      // The actual search+add happens in the placeCard handler via deckSearchModal
+      return { success: true, message: "PEDRA_AFIAR_SEARCH" }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1592,6 +1663,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     cardName: string
     options: { id: string; label: string; description: string }[]
     onChoose: (optionId: string) => void
+  } | null>(null)
+
+  // Deck search modal (Pedra de Afiar and future search effects)
+  const [deckSearchModal, setDeckSearchModal] = useState<{
+    visible: boolean
+    title: string
+    cards: GameCard[]
+    onSelect: (card: GameCard) => void
+    onCancel: () => void
   } | null>(null)
 
   // Attack arrow state
@@ -2403,8 +2483,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isEstrategiaReal = cardToPlace.name === "Estratégia Real"
       const isVentosDeCamelot = cardToPlace.name === "Ventos de Camelot"
       const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
+      const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
+      const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2428,6 +2510,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isEstrategiaReal) effectToUse = FUNCTION_CARD_EFFECTS["estrategia-real"]
           else if (isVentosDeCamelot) effectToUse = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
           else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
+          else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
+          else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
         }
 
         if (!effectToUse) return // Safety check
@@ -2495,6 +2579,30 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           return
         }
 
+        // FLECHA DE BALISTA: direct enemy unit selection, bypasses requiresTargets system entirely
+        if (cardToPlace.name === "Flecha de Balista") {
+          const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
+          if (!hasEnemyUnits) {
+            showEffectFeedback("Flecha de Balista: O oponente não tem Unidades no campo!", "error")
+            return
+          }
+          // Remove from hand, enter enemy selection mode
+          setPlayerField((prev) => ({
+            ...prev,
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
+          }))
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
+          setItemSelectionMode({
+            active: true,
+            itemCard: cardToPlace,
+            step: "selectEnemy",
+            selectedEnemyIndex: null,
+            chosenOption: "flecha_direct", // flag to identify this card in handleEnemyUnitSelect
+          })
+          return
+        }
+
         // If effect requires targets, enter selection mode
         if (effectToUse.requiresTargets && effectToUse.targetConfig) {
           // Determine the correct step based on target config
@@ -2521,10 +2629,50 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         // Effect doesn't require targets - resolve immediately
         const result = effectToUse.resolve(effectContext)
         if (result.success) {
+
+          // Special handling for Pedra de Afiar - open deck search modal
+          if (result.message === "PEDRA_AFIAR_SEARCH") {
+            // Collect all Ultimate Gear cards in the player's deck
+            const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
+            if (ugCardsInDeck.length === 0) {
+              showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
+              return
+            }
+            // Remove card from hand now
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
+              graveyard: [...prev.graveyard, cardToPlace],
+            }))
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            // Open search modal
+            setDeckSearchModal({
+              visible: true,
+              title: "Pedra de Afiar — Escolha uma Ultimate Gear",
+              cards: ugCardsInDeck,
+              onSelect: (chosenCard) => {
+                setDeckSearchModal(null)
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+                  // Shuffle deck
+                  for (let i = newDeck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+                  }
+                  return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
+                })
+                showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+              },
+              onCancel: () => setDeckSearchModal(null),
+            })
+            return
+          }
+
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
 
-          // ORDEM DE LACERAÇÃO: trigger blue sword slash animation
+          // ORDEM DE LACERAÇÃO: trigger slash animation
           if (cardToPlace.name === "Ordem de Laceração") {
             setLacerationAnimation(true)
             setTimeout(() => setLacerationAnimation(false), 1800)
@@ -4195,14 +4343,51 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
 
+    // FLECHA DE BALISTA: direct enemy unit damage, ignores traps entirely
+    if (itemSelectionMode.chosenOption === "flecha_direct" && itemSelectionMode.itemCard) {
+      const cardToUse = itemSelectionMode.itemCard
+      setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+
+      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 2)
+      const isDestroyed = newDp <= 0
+
+      setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (isDestroyed) {
+          newGraveyard.push(enemyUnit)
+          newUnitZone[index] = null
+        } else {
+          newUnitZone[index] = { ...enemyUnit, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
+      })
+
+      setPlayerField((prev) => ({
+        ...prev,
+        graveyard: [...prev.graveyard, cardToUse],
+      }))
+
+      if (isDestroyed) {
+        showEffectFeedback(`Flecha de Balista! ${enemyUnit.name} destruída!`, "success")
+      } else {
+        showEffectFeedback(`Flecha de Balista! ${enemyUnit.name} -2DP! (${currentDp} → ${newDp})`, "success")
+      }
+      return
+    }
+
     // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
     const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
+      || itemSelectionMode.itemCard?.name === "Flecha de Balista"
     if ((itemSelectionMode.chosenOption === "debuff" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
         effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
-      } else if (!effect && isEnemyOnlyCard) {
+      } else if (!effect && itemSelectionMode.itemCard.name === "Investida Coordenada") {
         effect = FUNCTION_CARD_EFFECTS["investida-coordenada"]
+      } else if (!effect && itemSelectionMode.itemCard.name === "Flecha de Balista") {
+        effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
       }
 
       if (effect) {
@@ -4299,6 +4484,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isEstrategiaReal2 = itemSelectionMode.itemCard.name === "Estratégia Real"
       const isVentosDeCamelot2 = itemSelectionMode.itemCard.name === "Ventos de Camelot"
       const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
+      const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
+      const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4322,6 +4509,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isEstrategiaReal2) effect = FUNCTION_CARD_EFFECTS["estrategia-real"]
       else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
       else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
+      else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
+      else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
     }
 
     if (effect) {
@@ -5679,182 +5868,211 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* Ordem de Laceração — Blue Sword Slash Animation */}
-      {/* Ordem de Laceração — Sword Slashes on Enemy Field */}
+      {/* Ordem de Laceração — Blue Slash Animation */}
       {lacerationAnimation && (
         <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
+          {/* Dark tint */}
+          <div className="absolute inset-0 bg-black/30 laceration-bg-flash" />
 
-          {/* Scoped to top 50% — enemy field area */}
-          <div className="absolute" style={{ left:0, top:0, right:0, height:"50%", overflow:"hidden" }}>
+          {/* Fehnon silhouette flash top-left */}
+          <div className="absolute left-[8%] bottom-[30%] laceration-char-flash">
+            <div className="w-16 h-24 bg-gradient-to-t from-cyan-400/80 to-transparent rounded-full blur-sm" />
+          </div>
 
-            {/* Dark flash on enemy side */}
-            <div className="absolute inset-0 lac-bg" />
+          {/* Slash 1 — diagonal from left, thick */}
+          <div
+            className="absolute laceration-slash-1"
+            style={{
+              left: "-10%", top: "28%",
+              width: "130%", height: "6px",
+              background: "linear-gradient(90deg, transparent 0%, #38bdf8 20%, #ffffff 50%, #7dd3fc 75%, transparent 100%)",
+              transform: "rotate(-12deg)",
+              boxShadow: "0 0 16px 6px rgba(56,189,248,0.9), 0 0 40px 12px rgba(56,189,248,0.5)",
+              filter: "blur(0.5px)",
+            }}
+          />
+          {/* Slash 1 afterglow */}
+          <div
+            className="absolute laceration-slash-1-glow"
+            style={{
+              left: "-10%", top: "26%",
+              width: "130%", height: "14px",
+              background: "linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.3) 25%, rgba(255,255,255,0.15) 50%, rgba(56,189,248,0.25) 75%, transparent 100%)",
+              transform: "rotate(-12deg)",
+              filter: "blur(3px)",
+            }}
+          />
 
-            {/* ── SVG canvas for real sword-cut shapes ── */}
-            <svg
-              className="absolute inset-0 w-full h-full lac-svg"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <defs>
-                {/* Core blade gradient — bright white center, cyan edges */}
-                <linearGradient id="blade1" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%"   stopColor="#38bdf8" stopOpacity="0" />
-                  <stop offset="20%"  stopColor="#38bdf8" stopOpacity="1" />
-                  <stop offset="48%"  stopColor="#ffffff" stopOpacity="1" />
-                  <stop offset="80%"  stopColor="#0ea5e9" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="blade2" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%"   stopColor="#7dd3fc" stopOpacity="0" />
-                  <stop offset="15%"  stopColor="#7dd3fc" stopOpacity="1" />
-                  <stop offset="50%"  stopColor="#ffffff" stopOpacity="1" />
-                  <stop offset="85%"  stopColor="#0284c7" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="blade3" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%"   stopColor="#bae6fd" stopOpacity="0" />
-                  <stop offset="30%"  stopColor="#bae6fd" stopOpacity="1" />
-                  <stop offset="55%"  stopColor="#ffffff" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#0369a1" stopOpacity="0" />
-                </linearGradient>
-                <filter id="bladeGlow">
-                  <feGaussianBlur stdDeviation="1.2" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-                <filter id="bladeGlowStrong">
-                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              </defs>
+          {/* Slash 2 — steeper, slightly lower */}
+          <div
+            className="absolute laceration-slash-2"
+            style={{
+              left: "-10%", top: "40%",
+              width: "130%", height: "5px",
+              background: "linear-gradient(90deg, transparent 0%, #0ea5e9 15%, #e0f2fe 50%, #38bdf8 80%, transparent 100%)",
+              transform: "rotate(-8deg)",
+              boxShadow: "0 0 14px 5px rgba(14,165,233,0.9), 0 0 35px 10px rgba(14,165,233,0.5)",
+            }}
+          />
+          <div
+            className="absolute laceration-slash-2-glow"
+            style={{
+              left: "-10%", top: "38.5%",
+              width: "130%", height: "12px",
+              background: "linear-gradient(90deg, transparent 0%, rgba(14,165,233,0.25) 25%, rgba(255,255,255,0.12) 50%, rgba(14,165,233,0.2) 75%, transparent 100%)",
+              transform: "rotate(-8deg)",
+              filter: "blur(3px)",
+            }}
+          />
 
-              {/* CUT 1 — main diagonal slash, top-left to bottom-right */}
-              {/* Glow layer */}
-              <line x1="-5" y1="18" x2="108" y2="55"
-                stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round"
-                filter="url(#bladeGlowStrong)" opacity="0.7"
-                className="lac-cut lac-cut-1-glow" />
-              {/* Core blade */}
-              <line x1="-5" y1="18" x2="108" y2="55"
-                stroke="url(#blade1)" strokeWidth="1.8" strokeLinecap="round"
-                filter="url(#bladeGlow)"
-                className="lac-cut lac-cut-1" />
-              {/* Bright white core */}
-              <line x1="-5" y1="18" x2="108" y2="55"
-                stroke="#ffffff" strokeWidth="0.5" strokeLinecap="round"
-                opacity="0.9"
-                className="lac-cut lac-cut-1-core" />
+          {/* Slash 3 — thin fast upper */}
+          <div
+            className="absolute laceration-slash-3"
+            style={{
+              left: "-10%", top: "18%",
+              width: "100%", height: "3px",
+              background: "linear-gradient(90deg, transparent 0%, #bae6fd 30%, #ffffff 55%, #bae6fd 75%, transparent 100%)",
+              transform: "rotate(-14deg)",
+              boxShadow: "0 0 10px 4px rgba(186,230,253,0.8)",
+            }}
+          />
 
-              {/* CUT 2 — steep upward slash, left side angled sharply */}
-              <line x1="5" y1="90" x2="65" y2="10"
-                stroke="#38bdf8" strokeWidth="3" strokeLinecap="round"
-                filter="url(#bladeGlowStrong)" opacity="0.65"
-                className="lac-cut lac-cut-2-glow" />
-              <line x1="5" y1="90" x2="65" y2="10"
-                stroke="url(#blade2)" strokeWidth="1.5" strokeLinecap="round"
-                filter="url(#bladeGlow)"
-                className="lac-cut lac-cut-2" />
-              <line x1="5" y1="90" x2="65" y2="10"
-                stroke="#ffffff" strokeWidth="0.45" strokeLinecap="round"
-                opacity="0.85"
-                className="lac-cut lac-cut-2-core" />
+          {/* Slash 4 — wide sweeping lower */}
+          <div
+            className="absolute laceration-slash-4"
+            style={{
+              left: "-10%", top: "55%",
+              width: "120%", height: "8px",
+              background: "linear-gradient(90deg, transparent 0%, #0284c7 10%, #7dd3fc 40%, #ffffff 55%, #7dd3fc 75%, transparent 100%)",
+              transform: "rotate(-6deg)",
+              boxShadow: "0 0 20px 8px rgba(2,132,199,0.8), 0 0 50px 15px rgba(2,132,199,0.4)",
+            }}
+          />
+          <div
+            className="absolute laceration-slash-4-glow"
+            style={{
+              left: "-10%", top: "52%",
+              width: "120%", height: "18px",
+              background: "linear-gradient(90deg, transparent 0%, rgba(2,132,199,0.2) 20%, rgba(255,255,255,0.1) 50%, rgba(2,132,199,0.15) 75%, transparent 100%)",
+              transform: "rotate(-6deg)",
+              filter: "blur(4px)",
+            }}
+          />
 
-              {/* CUT 3 — fast horizontal-ish thin slash upper zone */}
-              <line x1="-2" y1="28" x2="95" y2="20"
-                stroke="#7dd3fc" strokeWidth="2" strokeLinecap="round"
-                filter="url(#bladeGlow)" opacity="0.8"
-                className="lac-cut lac-cut-3-glow" />
-              <line x1="-2" y1="28" x2="95" y2="20"
-                stroke="url(#blade1)" strokeWidth="1" strokeLinecap="round"
-                className="lac-cut lac-cut-3" />
-              <line x1="-2" y1="28" x2="95" y2="20"
-                stroke="#ffffff" strokeWidth="0.35" strokeLinecap="round"
-                opacity="0.9"
-                className="lac-cut lac-cut-3-core" />
+          {/* Slash 5 — ultra-fast thin finishing strike */}
+          <div
+            className="absolute laceration-slash-5"
+            style={{
+              left: "-10%", top: "34%",
+              width: "140%", height: "4px",
+              background: "linear-gradient(90deg, transparent 0%, #93c5fd 20%, #dbeafe 50%, #93c5fd 80%, transparent 100%)",
+              transform: "rotate(-10deg)",
+              boxShadow: "0 0 12px 5px rgba(147,197,253,0.9), 0 0 30px 8px rgba(147,197,253,0.5)",
+            }}
+          />
 
-              {/* CUT 4 — wide cross slash from right */}
-              <line x1="105" y1="15" x2="10" y2="75"
-                stroke="#0ea5e9" strokeWidth="3.2" strokeLinecap="round"
-                filter="url(#bladeGlowStrong)" opacity="0.6"
-                className="lac-cut lac-cut-4-glow" />
-              <line x1="105" y1="15" x2="10" y2="75"
-                stroke="url(#blade3)" strokeWidth="1.6" strokeLinecap="round"
-                filter="url(#bladeGlow)"
-                className="lac-cut lac-cut-4" />
-              <line x1="105" y1="15" x2="10" y2="75"
-                stroke="#e0f2fe" strokeWidth="0.5" strokeLinecap="round"
-                opacity="0.8"
-                className="lac-cut lac-cut-4-core" />
+          {/* ── SVG sword-cut scar marks that appear as permanent slash wounds ── */}
+          <svg
+            className="absolute inset-0 w-full h-full laceration-scars"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            style={{ filter: "drop-shadow(0 0 6px rgba(56,189,248,0.9))" }}
+          >
+            {/* Scar 1 */}
+            <line x1="5" y1="30" x2="78" y2="24" stroke="#38bdf8" strokeWidth="0.35" strokeLinecap="round"
+              className="laceration-scar-1" />
+            {/* Scar 2 */}
+            <line x1="8" y1="41" x2="85" y2="36" stroke="#7dd3fc" strokeWidth="0.25" strokeLinecap="round"
+              className="laceration-scar-2" />
+            {/* Scar 3 */}
+            <line x1="12" y1="20" x2="72" y2="15" stroke="#bae6fd" strokeWidth="0.2" strokeLinecap="round"
+              className="laceration-scar-3" />
+            {/* Scar 4 */}
+            <line x1="3" y1="56" x2="82" y2="51" stroke="#0ea5e9" strokeWidth="0.3" strokeLinecap="round"
+              className="laceration-scar-4" />
+            {/* Scar 5 */}
+            <line x1="10" y1="35" x2="92" y2="29" stroke="#e0f2fe" strokeWidth="0.2" strokeLinecap="round"
+              className="laceration-scar-5" />
+          </svg>
 
-              {/* CUT 5 — finishing thin stab-line near center */}
-              <line x1="30" y1="5" x2="75" y2="95"
-                stroke="#bae6fd" strokeWidth="1.4" strokeLinecap="round"
-                filter="url(#bladeGlow)" opacity="0.7"
-                className="lac-cut lac-cut-5-glow" />
-              <line x1="30" y1="5" x2="75" y2="95"
-                stroke="#ffffff" strokeWidth="0.5" strokeLinecap="round"
-                opacity="0.85"
-                className="lac-cut lac-cut-5" />
+          {/* ── Sword-cut air distortion ripples ── */}
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={`ripple-${i}`}
+              className="absolute laceration-ripple"
+              style={{
+                left: `${10 + i * 15}%`,
+                top: `${22 + i * 6}%`,
+                width: `${20 + i * 5}%`,
+                height: "2px",
+                background: "linear-gradient(90deg, transparent, rgba(148,219,255,0.5), transparent)",
+                transform: `rotate(${-11 + i * 1.5}deg)`,
+                animationDelay: `${i * 0.06}s`,
+                filter: "blur(1px)",
+              }}
+            />
+          ))}
 
-              {/* Lingering scar marks — thinner, fade slowly */}
-              <line x1="-5" y1="18" x2="108" y2="55" stroke="#38bdf8" strokeWidth="0.4" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-1" />
-              <line x1="5"  y1="90" x2="65"  y2="10" stroke="#7dd3fc" strokeWidth="0.3" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-2" />
-              <line x1="-2" y1="28" x2="95"  y2="20" stroke="#bae6fd" strokeWidth="0.2" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-3" />
-              <line x1="105" y1="15" x2="10" y2="75" stroke="#0ea5e9" strokeWidth="0.35" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-4" />
-              <line x1="30"  y1="5"  x2="75" y2="95" stroke="#e0f2fe" strokeWidth="0.2" strokeLinecap="round" opacity="0" className="lac-scar lac-scar-5" />
-            </svg>
-
-            {/* Flash impact rings at slash intersections */}
-            <div className="absolute lac-ring lac-ring-1" style={{ left:"52%", top:"40%", width:"90px", height:"90px", marginLeft:"-45px", marginTop:"-45px", border:"2px solid rgba(56,189,248,0.9)", borderRadius:"50%", boxShadow:"0 0 20px 8px rgba(56,189,248,0.5),inset 0 0 20px rgba(56,189,248,0.3)" }} />
-            <div className="absolute lac-ring lac-ring-2" style={{ left:"38%", top:"55%", width:"60px", height:"60px", marginLeft:"-30px", marginTop:"-30px", border:"1.5px solid rgba(125,211,252,0.8)", borderRadius:"50%", boxShadow:"0 0 15px 5px rgba(125,211,252,0.4)" }} />
-
-            {/* Sparks concentrated in enemy zone */}
-            {[...Array(20)].map((_, i) => (
-              <div key={i} className="absolute lac-spark" style={{
-                left: `${15 + (i % 7) * 11}%`,
-                top:  `${10 + (i % 5) * 14 + (i % 3) * 6}%`,
-                width:  `${1 + (i % 2)}px`,
-                height: `${6 + (i % 6) * 4}px`,
-                background: i % 3 === 0
-                  ? "linear-gradient(180deg,#ffffff 0%,#38bdf8 50%,transparent 100%)"
-                  : i % 3 === 1
-                    ? "linear-gradient(180deg,#e0f2fe 0%,#0284c7 55%,transparent 100%)"
-                    : "linear-gradient(180deg,#bae6fd 0%,#0ea5e9 60%,transparent 100%)",
+          {/* ── Impact sparks where blades land ── */}
+          {[...Array(16)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute laceration-spark"
+              style={{
+                left: `${30 + (i % 5) * 10}%`,
+                top: `${20 + Math.floor(i / 5) * 12 + (i % 3) * 4}%`,
+                width: `${1 + (i % 3)}px`,
+                height: `${8 + (i % 5) * 4}px`,
+                background: i % 2 === 0
+                  ? "linear-gradient(180deg, #ffffff 0%, #38bdf8 60%, transparent 100%)"
+                  : "linear-gradient(180deg, #e0f2fe 0%, #0284c7 60%, transparent 100%)",
                 borderRadius: "1px 1px 0 0",
-                transform: `rotate(${-40 + i * 13}deg)`,
-                boxShadow: "0 0 4px 1px rgba(56,189,248,0.8)",
-                animationDelay: `${0.18 + i * 0.03}s`,
-              }} />
-            ))}
+                transform: `rotate(${-30 + i * 12}deg)`,
+                boxShadow: "0 0 4px 1px rgba(56,189,248,0.7)",
+                animationDelay: `${0.25 + i * 0.03}s`,
+              }}
+            />
+          ))}
 
-            {/* Central energy burst at crosspoint */}
-            <div className="absolute lac-burst" style={{ left:"50%", top:"45%", width:"100px", height:"100px", marginLeft:"-50px", marginTop:"-50px", background:"radial-gradient(circle,rgba(255,255,255,0.95) 0%,rgba(56,189,248,0.75) 25%,rgba(14,165,233,0.4) 55%,transparent 75%)", borderRadius:"50%" }} />
+          {/* ── Flash on each slash hit ── */}
+          <div className="absolute inset-0 laceration-flash-1" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 30%, rgba(56,189,248,0.35) 0%, transparent 70%)" }} />
+          <div className="absolute inset-0 laceration-flash-2" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 40%, rgba(255,255,255,0.2) 0%, transparent 70%)" }} />
+          <div className="absolute inset-0 laceration-flash-3" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 55%, rgba(56,189,248,0.3) 0%, transparent 70%)" }} />
 
-            {/* Flash wash on whole enemy area */}
-            <div className="absolute inset-0 lac-flash-wash" style={{ background:"radial-gradient(ellipse 100% 80% at 50% 50%,rgba(56,189,248,0.18) 0%,transparent 70%)" }} />
+          {/* ── Central energy burst ── */}
+          <div
+            className="absolute laceration-burst"
+            style={{
+              left: "45%", top: "38%",
+              width: "100px", height: "100px",
+              marginLeft: "-50px", marginTop: "-50px",
+              background: "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(56,189,248,0.7) 30%, transparent 70%)",
+              borderRadius: "50%",
+            }}
+          />
 
-          </div>{/* end enemy-field scoped div */}
-
-          {/* -3 DP — appears at top of enemy zone */}
-          <div className="absolute lac-dmg" style={{ left:"50%", top:"6%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
-            <span style={{
-              fontSize: "72px",
-              fontWeight: 900,
-              color: "#ffffff",
-              textShadow: "0 0 12px #38bdf8, 0 0 30px rgba(56,189,248,0.95), 0 0 65px rgba(56,189,248,0.6), 0 0 110px rgba(56,189,248,0.3), 0 4px 10px rgba(0,0,0,0.97)",
-              letterSpacing: "-4px",
-              fontFamily: "system-ui, sans-serif",
-              display: "block",
-              lineHeight: 1,
-            }}>
+          {/* ── Damage number — -3 DP in white only ── */}
+          <div
+            className="absolute laceration-dmg-number"
+            style={{ left: "50%", top: "18%", transform: "translateX(-50%)" }}
+          >
+            <span
+              style={{
+                fontSize: "64px",
+                fontWeight: 900,
+                color: "#ffffff",
+                textShadow:
+                  "0 0 20px #38bdf8, 0 0 40px rgba(56,189,248,0.9), 0 0 80px rgba(56,189,248,0.5), 0 3px 6px rgba(0,0,0,0.95)",
+                letterSpacing: "-3px",
+                fontFamily: "system-ui, sans-serif",
+                display: "block",
+              }}
+            >
               -3 DP
             </span>
           </div>
-
         </div>
       )}
-
 
       {/* Card Destruction Animation */}
       {destructionAnimation && (
@@ -5931,6 +6149,66 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
+      {/* Deck Search Modal (Pedra de Afiar) */}
+      {deckSearchModal && deckSearchModal.visible && (
+        <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-[90]">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-amber-500/50 shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-900/30 to-transparent">
+              <h3 className="text-amber-400 font-bold text-lg text-center">⚔️ Pedra de Afiar</h3>
+              <p className="text-white/60 text-xs text-center mt-1">Escolha uma Ultimate Gear do seu Deck</p>
+            </div>
+
+            {/* Card list */}
+            <div className="p-4 max-h-72 overflow-y-auto flex flex-col gap-3">
+              {deckSearchModal.cards.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => deckSearchModal.onSelect(card)}
+                  className="flex items-center gap-3 bg-slate-700/60 hover:bg-amber-900/40 border border-slate-600/50 hover:border-amber-500/60 rounded-xl p-3 transition-all group text-left"
+                >
+                  {/* Card image */}
+                  <div className="w-12 h-16 rounded-lg overflow-hidden border border-amber-500/30 flex-shrink-0 relative">
+                    <img
+                      src={card.image || "/placeholder.svg"}
+                      alt={card.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Card info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-bold text-sm truncate group-hover:text-amber-300 transition-colors">
+                      {card.name}
+                    </div>
+                    <div className="text-amber-400/70 text-xs mt-0.5">{card.category || "Ultimate Gear"}</div>
+                    {card.requiresUnit && (
+                      <div className="text-slate-400 text-[10px] mt-1">
+                        Equipa em: <span className="text-cyan-400">{card.requiresUnit}</span>
+                      </div>
+                    )}
+                    {card.abilityDescription && (
+                      <div className="text-white/40 text-[9px] mt-1 line-clamp-2">{card.abilityDescription}</div>
+                    )}
+                  </div>
+                  {/* Arrow */}
+                  <div className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity text-lg flex-shrink-0">→</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-white/10">
+              <button
+                onClick={deckSearchModal.onCancel}
+                className="w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm font-bold hover:bg-red-950/40 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* UG Target Selection Mode overlay */}
       {ugTargetMode.active && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/50 rounded-xl px-4 py-3 text-center">
@@ -5991,9 +6269,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               if (itemSelectionMode.step === "selectEnemy") {
                 return (
                   <p className="text-white text-sm">
-                    {itemSelectionMode.chosenOption === "debuff"
-                      ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
-                      : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
+                    {itemSelectionMode.chosenOption === "flecha_direct"
+                      ? <>Selecione uma <span className="text-red-400 font-bold">Unidade Inimiga</span> — dano de <span className="text-orange-400 font-bold">2DP</span> ignorando Traps</>
+                      : itemSelectionMode.chosenOption === "debuff"
+                        ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+                        : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
                     }
                   </p>
                 )
@@ -6080,11 +6360,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                               }`}
                             onClick={() => {
                               if (isPlayable) {
-                                setPlayerField((prev) => ({
-                                  ...prev,
-                                  tap: prev.tap.filter((_, idx) => idx !== i),
-                                  hand: [...prev.hand, card],
-                                }))
+                                // Add card to hand and remove from TAP
+                                setPlayerField((prev) => {
+                                  const newTap = prev.tap.filter((_, idx) => idx !== i)
+                                  return { ...prev, tap: newTap, hand: [...prev.hand, card] }
+                                })
                                 setTapView(null)
                                 showEffectFeedback(`TAP: ${card.name} adicionada à mão!`, "success")
                               }
@@ -6189,158 +6469,130 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* ═══ ORDEM DE LACERAÇÃO — blue sword slashes ═══ */
-        /* ═══ ORDEM DE LACERAÇÃO — Sword Cut Slashes ═══ */
+        /* ── ORDEM DE LACERAÇÃO — sword slash animation ── */
+        @keyframes lacerationBgFlash {
+          0%   { opacity: 0; }
+          6%   { opacity: 1; }
+          55%  { opacity: 0.5; }
+          100% { opacity: 0; }
+        }
+        .laceration-bg-flash { animation: lacerationBgFlash 1.8s ease-out forwards; }
 
-        /* Dark overlay on enemy field */
-        @keyframes lacBg {
-          0%   { opacity:0; background:rgba(0,0,0,0); }
-          5%   { opacity:1; background:rgba(0,30,60,0.55); }
-          45%  { opacity:1; background:rgba(0,20,50,0.4); }
-          100% { opacity:0; background:rgba(0,0,0,0); }
+        @keyframes lacerationCharFlash {
+          0%   { opacity: 0; transform: scale(0.8) translateY(10px); }
+          12%  { opacity: 1; transform: scale(1.1) translateY(-4px); }
+          40%  { opacity: 0.6; }
+          100% { opacity: 0; transform: scale(0.9); }
         }
-        .lac-bg { animation:lacBg 1.8s ease-out forwards; }
+        .laceration-char-flash { animation: lacerationCharFlash 1.8s ease-out forwards; }
 
-        /* SVG overall fade-out after slashes finish */
-        @keyframes lacSvgFade {
-          0%,75%  { opacity:1; }
-          100%    { opacity:0; }
+        @keyframes slashSweep1 {
+          0%        { transform: rotate(-12deg) scaleX(0); opacity: 0; }
+          2%        { opacity: 1; }
+          14%       { transform: rotate(-12deg) scaleX(1); opacity: 1; }
+          38%       { opacity: 0.5; }
+          58%,100%  { opacity: 0; }
         }
-        .lac-svg { animation:lacSvgFade 1.8s ease-out forwards; }
+        .laceration-slash-1      { animation: slashSweep1 1.8s cubic-bezier(0.04,0.8,0.1,1) 0s    forwards; transform-origin: left center; }
+        .laceration-slash-1-glow { animation: slashSweep1 1.8s cubic-bezier(0.04,0.8,0.1,1) 0.02s forwards; transform-origin: left center; }
 
-        /* ── Sword cut strokes — each drawn via stroke-dashoffset ── */
+        @keyframes slashSweep2 {
+          0%,10%    { transform: rotate(-8deg) scaleX(0); opacity: 0; }
+          12%       { opacity: 1; }
+          26%       { transform: rotate(-8deg) scaleX(1); opacity: 1; }
+          50%       { opacity: 0.4; }
+          68%,100%  { opacity: 0; }
+        }
+        .laceration-slash-2      { animation: slashSweep2 1.8s cubic-bezier(0.04,0.8,0.1,1) 0.08s  forwards; transform-origin: left center; }
+        .laceration-slash-2-glow { animation: slashSweep2 1.8s cubic-bezier(0.04,0.8,0.1,1) 0.10s  forwards; transform-origin: left center; }
 
-        /* Cut 1: diagonal top-left → bottom-right, first and hardest hit */
-        @keyframes lacCut1 {
-          0%       { stroke-dashoffset:160; opacity:0; }
-          3%       { opacity:1; }
-          18%      { stroke-dashoffset:0; opacity:1; }
-          50%      { opacity:0.7; }
-          75%,100% { opacity:0; }
+        @keyframes slashSweep3 {
+          0%,3%     { transform: rotate(-14deg) scaleX(0); opacity: 0; }
+          5%        { opacity: 1; }
+          16%       { transform: rotate(-14deg) scaleX(1); opacity: 1; }
+          32%       { opacity: 0.3; }
+          48%,100%  { opacity: 0; }
         }
-        .lac-cut-1      { stroke-dasharray:160; animation:lacCut1 1.8s cubic-bezier(0.02,0.9,0.05,1) 0s    forwards; }
-        .lac-cut-1-glow { stroke-dasharray:160; animation:lacCut1 1.8s cubic-bezier(0.02,0.9,0.05,1) 0s    forwards; }
-        .lac-cut-1-core { stroke-dasharray:160; animation:lacCut1 1.8s cubic-bezier(0.02,0.9,0.05,1) 0.01s forwards; }
+        .laceration-slash-3 { animation: slashSweep3 1.8s cubic-bezier(0.03,0.9,0.08,1) 0.03s forwards; transform-origin: left center; }
 
-        /* Cut 2: steep upward slash from bottom-left */
-        @keyframes lacCut2 {
-          0%,8%    { stroke-dashoffset:100; opacity:0; }
-          10%      { opacity:1; }
-          26%      { stroke-dashoffset:0; opacity:1; }
-          55%      { opacity:0.65; }
-          78%,100% { opacity:0; }
+        @keyframes slashSweep4 {
+          0%,17%    { transform: rotate(-6deg) scaleX(0); opacity: 0; }
+          19%       { opacity: 1; }
+          36%       { transform: rotate(-6deg) scaleX(1); opacity: 1; }
+          60%       { opacity: 0.5; }
+          78%,100%  { opacity: 0; }
         }
-        .lac-cut-2      { stroke-dasharray:100; animation:lacCut2 1.8s cubic-bezier(0.02,0.92,0.05,1) 0.07s forwards; }
-        .lac-cut-2-glow { stroke-dasharray:100; animation:lacCut2 1.8s cubic-bezier(0.02,0.92,0.05,1) 0.07s forwards; }
-        .lac-cut-2-core { stroke-dasharray:100; animation:lacCut2 1.8s cubic-bezier(0.02,0.92,0.05,1) 0.08s forwards; }
+        .laceration-slash-4      { animation: slashSweep4 1.8s cubic-bezier(0.04,0.7,0.1,1) 0.15s  forwards; transform-origin: left center; }
+        .laceration-slash-4-glow { animation: slashSweep4 1.8s cubic-bezier(0.04,0.7,0.1,1) 0.17s  forwards; transform-origin: left center; }
 
-        /* Cut 3: fast near-horizontal thin slash at top */
-        @keyframes lacCut3 {
-          0%,2%    { stroke-dashoffset:100; opacity:0; }
-          4%       { opacity:1; }
-          15%      { stroke-dashoffset:0; opacity:1; }
-          38%      { opacity:0.5; }
-          60%,100% { opacity:0; }
+        @keyframes slashSweep5 {
+          0%,24%    { transform: rotate(-10deg) scaleX(0); opacity: 0; }
+          26%       { opacity: 1; }
+          40%       { transform: rotate(-10deg) scaleX(1); opacity: 1; }
+          56%       { opacity: 0.3; }
+          70%,100%  { opacity: 0; }
         }
-        .lac-cut-3      { stroke-dasharray:100; animation:lacCut3 1.8s cubic-bezier(0.01,0.95,0.04,1) 0.02s forwards; }
-        .lac-cut-3-glow { stroke-dasharray:100; animation:lacCut3 1.8s cubic-bezier(0.01,0.95,0.04,1) 0.02s forwards; }
-        .lac-cut-3-core { stroke-dasharray:100; animation:lacCut3 1.8s cubic-bezier(0.01,0.95,0.04,1) 0.03s forwards; }
+        .laceration-slash-5 { animation: slashSweep5 1.8s cubic-bezier(0.02,0.95,0.05,1) 0.22s forwards; transform-origin: left center; }
 
-        /* Cut 4: wide cross slash from top-right → bottom-left */
-        @keyframes lacCut4 {
-          0%,15%   { stroke-dashoffset:120; opacity:0; }
-          17%      { opacity:1; }
-          35%      { stroke-dashoffset:0; opacity:1; }
-          62%      { opacity:0.7; }
-          82%,100% { opacity:0; }
+        @keyframes lacerationScar {
+          0%,15%  { stroke-dasharray: 0 200; opacity: 0; }
+          25%     { stroke-dasharray: 200 0; opacity: 0.9; }
+          65%     { opacity: 0.5; }
+          100%    { opacity: 0; }
         }
-        .lac-cut-4      { stroke-dasharray:120; animation:lacCut4 1.8s cubic-bezier(0.02,0.88,0.06,1) 0.14s forwards; }
-        .lac-cut-4-glow { stroke-dasharray:120; animation:lacCut4 1.8s cubic-bezier(0.02,0.88,0.06,1) 0.14s forwards; }
-        .lac-cut-4-core { stroke-dasharray:120; animation:lacCut4 1.8s cubic-bezier(0.02,0.88,0.06,1) 0.15s forwards; }
+        .laceration-scars { opacity: 1; }
+        .laceration-scar-1 { animation: lacerationScar 1.8s ease-out 0.10s forwards; }
+        .laceration-scar-2 { animation: lacerationScar 1.8s ease-out 0.18s forwards; }
+        .laceration-scar-3 { animation: lacerationScar 1.8s ease-out 0.05s forwards; }
+        .laceration-scar-4 { animation: lacerationScar 1.8s ease-out 0.22s forwards; }
+        .laceration-scar-5 { animation: lacerationScar 1.8s ease-out 0.14s forwards; }
 
-        /* Cut 5: vertical-ish finishing stab */
-        @keyframes lacCut5 {
-          0%,22%   { stroke-dashoffset:90; opacity:0; }
-          24%      { opacity:1; }
-          40%      { stroke-dashoffset:0; opacity:1; }
-          60%      { opacity:0.45; }
-          75%,100% { opacity:0; }
+        @keyframes lacerationRipple {
+          0%,20%   { opacity: 0; scaleX: 0; }
+          30%      { opacity: 0.8; }
+          60%      { opacity: 0.3; }
+          80%,100% { opacity: 0; }
         }
-        .lac-cut-5      { stroke-dasharray:90; animation:lacCut5 1.8s cubic-bezier(0.01,0.98,0.04,1) 0.21s forwards; }
-        .lac-cut-5-glow { stroke-dasharray:90; animation:lacCut5 1.8s cubic-bezier(0.01,0.98,0.04,1) 0.21s forwards; }
+        .laceration-ripple { animation: lacerationRipple 1.8s ease-out forwards; }
 
-        /* Scar marks — linger after slash disappears */
-        @keyframes lacScarMark {
-          0%,28%  { opacity:0; }
-          35%     { opacity:0.7; }
-          65%     { opacity:0.4; }
-          100%    { opacity:0; }
+        @keyframes lacerationSpark {
+          0%,26%  { opacity: 0; transform: scale(0) translateY(0); }
+          30%     { opacity: 1; transform: scale(1) translateY(0); }
+          65%     { opacity: 0.7; transform: scale(0.8) translateY(-12px); }
+          100%    { opacity: 0; transform: scale(0.2) translateY(-24px); }
         }
-        .lac-scar   { stroke-dasharray:200; stroke-dashoffset:0; }
-        .lac-scar-1 { animation:lacScarMark 1.8s ease-out 0.12s forwards; }
-        .lac-scar-2 { animation:lacScarMark 1.8s ease-out 0.20s forwards; }
-        .lac-scar-3 { animation:lacScarMark 1.8s ease-out 0.06s forwards; }
-        .lac-scar-4 { animation:lacScarMark 1.8s ease-out 0.26s forwards; }
-        .lac-scar-5 { animation:lacScarMark 1.8s ease-out 0.16s forwards; }
+        .laceration-spark { animation: lacerationSpark 1.8s ease-out forwards; }
 
-        /* Impact rings */
-        @keyframes lacRing1 {
-          0%,28%  { transform:scale(0); opacity:0; }
-          34%     { transform:scale(1); opacity:1; }
-          65%     { transform:scale(1.8); opacity:0.3; }
-          100%    { transform:scale(2.5); opacity:0; }
+        @keyframes lacerationFlash1 {
+          0%,2%    { opacity: 0; } 4%  { opacity: 1; } 14%,100% { opacity: 0; }
         }
-        @keyframes lacRing2 {
-          0%,38%  { transform:scale(0); opacity:0; }
-          44%     { transform:scale(1); opacity:0.8; }
-          70%     { transform:scale(1.6); opacity:0.25; }
-          100%    { transform:scale(2.2); opacity:0; }
+        @keyframes lacerationFlash2 {
+          0%,13%   { opacity: 0; } 16% { opacity: 0.8; } 26%,100% { opacity: 0; }
         }
-        .lac-ring-1 { animation:lacRing1 1.8s ease-out forwards; }
-        .lac-ring-2 { animation:lacRing2 1.8s ease-out forwards; }
+        @keyframes lacerationFlash3 {
+          0%,25%   { opacity: 0; } 28% { opacity: 1; } 40%,100% { opacity: 0; }
+        }
+        .laceration-flash-1 { animation: lacerationFlash1 1.8s ease-out forwards; }
+        .laceration-flash-2 { animation: lacerationFlash2 1.8s ease-out forwards; }
+        .laceration-flash-3 { animation: lacerationFlash3 1.8s ease-out forwards; }
 
-        /* Sparks */
-        @keyframes lacSpark {
-          0%,20%  { opacity:0; transform:scale(0) translateY(0); }
-          26%     { opacity:1; transform:scale(1) translateY(0); }
-          65%     { opacity:0.6; transform:scale(0.7) translateY(-16px); }
-          100%    { opacity:0; transform:scale(0.1) translateY(-30px); }
+        @keyframes lacerationBurst {
+          0%,27%  { transform: scale(0); opacity: 0; }
+          33%     { transform: scale(1.5); opacity: 1; }
+          52%     { transform: scale(0.9); opacity: 0.6; }
+          72%     { transform: scale(1.8); opacity: 0.2; }
+          100%    { transform: scale(2.4); opacity: 0; }
         }
-        .lac-spark { animation:lacSpark 1.8s ease-out forwards; }
+        .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* Burst */
-        @keyframes lacBurst {
-          0%,25%  { transform:scale(0); opacity:0; }
-          31%     { transform:scale(1.7); opacity:1; }
-          50%     { transform:scale(1); opacity:0.65; }
-          72%     { transform:scale(2.2); opacity:0.2; }
-          100%    { transform:scale(3); opacity:0; }
+        @keyframes lacerationDmgNumber {
+          0%,18%  { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.4) rotate(-8deg); }
+          32%     { opacity: 1; transform: translateX(-50%) translateY(-12px) scale(1.35) rotate(2deg); }
+          50%     { transform: translateX(-50%) translateY(0px) scale(1) rotate(0deg); }
+          72%     { opacity: 1; }
+          100%    { opacity: 0; transform: translateX(-50%) translateY(-28px) scale(0.85); }
         }
-        .lac-burst { animation:lacBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
-
-        /* Flash wash */
-        @keyframes lacFlashWash {
-          0%,3%   { opacity:0; }
-          6%      { opacity:1; }
-          35%     { opacity:0.6; }
-          100%    { opacity:0; }
-        }
-        .lac-flash-wash { animation:lacFlashWash 1.8s ease-out forwards; }
-
-        /* Damage number */
-        @keyframes lacDmg {
-          0%,14%  { opacity:0; transform:translateX(-50%) translateY(30px) scale(0.3) rotate(-12deg); }
-          28%     { opacity:1; transform:translateX(-50%) translateY(-16px) scale(1.45) rotate(4deg); }
-          46%     { transform:translateX(-50%) translateY(2px) scale(1.03) rotate(0deg); }
-          52%     { transform:translateX(-50%) translateY(0) scale(1) rotate(0deg); }
-          68%     { opacity:1; }
-          100%    { opacity:0; transform:translateX(-50%) translateY(-35px) scale(0.78); }
-        }
-        .lac-dmg { animation:lacDmg 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-        }
-        .lac-dmg { animation:lacDmg 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-        }
-      `}</style>
+        .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
     </div>
   )
 }
