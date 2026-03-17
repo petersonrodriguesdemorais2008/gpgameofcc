@@ -1414,6 +1414,104 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: `Troca de Guarda! ${allyUnit.name} retornou para sua mão.` }
     },
   },
+
+  "flecha-de-balista": {
+    id: "flecha-de-balista",
+    name: "Flecha de Balista",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "O oponente não tem Unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma Unidade inimiga" }
+      }
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+      if (!enemyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 2)
+      const isDestroyed = newDp <= 0
+
+      context.setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (isDestroyed) {
+          newGraveyard.push(enemyUnit)
+          newUnitZone[enemyIndex] = null
+        } else {
+          newUnitZone[enemyIndex] = { ...enemyUnit, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
+      })
+
+      if (isDestroyed) {
+        return { success: true, message: `Flecha de Balista! ${enemyUnit.name} destruída! (ignora Traps)` }
+      }
+      return { success: true, message: `Flecha de Balista! ${enemyUnit.name} -2DP! (${currentDp} → ${newDp}) (ignora Traps)` }
+    },
+  },
+
+  "pedra-de-afiar": {
+    id: "pedra-de-afiar",
+    name: "Pedra de Afiar",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const hasMainUnit = context.playerField.unitZone.some((u) =>
+        u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
+      )
+      if (!hasMainUnit) {
+        return { canActivate: false, reason: "Você precisa ter uma Unidade Principal no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const hasUltimateGear = context.playerField.ultimateZone !== null
+
+      if (hasUltimateGear) {
+        // Already has UG equipped: discard and deal -1DP to enemy LP
+        context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
+        return { success: true, message: `Pedra de Afiar: Ultimate Gear já equipada! -1DP direto aos LP do oponente!` }
+      }
+
+      // Find a main unit on field without gear to search for matching UG
+      const mainUnit = context.playerField.unitZone.find((u) =>
+        u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
+      )
+      if (!mainUnit) return { success: false, message: "Sem Unidade Principal no campo" }
+
+      // Search deck for Ultimate Gear that requires this unit
+      const matchingGear = context.playerField.deck.find((c) =>
+        c.type === "ultimateGear" && c.requiresUnit === mainUnit.name
+      )
+
+      if (!matchingGear) {
+        return { success: false, message: `Nenhuma Ultimate Gear compatível com ${mainUnit.name} no Deck` }
+      }
+
+      context.setPlayerField((prev) => {
+        const newDeck = prev.deck.filter((c) => c.id !== matchingGear.id)
+        // Shuffle remaining deck
+        for (let i = newDeck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+        }
+        return {
+          ...prev,
+          hand: [...prev.hand, matchingGear],
+          deck: newDeck,
+        }
+      })
+
+      return { success: true, message: `Pedra de Afiar! ${matchingGear.name} adicionada à mão! Deck embaralhado.` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -2697,8 +2795,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isEstrategiaReal = cardToPlace.name === "Estratégia Real"
       const isVentosDeCamelot = cardToPlace.name === "Ventos de Camelot"
       const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
+      const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
+      const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2722,6 +2822,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isEstrategiaReal) effectToUse = FUNCTION_CARD_EFFECTS["estrategia-real"]
           else if (isVentosDeCamelot) effectToUse = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
           else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
+          else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
+          else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
         }
 
         if (!effectToUse) return // Safety check
@@ -4587,6 +4689,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isEstrategiaReal2 = itemSelectionMode.itemCard.name === "Estratégia Real"
       const isVentosDeCamelot2 = itemSelectionMode.itemCard.name === "Ventos de Camelot"
       const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
+      const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
+      const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4610,6 +4714,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isEstrategiaReal2) effect = FUNCTION_CARD_EFFECTS["estrategia-real"]
       else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
       else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
+      else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
+      else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
     }
 
     if (effect) {
