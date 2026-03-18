@@ -633,7 +633,7 @@ const ALL_CARDS: Card[] = [
       "No início do turno do seu controlador, você pode ativar este efeito: Escolha 1 unidade inimiga, ela perde 1 DP. Se essa unidade for derrotada por este efeito, Jaden recebe +1DP neste turno. Pode ser ativada uma vez por turno. Não pode ser usada no turno em que Jaden entrou em campo.",
     attack: "Pressão Vulcânica",
     attackDescription:
-      "Quando Jaden declara um ataque: Cause 1 DP de dano direto ao oponente antes da resolução do combate. Se o ataque<bos> derrotar a unidade inimiga, Jaden ganha +1DP",
+      "Quando Jaden declara um ataque: Cause 1 DP de dano direto ao oponente antes da resolução do combate. Se o ataque derrotar a unidade inimiga, Jaden ganha +1DP",
     category: "Fire Ultimate Elemental user",
   },
   {
