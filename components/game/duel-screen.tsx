@@ -1415,6 +1415,50 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "dados-da-calamidade": {
+    id: "dados-da-calamidade",
+    name: "Dados da Calamidade",
+    requiresTargets: true,
+    requiresDice: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
+      if (!hasAllyUnits) return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) return { success: false, message: "Selecione uma unidade sua" }
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
+      const diceResult = targets.diceResult || 1
+      const currentDp = (allyUnit as any).currentDp || allyUnit.dp
+      if (diceResult <= 2) {
+        const newDp = Math.max(0, currentDp - 5)
+        const isDestroyed = newDp <= 0
+        context.setPlayerField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (isDestroyed) {
+            const dead = newUnitZone[allyIndex]; newUnitZone[allyIndex] = null
+            return { ...prev, unitZone: newUnitZone as any, graveyard: dead ? [...prev.graveyard, dead] : prev.graveyard }
+          }
+          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp } as any
+          return { ...prev, unitZone: newUnitZone as any }
+        })
+        if (isDestroyed) return { success: true, message: `Dado: ${diceResult}! Calamidade! ${allyUnit.name} destruída!` }
+        return { success: true, message: `Dado: ${diceResult}! Calamidade! ${allyUnit.name} −5DP (${currentDp}→${newDp})` }
+      }
+      if (diceResult <= 4) return { success: true, message: `Dado: ${diceResult}! Nada acontece.` }
+      const newDp = currentDp + 8
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2 } as any
+        return { ...prev, unitZone: newUnitZone as any }
+      })
+      return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +8DP! (−5DP em 2 turnos)` }
+    },
+  },
+
   "flecha-de-balista": {
     id: "flecha-de-balista",
     name: "Flecha de Balista",
@@ -1840,6 +1884,112 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     y: number
     element: string
   } | null>(null)
+
+  // ── All missing state declarations ──
+  const [diceAnimation, setDiceAnimation] = useState<{
+    visible: boolean; rolling: boolean; result: number | null
+    cardName: string; onComplete: ((result: number) => void) | null
+  } | null>(null)
+  const [lacerationAnimation, setLacerationAnimation] = useState(false)
+  const [draggedHandCard, setDraggedHandCard] = useState<{ index: number; card: GameCard; currentY?: number } | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+  const [droppingCard, setDroppingCard] = useState<{ card: GameCard; targetX: number; targetY: number } | null>(null)
+  const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
+  const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
+  const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
+  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
+  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
+  const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
+  const [ugTargetMode, setUgTargetMode] = useState<{
+    active: boolean; ugCard: GameCard | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
+  }>({ active: false, ugCard: null, type: null })
+  const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
+  const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
+  const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null>(null)
+  const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
+  const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
+  const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
+
+  // ── Fehnon double-attack & bonus DP flags ──
+  const [fehnonSrDouble, setFehnonSrDouble] = useState(false)
+  const [fehnonUrDouble, setFehnonUrDouble] = useState(false)
+  const [fehnonUrUsedDoubleThisTurn, setFehnonUrUsedDoubleThisTurn] = useState(false)
+  const [fehnonLrDouble, setFehnonLrDouble] = useState(false)
+  const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
+
+  const prevUnitZoneRef = useRef<(string | null)[]>([])
+  const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const animationInProgressRef = useRef(false)
+  const attackIdRef = useRef(0)
+  const draggedCardRef = useRef<HTMLDivElement>(null)
+  const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
+
+  useEffect(() => {
+    if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
+      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null); return
+    }
+    const ug = playerField.ultimateZone; const requiredUnit = ug.requiresUnit!; const ability = ug.ability
+    const prevNames = prevUnitZoneRef.current; const currentNames = playerField.unitZone.map((u) => u?.name || null)
+    const wasPresent = prevNames.some((n) => n === requiredUnit); const isNowPresent = currentNames.some((n) => n === requiredUnit)
+    if (!wasPresent && isNowPresent) {
+      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
+      if (unitIdx !== -1) {
+        setPlayerField((prev) => {
+          const newUnits = [...prev.unitZone]; const unit = newUnits[unitIdx]; if (!unit) return prev
+          let bonus = 0; let msg = ""
+          if (ability === "ODEN SWORD") { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
+          else if (ability === "PROTONIX SWORD") { bonus = 2; msg = `${requiredUnit} +2 DP (Protonix Sword)!` }
+          else if (ability === "TWILIGH AVALON") { bonus = 2; msg = `${requiredUnit} +2 DP (Twiligh Avalon)!` }
+          else if (ability === "ULLRBOGI") { msg = `${requiredUnit} receberá +3 DP nas fases de batalha!` }
+          else if (ability === "MIGUEL ARCANJO") { bonus = 4; msg = `${requiredUnit} +4 DP! Proteção ativada! (Miguel Arcanjo)` }
+          else if (ability === "MEFISTO") { bonus = 2; msg = `${requiredUnit} +2 DP! (Mefisto Foles)` }
+          else if (ability === "FORNBRENNA") {
+            const fireCount = countFireUnitsUsed(prev); bonus = fireCount * 2
+            setFornbrennaFireCount(fireCount); msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
+          }
+          if (bonus > 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
+          if (msg) showEffectFeedback(msg, "success")
+          return { ...prev, unitZone: newUnits as any }
+        })
+      }
+    }
+    prevUnitZoneRef.current = currentNames
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerField.unitZone, playerField.ultimateZone])
+
+  const handleAnimationComplete = useCallback((id: string) => { setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)) }, [])
+  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
+    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)); triggerExplosion(x, y, element)
+  }, [triggerExplosion])
+  const gameResultRecordedRef = useRef(false)
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
+    setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
+    setTimeout(() => setEffectFeedback(null), 2000)
+  }, [])
+  const showDrawAnimation = useCallback((card: GameCard) => {
+    setDrawAnimation({ visible: true, cardName: card.name, cardImage: card.image, cardType: card.type })
+    setTimeout(() => setDrawAnimation(null), 1300)
+  }, [])
+  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
+    setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
+    setTimeout(() => setDestructionAnimation(null), 1200)
+  }, [])
+  const rollDice = useCallback((cardName: string): Promise<number> => {
+    return new Promise((resolve) => {
+      setDiceAnimation({ visible: true, rolling: true, result: null, cardName, onComplete: null })
+      setTimeout(() => {
+        const result = Math.floor(Math.random() * 6) + 1
+        setDiceAnimation((prev) => prev ? { ...prev, rolling: false, result } : null)
+        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1500)
+      }, 2000)
+    })
+  }, [])
+  const resolveEffectWithDice = useCallback(async (effect: FunctionCardEffect, effectContext: EffectContext, targets: EffectTargets, cardName: string): Promise<EffectResult> => {
+    if (effect.requiresDice) { const diceResult = await rollDice(cardName); return effect.resolve(effectContext, { ...targets, diceResult }) }
+    return effect.resolve(effectContext, targets)
+  }, [rollDice])
+
 
   useEffect(() => {
     if (explosionEffects.length === 0) {
@@ -2528,8 +2678,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
       const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
+      const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2555,6 +2706,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
           else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
+          else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
         }
 
         if (!effectToUse) return // Safety check
@@ -3473,6 +3625,62 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (attackState.isAttacking && attackState.attackerIndex !== null && attackState.targetInfo) {
       const attacker = playerField.unitZone[attackState.attackerIndex]
       if (attacker) {
+
+        // ── FEHNON SR: Laceração — draw on every attack, if Unit → attack again ──
+        if (attacker.id === "fehnon-sr") {
+          const drawn = playerField.deck[0]
+          if (drawn) {
+            const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            if (isUnit) {
+              setFehnonSrDouble(true)
+              showEffectFeedback("LACERAÇÃO: Carta Unidade! Fehnon pode atacar novamente!", "success")
+            } else {
+              showEffectFeedback("LACERAÇÃO: Carta comprada!", "info")
+            }
+          }
+        }
+
+        // ── FEHNON UR: Ordem de Laceração — draw on every attack, if Unit → attack again + ignore traps ──
+        if (attacker.id === "fehnon-ur") {
+          const drawn = playerField.deck[0]
+          if (drawn) {
+            const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            if (isUnit && !fehnonUrUsedDoubleThisTurn) {
+              setFehnonUrDouble(true)
+              showEffectFeedback("ORDEM DE LACERAÇÃO: Carta Unidade! Fehnon ataca novamente (traps ignorados)!", "success")
+            } else {
+              showEffectFeedback("ORDEM DE LACERAÇÃO: Carta comprada!", "info")
+            }
+          }
+        }
+
+        // ── FEHNON LR: Laceração do Mundo — draw on every attack, if Unit or Action → +3DP + attack again ──
+        if (attacker.id === "fehnon-lr") {
+          const drawn = playerField.deck[0]
+          if (drawn) {
+            const isUnitOrAction = ["unit","troops","ultimateGuardian","ultimateElemental","action"].includes(drawn.type)
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            if (isUnitOrAction) {
+              setFehnonLrDouble(true)
+              setFehnonLrBonusDp(3)
+              setPlayerField((prev) => {
+                const newUnitZone = [...prev.unitZone]
+                const idx = attackState.attackerIndex!
+                if (newUnitZone[idx]) {
+                  const cur = newUnitZone[idx]!
+                  newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
+                }
+                return { ...prev, unitZone: newUnitZone }
+              })
+              showEffectFeedback("LACERAÇÃO DO MUNDO: Fehnon +3DP e pode atacar novamente!", "success")
+            } else {
+              showEffectFeedback("LACERAÇÃO DO MUNDO: Carta comprada!", "info")
+            }
+          }
+        }
+
         // CALEM SR: Pulso da Nulidade - draw on attack every 3 turns
         if (attacker.id === "calem-sr" && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
@@ -3700,6 +3908,36 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
               })
 
+              // ── FEHNON SR: Fluxo de Ruptura — on destroy: 2DP direct damage ──
+              if (newDefenderDp <= 0 && attacker.id === "fehnon-sr") {
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
+                  showEffectFeedback("FLUXO DE RUPTURA: 2DP de dano direto ao oponente!", "warning")
+                }, 600)
+              }
+
+              // ── FEHNON UR: Singularidade Zero — on destroy: +2DP until end of turn ──
+              if (newDefenderDp <= 0 && attacker.id === "fehnon-ur") {
+                setPlayerField((prev) => {
+                  const newUnitZone = [...prev.unitZone]
+                  const idx = attackState.attackerIndex!
+                  if (newUnitZone[idx]) {
+                    const cur = newUnitZone[idx]!
+                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 2 }
+                  }
+                  return { ...prev, unitZone: newUnitZone }
+                })
+                showEffectFeedback("SINGULARIDADE ZERO: Fehnon +2DP até o final do turno!", "success")
+              }
+
+              // ── FEHNON LR: Ruptura do Núcleo Supremo — on destroy: 2DP direct damage ──
+              if (newDefenderDp <= 0 && attacker.id === "fehnon-lr") {
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
+                  showEffectFeedback("RUPTURA DO NÚCLEO SUPREMO: 2DP de dano direto ao oponente!", "warning")
+                }, 600)
+              }
+
               if (newDefenderDp <= 0 && attacker.id === "calem-sr") {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
@@ -3733,13 +3971,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 showEffectFeedback("LEGIÃO DO GUARDIÃO ALADO: Calem +3DP!", "success")
               }
 
-              const keepAttackReady = calemUrDoubleAttack && attacker.id === "calem-ur"
+              const keepAttackReady =
+                (calemUrDoubleAttack && attacker.id === "calem-ur") ||
+                (fehnonSrDouble && attacker.id === "fehnon-sr") ||
+                (fehnonUrDouble && attacker.id === "fehnon-ur") ||
+                (fehnonLrDouble && attacker.id === "fehnon-lr")
+
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
                 return { ...prev, unitZone: newUnitZone }
               })
-              if (keepAttackReady) setCalemUrDoubleAttack(false)
+              if (calemUrDoubleAttack && attacker.id === "calem-ur") setCalemUrDoubleAttack(false)
+              if (fehnonSrDouble && attacker.id === "fehnon-sr") setFehnonSrDouble(false)
+              if (fehnonUrDouble && attacker.id === "fehnon-ur") { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
+              if (fehnonLrDouble && attacker.id === "fehnon-lr") { setFehnonLrDouble(false) }
             }
           } else if (attackState.targetInfo!.type === "direct") {
             const directZone = document.querySelector("[data-direct-attack]")
@@ -3755,11 +4001,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
+
+            // Fehnon SR: direct attack also triggers Laceração draw
+            const keepReadyDirect =
+              (fehnonSrDouble && attacker.id === "fehnon-sr") ||
+              (fehnonLrDouble && attacker.id === "fehnon-lr")
+
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
-              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
+              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepReadyDirect }
               return { ...prev, unitZone: newUnitZone }
             })
+            if (fehnonSrDouble && attacker.id === "fehnon-sr") setFehnonSrDouble(false)
+            if (fehnonLrDouble && attacker.id === "fehnon-lr") setFehnonLrDouble(false)
           }
           setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
           setTimeout(() => {
@@ -3774,7 +4028,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
       animationInProgressRef.current = false
     }
-  }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, setEnemyField, setPlayerField, setAttackState, showEffectFeedback])
+  }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, setEnemyField, setPlayerField, setAttackState, showEffectFeedback])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -4299,13 +4553,30 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const endTurn = () => {
     setPhase("end")
     setCalemUrDoubleAttack(false)
+    setFehnonSrDouble(false)
+    setFehnonUrDouble(false)
+    setFehnonUrUsedDoubleThisTurn(false)
+    setFehnonLrDouble(false)
+    setFehnonLrBonusDp(0)
 
     setPlayerField((prev) => ({
       ...prev,
-      // Reset hasAttacked + reset Horizonte de Eventos DP buff for calem-ur (restores base dp)
       unitZone: prev.unitZone.map((unit) => {
         if (!unit) return null
         if (unit.id === "calem-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
+        // Fehnon UR: Singularidade Zero +2DP buff resets at end of turn
+        if (unit.id === "fehnon-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
+        // Fehnon LR: +3DP bonus resets at end of turn
+        if (unit.id === "fehnon-lr" && fehnonLrBonusDp > 0) return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
+        // dados-da-calamidade debuff
+        if ((unit as any).calamidadeDebuffTurn === turn + 1) {
+          const cur = (unit as any).currentDp || unit.dp
+          const newDp = Math.max(0, cur - 5)
+          showEffectFeedback(`Dados da Calamidade: ${unit.name} −5DP!`, "error")
+          const updated = { ...unit, currentDp: newDp, hasAttacked: false } as any
+          delete updated.calamidadeDebuffTurn
+          return updated
+        }
         return { ...unit, hasAttacked: false }
       }),
     }))
@@ -4529,6 +4800,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
       const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
+      const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4554,6 +4826,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
       else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
+      else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
     }
 
     if (effect) {
