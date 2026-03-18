@@ -393,34 +393,6 @@ const ALL_CARDS: Card[] = [
     category: "Aquos Troops unit",
   },
   {
-    id: "balin-r",
-    name: "Balin, o Sentinela das Ruínas",
-    image: "/images/cards/Balin_R.png",
-    rarity: "R",
-    type: "troops",
-    element: "Void",
-    dp: 1,
-    ability: "Vigília Eterna",
-    abilityDescription:
-      "Quando esta carta entrar em campo, olhe as 3 cartas do topo do seu deck, adicione 1 à sua mão e coloque o restante no fundo do deck.",
-    attack: "Lâmina de Poeira e Vácuo",
-    category: "Void Troops unit",
-  },
-  {
-    id: "balin-sr",
-    name: "Balin, o Sentinela das Ruínas",
-    image: "/images/cards/Balin_SR.png",
-    rarity: "SR",
-    type: "troops",
-    element: "Void",
-    dp: 1,
-    ability: "Vigília Eterna",
-    abilityDescription:
-      "Quando esta carta entrar em campo, olhe as 3 cartas do topo do seu deck, adicione 1 à sua mão e coloque o restante no fundo do deck.",
-    attack: "Lâmina de Poeira e Vácuo",
-    category: "Void Troops unit",
-  },
-  {
     id: "morgana-sr",
     name: "Morgana Pendragon",
     image: "/images/morgana-20sr.png",
@@ -1411,7 +1383,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "troca-de-guarda",
     name: "Troca de Guarda",
-    image: "/images/cards/troca-de-guarda.jpg",
+    image: "/images/cards/troca-de-guarda.png",
     rarity: "SR",
     type: "action",
     element: "Darkus",
