@@ -4933,7 +4933,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     <div
       ref={fieldRef}
       suppressHydrationWarning={true}
-      className={`relative h-screen flex flex-col overflow-hidden select-none touch-none ${screenShake.active ? "animate-shake" : ""}`}
+      className="relative h-screen flex flex-col overflow-hidden select-none touch-none"
       style={{
         background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 25%, #0f0f2f 50%, #1a1a3a 75%, #0a0a1a 100%)",
       }}
@@ -4958,6 +4958,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         handleHandCardDragEnd()
       }}
     >
+      <div className={`w-full h-full flex flex-col ${screenShake.active ? "animate-shake" : ""}`} style={{ position: 'relative' }}>
       {/* Active Projectiles */}
       {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
@@ -6749,20 +6750,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
       <style jsx global>{`
         @keyframes shake {
-          0% { transform: translate(1px, 1px) rotate(0deg); }
-          10% { transform: translate(-1px, -2px) rotate(-1deg); }
-          20% { transform: translate(-3px, 0px) rotate(1deg); }
-          30% { transform: translate(3px, 2px) rotate(0deg); }
-          40% { transform: translate(1px, -1px) rotate(1deg); }
-          50% { transform: translate(-1px, 2px) rotate(-1deg); }
-          60% { transform: translate(-3px, 1px) rotate(0deg); }
-          70% { transform: translate(3px, 1px) rotate(-1deg); }
-          80% { transform: translate(-1px, -1px) rotate(1deg); }
-          90% { transform: translate(1px, 2px) rotate(0deg); }
-          100% { transform: translate(1px, -2px) rotate(-1deg); }
+          0%   { transform: translate(0px, 0px) rotate(0deg); }
+          10%  { transform: translate(-2px, -1px) rotate(-0.5deg); }
+          20%  { transform: translate(2px, 1px) rotate(0.5deg); }
+          30%  { transform: translate(-2px, 1px) rotate(0deg); }
+          40%  { transform: translate(2px, -1px) rotate(0.5deg); }
+          50%  { transform: translate(-1px, 2px) rotate(-0.5deg); }
+          60%  { transform: translate(1px, -2px) rotate(0deg); }
+          70%  { transform: translate(-2px, 1px) rotate(-0.5deg); }
+          80%  { transform: translate(2px, 1px) rotate(0.5deg); }
+          90%  { transform: translate(-1px, -1px) rotate(0deg); }
+          100% { transform: translate(0px, 0px) rotate(0deg); }
         }
         .animate-shake {
           animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+          will-change: transform;
         }
 
         /* ── ORDEM DE LACERAÇÃO — sword slash animation ── */
@@ -6890,6 +6892,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
       `}</style>
+      </div>
     </div>
   )
 }
