@@ -241,10 +241,10 @@ export function ElementalAttackAnimation({
       case "void":
         return (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-32 h-32 flex items-center justify-center">
-            {/* Gravitational distortion */}
-            <div className="absolute inset-0 bg-purple-900/20 rounded-full blur-3xl animate-[pulse_0.1s_infinite]" />
-            <div className="absolute inset-4 border-[1px] border-white/40 rounded-full blur-sm animate-ping mix-blend-difference" />
-            <div className="absolute w-4 h-4 bg-white rounded-full blur-[1px] animate-pulse" />
+            {/* Gravitational distortion - silver/white only */}
+            <div className="absolute inset-0 bg-slate-300/20 rounded-full blur-3xl animate-[pulse_0.1s_infinite]" />
+            <div className="absolute inset-4 border-[1px] border-white/60 rounded-full blur-sm animate-ping mix-blend-difference" />
+            <div className="absolute w-4 h-4 bg-white rounded-full blur-[1px] animate-pulse shadow-[0_0_12px_6px_rgba(200,210,255,0.8)]" />
           </div>
         )
       default:
@@ -349,10 +349,10 @@ export function ElementalAttackAnimation({
       case "void":
         return (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center" style={{ width: distance }}>
-            {/* Torn space */}
-            <div className="h-16 w-full bg-violet-600/30 blur-[4px] anim-travel-stretch-void-epic" />
-            <div className="absolute inset-0 h-4 bg-white/80 blur-sm mix-blend-difference anim-travel-stretch-void-epic" />
-            <div className="absolute right-0 w-20 h-20 border-2 border-white rounded-full animate-ping" />
+            {/* Torn space - silver/white */}
+            <div className="h-16 w-full bg-slate-300/30 blur-[4px] anim-travel-stretch-void-epic" />
+            <div className="absolute inset-0 h-4 bg-white/90 blur-sm mix-blend-difference anim-travel-stretch-void-epic" />
+            <div className="absolute right-0 w-20 h-20 border-2 border-slate-200 rounded-full animate-ping shadow-[0_0_16px_6px_rgba(200,210,255,0.6)]" />
           </div>
         )
       default:
@@ -426,10 +426,10 @@ export function ElementalAttackAnimation({
         shockwaveBorder = "border-yellow-400"
         break
       case "void":
-        colors = ["bg-white", "bg-violet-400", "bg-black", "bg-indigo-300"]
+        colors = ["bg-white", "bg-slate-300", "bg-slate-100", "bg-gray-200"]
         coreEffect = "bg-white"
-        coreGlow = "rgba(255,255,255,1)"
-        shockwaveBorder = "border-violet-600"
+        coreGlow = "rgba(220,225,255,1)"
+        shockwaveBorder = "border-slate-300"
         break
     }
 
