@@ -1064,7 +1064,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "flecha-de-balista",
     name: "Flecha de Balista",
-    image: "/images/cards/flecha-de-balista.png",
+    image: "/images/cards/Flecha_de_Balista.png",
     rarity: "SR",
     type: "item",
     element: "Ventus",
@@ -1078,7 +1078,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "pedra-de-afiar",
     name: "Pedra de Afiar",
-    image: "/images/cards/pedra-de-afiar.png",
+    image: "/images/cards/Pedra_de_Afiar.png",
     rarity: "R",
     type: "item",
     element: "Terra",
