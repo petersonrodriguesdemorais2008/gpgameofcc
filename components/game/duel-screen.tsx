@@ -1362,59 +1362,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  "troca-de-guarda": {
-    id: "troca-de-guarda",
-    name: "Troca de Guarda",
-    requiresTargets: true,
-    targetConfig: {
-      allyUnits: 1,
-    },
-    canActivate: (context) => {
-      const hasDarknessUnit = context.playerField.unitZone.some((u) =>
-        u !== null && u.element?.toLowerCase() === "darkus"
-      )
-      if (!hasDarknessUnit) {
-        return { canActivate: false, reason: "Você precisa ter uma Unidade do Elemento Darkus em campo" }
-      }
-      return { canActivate: true }
-    },
-    resolve: (context, targets) => {
-      if (!targets?.allyUnitIndices?.length) {
-        return { success: false, message: "Selecione uma Unidade Darkus sua" }
-      }
-
-      const allyIndex = targets.allyUnitIndices[0]
-      const allyUnit = context.playerField.unitZone[allyIndex]
-
-      if (!allyUnit) {
-        return { success: false, message: "Unidade não encontrada" }
-      }
-
-      if (allyUnit.element?.toLowerCase() !== "darkus") {
-        return { success: false, message: "A unidade selecionada deve ser do Elemento Darkus" }
-      }
-
-      // Return unit to hand
-      context.setPlayerField((prev) => {
-        const newUnitZone = [...prev.unitZone]
-        const unitToReturn = newUnitZone[allyIndex]
-        if (!unitToReturn) return prev
-        
-        newUnitZone[allyIndex] = null
-        
-        // Return to hand: need to restore original DP/stats if needed? 
-        // Based on other cards, we just add the unit object back to hand.
-        return {
-          ...prev,
-          unitZone: newUnitZone,
-          hand: [...prev.hand, unitToReturn],
-        }
-      })
-
-      return { success: true, message: `Troca de Guarda! ${allyUnit.name} retornou para sua mão.` }
-    },
-  },
-
   "dados-da-calamidade": {
     id: "dados-da-calamidade",
     name: "Dados da Calamidade",
@@ -2511,49 +2458,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
       })
 
-      // BALIN: Vigília Eterna — on enter, look top 3, pick 1 to hand, rest to bottom
-      if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
-        setTimeout(() => {
-          const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
-          if (top3.length === 0) return
-          if (top3.length === 1) {
-            setPlayerField((prev) => ({
-              ...prev,
-              hand: [...prev.hand, top3[0]],
-              deck: prev.deck.slice(1),
-            }))
-            showEffectFeedback(`Vigília Eterna: ${top3[0].name} adicionada à mão!`, "success")
-            return
-          }
-          // Show choice: pick 1 of top 3
-          setChoiceModal({
-            visible: true,
-            cardName: "Vigília Eterna — Escolha 1 carta",
-            options: top3.map((c, i) => ({
-              id: String(i),
-              label: c.name,
-              description: c.rarity + " · " + (c.category || c.type),
-            })),
-            onChoose: (optionId: string) => {
-              setChoiceModal(null)
-              const pickedIdx = Number(optionId)
-              setPlayerField((prev) => {
-                // Remove top 3 from deck, add chosen to hand, put rest at bottom
-                const deckWithout = prev.deck.slice(top3.length)
-                const chosen = top3[pickedIdx]
-                const toBottom = top3.filter((_, i) => i !== pickedIdx)
-                showEffectFeedback(`Vigília Eterna: ${chosen.name} adicionada à mão!`, "success")
-                return {
-                  ...prev,
-                  hand: [...prev.hand, chosen],
-                  deck: [...deckWithout, ...toBottom],
-                }
-              })
-            },
-          })
-        }, 350)
-      }
-
       // União da Grande Ordem check
       const cardNameLower = cardToPlace.name.toLowerCase()
       const isGreatOrderMember = cardNameLower.includes("fehnon") || cardNameLower.includes("morgana") || cardNameLower.includes("calem")
@@ -2675,12 +2579,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isLacosDaOrdem = cardToPlace.name === "Laços da Ordem"
       const isEstrategiaReal = cardToPlace.name === "Estratégia Real"
       const isVentosDeCamelot = cardToPlace.name === "Ventos de Camelot"
-      const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
       const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2703,7 +2606,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isLacosDaOrdem) effectToUse = FUNCTION_CARD_EFFECTS["lacos-da-ordem"]
           else if (isEstrategiaReal) effectToUse = FUNCTION_CARD_EFFECTS["estrategia-real"]
           else if (isVentosDeCamelot) effectToUse = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
-          else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
           else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
           else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
@@ -4756,7 +4658,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
@@ -4797,7 +4699,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isLacosDaOrdem2 = itemSelectionMode.itemCard.name === "Laços da Ordem"
       const isEstrategiaReal2 = itemSelectionMode.itemCard.name === "Estratégia Real"
       const isVentosDeCamelot2 = itemSelectionMode.itemCard.name === "Ventos de Camelot"
-      const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
       const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
       const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
@@ -4823,7 +4724,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isLacosDaOrdem2) effect = FUNCTION_CARD_EFFECTS["lacos-da-ordem"]
       else if (isEstrategiaReal2) effect = FUNCTION_CARD_EFFECTS["estrategia-real"]
       else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
-      else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
       else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
