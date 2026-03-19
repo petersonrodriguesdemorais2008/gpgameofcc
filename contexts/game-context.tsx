@@ -1409,6 +1409,20 @@ const ALL_CARDS: Card[] = [
     category: "Action Funcion Card",
   },
   {
+    id: "troca-de-guarda",
+    name: "Troca de Guarda",
+    image: "/images/cards/troca-de-guarda.png",
+    rarity: "SR",
+    type: "action",
+    element: "Darkus",
+    dp: 0,
+    ability: "Troca de Guarda",
+    abilityDescription:
+      "Retorne uma das suas Unidades do Elemento Darkness que esteja ativa no seu campo para a sua mão.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
+  {
     id: "alvorada-de-albion",
     name: "Alvorada de Albion",
     image: "/images/cards/alvorada-de-albion.jpg",
