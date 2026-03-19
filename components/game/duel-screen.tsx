@@ -2493,6 +2493,47 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
       })
 
+      // BALIN: Vigília Eterna — ao entrar em campo, olha top 3, escolhe 1 para mão, resto para o fundo
+      if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
+        setTimeout(() => {
+          const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
+          if (top3.length === 0) return
+          if (top3.length === 1) {
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: [...prev.hand, top3[0]],
+              deck: prev.deck.slice(1),
+            }))
+            showEffectFeedback(`Vigília Eterna: ${top3[0].name} adicionada à mão!`, "success")
+            return
+          }
+          setChoiceModal({
+            visible: true,
+            cardName: "Vigília Eterna — Escolha 1 carta",
+            options: top3.map((c, i) => ({
+              id: String(i),
+              label: c.name,
+              description: c.rarity + " · " + (c.category || c.type),
+            })),
+            onChoose: (optionId: string) => {
+              setChoiceModal(null)
+              const pickedIdx = Number(optionId)
+              setPlayerField((prev) => {
+                const deckWithout = prev.deck.slice(top3.length)
+                const chosen = top3[pickedIdx]
+                const toBottom = top3.filter((_, i) => i !== pickedIdx)
+                showEffectFeedback(`Vigília Eterna: ${chosen.name} adicionada à mão!`, "success")
+                return {
+                  ...prev,
+                  hand: [...prev.hand, chosen],
+                  deck: [...deckWithout, ...toBottom],
+                }
+              })
+            },
+          })
+        }, 350)
+      }
+
       // União da Grande Ordem check
       const cardNameLower = cardToPlace.name.toLowerCase()
       const isGreatOrderMember = cardNameLower.includes("fehnon") || cardNameLower.includes("morgana") || cardNameLower.includes("calem")
