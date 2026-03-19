@@ -1362,6 +1362,41 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "troca-de-guarda": {
+    id: "troca-de-guarda",
+    name: "Troca de Guarda",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasDarknessUnit = context.playerField.unitZone.some((u) =>
+        u !== null && u.element?.toLowerCase() === "darkus"
+      )
+      if (!hasDarknessUnit) {
+        return { canActivate: false, reason: "Você precisa ter uma Unidade do Elemento Darkus em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma Unidade Darkus sua" }
+      }
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
+      if (allyUnit.element?.toLowerCase() !== "darkus") {
+        return { success: false, message: "A unidade selecionada deve ser do Elemento Darkus" }
+      }
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const unitToReturn = newUnitZone[allyIndex]
+        if (!unitToReturn) return prev
+        newUnitZone[allyIndex] = null
+        return { ...prev, unitZone: newUnitZone, hand: [...prev.hand, unitToReturn] }
+      })
+      return { success: true, message: `Troca de Guarda! ${allyUnit.name} retornou para sua mão.` }
+    },
+  },
+
   "dados-da-calamidade": {
     id: "dados-da-calamidade",
     name: "Dados da Calamidade",
@@ -2579,11 +2614,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isLacosDaOrdem = cardToPlace.name === "Laços da Ordem"
       const isEstrategiaReal = cardToPlace.name === "Estratégia Real"
       const isVentosDeCamelot = cardToPlace.name === "Ventos de Camelot"
+      const isTrocaDeGuarda = cardToPlace.name === "Troca de Guarda"
       const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2606,6 +2642,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isLacosDaOrdem) effectToUse = FUNCTION_CARD_EFFECTS["lacos-da-ordem"]
           else if (isEstrategiaReal) effectToUse = FUNCTION_CARD_EFFECTS["estrategia-real"]
           else if (isVentosDeCamelot) effectToUse = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
+          else if (isTrocaDeGuarda) effectToUse = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
           else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
           else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
@@ -4658,7 +4695,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
@@ -4699,6 +4736,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isLacosDaOrdem2 = itemSelectionMode.itemCard.name === "Laços da Ordem"
       const isEstrategiaReal2 = itemSelectionMode.itemCard.name === "Estratégia Real"
       const isVentosDeCamelot2 = itemSelectionMode.itemCard.name === "Ventos de Camelot"
+      const isTrocaDeGuarda2 = itemSelectionMode.itemCard.name === "Troca de Guarda"
       const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
       const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
@@ -4724,6 +4762,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isLacosDaOrdem2) effect = FUNCTION_CARD_EFFECTS["lacos-da-ordem"]
       else if (isEstrategiaReal2) effect = FUNCTION_CARD_EFFECTS["estrategia-real"]
       else if (isVentosDeCamelot2) effect = FUNCTION_CARD_EFFECTS["ventos-de-camelot"]
+      else if (isTrocaDeGuarda2) effect = FUNCTION_CARD_EFFECTS["troca-de-guarda"]
       else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
