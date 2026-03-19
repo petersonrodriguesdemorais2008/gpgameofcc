@@ -4970,7 +4970,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     <div
       ref={fieldRef}
       suppressHydrationWarning={true}
-      className={`relative h-screen flex flex-col overflow-hidden select-none touch-none ${screenShake.active ? "animate-shake" : ""}`}
+      className={`relative h-screen flex flex-col overflow-hidden select-none touch-none`}
       style={{
         background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 25%, #0f0f2f 50%, #1a1a3a 75%, #0a0a1a 100%)",
       }}
