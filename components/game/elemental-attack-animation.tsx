@@ -53,6 +53,7 @@ export function ElementalAttackAnimation({
   // Detect Uller for special Ventus variant
   const isUller = (attackerName || "").toLowerCase().includes("ullr") ||
                   (attackerName || "").toLowerCase().includes("uller")
+  const isFehnon = (attackerName || "").toLowerCase().includes("fehnon")
 
   const particles = useMemo(() => {
     const counts: Record<string, number> = {
@@ -105,12 +106,25 @@ export function ElementalAttackAnimation({
       )
 
       case "aquos": case "aquo": case "water": return (
+        isFehnon ? (
+          // Fehnon charge: holographic blue energy coiling into a blade
+          <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", width:88, height:88, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ position:"absolute", width:22, height:22, borderRadius:"2px", background:"radial-gradient(circle,white 15%,#38bdf8 50%,#0ea5e9 90%)", transform:"rotate(45deg)", boxShadow:"0 0 0 2px #7dd3fc,0 0 20px 10px rgba(56,189,248,0.95),0 0 40px 16px rgba(14,165,233,0.5)", animation:"ep-pulse 0.09s ease-in-out infinite" }} />
+            {/* Holographic scan lines */}
+            {[-18,-10,0,10,18].map((y,i) => (
+              <div key={i} style={{ position:"absolute", width:`${50-Math.abs(y)*1.2}px`, height:"1.5px", background:`linear-gradient(to right,transparent,rgba(56,189,248,${0.4+i*0.08}),transparent)`, top:`calc(50% + ${y}px)`, left:"50%", transform:"translateX(-50%)", borderRadius:"9999px" }} />
+            ))}
+            <div style={{ position:"absolute", width:72, height:72, borderRadius:"50%", border:"1px solid rgba(56,189,248,0.4)", animation:"ep-spin 0.35s linear infinite", opacity:0.5 }} />
+            <div style={{ position:"absolute", width:80, height:80, borderRadius:"50%", background:"radial-gradient(circle,rgba(56,189,248,0.18) 0%,transparent 70%)", animation:"ep-pulse 0.11s ease-in-out infinite" }} />
+          </div>
+        ) : (
         <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", width:80, height:80, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ position:"absolute", width:64, height:64, borderRadius:"50%", border:"2px solid #38bdf8", animation:"ep-spin 0.4s linear infinite", opacity:0.7 }} />
           <div style={{ position:"absolute", width:46, height:46, borderRadius:"50%", border:"2px solid #7dd3fc", animation:"ep-spin 0.35s linear reverse infinite", opacity:0.5 }} />
           <div style={{ position:"absolute", width:18, height:18, borderRadius:"50%", background:"radial-gradient(circle,white 20%,#38bdf8 60%,#0284c7 100%)", boxShadow:"0 0 16px 8px rgba(56,189,248,0.9),0 0 32px 14px rgba(14,165,233,0.4)", animation:"ep-pulse 0.12s ease-in-out infinite" }} />
           <div style={{ position:"absolute", width:72, height:72, borderRadius:"50%", background:"radial-gradient(circle,rgba(56,189,248,0.2) 0%,transparent 70%)", animation:"ep-pulse 0.14s ease-in-out infinite" }} />
         </div>
+        )
       )
 
       case "terra": case "subterra": return (
@@ -200,14 +214,25 @@ export function ElementalAttackAnimation({
       )
 
       case "aquos": case "aquo": case "water": return (
-        <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", display:"flex", alignItems:"center", ...mv }}>
-          <div style={{ width:"90px", height:"5px", background:"linear-gradient(to right,transparent,rgba(14,165,233,0.5),#0ea5e9,#38bdf8)", borderRadius:"9999px", filter:"blur(2px)", opacity:0.8 }} />
-          {/* Bubble trail */}
-          <div style={{ width:"10px", height:"10px", borderRadius:"50%", border:"1px solid #7dd3fc", position:"absolute", left:"50px", opacity:0.5 }} />
-          <div style={{ width:"7px", height:"7px", borderRadius:"50%", border:"1px solid #bae6fd", position:"absolute", left:"70px", opacity:0.35 }} />
-          {/* Main orb */}
-          <div style={{ width:"24px", height:"24px", background:"radial-gradient(circle,white 12%,#38bdf8 50%,#0284c7 88%)", borderRadius:"50%", boxShadow:"0 0 12px 6px rgba(56,189,248,0.9),0 0 28px 10px rgba(14,165,233,0.45)", flexShrink:0 }} />
-        </div>
+        isFehnon ? (
+          <div style={{ position:"absolute", left:0, top:"50%", marginTop:"-3px" }}>
+            {/* Main slash beam */}
+            <div style={{ width:`${distance}px`, height:"4px", background:"linear-gradient(to right,rgba(56,189,248,0) 0%,rgba(56,189,248,0.6) 15%,white 50%,rgba(125,211,252,0.8) 80%,rgba(56,189,248,0) 100%)", borderRadius:"9999px", boxShadow:"0 0 10px 4px rgba(56,189,248,0.85),0 0 22px 8px rgba(14,165,233,0.45)", animation:`ep-laser ${TRAVEL_DURATION}ms ease-out forwards` }} />
+            {/* Secondary diagonal slash */}
+            <div style={{ width:`${distance * 0.72}px`, height:"2px", background:"linear-gradient(to right,transparent,rgba(125,211,252,0.55),rgba(255,255,255,0.75),transparent)", borderRadius:"9999px", position:"absolute", top:"-8px", left:`${distance * 0.08}px`, boxShadow:"0 0 6px 2px rgba(56,189,248,0.5)", animation:`ep-laser ${TRAVEL_DURATION}ms ease-out 22ms forwards`, opacity:0.7 }} />
+            <div style={{ width:`${distance * 0.5}px`, height:"1.5px", background:"linear-gradient(to right,transparent,rgba(186,230,253,0.5),transparent)", borderRadius:"9999px", position:"absolute", top:"8px", left:`${distance * 0.16}px`, animation:`ep-laser ${TRAVEL_DURATION}ms ease-out 38ms forwards`, opacity:0.45 }} />
+            {/* Holographic ripple at tip */}
+            <div style={{ width:"16px", height:"32px", borderRadius:"50%", border:"2px solid rgba(56,189,248,0.8)", position:"absolute", right:0, top:"-14px", boxShadow:"0 0 10px 4px rgba(56,189,248,0.7),0 0 20px 8px rgba(14,165,233,0.3)", animation:`ep-ring-out ${TRAVEL_DURATION * 0.5}ms ease-out forwards` }} />
+            <div style={{ width:"14px", height:"14px", background:"white", borderRadius:"50%", boxShadow:"0 0 14px 7px rgba(56,189,248,1),0 0 32px 14px rgba(14,165,233,0.6)", position:"absolute", right:0, top:"-6px" }} />
+          </div>
+        ) : (
+          <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", display:"flex", alignItems:"center", ...mv }}>
+            <div style={{ width:"90px", height:"5px", background:"linear-gradient(to right,transparent,rgba(14,165,233,0.5),#0ea5e9,#38bdf8)", borderRadius:"9999px", filter:"blur(2px)", opacity:0.8 }} />
+            <div style={{ width:"10px", height:"10px", borderRadius:"50%", border:"1px solid #7dd3fc", position:"absolute", left:"50px", opacity:0.5 }} />
+            <div style={{ width:"7px", height:"7px", borderRadius:"50%", border:"1px solid #bae6fd", position:"absolute", left:"70px", opacity:0.35 }} />
+            <div style={{ width:"24px", height:"24px", background:"radial-gradient(circle,white 12%,#38bdf8 50%,#0284c7 88%)", borderRadius:"50%", boxShadow:"0 0 12px 6px rgba(56,189,248,0.9),0 0 28px 10px rgba(14,165,233,0.45)", flexShrink:0 }} />
+          </div>
+        )
       )
 
       case "terra": case "subterra": return (
@@ -294,11 +319,14 @@ export function ElementalAttackAnimation({
     type EC = { ring:string; ring2:string; core:string; coreGlow:string; glow:string; colors:string[]; flash:string }
 
     const resolve = (e: string) => ({ fire:"pyrus",aquo:"aquos",water:"aquos",subterra:"terra",light:"haos",lightness:"haos",darkness:"darkus",dark:"darkus",wind:"ventus" }[e] ?? e)
-    const key = resolve(el) + (el === "ventus" || el === "wind" ? (isUller ? "_uller" : "") : "")
+    const key = resolve(el) + 
+      (el === "ventus" || el === "wind" ? (isUller ? "_uller" : "") : "") +
+      ((el === "aquos" || el === "aquo" || el === "water") && isFehnon ? "_fehnon" : "")
 
     const cfgMap: Record<string, EC> = {
       pyrus:        { ring:"#fb923c",  ring2:"#fbbf24",  core:"radial-gradient(circle,white 8%,#fb923c 38%,#dc2626 75%)",    coreGlow:"rgba(251,146,60,0.95)",  glow:"rgba(220,38,38,0.4)",    colors:["#dc2626","#ea580c","#fb923c","#fbbf24","#fef3c7","white"],    flash:"rgba(255,130,0,0.2)" },
       aquos:        { ring:"#38bdf8",  ring2:"#7dd3fc",  core:"radial-gradient(circle,white 8%,#38bdf8 40%,#0284c7 78%)",    coreGlow:"rgba(56,189,248,0.9)",   glow:"rgba(14,165,233,0.35)",  colors:["#0284c7","#0ea5e9","#38bdf8","#7dd3fc","#e0f2fe","white"],    flash:"rgba(56,189,248,0.16)" },
+      aquos_fehnon: { ring:"#38bdf8",  ring2:"white",    core:"radial-gradient(circle,white 12%,#7dd3fc 38%,#0ea5e9 70%,#0369a1 90%)", coreGlow:"rgba(56,189,248,1)", glow:"rgba(14,165,233,0.5)", colors:["white","#e0f2fe","#bae6fd","#7dd3fc","#38bdf8","#0ea5e9"], flash:"rgba(56,189,248,0.25)" },
       terra:        { ring:"#b45309",  ring2:"#d97706",  core:"radial-gradient(circle,#fbbf24 8%,#b45309 40%,#451a03 78%)",  coreGlow:"rgba(180,83,9,0.95)",    glow:"rgba(120,53,15,0.4)",    colors:["#292524","#451a03","#92400e","#b45309","#d97706","#fbbf24"],   flash:"rgba(120,53,15,0.22)" },
       haos:         { ring:"#fde047",  ring2:"#fef9c3",  core:"radial-gradient(circle,white 12%,#fef08a 42%,#fde047 78%)",   coreGlow:"rgba(254,240,138,1)",    glow:"rgba(253,224,71,0.5)",   colors:["white","#fef9c3","#fef08a","#fde047","#fbbf24","#f59e0b"],    flash:"rgba(255,255,180,0.3)" },
       darkus:       { ring:"#7e22ce",  ring2:"#a855f7",  core:"radial-gradient(circle,#c084fc 8%,#7e22ce 38%,#1e1b4b 78%)", coreGlow:"rgba(88,28,135,0.95)",   glow:"rgba(88,28,135,0.5)",    colors:["#0f0a1e","#1e1b4b","#4c1d95","#7e22ce","#a855f7","#c084fc"],  flash:"rgba(88,28,135,0.2)" },
