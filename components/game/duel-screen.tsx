@@ -1397,6 +1397,38 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "chamado-da-tavola": {
+    id: "chamado-da-tavola",
+    name: "Chamado da Távola",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const hasTroop = context.playerField.deck.some((c) => c.type === "troops")
+      if (!hasTroop) {
+        return { canActivate: false, reason: "Não há Unidades de Tropa no seu deck" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const troops = context.playerField.deck.filter((c) => c.type === "troops")
+      if (troops.length === 0) {
+        return { success: false, message: "Nenhuma Unidade de Tropa encontrada no deck" }
+      }
+      // Pick the first troop found (deck is already shuffled)
+      const chosen = troops[0]
+      context.setPlayerField((prev) => {
+        // Remove chosen card from deck and shuffle the rest
+        const newDeck = prev.deck.filter((c) => c !== chosen)
+        const shuffled = [...newDeck].sort(() => Math.random() - 0.5)
+        return {
+          ...prev,
+          hand: [...prev.hand, chosen],
+          deck: shuffled,
+        }
+      })
+      return { success: true, message: `Chamado da Távola! ${chosen.name} adicionada à mão. Deck embaralhado.` }
+    },
+  },
+
   "dados-da-calamidade": {
     id: "dados-da-calamidade",
     name: "Dados da Calamidade",
@@ -2659,8 +2691,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isFlechaDeBalista = cardToPlace.name === "Flecha de Balista"
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
+      const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -2687,6 +2720,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isFlechaDeBalista) effectToUse = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
           else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
+          else if (isChamadoDaTavola) effectToUse = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
         }
 
         if (!effectToUse) return // Safety check
@@ -3763,7 +3797,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             targetY, 
             element: attacker.element || "neutral",
             attackerImage: attacker.image,
-            attackerName: attacker.name,
             isDirect: attackState.targetInfo!.type === "direct"
           },
         ])
@@ -4782,6 +4815,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isFlechaDeBalista2 = itemSelectionMode.itemCard.name === "Flecha de Balista"
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
       const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
+      const isChamadoDaTavola2 = itemSelectionMode.itemCard.name === "Chamado da Távola"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -4808,6 +4842,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isFlechaDeBalista2) effect = FUNCTION_CARD_EFFECTS["flecha-de-balista"]
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
+      else if (isChamadoDaTavola2) effect = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
     }
 
     if (effect) {
@@ -4934,7 +4969,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     <div
       ref={fieldRef}
       suppressHydrationWarning={true}
-      className="relative h-screen flex flex-col overflow-hidden select-none touch-none"
+      className={`relative h-screen flex flex-col overflow-hidden select-none touch-none ${screenShake.active ? "animate-shake" : ""}`}
       style={{
         background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 25%, #0f0f2f 50%, #1a1a3a 75%, #0a0a1a 100%)",
       }}
@@ -4959,7 +4994,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         handleHandCardDragEnd()
       }}
     >
-      <div className={`w-full h-full flex flex-col ${screenShake.active ? "animate-shake" : ""}`} style={{ position: 'relative' }}>
       {/* Active Projectiles */}
       {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
@@ -6751,21 +6785,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
       <style jsx global>{`
         @keyframes shake {
-          0%   { transform: translate(0px, 0px) rotate(0deg); }
-          10%  { transform: translate(-2px, -1px) rotate(-0.5deg); }
-          20%  { transform: translate(2px, 1px) rotate(0.5deg); }
-          30%  { transform: translate(-2px, 1px) rotate(0deg); }
-          40%  { transform: translate(2px, -1px) rotate(0.5deg); }
-          50%  { transform: translate(-1px, 2px) rotate(-0.5deg); }
-          60%  { transform: translate(1px, -2px) rotate(0deg); }
-          70%  { transform: translate(-2px, 1px) rotate(-0.5deg); }
-          80%  { transform: translate(2px, 1px) rotate(0.5deg); }
-          90%  { transform: translate(-1px, -1px) rotate(0deg); }
-          100% { transform: translate(0px, 0px) rotate(0deg); }
+          0% { transform: translate(1px, 1px) rotate(0deg); }
+          10% { transform: translate(-1px, -2px) rotate(-1deg); }
+          20% { transform: translate(-3px, 0px) rotate(1deg); }
+          30% { transform: translate(3px, 2px) rotate(0deg); }
+          40% { transform: translate(1px, -1px) rotate(1deg); }
+          50% { transform: translate(-1px, 2px) rotate(-1deg); }
+          60% { transform: translate(-3px, 1px) rotate(0deg); }
+          70% { transform: translate(3px, 1px) rotate(-1deg); }
+          80% { transform: translate(-1px, -1px) rotate(1deg); }
+          90% { transform: translate(1px, 2px) rotate(0deg); }
+          100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
         .animate-shake {
           animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
-          will-change: transform;
         }
 
         /* ── ORDEM DE LACERAÇÃO — sword slash animation ── */
@@ -6893,7 +6926,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
       `}</style>
-      </div>
     </div>
   )
 }
