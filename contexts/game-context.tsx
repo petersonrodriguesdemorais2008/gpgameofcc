@@ -2515,8 +2515,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todas as ${ALL_CARDS.length} cartas foram desbloqueadas com 4 copias cada!` }
     }
 
-    // PLATMAT - Unlocks all playmats
-    if (normalizedCode === "PLATMAT") {
+    // PLAYMAT - Unlocks all playmats
+    if (normalizedCode === "PLAYMAT") {
       const newOwnedPlaymats = ALL_PLAYMATS.filter(
         (p) => !ownedPlaymats.some((op) => op.id === p.id)
       )
