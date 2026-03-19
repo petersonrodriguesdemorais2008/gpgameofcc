@@ -3797,6 +3797,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             targetY, 
             element: attacker.element || "neutral",
             attackerImage: attacker.image,
+            attackerName: attacker.name,
             isDirect: attackState.targetInfo!.type === "direct"
           },
         ])
