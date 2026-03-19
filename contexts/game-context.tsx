@@ -1451,6 +1451,20 @@ const ALL_CARDS: Card[] = [
     category: "Action Funcion Card",
   },
   {
+    id: "chamado-da-tavola",
+    name: "Chamado da Távola",
+    image: "/images/cards/Chamado_da_Távola.png",
+    rarity: "SR",
+    type: "action",
+    element: "Haos",
+    dp: 0,
+    ability: "Chamado da Távola",
+    abilityDescription:
+      "Procure em seu deck por uma Unidade de Tropa, revele-a e adicione-a à sua mão. Em seguida, embaralhe o seu deck.",
+    attack: "",
+    category: "Action Funcion Card",
+  },
+  {
     id: "alvorada-de-albion",
     name: "Alvorada de Albion",
     image: "/images/cards/alvorada-de-albion.jpg",
