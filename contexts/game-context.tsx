@@ -1496,19 +1496,19 @@ const ALL_PLAYMATS: Playmat[] = [
   {
     id: "playmat-tsubasa-lr",
     name: "Tsubasa LR",
-    image: "/images/playmats/Tsubasa_LR_playtmat.png",
+    image: "/images/playmats/tsubasa_lr_playmat.png",
     description: "O espírito do cavalo celestial galopa ao lado de Tsubasa neste tapete lendário.",
   },
   {
     id: "playmat-uller-isgrimm-lr",
     name: "Uller e Isgrimm LR",
-    image: "/images/playmats/Uller_e_Isgrimm_LR_playmat.png",
+    image: "/images/playmats/uller_e_isgrimm_lr_playmat.png",
     description: "A dupla lendária de Uller e Isgrimm em sua forma suprema.",
   },
   {
     id: "playmat-uller-isgrimm",
     name: "Uller e Isgrimm",
-    image: "/images/playmats/Uller_e_Isgrimm_playmat.png",
+    image: "/images/playmats/uller_e_isgrimm_playmat.png",
     description: "Uller e seu fiel companheiro Isgrimm unidos pelo vento.",
   },
 ]
