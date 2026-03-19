@@ -107,15 +107,19 @@ export function ElementalAttackAnimation({
 
       case "aquos": case "aquo": case "water": return (
         isFehnon ? (
-          // Fehnon charge: holographic blue energy coiling into a blade
-          <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", width:88, height:88, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ position:"absolute", width:22, height:22, borderRadius:"2px", background:"radial-gradient(circle,white 15%,#38bdf8 50%,#0ea5e9 90%)", transform:"rotate(45deg)", boxShadow:"0 0 0 2px #7dd3fc,0 0 20px 10px rgba(56,189,248,0.95),0 0 40px 16px rgba(14,165,233,0.5)", animation:"ep-pulse 0.09s ease-in-out infinite" }} />
-            {/* Holographic scan lines */}
-            {[-18,-10,0,10,18].map((y,i) => (
-              <div key={i} style={{ position:"absolute", width:`${50-Math.abs(y)*1.2}px`, height:"1.5px", background:`linear-gradient(to right,transparent,rgba(56,189,248,${0.4+i*0.08}),transparent)`, top:`calc(50% + ${y}px)`, left:"50%", transform:"translateX(-50%)", borderRadius:"9999px" }} />
+          // Fehnon charge: blade energy wind-up — horizontal scan lines + contracting holo rings
+          <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", width:96, height:96, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            {/* Outer contracting holo ring */}
+            <div style={{ position:"absolute", width:88, height:88, borderRadius:"50%", border:"2px solid rgba(56,189,248,0.7)", boxShadow:"0 0 12px 4px rgba(56,189,248,0.5)", animation:"ep-fehnon-contract 0.15s ease-in forwards" }} />
+            <div style={{ position:"absolute", width:70, height:70, borderRadius:"50%", border:"1px solid rgba(125,211,252,0.5)", animation:"ep-fehnon-contract 0.15s ease-in 0.03s forwards" }} />
+            {/* Holographic scan lines — horizontal */}
+            {[-20,-13,-6,0,6,13,20].map((y,i) => (
+              <div key={i} style={{ position:"absolute", height:"1.5px", width:`${72 - Math.abs(y)*2.2}px`, background:`linear-gradient(to right,transparent,rgba(56,189,248,${0.35+Math.abs(i-3)*0.1}),rgba(255,255,255,${0.5+Math.abs(i-3)*0.1}),rgba(56,189,248,${0.35+Math.abs(i-3)*0.1}),transparent)`, borderRadius:"9999px", top:`calc(50% + ${y}px)`, left:"50%", transform:"translateX(-50%)", animation:"ep-fehnon-scanline 0.15s ease-out forwards" }} />
             ))}
-            <div style={{ position:"absolute", width:72, height:72, borderRadius:"50%", border:"1px solid rgba(56,189,248,0.4)", animation:"ep-spin 0.35s linear infinite", opacity:0.5 }} />
-            <div style={{ position:"absolute", width:80, height:80, borderRadius:"50%", background:"radial-gradient(circle,rgba(56,189,248,0.18) 0%,transparent 70%)", animation:"ep-pulse 0.11s ease-in-out infinite" }} />
+            {/* Blade core — diamond shape */}
+            <div style={{ position:"absolute", width:20, height:20, borderRadius:"2px", transform:"rotate(45deg)", background:"radial-gradient(circle,white 10%,#7dd3fc 45%,#0ea5e9 85%)", boxShadow:"0 0 0 2px #38bdf8,0 0 18px 9px rgba(56,189,248,1),0 0 36px 16px rgba(14,165,233,0.6)", animation:"ep-pulse 0.08s ease-in-out infinite" }} />
+            {/* Energy burst behind */}
+            <div style={{ position:"absolute", width:96, height:96, borderRadius:"50%", background:"radial-gradient(circle,rgba(56,189,248,0.22) 0%,rgba(14,165,233,0.08) 50%,transparent 70%)", animation:"ep-fehnon-glow 0.15s ease-in-out infinite" }} />
           </div>
         ) : (
         <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", width:80, height:80, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -215,15 +219,21 @@ export function ElementalAttackAnimation({
 
       case "aquos": case "aquo": case "water": return (
         isFehnon ? (
+          // Fehnon travel: multi-slash holographic laceration
           <div style={{ position:"absolute", left:0, top:"50%", marginTop:"-3px" }}>
-            {/* Main slash beam */}
-            <div style={{ width:`${distance}px`, height:"4px", background:"linear-gradient(to right,rgba(56,189,248,0) 0%,rgba(56,189,248,0.6) 15%,white 50%,rgba(125,211,252,0.8) 80%,rgba(56,189,248,0) 100%)", borderRadius:"9999px", boxShadow:"0 0 10px 4px rgba(56,189,248,0.85),0 0 22px 8px rgba(14,165,233,0.45)", animation:`ep-laser ${TRAVEL_DURATION}ms ease-out forwards` }} />
-            {/* Secondary diagonal slash */}
-            <div style={{ width:`${distance * 0.72}px`, height:"2px", background:"linear-gradient(to right,transparent,rgba(125,211,252,0.55),rgba(255,255,255,0.75),transparent)", borderRadius:"9999px", position:"absolute", top:"-8px", left:`${distance * 0.08}px`, boxShadow:"0 0 6px 2px rgba(56,189,248,0.5)", animation:`ep-laser ${TRAVEL_DURATION}ms ease-out 22ms forwards`, opacity:0.7 }} />
-            <div style={{ width:`${distance * 0.5}px`, height:"1.5px", background:"linear-gradient(to right,transparent,rgba(186,230,253,0.5),transparent)", borderRadius:"9999px", position:"absolute", top:"8px", left:`${distance * 0.16}px`, animation:`ep-laser ${TRAVEL_DURATION}ms ease-out 38ms forwards`, opacity:0.45 }} />
-            {/* Holographic ripple at tip */}
-            <div style={{ width:"16px", height:"32px", borderRadius:"50%", border:"2px solid rgba(56,189,248,0.8)", position:"absolute", right:0, top:"-14px", boxShadow:"0 0 10px 4px rgba(56,189,248,0.7),0 0 20px 8px rgba(14,165,233,0.3)", animation:`ep-ring-out ${TRAVEL_DURATION * 0.5}ms ease-out forwards` }} />
-            <div style={{ width:"14px", height:"14px", background:"white", borderRadius:"50%", boxShadow:"0 0 14px 7px rgba(56,189,248,1),0 0 32px 14px rgba(14,165,233,0.6)", position:"absolute", right:0, top:"-6px" }} />
+            {/* === MAIN SLASH — thick bright blue beam === */}
+            <div style={{ width:`${distance}px`, height:"6px", background:"linear-gradient(to right,rgba(14,165,233,0) 0%,rgba(56,189,248,0.5) 10%,rgba(255,255,255,1) 45%,rgba(125,211,252,0.9) 70%,rgba(56,189,248,0.3) 90%,transparent 100%)", borderRadius:"9999px", boxShadow:"0 0 14px 6px rgba(56,189,248,0.95),0 0 28px 10px rgba(14,165,233,0.6),0 0 50px 18px rgba(56,189,248,0.25)", animation:`ep-fehnon-slash ${TRAVEL_DURATION}ms cubic-bezier(0.05,0,0.1,1) forwards` }} />
+            {/* === SECONDARY SLASH — offset above, slightly delayed === */}
+            <div style={{ width:`${distance * 0.82}px`, height:"3px", background:"linear-gradient(to right,transparent,rgba(125,211,252,0.7) 20%,rgba(255,255,255,0.85) 55%,rgba(186,230,253,0.5) 80%,transparent)", borderRadius:"9999px", position:"absolute", top:"-10px", left:`${distance * 0.06}px`, boxShadow:"0 0 8px 3px rgba(56,189,248,0.7)", animation:`ep-fehnon-slash ${TRAVEL_DURATION}ms cubic-bezier(0.05,0,0.1,1) 18ms forwards` }} />
+            {/* === TERTIARY SLASH — offset below, more delayed === */}
+            <div style={{ width:`${distance * 0.62}px`, height:"2px", background:"linear-gradient(to right,transparent,rgba(186,230,253,0.6) 25%,rgba(255,255,255,0.7) 55%,transparent)", borderRadius:"9999px", position:"absolute", top:"9px", left:`${distance * 0.14}px`, boxShadow:"0 0 6px 2px rgba(56,189,248,0.55)", animation:`ep-fehnon-slash ${TRAVEL_DURATION}ms cubic-bezier(0.05,0,0.1,1) 34ms forwards` }} />
+            {/* === HOLO EDGE — ultra thin, furthest offset === */}
+            <div style={{ width:`${distance * 0.44}px`, height:"1px", background:"linear-gradient(to right,transparent,rgba(224,242,254,0.5),transparent)", borderRadius:"9999px", position:"absolute", top:"-18px", left:`${distance * 0.2}px`, animation:`ep-fehnon-slash ${TRAVEL_DURATION}ms cubic-bezier(0.05,0,0.1,1) 50ms forwards` }} />
+            <div style={{ width:`${distance * 0.36}px`, height:"1px", background:"linear-gradient(to right,transparent,rgba(224,242,254,0.4),transparent)", borderRadius:"9999px", position:"absolute", top:"17px", left:`${distance * 0.25}px`, animation:`ep-fehnon-slash ${TRAVEL_DURATION}ms cubic-bezier(0.05,0,0.1,1) 55ms forwards` }} />
+            {/* === IMPACT TIP — bright orb at the cutting edge === */}
+            <div style={{ width:"20px", height:"20px", background:"radial-gradient(circle,white 20%,#7dd3fc 55%,#0ea5e9 90%)", borderRadius:"50%", boxShadow:"0 0 18px 9px rgba(56,189,248,1),0 0 40px 18px rgba(14,165,233,0.65)", position:"absolute", right:"-2px", top:"-8px", animation:`ep-fehnon-tip ${TRAVEL_DURATION}ms cubic-bezier(0.05,0,0.1,1) forwards` }} />
+            {/* === HOLO RIPPLE — expanding ring at tip === */}
+            <div style={{ width:"14px", height:"40px", borderRadius:"50%", border:"2px solid rgba(56,189,248,0.7)", position:"absolute", right:"-4px", top:"-18px", boxShadow:"0 0 10px 4px rgba(56,189,248,0.6)", animation:`ep-ring-out ${TRAVEL_DURATION * 0.4}ms ease-out forwards` }} />
           </div>
         ) : (
           <div style={{ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)", display:"flex", alignItems:"center", ...mv }}>
@@ -326,7 +336,7 @@ export function ElementalAttackAnimation({
     const cfgMap: Record<string, EC> = {
       pyrus:        { ring:"#fb923c",  ring2:"#fbbf24",  core:"radial-gradient(circle,white 8%,#fb923c 38%,#dc2626 75%)",    coreGlow:"rgba(251,146,60,0.95)",  glow:"rgba(220,38,38,0.4)",    colors:["#dc2626","#ea580c","#fb923c","#fbbf24","#fef3c7","white"],    flash:"rgba(255,130,0,0.2)" },
       aquos:        { ring:"#38bdf8",  ring2:"#7dd3fc",  core:"radial-gradient(circle,white 8%,#38bdf8 40%,#0284c7 78%)",    coreGlow:"rgba(56,189,248,0.9)",   glow:"rgba(14,165,233,0.35)",  colors:["#0284c7","#0ea5e9","#38bdf8","#7dd3fc","#e0f2fe","white"],    flash:"rgba(56,189,248,0.16)" },
-      aquos_fehnon: { ring:"#38bdf8",  ring2:"white",    core:"radial-gradient(circle,white 12%,#7dd3fc 38%,#0ea5e9 70%,#0369a1 90%)", coreGlow:"rgba(56,189,248,1)", glow:"rgba(14,165,233,0.5)", colors:["white","#e0f2fe","#bae6fd","#7dd3fc","#38bdf8","#0ea5e9"], flash:"rgba(56,189,248,0.25)" },
+      aquos_fehnon: { ring:"#38bdf8",  ring2:"white",    core:"radial-gradient(circle,white 8%,#bae6fd 28%,#38bdf8 52%,#0284c7 78%,#0369a1 95%)", coreGlow:"rgba(56,189,248,1)", glow:"rgba(14,165,233,0.6)", colors:["white","#f0f9ff","#e0f2fe","#bae6fd","#7dd3fc","#38bdf8","#0ea5e9"], flash:"rgba(56,189,248,0.32)" },
       terra:        { ring:"#b45309",  ring2:"#d97706",  core:"radial-gradient(circle,#fbbf24 8%,#b45309 40%,#451a03 78%)",  coreGlow:"rgba(180,83,9,0.95)",    glow:"rgba(120,53,15,0.4)",    colors:["#292524","#451a03","#92400e","#b45309","#d97706","#fbbf24"],   flash:"rgba(120,53,15,0.22)" },
       haos:         { ring:"#fde047",  ring2:"#fef9c3",  core:"radial-gradient(circle,white 12%,#fef08a 42%,#fde047 78%)",   coreGlow:"rgba(254,240,138,1)",    glow:"rgba(253,224,71,0.5)",   colors:["white","#fef9c3","#fef08a","#fde047","#fbbf24","#f59e0b"],    flash:"rgba(255,255,180,0.3)" },
       darkus:       { ring:"#7e22ce",  ring2:"#a855f7",  core:"radial-gradient(circle,#c084fc 8%,#7e22ce 38%,#1e1b4b 78%)", coreGlow:"rgba(88,28,135,0.95)",   glow:"rgba(88,28,135,0.5)",    colors:["#0f0a1e","#1e1b4b","#4c1d95","#7e22ce","#a855f7","#c084fc"],  flash:"rgba(88,28,135,0.2)" },
@@ -338,6 +348,7 @@ export function ElementalAttackAnimation({
     const c = cfgMap[key] ?? cfgMap["void"]
     const impactBase = angleRad + Math.PI
     const isTerra = el === "terra" || el === "subterra"
+    const isFehnonImpact = isFehnon && (el === "aquos" || el === "aquo" || el === "water")
 
     return (
       <div style={{ position:"absolute", left:0, top:0, width:0, height:0, transform:`rotate(${-angleDeg}deg)` }}>
@@ -354,6 +365,39 @@ export function ElementalAttackAnimation({
         {/* Core explosion */}
         <div style={{ position:"absolute", left:"-52px", top:"-52px", width:"104px", height:"104px", background:c.core, borderRadius:"50%", boxShadow:`0 0 44px 20px ${c.coreGlow},0 0 90px 32px ${c.glow}`, animation:`ep-core ${IMPACT_DURATION}ms cubic-bezier(0.08,0.82,0.17,1) forwards` }} />
 
+        {/* FEHNON ONLY: Holographic laceration lines radiating from impact */}
+        {isFehnonImpact && [
+          { w:120, rot:0,   top:-3,  delay:0 },
+          { w:90,  rot:-22, top:-3,  delay:15 },
+          { w:90,  rot:22,  top:-3,  delay:15 },
+          { w:65,  rot:-42, top:-2,  delay:30 },
+          { w:65,  rot:42,  top:-2,  delay:30 },
+          { w:45,  rot:-65, top:-1,  delay:45 },
+          { w:45,  rot:65,  top:-1,  delay:45 },
+        ].map((s, i) => (
+          <div key={i} style={{
+            position:"absolute", height:"2px", width:`${s.w}px`,
+            background:"linear-gradient(to right,transparent,rgba(255,255,255,0.9),rgba(125,211,252,0.7),transparent)",
+            borderRadius:"9999px", top:`${s.top}px`, left:0,
+            transform:`rotate(${s.rot}deg)`,
+            boxShadow:"0 0 6px 2px rgba(56,189,248,0.7)",
+            animation:`ep-fehnon-slash ${IMPACT_DURATION * 0.7}ms ease-out ${s.delay}ms forwards`,
+            transformOrigin:"left center",
+          }} />
+        ))}
+
+        {/* FEHNON ONLY: Holographic scan lines overlay */}
+        {isFehnonImpact && [-16,-9,-2,5,12].map((y,i) => (
+          <div key={`scan-${i}`} style={{
+            position:"absolute", height:"1px",
+            width:`${80 - Math.abs(y) * 2}px`,
+            background:`linear-gradient(to right,transparent,rgba(186,230,253,${0.5+i*0.06}),transparent)`,
+            borderRadius:"9999px", top:`${y}px`, left:"50%",
+            transform:"translateX(-50%)",
+            animation:`ep-fehnon-slash ${IMPACT_DURATION * 0.55}ms ease-out ${i*10}ms forwards`,
+          }} />
+        ))}
+
         {/* Particles */}
         {particles.map(p => {
           const a = impactBase + p.angle * 0.88
@@ -364,12 +408,13 @@ export function ElementalAttackAnimation({
           return (
             <div key={p.id} style={{
               position:"absolute",
-              width:`${p.size}px`, height:`${p.size}px`,
-              borderRadius: isTerra ? "2px" : "50%",
+              width:`${p.size}px`, height:`${isFehnonImpact ? p.size * 0.4 : p.size}px`,
+              borderRadius: (isTerra || isFehnonImpact) ? "1px" : "50%",
               background: color,
               boxShadow:`0 0 5px 2px ${color}88`,
               animation:`ep-particle ${IMPACT_DURATION}ms cubic-bezier(0.04,0.5,0.18,1) ${p.delay}ms forwards`,
               "--px":`${px}px`, "--py":`${py}px`, opacity:0,
+              transform: isFehnonImpact ? `rotate(${Math.atan2(py,px) * 180/Math.PI}deg)` : undefined,
             } as React.CSSProperties} />
           )
         })}
@@ -397,6 +442,11 @@ export function ElementalAttackAnimation({
         @keyframes ep-core       { 0%{transform:scale(.04);opacity:1} 22%{transform:scale(1.25);opacity:1} 55%{transform:scale(.95);opacity:.7} 100%{transform:scale(0);opacity:0} }
         @keyframes ep-particle   { 0%{transform:translate(0,0) scale(1.6);opacity:1} 100%{transform:translate(var(--px),var(--py)) scale(0);opacity:0} }
         @keyframes afterimage-fade { 0%{opacity:.28} 100%{opacity:0} }
+        @keyframes ep-fehnon-contract { 0%{transform:scale(1.4);opacity:0} 60%{opacity:1} 100%{transform:scale(0.3);opacity:0} }
+        @keyframes ep-fehnon-scanline { 0%{opacity:0;transform:translateX(-50%) scaleX(0)} 50%{opacity:1} 100%{opacity:0;transform:translateX(-50%) scaleX(1)} }
+        @keyframes ep-fehnon-glow { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.2)} }
+        @keyframes ep-fehnon-slash { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 5%{opacity:1} 70%{opacity:1} 100%{opacity:0;transform:scaleX(1)} }
+        @keyframes ep-fehnon-tip  { 0%{transform:translateX(calc(-${distance}px));opacity:0} 8%{opacity:1} 100%{transform:translateX(0);opacity:1} }
       `}</style>
       {attackerImage && phase !== "impact" && (
         <div style={{ position:"absolute", left:startX-40, top:startY-56, width:"80px", height:"112px", backgroundImage:`url(${attackerImage})`, backgroundSize:"cover", backgroundPosition:"center", borderRadius:"8px", opacity:0.22, filter:"blur(2px)", animation:"afterimage-fade 200ms ease-out forwards", pointerEvents:"none", zIndex:5 }} />
