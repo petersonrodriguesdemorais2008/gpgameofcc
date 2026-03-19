@@ -2515,6 +2515,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todas as ${ALL_CARDS.length} cartas foram desbloqueadas com 4 copias cada!` }
     }
 
+    // PLATMAT - Unlocks all playmats
+    if (normalizedCode === "PLATMAT") {
+      const newOwnedPlaymats = ALL_PLAYMATS.filter(
+        (p) => !ownedPlaymats.some((op) => op.id === p.id)
+      )
+      const updatedPlaymats = [...ownedPlaymats, ...newOwnedPlaymats]
+      setOwnedPlaymats(updatedPlaymats)
+      localStorage.setItem("gearperks_owned_playmats", JSON.stringify(updatedPlaymats.map((p) => p.id)))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS("redeemed-codes", JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Todos os ${ALL_PLAYMATS.length} playmats foram desbloqueados!` }
+    }
+
     // Invalid code
     return { success: false, message: "Codigo invalido!" }
   }
