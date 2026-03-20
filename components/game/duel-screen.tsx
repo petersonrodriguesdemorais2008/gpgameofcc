@@ -13,6 +13,7 @@ import Image from "next/image"
 import { MultiplayerLobby } from "./multiplayer-lobby"
 import { OnlineDuelScreen } from "./online-duel-screen"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
+import { DiscardAnimationManager } from "./card-discard-animation"
 
 interface DuelScreenProps {
   mode: "bot" | "player"
@@ -1745,6 +1746,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const arrowRef = useRef<SVGLineElement>(null)
   const rafRef = useRef<number | null>(null)
   const fieldRef = useRef<HTMLDivElement>(null)
+  const playerGraveyardRef = useRef<HTMLDivElement>(null)
+  const enemyGraveyardRef  = useRef<HTMLDivElement>(null)
   const enemyUnitRectsRef = useRef<DOMRect[]>([])
   const isDraggingRef = useRef(false) // Track drag state
   const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
@@ -5205,6 +5208,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 <div className="flex gap-1">
                   <div className="flex flex-col gap-1">
                     <div
+                      ref={enemyGraveyardRef}
                       className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
                       onClick={() => setGraveyardView("enemy")}
                     >
@@ -5703,6 +5707,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       )}
                     </div>
                     <div
+                      ref={playerGraveyardRef}
                       className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
                       onClick={() => setGraveyardView("player")}
                     >
@@ -6927,6 +6932,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
       `}</style>
+
+      {/* Discard/destroy animations */}
+      <DiscardAnimationManager
+        playerGraveyard={playerField.graveyard}
+        enemyGraveyard={enemyField.graveyard}
+        playerGraveyardRef={playerGraveyardRef}
+        enemyGraveyardRef={enemyGraveyardRef}
+        fieldRef={fieldRef}
+      />
+
     </div>
   )
 }
