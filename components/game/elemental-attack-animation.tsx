@@ -18,21 +18,19 @@ export interface AttackAnimationProps {
   onComplete: (id: string) => void
 }
 
-// ─── 5-stage phase system ────────────────────────────────────────────────────
-// charge → release → strike → impact → aftermath
-// Totals ~940ms to sync with PROJECTILE_DURATION in duel-screen.tsx
+// charge → release → strike → impact → aftermath (~940ms total)
 type Phase = "charge" | "release" | "strike" | "impact" | "aftermath"
 
 const T = {
-  CHARGE:   160,  // energy buildup, tension
-  RELEASE:   40,  // explosive transition snap
-  STRIKE:   260,  // projectile travels
-  IMPACT:    80,  // hero frame — flash, compression
-  AFTERMATH: 400, // particles, residual, dissipation
+  CHARGE:   170,
+  RELEASE:   40,
+  STRIKE:   250,
+  IMPACT:    90,
+  AFTERMATH: 390,
   get TOTAL() { return this.CHARGE + this.RELEASE + this.STRIKE + this.IMPACT + this.AFTERMATH }
 }
 
-// ─── Seeded organic variation (each attack slightly different) ────────────────
+// Seeded organic variation per attack
 const seed = (id: string, i: number): number => {
   let h = (i + 1) * 2654435761
   for (const c of id) h = (h ^ c.charCodeAt(0) * 1000003) >>> 0
@@ -55,7 +53,6 @@ const mkP = (n: number, spread: number, sMin: number, sMax: number, id: string) 
 
 const ss = (s: React.CSSProperties) => s
 
-// ─── Reusable ring ────────────────────────────────────────────────────────────
 const Ring = ({ d, bw="2px", bc, bg, glow, anim, op=1, delay }: {
   d:number; bw?:string; bc?:string; bg?:string; glow?:string; anim?:string; op?:number; delay?:number
 }) => (
@@ -65,6 +62,21 @@ const Ring = ({ d, bw="2px", bc, bg, glow, anim, op=1, delay }: {
     border: bc ? `${bw} solid ${bc}` : undefined,
     background: bg, boxShadow:glow, opacity:op, animation:anim,
     animationDelay: delay ? `${delay}ms` : undefined,
+  })} />
+)
+
+// Floating orbital spark — small particle orbiting the charge core
+const Orb = ({ r, sz, col, dur, del, startAngle }: {
+  r:number; sz:number; col:string; dur:number; del:number; startAngle:number
+}) => (
+  <div style={ss({
+    position:"absolute", width:`${sz}px`, height:`${sz}px`,
+    borderRadius:"50%", background:col,
+    boxShadow:`0 0 ${sz*1.5}px ${sz}px ${col}`,
+    animation:`a-orbit ${dur}ms linear ${del}ms infinite`,
+    transformOrigin:`${-r}px 50%`,
+    marginLeft:`${r}px`, marginTop:`${-sz/2}px`,
+    transform:`rotate(${startAngle}deg) translateX(${-r}px)`,
   })} />
 )
 
@@ -84,16 +96,15 @@ export function ElementalAttackAnimation({
   const isUller  = /ullr|uller/i.test(attackerName || "")
   const isFehnon = /fehnon/i.test(attackerName || "")
 
-  // Per-element particle tables [count, spread, speedMin, speedMax]
   const pts = useMemo(() => {
     const tbl: Record<string,[number,number,number,number]> = {
-      pyrus:[20,112,36,84],    fire:[20,112,36,84],
-      aquos:[16,108,30,76],    aquo:[16,108,30,76],    water:[16,108,30,76],
-      terra:[15,104,28,70],    subterra:[15,104,28,70],
-      haos:[24,160,34,80],     light:[24,160,34,80],   lightness:[24,160,34,80],
-      darkus:[18,108,26,72],   darkness:[18,108,26,72], dark:[18,108,26,72],
-      ventus:[22,140,30,76],   wind:[22,140,30,76],
-      void:[24,360,24,68],
+      pyrus:[22,114,36,86],   fire:[22,114,36,86],
+      aquos:[18,110,30,78],   aquo:[18,110,30,78],   water:[18,110,30,78],
+      terra:[16,106,28,72],   subterra:[16,106,28,72],
+      haos:[26,162,34,82],    light:[26,162,34,82],  lightness:[26,162,34,82],
+      darkus:[20,110,26,74],  darkness:[20,110,26,74], dark:[20,110,26,74],
+      ventus:[24,142,30,78],  wind:[24,142,30,78],
+      void:[26,360,24,70],
     }
     const [n,sp,mn,mx] = tbl[el] ?? [16,110,30,76]
     return mkP(n,sp,mn,mx,id)
@@ -105,76 +116,75 @@ export function ElementalAttackAnimation({
   useEffect(() => {
     setMounted(true)
     const timers = [
-      setTimeout(() => setPhase("release"),                             T.CHARGE),
-      setTimeout(() => setPhase("strike"),                              T.CHARGE + T.RELEASE),
+      setTimeout(() => setPhase("release"),    T.CHARGE),
+      setTimeout(() => setPhase("strike"),     T.CHARGE + T.RELEASE),
       setTimeout(() => { setPhase("impact"); onImpact?.(id,targetX,targetY,el) },
-                                                                        T.CHARGE + T.RELEASE + T.STRIKE),
-      setTimeout(() => setPhase("aftermath"),                           T.CHARGE + T.RELEASE + T.STRIKE + T.IMPACT),
-      setTimeout(() => doneRef.current(id),                             T.TOTAL),
+                                               T.CHARGE + T.RELEASE + T.STRIKE),
+      setTimeout(() => setPhase("aftermath"),  T.CHARGE + T.RELEASE + T.STRIKE + T.IMPACT),
+      setTimeout(() => doneRef.current(id),    T.TOTAL),
     ]
     return () => timers.forEach(clearTimeout)
   }, [id])
 
   if (!mounted) return null
 
-  // Container repositions at target during impact/aftermath
-  const inFlight = phase === "charge" || phase === "release" || phase === "strike"
+  const inFlight = phase==="charge"||phase==="release"||phase==="strike"
   const ctr: React.CSSProperties = inFlight
-    ? { position:"absolute", left:startX, top:startY, width:dist, height:60, marginTop:-30,
-        pointerEvents:"none", zIndex:10000, transformOrigin:"0 50%", transform:`rotate(${aDeg}deg)` }
-    : { position:"absolute", left:targetX, top:targetY, width:0, height:60, marginTop:-30,
-        pointerEvents:"none", zIndex:10000, transformOrigin:"0 50%", transform:`rotate(${aDeg}deg)` }
+    ? { position:"absolute",left:startX,top:startY,width:dist,height:60,marginTop:-30,
+        pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)` }
+    : { position:"absolute",left:targetX,top:targetY,width:0,height:60,marginTop:-30,
+        pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)` }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  ① CHARGE  — energy building with secondary life
+  //  ① CHARGE
   // ══════════════════════════════════════════════════════════════════════════
   const Charge = () => {
     const hub = (sz=96, children: React.ReactNode) => (
-      <div style={ss({ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)",
-        width:sz, height:sz, display:"flex", alignItems:"center", justifyContent:"center" })}>
+      <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
+        width:sz,height:sz,display:"flex",alignItems:"center",justifyContent:"center" })}>
         {children}
       </div>
     )
 
     switch (el) {
+      // ── FIRE ───────────────────────────────────────────────────────────────
       case "pyrus": case "fire": return hub(100, <>
-        {/* Outer fire corona — 3 rings at chaotic speeds → unstable, volatile */}
         <Ring d={90} bc="#f97316" bw="2px" glow="0 0 20px 9px rgba(249,115,22,0.74)" anim="a-spin 0.16s linear infinite" op={0.88} />
         <Ring d={68} bc="#fbbf24" bw="3px" glow="0 0 14px 6px rgba(251,191,36,0.72)" anim="a-spin 0.11s linear reverse infinite" op={0.78} />
         <Ring d={46} bc="#ef4444" bw="2px" glow="0 0 12px 6px rgba(239,68,68,0.8)"   anim="a-spin 0.07s linear infinite" op={0.68} />
-        {/* Pulsing magma core */}
-        <div style={ss({ position:"absolute", width:30, height:30, borderRadius:"50%",
+        {/* Floating ember orbs — organic life */}
+        <Orb r={44} sz={5} col="rgba(251,191,36,0.9)" dur={280} del={0}   startAngle={0}   />
+        <Orb r={38} sz={4} col="rgba(249,115,22,0.8)" dur={220} del={90}  startAngle={120} />
+        <Orb r={42} sz={3} col="rgba(255,255,255,0.7)" dur={260} del={45} startAngle={240} />
+        {/* Magma core */}
+        <div style={ss({ position:"absolute",width:30,height:30,borderRadius:"50%",
           background:"radial-gradient(circle,white 7%,#fb923c 32%,#dc2626 64%,#7f1d1d 100%)",
           boxShadow:"0 0 0 4px #f97316,0 0 30px 15px rgba(251,146,60,1),0 0 60px 24px rgba(220,38,38,0.68)",
           animation:"a-pulse-fire 0.08s ease-in-out infinite" })} />
-        {/* Heat shimmer rings bursting outward */}
         <Ring d={94} bc="rgba(251,146,60,0.44)" bw="1px" anim="a-burst 0.13s ease-out infinite" />
         <Ring d={94} bc="rgba(251,146,60,0.28)" bw="1px" anim="a-burst 0.13s ease-out 0.065s infinite" />
-        {/* Outer ember glow */}
         <Ring d={100} bg="radial-gradient(circle,rgba(251,146,60,0.2) 0%,transparent 70%)" anim="a-pulse-fire 0.1s ease-in-out infinite" />
       </>)
 
+      // ── AQUOS / FEHNON ─────────────────────────────────────────────────────
       case "aquos": case "aquo": case "water":
         if (isFehnon) return hub(108, <>
-          {/* Fehnon: 4 holo rings contracting → compressed blade energy */}
           {[96,76,58,42].map((d,i) => (
-            <div key={i} style={ss({ position:"absolute", width:d, height:d,
-              marginLeft:-d/2, marginTop:-d/2, borderRadius:"50%",
+            <div key={i} style={ss({ position:"absolute",width:d,height:d,
+              marginLeft:-d/2,marginTop:-d/2,borderRadius:"50%",
               border:`${i===0?"2px":"1px"} solid rgba(56,189,248,${0.82-i*0.16})`,
               boxShadow: i===0 ? "0 0 20px 8px rgba(56,189,248,0.58)" : undefined,
               animation:`a-fehnon-contract 0.18s cubic-bezier(.44,0,1,1) ${i*26}ms forwards` })} />
           ))}
-          {/* 9 horizontal scan lines — holographic blade forming */}
           {[-26,-18,-11,-5,0,6,12,19,26].map((y,i) => (
-            <div key={i} style={ss({ position:"absolute", height:"1.5px",
+            <div key={i} style={ss({ position:"absolute",height:"1.5px",
               width:`${80-Math.abs(y)*1.6}px`,
               background:`linear-gradient(to right,transparent,rgba(56,189,248,${.24+Math.abs(i-4)*.12}),rgba(255,255,255,${.5+Math.abs(i-4)*.09}),rgba(56,189,248,${.24+Math.abs(i-4)*.12}),transparent)`,
               borderRadius:"9999px",
-              top:`calc(50% + ${y}px)`, left:"50%", transform:"translateX(-50%)",
+              top:`calc(50% + ${y}px)`,left:"50%",transform:"translateX(-50%)",
               animation:`a-fehnon-scan 0.18s ease-out ${i*8}ms forwards` })} />
           ))}
-          {/* Diamond blade core */}
-          <div style={ss({ position:"absolute", width:22, height:22, borderRadius:"3px",
+          <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"3px",
             transform:"rotate(45deg)",
             background:"radial-gradient(circle,white 7%,#7dd3fc 34%,#0ea5e9 80%)",
             boxShadow:"0 0 0 2px #38bdf8,0 0 28px 14px rgba(56,189,248,1),0 0 54px 24px rgba(14,165,233,0.74)",
@@ -185,7 +195,10 @@ export function ElementalAttackAnimation({
           <Ring d={84} bc="#38bdf8" bw="2px" glow="0 0 16px 7px rgba(56,189,248,0.64)" anim="a-spin 0.28s linear infinite" op={0.78} />
           <Ring d={62} bc="#7dd3fc" bw="2px" glow="0 0 11px 5px rgba(125,211,252,0.54)" anim="a-spin 0.21s linear reverse infinite" op={0.62} />
           <Ring d={42} bc="#bae6fd" bw="1px" anim="a-spin 0.14s linear infinite" op={0.46} />
-          <div style={ss({ position:"absolute", width:22, height:22, borderRadius:"50%",
+          {/* Water droplets orbiting */}
+          <Orb r={40} sz={4} col="rgba(56,189,248,0.9)" dur={360} del={0}   startAngle={60}  />
+          <Orb r={36} sz={3} col="rgba(125,211,252,0.8)" dur={280} del={120} startAngle={200} />
+          <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"50%",
             background:"radial-gradient(circle,white 12%,#38bdf8 46%,#0284c7 88%)",
             boxShadow:"0 0 0 2px #7dd3fc,0 0 24px 12px rgba(56,189,248,0.92),0 0 48px 20px rgba(14,165,233,0.54)",
             animation:"a-pulse-fire 0.11s ease-in-out infinite" })} />
@@ -193,17 +206,21 @@ export function ElementalAttackAnimation({
           <Ring d={92} bc="rgba(56,189,248,0.36)" bw="1px" anim="a-burst 0.18s ease-out infinite" />
         </>)
 
+      // ── TERRA ──────────────────────────────────────────────────────────────
       case "terra": case "subterra": return hub(96, <>
-        {/* Ground fracture lines — rock splitting */}
         {[0,40,80,120,160,200,240,280,320].map((a,i) => (
-          <div key={a} style={ss({ position:"absolute", width:"30px", height:"2.5px",
+          <div key={a} style={ss({ position:"absolute",width:"30px",height:"2.5px",
             background:"linear-gradient(to right,rgba(180,83,9,0.9),rgba(217,119,6,0.4),transparent)",
-            borderRadius:"2px", transformOrigin:"left center",
+            borderRadius:"2px",transformOrigin:"left center",
             transform:`rotate(${a}deg) translateX(14px)`,
             animation:`a-terra-crack 0.16s ease-out ${i*10}ms both` })} />
         ))}
+        {/* Floating rock chunks */}
+        <Orb r={42} sz={6} col="rgba(180,83,9,0.8)" dur={500} del={0}   startAngle={30}  />
+        <Orb r={38} sz={4} col="rgba(217,119,6,0.7)" dur={420} del={160} startAngle={150} />
+        <Orb r={44} sz={3} col="rgba(251,191,36,0.6)" dur={460} del={80}  startAngle={270} />
         <Ring d={76} bc="#92400e" bw="2px" glow="0 0 14px 6px rgba(146,64,14,0.58)" anim="a-spin 0.3s linear infinite" op={0.66} />
-        <div style={ss({ position:"absolute", width:26, height:26, borderRadius:"3px",
+        <div style={ss({ position:"absolute",width:26,height:26,borderRadius:"3px",
           transform:"rotate(45deg)",
           background:"radial-gradient(circle,#fbbf24 9%,#b45309 40%,#7c2d12 82%)",
           boxShadow:"0 0 0 3px #92400e,0 0 26px 13px rgba(180,83,9,0.95),0 0 54px 22px rgba(120,53,15,0.58)",
@@ -213,18 +230,23 @@ export function ElementalAttackAnimation({
         <Ring d={96} bg="radial-gradient(circle,rgba(120,53,15,0.26) 0%,transparent 70%)" anim="a-terra-pulse 0.15s ease-in-out infinite" />
       </>)
 
+      // ── HAOS ───────────────────────────────────────────────────────────────
       case "haos": case "light": case "lightness": return hub(108, <>
-        {/* 16 divine rays — 3 lengths, staggered phase */}
         {Array.from({length:16},(_,i)=>i*22.5).map((a,i) => (
-          <div key={a} style={ss({ position:"absolute", width:"2px",
+          <div key={a} style={ss({ position:"absolute",width:"2px",
             height: i%4===0 ? "30px" : i%2===0 ? "21px" : "13px",
             background:"linear-gradient(to top,transparent,rgba(254,249,195,0.8),white)",
-            borderRadius:"9999px", transformOrigin:"50% 100%",
+            borderRadius:"9999px",transformOrigin:"50% 100%",
             transform:`rotate(${a}deg) translateY(-${i%4===0?26:i%2===0?18:12}px)`,
             opacity: i%4===0 ? 1 : i%2===0 ? 0.72 : 0.48,
             animation:`a-haos-ray 0.1s ease-in-out ${i%3===0?0:i%3===1?33:66}ms infinite` })} />
         ))}
-        <div style={ss({ position:"absolute", width:32, height:32, borderRadius:"50%",
+        {/* Golden light orbs */}
+        <Orb r={50} sz={5} col="rgba(253,224,71,0.95)" dur={200} del={0}   startAngle={0}   />
+        <Orb r={46} sz={4} col="rgba(255,255,255,0.9)" dur={160} del={50}  startAngle={90}  />
+        <Orb r={50} sz={4} col="rgba(254,240,138,0.85)" dur={220} del={100} startAngle={180} />
+        <Orb r={46} sz={3} col="rgba(253,224,71,0.8)" dur={180} del={150}  startAngle={270} />
+        <div style={ss({ position:"absolute",width:32,height:32,borderRadius:"50%",
           background:"white",
           boxShadow:"0 0 0 5px #fef08a,0 0 0 10px rgba(253,224,71,0.44),0 0 52px 26px rgba(254,240,138,1),0 0 100px 40px rgba(253,224,71,0.44)",
           animation:"a-pulse-fire 0.08s ease-in-out infinite" })} />
@@ -232,36 +254,39 @@ export function ElementalAttackAnimation({
         <Ring d={108} bc="rgba(254,240,138,0.46)" bw="1px" anim="a-burst 0.12s ease-out infinite" />
       </>)
 
+      // ── DARKUS ─────────────────────────────────────────────────────────────
       case "darkus": case "darkness": case "dark": return hub(96, <>
-        {/* Void rings collapsing inward — weight, gravity pull */}
         <Ring d={92} bc="#7e22ce" bw="2px" glow="0 0 24px 10px rgba(88,28,135,0.78)" anim="a-dark-consume 0.22s ease-in infinite" op={0.86} />
         <Ring d={70} bc="#a855f7" bw="2px" glow="0 0 16px 7px rgba(168,85,247,0.64)" anim="a-spin 0.28s linear reverse infinite" op={0.68} />
         <Ring d={50} bc="#c084fc" bw="1px" anim="a-spin 0.18s linear infinite" op={0.5} />
-        {/* 7 shadow tendrils reaching inward */}
         {[0,51,103,154,206,257,308].map((a,i) => (
-          <div key={a} style={ss({ position:"absolute", width:"26px", height:"2px",
+          <div key={a} style={ss({ position:"absolute",width:"26px",height:"2px",
             background:"linear-gradient(to right,rgba(88,28,135,0.92),rgba(88,28,135,0.28),transparent)",
-            borderRadius:"9999px", transformOrigin:"left center",
-            transform:`rotate(${a}deg) translateX(10px)`, opacity:.82,
+            borderRadius:"9999px",transformOrigin:"left center",
+            transform:`rotate(${a}deg) translateX(10px)`,opacity:.82,
             animation:`a-dark-tendril 0.22s ease-in-out ${i*22}ms infinite` })} />
         ))}
-        {/* Singularity core */}
-        <div style={ss({ position:"absolute", width:22, height:22, borderRadius:"50%",
+        {/* Void shadow orbs — counter-clockwise, slow */}
+        <Orb r={46} sz={4} col="rgba(88,28,135,0.7)" dur={700} del={0}   startAngle={45}  />
+        <Orb r={42} sz={3} col="rgba(168,85,247,0.6)" dur={600} del={200} startAngle={165} />
+        <Orb r={46} sz={3} col="rgba(192,132,252,0.5)" dur={650} del={400} startAngle={285} />
+        <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"50%",
           background:"radial-gradient(circle,#0f0a1e 18%,black 58%)",
           boxShadow:"0 0 0 3px #581c87,0 0 0 8px rgba(88,28,135,0.52),0 0 38px 19px rgba(88,28,135,1),0 0 80px 32px rgba(88,28,135,0.58)" })} />
         <Ring d={94} bg="radial-gradient(circle,rgba(88,28,135,0.46) 0%,transparent 70%)" anim="a-dark-consume 0.14s ease-in infinite" />
       </>)
 
+      // ── VENTUS ─────────────────────────────────────────────────────────────
       case "ventus": case "wind":
         if (isUller) return hub(96, <>
           {[0,36,72,108,144,180,216,252,288,324].map((a,i) => (
-            <div key={a} style={ss({ position:"absolute", width:"26px", height:"2px",
+            <div key={a} style={ss({ position:"absolute",width:"26px",height:"2px",
               background:"linear-gradient(to right,rgba(52,211,153,0),#6ee7b7)",
-              borderRadius:"9999px", transformOrigin:"left center",
-              transform:`rotate(${a}deg) translateX(12px)`, opacity:.84,
+              borderRadius:"9999px",transformOrigin:"left center",
+              transform:`rotate(${a}deg) translateX(12px)`,opacity:.84,
               animation:`a-gather 0.18s ease-in ${i*14}ms both` })} />
           ))}
-          <div style={ss({ position:"absolute", width:22, height:22, borderRadius:"50%",
+          <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"50%",
             background:"radial-gradient(circle,white 16%,#6ee7b7 52%,#059669 88%)",
             boxShadow:"0 0 0 2px #34d399,0 0 28px 14px rgba(52,211,153,0.96),0 0 58px 24px rgba(16,185,129,0.58)",
             animation:"a-pulse-fire 0.1s ease-in-out infinite" })} />
@@ -272,7 +297,11 @@ export function ElementalAttackAnimation({
           <Ring d={86} bc="#34d399" bw="2px" glow="0 0 16px 7px rgba(52,211,153,0.62)" anim="a-spin 0.22s linear infinite" op={0.78} />
           <Ring d={64} bc="#6ee7b7" bw="2px" glow="0 0 11px 5px rgba(110,231,183,0.54)" anim="a-spin 0.16s linear reverse infinite" op={0.64} />
           <Ring d={44} bc="#a7f3d0" bw="1px" anim="a-spin 0.11s linear infinite" op={0.48} />
-          <div style={ss({ position:"absolute", width:22, height:22, borderRadius:"50%",
+          {/* Wind particle orbs */}
+          <Orb r={42} sz={4} col="rgba(52,211,153,0.85)" dur={300} del={0}   startAngle={0}   />
+          <Orb r={38} sz={3} col="rgba(167,243,208,0.7)" dur={240} del={100} startAngle={130} />
+          <Orb r={42} sz={3} col="rgba(110,231,183,0.75)" dur={280} del={200} startAngle={250} />
+          <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"50%",
             background:"radial-gradient(circle,white 16%,#6ee7b7 52%,#059669 88%)",
             boxShadow:"0 0 0 2px #34d399,0 0 24px 12px rgba(110,231,183,0.96),0 0 50px 22px rgba(5,150,105,0.54)",
             animation:"a-pulse-fire 0.1s ease-in-out infinite" })} />
@@ -280,11 +309,17 @@ export function ElementalAttackAnimation({
           <Ring d={92} bc="rgba(52,211,153,0.37)" bw="1px" anim="a-burst 0.16s ease-out infinite" />
         </>)
 
+      // ── VOID ───────────────────────────────────────────────────────────────
       case "void": return hub(96, <>
         <Ring d={92} bc="rgba(203,213,225,0.82)" bw="1.5px" glow="0 0 20px 8px rgba(203,213,225,0.54)" anim="a-spin 0.5s linear infinite" op={0.7} />
         <Ring d={70} bc="rgba(226,232,240,0.72)"  bw="1.5px" glow="0 0 14px 6px rgba(226,232,240,0.44)" anim="a-spin 0.34s linear reverse infinite" op={0.58} />
         <Ring d={50} bc="white" bw="1px" anim="a-spin 0.2s linear infinite" op={0.46} />
-        <div style={ss({ position:"absolute", width:24, height:24, borderRadius:"50%",
+        {/* Silver void fragments orbiting erratically */}
+        <Orb r={45} sz={5} col="rgba(255,255,255,0.9)" dur={440} del={0}   startAngle={20}  />
+        <Orb r={40} sz={4} col="rgba(203,213,225,0.8)" dur={360} del={110} startAngle={140} />
+        <Orb r={46} sz={3} col="rgba(226,232,240,0.7)" dur={400} del={220} startAngle={260} />
+        <Orb r={38} sz={3} col="rgba(148,163,184,0.7)" dur={320} del={80}  startAngle={80}  />
+        <div style={ss({ position:"absolute",width:24,height:24,borderRadius:"50%",
           background:"radial-gradient(circle,white 14%,#e2e8f0 44%,#94a3b8 80%)",
           boxShadow:"0 0 0 3px #cbd5e1,0 0 0 7px rgba(148,163,184,0.52),0 0 36px 18px rgba(203,213,225,1),0 0 72px 28px rgba(148,163,184,0.54)",
           animation:"a-pulse-fire 0.1s ease-in-out infinite" })} />
@@ -294,61 +329,76 @@ export function ElementalAttackAnimation({
       </>)
 
       default: return hub(80, <>
-        <div style={ss({ position:"absolute", width:26, height:26, borderRadius:"50%",
-          background:"white", boxShadow:"0 0 32px 16px rgba(255,255,255,0.82)",
+        <div style={ss({ position:"absolute",width:26,height:26,borderRadius:"50%",
+          background:"white",boxShadow:"0 0 32px 16px rgba(255,255,255,0.82)",
           animation:"a-pulse-fire 0.1s ease-in-out infinite" })} />
       </>)
     }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  ② RELEASE (40ms) — explosive snap from charge → projectile
-  //  This phase renders the same as the end of charge but with a burst effect
+  //  ② RELEASE — element-colored explosive snap
   // ══════════════════════════════════════════════════════════════════════════
-  const Release = () => (
-    <div style={ss({ position:"absolute", left:0, top:"50%", transform:"translateY(-50%)",
-      width:80, height:80, marginTop:-40, display:"flex", alignItems:"center", justifyContent:"center" })}>
-      {/* Explosive snap burst */}
-      <Ring d={80} bc="white" bw="3px" anim="a-release-burst 40ms ease-out forwards" glow="0 0 30px 15px rgba(255,255,255,0.9)" />
-      <Ring d={60} bc="white" bw="2px" anim="a-release-burst 40ms ease-out 10ms forwards" op={0.7} />
-      <div style={ss({ position:"absolute", width:16, height:16, borderRadius:"50%",
-        background:"white", boxShadow:"0 0 40px 20px rgba(255,255,255,1)",
-        animation:"a-release-core 40ms ease-out forwards" })} />
-    </div>
-  )
+  const Release = () => {
+    // Each element has its own release color signature
+    const colors: Record<string,[string,string]> = {
+      pyrus:["#f97316","rgba(249,115,22,0.9)"],   fire:["#f97316","rgba(249,115,22,0.9)"],
+      aquos:["#38bdf8","rgba(56,189,248,0.9)"],   aquo:["#38bdf8","rgba(56,189,248,0.9)"],   water:["#38bdf8","rgba(56,189,248,0.9)"],
+      terra:["#b45309","rgba(180,83,9,0.9)"],     subterra:["#b45309","rgba(180,83,9,0.9)"],
+      haos:["#fde047","rgba(253,224,71,1)"],      light:["#fde047","rgba(253,224,71,1)"],    lightness:["#fde047","rgba(253,224,71,1)"],
+      darkus:["#a855f7","rgba(88,28,135,0.95)"],  darkness:["#a855f7","rgba(88,28,135,0.95)"], dark:["#a855f7","rgba(88,28,135,0.95)"],
+      ventus:["#34d399","rgba(52,211,153,0.9)"],  wind:["#34d399","rgba(52,211,153,0.9)"],
+      void:["#cbd5e1","rgba(203,213,225,1)"],
+    }
+    const [col, glow] = colors[el] ?? ["white","rgba(255,255,255,0.9)"]
+    return (
+      <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
+        width:80,height:80,marginTop:-40,display:"flex",alignItems:"center",justifyContent:"center" })}>
+        <Ring d={80} bc={col} bw="3px" anim="a-release-burst 40ms ease-out forwards" glow={`0 0 30px 15px ${glow}`} />
+        <Ring d={60} bc={col} bw="2px" anim="a-release-burst 40ms ease-out 10ms forwards" op={0.7} />
+        <Ring d={40} bc="white" bw="1px" anim="a-release-burst 40ms ease-out 20ms forwards" op={0.5} />
+        <div style={ss({ position:"absolute",width:18,height:18,borderRadius:"50%",
+          background:col,boxShadow:`0 0 40px 20px ${glow}`,
+          animation:"a-release-core 40ms ease-out forwards" })} />
+      </div>
+    )
+  }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  ③ STRIKE — projectile with full personality
+  //  ③ STRIKE — projectile with speed lines + deep layering
   // ══════════════════════════════════════════════════════════════════════════
   const Strike = () => {
-    // Each element has unique easing that defines its "character"
     const ease: Record<string,string> = {
-      pyrus:"cubic-bezier(0.08,0,0.05,1)",     fire:"cubic-bezier(0.08,0,0.05,1)",
-      aquos:"cubic-bezier(0.1,0,0.06,1)",      aquo:"cubic-bezier(0.1,0,0.06,1)",   water:"cubic-bezier(0.1,0,0.06,1)",
-      terra:"cubic-bezier(0.26,0,0.06,1)",     subterra:"cubic-bezier(0.26,0,0.06,1)",
-      haos:"cubic-bezier(0.04,0,0.04,1)",      light:"cubic-bezier(0.04,0,0.04,1)", lightness:"cubic-bezier(0.04,0,0.04,1)",
-      darkus:"cubic-bezier(0.46,0,0.06,1)",    darkness:"cubic-bezier(0.46,0,0.06,1)", dark:"cubic-bezier(0.46,0,0.06,1)",
-      ventus:"cubic-bezier(0.1,0,0.05,1)",     wind:"cubic-bezier(0.1,0,0.05,1)",
+      pyrus:"cubic-bezier(0.08,0,0.05,1)",   fire:"cubic-bezier(0.08,0,0.05,1)",
+      aquos:"cubic-bezier(0.1,0,0.06,1)",    aquo:"cubic-bezier(0.1,0,0.06,1)",   water:"cubic-bezier(0.1,0,0.06,1)",
+      terra:"cubic-bezier(0.28,0,0.06,1)",   subterra:"cubic-bezier(0.28,0,0.06,1)",
+      haos:"cubic-bezier(0.04,0,0.04,1)",    light:"cubic-bezier(0.04,0,0.04,1)", lightness:"cubic-bezier(0.04,0,0.04,1)",
+      darkus:"cubic-bezier(0.48,0,0.06,1)",  darkness:"cubic-bezier(0.48,0,0.06,1)", dark:"cubic-bezier(0.48,0,0.06,1)",
+      ventus:"cubic-bezier(0.1,0,0.05,1)",   wind:"cubic-bezier(0.1,0,0.05,1)",
       void:"cubic-bezier(0.03,0,0.03,1)",
     }
     const mv = { animation:`a-move ${T.STRIKE}ms ${ease[el]??"cubic-bezier(0.1,0,0.06,1)"} forwards` } as React.CSSProperties
 
     switch (el) {
+      // ── FIRE ───────────────────────────────────────────────────────────────
       case "pyrus": case "fire": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
           display:"flex",alignItems:"center",...mv })}>
-          {/* Deep flame trail — 3 layers of varying width/opacity */}
-          <div style={ss({ position:"absolute",width:"145px",height:"11px",
-            background:"linear-gradient(to right,transparent,rgba(127,29,29,0.3),rgba(220,38,38,0.6),#f97316,rgba(251,146,60,0.62))",
-            borderRadius:"9999px",filter:"blur(2.5px)",opacity:.92 })} />
+          {/* Speed lines behind — motion blur feel */}
+          <div style={ss({ position:"absolute",width:"180px",height:"14px",
+            background:"linear-gradient(to right,transparent,rgba(127,29,29,0.2),rgba(220,38,38,0.5),#f97316,rgba(251,146,60,0.55))",
+            borderRadius:"9999px",filter:"blur(3px)",opacity:.88 })} />
+          <div style={ss({ position:"absolute",width:"145px",height:"8px",
+            background:"linear-gradient(to right,transparent,rgba(220,38,38,0.6),#f97316,rgba(251,146,60,0.6))",
+            borderRadius:"9999px",filter:"blur(1.5px)",opacity:.92 })} />
           <div style={ss({ position:"absolute",width:"100px",height:"5px",
             background:"linear-gradient(to right,transparent,#fbbf24,rgba(251,191,36,0.4))",
-            top:"-7px",left:"24px",borderRadius:"9999px",filter:"blur(1px)",opacity:.68 })} />
+            top:"-8px",left:"28px",borderRadius:"9999px",filter:"blur(1px)",opacity:.68 })} />
           <div style={ss({ position:"absolute",width:"68px",height:"4px",
             background:"linear-gradient(to right,transparent,rgba(251,146,60,0.4))",
-            top:"8px",left:"44px",borderRadius:"9999px",filter:"blur(1px)",opacity:.52 })} />
-          {/* 3 organic ember sparks at varied positions */}
-          {[{x:54,y:-10,s:11},{x:78,y:7,s:9},{x:68,y:-7,s:7}].map((e,i)=>(
+            top:"9px",left:"46px",borderRadius:"9999px",filter:"blur(1px)",opacity:.52 })} />
+          {/* Ember sparks */}
+          {[{x:54,y:-10,s:11},{x:78,y:7,s:9},{x:68,y:-7,s:7},{x:92,y:4,s:6}].map((e,i)=>(
             <div key={i} style={ss({ position:"absolute",width:`${e.s}px`,height:`${e.s}px`,
               borderRadius:"50%",background:"radial-gradient(circle,white,#fbbf24)",
               boxShadow:`0 0 8px 4px rgba(251,191,36,0.9)`,
@@ -364,28 +414,25 @@ export function ElementalAttackAnimation({
         </div>
       )
 
+      // ── AQUOS / FEHNON ─────────────────────────────────────────────────────
       case "aquos": case "aquo": case "water":
         if (isFehnon) return (
           <div style={ss({ position:"absolute",left:0,top:"50%",marginTop:"-4px" })}>
-            {/* Main slash beam */}
             <div style={ss({ width:`${dist}px`,height:"8px",
               background:"linear-gradient(to right,rgba(14,165,233,0) 0%,rgba(56,189,248,0.46) 8%,white 43%,rgba(125,211,252,0.92) 72%,rgba(56,189,248,0.24) 94%,transparent 100%)",
               borderRadius:"9999px",
               boxShadow:"0 0 22px 10px rgba(56,189,248,0.92),0 0 44px 18px rgba(14,165,233,0.58),0 0 72px 28px rgba(56,189,248,0.22)",
               animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) forwards` })} />
-            {/* 2nd slash +up */}
             <div style={ss({ width:`${dist*.82}px`,height:"3px",
               background:"linear-gradient(to right,transparent,rgba(125,211,252,0.72) 13%,rgba(255,255,255,0.96) 50%,rgba(186,230,253,0.64) 85%,transparent)",
               borderRadius:"9999px",position:"absolute",top:"-13px",left:`${dist*.05}px`,
               boxShadow:"0 0 11px 3px rgba(56,189,248,0.72)",
               animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 17ms forwards` })} />
-            {/* 3rd slash -down */}
             <div style={ss({ width:`${dist*.62}px`,height:"2px",
               background:"linear-gradient(to right,transparent,rgba(186,230,253,0.7) 19%,rgba(255,255,255,0.82) 56%,transparent)",
               borderRadius:"9999px",position:"absolute",top:"12px",left:`${dist*.12}px`,
               boxShadow:"0 0 8px 2px rgba(56,189,248,0.58)",
               animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 32ms forwards` })} />
-            {/* Holo micro-edges */}
             <div style={ss({ width:`${dist*.4}px`,height:"1px",
               background:"linear-gradient(to right,transparent,rgba(224,242,254,0.58),transparent)",
               position:"absolute",top:"-24px",left:`${dist*.18}px`,
@@ -394,13 +441,11 @@ export function ElementalAttackAnimation({
               background:"linear-gradient(to right,transparent,rgba(224,242,254,0.48),transparent)",
               position:"absolute",top:"21px",left:`${dist*.24}px`,
               animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 54ms forwards` })} />
-            {/* Tip orb */}
             <div style={ss({ position:"absolute",width:"26px",height:"26px",borderRadius:"50%",
               right:"-3px",top:"-11px",
               background:"radial-gradient(circle,white 14%,#7dd3fc 48%,#0ea5e9 88%)",
               boxShadow:"0 0 30px 15px rgba(56,189,248,1),0 0 64px 26px rgba(14,165,233,0.72)",
               animation:`a-fehnon-tip ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) forwards` })} />
-            {/* Oval ripple */}
             <div style={ss({ position:"absolute",width:"18px",height:"46px",borderRadius:"50%",
               right:"-5px",top:"-21px",
               border:"2px solid rgba(56,189,248,0.78)",
@@ -411,9 +456,13 @@ export function ElementalAttackAnimation({
         return (
           <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
             display:"flex",alignItems:"center",...mv })}>
-            <div style={ss({ position:"absolute",width:"110px",height:"6px",
-              background:"linear-gradient(to right,transparent,rgba(14,165,233,0.38),#0ea5e9,#38bdf8)",
+            {/* Speed line */}
+            <div style={ss({ position:"absolute",width:"130px",height:"6px",
+              background:"linear-gradient(to right,transparent,rgba(14,165,233,0.3),#0ea5e9,#38bdf8)",
               borderRadius:"9999px",filter:"blur(2px)",opacity:.86 })} />
+            <div style={ss({ position:"absolute",width:"110px",height:"5px",
+              background:"linear-gradient(to right,transparent,rgba(14,165,233,0.38),#0ea5e9,#38bdf8)",
+              borderRadius:"9999px",filter:"blur(1px)",opacity:.82 })} />
             {[62,78,92].map((x,i)=>(
               <div key={i} style={ss({ position:"absolute",width:`${10-i*2}px`,height:`${10-i*2}px`,
                 borderRadius:"50%",border:`1px solid rgba(125,211,252,${0.64-i*0.14})`,
@@ -425,12 +474,16 @@ export function ElementalAttackAnimation({
           </div>
         )
 
+      // ── TERRA ──────────────────────────────────────────────────────────────
       case "terra": case "subterra": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
           display:"flex",alignItems:"center",...mv })}>
+          <div style={ss({ position:"absolute",width:"110px",height:"15px",
+            background:"linear-gradient(to right,transparent,rgba(120,53,15,0.3),rgba(146,64,14,0.6),#b45309)",
+            borderRadius:"4px",filter:"blur(3px)",opacity:.82 })} />
           <div style={ss({ position:"absolute",width:"95px",height:"12px",
             background:"linear-gradient(to right,transparent,rgba(120,53,15,0.42),#92400e,#b45309)",
-            borderRadius:"4px",filter:"blur(2.5px)",opacity:.86 })} />
+            borderRadius:"4px",filter:"blur(1.5px)",opacity:.86 })} />
           {[{x:22,y:-8,sz:8,r:0},{x:40,y:6,sz:7,r:22},{x:56,y:-6,sz:6,r:45},{x:70,y:5,sz:5,r:15}].map((c,i)=>(
             <div key={i} style={ss({ position:"absolute",width:`${c.sz}px`,height:`${c.sz}px`,
               background:"radial-gradient(circle,#d97706,#92400e)",
@@ -444,8 +497,14 @@ export function ElementalAttackAnimation({
         </div>
       )
 
+      // ── HAOS ───────────────────────────────────────────────────────────────
       case "haos": case "light": case "lightness": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",marginTop:"-4px" })}>
+          {/* Wide diffuse glow under beam */}
+          <div style={ss({ width:`${dist}px`,height:"18px",
+            background:"linear-gradient(to right,transparent,rgba(254,240,138,0.08),rgba(253,224,71,0.15),rgba(254,240,138,0.08),transparent)",
+            borderRadius:"9999px",position:"absolute",top:"-5px",filter:"blur(4px)",
+            animation:`a-laser ${T.STRIKE}ms ease-out forwards` })} />
           <div style={ss({ width:`${dist}px`,height:"9px",
             background:"linear-gradient(to right,rgba(254,240,138,0) 0%,rgba(253,224,71,0.5) 12%,white 46%,rgba(254,249,195,0.92) 78%,rgba(254,240,138,0) 100%)",
             borderRadius:"9999px",
@@ -462,9 +521,14 @@ export function ElementalAttackAnimation({
         </div>
       )
 
+      // ── DARKUS ─────────────────────────────────────────────────────────────
       case "darkus": case "darkness": case "dark": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
           display:"flex",alignItems:"center",...mv })}>
+          {/* Deep void wake */}
+          <div style={ss({ position:"absolute",width:"160px",height:"8px",
+            background:"linear-gradient(to right,transparent,rgba(88,28,135,0.2),#7e22ce,#a855f7)",
+            borderRadius:"9999px",filter:"blur(3px)",opacity:.88 })} />
           <div style={ss({ position:"absolute",width:"132px",height:"5px",
             background:"linear-gradient(to right,transparent,rgba(88,28,135,0.34),#7e22ce,#a855f7)",
             borderRadius:"9999px",filter:"blur(1.5px)",opacity:.9 })} />
@@ -479,6 +543,7 @@ export function ElementalAttackAnimation({
         </div>
       )
 
+      // ── VENTUS / ULLER ─────────────────────────────────────────────────────
       case "ventus": case "wind":
         if (isUller) return (
           <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
@@ -526,6 +591,7 @@ export function ElementalAttackAnimation({
           </div>
         )
 
+      // ── VOID ───────────────────────────────────────────────────────────────
       case "void": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",marginTop:"-3px",...mv })}>
           <div style={ss({ position:"absolute",
@@ -560,23 +626,23 @@ export function ElementalAttackAnimation({
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  ④ IMPACT (80ms) — hero frame: flash + compression
+  //  ④ IMPACT — hero frame
   // ══════════════════════════════════════════════════════════════════════════
   const Impact = () => {
     const flashColors: Record<string,string> = {
-      pyrus:"rgba(255,120,0,0.6)",    fire:"rgba(255,120,0,0.6)",
-      aquos:"rgba(56,189,248,0.5)",   aquo:"rgba(56,189,248,0.5)",   water:"rgba(56,189,248,0.5)",
-      terra:"rgba(120,53,15,0.5)",    subterra:"rgba(120,53,15,0.5)",
-      haos:"rgba(255,255,180,0.65)",  light:"rgba(255,255,180,0.65)", lightness:"rgba(255,255,180,0.65)",
-      darkus:"rgba(88,28,135,0.55)",  darkness:"rgba(88,28,135,0.55)", dark:"rgba(88,28,135,0.55)",
-      ventus:"rgba(52,211,153,0.5)",  wind:"rgba(52,211,153,0.5)",
-      void:"rgba(203,213,225,0.55)",
+      pyrus:"rgba(255,120,0,0.62)",    fire:"rgba(255,120,0,0.62)",
+      aquos:"rgba(56,189,248,0.52)",   aquo:"rgba(56,189,248,0.52)",   water:"rgba(56,189,248,0.52)",
+      terra:"rgba(120,53,15,0.52)",    subterra:"rgba(120,53,15,0.52)",
+      haos:"rgba(255,255,180,0.68)",   light:"rgba(255,255,180,0.68)", lightness:"rgba(255,255,180,0.68)",
+      darkus:"rgba(88,28,135,0.58)",   darkness:"rgba(88,28,135,0.58)", dark:"rgba(88,28,135,0.58)",
+      ventus:"rgba(52,211,153,0.52)",  wind:"rgba(52,211,153,0.52)",
+      void:"rgba(203,213,225,0.58)",
     }
-    const glowColors: Record<string,string> = {
-      pyrus:"rgba(249,115,22,1)",    aquos:"rgba(56,189,248,1)",
+    const glowMap: Record<string,string> = {
+      pyrus:"rgba(249,115,22,1)",      aquos:"rgba(56,189,248,1)",
       aquos_fehnon:"rgba(56,189,248,1)", terra:"rgba(180,83,9,1)",
-      haos:"rgba(254,240,138,1)",    darkus:"rgba(88,28,135,1)",
-      ventus:"rgba(52,211,153,1)",   ventus_uller:"rgba(52,211,153,1)",
+      haos:"rgba(254,240,138,1)",      darkus:"rgba(88,28,135,1)",
+      ventus:"rgba(52,211,153,1)",     ventus_uller:"rgba(52,211,153,1)",
       void:"rgba(203,213,225,1)",
     }
     const resolveKey = (e:string) => {
@@ -587,26 +653,27 @@ export function ElementalAttackAnimation({
       if(base==="ventus"&&isUller) return "ventus_uller"
       return base
     }
-    const key = resolveKey(el)
-    const flash = flashColors[el] ?? "rgba(255,255,255,0.5)"
-    const glow  = glowColors[key] ?? "rgba(255,255,255,1)"
-
+    const flash = flashColors[el] ?? "rgba(255,255,255,0.52)"
+    const glow  = glowMap[resolveKey(el)] ?? "rgba(255,255,255,1)"
     return (
       <div style={ss({ position:"absolute",left:0,top:0,width:0,height:0,
         transform:`rotate(${-aDeg}deg)` })}>
-        {/* Full-screen flash — brief, powerful */}
         <div style={ss({ position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
-          background:flash,animation:"a-hero-flash 80ms linear forwards",pointerEvents:"none" })} />
-        {/* Localized impact compression */}
-        <div style={ss({ position:"absolute",left:"-60px",top:"-60px",width:"120px",height:"120px",
-          borderRadius:"50%",background:glow,filter:"blur(20px)",
-          animation:"a-hero-compress 80ms ease-out forwards" })} />
+          background:flash,animation:"a-hero-flash 90ms linear forwards",pointerEvents:"none" })} />
+        <div style={ss({ position:"absolute",left:"-70px",top:"-70px",width:"140px",height:"140px",
+          borderRadius:"50%",background:glow,filter:"blur(22px)",
+          animation:"a-hero-compress 90ms ease-out forwards" })} />
+        {/* Hero freeze ring — brief bright ring at exact impact point */}
+        <div style={ss({ position:"absolute",left:"-40px",top:"-40px",width:"80px",height:"80px",
+          borderRadius:"50%",border:"3px solid white",
+          boxShadow:`0 0 20px 8px ${glow}`,opacity:.9,
+          animation:"a-hero-ring 90ms ease-out forwards" })} />
       </div>
     )
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  ⑤ AFTERMATH — particles + residuals + distortion
+  //  ⑤ AFTERMATH — shockwave + core + second wave + particles + residuals
   // ══════════════════════════════════════════════════════════════════════════
   const Aftermath = () => {
     type C = {r1:string;r2:string;r3:string;core:string;cg:string;gw:string;pc:string[];res:string}
@@ -621,12 +688,12 @@ export function ElementalAttackAnimation({
     }
 
     const cfgs: Record<string,C> = {
-      pyrus:{r1:"#f97316",r2:"#fbbf24",r3:"#ef4444",
+      pyrus:       {r1:"#f97316",r2:"#fbbf24",r3:"#ef4444",
         core:"radial-gradient(circle,white 5%,#fb923c 26%,#dc2626 56%,#7f1d1d 88%)",
         cg:"rgba(249,115,22,0.96)",gw:"rgba(220,38,38,0.56)",
         pc:["#7f1d1d","#991b1b","#dc2626","#ea580c","#f97316","#fb923c","#fbbf24","#fef3c7","white"],
         res:"rgba(220,38,38,0.18)"},
-      aquos:{r1:"#38bdf8",r2:"#7dd3fc",r3:"#0ea5e9",
+      aquos:       {r1:"#38bdf8",r2:"#7dd3fc",r3:"#0ea5e9",
         core:"radial-gradient(circle,white 5%,#38bdf8 30%,#0284c7 62%,#0c4a6e 90%)",
         cg:"rgba(56,189,248,0.92)",gw:"rgba(14,165,233,0.46)",
         pc:["#082f49","#0c4a6e","#0284c7","#0ea5e9","#38bdf8","#7dd3fc","#bae6fd","white"],
@@ -636,22 +703,22 @@ export function ElementalAttackAnimation({
         cg:"rgba(56,189,248,1)",gw:"rgba(14,165,233,0.72)",
         pc:["white","#f0f9ff","#e0f2fe","#bae6fd","#7dd3fc","#38bdf8","#0ea5e9"],
         res:"rgba(56,189,248,0.2)"},
-      terra:{r1:"#b45309",r2:"#d97706",r3:"#92400e",
+      terra:       {r1:"#b45309",r2:"#d97706",r3:"#92400e",
         core:"radial-gradient(circle,#fbbf24 5%,#b45309 30%,#7c2d12 60%,#431407 90%)",
         cg:"rgba(180,83,9,0.96)",gw:"rgba(120,53,15,0.56)",
         pc:["#1c0a04","#431407","#7c2d12","#92400e","#b45309","#d97706","#fbbf24"],
         res:"rgba(120,53,15,0.16)"},
-      haos:{r1:"#fde047",r2:"white",r3:"#fef08a",
+      haos:        {r1:"#fde047",r2:"white",r3:"#fef08a",
         core:"radial-gradient(circle,white 8%,#fef9c3 28%,#fef08a 54%,#fde047 80%)",
         cg:"rgba(254,240,138,1)",gw:"rgba(253,224,71,0.66)",
         pc:["white","#fefce8","#fef9c3","#fef08a","#fde047","#fbbf24","#f59e0b","#ffd700"],
         res:"rgba(253,224,71,0.22)"},
-      darkus:{r1:"#7e22ce",r2:"#a855f7",r3:"#4c1d95",
+      darkus:      {r1:"#7e22ce",r2:"#a855f7",r3:"#4c1d95",
         core:"radial-gradient(circle,#e879f9 5%,#a855f7 26%,#7e22ce 50%,#1e1b4b 80%,#0f0a1e 95%)",
         cg:"rgba(88,28,135,0.98)",gw:"rgba(88,28,135,0.66)",
         pc:["#030712","#0f0a1e","#1e1b4b","#4c1d95","#7e22ce","#a855f7","#c084fc","#e879f9"],
         res:"rgba(88,28,135,0.18)"},
-      ventus:{r1:"#34d399",r2:"#6ee7b7",r3:"#059669",
+      ventus:      {r1:"#34d399",r2:"#6ee7b7",r3:"#059669",
         core:"radial-gradient(circle,white 5%,#6ee7b7 28%,#10b981 56%,#064e3b 88%)",
         cg:"rgba(52,211,153,0.96)",gw:"rgba(5,150,105,0.5)",
         pc:["#022c22","#064e3b","#059669","#34d399","#6ee7b7","#a7f3d0","white"],
@@ -661,7 +728,7 @@ export function ElementalAttackAnimation({
         cg:"rgba(52,211,153,1)",gw:"rgba(16,185,129,0.56)",
         pc:["white","#f0fdf4","#dcfce7","#a7f3d0","#6ee7b7","#34d399","#10b981"],
         res:"rgba(52,211,153,0.16)"},
-      void:{r1:"#cbd5e1",r2:"white",r3:"#94a3b8",
+      void:        {r1:"#cbd5e1",r2:"white",r3:"#94a3b8",
         core:"radial-gradient(circle,white 9%,#f1f5f9 26%,#e2e8f0 50%,#94a3b8 76%)",
         cg:"rgba(203,213,225,1)",gw:"rgba(148,163,184,0.56)",
         pc:["white","#f8fafc","#f1f5f9","#e2e8f0","#cbd5e1","#94a3b8","#64748b"],
@@ -679,11 +746,11 @@ export function ElementalAttackAnimation({
       <div style={ss({ position:"absolute",left:0,top:0,width:0,height:0,
         transform:`rotate(${-aDeg}deg)` })}>
 
-        {/* ── Localized micro shake (160×160px box, not full screen) ── */}
+        {/* Localized micro shake — 160px box only */}
         <div style={ss({ position:"absolute",left:"-80px",top:"-80px",width:"160px",height:"160px",
           animation:"a-local-shake 0.2s cubic-bezier(.36,.07,.19,.97) both" })}>
 
-          {/* 4 shockwave rings — rolling wave */}
+          {/* 4 shockwave rings */}
           {[{s:148,bw:3,d:0,op:1},{s:116,bw:2,d:26,op:.66},{s:84,bw:2,d:50,op:.46},{s:58,bw:1,d:0,op:.32}].map(({s,bw,d,op},i)=>(
             <div key={i} style={ss({ position:"absolute",
               left:`${80-s/2}px`,top:`${80-s/2}px`,width:s,height:s,
@@ -694,28 +761,37 @@ export function ElementalAttackAnimation({
               animation:`a-ring ${T.AFTERMATH}ms ease-out ${d}ms forwards` })} />
           ))}
 
-          {/* Core explosion — 3-stage */}
+          {/* Core explosion */}
           <div style={ss({ position:"absolute",left:"20px",top:"20px",width:"120px",height:"120px",
             borderRadius:"50%",background:c.core,
             boxShadow:`0 0 64px 28px ${c.cg},0 0 130px 52px ${c.gw}`,
             animation:`a-core ${T.AFTERMATH}ms cubic-bezier(0.04,0.92,0.11,1) forwards` })} />
 
-          {/* Residual glow lingering */}
+          {/* SECOND WAVE — smaller ring erupting at 35% of aftermath */}
+          <div style={ss({ position:"absolute",left:"40px",top:"40px",width:"80px",height:"80px",
+            borderRadius:"50%",border:`2px solid ${c.r2}`,
+            boxShadow:`0 0 12px 4px ${c.cg}`,
+            animation:`a-ring ${T.AFTERMATH*.6}ms ease-out ${T.AFTERMATH*.3}ms forwards` })} />
+          <div style={ss({ position:"absolute",left:"48px",top:"48px",width:"64px",height:"64px",
+            borderRadius:"50%",background:c.res,filter:"blur(6px)",
+            animation:`a-second-wave ${T.AFTERMATH*.5}ms ease-out ${T.AFTERMATH*.28}ms forwards` })} />
+
+          {/* Residual glow */}
           <div style={ss({ position:"absolute",left:"28px",top:"28px",width:"104px",height:"104px",
             borderRadius:"50%",background:c.res,filter:"blur(10px)",
             animation:`a-residual ${T.AFTERMATH}ms ease-out forwards` })} />
 
-          {/* VOID ONLY: spatial distortion rings (glitch) */}
-          {isVoid && [50,70,90].map((s,i)=>(
+          {/* VOID: space distortion glitch rings */}
+          {isVoid && [50,72,94].map((s,i)=>(
             <div key={i} style={ss({ position:"absolute",
               left:`${80-s/2}px`,top:`${80-s/2}px`,width:s,height:s,
-              borderRadius:"50%",border:"1px solid rgba(203,213,225,0.5)",
-              animation:`a-void-glitch ${T.AFTERMATH*.4}ms ease-out ${i*40}ms forwards` })} />
+              borderRadius:"50%",border:"1px solid rgba(203,213,225,0.52)",
+              animation:`a-void-glitch ${T.AFTERMATH*.42}ms ease-out ${i*38}ms forwards` })} />
           ))}
 
         </div>
 
-        {/* ── FEHNON: scar lines (outside shake wrapper) ── */}
+        {/* FEHNON: scar lines */}
         {isFeh && [
           {w:140,r:0,  t:-3,d:0 },{w:108,r:-20,t:-3,d:8 },
           {w:108,r:20, t:-3,d:8 },{w:80, r:-40,t:-2,d:18},
@@ -738,7 +814,7 @@ export function ElementalAttackAnimation({
             animation:`a-slash ${T.AFTERMATH*.48}ms ease-out ${i*10}ms forwards` })} />
         ))}
 
-        {/* ── DARKUS: void absorption tendrils (linger outward) ── */}
+        {/* DARKUS: void absorption tendrils */}
         {isDark && [0,60,120,180,240,300].map((a,i)=>(
           <div key={i} style={ss({ position:"absolute",height:"2px",
             width:"56px",borderRadius:"9999px",
@@ -748,7 +824,7 @@ export function ElementalAttackAnimation({
             animation:`a-dark-abs ${T.AFTERMATH*.75}ms ease-in ${i*16}ms forwards` })} />
         ))}
 
-        {/* ── Particles ── */}
+        {/* Particles */}
         {pts.map(p => {
           const a   = iBase + p.angle * .82
           const d   = p.spd * p.life
@@ -774,20 +850,18 @@ export function ElementalAttackAnimation({
     )
   }
 
-  // ── Render phase ──────────────────────────────────────────────────────────
   let content: React.ReactNode = null
-  if      (phase==="charge")   content = <Charge />
-  else if (phase==="release")  content = <Release />
-  else if (phase==="strike")   content = <Strike />
-  else if (phase==="impact")   content = <Impact />
+  if      (phase==="charge")    content = <Charge />
+  else if (phase==="release")   content = <Release />
+  else if (phase==="strike")    content = <Strike />
+  else if (phase==="impact")    content = <Impact />
   else if (phase==="aftermath") content = <Aftermath />
 
   const output = (
     <>
       <style>{`
-        /* ── Charge ──────────────────────────────────────────────────── */
-        @keyframes a-spin           { from{transform:rotate(0deg)}   to{transform:rotate(360deg)} }
-        @keyframes a-burst          { 0%{transform:scale(.25);opacity:1} 100%{transform:scale(1.78);opacity:0} }
+        @keyframes a-spin           { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes a-burst          { 0%{transform:scale(.25);opacity:1} 100%{transform:scale(1.8);opacity:0} }
         @keyframes a-pulse-fire     { 0%,100%{opacity:.74;transform:scale(1)} 50%{opacity:1;transform:scale(1.22)} }
         @keyframes a-terra-pulse    { 0%,100%{opacity:.72;transform:scale(1) rotate(45deg)} 50%{opacity:1;transform:scale(1.2) rotate(45deg)} }
         @keyframes a-haos-halo      { 0%,100%{opacity:.64;transform:scale(1)} 50%{opacity:1;transform:scale(1.36)} }
@@ -798,40 +872,28 @@ export function ElementalAttackAnimation({
         @keyframes a-terra-crack    { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 100%{opacity:.84;transform:scaleX(1)} }
         @keyframes a-fehnon-contract{ 0%{transform:scale(1.58);opacity:0} 50%{opacity:1} 100%{transform:scale(.18);opacity:0} }
         @keyframes a-fehnon-scan    { 0%{opacity:0;transform:translateX(-50%) scaleX(0)} 42%{opacity:1} 100%{opacity:0;transform:translateX(-50%) scaleX(1)} }
-        /* ── Release ─────────────────────────────────────────────────── */
+        @keyframes a-orbit          { from{transform:rotate(0deg) translateX(var(--r,40px))} to{transform:rotate(360deg) translateX(var(--r,40px))} }
         @keyframes a-release-burst  { 0%{transform:scale(.3);opacity:1;border-width:8px} 100%{transform:scale(2.4);opacity:0;border-width:1px} }
         @keyframes a-release-core   { 0%{opacity:1;transform:scale(1.5)} 100%{opacity:0;transform:scale(3)} }
-        /* ── Strike ──────────────────────────────────────────────────── */
         @keyframes a-move           { 0%{transform:translateX(0)} 100%{transform:translateX(${dist}px)} }
         @keyframes a-laser          { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 6%{opacity:1} 70%{opacity:1} 100%{opacity:0;transform:scaleX(1)} }
         @keyframes a-slash          { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 5%{opacity:1} 64%{opacity:1} 100%{opacity:0;transform:scaleX(1)} }
         @keyframes a-fehnon-tip     { 0%{transform:translateX(${-dist}px);opacity:0} 6%{opacity:1} 100%{transform:translateX(0);opacity:1} }
         @keyframes a-feather        { 0%,100%{transform:rotate(-30deg);opacity:.74} 50%{transform:rotate(-22deg);opacity:1} }
-        /* ── Impact ──────────────────────────────────────────────────── */
         @keyframes a-hero-flash     { 0%{opacity:1} 50%{opacity:.7} 100%{opacity:0} }
         @keyframes a-hero-compress  { 0%{transform:scale(.1);opacity:1} 50%{transform:scale(1.4);opacity:.9} 100%{transform:scale(2);opacity:0} }
-        /* ── Aftermath ───────────────────────────────────────────────── */
-        @keyframes a-local-shake    {
-          0%  {transform:translate(0,0)}
-          10% {transform:translate(-5px,-2px)}
-          22% {transform:translate(5px,3px)}
-          34% {transform:translate(-4px,1px)}
-          46% {transform:translate(3px,-2px)}
-          58% {transform:translate(-2px,1px)}
-          74% {transform:translate(1px,1px)}
-          100%{transform:translate(0,0)}
-        }
+        @keyframes a-hero-ring      { 0%{transform:scale(.2);opacity:1;border-width:6px} 100%{transform:scale(2.2);opacity:0;border-width:1px} }
+        @keyframes a-local-shake    { 0%{transform:translate(0,0)} 10%{transform:translate(-5px,-2px)} 22%{transform:translate(5px,3px)} 34%{transform:translate(-4px,1px)} 46%{transform:translate(3px,-2px)} 58%{transform:translate(-2px,1px)} 74%{transform:translate(1px,1px)} 100%{transform:translate(0,0)} }
         @keyframes a-ring           { 0%{transform:scale(.07);opacity:1;border-width:8px} 44%{opacity:.62} 100%{transform:scale(2.9);opacity:0;border-width:1px} }
         @keyframes a-core           { 0%{transform:scale(.03);opacity:1} 16%{transform:scale(1.38);opacity:1} 46%{transform:scale(1.06);opacity:.78} 100%{transform:scale(0);opacity:0} }
+        @keyframes a-second-wave    { 0%{transform:scale(.1);opacity:0} 20%{opacity:1} 60%{opacity:.6} 100%{transform:scale(1.8);opacity:0} }
         @keyframes a-residual       { 0%{opacity:0} 16%{opacity:1} 58%{opacity:.52} 100%{opacity:0;transform:scale(1.5)} }
         @keyframes a-particle       { 0%{transform:translate(0,0) scale(2);opacity:1} 100%{transform:translate(var(--px),var(--py)) scale(0);opacity:0} }
         @keyframes a-dark-abs       { 0%{opacity:0;transform-origin:right center;transform:scaleX(0)} 28%{opacity:.72} 100%{opacity:0;transform:scaleX(1)} }
         @keyframes a-void-glitch    { 0%{transform:scale(.2) skewX(0deg);opacity:.8} 40%{transform:scale(1.2) skewX(3deg);opacity:.5} 70%{transform:scale(1.6) skewX(-2deg);opacity:.2} 100%{transform:scale(2.2) skewX(0deg);opacity:0} }
-        /* ── Afterimage ──────────────────────────────────────────────── */
         @keyframes afterimage-fade  { 0%{opacity:.22} 100%{opacity:0} }
       `}</style>
 
-      {/* Attacker ghost */}
       {attackerImage && (phase==="charge"||phase==="release"||phase==="strike") && (
         <div style={ss({ position:"absolute",left:startX-40,top:startY-56,
           width:"80px",height:"112px",
