@@ -1646,42 +1646,33 @@ const getElementGlow = (element: string): string => {
 }
 
 // ─── DiceCanvas3D ─────────────────────────────────────────────────────────────
-// Standalone component: renders a 3D dice via Canvas 2D + manual perspective
-// projection + rAF. Never uses CSS preserve-3d (which flattens under keyframes).
+// Canvas 2D + manual perspective projection + rAF physics.
+// Correct proportional cube: all 3 axes use the same half-size S.
+// Never uses CSS preserve-3d (flattens under @keyframes).
+
 interface DiceCanvas3DProps {
-  result: number | null  // 1-6 when settled, null while tumbling
+  result: number | null
 }
 
+// Pip [u,v] coords 0..1 on each face
 const DICE_PIPS: Record<number,[number,number][]> = {
-  1: [[50,50]],
-  2: [[28,28],[72,72]],
-  3: [[25,25],[50,50],[75,75]],
-  4: [[28,28],[72,28],[28,72],[72,72]],
-  5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
-  6: [[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]],
+  1:[[.50,.50]],
+  2:[[.28,.28],[.72,.72]],
+  3:[[.25,.25],[.50,.50],[.75,.75]],
+  4:[[.28,.28],[.72,.28],[.28,.72],[.72,.72]],
+  5:[[.28,.28],[.72,.28],[.50,.50],[.28,.72],[.72,.72]],
+  6:[[.28,.22],[.72,.22],[.28,.50],[.72,.50],[.28,.78],[.72,.78]],
 }
 
+// rx,ry that parks each face number toward the camera (+Z)
 const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
   1:{rx:0,   ry:0  },
-  2:{rx:0,   ry:-90},
-  3:{rx:90,  ry:0  },
-  4:{rx:-90, ry:0  },
-  5:{rx:0,   ry:90 },
   6:{rx:0,   ry:180},
+  2:{rx:0,   ry:-90},
+  5:{rx:0,   ry:90 },
+  3:{rx:-90, ry:0  },
+  4:{rx:90,  ry:0  },
 }
-
-// Face definitions: vertex indices + face number + normal direction
-const DICE_FACE_NORMALS: [number,number,number][] = [
-  [0,0,1],[0,0,-1],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]
-]
-const DICE_FACES = [
-  { vi:[4,5,6,7] as [number,number,number,number], num:1 },
-  { vi:[1,0,3,2] as [number,number,number,number], num:6 },
-  { vi:[5,1,2,6] as [number,number,number,number], num:2 },
-  { vi:[0,4,7,3] as [number,number,number,number], num:5 },
-  { vi:[7,6,2,3] as [number,number,number,number], num:3 },
-  { vi:[0,1,5,4] as [number,number,number,number], num:4 },
-]
 
 function DiceCanvas3D({ result }: DiceCanvas3DProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -1692,158 +1683,188 @@ function DiceCanvas3D({ result }: DiceCanvas3DProps) {
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    const W = canvas.width  = 220
-    const H = canvas.height = 220
-    const CX = W/2, CY = H/2
-    const S  = 70  // half-size of cube
 
-    // 8 vertices
-    const verts: [number,number,number][] = [
-      [-S,-S,-S],[S,-S,-S],[S,S,-S],[-S,S,-S],
-      [-S,-S, S],[S,-S, S],[S,S, S],[-S,S, S],
+    const W = canvas.width  = 260
+    const H = canvas.height = 260
+    const CX = W/2, CY = H/2
+    const S  = 72   // half-side — SAME on all 3 axes = perfect cube
+
+    // 8 vertices of the cube
+    const V: [number,number,number][] = [
+      [-S,-S,-S],[S,-S,-S],[S,S,-S],[-S,S,-S],  // 0-3 back
+      [-S,-S, S],[S,-S, S],[S,S, S],[-S,S, S],  // 4-7 front
     ]
 
-    const toRad = (d:number) => d * Math.PI / 180
+    // 6 faces: vertex indices, outward normal, face number
+    const FACES = [
+      {vi:[4,5,6,7], n:[0,0, 1] as [number,number,number], fn:1},
+      {vi:[1,0,3,2], n:[0,0,-1] as [number,number,number], fn:6},
+      {vi:[5,1,2,6], n:[1,0, 0] as [number,number,number], fn:2},
+      {vi:[0,4,7,3], n:[-1,0,0] as [number,number,number], fn:5},
+      {vi:[7,6,2,3], n:[0,-1,0] as [number,number,number], fn:3},
+      {vi:[0,1,5,4], n:[0, 1,0] as [number,number,number], fn:4},
+    ]
 
-    function rotVert(x:number,y:number,z:number,rx:number,ry:number):[number,number,number] {
-      const ryr = toRad(ry)
-      const x2  = x*Math.cos(ryr) + z*Math.sin(ryr)
-      const z2  =-x*Math.sin(ryr) + z*Math.cos(ryr)
-      const rxr = toRad(rx)
-      const y2  = y*Math.cos(rxr) - z2*Math.sin(rxr)
-      const z3  = y*Math.sin(rxr) + z2*Math.cos(rxr)
-      return [x2, y2, z3]
+    const toR = (d:number) => d*Math.PI/180
+    function rotY(v:[number,number,number],a:number):[number,number,number]{
+      const c=Math.cos(a),s=Math.sin(a)
+      return [v[0]*c+v[2]*s, v[1], -v[0]*s+v[2]*c]
+    }
+    function rotX(v:[number,number,number],a:number):[number,number,number]{
+      const c=Math.cos(a),s=Math.sin(a)
+      return [v[0], v[1]*c-v[2]*s, v[1]*s+v[2]*c]
+    }
+    function rot(v:[number,number,number],rx:number,ry:number):[number,number,number]{
+      return rotX(rotY(v,toR(ry)),toR(rx))
+    }
+    function proj(v:[number,number,number]):[number,number]{
+      const fov=420, z=v[2]+fov
+      return [CX+v[0]*fov/z, CY+v[1]*fov/z]
     }
 
-    function project(x:number,y:number,z:number):[number,number] {
-      const fov = 380, sc = fov/(fov+z)
-      return [CX+x*sc, CY+y*sc]
-    }
+    const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
+    const eOut=(t:number)=>1-Math.pow(1-t,3)
+    const spr =(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*Math.PI*2/3)
 
-    function drawPip(cx:number,cy:number,r:number) {
-      const g = ctx.createRadialGradient(cx-r*.25,cy-.28*r,r*.05,cx,cy,r)
-      g.addColorStop(0,"#444"); g.addColorStop(1,"#000")
+    // Directional light (top-right-front)
+    const LD:[number,number,number]=[.4,-.6,.7]
+    const lLen=Math.hypot(...LD)
+    const LN:[number,number,number]=[LD[0]/lLen,LD[1]/lLen,LD[2]/lLen]
+
+    function drawPip(cx:number,cy:number,r:number){
+      const g=ctx.createRadialGradient(cx-r*.3,cy-r*.3,r*.05,cx+r*.1,cy+r*.1,r*1.1)
+      g.addColorStop(0,"#555"); g.addColorStop(.6,"#111"); g.addColorStop(1,"#000")
       ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2)
-      ctx.fillStyle=g
-      ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=3
-      ctx.fill(); ctx.shadowBlur=0
+      ctx.fillStyle=g; ctx.fill()
     }
 
-    function drawCube(rx:number,ry:number,sc:number,dy:number) {
+    function drawFrame(rx:number,ry:number,sc:number,dy:number){
       ctx.clearRect(0,0,W,H)
-      ctx.save()
-      ctx.translate(CX,CY+dy); ctx.scale(sc,sc); ctx.translate(-CX,-CY)
 
-      const proj = verts.map(([x,y,z]) => {
-        const r = rotVert(x,y,z,rx,ry)
-        return { w:r, p:project(r[0],r[1],r[2]) }
+      // project all 8 vertices (scale+offset applied directly)
+      const pv = V.map(v => {
+        const r = rot(v,rx,ry)
+        const scaled:[number,number,number]=[r[0]*sc, r[1]*sc+dy, r[2]*sc]
+        return { w:r, p:proj(scaled) }
       })
 
-      const sorted = DICE_FACES.map((face,fi) => {
-        const nrm = DICE_FACE_NORMALS[fi]
-        const n = rotVert(nrm[0], nrm[1], nrm[2], rx, ry)
-        const avgZ = face.vi.reduce((s,i)=>s+proj[i].w[2],0)/4
-        return { face, n2:n[2], avgZ }
+      // painter: sort faces back→front by average world Z
+      const sorted = [...FACES].map(f=>{
+        const rn = rot(f.n,rx,ry)
+        const avgZ = f.vi.reduce((s,i)=>s+pv[i].w[2],0)/4
+        return {f, rn, avgZ}
       }).sort((a,b)=>a.avgZ-b.avgZ)
 
-      sorted.forEach(({face,n2}) => {
-        if(n2 < -0.05) return
-        const pts = face.vi.map(i=>proj[i].p) as [number,number][]
-        const br  = Math.max(0,n2)
-        const li  = Math.round(210+br*45)
-        const liHi= Math.min(255,li+30)
-        const liLo= Math.max(155,li-35)
+      sorted.forEach(({f,rn})=>{
+        // dot with camera direction +Z — cull back faces
+        const dot = rn[0]*0 + rn[1]*0 + rn[2]*1
+        if(dot < -0.02) return
 
-        // Face
+        const pts = f.vi.map(i=>pv[i].p) as [number,number][]
+
+        // Phong-ish: ambient + diffuse
+        const diffuse = Math.max(0, rn[0]*LN[0]+rn[1]*LN[1]+rn[2]*LN[2])
+        const light   = 0.30 + diffuse*0.70
+        const base    = Math.round(light*255)
+        const hi      = Math.min(255,Math.round(light*275))
+        const lo      = Math.max(140,Math.round(light*220))
+
+        // Fill face polygon
         ctx.beginPath()
         ctx.moveTo(pts[0][0],pts[0][1])
-        pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
+        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1])
         ctx.closePath()
-        const g = ctx.createLinearGradient(pts[0][0],pts[0][1],pts[2][0],pts[2][1])
-        g.addColorStop(0,`rgb(${liHi},${liHi},${liHi})`)
-        g.addColorStop(1,`rgb(${liLo},${liLo},${liLo})`)
-        ctx.fillStyle=g; ctx.fill()
-        ctx.strokeStyle=`rgba(140,140,140,${0.35+br*0.45})`
-        ctx.lineWidth=1.5; ctx.stroke()
 
-        // Specular
-        if(br>0.35){
-          const sg=ctx.createRadialGradient(pts[0][0],pts[0][1],0,pts[0][0],pts[0][1],60)
-          sg.addColorStop(0,`rgba(255,255,255,${br*0.42})`); sg.addColorStop(1,"rgba(255,255,255,0)")
+        // Gradient from bright corner to dark corner
+        const g=ctx.createLinearGradient(pts[0][0],pts[0][1],pts[2][0],pts[2][1])
+        g.addColorStop(0,`rgb(${hi},${hi},${hi})`)
+        g.addColorStop(1,`rgb(${lo},${lo},${lo})`)
+        ctx.fillStyle=g; ctx.fill()
+
+        // Edge
+        ctx.strokeStyle=`rgba(90,90,90,${0.28+diffuse*0.55})`
+        ctx.lineWidth=1.2; ctx.stroke()
+
+        // Specular glint on lit faces
+        if(diffuse>0.28){
+          const sg=ctx.createRadialGradient(pts[0][0],pts[0][1],0,pts[0][0],pts[0][1],S*sc*.85)
+          sg.addColorStop(0,`rgba(255,255,255,${diffuse*0.38})`)
+          sg.addColorStop(1,"rgba(255,255,255,0)")
           ctx.beginPath()
           ctx.moveTo(pts[0][0],pts[0][1])
-          pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
+          for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1])
           ctx.closePath(); ctx.fillStyle=sg; ctx.fill()
         }
 
-        // Pips via bilinear interpolation onto the projected quad
-        if(br > 0.05) {
-          const [tl,tr,br2,bl] = pts
-          const pipR = Math.max(3, 7*br)
-          ;(DICE_PIPS[face.num]??[]).forEach(([px,py])=>{
-            const tx=px/100, ty=py/100
-            const topX=tl[0]+(tr[0]-tl[0])*tx, topY=tl[1]+(tr[1]-tl[1])*tx
-            const botX=bl[0]+(br2[0]-bl[0])*tx, botY=bl[1]+(br2[1]-bl[1])*tx
-            drawPip(topX+(botX-topX)*ty, topY+(botY-topY)*ty, pipR)
+        // Pips: bilinear interpolation across projected quad
+        if(dot>0.08){
+          const [p0,p1,p2,p3]=pts
+          const pipR = Math.max(4.5, 9*dot*sc)
+          ;(DICE_PIPS[f.fn]||[]).forEach(([u,v])=>{
+            const tx=lerp(p0[0],p1[0],u), ty=lerp(p0[1],p1[1],u)
+            const bx=lerp(p3[0],p2[0],u), by=lerp(p3[1],p2[1],u)
+            drawPip(lerp(tx,bx,v), lerp(ty,by,v), pipR)
           })
         }
       })
 
-      ctx.restore()
+      // Soft ground shadow ellipse
+      const gy = CY + S*sc + dy + 16
+      const sg = ctx.createRadialGradient(CX,gy,2,CX,gy,S*sc*.92)
+      sg.addColorStop(0,"rgba(0,0,0,.42)"); sg.addColorStop(1,"rgba(0,0,0,0)")
+      ctx.beginPath(); ctx.ellipse(CX,gy,S*sc*.88,S*sc*.19,0,0,Math.PI*2)
+      ctx.fillStyle=sg; ctx.fill()
     }
 
-    // Physics
+    // Physics phases
     const target = result ? DICE_SETTLE[result] : {rx:0,ry:0}
     const endRX  = target.rx + 720 + (Math.random()>.5?180:0)
     const endRY  = target.ry + 1080+ (Math.random()>.5?180:0)
-    const TUMBLE=2200,SETTLE=380,BOUNCE=880
-    const scKF=[0.4,1.08,0.93,1.04,0.97,1.02,0.99,1.005,1]
-    const eOut=(t:number)=>1-Math.pow(1-t,3)
-    const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
-    const spr =(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*2*Math.PI/3)
+    const TUMBLE=2200, SETTLE_MS=370, BOUNCE=860
+    const scKF=[.35,1.10,.91,1.05,.96,1.02,.99,1.005,1]
 
-    let phase: "tumble"|"settle"|"bounce"|"done" = "tumble"
-    let rx2=0,ry2=0,sc2=0.4,dy2=0
-    let fromRX=0,fromRY=0,fromSc=1
-    let t0:number|null=null,ps:number|null=null
+    let phase:"tumble"|"settle"|"bounce"|"done"="tumble"
+    let crx=0,cry=0,csc=.35,cdy=0
+    let fRX=0,fRY=0,fSc=1
+    let ps:number|null=null
 
     function frame(ts:number){
-      if(!t0) t0=ts; if(!ps) ps=ts
+      if(!ps) ps=ts
       const el=ts-ps
 
       if(phase==="tumble"){
         const p=Math.min(el/TUMBLE,1), e=eOut(p)
-        rx2=lerp(0,endRX,e); ry2=lerp(0,endRY,e)
+        crx=lerp(0,endRX,e); cry=lerp(0,endRY,e)
         const si=Math.min(Math.floor(p*(scKF.length-1)),scKF.length-2)
-        sc2=lerp(scKF[si],scKF[si+1],p*(scKF.length-1)-si)
-        dy2=0
-        if(p>=1){ phase="settle"; ps=ts; fromRX=rx2; fromRY=ry2; fromSc=sc2 }
+        csc=lerp(scKF[si],scKF[si+1],p*(scKF.length-1)-si)
+        cdy=0
+        if(p>=1){phase="settle";ps=ts;fRX=crx;fRY=cry;fSc=csc}
       } else if(phase==="settle"){
-        const p=Math.min(el/SETTLE,1), sp=spr(p)
-        const fRX=Math.round(fromRX/360)*360+target.rx
-        const fRY=Math.round(fromRY/360)*360+target.ry
-        rx2=lerp(fromRX,fRX,sp); ry2=lerp(fromRY,fRY,sp); sc2=lerp(fromSc,1,sp); dy2=0
-        if(p>=1){ rx2=fRX; ry2=fRY; sc2=1; phase="bounce"; ps=ts }
+        const p=Math.min(el/SETTLE_MS,1), sp=spr(p)
+        const dRX=Math.round(fRX/360)*360+target.rx
+        const dRY=Math.round(fRY/360)*360+target.ry
+        crx=lerp(fRX,dRX,sp); cry=lerp(fRY,dRY,sp); csc=lerp(fSc,1,sp); cdy=0
+        if(p>=1){crx=dRX;cry=dRY;csc=1;phase="bounce";ps=ts}
       } else if(phase==="bounce"){
         const bp=Math.min(el/BOUNCE,1)
-        if(bp<.22)       dy2=lerp(0,-28,bp/.22)
-        else if(bp<.44)  dy2=lerp(-28,0,(bp-.22)/.22)
-        else if(bp<.60)  dy2=lerp(0,-12,(bp-.44)/.16)
-        else if(bp<.76)  dy2=lerp(-12,0,(bp-.60)/.16)
-        else if(bp<.88)  dy2=lerp(0,-5,(bp-.76)/.12)
-        else             dy2=lerp(-5,0,(bp-.88)/.12)
-        if(bp>=1){ dy2=0; phase="done" }
+        if(bp<.22)      cdy=lerp(0,-30,bp/.22)
+        else if(bp<.44) cdy=lerp(-30,0,(bp-.22)/.22)
+        else if(bp<.60) cdy=lerp(0,-13,(bp-.44)/.16)
+        else if(bp<.76) cdy=lerp(-13,0,(bp-.60)/.16)
+        else if(bp<.88) cdy=lerp(0,-5,(bp-.76)/.12)
+        else            cdy=lerp(-5,0,(bp-.88)/.12)
+        if(bp>=1){cdy=0;phase="done"}
       }
 
-      drawCube(rx2,ry2,sc2,dy2)
+      drawFrame(crx,cry,csc,cdy)
       if(phase!=="done") rafRef.current=requestAnimationFrame(frame)
     }
 
-    rafRef.current = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(rafRef.current)
+    rafRef.current=requestAnimationFrame(frame)
+    return ()=>cancelAnimationFrame(rafRef.current)
   }, [result])
 
-  return <canvas ref={canvasRef} style={{ width:220, height:220, display:"block" }} />
+  return <canvas ref={canvasRef} style={{ width:260, height:260, display:"block" }} />
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -6435,8 +6456,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center" }}>
                 <DiceCanvas3D result={r} />
                 <div style={{
-                  width:80, height:12, borderRadius:"50%",
-                  background:"rgba(0,0,0,.5)", filter:"blur(7px)", marginTop:-8,
+                  width:100, height:14, borderRadius:"50%",
+                  background:"rgba(0,0,0,.5)", filter:"blur(8px)", marginTop:-18,
                 }} />
               </div>
 
