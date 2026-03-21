@@ -6114,21 +6114,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           </div>
 
           {/* Field content */}
-          <div className="relative h-full flex flex-col justify-between p-1.5 pb-3 z-10">
+          <div className="relative h-full flex flex-col justify-between p-1 pb-2 z-10">
             {/* Enemy Field */}
-            <div className="flex justify-center items-center gap-3">
+            <div className="flex justify-center items-center gap-2">
               {/* Enemy Deck, Graveyard, Scenario and Ultimate */}
-              <div className="flex items-start gap-1">
-                <div className="flex gap-1">
-                  <div className="flex flex-col gap-1">
+              <div className="flex items-start gap-1.5">
+                <div className="flex gap-1.5">
+                  <div className="flex flex-col gap-1.5">
                     <div
                       ref={enemyGraveyardRef}
-                      className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
+                      className="w-16 h-24 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
                       onClick={() => setGraveyardView("enemy")}
                     >
                       {enemyField.graveyard.length}
                     </div>
-                    <div className="w-14 h-20 relative">
+                    <div className="w-16 h-24 relative">
                       {enemyField.deck.length > 0 ? (
                         <>
                           {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) => (
@@ -6162,16 +6162,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     </div>
                   </div>
                   <div
-                    className="w-14 h-20 bg-orange-600/80 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border border-orange-400/50 cursor-pointer hover:bg-orange-500/80 transition-animation"
+                    className="w-16 h-24 bg-orange-600/80 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border border-orange-400/50 cursor-pointer hover:bg-orange-500/80 transition-animation"
                     onClick={() => setTapView("enemy")}
                   >
                     <span className="opacity-70">TAP</span>
                     <span>{enemyField.tap.length}</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
-                  <div className="h-14 w-20 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                  <div className="h-16 w-24 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
                     {enemyField.scenarioZone ? (
                       <Image
                         src={enemyField.scenarioZone.image || "/placeholder.svg"}
@@ -6189,7 +6189,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     )}
                   </div>
                   {/* Enemy Ultimate Zone - single slot, green */}
-                  <div className="w-14 h-20 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden mx-auto">
+                  <div className="w-16 h-24 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden">
                     {enemyField.ultimateZone ? (
                       <Image
                         src={enemyField.ultimateZone.image || "/placeholder.svg"}
@@ -6213,9 +6213,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               </div>
 
               {/* Enemy Zones */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 {/* Enemy Function Zone */}
-                <div className="flex justify-center items-center gap-1.5">
+                <div className="flex justify-center items-center gap-2">
                   {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
                       ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto"
@@ -6232,7 +6232,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                             handleJulgamentoVazioTarget("function", i)
                           }
                         }}
-                        className={`w-14 h-20 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${isUgTarget || (julgamentoVazioTargetMode.active && card)
+                        className={`w-16 h-24 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${isUgTarget || (julgamentoVazioTargetMode.active && card)
                           ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                           : "border-purple-600/40"
                           }`}
@@ -6263,7 +6263,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 </div>
 
                 {/* Enemy Unit Zone */}
-                <div className="flex justify-center items-center gap-1.5">
+                <div className="flex justify-center items-center gap-2">
                   {enemyField.unitZone.map((card, i) => (
                     <div
                       key={i}
@@ -6279,7 +6279,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                           handleEnemyUnitSelect(i)
                         }
                       }}
-                      className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
+                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
@@ -6336,11 +6336,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             </div>
 
             {/* Player Field */}
-            <div className="flex justify-center items-center gap-3">
+            <div className="flex justify-center items-center gap-2">
               {/* Player Zones */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 {/* Player Unit Zone */}
-                <div className="flex justify-center items-center gap-1.5">
+                <div className="flex justify-center items-center gap-2">
                   {playerField.unitZone.map((card, i) => {
                     const isDropTarget =
                       draggedHandCard &&
@@ -6360,7 +6360,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                             handleAllyUnitSelect(i)
                           }
                         }}
-                        className={`w-14 h-20 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -6429,7 +6429,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 </div>
 
                 {/* Player Function Zone */}
-                <div className="flex justify-center items-center gap-1.5">
+                <div className="flex justify-center items-center gap-2">
                   {playerField.functionZone.map((card, i) => {
                     const isDropTarget =
                       draggedHandCard &&
@@ -6442,7 +6442,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         key={i}
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                        className={`w-14 h-20 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -6495,13 +6495,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               </div>
 
               {/* Player Scenario, Ultimate Zone and Deck/Graveyard */}
-              <div className="flex items-start gap-1">
-                <div className="flex flex-col gap-1">
+              <div className="flex items-start gap-1.5">
+                <div className="flex flex-col gap-1.5">
                   {/* Player Scenario Zone - Horizontal slot, aligned with unit zone */}
                   <div
                     data-player-scenario-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
-                    className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
+                    className={`h-16 w-24 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
                         ? "border-green-500 bg-green-900/40 cursor-pointer"
@@ -6530,7 +6530,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   <div
                     data-player-ultimate-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                    className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 mx-auto ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
+                    className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
                         ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
@@ -6586,9 +6586,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <div className="flex flex-col gap-1">
-                    <div className="w-14 h-20 relative">
+                <div className="flex gap-1.5">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="w-16 h-24 relative">
                       {playerField.deck.length > 0 ? (
                         <>
                           {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) => (
@@ -6622,7 +6622,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     </div>
                     <div
                       ref={playerGraveyardRef}
-                      className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
+                      className="w-16 h-24 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
                       onClick={() => setGraveyardView("player")}
                     >
                       {playerField.graveyard.length}
@@ -6634,7 +6634,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       return (
                         <div className="relative group/tap">
                           <div
-                            className={`w-14 h-20 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
+                            className={`w-16 h-24 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
                               ? "bg-orange-600/90 border-orange-400"
                               : "bg-slate-800/80 border-slate-700/50 opacity-60 grayscale-[0.5]"
                               }`}
