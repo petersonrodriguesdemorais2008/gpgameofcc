@@ -2266,21 +2266,18 @@ function StarfieldCanvas() {
         for(let ty=-OH;ty<=H;ty+=OH)
           ctx.drawImage(off,nx+tx,ny+ty)
 
-      // Galaxies — annular 3D rotation: fixed scaleY (viewing angle) + continuous ctx.rotate
-      // scaleY=tilt compresses the disk to look tilted; rotation spins the arms around centre
-      // precPhase adds a very slow nodding (axis wobble) for extra realism
+      // Galaxies — annular 3D rotation
+      // Order matters: scale Y first (tilt), THEN rotate (spin arms).
+      // This keeps the compression axis always vertical so the disk stays straight.
       for(const g of galaxyLayers){
         g.rotation  += g.spinSpeed
         g.precPhase += g.precSpeed
-        // Subtle axis precession: tilt oscillates ±0.06 very slowly
-        const scaleY = g.tilt + Math.sin(g.precPhase) * 0.06
-        // Slight perspective squeeze on X as precession tilts the axis
-        const scaleX = 1 - Math.abs(Math.sin(g.precPhase * 0.7)) * 0.04
+        const scaleY = g.tilt + Math.sin(g.precPhase) * 0.05
         ctx.save()
         ctx.globalAlpha = 0.90
         ctx.translate(g.x*W, g.y*H)
-        ctx.rotate(g.rotation)         // ← arms spin continuously around axis
-        ctx.scale(scaleX, scaleY)      // ← disk appears tilted in 3D
+        ctx.scale(1, scaleY)       // compress Y first — disk looks tilted, always upright
+        ctx.rotate(g.rotation)     // then spin arms inside the already-flattened space
         ctx.drawImage(g.cv, -g.half, -g.half, g.cv.width, g.cv.height)
         ctx.restore()
       }
