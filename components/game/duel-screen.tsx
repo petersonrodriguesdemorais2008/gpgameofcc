@@ -1986,7 +1986,7 @@ function StarfieldCanvas() {
         // Halo
         oc.globalAlpha=.07+Math.random()*.09
         const hg=oc.createRadialGradient(sx,sy,0,sx,sy,sr*5.5)
-        hg.addColorStop(0,col); hg.addColorStop(.35,col.replace("#","rgba(").replace(/([0-9a-f]{2})/gi,(_,h)=>parseInt(h,16)+",")+"0.4)") ; hg.addColorStop(1,"rgba(0,0,0,0)")
+        hg.addColorStop(0,col); hg.addColorStop(.35,"rgba(255,255,255,0.10)"); hg.addColorStop(1,"rgba(0,0,0,0)")
         oc.beginPath(); oc.arc(sx,sy,sr*5.5,0,Math.PI*2); oc.fillStyle=hg; oc.fill()
         // Diffraction spikes (4-pointed cross)
         if(sr>1.4){
