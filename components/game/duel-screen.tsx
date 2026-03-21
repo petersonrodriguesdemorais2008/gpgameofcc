@@ -6132,67 +6132,62 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* ── Dice Roll Animation ── */}
+      {/* ── Dice Roll Animation — 3D rAF-based, cube always preserve-3d ── */}
       {diceAnimation && (() => {
-        const r = diceAnimation.result
         const rolling = diceAnimation.rolling
+        const r       = diceAnimation.result
 
-        // Which CSS transform makes each face point toward the camera (+Z)
-        const faceRot: Record<number, string> = {
-          1: "rotateX(0deg) rotateY(0deg)",
-          2: "rotateX(0deg) rotateY(-90deg)",
-          3: "rotateX(-90deg) rotateY(0deg)",
-          4: "rotateX(90deg) rotateY(0deg)",
-          5: "rotateX(0deg) rotateY(90deg)",
-          6: "rotateX(0deg) rotateY(180deg)",
+        /* Pip positions [top%, left%] per face */
+        const PIPS: Record<number, [number,number][]> = {
+          1: [[50,50]],
+          2: [[25,25],[75,75]],
+          3: [[22,22],[50,50],[78,78]],
+          4: [[25,25],[25,75],[75,25],[75,75]],
+          5: [[25,25],[25,75],[50,50],[75,25],[75,75]],
+          6: [[22,26],[50,26],[78,26],[22,74],[50,74],[78,74]],
         }
-
-        const resultColor: Record<number, string> = {
-          1: "#f87171", 2: "#fb923c", 3: "#facc15",
-          4: "#4ade80", 5: "#60a5fa", 6: "#c084fc",
-        }
-        const resultLabel: Record<number, string> = {
-          1: "Resultado 1 — Baixo", 2: "Resultado 2 — Baixo",
-          3: "Resultado 3 — Médio", 4: "Resultado 4 — Médio",
-          5: "Resultado 5 — Alto",  6: "Resultado 6 — Máximo!",
-        }
-        const col  = r ? resultColor[r]  : "#ffffff"
-        const lbl  = r ? resultLabel[r]  : ""
-        const HALF = 55  // half of 110px cube
-
-        // Dot position grids per face
-        type DotPos = { top: string; left: string }
-        const dots: Record<number, DotPos[]> = {
-          1: [{ top:"50%", left:"50%" }],
-          2: [{ top:"25%", left:"25%" }, { top:"75%", left:"75%" }],
-          3: [{ top:"20%", left:"20%" }, { top:"50%", left:"50%" }, { top:"80%", left:"80%" }],
-          4: [{ top:"25%", left:"25%" }, { top:"25%", left:"75%" }, { top:"75%", left:"25%" }, { top:"75%", left:"75%" }],
-          5: [{ top:"25%", left:"25%" }, { top:"25%", left:"75%" }, { top:"50%", left:"50%" }, { top:"75%", left:"25%" }, { top:"75%", left:"75%" }],
-          6: [{ top:"20%", left:"25%" }, { top:"20%", left:"75%" }, { top:"50%", left:"25%" }, { top:"50%", left:"75%" }, { top:"80%", left:"25%" }, { top:"80%", left:"75%" }],
-        }
-
-        // face number on each CSS face slot: front=1, back=6, right=2, left=5, top=3, bottom=4
-        const faceSlots: { transform: string; faceNum: number; bg: string }[] = [
-          { transform: `translateZ(${HALF}px)`,                     faceNum:1, bg:"linear-gradient(145deg,#ffffff,#f0f0f0)" },
-          { transform: `rotateY(180deg) translateZ(${HALF}px)`,     faceNum:6, bg:"linear-gradient(145deg,#fafafa,#e8e8e8)" },
-          { transform: `rotateY(90deg) translateZ(${HALF}px)`,      faceNum:2, bg:"linear-gradient(145deg,#f8f8f8,#ebebeb)" },
-          { transform: `rotateY(-90deg) translateZ(${HALF}px)`,     faceNum:5, bg:"linear-gradient(145deg,#f5f5f5,#e9e9e9)" },
-          { transform: `rotateX(90deg) translateZ(${HALF}px)`,      faceNum:3, bg:"linear-gradient(145deg,#f7f7f7,#ececec)" },
-          { transform: `rotateX(-90deg) translateZ(${HALF}px)`,     faceNum:4, bg:"linear-gradient(145deg,#f6f6f6,#eaeaea)" },
+        /* face order: front=1 back=6 right=2 left=5 top=3 bot=4 */
+        const FACE_NUMS = [1,6,2,5,3,4]
+        const FACE_CSS  = [
+          "translateZ(55px)",
+          "rotateY(180deg) translateZ(55px)",
+          "rotateY(90deg) translateZ(55px)",
+          "rotateY(-90deg) translateZ(55px)",
+          "rotateX(90deg) translateZ(55px)",
+          "rotateX(-90deg) translateZ(55px)",
         ]
 
-        const Dot = ({ top, left }: DotPos) => (
+        const COLORS: Record<number,string> = {
+          1:"#f87171",2:"#fb923c",3:"#facc15",
+          4:"#4ade80",5:"#60a5fa",6:"#c084fc",
+        }
+        const LABELS: Record<number,string> = {
+          1:"Resultado 1 — Baixo", 2:"Resultado 2 — Baixo",
+          3:"Resultado 3 — Médio", 4:"Resultado 4 — Médio",
+          5:"Resultado 5 — Alto",  6:"Resultado 6 — Máximo!",
+        }
+        /* Which rx/ry parks a given face toward camera */
+        const SETTLE: Record<number,{rx:number,ry:number}> = {
+          1:{rx:0,   ry:0  }, 2:{rx:0,   ry:-90},
+          3:{rx:-90, ry:0  }, 4:{rx:90,  ry:0  },
+          5:{rx:0,   ry:90 }, 6:{rx:0,   ry:180},
+        }
+
+        const col = r ? COLORS[r] : "#ffffff"
+        const lbl = r ? LABELS[r] : ""
+
+        const Pip = ({ top, left }: { top: number; left: number }) => (
           <div style={{
-            position:"absolute", top, left,
-            width:13, height:13,
+            position:"absolute", top:`${top}%`, left:`${left}%`,
+            width:13, height:13, borderRadius:"50%",
             transform:"translate(-50%,-50%)",
-            borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 32%, #2a2a2a, #000000)",
-            boxShadow:"inset 0 1px 2px rgba(255,255,255,0.10), 0 1px 4px rgba(0,0,0,0.55)",
+            background:"radial-gradient(circle at 36% 32%, #3a3a3a, #000)",
+            boxShadow:"0 1px 3px rgba(0,0,0,.55), inset 0 1px 1px rgba(255,255,255,.08)",
           }} />
         )
 
-        const finalTransform = r ? faceRot[r] : "rotateX(0deg) rotateY(0deg)"
+        /* Unique key so useEffect re-runs each time card is played */
+        const animKey = `dice-${Date.now()}`
 
         return (
           <div style={{
@@ -6201,209 +6196,212 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             pointerEvents:"none",
           }}>
             <style>{`
-              @keyframes d-overlay  { from{opacity:0} to{opacity:1} }
-              @keyframes d-tumble   {
-                0%  {transform:rotateX(0deg)   rotateY(0deg)   scale3d(.3,.3,.3);opacity:0}
-                6%  {opacity:1;transform:rotateX(100deg) rotateY(70deg)  scale3d(1.1,1.1,1.1)}
-                20% {transform:rotateX(270deg) rotateY(210deg) scale3d(.93,.93,.93)}
-                36% {transform:rotateX(440deg) rotateY(360deg) scale3d(1.04,1.04,1.04)}
-                52% {transform:rotateX(590deg) rotateY(490deg) scale3d(.97,.97,.97)}
-                67% {transform:rotateX(710deg) rotateY(580deg) scale3d(1.02,1.02,1.02)}
-                80% {transform:rotateX(796deg) rotateY(648deg) scale3d(.99,.99,.99)}
-                92% {transform:rotateX(836deg) rotateY(700deg) scale3d(1.005,1.005,1.005)}
-                100%{transform:rotateX(840deg) rotateY(720deg) scale3d(1,1,1)}
-              }
-              @keyframes d-settle   { from{transform:rotateX(840deg) rotateY(720deg)} to{transform:${finalTransform}} }
-              @keyframes d-bounce   {
-                0%,100%{transform:translateY(0)}
-                22%    {transform:translateY(-26px)}
-                44%    {transform:translateY(0)}
-                60%    {transform:translateY(-11px)}
-                76%    {transform:translateY(0)}
-                88%    {transform:translateY(-4px)}
-              }
-              @keyframes d-shadow   {
-                0%,100%{transform:scaleX(1);opacity:.52}
-                22%    {transform:scaleX(.48);opacity:.16}
-                44%    {transform:scaleX(1);opacity:.52}
-                60%    {transform:scaleX(.65);opacity:.26}
-                76%    {transform:scaleX(1);opacity:.52}
-              }
-              @keyframes d-pop      {
-                0%  {transform:scale(.22);opacity:0;filter:blur(8px)}
-                65% {transform:scale(1.12);opacity:1;filter:blur(0)}
-                82% {transform:scale(.96)}
-                100%{transform:scale(1);opacity:1}
-              }
-              @keyframes d-numglow  {
-                0%,100%{text-shadow:0 0 16px ${col},0 0 32px ${col}88}
-                50%    {text-shadow:0 0 32px ${col},0 0 64px ${col},0 0 96px ${col}66}
-              }
-              @keyframes d-spark    { 0%{transform:translate(0,0) scale(1.3);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
-              @keyframes d-ring     { 0%{transform:scale(0);opacity:.92;border-width:5px} 100%{transform:scale(4.8);opacity:0;border-width:0} }
-              @keyframes d-dot-idle { 0%,100%{opacity:0.25} 50%{opacity:1} }
-              @keyframes d-label    { 0%{opacity:0;transform:translateY(-10px)} 100%{opacity:1;transform:translateY(0)} }
-              @keyframes d-badgepulse{0%,100%{box-shadow:0 0 0 0 ${col}44} 50%{box-shadow:0 0 0 7px transparent}}
+              @keyframes dice-ovl   { from{opacity:0} to{opacity:1} }
+              @keyframes dice-pop   { 0%{transform:scale(.2);opacity:0;filter:blur(8px)} 65%{transform:scale(1.1);opacity:1;filter:blur(0)} 82%{transform:scale(.96)} 100%{transform:scale(1);opacity:1} }
+              @keyframes dice-spark { 0%{transform:translate(0,0) scale(1.4);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
+              @keyframes dice-ring  { 0%{transform:scale(0);opacity:.9;border-width:5px} 100%{transform:scale(4.8);opacity:0;border-width:0} }
+              @keyframes dice-glow  { 0%,100%{text-shadow:0 0 16px ${col},0 0 32px ${col}88} 50%{text-shadow:0 0 32px ${col},0 0 64px ${col},0 0 96px ${col}55} }
+              @keyframes dice-badge { 0%,100%{box-shadow:0 0 0 0 ${col}44} 50%{box-shadow:0 0 0 8px transparent} }
+              @keyframes dice-dot   { 0%{opacity:.2} 100%{opacity:1} }
+              @keyframes dice-lbl   { 0%{opacity:0;transform:translateY(-8px)} 100%{opacity:1;transform:translateY(0)} }
             `}</style>
 
-            {/* Dark radial backdrop */}
+            {/* Backdrop */}
             <div style={{
               position:"absolute", inset:0,
-              background:"radial-gradient(ellipse at center, rgba(20,10,50,.90) 0%, rgba(0,0,0,.82) 100%)",
-              animation:"d-overlay 200ms ease-out forwards",
+              background:"radial-gradient(ellipse at center, rgba(18,8,44,.92) 0%, rgba(0,0,0,.85) 100%)",
+              animation:"dice-ovl 200ms ease-out forwards",
             }} />
 
-            {/* Sparks on settle */}
-            {!rolling && r && Array.from({length:14}).map((_,i) => {
-              const angle = (i / 14) * Math.PI * 2
-              const dist  = 72 + (i % 3) * 28
-              const sz    = i % 3 === 0 ? 10 : i % 3 === 1 ? 7 : 5
+            {/* Sparks */}
+            {!rolling && r !== null && Array.from({length:14}).map((_,i) => {
+              const angle = (i/14)*Math.PI*2
+              const dist  = 72+(i%3)*26
+              const sz    = i%3===0?10:i%3===1?7:5
               return (
                 <div key={i} style={{
                   position:"absolute", width:sz, height:sz, borderRadius:"50%",
                   background:col, boxShadow:`0 0 7px 2px ${col}`,
-                  animation:`d-spark 680ms cubic-bezier(.2,0,.5,1) ${i*22}ms forwards`,
+                  animation:`dice-spark 680ms cubic-bezier(.2,0,.5,1) ${i*22}ms forwards`,
                   "--sx":`${Math.cos(angle)*dist}px`,
                   "--sy":`${Math.sin(angle)*dist}px`,
                 } as React.CSSProperties} />
               )
             })}
 
-            {/* Expansion rings on settle */}
-            {!rolling && r && [0, 90].map((delay, i) => (
+            {/* Rings */}
+            {!rolling && r !== null && [0,85].map((delay,i) => (
               <div key={i} style={{
                 position:"absolute",
-                width: 110 + i * 20, height: 110 + i * 20,
-                borderRadius:"50%",
-                border:`4px solid ${col}`,
-                boxShadow:`0 0 18px 6px ${col}44`,
-                animation:`d-ring ${560 + i * 80}ms ease-out ${delay}ms forwards`,
+                width:120+i*24, height:120+i*24, borderRadius:"50%",
+                border:`4px solid ${col}`, boxShadow:`0 0 18px 5px ${col}44`,
+                animation:`dice-ring ${560+i*90}ms ease-out ${delay}ms forwards`,
               }} />
             ))}
 
-            {/* Main content column */}
-            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:22 }}>
+            {/* Content */}
+            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
 
-              {/* Card name tag */}
+              {/* Card name */}
               <div style={{
-                background:"linear-gradient(135deg,rgba(120,53,8,.96),rgba(170,90,10,.92))",
+                background:"linear-gradient(135deg,rgba(110,50,5,.96),rgba(160,85,8,.93))",
                 padding:"8px 28px", borderRadius:12,
-                border:"1px solid rgba(251,191,36,.5)",
-                boxShadow:"0 4px 20px rgba(0,0,0,.5)",
-                animation:"d-label 300ms ease-out forwards",
+                border:"1px solid rgba(251,191,36,.55)",
+                animation:"dice-lbl 300ms ease-out forwards",
               }}>
-                <p style={{ color:"#fcd34d", fontWeight:700, fontSize:16, margin:0, letterSpacing:".5px" }}>
+                <p style={{ color:"#fcd34d", fontWeight:700, fontSize:15, margin:0, letterSpacing:".5px" }}>
                   {diceAnimation.cardName}
                 </p>
               </div>
 
-              {/* 3D scene */}
-              <div style={{ perspective:700, width:160, height:170, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
-
-                {/* Ground shadow */}
-                <div style={{
-                  position:"absolute", bottom:0,
-                  width:78, height:14, borderRadius:"50%",
-                  background:"rgba(0,0,0,.52)", filter:"blur(7px)",
-                  animation: !rolling && r ? "d-shadow 880ms ease-in-out forwards" : undefined,
-                }} />
-
-                {/* Bounce wrapper */}
-                <div style={{
-                  position:"relative",
-                  animation: !rolling && r ? "d-bounce 880ms cubic-bezier(.36,.07,.19,.97) forwards" : undefined,
-                }}>
-                  {/* The cube */}
-                  <div style={{
-                    width:110, height:110,
-                    transformStyle:"preserve-3d",
-                    animation: rolling
-                      ? "d-tumble 2200ms cubic-bezier(.4,0,.15,1) forwards"
-                      : r
-                        ? `d-settle 370ms cubic-bezier(.34,1.56,.64,1) forwards`
-                        : undefined,
-                  }}>
-                    {faceSlots.map((slot, fi) => {
-                      const faceDots = dots[slot.faceNum] ?? []
-                      return (
-                        <div key={fi} style={{
-                          position:"absolute",
-                          width:110, height:110,
-                          borderRadius:16,
-                          background:slot.bg,
-                          border:"2px solid #d8d8d8",
-                          boxShadow:"inset 0 2px 3px rgba(255,255,255,.7), inset 0 -2px 5px rgba(0,0,0,.12)",
-                          transform:slot.transform,
-                          backfaceVisibility:"hidden",
-                        }}>
-                          {/* Inner bevel highlight */}
-                          <div style={{
-                            position:"absolute", inset:0, borderRadius:14,
-                            background:"linear-gradient(145deg, rgba(255,255,255,.55) 0%, transparent 52%)",
-                            pointerEvents:"none",
-                          }} />
-                          {/* Corner number (subtle) */}
-                          <span style={{
-                            position:"absolute", top:5, left:8,
-                            fontSize:10, color:"rgba(0,0,0,.15)",
-                            fontWeight:700, fontFamily:"monospace",
-                          }}>{slot.faceNum}</span>
-                          {/* Dots */}
-                          {faceDots.map((d, di) => <Dot key={di} {...d} />)}
-                        </div>
-                      )
-                    })}
+              {/* 3D scene — perspective on outer, preserve-3d on inner, rAF rotates cube */}
+              <div style={{ position:"relative" }}>
+                <div style={{ perspective:600, perspectiveOrigin:"50% 42%", width:160, height:160, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {/* rig: receives translateY (bounce) and scale */}
+                  <div id={`dice-rig-${animKey}`} style={{ position:"relative", transformStyle:"preserve-3d" }}>
+                    {/* cube: receives rotateX/rotateY */}
+                    <div id={`dice-cube-${animKey}`} style={{ width:110, height:110, transformStyle:"preserve-3d", position:"relative" }}>
+                      {FACE_CSS.map((faceTransform, fi) => {
+                        const fn = FACE_NUMS[fi]
+                        return (
+                          <div key={fi} style={{
+                            position:"absolute", width:110, height:110,
+                            borderRadius:14, border:"2px solid #ccc",
+                            transform:faceTransform,
+                            backfaceVisibility:"visible",
+                            overflow:"hidden",
+                          }}>
+                            {/* base white */}
+                            <div style={{ position:"absolute", inset:0, background:"linear-gradient(145deg,#fff,#e6e6e6)" }} />
+                            {/* shine */}
+                            <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,rgba(255,255,255,.65) 0%,transparent 52%)" }} />
+                            {/* pips */}
+                            {(PIPS[fn] ?? []).map(([t,l], pi) => <Pip key={pi} top={t} left={l} />)}
+                            {/* corner number */}
+                            <span style={{ position:"absolute", top:5, left:8, fontSize:9, fontWeight:700, fontFamily:"monospace", color:"rgba(0,0,0,.14)" }}>{fn}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
+                {/* Ground shadow */}
+                <div id={`dice-shadow-${animKey}`} style={{
+                  position:"absolute", bottom:-4, left:"50%",
+                  width:80, height:12, borderRadius:"50%",
+                  background:"rgba(0,0,0,.52)", filter:"blur(7px)",
+                  transform:"translateX(-50%)",
+                  transformOrigin:"center center",
+                }} />
               </div>
 
-              {/* Rolling indicator */}
+              {/* Rolling text */}
               {rolling && (
                 <div style={{ textAlign:"center" }}>
-                  <p style={{
-                    color:"#fff", fontWeight:700, fontSize:17,
-                    letterSpacing:"2px", textTransform:"uppercase",
-                    textShadow:"0 0 18px rgba(139,92,246,.85)", margin:"0 0 10px",
-                  }}>Rolando...</p>
+                  <p style={{ color:"#fff", fontWeight:700, fontSize:16, letterSpacing:"2px", textTransform:"uppercase", textShadow:"0 0 18px rgba(139,92,246,.9)", margin:"0 0 9px" }}>Rolando...</p>
                   <div style={{ display:"flex", gap:7, justifyContent:"center" }}>
                     {[0,1,2].map(i => (
-                      <div key={i} style={{
-                        width:8, height:8, borderRadius:"50%",
-                        background:"rgba(139,92,246,.9)",
-                        animation:`d-dot-idle 700ms ease-in-out ${i*180}ms infinite`,
-                      }} />
+                      <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:"rgba(139,92,246,.9)", animation:`dice-dot .7s ease-in-out ${i*.18}s infinite alternate` }} />
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Result */}
-              {!rolling && r && (
-                <div style={{ textAlign:"center", animation:"d-pop 480ms cubic-bezier(.34,1.56,.64,1) forwards" }}>
-                  {/* Big number */}
-                  <div style={{
-                    fontSize:82, fontWeight:900,
-                    color:col, lineHeight:1,
-                    fontFamily:"monospace",
-                    animation:"d-numglow 1.3s ease-in-out infinite",
-                    marginBottom:10,
-                  }}>{r}</div>
-                  {/* Label badge */}
-                  <div style={{
-                    display:"inline-block",
-                    padding:"7px 22px", borderRadius:24,
-                    background:`${col}22`,
-                    border:`1.5px solid ${col}88`,
-                    animation:"d-badgepulse 1.4s ease-in-out infinite",
-                  }}>
-                    <p style={{
-                      color:col, fontWeight:700, fontSize:13,
-                      letterSpacing:"1px", textTransform:"uppercase", margin:0,
-                    }}>{lbl}</p>
+              {!rolling && r !== null && (
+                <div style={{ textAlign:"center", animation:"dice-pop .5s cubic-bezier(.34,1.56,.64,1) forwards" }}>
+                  <div style={{ fontSize:82, fontWeight:900, fontFamily:"monospace", lineHeight:1, color:col, animation:"dice-glow 1.3s ease-in-out infinite", marginBottom:10 }}>{r}</div>
+                  <div style={{ display:"inline-block", padding:"7px 22px", borderRadius:24, background:`${col}22`, border:`1.5px solid ${col}88`, animation:"dice-badge 1.4s ease-in-out infinite" }}>
+                    <p style={{ color:col, fontWeight:700, fontSize:12, letterSpacing:"1px", textTransform:"uppercase", margin:0 }}>{lbl}</p>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* rAF animation script — runs once when rolling starts */}
+            {rolling && (
+              <script dangerouslySetInnerHTML={{ __html: `
+(function(){
+  var KEY='${animKey}';
+  var rig=document.getElementById('dice-rig-'+KEY);
+  var cube=document.getElementById('dice-cube-'+KEY);
+  var shad=document.getElementById('dice-shadow-'+KEY);
+  if(!rig||!cube) return;
+
+  var SETTLE={1:{rx:0,ry:0},2:{rx:0,ry:-90},3:{rx:-90,ry:0},4:{rx:90,ry:0},5:{rx:0,ry:90},6:{rx:0,ry:180}};
+  var result=${r ?? 0}||Math.ceil(Math.random()*6);
+  var target=SETTLE[result]||{rx:0,ry:0};
+
+  var endRX=target.rx+720+Math.round((Math.random()-.5)*4)*45;
+  var endRY=target.ry+1080+Math.round((Math.random()-.5)*4)*45;
+
+  var scaleKF=[.3,1.08,.93,1.04,.97,1.02,.99,1.005,1];
+  var TUMBLE=2000,rafId=null,t0=null;
+
+  function easeOut(t){return 1-Math.pow(1-t,3)}
+  function lerp(a,b,t){return a+(b-a)*t}
+
+  function tumble(ts){
+    if(!t0)t0=ts;
+    var p=Math.min((ts-t0)/TUMBLE,1);
+    var e=easeOut(p);
+    var crx=lerp(0,endRX,e);
+    var cry=lerp(0,endRY,e);
+    var si=Math.min(Math.floor(p*(scaleKF.length-1)),scaleKF.length-2);
+    var st=p*(scaleKF.length-1)-si;
+    var sc=lerp(scaleKF[si],scaleKF[si+1],st);
+    rig.style.transform='scale('+sc+')';
+    cube.style.transform='rotateX('+crx+'deg) rotateY('+cry+'deg)';
+    if(p<1){rafId=requestAnimationFrame(tumble);return;}
+    settle(endRX,endRY,sc);
+  }
+
+  function settle(fromRX,fromRY,fromSc){
+    var finalRX=Math.round(fromRX/360)*360+target.rx;
+    var finalRY=Math.round(fromRY/360)*360+target.ry;
+    var SETT=380,s0=null;
+    function frame(ts){
+      if(!s0)s0=ts;
+      var p=Math.min((ts-s0)/SETT,1);
+      var spring=p===1?1:1-Math.pow(2,-10*p)*Math.cos((p*10-.75)*2*Math.PI/3);
+      rig.style.transform='scale('+lerp(fromSc,1,spring)+')';
+      cube.style.transform='rotateX('+lerp(fromRX,finalRX,spring)+'deg) rotateY('+lerp(fromRY,finalRY,spring)+'deg)';
+      if(p<1){rafId=requestAnimationFrame(frame);return;}
+      bounce();
+    }
+    rafId=requestAnimationFrame(frame);
+  }
+
+  function bounce(){
+    var BOUNCE=850,b0=null;
+    function frame(ts){
+      if(!b0)b0=ts;
+      var bp=Math.min((ts-b0)/BOUNCE,1);
+      var ty=0;
+      if(bp<.22)      ty=lerp(0,-26,bp/.22);
+      else if(bp<.44) ty=lerp(-26,0,(bp-.22)/.22);
+      else if(bp<.60) ty=lerp(0,-11,(bp-.44)/.16);
+      else if(bp<.76) ty=lerp(-11,0,(bp-.6)/.16);
+      else if(bp<.88) ty=lerp(0,-4,(bp-.76)/.12);
+      else            ty=lerp(-4,0,(bp-.88)/.12);
+      rig.style.transform='translateY('+ty+'px) scale(1)';
+      if(shad){
+        var sc=ty<0?lerp(1,.45,Math.abs(ty)/26):1;
+        var op=ty<0?lerp(.52,.14,Math.abs(ty)/26):.52;
+        shad.style.transform='translateX(-50%) scaleX('+sc+')';
+        shad.style.opacity=op;
+      }
+      if(bp<1){rafId=requestAnimationFrame(frame);return;}
+      rig.style.transform='translateY(0) scale(1)';
+      if(shad){shad.style.transform='translateX(-50%) scaleX(1)';shad.style.opacity='.52';}
+    }
+    rafId=requestAnimationFrame(frame);
+  }
+
+  rafId=requestAnimationFrame(tumble);
+})();
+              ` }} />
+            )}
           </div>
         )
       })()}
