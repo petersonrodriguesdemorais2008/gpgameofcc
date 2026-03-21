@@ -2130,36 +2130,12 @@ function StarfieldCanvas() {
        Ice giant: pale aqua-cyan sphere, near-vertical rings (98° axial tilt),
        faint banding, thin ring system. Positioned left side of screen.       */
     function drawUranus(ts:number) {
-      const r    = Math.min(W,H) * .058   // slightly smaller than Saturn
+      const r    = Math.min(W,H) * .058
       const UX   = W * .18
       const UY   = H * .30
-      const band = ts * 0.00038           // slower rotation than Saturn
-      // Uranus rings are nearly vertical — tilt close to 90°
-      const RING_TILT = 0.92              // sin(67°) ≈ 0.92 → rings almost upright
+      const band = ts * 0.00038
 
       ctx.save(); ctx.translate(UX, UY)
-
-      /* ── Back ring halves (vertical rings behind planet) ── */
-      ctx.save(); ctx.scale(Math.sin(RING_TILT), 1) // scale X to tilt rings vertically
-      const URINGS = [
-        {ri:r*1.40, ro:r*1.55, a:.18},
-        {ri:r*1.58, ro:r*1.80, a:.22},
-        {ri:r*1.83, ro:r*2.00, a:.16},
-        {ri:r*2.04, ro:r*2.20, a:.12},
-      ]
-      URINGS.forEach(rr=>{
-        // Back half: right side of ring (in rotated coords = top half)
-        ctx.beginPath()
-        ctx.arc(0,0,rr.ro, -Math.PI/2, Math.PI/2, false)
-        ctx.arc(0,0,rr.ri,  Math.PI/2,-Math.PI/2, true)
-        ctx.closePath()
-        const rg=ctx.createRadialGradient(0,0,rr.ri,0,0,rr.ro)
-        rg.addColorStop(0,`rgba(100,205,215,${rr.a*.90})`)
-        rg.addColorStop(.5,`rgba(80,185,198,${rr.a})`)
-        rg.addColorStop(1,`rgba(55,155,170,${rr.a*.75})`)
-        ctx.fillStyle=rg; ctx.fill()
-      })
-      ctx.restore()
 
       /* ── Planet sphere — fully clipped ── */
       ctx.save()
@@ -2218,28 +2194,6 @@ function StarfieldCanvas() {
       atmo.addColorStop(0,"rgba(0,0,0,0)"); atmo.addColorStop(.78,"rgba(0,0,0,0)")
       atmo.addColorStop(.92,"rgba(40,180,200,.12)"); atmo.addColorStop(1,"rgba(0,0,0,0)")
       ctx.beginPath(); ctx.arc(0,0,r*1.50,0,Math.PI*2); ctx.fillStyle=atmo; ctx.fill()
-
-      /* ── Front ring halves (left side of ring) ── */
-      ctx.save(); ctx.scale(Math.sin(RING_TILT), 1)
-      URINGS.forEach(rr=>{
-        ctx.beginPath()
-        ctx.arc(0,0,rr.ro, Math.PI/2, -Math.PI/2, false)  // left arc
-        ctx.arc(0,0,rr.ri,-Math.PI/2,  Math.PI/2, true)
-        ctx.closePath()
-        const rg=ctx.createRadialGradient(0,0,rr.ri,0,0,rr.ro)
-        rg.addColorStop(0,`rgba(105,210,220,${rr.a*.92})`)
-        rg.addColorStop(.5,`rgba(82,192,202,${rr.a})`)
-        rg.addColorStop(1,`rgba(58,160,175,${rr.a*.78})`)
-        ctx.fillStyle=rg; ctx.fill()
-        // Lateral shading
-        const lg=ctx.createLinearGradient(0,-rr.ro,0,rr.ro)
-        lg.addColorStop(0,"rgba(0,0,0,.30)"); lg.addColorStop(.35,"rgba(255,255,255,.07)")
-        lg.addColorStop(.65,"rgba(255,255,255,.07)"); lg.addColorStop(1,"rgba(0,0,0,.30)")
-        ctx.beginPath()
-        ctx.arc(0,0,rr.ro, Math.PI/2,-Math.PI/2,false); ctx.arc(0,0,rr.ri,-Math.PI/2,Math.PI/2,true)
-        ctx.closePath(); ctx.fillStyle=lg; ctx.fill()
-      })
-      ctx.restore()
 
       ctx.restore() // main translate
     }
@@ -2333,9 +2287,11 @@ function StarfieldCanvas() {
       drawSaturn(ts)
       drawUranus(ts)
 
-      // Shooting stars: fast white + slow coloured
-      if(shootT%182===0) spawnShoot(true)
-      if(shootT%305===0) spawnShoot(false)
+      // Shooting stars: fast white + slow coloured — more frequent
+      if(shootT%80===0)  spawnShoot(true)
+      if(shootT%130===0) spawnShoot(true)
+      if(shootT%200===0) spawnShoot(false)
+      if(shootT%290===0) spawnShoot(false)
       for(let i=shoots.length-1;i>=0;i--){
         const sh=shoots[i]
         const tail=ctx.createLinearGradient(sh.x,sh.y,sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len)
