@@ -1850,6 +1850,295 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
   )
 }
 // ──────────────────────────────────────────────────────────────────────────────
+// ─── GameResultScreen ─────────────────────────────────────────────────────────
+
+interface GameResultScreenProps {
+  result: "won" | "lost"
+  onBack: () => void
+}
+
+function GameResultScreen({ result, onBack }: GameResultScreenProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef    = useRef<number>(0)
+  const isWon     = result === "won"
+
+  // Canvas particle system
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
+    resize()
+    window.addEventListener("resize", resize)
+    const ctx = canvas.getContext("2d")!
+
+    type P = {
+      x:number; y:number; vx:number; vy:number; size:number
+      alpha:number; decay:number; color:string; gravity:number
+      spin:number; spinV:number; shape:"rect"|"circle"|"star"|"diamond"
+    }
+
+    const particles: P[] = []
+    const W = () => canvas.width, H = () => canvas.height
+
+    const COLS_WON  = ["#ffd700","#ffe55c","#ffffff","#fbbf24","#86efac","#4ade80","#c084fc","#e879f9","#67e8f9"]
+    const COLS_LOST = ["#ef4444","#dc2626","#b91c1c","#f97316","#7f1d1d","#fca5a5","#450a0a","#ff6b6b"]
+
+    function burst(cx: number, cy: number, count: number) {
+      const cols = isWon ? COLS_WON : COLS_LOST
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = isWon ? 2 + Math.random() * 9 : 1 + Math.random() * 5
+        particles.push({
+          x: cx, y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - (isWon ? 4 : 1),
+          size: isWon ? 5 + Math.random() * 10 : 3 + Math.random() * 7,
+          alpha: 1,
+          decay: isWon ? 0.006 + Math.random() * 0.006 : 0.010 + Math.random() * 0.008,
+          color: cols[Math.floor(Math.random() * cols.length)],
+          gravity: isWon ? 0.15 : 0.08,
+          spin: Math.random() * Math.PI * 2,
+          spinV: (Math.random() - 0.5) * 0.20,
+          shape: isWon
+            ? (["rect","circle","star","diamond"] as const)[Math.floor(Math.random()*4)]
+            : (["circle","rect"] as const)[Math.floor(Math.random()*2)],
+        })
+      }
+    }
+
+    function drawStar(cx: number, cy: number, r: number, spin: number) {
+      ctx.beginPath()
+      for (let i = 0; i < 10; i++) {
+        const a   = spin + (i/10)*Math.PI*2
+        const rad = i%2===0 ? r : r*0.38
+        i===0 ? ctx.moveTo(cx+Math.cos(a)*rad, cy+Math.sin(a)*rad)
+              : ctx.lineTo(cx+Math.cos(a)*rad, cy+Math.sin(a)*rad)
+      }
+      ctx.closePath()
+    }
+
+    function drawDiamond(cx: number, cy: number, r: number, spin: number) {
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin)
+      ctx.beginPath()
+      ctx.moveTo(0, -r); ctx.lineTo(r*0.6, 0)
+      ctx.lineTo(0, r);  ctx.lineTo(-r*0.6, 0)
+      ctx.closePath(); ctx.restore()
+    }
+
+    // Initial burst from centre
+    burst(window.innerWidth/2, window.innerHeight/2, isWon ? 80 : 50)
+
+    // Side cannons for victory
+    if (isWon) {
+      setTimeout(() => burst(0, window.innerHeight*0.5, 40), 300)
+      setTimeout(() => burst(window.innerWidth, window.innerHeight*0.5, 40), 500)
+      setTimeout(() => burst(window.innerWidth/2, 0, 50), 700)
+      setTimeout(() => burst(window.innerWidth*0.25, window.innerHeight*0.3, 30), 900)
+      setTimeout(() => burst(window.innerWidth*0.75, window.innerHeight*0.3, 30), 1100)
+    } else {
+      setTimeout(() => burst(window.innerWidth/2, -20, 35), 400)
+      setTimeout(() => burst(window.innerWidth*0.3, -20, 25), 700)
+      setTimeout(() => burst(window.innerWidth*0.7, -20, 25), 900)
+    }
+
+    // Continuous rain
+    let frame = 0
+    function tick() {
+      rafRef.current = requestAnimationFrame(tick)
+      ctx.clearRect(0, 0, W(), H())
+      frame++
+
+      // Continuous drizzle
+      if (frame % (isWon ? 4 : 7) === 0) {
+        const cx = Math.random() * W()
+        const cy = isWon ? Math.random() * H() * 0.3 : -10
+        burst(cx, cy, isWon ? 4 : 2)
+      }
+
+      for (let i = particles.length-1; i >= 0; i--) {
+        const p = particles[i]
+        p.x += p.vx; p.y += p.vy
+        p.vy += p.gravity; p.vx *= 0.98
+        p.spin += p.spinV
+        p.alpha -= p.decay
+        if (p.alpha <= 0 || p.y > H()+40) { particles.splice(i,1); continue }
+
+        ctx.save()
+        ctx.globalAlpha = p.alpha
+        ctx.fillStyle   = p.color
+        ctx.shadowColor = p.color
+        ctx.shadowBlur  = isWon ? 10 : 6
+
+        if (p.shape === "rect") {
+          ctx.translate(p.x, p.y); ctx.rotate(p.spin)
+          ctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2)
+        } else if (p.shape === "star") {
+          drawStar(p.x, p.y, p.size/2, p.spin)
+          ctx.fill()
+        } else if (p.shape === "diamond") {
+          drawDiamond(p.x, p.y, p.size/2, p.spin)
+          ctx.fill()
+        } else {
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, p.size/2, 0, Math.PI*2)
+          ctx.fill()
+        }
+        ctx.restore()
+      }
+    }
+    tick()
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      window.removeEventListener("resize", resize)
+    }
+  }, [isWon])
+
+  const col    = isWon ? "#ffd700" : "#ef4444"
+  const colDim = isWon ? "rgba(251,191,36,.7)" : "rgba(248,113,113,.7)"
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:200,
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      overflow:"hidden",
+    }}>
+      <style>{`
+        @keyframes gr-bg  {from{opacity:0}to{opacity:1}}
+        @keyframes gr-pop {0%{transform:scale(.2) translateY(-20px);opacity:0;filter:blur(20px)}
+                           55%{transform:scale(1.06) translateY(4px);opacity:1;filter:blur(0)}
+                           75%{transform:scale(.97) translateY(-2px)}
+                           100%{transform:scale(1) translateY(0);opacity:1}}
+        @keyframes gr-up  {from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes gr-btn {0%{opacity:0;transform:scale(.88) translateY(16px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+        @keyframes gr-glw-w{0%,100%{text-shadow:0 0 40px #ffd700,0 0 80px #ffd70088,0 0 120px #ffd70044}
+                             50%{text-shadow:0 0 70px #ffd700,0 0 130px #fff700,0 0 200px #ffd70066}}
+        @keyframes gr-glw-l{0%,100%{text-shadow:0 0 40px #ef4444,0 0 80px #ef444466}
+                             50%{text-shadow:0 0 70px #ef4444,0 0 130px #dc2626,0 0 180px #ef444444}}
+        @keyframes gr-icon {0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.06)}}
+        @keyframes gr-shine{0%{left:-120%}100%{left:220%}}
+        @keyframes gr-ring {0%{transform:scale(0);opacity:.85}100%{transform:scale(4);opacity:0}}
+        @keyframes gr-line {from{width:0;opacity:0}to{width:220px;opacity:1}}
+        @keyframes gr-pulse{0%,100%{opacity:.6}50%{opacity:1}}
+      `}</style>
+
+      {/* Dark bg */}
+      <div style={{
+        position:"absolute", inset:0,
+        background: isWon
+          ? "radial-gradient(ellipse at 50% 38%, #1a1200 0%, #0a0800 50%, #000 100%)"
+          : "radial-gradient(ellipse at 50% 38%, #1a0000 0%, #080000 50%, #000 100%)",
+        animation:"gr-bg 350ms ease-out forwards",
+      }}/>
+
+      {/* Ambient glow behind title */}
+      <div style={{
+        position:"absolute", width:700, height:400, borderRadius:"50%",
+        background:`radial-gradient(ellipse, ${isWon?"rgba(251,191,36,.12)":"rgba(239,68,68,.10)"} 0%, transparent 70%)`,
+        top:"35%", left:"50%", transform:"translate(-50%,-50%)",
+        pointerEvents:"none", animation:"gr-pulse 2.5s ease-in-out 1s infinite",
+      }}/>
+
+      {/* Particle canvas */}
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1}}/>
+
+      {/* Expanding rings */}
+      {[0,180,360].map((delay,i)=>(
+        <div key={i} style={{
+          position:"absolute", borderRadius:"50%",
+          width:160+i*70, height:160+i*70,
+          border:`2px solid ${col}44`,
+          animation:`gr-ring 1.4s ease-out ${delay}ms both`,
+          pointerEvents:"none", zIndex:1,
+        }}/>
+      ))}
+
+      {/* Main content */}
+      <div style={{
+        position:"relative", zIndex:2,
+        display:"flex", flexDirection:"column",
+        alignItems:"center", gap:24, padding:"0 24px",
+        textAlign:"center",
+      }}>
+
+        {/* Emoji icon */}
+        <div style={{
+          fontSize:80, lineHeight:1,
+          filter:`drop-shadow(0 0 28px ${col})`,
+          animation:"gr-pop 750ms cubic-bezier(.34,1.56,.64,1) 80ms both, gr-icon 3s ease-in-out 1.2s infinite",
+        }}>
+          {isWon ? "🏆" : "💀"}
+        </div>
+
+        {/* Title */}
+        <h1 style={{
+          fontSize:"clamp(56px,13vw,104px)",
+          fontWeight:900, letterSpacing:"0.1em",
+          textTransform:"uppercase", color:col, margin:0,
+          fontFamily:"monospace", position:"relative", overflow:"hidden",
+          animation:`gr-pop 650ms cubic-bezier(.34,1.56,.64,1) 180ms both, ${isWon?"gr-glw-w":"gr-glw-l"} 2.2s ease-in-out 900ms infinite`,
+        }}>
+          {isWon ? "VITÓRIA" : "DERROTA"}
+          {/* Shine sweep */}
+          <span style={{
+            position:"absolute", top:0, left:"-120%",
+            width:"55%", height:"100%",
+            background:"linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent)",
+            animation:"gr-shine 1.3s ease-in-out 550ms both",
+            pointerEvents:"none",
+          }}/>
+        </h1>
+
+        {/* Horizontal rule */}
+        <div style={{
+          height:1,
+          background:`linear-gradient(to right,transparent,${col},transparent)`,
+          animation:"gr-line 600ms ease-out 700ms both",
+        }}/>
+
+        {/* Subtitle */}
+        <p style={{
+          color:colDim, fontSize:16, fontWeight:600,
+          letterSpacing:"0.22em", textTransform:"uppercase", margin:0,
+          animation:"gr-up 500ms ease-out 750ms both",
+        }}>
+          {isWon ? "O duelo terminou em sua glória" : "Você caiu em batalha"}
+        </p>
+
+        {/* Back button */}
+        <button
+          onClick={onBack}
+          style={{
+            marginTop:8, padding:"14px 52px",
+            borderRadius:12, fontWeight:700,
+            fontSize:15, letterSpacing:"1.5px",
+            textTransform:"uppercase", cursor:"pointer",
+            border:`2px solid ${col}99`,
+            background:`linear-gradient(135deg,${col}22,${col}0a)`,
+            color:col, backdropFilter:"blur(10px)",
+            animation:"gr-btn 550ms cubic-bezier(.34,1.56,.64,1) 1000ms both",
+            transition:"background 180ms, transform 120ms, box-shadow 180ms",
+            boxShadow:`0 0 0 0 ${col}44`,
+          }}
+          onMouseEnter={e=>{
+            e.currentTarget.style.background=`linear-gradient(135deg,${col}38,${col}18)`
+            e.currentTarget.style.boxShadow=`0 0 24px 4px ${col}33`
+            e.currentTarget.style.transform="scale(1.04)"
+          }}
+          onMouseLeave={e=>{
+            e.currentTarget.style.background=`linear-gradient(135deg,${col}22,${col}0a)`
+            e.currentTarget.style.boxShadow=`0 0 0 0 ${col}44`
+            e.currentTarget.style.transform="scale(1)"
+          }}
+        >
+          Voltar ao Menu
+        </button>
+      </div>
+    </div>
+  )
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const { t } = useLanguage()
@@ -5186,16 +5475,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   if (gameResult) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black/90" suppressHydrationWarning>
-        <h1 className={`text-6xl font-bold mb-8 ${gameResult === "won" ? "text-green-400" : "text-red-400"}`}>
-          {gameResult === "won" ? t("victory") : t("defeat")}
-        </h1>
-        <Button onClick={onBack} className="px-8 py-4 text-xl bg-gradient-to-r from-slate-700 to-slate-600">
-          {t("back")}
-        </Button>
-      </div>
-    )
+    return <GameResultScreen result={gameResult} onBack={onBack} />
   }
 
   return (
