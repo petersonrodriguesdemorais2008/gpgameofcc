@@ -1872,48 +1872,130 @@ function StarfieldCanvas() {
     function buildOff() {
       const OW=Math.round(W*2.2), OH=Math.round(H*2.2)
       off.width=OW; off.height=OH
-      oc.fillStyle="#02010a"; oc.fillRect(0,0,OW,OH)
 
+      // ── Deep space base: NOT pure black — subtle dark navy/indigo tint
+      const baseBg = oc.createRadialGradient(OW*.45,OH*.40,0, OW*.45,OH*.40, OW*.85)
+      baseBg.addColorStop(0,  "#07041a")
+      baseBg.addColorStop(.35,"#050314")
+      baseBg.addColorStop(.70,"#03020e")
+      baseBg.addColorStop(1,  "#020108")
+      oc.fillStyle=baseBg; oc.fillRect(0,0,OW,OH)
+
+      // ── Helper: soft elliptical nebula blob ──
+      function nebBlob(cx:number,cy:number,rx:number,ry:number,rot:number,col:string,alpha0:number,alpha1:number){
+        oc.save()
+        oc.translate(cx,cy); oc.rotate(rot); oc.scale(1,ry/rx)
+        const g=oc.createRadialGradient(0,0,0,0,0,rx)
+        g.addColorStop(0,  col.replace(/[\d.]+\)$/,String(alpha0)+")"))
+        g.addColorStop(.45,col.replace(/[\d.]+\)$/,String(alpha1)+")"))
+        g.addColorStop(.75,col.replace(/[\d.]+\)$/,"0.02)"))
+        g.addColorStop(1,  "rgba(0,0,0,0)")
+        oc.beginPath(); oc.arc(0,0,rx,0,Math.PI*2); oc.fillStyle=g; oc.fill()
+        oc.restore()
+      }
+
+      // ── LAYER 1: Large deep colour washes (whole scene tonality) ──
+      nebBlob(OW*.38,OH*.42, OW*.55,OH*.40,  .12, "rgba(55,15,130,1)", .14,.07)  // deep violet
+      nebBlob(OW*.72,OH*.30, OW*.48,OH*.38, -.18, "rgba(12,28,120,1)", .12,.06)  // deep blue
+      nebBlob(OW*.18,OH*.65, OW*.42,OH*.35,  .22, "rgba(80,8,110,1)",  .11,.05)  // deep purple
+      nebBlob(OW*.85,OH*.72, OW*.38,OH*.30, -.08, "rgba(8,45,100,1)",  .10,.04)  // deep navy
+      nebBlob(OW*.50,OH*.15, OW*.40,OH*.28,  .05, "rgba(18,60,110,1)", .09,.04)  // top blue
+
+      // ── LAYER 2: Mid nebulae — vivid clouds ──
+      // Rich magenta/purple cloud — left-centre
+      nebBlob(OW*.28,OH*.38, OW*.28,OH*.18,  .30, "rgba(160,40,220,1)", .16,.09)
+      nebBlob(OW*.32,OH*.40, OW*.16,OH*.12,  .18, "rgba(200,80,255,1)", .22,.12)
+      // Cyan/teal cloud — right
+      nebBlob(OW*.76,OH*.22, OW*.24,OH*.16, -.22, "rgba(20,160,200,1)", .18,.10)
+      nebBlob(OW*.80,OH*.25, OW*.14,OH*.10, -.15, "rgba(40,200,230,1)", .22,.12)
+      // Gold/amber warm cloud — bottom centre
+      nebBlob(OW*.50,OH*.78, OW*.30,OH*.18,  .08, "rgba(180,100,20,1)", .14,.07)
+      nebBlob(OW*.48,OH*.80, OW*.18,OH*.12, -.05, "rgba(220,140,40,1)", .18,.09)
+      // Pink/rose cloud — top right
+      nebBlob(OW*.82,OH*.12, OW*.22,OH*.14,  .40, "rgba(220,50,150,1)", .15,.08)
+      nebBlob(OW*.85,OH*.10, OW*.12,OH*.09,  .35, "rgba(255,100,180,1)",.20,.11)
+      // Blue-violet cloud — bottom left
+      nebBlob(OW*.12,OH*.80, OW*.24,OH*.16, -.30, "rgba(60,30,200,1)",  .15,.08)
+      nebBlob(OW*.10,OH*.82, OW*.14,OH*.10, -.22, "rgba(100,60,255,1)", .20,.10)
+
+      // ── LAYER 3: Bright emission cores (HII regions) ──
+      nebBlob(OW*.30,OH*.38, OW*.06,OH*.04, .18, "rgba(255,150,255,1)", .55,.30)
+      nebBlob(OW*.77,OH*.22, OW*.05,OH*.03,-.15, "rgba(100,230,255,1)", .58,.32)
+      nebBlob(OW*.50,OH*.79, OW*.05,OH*.03, .08, "rgba(255,180,80,1)",  .52,.28)
+      nebBlob(OW*.84,OH*.11, OW*.04,OH*.03, .35, "rgba(255,120,200,1)", .50,.26)
+      nebBlob(OW*.11,OH*.81, OW*.04,OH*.03,-.22, "rgba(140,100,255,1)", .50,.26)
+
+      // ── LAYER 4: Milky Way — diagonal luminous streak ──
       ;[
-        [.50,.31,.36,.082, .28,"rgba(58,18,138,.13)"],
-        [.24,.60,.26,.068,-.20,"rgba(18,52,158,.11)"],
-        [.68,.67,.31,.072, .44,"rgba(108,12,158,.11)"],
-        [.44,.79,.28,.060, .10,"rgba(38,15,108,.09)"],
-        [.72,.10,.22,.052,-.12,"rgba(10,72,138,.10)"],
-        [.08,.50,.18,.055, .22,"rgba(55,10,120,.09)"],
+        {cx:.55,cy:.08,rx:.60,ry:.06,rot:.28,a:.08},
+        {cx:.50,cy:.30,rx:.65,ry:.07,rot:.26,a:.10},
+        {cx:.44,cy:.52,rx:.62,ry:.06,rot:.24,a:.09},
+        {cx:.38,cy:.74,rx:.58,ry:.06,rot:.22,a:.07},
+      ].forEach(b=>{
+        nebBlob(OW*b.cx,OH*b.cy, OW*b.rx,OH*b.ry, b.rot, "rgba(180,180,255,1)", b.a, b.a*.5)
+        // Brighter inner streak
+        nebBlob(OW*b.cx,OH*b.cy, OW*b.rx*.4,OH*b.ry*.5, b.rot, "rgba(220,215,255,1)", b.a*1.5, b.a*.8)
+      })
+
+      // ── LAYER 5: Dark dust lanes over bright nebulae ──
+      ;[
+        [.32,.36,.18,.04, .24,"rgba(2,1,8,.55)"],
+        [.78,.20,.16,.03,-.18,"rgba(1,2,6,.50)"],
+        [.50,.78,.20,.03, .06,"rgba(2,1,6,.48)"],
+        [.84,.10,.14,.03, .38,"rgba(1,1,5,.45)"],
       ].forEach(([px,py,rx,ry,rot,col])=>{
         oc.save(); oc.translate(OW*(px as number),OH*(py as number))
         oc.rotate(rot as number); oc.scale(1,(ry as number)/(rx as number))
         const g=oc.createRadialGradient(0,0,0,0,0,OW*(rx as number))
-        g.addColorStop(0,(col as string).replace(/[\d.]+\)$/,"0.25)"))
-        g.addColorStop(.52,col as string); g.addColorStop(1,"rgba(0,0,0,0)")
+        g.addColorStop(0,col as string); g.addColorStop(.5,col as string); g.addColorStop(1,"rgba(0,0,0,0)")
         oc.beginPath(); oc.arc(0,0,OW*(rx as number),0,Math.PI*2); oc.fillStyle=g; oc.fill(); oc.restore()
       })
 
-      const SC=["#fff","#fff","#fff","#fff","#c8d8ff","#ffeedd","#b8ccff","#ffd8f0","#d8f8ff","#ffe8f8"]
-      // Dense base layer — tiny dim stars fill the black gaps
-      for(let i=0;i<3500;i++){
-        oc.globalAlpha=.04+Math.random()*.28
-        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.08+Math.random()*.55,0,Math.PI*2)
+      // ── LAYER 6: Stars ──
+      const SC=["#fff","#fff","#fff","#fff","#c8d8ff","#ffeedd","#b8d0ff","#ffd8f0","#d8f8ff","#ffe0e8","#e8ffee"]
+
+      // Base micro-stars — fills all black gaps
+      for(let i=0;i<4500;i++){
+        oc.globalAlpha=.03+Math.random()*.22
+        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.06+Math.random()*.40,0,Math.PI*2)
         oc.fillStyle="#ffffff"; oc.fill()
       }
-      // Mid-brightness coloured stars
-      for(let i=0;i<1200;i++){
-        oc.globalAlpha=.15+Math.random()*.50
-        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.2+Math.random()*1.1,0,Math.PI*2)
+      // Medium coloured stars
+      for(let i=0;i<1600;i++){
+        oc.globalAlpha=.12+Math.random()*.48
+        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.18+Math.random()*.95,0,Math.PI*2)
         oc.fillStyle=SC[Math.floor(Math.random()*SC.length)]; oc.fill()
       }
-      // Bright foreground stars with soft glow
-      for(let i=0;i<120;i++){
-        const sx=Math.random()*OW, sy=Math.random()*OH, sr=0.8+Math.random()*1.8
-        oc.globalAlpha=.55+Math.random()*.45
-        oc.beginPath(); oc.arc(sx,sy,sr,0,Math.PI*2)
+      // Extra density along milky way diagonal
+      for(let i=0;i<1200;i++){
+        const t=Math.random()
+        const mx=OW*(.62-t*.28)+( Math.random()-.5)*OW*.22
+        const my=OH*(t*.95+.04)
+        oc.globalAlpha=.05+Math.random()*.30
+        oc.beginPath(); oc.arc(mx,my,.06+Math.random()*.50,0,Math.PI*2)
         oc.fillStyle=SC[Math.floor(Math.random()*SC.length)]; oc.fill()
-        // Tiny halo
-        oc.globalAlpha=.08+Math.random()*.10
-        const hg=oc.createRadialGradient(sx,sy,0,sx,sy,sr*4)
-        hg.addColorStop(0,"rgba(255,255,255,1)"); hg.addColorStop(1,"rgba(0,0,0,0)")
-        oc.beginPath(); oc.arc(sx,sy,sr*4,0,Math.PI*2); oc.fillStyle=hg; oc.fill()
+      }
+      // Bright star points with cross-diffraction spikes
+      for(let i=0;i<160;i++){
+        const sx=Math.random()*OW, sy=Math.random()*OH
+        const sr=0.7+Math.random()*2.0
+        const col=SC[Math.floor(Math.random()*SC.length)]
+        // Core
+        oc.globalAlpha=.65+Math.random()*.35
+        oc.beginPath(); oc.arc(sx,sy,sr,0,Math.PI*2); oc.fillStyle=col; oc.fill()
+        // Halo
+        oc.globalAlpha=.07+Math.random()*.09
+        const hg=oc.createRadialGradient(sx,sy,0,sx,sy,sr*5.5)
+        hg.addColorStop(0,col); hg.addColorStop(.35,col.replace("#","rgba(").replace(/([0-9a-f]{2})/gi,(_,h)=>parseInt(h,16)+",")+"0.4)") ; hg.addColorStop(1,"rgba(0,0,0,0)")
+        oc.beginPath(); oc.arc(sx,sy,sr*5.5,0,Math.PI*2); oc.fillStyle=hg; oc.fill()
+        // Diffraction spikes (4-pointed cross)
+        if(sr>1.4){
+          oc.globalAlpha=.18+Math.random()*.18
+          oc.strokeStyle=col; oc.lineWidth=.5
+          const len=sr*8
+          oc.beginPath(); oc.moveTo(sx-len,sy); oc.lineTo(sx+len,sy); oc.stroke()
+          oc.beginPath(); oc.moveTo(sx,sy-len); oc.lineTo(sx,sy+len); oc.stroke()
+        }
       }
       oc.globalAlpha=1
     }
