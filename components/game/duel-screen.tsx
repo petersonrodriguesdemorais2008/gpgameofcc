@@ -2653,11 +2653,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     cardImage: string
     cardType: string
     fromX: number; fromY: number
-    toX: number;   toY: number
+    midX:  number; midY:  number
+    toX:   number; toY:   number
   } | null>(null)
   const [enemyDrawAnimation, setEnemyDrawAnimation] = useState<{
     fromX: number; fromY: number
-    toX: number;   toY: number
+    midX:  number; midY:  number
+    toX:   number; toY:   number
   } | null>(null)
   const [playerWentFirst, setPlayerWentFirst] = useState(true)
   const [playerField, setPlayerField] = useState<FieldState>({
@@ -2987,20 +2989,25 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const deckEl  = playerDeckRef.current
     const fieldEl = fieldRef.current
     if (!deckEl || !fieldEl) {
-      setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type, fromX:50, fromY:50, toX:50, toY:85 })
-      setTimeout(() => setDrawAnimation(null), 900)
+      setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type,
+        fromX:window.innerWidth*.78, fromY:window.innerHeight*.32,
+        midX:window.innerWidth*.50,  midY:window.innerHeight*.10,
+        toX:window.innerWidth*.50,   toY:window.innerHeight*.87 })
+      setTimeout(() => setDrawAnimation(null), 1100)
       return
     }
-    const dRect = deckEl.getBoundingClientRect()
-    const fRect = fieldEl.getBoundingClientRect()
-    // from: centre of player deck
-    const fromX = ((dRect.left + dRect.width/2  - fRect.left) / fRect.width)  * 100
-    const fromY = ((dRect.top  + dRect.height/2 - fRect.top)  / fRect.height) * 100
-    // to: bottom-centre of field (hand area)
-    const toX   = 50
-    const toY   = 93
-    setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type, fromX, fromY, toX, toY })
-    setTimeout(() => setDrawAnimation(null), 900)
+    const dr = deckEl.getBoundingClientRect()
+    const fx = dr.left + dr.width/2
+    const fy = dr.top  + dr.height/2
+    // destination: bottom-centre (hand area)
+    const tx = window.innerWidth  * 0.50
+    const ty = window.innerHeight * 0.87
+    // arc peak: midway but lifted up
+    const mx = (fx + tx) / 2
+    const my = Math.min(fy, ty) - window.innerHeight * 0.14
+    setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type,
+      fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
+    setTimeout(() => setDrawAnimation(null), 1100)
   }, [playerDeckRef, fieldRef])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
@@ -5246,12 +5253,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const deckEl  = enemyDeckRef.current
       const fieldEl = fieldRef.current
       if (deckEl && fieldEl) {
-        const dRect = deckEl.getBoundingClientRect()
-        const fRect = fieldEl.getBoundingClientRect()
-        const fromX = ((dRect.left + dRect.width/2  - fRect.left) / fRect.width)  * 100
-        const fromY = ((dRect.top  + dRect.height/2 - fRect.top)  / fRect.height) * 100
-        setEnemyDrawAnimation({ fromX, fromY, toX: 50, toY: 7 })
-        setTimeout(() => setEnemyDrawAnimation(null), 900)
+        const dr = deckEl.getBoundingClientRect()
+        const fx = dr.left + dr.width/2
+        const fy = dr.top  + dr.height/2
+        const tx = window.innerWidth  * 0.50
+        const ty = window.innerHeight * 0.13
+        const mx = (fx + tx) / 2
+        const my = Math.max(fy, ty) + window.innerHeight * 0.10
+        setEnemyDrawAnimation({ fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
+        setTimeout(() => setEnemyDrawAnimation(null), 1100)
       }
       setEnemyField((prev) => ({
         ...prev,
@@ -7125,89 +7135,152 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* ── Player Draw Animation — card flies from deck to hand ── */}
-      {drawAnimation && (
-        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-          <style>{`
-            @keyframes dc-fly {
-              0%   { transform: translate(var(--dc-fx), var(--dc-fy)) scale(0.55) rotateY(0deg);   opacity:0.4 }
-              15%  { opacity:1 }
-              50%  { transform: translate(calc(var(--dc-fx)*.35 + var(--dc-tx)*.65), calc(var(--dc-fy)*.35 + var(--dc-ty)*.65)) scale(1.05) rotateY(90deg); }
-              100% { transform: translate(var(--dc-tx), var(--dc-ty)) scale(1) rotateY(180deg);  opacity:0 }
-            }
-            @keyframes dc-glow {
-              0%,100% { box-shadow: 0 0 8px 3px rgba(99,200,255,0.5) }
-              50%      { box-shadow: 0 0 22px 8px rgba(99,200,255,0.85) }
-            }
-            .dc-card {
-              position: absolute;
-              width: 56px;
-              height: 80px;
-              border-radius: 6px;
-              transform-style: preserve-3d;
-              animation: dc-fly 0.85s cubic-bezier(.22,.68,0,1.2) forwards;
-              animation-timing-function: cubic-bezier(.35,.1,.25,1);
-              --dc-fx: calc(var(--dfx) * 1vw - 50%);
-              --dc-fy: calc(var(--dfy) * 1vh - 50%);
-              --dc-tx: calc(var(--dtx) * 1vw - 50%);
-              --dc-ty: calc(var(--dty) * 1vh - 50%);
-              left: 50%; top: 50%;
-            }
-            .dc-back {
-              position: absolute; inset: 0; backface-visibility: hidden; border-radius: 6px;
-              background: linear-gradient(135deg,#1e3a5f,#0d1f36);
-              border: 1.5px solid rgba(99,200,255,0.55);
-              animation: dc-glow 0.85s ease-in-out;
-              display: flex; align-items: center; justify-content: center;
-            }
-            .dc-front {
-              position: absolute; inset: 0; backface-visibility: hidden; border-radius: 6px;
-              transform: rotateY(180deg); overflow: hidden;
-              border: 1.5px solid rgba(255,255,255,0.3);
-            }
-            .dc-trail {
-              position: absolute; width: 56px; height: 80px;
-              border-radius: 6px; pointer-events: none;
-              background: rgba(99,200,255,0.08);
-              animation: dc-fly 0.85s cubic-bezier(.35,.1,.25,1) forwards;
-              animation-delay: 0.04s;
-              left: 50%; top: 50%;
-              --dc-fx: calc(var(--dfx) * 1vw - 50%);
-              --dc-fy: calc(var(--dfy) * 1vh - 50%);
-              --dc-tx: calc(var(--dtx) * 1vw - 50%);
-              --dc-ty: calc(var(--dty) * 1vh - 50%);
-            }
-          `}</style>
-          {/* Trail */}
-          <div className="dc-trail" style={{"--dfx":drawAnimation.fromX,"--dfy":drawAnimation.fromY,"--dtx":drawAnimation.toX,"--dty":drawAnimation.toY} as React.CSSProperties} />
-          {/* Card */}
-          <div className="dc-card" style={{"--dfx":drawAnimation.fromX,"--dfy":drawAnimation.fromY,"--dtx":drawAnimation.toX,"--dty":drawAnimation.toY} as React.CSSProperties}>
-            <div className="dc-back">
-              <div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,#4fc3f7,#0277bd)",opacity:0.8}} />
-            </div>
-            <div className="dc-front">
-              <img src={drawAnimation.cardImage} alt={drawAnimation.cardName} style={{width:"100%",height:"100%",objectFit:"cover"}} />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Draw Animations ── */}
+      {(drawAnimation || enemyDrawAnimation) && (()=>{
+        const anim = drawAnimation
+        const eAnim = enemyDrawAnimation
+        const W = 56, H = 80
 
-      {/* ── Enemy Draw Animation — card back only (opponent can't see your card) ── */}
-      {enemyDrawAnimation && (
-        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-          <div
-            className="dc-card"
-            style={{
-              "--dfx":enemyDrawAnimation.fromX,"--dfy":enemyDrawAnimation.fromY,
-              "--dtx":enemyDrawAnimation.toX,  "--dty":enemyDrawAnimation.toY,
-            } as React.CSSProperties}
-          >
-            <div className="dc-back">
-              <div style={{width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,#ef5350,#7b1fa2)",opacity:0.8}} />
-            </div>
+        // Build CSS for one card flight
+        function cardCSS(a:{fromX:number;fromY:number;midX:number;midY:number;toX:number;toY:number}, delay=0) {
+          const id = `dc${delay}`
+          return `
+            @keyframes ${id}-fly {
+              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.75) rotateY(0deg) rotateZ(-6deg); opacity:0; filter:blur(3px) }
+              8%   { opacity:1; filter:blur(0) }
+              45%  { transform:translate(${a.midX-W/2}px,${a.midY-H/2}px) scale(1.15) rotateY(90deg) rotateZ(3deg) }
+              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(1) rotateY(180deg) rotateZ(0deg); opacity:1 }
+            }
+            @keyframes ${id}-trail {
+              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.7); opacity:0.45 }
+              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(0.9); opacity:0 }
+            }
+            @keyframes ${id}-spark {
+              0%   { transform:translate(${a.toX}px,${a.toY}px) translate(0,0) scale(1); opacity:1 }
+              100% { transform:translate(${a.toX}px,${a.toY}px) translate(var(--sx),var(--sy)) scale(0); opacity:0 }
+            }
+            @keyframes dc-glow   { 0%,100%{box-shadow:0 0 10px 3px rgba(99,200,255,.55)} 50%{box-shadow:0 0 28px 9px rgba(99,200,255,.9),0 0 40px rgba(120,80,255,.5)} }
+            @keyframes dc-arrive { 0%{transform:scale(1.25);opacity:0} 70%{transform:scale(.94)} 100%{transform:scale(1);opacity:1} }
+            @keyframes dc-shine  { 0%{left:-100%;opacity:.85} 100%{left:210%;opacity:0} }
+          `
+        }
+
+        return (
+          <div style={{position:'fixed',inset:0,zIndex:55,pointerEvents:'none',overflow:'hidden'}}>
+            <style>{`
+              ${anim  ? cardCSS(anim,  0) : ''}
+              ${eAnim ? cardCSS(eAnim, 1) : ''}
+            `}</style>
+
+            {/* ── Player draw ── */}
+            {anim && (<>
+              {/* 3 trail ghosts */}
+              {[0,1,2].map(t=>(
+                <div key={t} style={{
+                  position:'absolute',left:0,top:0,width:W,height:H,borderRadius:7,
+                  background:`rgba(99,200,255,${0.07-t*0.018})`,
+                  border:`1px solid rgba(99,200,255,${0.18-t*0.05})`,
+                  animation:`dc0-trail ${0.55+t*0.08}s cubic-bezier(.4,.1,.2,1) ${t*0.06}s forwards`,
+                }}/>
+              ))}
+
+              {/* Main card */}
+              <div style={{
+                position:'absolute',left:0,top:0,width:W,height:H,
+                borderRadius:7,transformStyle:'preserve-3d',
+                animation:'dc0-fly .78s cubic-bezier(.25,.46,.45,.94) forwards',
+              }}>
+                {/* Back */}
+                <div style={{
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,
+                  background:'linear-gradient(145deg,#1e1248,#0d0820)',
+                  border:'1.5px solid rgba(120,80,255,0.72)',
+                  animation:'dc-glow .78s ease-in-out',
+                  display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',
+                }}>
+                  <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 35% 30%,rgba(120,80,255,0.38),transparent 65%)'}}/>
+                  <div style={{width:20,height:20,borderRadius:'50%',background:'radial-gradient(circle,#a78bfa,#4c1d95)',boxShadow:'0 0 12px rgba(167,139,250,0.85)'}}/>
+                  <div style={{position:'absolute',top:5,left:5,right:5,bottom:5,border:'1px solid rgba(120,80,255,0.28)',borderRadius:4}}/>
+                </div>
+                {/* Front — revealed after flip */}
+                <div style={{
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',
+                  transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',
+                  border:'1.5px solid rgba(255,255,255,0.35)',
+                }}>
+                  <img src={anim.cardImage} alt={anim.cardName} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  {/* Reveal shine sweep */}
+                  <div style={{
+                    position:'absolute',top:0,bottom:0,width:'40%',
+                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.32),transparent)',
+                    animation:'dc-shine .38s ease-in-out .55s both',borderRadius:7,
+                  }}/>
+                </div>
+              </div>
+
+              {/* Sparkles on arrival (delayed) */}
+              {Array.from({length:10}).map((_,i)=>{
+                const a=(i/10)*Math.PI*2
+                const dist=28+Math.floor(Math.random()*22)
+                return <div key={i} style={{
+                  position:'absolute',left:0,top:0,
+                  width:4+Math.floor(Math.random()*5),height:4+Math.floor(Math.random()*5),
+                  borderRadius:'50%',
+                  background:i%3===0?'#c4b5fd':i%3===1?'#60a5fa':'#f9fafb',
+                  animation:`dc0-spark .6s cubic-bezier(.2,0,.5,1) ${700+i*28}ms both`,
+                  '--sx':`${Math.cos(a)*dist}px`,'--sy':`${Math.sin(a)*dist}px`,
+                } as React.CSSProperties}/>
+              })}
+
+              {/* Arrival glow flash at hand */}
+              <div style={{
+                position:'absolute',
+                left:anim.toX-W/2-10, top:anim.toY-H/2-10,
+                width:W+20, height:H+20,
+                borderRadius:9,
+                background:'rgba(99,200,255,0.16)',
+                border:'1px solid rgba(99,200,255,0.45)',
+                animation:'dc-arrive .45s cubic-bezier(.34,1.56,.64,1) 0.72s both',
+              }}/>
+
+              {/* Card name label */}
+              <div style={{
+                position:'absolute',
+                left:anim.toX,top:anim.toY-H/2-28,
+                transform:'translateX(-50%)',
+                background:'rgba(0,0,0,0.75)',backdropFilter:'blur(6px)',
+                padding:'3px 10px',borderRadius:6,
+                border:'1px solid rgba(255,255,255,0.15)',
+                fontSize:11,fontWeight:700,color:'#e2e8f0',letterSpacing:'.5px',
+                whiteSpace:'nowrap',
+                animation:'dc-arrive .3s ease-out 0.68s both',
+              }}>
+                {anim.cardName}
+              </div>
+            </>)}
+
+            {/* ── Enemy draw — card back only ── */}
+            {eAnim && (
+              <div style={{
+                position:'absolute',left:0,top:0,width:W,height:H,
+                borderRadius:7,transformStyle:'preserve-3d',
+                animation:'dc1-fly .78s cubic-bezier(.25,.46,.45,.94) forwards',
+              }}>
+                <div style={{
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,
+                  background:'linear-gradient(145deg,#2d0a12,#1a0508)',
+                  border:'1.5px solid rgba(239,68,68,0.65)',
+                  display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',
+                }}>
+                  <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 35% 30%,rgba(220,38,38,0.30),transparent 65%)'}}/>
+                  <div style={{width:18,height:18,borderRadius:'50%',background:'radial-gradient(circle,#ef5350,#7b1fa2)',boxShadow:'0 0 10px rgba(239,83,80,0.8)'}}/>
+                  <div style={{position:'absolute',top:5,left:5,right:5,bottom:5,border:'1px solid rgba(239,68,68,0.25)',borderRadius:4}}/>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── Dice Roll Animation ── */}
       {diceAnimation && (()=>{
