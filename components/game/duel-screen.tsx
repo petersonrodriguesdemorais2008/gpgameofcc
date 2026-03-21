@@ -990,10 +990,17 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       allyUnits: 1,
     },
     canActivate: (context) => {
-      // Check for units with Neutral, Lightness, Ventus, or Void elements (Void is treated as Neutral)
+      // Cards treated as Lightness by name even if element tag differs
+      const lightnessNames = ["santo graal galahad", "mordred, o usurpador"]
+      const isLightnessByName = (u: any) =>
+        lightnessNames.some(n => u.name?.toLowerCase().includes(n))
+
       const validElements = ["neutral", "lightness", "ventus", "void"]
       const hasValidUnit = context.playerField.unitZone.some((u) =>
-        u !== null && validElements.includes(u.element?.toLowerCase() || "")
+        u !== null && (
+          validElements.includes(u.element?.toLowerCase() || "") ||
+          isLightnessByName(u)
+        )
       )
       if (!hasValidUnit) {
         return { canActivate: false, reason: "Precisa de unidade Neutral, Lightness, Ventus ou Void em campo" }
@@ -1012,12 +1019,21 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { success: false, message: "Unidade nao encontrada" }
       }
 
+      // Cards treated as Lightness by name
+      const lightnessNames = ["santo graal galahad", "mordred, o usurpador"]
+      const isLightnessByName = lightnessNames.some(n =>
+        allyUnit.name?.toLowerCase().includes(n)
+      )
+
       const validElements = ["neutral", "lightness", "ventus", "void"]
       const rawElement = allyUnit.element?.toLowerCase() || ""
       // Treat Void as Neutral for dice bonus purposes
-      const unitElement = rawElement === "void" ? "neutral" : rawElement
+      // Treat named Lightness cards as Lightness even if element tag differs
+      const effectiveElement = isLightnessByName
+        ? "lightness"
+        : rawElement === "void" ? "neutral" : rawElement
 
-      if (!validElements.includes(rawElement)) {
+      if (!validElements.includes(rawElement) && !isLightnessByName) {
         return { success: false, message: "Unidade deve ser Neutral, Lightness, Ventus ou Void" }
       }
 
@@ -1028,7 +1044,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
       if (diceResult >= 1 && diceResult <= 2) {
         dpBonus = 3
-        if (unitElement === "neutral") {
+        if (effectiveElement === "neutral") {
           // Bonus: Draw 1 card
           if (context.playerField.deck.length > 0) {
             const drawnCard = context.playerField.deck[0]
@@ -1042,14 +1058,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         }
       } else if (diceResult >= 3 && diceResult <= 4) {
         dpBonus = 4
-        if (unitElement === "lightness") {
+        if (effectiveElement === "lightness") {
           // Bonus: +2 LP
           context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Lightness: +2 LP!"
         }
       } else {
         dpBonus = 5
-        if (unitElement === "ventus") {
+        if (effectiveElement === "ventus") {
           // Bonus: +3 LP
           context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
           bonusMessage = " Bonus Ventus: +3 LP!"
@@ -1665,144 +1681,110 @@ const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
   5:{rx:0,  ry:90 }, 6:{rx:0,  ry:180},
 }
 
-function DiceCanvas3D({ result }: DiceCanvas3DProps) {
-  const wrapRef = useRef<HTMLDivElement>(null)  // position + scale + opacity (no preserve-3d)
-  const rigRef  = useRef<HTMLDivElement>(null)  // bounce translateY only (preserve-3d)
-  const cubeRef = useRef<HTMLDivElement>(null)  // rotateX/Y only (preserve-3d)
+function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=>void }) {
+  const rigRef  = useRef<HTMLDivElement>(null)
+  const cubeRef = useRef<HTMLDivElement>(null)
   const rollRef = useRef<((n:number)=>void)|null>(null)
   const rafRef  = useRef<number>(0)
 
   useEffect(()=>{
-    const wrap = wrapRef.current
     const rig  = rigRef.current
     const cube = cubeRef.current
-    if(!wrap||!rig||!cube) return
+    if(!rig||!cube) return
 
-    // Hidden until first roll
-    wrap.style.opacity   = '0'
-    wrap.style.transform = 'translate(0px,0px) scale(1)'
-    rig.style.transform  = 'translateY(0px)'
-    cube.style.transform = 'rotateX(0deg) rotateY(0deg)'
+    const lerp  = (a:number,b:number,t:number)=>a+(b-a)*t
 
-    const lerp  = (a:number,b:number,t:number) => a+(b-a)*t
-    const eOut3 = (t:number) => 1-Math.pow(1-t,3)
+    // Live rotation state
+    let rx = 0, ry = 0
+
+    // Start spinning immediately at full speed (no throw, no fade-in)
+    const FAST_X = 8   // deg/frame
+    const FAST_Y = 11  // deg/frame
+
+    function idleFrame(){
+      rafRef.current = requestAnimationFrame(idleFrame)
+      rx += FAST_X
+      ry += FAST_Y
+      cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+    }
+    rafRef.current = requestAnimationFrame(idleFrame)
 
     function doRoll(n:number){
       cancelAnimationFrame(rafRef.current)
 
       const target = DICE_SETTLE[n]
+      // Target: current position + many extra turns + face angle
+      const extraX  = 720 + Math.ceil(Math.random()*2)*360
+      const extraY  = 1080+ Math.ceil(Math.random()*2)*360
+      const finalRX = rx + (Math.random()>.5 ? extraX : -extraX) + (target.rx - ((rx % 360)+360)%360)
+      const finalRY = ry + (Math.random()>.5 ? extraY : -extraY) + (target.ry - ((ry % 360)+360)%360)
 
-      // Target rotation: face angle + many extra full spins
-      const finalRX = target.rx + (Math.random()>.5?1:-1)*720  + Math.ceil(Math.random()*2)*360
-      const finalRY = target.ry + (Math.random()>.5?1:-1)*1080 + Math.ceil(Math.random()*2)*360
+      // ── PHASE 1: DECELERATE  1800ms ────────────────────────────────
+      // Dice is already spinning; speed goes from FAST → 0, steering to face.
+      const DECEL_MS = 1800
+      const fromRX = rx, fromRY = ry
+      let d0: number|null = null
 
-      // Throw start: off-screen below + random side
-      const side  = Math.random()>.5 ? 1 : -1
-      const fromX = side * 220  // px horizontal
-      const fromY = 200         // px below (positive = down)
+      function decelFrame(ts:number){
+        if(!d0) d0=ts
+        const p = Math.min((ts-d0)/DECEL_MS, 1)
 
-      // Random initial rotation
-      let rx = Math.random()*360
-      let ry = Math.random()*360
-      cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
-
-      // Fast spin rate during throw (deg per rAF tick ~16ms)
-      const spinX = (6 + Math.random()*5) * (Math.random()>.5?1:-1)
-      const spinY = (8 + Math.random()*6) * (Math.random()>.5?1:-1)
-
-      // ── PHASE 1: THROW  450ms ────────────────────────────────────────
-      // Wrapper flies from off-screen to centre; cube spins at full speed.
-      const THROW_MS = 450
-      let t0: number|null = null
-      wrap.style.opacity = '1'
-
-      function throwFrame(ts:number){
-        if(!t0) t0=ts
-        const p  = Math.min((ts-t0)/THROW_MS, 1)
-        const ep = eOut3(p)
-
-        // Arc: side+below → centre, with parabolic lift mid-flight
-        const tx = lerp(fromX, 0, ep)
-        const ty = lerp(fromY, 0, ep) - Math.sin(p*Math.PI)*55
-        const sc = lerp(0.25, 1, ep)
-
-        // Position/scale on wrapper (no preserve-3d)
-        wrap.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`
-
-        // Full-speed spin on cube
-        rx += spinX
-        ry += spinY
-        cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
-
-        if(p < 1){ rafRef.current=requestAnimationFrame(throwFrame); return }
-
-        wrap.style.transform = 'translate(0px,0px) scale(1)'
-
-        // ── PHASE 2: SPIN + DECELERATE  1800ms ───────────────────────
-        // Cube keeps spinning but decelerates and steers toward target face.
-        const SPIN_MS = 1800
-        let s0: number|null = null
-
-        function spinFrame(ts:number){
-          if(!s0) s0=ts
-          const p = Math.min((ts-s0)/SPIN_MS, 1)
-
-          if(p < 0.6){
-            // Decelerate: speed goes 1→0 with ease-out curve
-            const spd = Math.pow(1-p/0.6, 2)
-            rx += spinX * spd
-            ry += spinY * spd
-          } else {
-            // Steer to final angle (lerp accelerates as p→1)
-            const tp = (p-0.6)/0.4
-            rx = lerp(rx, finalRX, tp*0.08)
-            ry = lerp(ry, finalRY, tp*0.08)
-          }
-
-          cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
-          if(p < 1){ rafRef.current=requestAnimationFrame(spinFrame); return }
-
-          // ── PHASE 3: SETTLE  spring 380ms ────────────────────────────
-          const snapRX  = Math.round(finalRX/360)*360 + target.rx
-          const snapRY  = Math.round(finalRY/360)*360 + target.ry
-          const fRX = rx, fRY = ry
-          const SETTLE = 380; let ss0:number|null=null
-
-          function settleFrame(ts:number){
-            if(!ss0) ss0=ts
-            const sp = Math.min((ts-ss0)/SETTLE, 1)
-            const spring = sp===1?1:1-Math.pow(2,-10*sp)*Math.cos((sp*10-.75)*2*Math.PI/3)
-            rx = lerp(fRX, snapRX, spring)
-            ry = lerp(fRY, snapRY, spring)
-            cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
-            if(sp<1){ rafRef.current=requestAnimationFrame(settleFrame); return }
-            rx=snapRX; ry=snapRY
-            cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
-
-            // ── PHASE 4: BOUNCE  820ms ────────────────────────────────
-            // Bounce on rig (translateY only — preserve-3d safe)
-            const BOUNCE=820; let bt0:number|null=null
-            function bounceFrame(ts:number){
-              if(!bt0) bt0=ts
-              const bp=Math.min((ts-bt0)/BOUNCE,1)
-              let ty=0
-              if(bp<.22)       ty=lerp(0,-26,bp/.22)
-              else if(bp<.44)  ty=lerp(-26,0,(bp-.22)/.22)
-              else if(bp<.60)  ty=lerp(0,-11,(bp-.44)/.16)
-              else if(bp<.76)  ty=lerp(-11,0,(bp-.60)/.16)
-              else if(bp<.88)  ty=lerp(0,-4,(bp-.76)/.12)
-              else              ty=lerp(-4,0,(bp-.88)/.12)
-              rig.style.transform=`translateY(${ty}px)`
-              if(bp<1){ rafRef.current=requestAnimationFrame(bounceFrame); return }
-              rig.style.transform='translateY(0px)'
-            }
-            rafRef.current=requestAnimationFrame(bounceFrame)
-          }
-          rafRef.current=requestAnimationFrame(settleFrame)
+        if(p < 0.65){
+          // Decelerate: cubic ease-out on speed multiplier
+          const spd = Math.pow(1 - p/0.65, 2)
+          rx += FAST_X * spd
+          ry += FAST_Y * spd
+        } else {
+          // Steer firmly toward final angle
+          const t2 = (p - 0.65) / 0.35
+          rx = lerp(rx, finalRX, t2 * 0.10)
+          ry = lerp(ry, finalRY, t2 * 0.10)
         }
-        rafRef.current=requestAnimationFrame(spinFrame)
+
+        cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+        if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
+
+        // ── PHASE 2: SETTLE  spring 360ms ──────────────────────────
+        const snapRX  = Math.round(finalRX/360)*360 + target.rx
+        const snapRY  = Math.round(finalRY/360)*360 + target.ry
+        const fRX = rx, fRY = ry
+        const SETTLE = 360; let ss0:number|null=null
+
+        // Signal result as soon as dice starts settling (player can read it)
+        onSettled?.()
+
+        function settleFrame(ts:number){
+          if(!ss0) ss0=ts
+          const sp = Math.min((ts-ss0)/SETTLE, 1)
+          const spring = sp===1?1:1-Math.pow(2,-10*sp)*Math.cos((sp*10-.75)*2*Math.PI/3)
+          rx = lerp(fRX, snapRX, spring)
+          ry = lerp(fRY, snapRY, spring)
+          cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+          if(sp<1){ rafRef.current=requestAnimationFrame(settleFrame); return }
+          rx=snapRX; ry=snapRY
+          cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+
+          // ── PHASE 3: BOUNCE  800ms ──────────────────────────────
+          const BOUNCE=800; let bt0:number|null=null
+          function bounceFrame(ts:number){
+            if(!bt0) bt0=ts
+            const bp=Math.min((ts-bt0)/BOUNCE,1)
+            let ty=0
+            if(bp<.22)      ty=lerp(0,-28,bp/.22)
+            else if(bp<.44) ty=lerp(-28,0,(bp-.22)/.22)
+            else if(bp<.60) ty=lerp(0,-12,(bp-.44)/.16)
+            else if(bp<.76) ty=lerp(-12,0,(bp-.60)/.16)
+            else if(bp<.88) ty=lerp(0,-5,(bp-.76)/.12)
+            else             ty=lerp(-5,0,(bp-.88)/.12)
+            rig.style.transform=`translateY(${ty}px)`
+            if(bp<1){ rafRef.current=requestAnimationFrame(bounceFrame); return }
+            rig.style.transform='translateY(0px)'
+          }
+          rafRef.current=requestAnimationFrame(bounceFrame)
+        }
+        rafRef.current=requestAnimationFrame(settleFrame)
       }
-      rafRef.current=requestAnimationFrame(throwFrame)
+      rafRef.current=requestAnimationFrame(decelFrame)
     }
 
     rollRef.current=doRoll
@@ -1833,22 +1815,19 @@ function DiceCanvas3D({ result }: DiceCanvas3DProps) {
         .dc-shine{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.75) 0%,transparent 52%)}
         .dc-dot  {position:absolute;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 36% 32%,#3a3a3a,#000);box-shadow:0 1px 4px rgba(0,0,0,.55),inset 0 1px 1px rgba(255,255,255,.08);transform:translate(-50%,-50%)}
       `}</style>
-      {/* wrapRef: position + scale only, no preserve-3d */}
-      <div ref={wrapRef} style={{display:'inline-block'}}>
-        <div className="dc-scene">
-          <div ref={rigRef} className="dc-rig">
-            <div ref={cubeRef} className="dc-cube">
-              {DICE_FACE_NUMS.map((faceNum,fi)=>(
-                <div key={fi} className={`dc-face dc-face-${faceClasses[fi]}`}>
-                  <div className="dc-fb" />
-                  <div className="dc-shine" />
-                  {DICE_PIPS[faceNum].map(([top,left],pi)=>(
-                    <div key={pi} className="dc-dot" style={{top:`${top}%`,left:`${left}%`}} />
-                  ))}
-                  <span style={{position:'absolute',top:5,left:8,fontSize:9,fontWeight:700,fontFamily:'monospace',color:'rgba(0,0,0,.12)',pointerEvents:'none'}}>{faceNum}</span>
-                </div>
-              ))}
-            </div>
+      <div className="dc-scene">
+        <div ref={rigRef} className="dc-rig">
+          <div ref={cubeRef} className="dc-cube">
+            {DICE_FACE_NUMS.map((faceNum,fi)=>(
+              <div key={fi} className={`dc-face dc-face-${faceClasses[fi]}`}>
+                <div className="dc-fb"/>
+                <div className="dc-shine"/>
+                {DICE_PIPS[faceNum].map(([top,left],pi)=>(
+                  <div key={pi} className="dc-dot" style={{top:`${top}%`,left:`${left}%`}}/>
+                ))}
+                <span style={{position:'absolute',top:5,left:8,fontSize:9,fontWeight:700,fontFamily:'monospace',color:'rgba(0,0,0,.12)',pointerEvents:'none'}}>{faceNum}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -2214,11 +2193,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [markDestroyed])
   const rollDice = useCallback((cardName: string): Promise<number> => {
     return new Promise((resolve) => {
-      setDiceAnimation({ visible: true, rolling: true, result: null, cardName, onComplete: null })
+      // Compute result immediately so the dice can start decelerating to the right face from frame 1
+      const result = Math.floor(Math.random() * 6) + 1
+      // rolling=true hides the result number; rolling=false reveals it
+      // We pass result from the start so DiceCanvas3D can decelerate to the correct face immediately
+      setDiceAnimation({ visible: true, rolling: true, result, cardName, onComplete: null })
+      // After dice physics finishes decelerating (~1800ms), reveal the number
       setTimeout(() => {
-        const result = Math.floor(Math.random() * 6) + 1
-        setDiceAnimation((prev) => prev ? { ...prev, rolling: false, result } : null)
-        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1500)
+        setDiceAnimation((prev) => prev ? { ...prev, rolling: false } : null)
+        // Close 1800ms after number is revealed (bounce plays during this time)
+        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1800)
       }, 2000)
     })
   }, [])
@@ -6365,7 +6349,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       {/* ── Dice Roll Animation ── */}
       {diceAnimation && (()=>{
         const rolling = diceAnimation.rolling
-        const r       = diceAnimation.result
+        const r       = diceAnimation.result  // always set from frame 1
 
         const TIER: Record<number,{col:string,bg:string,border:string,label:string,icon:string,name:string}> = {
           1:{col:'#f87171',bg:'rgba(239,68,68,.14)', border:'rgba(239,68,68,.6)', label:'RESULTADO BAIXO', icon:'💀',name:'red'},
@@ -6398,15 +6382,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             {/* Backdrop */}
             <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,rgba(18,8,44,.92),rgba(0,0,0,.88))',animation:'d-in 200ms ease-out forwards'}} />
 
-            {/* Result FX */}
+            {/* Result FX — appears when rolling flips to false (dice has settled) */}
             {!rolling && r!==null && t && (()=>{
               const sparks = Array.from({length:14}).map((_,i)=>{
                 const a=(i/14)*Math.PI*2
-                const dist=t.name==='green'?
-                  72+(i%3)*26 : 72+(i%3)*26
-                const baseAngle = t.name==='green'
-                  ? -Math.PI/2+(Math.random()-.5)*Math.PI*.85
-                  : a
+                const dist=72+(i%3)*26
+                const baseAngle = t.name==='green' ? -Math.PI/2+(Math.random()-.5)*Math.PI*.85 : a
                 const sz=i%3===0?10:i%3===1?7:5
                 return <div key={i} style={{
                   position:'absolute',width:sz,height:sz,borderRadius:'50%',
@@ -6455,10 +6436,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 <p style={{color:'#fcd34d',fontWeight:700,fontSize:15,margin:0,letterSpacing:'.5px'}}>{diceAnimation.cardName}</p>
               </div>
 
-              {/* 3D CSS dice */}
+              {/* 3D CSS dice — result passed immediately so it decelerates to correct face from frame 1 */}
               <DiceCanvas3D result={r} cardName={diceAnimation.cardName} />
 
-              {/* Rolling text */}
+              {/* Rolling text — shown while dice is still spinning */}
               {rolling && (
                 <div style={{textAlign:'center'}}>
                   <p style={{color:'#fff',fontWeight:700,fontSize:16,letterSpacing:'2px',textTransform:'uppercase',textShadow:'0 0 16px rgba(139,92,246,.9)',margin:'0 0 9px'}}>Rolando...</p>
@@ -6470,7 +6451,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 </div>
               )}
 
-              {/* Result */}
+              {/* Result — appears when dice has settled (rolling=false) while bounce still plays */}
               {!rolling && r!==null && t && (
                 <div style={{textAlign:'center',animation:'d-pop .5s cubic-bezier(.34,1.56,.64,1) forwards'}}>
                   <div style={{fontSize:84,fontWeight:900,fontFamily:'monospace',lineHeight:1,color:t.col,marginBottom:10,animation:'d-numgl 1.4s ease-in-out .5s infinite'}}>{r}</div>
