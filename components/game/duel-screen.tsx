@@ -1684,13 +1684,14 @@ const DICE_FACES = [
 ]
 
 function DiceCanvas3D({ result }: DiceCanvas3DProps) {
-  const canvasRef = React.useRef<HTMLCanvasElement>(null)
-  const rafRef    = React.useRef<number>(0)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef    = useRef<number>(0)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext("2d")!
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
     const W = canvas.width  = 220
     const H = canvas.height = 220
     const CX = W/2, CY = H/2
@@ -1739,7 +1740,8 @@ function DiceCanvas3D({ result }: DiceCanvas3DProps) {
       })
 
       const sorted = DICE_FACES.map((face,fi) => {
-        const n = rotVert(...DICE_FACE_NORMALS[fi] as [number,number,number],rx,ry)
+        const nrm = DICE_FACE_NORMALS[fi]
+        const n = rotVert(nrm[0], nrm[1], nrm[2], rx, ry)
         const avgZ = face.vi.reduce((s,i)=>s+proj[i].w[2],0)/4
         return { face, n2:n[2], avgZ }
       }).sort((a,b)=>a.avgZ-b.avgZ)
@@ -1800,7 +1802,7 @@ function DiceCanvas3D({ result }: DiceCanvas3DProps) {
     const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
     const spr =(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*2*Math.PI/3)
 
-    let phase:"tumble"|"settle"|"bounce"|"done"="tumble"
+    let phase: "tumble"|"settle"|"bounce"|"done" = "tumble"
     let rx2=0,ry2=0,sc2=0.4,dy2=0
     let fromRX=0,fromRY=0,fromSc=1
     let t0:number|null=null,ps:number|null=null
