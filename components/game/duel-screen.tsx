@@ -6248,6 +6248,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       {enemyField.graveyard.length}
                     </div>
                     <div ref={enemyDeckRef} className="w-16 h-24 relative">
+                      {enemyField.deck.length > 0 ? (
                         <>
                           {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) => (
                             <div
