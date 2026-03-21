@@ -1851,140 +1851,277 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
 }
 // ──────────────────────────────────────────────────────────────────────────────
 // ─── StarfieldCanvas ───────────────────────────────────────────────────────────
-// Animated deep-space background: parallax star layers + nebula + shooting stars.
+// Galaxy background: spiral arms, volumetric nebulae (purple/blue), parallax
+// star fields, drifting dust, cross sparkles, shooting stars. Canvas rAF loop.
 
 function StarfieldCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")!
+    const cv = canvasRef.current
+    if (!cv) return
+    const ctx = cv.getContext("2d")!
 
     let W = 0, H = 0
     function resize() {
-      W = canvas.width  = window.innerWidth
-      H = canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener("resize", resize)
-
-    type Star = {
-      x:number; y:number; z:number
-      size:number; alpha:number
-      twinkleSpeed:number; twinklePhase:number
-      color:string
+      W = cv.width  = window.innerWidth
+      H = cv.height = window.innerHeight
+      buildNebula()
     }
 
-    const STAR_COLORS = [
-      "#ffffff","#ffffff","#ffffff",
-      "#c8d8ff","#ffeedd","#aaccff","#ffddaa",
-    ]
+    /* ── Offscreen nebula canvas (2× screen, re-built on resize) ── */
+    const off = document.createElement("canvas")
+    const oc  = off.getContext("2d")!
 
-    const stars: Star[] = []
-    for (let i = 0; i < 320; i++) {
-      const z = Math.random()
-      stars.push({
-        x: Math.random() * 2000,
-        y: Math.random() * 2000,
-        z,
-        size: 0.3 + z * 2.2 + Math.random() * 0.6,
-        alpha: 0.3 + z * 0.5 + Math.random() * 0.2,
-        twinkleSpeed: 0.4 + Math.random() * 1.8,
-        twinklePhase: Math.random() * Math.PI * 2,
-        color: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)],
+    function radG(
+      c: CanvasRenderingContext2D,
+      x: number, y: number, r: number,
+      stops: [number, string][]
+    ) {
+      const g = c.createRadialGradient(x, y, 0, x, y, r)
+      stops.forEach(([t, col]) => g.addColorStop(t, col))
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2)
+      c.fillStyle = g; c.fill()
+    }
+
+    function buildNebula() {
+      const OW = W * 2, OH = H * 2
+      off.width = OW; off.height = OH
+
+      /* Base */
+      oc.fillStyle = "#03020a"; oc.fillRect(0, 0, OW, OH)
+
+      /* ── Galaxy 1: large central purple/indigo ── */
+      const g1x = OW * .38, g1y = OH * .45
+      radG(oc, g1x, g1y, OW*.30, [[0,"rgba(120,50,220,.22)"],[.25,"rgba(80,30,160,.16)"],[.55,"rgba(40,15,90,.08)"],[.85,"rgba(15,5,50,.04)"],[1,"rgba(0,0,0,0)"]])
+      radG(oc, g1x, g1y, OW*.13, [[0,"rgba(190,120,255,.32)"],[.45,"rgba(120,60,230,.18)"],[1,"rgba(0,0,0,0)"]])
+      radG(oc, g1x, g1y, OW*.045,[[0,"rgba(255,240,255,.65)"],[.55,"rgba(200,160,255,.30)"],[1,"rgba(0,0,0,0)"]])
+
+      /* Spiral arms for galaxy 1 */
+      for (let arm = 0; arm < 4; arm++) {
+        const base = arm * Math.PI / 2
+        for (let i = 0; i < 200; i++) {
+          const t  = i / 200
+          const r  = t * OW * .28
+          const a  = base + t * Math.PI * 3.4
+          const x  = g1x + Math.cos(a) * r
+          const y  = g1y + Math.sin(a) * r * 0.58
+          const sz = 0.6 + t * 5
+          oc.globalAlpha = Math.max(0, (0.55 - t) * 0.18)
+          oc.beginPath(); oc.arc(x, y, sz, 0, Math.PI * 2)
+          oc.fillStyle = arm % 2 === 0 ? "rgba(170,100,255,1)" : "rgba(90,150,255,1)"
+          oc.fill()
+        }
+      }
+      oc.globalAlpha = 1
+
+      /* ── Galaxy 2: right side blue/cyan ── */
+      const g2x = OW * .78, g2y = OH * .28
+      radG(oc, g2x, g2y, OW*.24, [[0,"rgba(30,80,220,.22)"],[.30,"rgba(20,55,170,.15)"],[.62,"rgba(10,35,100,.07)"],[1,"rgba(0,0,0,0)"]])
+      radG(oc, g2x, g2y, OW*.10, [[0,"rgba(110,190,255,.34)"],[.42,"rgba(50,130,230,.18)"],[1,"rgba(0,0,0,0)"]])
+      radG(oc, g2x, g2y, OW*.032,[[0,"rgba(230,245,255,.68)"],[.5,"rgba(170,210,255,.28)"],[1,"rgba(0,0,0,0)"]])
+
+      /* ── Galaxy 3: bottom-left pink/magenta dwarf ── */
+      const g3x = OW * .18, g3y = OH * .73
+      radG(oc, g3x, g3y, OW*.20, [[0,"rgba(200,55,190,.20)"],[.35,"rgba(140,25,140,.13)"],[.70,"rgba(70,10,80,.06)"],[1,"rgba(0,0,0,0)"]])
+      radG(oc, g3x, g3y, OW*.08, [[0,"rgba(255,160,255,.34)"],[.42,"rgba(200,80,230,.18)"],[1,"rgba(0,0,0,0)"]])
+      radG(oc, g3x, g3y, OW*.025,[[0,"rgba(255,230,255,.60)"],[.5,"rgba(220,150,255,.22)"],[1,"rgba(0,0,0,0)"]])
+
+      /* ── Nebula tendrils (elongated streaks) ── */
+      ;[
+        {px:.54,py:.30,rx:.36,ry:.088,rot: .32,col:"rgba(60,25,150,.10)"},
+        {px:.28,py:.62,rx:.26,ry:.068,rot:-.22,col:"rgba(25,65,170,.09)"},
+        {px:.70,py:.67,rx:.30,ry:.075,rot: .48,col:"rgba(110,18,170,.09)"},
+        {px:.12,py:.38,rx:.18,ry:.055,rot: .14,col:"rgba(18,85,130,.08)"},
+        {px:.85,py:.58,rx:.20,ry:.055,rot:-.32,col:"rgba(90,8,130,.08)"},
+        {px:.50,py:.82,rx:.28,ry:.065,rot: .08,col:"rgba(40,20,110,.07)"},
+      ].forEach(n => {
+        oc.save()
+        oc.translate(OW * n.px, OH * n.py)
+        oc.rotate(n.rot)
+        oc.scale(1, n.ry / n.rx)
+        const g = oc.createRadialGradient(0,0,0,0,0,OW*n.rx)
+        g.addColorStop(0, n.col.replace(/[\d.]+\)$/, "0.20)"))
+        g.addColorStop(.5, n.col)
+        g.addColorStop(1, "rgba(0,0,0,0)")
+        oc.beginPath(); oc.arc(0, 0, OW * n.rx, 0, Math.PI * 2)
+        oc.fillStyle = g; oc.fill()
+        oc.restore()
       })
+
+      /* ── Dense star clusters around galaxy cores ── */
+      function cluster(cx: number, cy: number, count: number, radius: number, col: string) {
+        for (let i = 0; i < count; i++) {
+          const a  = Math.random() * Math.PI * 2
+          const r  = Math.pow(Math.random(), 1.6) * radius
+          const sz = 0.2 + Math.random() * 1.5
+          oc.globalAlpha = 0.25 + Math.random() * 0.6
+          oc.beginPath(); oc.arc(cx + Math.cos(a)*r, cy + Math.sin(a)*r, sz, 0, Math.PI*2)
+          oc.fillStyle = col; oc.fill()
+        }
+        oc.globalAlpha = 1
+      }
+      cluster(g1x, g1y, 700, OW*.28, "#ddc8ff")
+      cluster(g2x, g2y, 450, OW*.20, "#c0d8ff")
+      cluster(g3x, g3y, 320, OW*.18, "#ffccff")
+
+      /* ── Background field stars ── */
+      const STAR_COLS = ["#fff","#fff","#fff","#c8d8ff","#ffeedd","#b8ccff","#ffd8f0"]
+      for (let i = 0; i < 900; i++) {
+        oc.globalAlpha = 0.12 + Math.random() * 0.55
+        oc.beginPath()
+        oc.arc(Math.random()*OW, Math.random()*OH, 0.2+Math.random()*1.2, 0, Math.PI*2)
+        oc.fillStyle = STAR_COLS[Math.floor(Math.random()*STAR_COLS.length)]
+        oc.fill()
+      }
+      oc.globalAlpha = 1
     }
 
-    type Shoot = { x:number; y:number; vx:number; vy:number; len:number; alpha:number; decay:number }
+    /* ── Runtime: drifting dust particles ── */
+    type Dust = {
+      x:number;y:number;vx:number;vy:number
+      size:number;alpha:number;col:string
+      phase:number;freq:number
+    }
+    let dust: Dust[] = []
+    function initDust() {
+      dust = []
+      for (let i = 0; i < 70; i++) {
+        dust.push({
+          x: Math.random()*W, y: Math.random()*H,
+          vx: (Math.random()-.5)*.10, vy: (Math.random()-.5)*.07,
+          size: .6+Math.random()*2.8,
+          alpha: 0.03+Math.random()*.11,
+          col: Math.random()>.5 ? "rgba(140,70,255,1)" : "rgba(70,120,255,1)",
+          phase: Math.random()*Math.PI*2,
+          freq: .002+Math.random()*.007,
+        })
+      }
+    }
+
+    /* ── Sparkle stars (cross shape, bright) ── */
+    type Sparkle = { x:number;y:number;size:number;phase:number;freq:number;col:string }
+    let sparkles: Sparkle[] = []
+    function initSparkles() {
+      sparkles = []
+      const SCOLS = ["#fff","#ddc8ff","#c0d8ff","#ffeedd","#b8f0ff"]
+      for (let i = 0; i < 30; i++) {
+        sparkles.push({
+          x: Math.random()*W, y: Math.random()*H,
+          size: .4+Math.random()*2,
+          phase: Math.random()*Math.PI*2,
+          freq: .4+Math.random()*2.2,
+          col: SCOLS[Math.floor(Math.random()*SCOLS.length)],
+        })
+      }
+    }
+
+    /* ── Shooting stars ── */
+    type Shoot = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;decay:number}
     const shoots: Shoot[] = []
     function spawnShoot() {
-      const angle = (Math.random() > 0.5 ? 0.15 : Math.PI - 0.15) + (Math.random() - 0.5) * 0.3
-      const speed = 12 + Math.random() * 18
+      const a = (Math.random()>.5 ? .12 : Math.PI-.12) + (Math.random()-.5)*.28
+      const spd = 13+Math.random()*20
       shoots.push({
-        x: Math.random() * W, y: Math.random() * H * 0.55,
-        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed + 2,
-        len: 80 + Math.random() * 140,
-        alpha: 0.9, decay: 0.018 + Math.random() * 0.012,
+        x: Math.random()*W, y: Math.random()*H*.52,
+        vx: Math.cos(a)*spd, vy: Math.sin(a)*spd+1.5,
+        len: 90+Math.random()*200,
+        alpha: .9, decay: .015+Math.random()*.013,
       })
     }
 
-    // Pre-render nebula blobs onto offscreen canvas (2000x2000 logical)
-    const off = document.createElement("canvas")
-    off.width = off.height = 2000
-    const oc  = off.getContext("2d")!
-    ;[
-      {x:400, y:300, r:380, col:"rgba(60,20,120,.09)"},
-      {x:1400,y:500, r:320, col:"rgba(20,60,140,.07)"},
-      {x:800, y:1200,r:420, col:"rgba(80,10,100,.08)"},
-      {x:200, y:1400,r:280, col:"rgba(20,80,60,.06)"},
-      {x:1600,y:1500,r:350, col:"rgba(100,40,20,.07)"},
-      {x:1000,y:800, r:500, col:"rgba(30,30,100,.06)"},
-    ].forEach(n => {
-      const g = oc.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r)
-      g.addColorStop(0, n.col); g.addColorStop(1,"rgba(0,0,0,0)")
-      oc.beginPath(); oc.arc(n.x,n.y,n.r,0,Math.PI*2)
-      oc.fillStyle=g; oc.fill()
-    })
+    /* Init */
+    resize()
+    initDust()
+    initSparkles()
+    window.addEventListener("resize", () => { resize(); initDust(); initSparkles() })
 
     let ox=0, oy=0, shootTimer=0, raf=0
 
-    function tick(ts:number) {
+    function tick(ts: number) {
       raf = requestAnimationFrame(tick)
-      ox += 0.04; oy += 0.015
+      ox += .022; oy += .010
+      shootTimer++
 
-      // Base
-      ctx.fillStyle = "#04030d"
-      ctx.fillRect(0,0,W,H)
+      /* Base + nebula */
+      ctx.fillStyle = "#03020a"; ctx.fillRect(0,0,W,H)
+      const OW = off.width, OH = off.height
+      const nx = ((-ox*.18)%OW+OW)%OW
+      const ny = ((-oy*.13)%OH+OH)%OH
+      for (let tx=-OW;tx<=W;tx+=OW)
+        for (let ty=-OH;ty<=H;ty+=OH)
+          ctx.drawImage(off, nx+tx, ny+ty)
 
-      // Nebula (tiled, slowest parallax)
-      const nx=((-ox*0.3)%2000+2000)%2000
-      const ny=((-oy*0.2)%2000+2000)%2000
-      for(let tx=-2000;tx<=W;tx+=2000)
-        for(let ty=-2000;ty<=H;ty+=2000)
-          ctx.drawImage(off,nx+tx,ny+ty)
+      const t = ts * .001
 
-      // Stars
-      const t=ts*0.001
-      for(const s of stars){
-        const sx=((s.x-ox*(0.1+s.z*0.4))%W+W)%W
-        const sy=((s.y-oy*(0.1+s.z*0.2))%H+H)%H
-        const tw=0.7+0.3*Math.sin(t*s.twinkleSpeed+s.twinklePhase)
-        ctx.globalAlpha=s.alpha*tw
-        if(s.z>0.65&&s.size>1.4){
-          const grd=ctx.createRadialGradient(sx,sy,0,sx,sy,s.size*2.8)
-          grd.addColorStop(0,s.color); grd.addColorStop(0.4,s.color); grd.addColorStop(1,"rgba(0,0,0,0)")
-          ctx.beginPath(); ctx.arc(sx,sy,s.size*2.8,0,Math.PI*2)
-          ctx.fillStyle=grd; ctx.fill()
-        }
-        ctx.beginPath(); ctx.arc(sx,sy,s.size,0,Math.PI*2)
-        ctx.fillStyle=s.color; ctx.fill()
+      /* Dust */
+      for (const d of dust) {
+        d.x+=d.vx; d.y+=d.vy
+        if(d.x<0)d.x=W; if(d.x>W)d.x=0
+        if(d.y<0)d.y=H; if(d.y>H)d.y=0
+        const pulse=.55+.45*Math.sin(t*d.freq*Math.PI*2+d.phase)
+        ctx.globalAlpha = d.alpha*pulse
+        ctx.beginPath(); ctx.arc(d.x,d.y,d.size,0,Math.PI*2)
+        ctx.fillStyle = d.col; ctx.fill()
       }
-      ctx.globalAlpha=1
+      ctx.globalAlpha = 1
 
-      // Shooting stars
-      if(++shootTimer%220===0) spawnShoot()
-      for(let i=shoots.length-1;i>=0;i--){
+      /* Sparkles */
+      for (const s of sparkles) {
+        const pulse = .25+.75*Math.abs(Math.sin(t*s.freq+s.phase))
+        const r = s.size*(1+pulse*.6)
+        ctx.globalAlpha = pulse*.9
+        ctx.strokeStyle = s.col; ctx.lineWidth = .7
+        ctx.beginPath()
+        ctx.moveTo(s.x-r,s.y); ctx.lineTo(s.x+r,s.y)
+        ctx.moveTo(s.x,s.y-r); ctx.lineTo(s.x,s.y+r)
+        ctx.stroke()
+        /* diagonal arms (smaller) */
+        const rd = r*.55
+        ctx.beginPath()
+        ctx.moveTo(s.x-rd,s.y-rd); ctx.lineTo(s.x+rd,s.y+rd)
+        ctx.moveTo(s.x+rd,s.y-rd); ctx.lineTo(s.x-rd,s.y+rd)
+        ctx.stroke()
+        ctx.globalAlpha = pulse*.85
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.size*.45,0,Math.PI*2)
+        ctx.fillStyle = s.col; ctx.fill()
+      }
+      ctx.globalAlpha = 1
+
+      /* Shooting stars */
+      if (shootTimer%260===0) spawnShoot()
+      for (let i=shoots.length-1;i>=0;i--) {
         const sh=shoots[i]
-        const tail=ctx.createLinearGradient(sh.x,sh.y,sh.x-sh.vx/15*sh.len,sh.y-sh.vy/15*sh.len)
-        tail.addColorStop(0,`rgba(255,255,255,${sh.alpha})`)
-        tail.addColorStop(1,"rgba(255,255,255,0)")
+        const tail=ctx.createLinearGradient(
+          sh.x,sh.y,
+          sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len
+        )
+        tail.addColorStop(0, `rgba(255,255,255,${sh.alpha})`)
+        tail.addColorStop(.3,`rgba(200,180,255,${sh.alpha*.55})`)
+        tail.addColorStop(1, "rgba(0,0,0,0)")
         ctx.beginPath(); ctx.moveTo(sh.x,sh.y)
-        ctx.lineTo(sh.x-sh.vx/15*sh.len,sh.y-sh.vy/15*sh.len)
-        ctx.strokeStyle=tail; ctx.lineWidth=1.5; ctx.stroke()
+        ctx.lineTo(sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len)
+        ctx.strokeStyle=tail; ctx.lineWidth=1.8; ctx.stroke()
         sh.x+=sh.vx; sh.y+=sh.vy; sh.alpha-=sh.decay
-        if(sh.alpha<=0||sh.x<-200||sh.x>W+200||sh.y>H+100) shoots.splice(i,1)
+        if(sh.alpha<=0||sh.x<-300||sh.x>W+300||sh.y>H+120) shoots.splice(i,1)
       }
     }
 
-    raf=requestAnimationFrame(tick)
-    return()=>{ cancelAnimationFrame(raf); window.removeEventListener("resize",resize) }
-  },[])
+    raf = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("resize", resize)
+    }
+  }, [])
 
   return (
     <canvas
       ref={canvasRef}
-      style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:0,pointerEvents:"none"}}
+      style={{
+        position:"absolute", inset:0,
+        width:"100%", height:"100%",
+        zIndex:0, pointerEvents:"none",
+      }}
     />
   )
 }
