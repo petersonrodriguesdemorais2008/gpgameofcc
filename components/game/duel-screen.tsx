@@ -1890,11 +1890,30 @@ function StarfieldCanvas() {
         oc.beginPath(); oc.arc(0,0,OW*(rx as number),0,Math.PI*2); oc.fillStyle=g; oc.fill(); oc.restore()
       })
 
-      const SC=["#fff","#fff","#fff","#c8d8ff","#ffeedd","#b8ccff","#ffd8f0","#d8f8ff"]
+      const SC=["#fff","#fff","#fff","#fff","#c8d8ff","#ffeedd","#b8ccff","#ffd8f0","#d8f8ff","#ffe8f8"]
+      // Dense base layer — tiny dim stars fill the black gaps
+      for(let i=0;i<3500;i++){
+        oc.globalAlpha=.04+Math.random()*.28
+        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.08+Math.random()*.55,0,Math.PI*2)
+        oc.fillStyle="#ffffff"; oc.fill()
+      }
+      // Mid-brightness coloured stars
       for(let i=0;i<1200;i++){
-        oc.globalAlpha=.06+Math.random()*.60
-        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.12+Math.random()*1.4,0,Math.PI*2)
+        oc.globalAlpha=.15+Math.random()*.50
+        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.2+Math.random()*1.1,0,Math.PI*2)
         oc.fillStyle=SC[Math.floor(Math.random()*SC.length)]; oc.fill()
+      }
+      // Bright foreground stars with soft glow
+      for(let i=0;i<120;i++){
+        const sx=Math.random()*OW, sy=Math.random()*OH, sr=0.8+Math.random()*1.8
+        oc.globalAlpha=.55+Math.random()*.45
+        oc.beginPath(); oc.arc(sx,sy,sr,0,Math.PI*2)
+        oc.fillStyle=SC[Math.floor(Math.random()*SC.length)]; oc.fill()
+        // Tiny halo
+        oc.globalAlpha=.08+Math.random()*.10
+        const hg=oc.createRadialGradient(sx,sy,0,sx,sy,sr*4)
+        hg.addColorStop(0,"rgba(255,255,255,1)"); hg.addColorStop(1,"rgba(0,0,0,0)")
+        oc.beginPath(); oc.arc(sx,sy,sr*4,0,Math.PI*2); oc.fillStyle=hg; oc.fill()
       }
       oc.globalAlpha=1
     }
@@ -1964,12 +1983,18 @@ function StarfieldCanvas() {
 
     function buildGalaxies() {
       const defs = [
-        {x:.36,y:.44,r:W*.13, arms:4,tilt:.50,tiltPhase:0,   tiltAmp:.28,tiltSpeed:.00032,precPhase:0,   precSpeed:.00018,c1:"rgba(195,118,255,1)",c2:"rgba(105,152,255,1)",cc:"rgba(155,75,255,", cl:"#ead4ff",dc:"rgba(18,4,58,1)"},
-        {x:.80,y:.27,r:W*.09, arms:3,tilt:.42,tiltPhase:1.2, tiltAmp:.24,tiltSpeed:.00038,precPhase:2.0, precSpeed:.00022,c1:"rgba(75,158,255,1)", c2:"rgba(135,218,255,1)",cc:"rgba(38,115,255,",  cl:"#c6e8ff",dc:"rgba(4,8,50,1)"},
-        {x:.15,y:.72,r:W*.072,arms:3,tilt:.55,tiltPhase:2.5, tiltAmp:.22,tiltSpeed:.00042,precPhase:4.1, precSpeed:.00025,c1:"rgba(242,108,255,1)",c2:"rgba(198,75,228,1)", cc:"rgba(198,55,218,",  cl:"#ffccff",dc:"rgba(38,4,58,1)"},
-        {x:.54,y:.11,r:W*.058,arms:2,tilt:.38,tiltPhase:3.8, tiltAmp:.30,tiltSpeed:.00045,precPhase:1.5, precSpeed:.00028,c1:"rgba(55,218,228,1)", c2:"rgba(38,158,208,1)", cc:"rgba(18,175,198,",  cl:"#b8f2ff",dc:"rgba(4,18,38,1)"},
-        {x:.90,y:.62,r:W*.045,arms:2,tilt:.45,tiltPhase:5.0, tiltAmp:.26,tiltSpeed:.00048,precPhase:3.3, precSpeed:.00030,c1:"rgba(128,75,255,1)", c2:"rgba(165,98,255,1)", cc:"rgba(88,38,208,",   cl:"#ceb8ff",dc:"rgba(14,4,48,1)"},
-        {x:.08,y:.42,r:W*.10, arms:3,tilt:.48,tiltPhase:0.7, tiltAmp:.25,tiltSpeed:.00036,precPhase:5.8, precSpeed:.00020,c1:"rgba(255,105,185,1)",c2:"rgba(185,88,255,1)", cc:"rgba(210,60,195,",  cl:"#ffc8ee",dc:"rgba(45,5,55,1)"},
+        // Large purple spiral — centre (away from both planets)
+        {x:.42,y:.55,r:W*.13, arms:4,tilt:.50,tiltPhase:0,   tiltAmp:.28,tiltSpeed:.00032,precPhase:0,   precSpeed:.00018,c1:"rgba(195,118,255,1)",c2:"rgba(105,152,255,1)",cc:"rgba(155,75,255,", cl:"#ead4ff",dc:"rgba(18,4,58,1)"},
+        // Blue spiral — top-centre (clear of Saturn at x:.82)
+        {x:.62,y:.10,r:W*.09, arms:3,tilt:.42,tiltPhase:1.2, tiltAmp:.24,tiltSpeed:.00038,precPhase:2.0, precSpeed:.00022,c1:"rgba(75,158,255,1)", c2:"rgba(135,218,255,1)",cc:"rgba(38,115,255,",  cl:"#c6e8ff",dc:"rgba(4,8,50,1)"},
+        // Pink/magenta — bottom-left (clear of Uranus at x:.18)
+        {x:.32,y:.78,r:W*.072,arms:3,tilt:.18,tiltPhase:2.5, tiltAmp:.38,tiltSpeed:.00042,precPhase:4.1, precSpeed:.00025,c1:"rgba(242,108,255,1)",c2:"rgba(198,75,228,1)", cc:"rgba(198,55,218,",  cl:"#ffccff",dc:"rgba(38,4,58,1)"},
+        // Teal — top-left (clear of Uranus at x:.18 y:.30)
+        {x:.08,y:.12,r:W*.058,arms:2,tilt:.22,tiltPhase:3.8, tiltAmp:.32,tiltSpeed:.00045,precPhase:1.5, precSpeed:.00028,c1:"rgba(55,218,228,1)", c2:"rgba(38,158,208,1)", cc:"rgba(18,175,198,",  cl:"#b8f2ff",dc:"rgba(4,18,38,1)"},
+        // Indigo small — far-right bottom (clear of Saturn at x:.82 y:.30)
+        {x:.92,y:.68,r:W*.045,arms:2,tilt:.45,tiltPhase:5.0, tiltAmp:.26,tiltSpeed:.00048,precPhase:3.3, precSpeed:.00030,c1:"rgba(128,75,255,1)", c2:"rgba(165,98,255,1)", cc:"rgba(88,38,208,",   cl:"#ceb8ff",dc:"rgba(14,4,48,1)"},
+        // Rose/violet — left side, very elongated (low tilt = edge-on looking, high amp)
+        {x:.04,y:.55,r:W*.10, arms:3,tilt:.16,tiltPhase:0.7, tiltAmp:.36,tiltSpeed:.00036,precPhase:5.8, precSpeed:.00020,c1:"rgba(255,105,185,1)",c2:"rgba(185,88,255,1)", cc:"rgba(210,60,195,",  cl:"#ffc8ee",dc:"rgba(45,5,55,1)"},
       ]
       galaxyLayers = defs.map(d => {
         const cv = makeGalaxy(d.r,d.arms,d.c1,d.c2,d.cc,d.cl,d.dc)
