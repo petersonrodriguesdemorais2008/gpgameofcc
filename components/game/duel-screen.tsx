@@ -1961,6 +1961,11 @@ function StarfieldCanvas() {
         col1:"rgba(128,75,255,1)",col2:"rgba(165,98,255,1)",
         coreCol:"rgba(88,38,208,",clusterCol:"#ceb8ff",dustCol:"rgba(14,4,48,1)"})
 
+      // Galaxy left side — rose/violet spiral (mirrors right side balance)
+      galaxy({cx:OW*.06,cy:OH*.42,r:OW*.13,arms:3,tilt:.48,
+        col1:"rgba(255,105,185,1)",col2:"rgba(185,88,255,1)",
+        coreCol:"rgba(210,60,195,",clusterCol:"#ffc8ee",dustCol:"rgba(45,5,55,1)"})
+
       // Nebula tendrils
       ;[
         {px:.50,py:.31,rx:.36,ry:.082,rot: .28,col:"rgba(58,18,138,.13)"},
@@ -2121,7 +2126,123 @@ function StarfieldCanvas() {
       ctx.restore() // main translate
     }
 
-    /* ── Runtime particles ── */
+    /* ── Uranus ─────────────────────────────────────────────────────────────────
+       Ice giant: pale aqua-cyan sphere, near-vertical rings (98° axial tilt),
+       faint banding, thin ring system. Positioned left side of screen.       */
+    function drawUranus(ts:number) {
+      const r    = Math.min(W,H) * .058   // slightly smaller than Saturn
+      const UX   = W * .18
+      const UY   = H * .30
+      const band = ts * 0.00038           // slower rotation than Saturn
+      // Uranus rings are nearly vertical — tilt close to 90°
+      const RING_TILT = 0.92              // sin(67°) ≈ 0.92 → rings almost upright
+
+      ctx.save(); ctx.translate(UX, UY)
+
+      /* ── Back ring halves (vertical rings behind planet) ── */
+      ctx.save(); ctx.scale(Math.sin(RING_TILT), 1) // scale X to tilt rings vertically
+      const URINGS = [
+        {ri:r*1.40, ro:r*1.55, a:.18},
+        {ri:r*1.58, ro:r*1.80, a:.22},
+        {ri:r*1.83, ro:r*2.00, a:.16},
+        {ri:r*2.04, ro:r*2.20, a:.12},
+      ]
+      URINGS.forEach(rr=>{
+        // Back half: right side of ring (in rotated coords = top half)
+        ctx.beginPath()
+        ctx.arc(0,0,rr.ro, -Math.PI/2, Math.PI/2, false)
+        ctx.arc(0,0,rr.ri,  Math.PI/2,-Math.PI/2, true)
+        ctx.closePath()
+        const rg=ctx.createRadialGradient(0,0,rr.ri,0,0,rr.ro)
+        rg.addColorStop(0,`rgba(100,205,215,${rr.a*.90})`)
+        rg.addColorStop(.5,`rgba(80,185,198,${rr.a})`)
+        rg.addColorStop(1,`rgba(55,155,170,${rr.a*.75})`)
+        ctx.fillStyle=rg; ctx.fill()
+      })
+      ctx.restore()
+
+      /* ── Planet sphere — fully clipped ── */
+      ctx.save()
+      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.clip()
+
+      // Base: pale aqua-cyan gradient pole-to-pole
+      const sphere = ctx.createLinearGradient(0,-r,0,r)
+      sphere.addColorStop(0,  "#1a5560")
+      sphere.addColorStop(.15,"#1e7a88")
+      sphere.addColorStop(.32,"#22a0b0")
+      sphere.addColorStop(.50,"#28c0d0")
+      sphere.addColorStop(.68,"#22a0b0")
+      sphere.addColorStop(.85,"#1e7a88")
+      sphere.addColorStop(1,  "#1a5560")
+      ctx.fillStyle=sphere; ctx.fillRect(-r,-r,r*2,r*2)
+
+      // Very subtle horizontal bands (Uranus is nearly featureless)
+      const UBANDS=[
+        {yf:-.60, hf:.08, dark:.08, phase:0   },
+        {yf:-.35, hf:.06, dark:.06, phase:1.4 },
+        {yf:-.10, hf:.10, dark:.05, phase:2.8 },
+        {yf: .15, hf:.08, dark:.06, phase:1.0 },
+        {yf: .40, hf:.06, dark:.07, phase:2.2 },
+        {yf: .60, hf:.07, dark:.08, phase:0.7 },
+      ]
+      UBANDS.forEach(b=>{
+        const yC = b.yf*r, hH = b.hf*r
+        ctx.beginPath(); ctx.moveTo(-r, yC-hH)
+        for(let xi=-r; xi<=r; xi+=3){
+          const wave=Math.sin((xi/r)*Math.PI*3+band*2.5+b.phase)*r*.007
+          ctx.lineTo(xi, yC-hH+wave)
+        }
+        ctx.lineTo(r,yC+hH); ctx.lineTo(-r,yC+hH); ctx.closePath()
+        ctx.fillStyle=`rgba(10,60,70,${b.dark})`; ctx.fill()
+      })
+
+      // Polar region — slightly darker cap at top
+      const pole=ctx.createRadialGradient(0,-r*.65,0,0,-r*.40,r*.80)
+      pole.addColorStop(0,"rgba(15,55,65,.28)"); pole.addColorStop(1,"rgba(0,0,0,0)")
+      ctx.fillStyle=pole; ctx.fillRect(-r,-r,r*2,r*2)
+
+      // Specular highlight — top-left, cool white
+      const spec=ctx.createRadialGradient(-r*.30,-r*.34,0,-r*.16,-r*.22,r*.55)
+      spec.addColorStop(0,"rgba(220,250,255,.50)"); spec.addColorStop(.40,"rgba(200,240,248,.12)"); spec.addColorStop(1,"rgba(0,0,0,0)")
+      ctx.fillStyle=spec; ctx.fillRect(-r,-r,r*2,r*2)
+
+      // Limb darkening
+      const limb=ctx.createRadialGradient(0,0,r*.58,0,0,r)
+      limb.addColorStop(0,"rgba(0,0,0,0)"); limb.addColorStop(.75,"rgba(0,0,0,0)"); limb.addColorStop(1,"rgba(0,0,0,.68)")
+      ctx.fillStyle=limb; ctx.fillRect(-r,-r,r*2,r*2)
+
+      ctx.restore() // release planet clip
+
+      /* ── Atmosphere glow — cool cyan halo ── */
+      const atmo=ctx.createRadialGradient(0,0,r*.80,0,0,r*1.50)
+      atmo.addColorStop(0,"rgba(0,0,0,0)"); atmo.addColorStop(.78,"rgba(0,0,0,0)")
+      atmo.addColorStop(.92,"rgba(40,180,200,.12)"); atmo.addColorStop(1,"rgba(0,0,0,0)")
+      ctx.beginPath(); ctx.arc(0,0,r*1.50,0,Math.PI*2); ctx.fillStyle=atmo; ctx.fill()
+
+      /* ── Front ring halves (left side of ring) ── */
+      ctx.save(); ctx.scale(Math.sin(RING_TILT), 1)
+      URINGS.forEach(rr=>{
+        ctx.beginPath()
+        ctx.arc(0,0,rr.ro, Math.PI/2, -Math.PI/2, false)  // left arc
+        ctx.arc(0,0,rr.ri,-Math.PI/2,  Math.PI/2, true)
+        ctx.closePath()
+        const rg=ctx.createRadialGradient(0,0,rr.ri,0,0,rr.ro)
+        rg.addColorStop(0,`rgba(105,210,220,${rr.a*.92})`)
+        rg.addColorStop(.5,`rgba(82,192,202,${rr.a})`)
+        rg.addColorStop(1,`rgba(58,160,175,${rr.a*.78})`)
+        ctx.fillStyle=rg; ctx.fill()
+        // Lateral shading
+        const lg=ctx.createLinearGradient(0,-rr.ro,0,rr.ro)
+        lg.addColorStop(0,"rgba(0,0,0,.30)"); lg.addColorStop(.35,"rgba(255,255,255,.07)")
+        lg.addColorStop(.65,"rgba(255,255,255,.07)"); lg.addColorStop(1,"rgba(0,0,0,.30)")
+        ctx.beginPath()
+        ctx.arc(0,0,rr.ro, Math.PI/2,-Math.PI/2,false); ctx.arc(0,0,rr.ri,-Math.PI/2,Math.PI/2,true)
+        ctx.closePath(); ctx.fillStyle=lg; ctx.fill()
+      })
+      ctx.restore()
+
+      ctx.restore() // main translate
+    }
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -2208,8 +2329,9 @@ function StarfieldCanvas() {
       }
       ctx.globalAlpha=1
 
-      // Saturn
+      // Planets
       drawSaturn(ts)
+      drawUranus(ts)
 
       // Shooting stars: fast white + slow coloured
       if(shootT%182===0) spawnShoot(true)
