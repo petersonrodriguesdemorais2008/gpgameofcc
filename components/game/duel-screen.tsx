@@ -2058,29 +2058,30 @@ function StarfieldCanvas() {
     type GLayer = {
       cv: HTMLCanvasElement; half: number
       x: number; y: number
-      tilt: number; tiltPhase: number; tiltAmp: number; tiltSpeed: number
+      tilt: number
+      rotation: number; spinSpeed: number
       precPhase: number; precSpeed: number
     }
     let galaxyLayers: GLayer[] = []
 
     function buildGalaxies() {
       const defs = [
-        // Large purple spiral — centre (away from both planets)
-        {x:.42,y:.55,r:W*.13, arms:4,tilt:.50,tiltPhase:0,   tiltAmp:.28,tiltSpeed:.00032,precPhase:0,   precSpeed:.00018,c1:"rgba(195,118,255,1)",c2:"rgba(105,152,255,1)",cc:"rgba(155,75,255,", cl:"#ead4ff",dc:"rgba(18,4,58,1)"},
-        // Blue spiral — top-centre (clear of Saturn at x:.82)
-        {x:.62,y:.10,r:W*.09, arms:3,tilt:.42,tiltPhase:1.2, tiltAmp:.24,tiltSpeed:.00038,precPhase:2.0, precSpeed:.00022,c1:"rgba(75,158,255,1)", c2:"rgba(135,218,255,1)",cc:"rgba(38,115,255,",  cl:"#c6e8ff",dc:"rgba(4,8,50,1)"},
-        // Pink/magenta — bottom-left (clear of Uranus at x:.18)
-        {x:.32,y:.78,r:W*.072,arms:3,tilt:.18,tiltPhase:2.5, tiltAmp:.38,tiltSpeed:.00042,precPhase:4.1, precSpeed:.00025,c1:"rgba(242,108,255,1)",c2:"rgba(198,75,228,1)", cc:"rgba(198,55,218,",  cl:"#ffccff",dc:"rgba(38,4,58,1)"},
-        // Teal — top-left (clear of Uranus at x:.18 y:.30)
-        {x:.08,y:.12,r:W*.058,arms:2,tilt:.22,tiltPhase:3.8, tiltAmp:.32,tiltSpeed:.00045,precPhase:1.5, precSpeed:.00028,c1:"rgba(55,218,228,1)", c2:"rgba(38,158,208,1)", cc:"rgba(18,175,198,",  cl:"#b8f2ff",dc:"rgba(4,18,38,1)"},
-        // Indigo small — far-right bottom (clear of Saturn at x:.82 y:.30)
-        {x:.92,y:.68,r:W*.045,arms:2,tilt:.45,tiltPhase:5.0, tiltAmp:.26,tiltSpeed:.00048,precPhase:3.3, precSpeed:.00030,c1:"rgba(128,75,255,1)", c2:"rgba(165,98,255,1)", cc:"rgba(88,38,208,",   cl:"#ceb8ff",dc:"rgba(14,4,48,1)"},
-        // Rose/violet — left side, very elongated (low tilt = edge-on looking, high amp)
-        {x:.04,y:.55,r:W*.10, arms:3,tilt:.16,tiltPhase:0.7, tiltAmp:.36,tiltSpeed:.00036,precPhase:5.8, precSpeed:.00020,c1:"rgba(255,105,185,1)",c2:"rgba(185,88,255,1)", cc:"rgba(210,60,195,",  cl:"#ffc8ee",dc:"rgba(45,5,55,1)"},
+        // Large purple spiral — centre, tilt=0.50 (viewed ~30° from face), spin slow
+        {x:.42,y:.55,r:W*.13, arms:4,tilt:.50,rotation:0,    spinSpeed:.000055,precPhase:0,   precSpeed:.00018,c1:"rgba(195,118,255,1)",c2:"rgba(105,152,255,1)",cc:"rgba(155,75,255,", cl:"#ead4ff",dc:"rgba(18,4,58,1)"},
+        // Blue spiral — top-centre, tilt=0.42, slightly faster
+        {x:.62,y:.10,r:W*.09, arms:3,tilt:.42,rotation:1.2,  spinSpeed:.000070,precPhase:2.0, precSpeed:.00022,c1:"rgba(75,158,255,1)", c2:"rgba(135,218,255,1)",cc:"rgba(38,115,255,",  cl:"#c6e8ff",dc:"rgba(4,8,50,1)"},
+        // Pink — bottom, very flat tilt=0.18 (nearly edge-on), slow
+        {x:.32,y:.78,r:W*.072,arms:3,tilt:.18,rotation:2.5,  spinSpeed:.000048,precPhase:4.1, precSpeed:.00025,c1:"rgba(242,108,255,1)",c2:"rgba(198,75,228,1)", cc:"rgba(198,55,218,",  cl:"#ffccff",dc:"rgba(38,4,58,1)"},
+        // Teal — top-left, flat tilt=0.22, medium
+        {x:.08,y:.12,r:W*.058,arms:2,tilt:.22,rotation:3.8,  spinSpeed:.000062,precPhase:1.5, precSpeed:.00028,c1:"rgba(55,218,228,1)", c2:"rgba(38,158,208,1)", cc:"rgba(18,175,198,",  cl:"#b8f2ff",dc:"rgba(4,18,38,1)"},
+        // Indigo small — far-right, tilt=0.45, faster (smaller = spins faster visually)
+        {x:.92,y:.68,r:W*.045,arms:2,tilt:.45,rotation:5.0,  spinSpeed:.000085,precPhase:3.3, precSpeed:.00030,c1:"rgba(128,75,255,1)", c2:"rgba(165,98,255,1)", cc:"rgba(88,38,208,",   cl:"#ceb8ff",dc:"rgba(14,4,48,1)"},
+        // Rose/violet — left, very flat tilt=0.16, slow
+        {x:.04,y:.55,r:W*.10, arms:3,tilt:.16,rotation:0.7,  spinSpeed:.000042,precPhase:5.8, precSpeed:.00020,c1:"rgba(255,105,185,1)",c2:"rgba(185,88,255,1)", cc:"rgba(210,60,195,",  cl:"#ffc8ee",dc:"rgba(45,5,55,1)"},
       ]
       galaxyLayers = defs.map(d => {
         const cv = makeGalaxy(d.r,d.arms,d.c1,d.c2,d.cc,d.cl,d.dc)
-        return { cv, half:cv.width/2, x:d.x, y:d.y, tilt:d.tilt, tiltPhase:d.tiltPhase, tiltAmp:d.tiltAmp, tiltSpeed:d.tiltSpeed, precPhase:d.precPhase, precSpeed:d.precSpeed }
+        return { cv, half:cv.width/2, x:d.x, y:d.y, tilt:d.tilt, rotation:d.rotation, spinSpeed:d.spinSpeed, precPhase:d.precPhase, precSpeed:d.precSpeed }
       })
     }
 
@@ -2265,17 +2266,22 @@ function StarfieldCanvas() {
         for(let ty=-OH;ty<=H;ty+=OH)
           ctx.drawImage(off,nx+tx,ny+ty)
 
-      // Galaxies — 3D tilt via scaleY oscillation + precession via scaleX shimmer
+      // Galaxies — annular 3D rotation: fixed scaleY (viewing angle) + continuous ctx.rotate
+      // scaleY=tilt compresses the disk to look tilted; rotation spins the arms around centre
+      // precPhase adds a very slow nodding (axis wobble) for extra realism
       for(const g of galaxyLayers){
-        g.tiltPhase += g.tiltSpeed
+        g.rotation  += g.spinSpeed
         g.precPhase += g.precSpeed
-        const tiltY = g.tilt + Math.sin(g.tiltPhase)*g.tiltAmp
-        const tiltX = 1 - Math.abs(Math.sin(g.precPhase))*.08
+        // Subtle axis precession: tilt oscillates ±0.06 very slowly
+        const scaleY = g.tilt + Math.sin(g.precPhase) * 0.06
+        // Slight perspective squeeze on X as precession tilts the axis
+        const scaleX = 1 - Math.abs(Math.sin(g.precPhase * 0.7)) * 0.04
         ctx.save()
-        ctx.globalAlpha=0.90
+        ctx.globalAlpha = 0.90
         ctx.translate(g.x*W, g.y*H)
-        ctx.scale(tiltX, tiltY)
-        ctx.drawImage(g.cv,-g.half,-g.half,g.cv.width,g.cv.height)
+        ctx.rotate(g.rotation)         // ← arms spin continuously around axis
+        ctx.scale(scaleX, scaleY)      // ← disk appears tilted in 3D
+        ctx.drawImage(g.cv, -g.half, -g.half, g.cv.width, g.cv.height)
         ctx.restore()
       }
       ctx.globalAlpha=1
