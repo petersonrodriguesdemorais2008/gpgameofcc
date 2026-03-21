@@ -7137,147 +7137,169 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
       {/* ── Draw Animations ── */}
       {(drawAnimation || enemyDrawAnimation) && (()=>{
-        const anim = drawAnimation
+        const anim  = drawAnimation
         const eAnim = enemyDrawAnimation
-        const W = 56, H = 80
+        const W = 60, H = 86
 
-        // Build CSS for one card flight
-        function cardCSS(a:{fromX:number;fromY:number;midX:number;midY:number;toX:number;toY:number}, delay=0) {
-          const id = `dc${delay}`
+        function flyCSS(a:{fromX:number;fromY:number;midX:number;midY:number;toX:number;toY:number}, id:string) {
           return `
             @keyframes ${id}-fly {
-              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.75) rotateY(0deg) rotateZ(-6deg); opacity:0; filter:blur(3px) }
-              8%   { opacity:1; filter:blur(0) }
-              45%  { transform:translate(${a.midX-W/2}px,${a.midY-H/2}px) scale(1.15) rotateY(90deg) rotateZ(3deg) }
+              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.7) rotateY(0deg) rotateZ(-8deg); opacity:0; filter:blur(4px) }
+              6%   { opacity:1; filter:blur(0) }
+              42%  { transform:translate(${a.midX-W/2}px,${a.midY-H/2}px) scale(1.20) rotateY(90deg) rotateZ(4deg); filter:blur(0) }
               100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(1) rotateY(180deg) rotateZ(0deg); opacity:1 }
             }
             @keyframes ${id}-trail {
-              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.7); opacity:0.45 }
-              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(0.9); opacity:0 }
+              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.65); opacity:0.4 }
+              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(0.88); opacity:0 }
             }
             @keyframes ${id}-spark {
-              0%   { transform:translate(${a.toX}px,${a.toY}px) translate(0,0) scale(1); opacity:1 }
+              0%   { transform:translate(${a.toX}px,${a.toY}px) scale(1.4); opacity:1 }
               100% { transform:translate(${a.toX}px,${a.toY}px) translate(var(--sx),var(--sy)) scale(0); opacity:0 }
             }
-            @keyframes dc-glow   { 0%,100%{box-shadow:0 0 10px 3px rgba(99,200,255,.55)} 50%{box-shadow:0 0 28px 9px rgba(99,200,255,.9),0 0 40px rgba(120,80,255,.5)} }
-            @keyframes dc-arrive { 0%{transform:scale(1.25);opacity:0} 70%{transform:scale(.94)} 100%{transform:scale(1);opacity:1} }
-            @keyframes dc-shine  { 0%{left:-100%;opacity:.85} 100%{left:210%;opacity:0} }
           `
         }
 
         return (
           <div style={{position:'fixed',inset:0,zIndex:55,pointerEvents:'none',overflow:'hidden'}}>
             <style>{`
-              ${anim  ? cardCSS(anim,  0) : ''}
-              ${eAnim ? cardCSS(eAnim, 1) : ''}
+              ${anim  ? flyCSS(anim,  'dcp') : ''}
+              ${eAnim ? flyCSS(eAnim, 'dce') : ''}
+              @keyframes dc-glow-b  { 0%,100%{box-shadow:0 0 10px 3px rgba(80,120,255,.55),0 0 0 1px rgba(120,160,255,.3)} 50%{box-shadow:0 0 30px 10px rgba(100,140,255,.9),0 0 50px 4px rgba(180,100,255,.5),0 0 0 1px rgba(200,200,255,.5)} }
+              @keyframes dc-arrive  { 0%{transform:scale(1.3);opacity:0} 65%{transform:scale(.93)} 85%{transform:scale(1.04)} 100%{transform:scale(1);opacity:1} }
+              @keyframes dc-shine   { 0%{left:-110%;opacity:.9} 100%{left:220%;opacity:0} }
+              @keyframes dc-name    { 0%{opacity:0;transform:translateX(-50%) translateY(6px)} 100%{opacity:1;transform:translateX(-50%) translateY(0)} }
             `}</style>
 
-            {/* ── Player draw ── */}
+            {/* ── PLAYER draw ── */}
             {anim && (<>
-              {/* 3 trail ghosts */}
+              {/* Ghost trails */}
               {[0,1,2].map(t=>(
                 <div key={t} style={{
-                  position:'absolute',left:0,top:0,width:W,height:H,borderRadius:7,
-                  background:`rgba(99,200,255,${0.07-t*0.018})`,
-                  border:`1px solid rgba(99,200,255,${0.18-t*0.05})`,
-                  animation:`dc0-trail ${0.55+t*0.08}s cubic-bezier(.4,.1,.2,1) ${t*0.06}s forwards`,
+                  position:'absolute',left:0,top:0,width:W,height:H,borderRadius:8,
+                  background:`rgba(100,140,255,${0.08-t*0.022})`,
+                  border:`1px solid rgba(120,160,255,${0.20-t*0.06})`,
+                  animation:`dcp-trail ${0.58+t*0.09}s cubic-bezier(.4,.1,.2,1) ${t*0.065}s forwards`,
                 }}/>
               ))}
 
-              {/* Main card */}
+              {/* Main card with 3D flip */}
               <div style={{
                 position:'absolute',left:0,top:0,width:W,height:H,
-                borderRadius:7,transformStyle:'preserve-3d',
-                animation:'dc0-fly .78s cubic-bezier(.25,.46,.45,.94) forwards',
+                transformStyle:'preserve-3d',
+                animation:'dcp-fly .82s cubic-bezier(.28,.48,.38,.98) forwards',
               }}>
-                {/* Back */}
+                {/* BACK — real card back image */}
                 <div style={{
-                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,
-                  background:'linear-gradient(145deg,#1e1248,#0d0820)',
-                  border:'1.5px solid rgba(120,80,255,0.72)',
-                  animation:'dc-glow .78s ease-in-out',
-                  display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:8,
+                  overflow:'hidden',
+                  animation:'dc-glow-b .82s ease-in-out',
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.6)',
                 }}>
-                  <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 35% 30%,rgba(120,80,255,0.38),transparent 65%)'}}/>
-                  <div style={{width:20,height:20,borderRadius:'50%',background:'radial-gradient(circle,#a78bfa,#4c1d95)',boxShadow:'0 0 12px rgba(167,139,250,0.85)'}}/>
-                  <div style={{position:'absolute',top:5,left:5,right:5,bottom:5,border:'1px solid rgba(120,80,255,0.28)',borderRadius:4}}/>
+                  <img
+                    src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                    alt="card back"
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+                  />
+                  {/* Subtle shimmer over the back */}
+                  <div style={{
+                    position:'absolute',inset:0,
+                    background:'linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 55%)',
+                    borderRadius:8,pointerEvents:'none',
+                  }}/>
                 </div>
-                {/* Front — revealed after flip */}
+
+                {/* FRONT — card face revealed on flip */}
                 <div style={{
                   position:'absolute',inset:0,backfaceVisibility:'hidden',
-                  transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',
-                  border:'1.5px solid rgba(255,255,255,0.35)',
+                  transform:'rotateY(180deg)',borderRadius:8,overflow:'hidden',
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.6)',
+                  border:'1.5px solid rgba(255,255,255,0.25)',
                 }}>
-                  <img src={anim.cardImage} alt={anim.cardName} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  <img src={anim.cardImage} alt={anim.cardName} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   {/* Reveal shine sweep */}
                   <div style={{
-                    position:'absolute',top:0,bottom:0,width:'40%',
-                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.32),transparent)',
-                    animation:'dc-shine .38s ease-in-out .55s both',borderRadius:7,
+                    position:'absolute',top:0,bottom:0,width:'45%',
+                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.38),transparent)',
+                    animation:'dc-shine .42s ease-in-out .58s both',
+                    borderRadius:8,pointerEvents:'none',
                   }}/>
                 </div>
               </div>
 
-              {/* Sparkles on arrival (delayed) */}
-              {Array.from({length:10}).map((_,i)=>{
-                const a=(i/10)*Math.PI*2
-                const dist=28+Math.floor(Math.random()*22)
+              {/* Sparkles at destination */}
+              {Array.from({length:12}).map((_,i)=>{
+                const ang=(i/12)*Math.PI*2
+                const d=32+Math.floor(i%3)*14
+                const cols=['#c4b5fd','#60a5fa','#ffffff','#fbbf24']
                 return <div key={i} style={{
                   position:'absolute',left:0,top:0,
-                  width:4+Math.floor(Math.random()*5),height:4+Math.floor(Math.random()*5),
+                  width:3+Math.floor(i%4)*2+'px',height:3+Math.floor(i%4)*2+'px',
                   borderRadius:'50%',
-                  background:i%3===0?'#c4b5fd':i%3===1?'#60a5fa':'#f9fafb',
-                  animation:`dc0-spark .6s cubic-bezier(.2,0,.5,1) ${700+i*28}ms both`,
-                  '--sx':`${Math.cos(a)*dist}px`,'--sy':`${Math.sin(a)*dist}px`,
+                  background:cols[i%4],
+                  boxShadow:`0 0 5px 1px ${cols[i%4]}`,
+                  animation:`dcp-spark .65s cubic-bezier(.15,0,.45,1) ${720+i*32}ms both`,
+                  '--sx':`${Math.cos(ang)*d}px`,'--sy':`${Math.sin(ang)*d}px`,
                 } as React.CSSProperties}/>
               })}
 
-              {/* Arrival glow flash at hand */}
+              {/* Glow flash at hand position */}
               <div style={{
                 position:'absolute',
-                left:anim.toX-W/2-10, top:anim.toY-H/2-10,
-                width:W+20, height:H+20,
-                borderRadius:9,
-                background:'rgba(99,200,255,0.16)',
-                border:'1px solid rgba(99,200,255,0.45)',
-                animation:'dc-arrive .45s cubic-bezier(.34,1.56,.64,1) 0.72s both',
+                left:anim.toX-W/2-12,top:anim.toY-H/2-12,
+                width:W+24,height:H+24,borderRadius:10,
+                background:'rgba(100,140,255,0.15)',
+                border:'1.5px solid rgba(150,180,255,0.50)',
+                animation:'dc-arrive .48s cubic-bezier(.34,1.56,.64,1) .74s both',
               }}/>
 
-              {/* Card name label */}
+              {/* Card name */}
               <div style={{
                 position:'absolute',
-                left:anim.toX,top:anim.toY-H/2-28,
-                transform:'translateX(-50%)',
-                background:'rgba(0,0,0,0.75)',backdropFilter:'blur(6px)',
-                padding:'3px 10px',borderRadius:6,
-                border:'1px solid rgba(255,255,255,0.15)',
-                fontSize:11,fontWeight:700,color:'#e2e8f0',letterSpacing:'.5px',
+                left:anim.toX,top:anim.toY-H/2-32,
+                animation:'dc-name .30s ease-out .70s both',
+                background:'rgba(5,3,18,0.82)',backdropFilter:'blur(8px)',
+                padding:'4px 12px',borderRadius:6,
+                border:'1px solid rgba(150,180,255,0.25)',
+                fontSize:11,fontWeight:700,color:'#e2e8f0',letterSpacing:'.6px',
                 whiteSpace:'nowrap',
-                animation:'dc-arrive .3s ease-out 0.68s both',
               }}>
                 {anim.cardName}
               </div>
             </>)}
 
-            {/* ── Enemy draw — card back only ── */}
-            {eAnim && (
+            {/* ── ENEMY draw — card back only ── */}
+            {eAnim && (<>
+              {[0,1].map(t=>(
+                <div key={t} style={{
+                  position:'absolute',left:0,top:0,width:W,height:H,borderRadius:8,
+                  background:`rgba(220,38,38,${0.06-t*0.02})`,
+                  border:`1px solid rgba(239,68,68,${0.16-t*0.06})`,
+                  animation:`dce-trail ${0.55+t*0.08}s cubic-bezier(.4,.1,.2,1) ${t*0.06}s forwards`,
+                }}/>
+              ))}
               <div style={{
                 position:'absolute',left:0,top:0,width:W,height:H,
-                borderRadius:7,transformStyle:'preserve-3d',
-                animation:'dc1-fly .78s cubic-bezier(.25,.46,.45,.94) forwards',
+                transformStyle:'preserve-3d',
+                animation:'dce-fly .82s cubic-bezier(.28,.48,.38,.98) forwards',
               }}>
                 <div style={{
-                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,
-                  background:'linear-gradient(145deg,#2d0a12,#1a0508)',
-                  border:'1.5px solid rgba(239,68,68,0.65)',
-                  display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:8,
+                  overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.6)',
                 }}>
-                  <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 35% 30%,rgba(220,38,38,0.30),transparent 65%)'}}/>
-                  <div style={{width:18,height:18,borderRadius:'50%',background:'radial-gradient(circle,#ef5350,#7b1fa2)',boxShadow:'0 0 10px rgba(239,83,80,0.8)'}}/>
-                  <div style={{position:'absolute',top:5,left:5,right:5,bottom:5,border:'1px solid rgba(239,68,68,0.25)',borderRadius:4}}/>
+                  <img
+                    src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                    alt="card back"
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+                  />
+                  <div style={{
+                    position:'absolute',inset:0,
+                    background:'rgba(180,30,30,0.22)',borderRadius:8,pointerEvents:'none',
+                    mixBlendMode:'multiply',
+                  }}/>
                 </div>
               </div>
-            )}
+            </>)}
           </div>
         )
       })()}
