@@ -1851,9 +1851,9 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
 }
 // ──────────────────────────────────────────────────────────────────────────────
 // ─── StarfieldCanvas ───────────────────────────────────────────────────────────
-// 5 real spiral galaxies (arm-by-arm dots), volumetric nebulae, Saturn with
-// scrolling texture rotation + Cassini division rings, parallax dust, sparkles,
-// fast & coloured shooting stars. Pure Canvas rAF — no CSS on preserve-3d.
+// Space background: 5 spiral galaxies (arm-by-arm), volumetric nebulae,
+// Saturn (gradient sphere + animated arc bands, fully clipped — no texture bugs),
+// parallax dust, cross sparkles, fast & coloured shooting stars.
 
 function StarfieldCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -1864,77 +1864,75 @@ function StarfieldCanvas() {
     const ctx = cv.getContext("2d")!
     let W = 0, H = 0
 
-    // ── Offscreen galaxy/nebula layer ─────────────────────────────────────────
+    /* ── Offscreen galaxy/nebula layer (rebuilt on resize) ── */
     const off = document.createElement("canvas")
     const oc  = off.getContext("2d")!
 
-    function rg(
-      c: CanvasRenderingContext2D,
-      x: number, y: number, r: number,
-      stops: [number, string][]
-    ) {
-      const g = c.createRadialGradient(x,y,0,x,y,r)
-      stops.forEach(([t,col]) => g.addColorStop(t,col))
+    function rg(c:CanvasRenderingContext2D, x:number, y:number, r:number, stops:[number,string][]) {
+      const g=c.createRadialGradient(x,y,0,x,y,r)
+      stops.forEach(([t,col])=>g.addColorStop(t,col))
       c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=g; c.fill()
     }
 
-    function galaxy(opts: {
-      cx:number; cy:number; r:number; arms:number; tilt:number
-      col1:string; col2:string; coreCol:string; clusterCol:string; dustCol:string
-    }) {
+    function galaxy(opts:{cx:number;cy:number;r:number;arms:number;tilt:number;
+      col1:string;col2:string;coreCol:string;clusterCol:string;dustCol:string}) {
       const {cx,cy,r,arms,tilt,col1,col2,coreCol,clusterCol,dustCol}=opts
-      // Multi-layer core glow
-      rg(oc,cx,cy,r*2.8,[[0,coreCol+".22)"],[.30,coreCol+".12)"],[.60,coreCol+".05)"],[1,"rgba(0,0,0,0)"]])
-      rg(oc,cx,cy,r*1.2,[[0,coreCol+".40)"],[.40,coreCol+".18)"],[1,"rgba(0,0,0,0)"]])
-      rg(oc,cx,cy,r*.38,[[0,"rgba(255,255,255,.72)"],[.30,coreCol+".55)"],[.70,coreCol+".18)"],[1,"rgba(0,0,0,0)"]])
+
+      // Core glow layers
+      rg(oc,cx,cy,r*3.0,[[0,coreCol+".18)"],[.30,coreCol+".10)"],[.65,coreCol+".04)"],[1,"rgba(0,0,0,0)"]])
+      rg(oc,cx,cy,r*1.3,[[0,coreCol+".36)"],[.42,coreCol+".16)"],[1,"rgba(0,0,0,0)"]])
+      rg(oc,cx,cy,r*.40,[[0,"rgba(255,255,255,.78)"],[.28,coreCol+".60)"],[.70,coreCol+".15)"],[1,"rgba(0,0,0,0)"]])
+
+      oc.save(); oc.translate(cx,cy); oc.scale(1,tilt)
 
       // Disk haze
-      oc.save(); oc.translate(cx,cy); oc.scale(1,tilt)
-      rg(oc,0,0,r*2.2,[[0,coreCol+".10)"],[.50,coreCol+".04)"],[1,"rgba(0,0,0,0)"]])
+      const dg=oc.createRadialGradient(0,0,0,0,0,r*2.5)
+      dg.addColorStop(0,coreCol+".08)"); dg.addColorStop(.55,coreCol+".03)"); dg.addColorStop(1,"rgba(0,0,0,0)")
+      oc.beginPath(); oc.arc(0,0,r*2.5,0,Math.PI*2); oc.fillStyle=dg; oc.fill()
 
-      // Spiral arms — dot by dot
-      for (let arm=0; arm<arms; arm++) {
-        const base = arm*(Math.PI*2/arms)
-        for (let i=0; i<400; i++) {
-          const t      = i/400
-          const radius = 0.04*r + t*r*2.1
-          const angle  = base + t*Math.PI*3.8 + (Math.random()-.5)*.18
-          const scatter= (Math.random()-.5)*radius*.18
+      // Spiral arms — 400 stars per arm, per-dot colour
+      for(let arm=0;arm<arms;arm++){
+        const base=arm*(Math.PI*2/arms)
+        for(let i=0;i<400;i++){
+          const t=i/400
+          const radius=0.05*r+t*r*2.2
+          const angle=base+t*Math.PI*3.9+(Math.random()-.5)*.20
+          const scatter=(Math.random()-.5)*radius*.20
           const x=Math.cos(angle)*(radius+scatter)
           const y=Math.sin(angle)*(radius+scatter)
-          const bright = Math.pow(1-t,.7)
-          const sz     = 0.3+bright*2.8+Math.random()*.8
-          const alpha  = (Math.random()>.6 ? .55+bright*.35 : .08+bright*.25)*bright
-          oc.globalAlpha = Math.max(0,Math.min(1,alpha))
+          const bright=Math.pow(1-t,.65)
+          const sz=0.2+bright*3.0+Math.random()*.9
+          const alpha=(Math.random()>.55?.60+bright*.32:.06+bright*.28)*bright
+          oc.globalAlpha=Math.max(0,Math.min(1,alpha))
           oc.beginPath(); oc.arc(x,y,sz,0,Math.PI*2)
-          oc.fillStyle = t<.18 ? "rgba(255,252,240,1)" : (Math.random()>.45?col1:col2)
+          oc.fillStyle=t<.15?"rgba(255,252,240,1)":Math.random()>.42?col1:col2
           oc.fill()
         }
-        // Dust lane inner edge
-        for (let i=0; i<80; i++) {
-          const t=.05+i/80*.60
-          const radius=t*r*1.8
-          const angle=base+t*Math.PI*3.6-.15
-          oc.globalAlpha=.06+t*.04
-          oc.beginPath(); oc.arc(Math.cos(angle)*radius,Math.sin(angle)*radius,1.5+t*3,0,Math.PI*2)
+        // Dust lane — dark streak along inner arm edge
+        for(let i=0;i<90;i++){
+          const t=.04+i/90*.65
+          const radius=t*r*1.9, angle=base+t*Math.PI*3.7-.18
+          oc.globalAlpha=.07+t*.05
+          oc.beginPath(); oc.arc(Math.cos(angle)*radius,Math.sin(angle)*radius,1.2+t*3.5,0,Math.PI*2)
           oc.fillStyle=dustCol; oc.fill()
         }
       }
 
-      // Dense core cluster
-      for (let i=0;i<500;i++){
-        const a=Math.random()*Math.PI*2, d=Math.pow(Math.random(),2)*r*.55
-        oc.globalAlpha=.18+Math.random()*.72
-        oc.beginPath(); oc.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*1.4,0,Math.PI*2)
+      // Dense core star cluster
+      for(let i=0;i<550;i++){
+        const a=Math.random()*Math.PI*2, d=Math.pow(Math.random(),2)*r*.60
+        oc.globalAlpha=.18+Math.random()*.74
+        oc.beginPath(); oc.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*1.5,0,Math.PI*2)
         oc.fillStyle=clusterCol; oc.fill()
       }
       // Outer halo
-      for (let i=0;i<300;i++){
-        const a=Math.random()*Math.PI*2, d=r*.4+Math.pow(Math.random(),.6)*r*1.8
-        oc.globalAlpha=.04+Math.random()*.22
-        oc.beginPath(); oc.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*1,0,Math.PI*2)
+      for(let i=0;i<320;i++){
+        const a=Math.random()*Math.PI*2, d=r*.35+Math.pow(Math.random(),.55)*r*2.0
+        oc.globalAlpha=.03+Math.random()*.20
+        oc.beginPath(); oc.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*.9,0,Math.PI*2)
         oc.fillStyle=clusterCol; oc.fill()
       }
+
       oc.restore(); oc.globalAlpha=1
     }
 
@@ -1943,201 +1941,221 @@ function StarfieldCanvas() {
       off.width=OW; off.height=OH
       oc.fillStyle="#020108"; oc.fillRect(0,0,OW,OH)
 
-      galaxy({cx:OW*.36,cy:OH*.44,r:OW*.16,arms:4,tilt:.50,
-        col1:"rgba(190,120,255,1)",col2:"rgba(110,155,255,1)",
-        coreCol:"rgba(160,80,255,",clusterCol:"#e8d0ff",dustCol:"rgba(20,5,60,1)"})
-      galaxy({cx:OW*.80,cy:OH*.27,r:OW*.11,arms:3,tilt:.42,
-        col1:"rgba(80,160,255,1)",col2:"rgba(140,220,255,1)",
-        coreCol:"rgba(40,120,255,",clusterCol:"#c8e8ff",dustCol:"rgba(5,10,50,1)"})
-      galaxy({cx:OW*.16,cy:OH*.74,r:OW*.09,arms:3,tilt:.55,
-        col1:"rgba(240,110,255,1)",col2:"rgba(200,80,230,1)",
-        coreCol:"rgba(200,60,220,",clusterCol:"#ffccff",dustCol:"rgba(40,5,60,1)"})
-      galaxy({cx:OW*.54,cy:OH*.11,r:OW*.07,arms:2,tilt:.38,
-        col1:"rgba(60,220,230,1)",col2:"rgba(40,160,210,1)",
-        coreCol:"rgba(20,180,200,",clusterCol:"#c0f0ff",dustCol:"rgba(5,20,40,1)"})
-      galaxy({cx:OW*.92,cy:OH*.64,r:OW*.055,arms:2,tilt:.45,
-        col1:"rgba(130,80,255,1)",col2:"rgba(170,100,255,1)",
-        coreCol:"rgba(90,40,210,",clusterCol:"#d0b8ff",dustCol:"rgba(15,5,50,1)"})
+      galaxy({cx:OW*.36,cy:OH*.44,r:OW*.17,arms:4,tilt:.50,
+        col1:"rgba(195,118,255,1)",col2:"rgba(105,152,255,1)",
+        coreCol:"rgba(155,75,255,",clusterCol:"#ead4ff",dustCol:"rgba(18,4,58,1)"})
+
+      galaxy({cx:OW*.80,cy:OH*.27,r:OW*.12,arms:3,tilt:.42,
+        col1:"rgba(75,158,255,1)",col2:"rgba(135,218,255,1)",
+        coreCol:"rgba(38,115,255,",clusterCol:"#c6e8ff",dustCol:"rgba(4,8,50,1)"})
+
+      galaxy({cx:OW*.16,cy:OH*.74,r:OW*.095,arms:3,tilt:.55,
+        col1:"rgba(242,108,255,1)",col2:"rgba(198,75,228,1)",
+        coreCol:"rgba(198,55,218,",clusterCol:"#ffccff",dustCol:"rgba(38,4,58,1)"})
+
+      galaxy({cx:OW*.54,cy:OH*.10,r:OW*.075,arms:2,tilt:.38,
+        col1:"rgba(55,218,228,1)",col2:"rgba(38,158,208,1)",
+        coreCol:"rgba(18,175,198,",clusterCol:"#b8f2ff",dustCol:"rgba(4,18,38,1)"})
+
+      galaxy({cx:OW*.92,cy:OH*.64,r:OW*.058,arms:2,tilt:.45,
+        col1:"rgba(128,75,255,1)",col2:"rgba(165,98,255,1)",
+        coreCol:"rgba(88,38,208,",clusterCol:"#ceb8ff",dustCol:"rgba(14,4,48,1)"})
 
       // Nebula tendrils
       ;[
-        {px:.50,py:.31,rx:.34,ry:.08,rot: .28,col:"rgba(60,20,140,.12)"},
-        {px:.25,py:.60,rx:.26,ry:.07,rot:-.20,col:"rgba(20,55,160,.10)"},
-        {px:.68,py:.67,rx:.30,ry:.07,rot: .44,col:"rgba(110,15,160,.10)"},
-        {px:.44,py:.78,rx:.28,ry:.06,rot: .10,col:"rgba(40,18,110,.08)"},
-        {px:.72,py:.10,rx:.22,ry:.05,rot:-.12,col:"rgba(12,75,140,.09)"},
-      ].forEach(n => {
+        {px:.50,py:.31,rx:.36,ry:.082,rot: .28,col:"rgba(58,18,138,.13)"},
+        {px:.24,py:.60,rx:.26,ry:.068,rot:-.20,col:"rgba(18,52,158,.11)"},
+        {px:.68,py:.67,rx:.31,ry:.072,rot: .44,col:"rgba(108,12,158,.11)"},
+        {px:.44,py:.79,rx:.28,ry:.060,rot: .10,col:"rgba(38,15,108,.09)"},
+        {px:.72,py:.10,rx:.22,ry:.052,rot:-.12,col:"rgba(10,72,138,.10)"},
+        {px:.08,py:.50,rx:.18,ry:.055,rot: .22,col:"rgba(55,10,120,.09)"},
+      ].forEach(n=>{
         oc.save(); oc.translate(OW*n.px,OH*n.py); oc.rotate(n.rot); oc.scale(1,n.ry/n.rx)
         const g=oc.createRadialGradient(0,0,0,0,0,OW*n.rx)
-        g.addColorStop(0,n.col.replace(/[\d.]+\)$/,"0.24)")); g.addColorStop(.5,n.col); g.addColorStop(1,"rgba(0,0,0,0)")
+        g.addColorStop(0,n.col.replace(/[\d.]+\)$/,"0.25)")); g.addColorStop(.52,n.col); g.addColorStop(1,"rgba(0,0,0,0)")
         oc.beginPath(); oc.arc(0,0,OW*n.rx,0,Math.PI*2); oc.fillStyle=g; oc.fill(); oc.restore()
       })
 
       // Field stars
       const SC=["#fff","#fff","#fff","#c8d8ff","#ffeedd","#b8ccff","#ffd8f0","#d8f8ff"]
-      for (let i=0;i<1000;i++){
-        oc.globalAlpha=.08+Math.random()*.56
-        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.15+Math.random()*1.2,0,Math.PI*2)
+      for(let i=0;i<1100;i++){
+        oc.globalAlpha=.07+Math.random()*.58
+        oc.beginPath(); oc.arc(Math.random()*OW,Math.random()*OH,.12+Math.random()*1.3,0,Math.PI*2)
         oc.fillStyle=SC[Math.floor(Math.random()*SC.length)]; oc.fill()
       }
       oc.globalAlpha=1
     }
 
-    // ── Saturn texture (painted once, scrolled horizontally = rotation) ────────
-    const satTex = document.createElement("canvas")
-    satTex.width=512; satTex.height=256
-    const stx = satTex.getContext("2d")!
-    ;(()=>{
-      const sw=512,sh=256
-      const base=stx.createLinearGradient(0,0,0,sh)
-      base.addColorStop(0,"#7a5228"); base.addColorStop(.12,"#a87840")
-      base.addColorStop(.25,"#c9963c"); base.addColorStop(.38,"#e2b85a")
-      base.addColorStop(.50,"#f0cc70"); base.addColorStop(.62,"#e2b85a")
-      base.addColorStop(.75,"#c9963c"); base.addColorStop(.88,"#a87840")
-      base.addColorStop(1,"#7a5228")
-      stx.fillStyle=base; stx.fillRect(0,0,sw,sh)
-      ;[
-        {y:.08,h:.06,a:.28},{y:.20,h:.05,a:.22},{y:.30,h:.10,a:.20},
-        {y:.44,h:.14,a:.18},{y:.60,h:.08,a:.20},{y:.72,h:.05,a:.22},
-        {y:.82,h:.06,a:.25},
-      ].forEach(b=>{
-        stx.beginPath()
-        for(let x=0;x<=sw;x+=3){
-          const wave=Math.sin(x/sw*Math.PI*8)*(sh*.008)
-          const yy=b.y*sh+wave
-          x===0?stx.moveTo(x,yy):stx.lineTo(x,yy)
-        }
-        stx.lineTo(sw,b.y*sh+b.h*sh); stx.lineTo(0,b.y*sh+b.h*sh); stx.closePath()
-        stx.fillStyle=`rgba(60,35,8,${b.a})`; stx.fill()
-      })
-      // Storm oval
-      stx.save(); stx.translate(sw*.6,sh*.38); stx.scale(1,.5)
-      const storm=stx.createRadialGradient(0,0,0,0,0,sw*.04)
-      storm.addColorStop(0,"rgba(240,220,180,.50)"); storm.addColorStop(1,"rgba(0,0,0,0)")
-      stx.beginPath(); stx.arc(0,0,sw*.04,0,Math.PI*2); stx.fillStyle=storm; stx.fill()
-      stx.restore()
-    })()
-
-    function drawSaturn(ts: number) {
-      const r   = Math.min(W,H)*.082
-      const SX  = W*.80, SY = H*.30
-      const TILT= .40
-      const rot = (ts*.00040*512) % 512
-
-      const RINGS: {ri:number;ro:number;col:string;gap:boolean}[] = [
-        {ri:r*1.24,ro:r*1.40,col:"rgba(180,148,85,.60)",gap:false},
-        {ri:r*1.40,ro:r*1.52,col:"rgba(10,6,2,.80)",    gap:true },
-        {ri:r*1.52,ro:r*1.82,col:"rgba(200,168,98,.70)",gap:false},
-        {ri:r*1.82,ro:r*2.10,col:"rgba(175,142,78,.55)",gap:false},
-        {ri:r*2.10,ro:r*2.42,col:"rgba(150,120,62,.42)",gap:false},
-        {ri:r*2.42,ro:r*2.65,col:"rgba(120,95,48,.28)", gap:false},
-      ]
+    /* ── Saturn — drawn entirely with gradients + arcs, fully clipped ── */
+    function drawSaturn(ts:number) {
+      const r    = Math.min(W,H)*.080
+      const SX   = W*.82, SY = H*.28
+      const TILT = 0.38
+      const band = ts * 0.00055  // band animation phase
 
       ctx.save(); ctx.translate(SX,SY)
 
-      // Back ring halves
+      const RINGS:{ri:number;ro:number;a:number;gap:boolean}[]=[
+        {ri:r*1.22,ro:r*1.38,a:.62,gap:false},
+        {ri:r*1.38,ro:r*1.50,a:.05,gap:true },  // Cassini division
+        {ri:r*1.50,ro:r*1.82,a:.72,gap:false},
+        {ri:r*1.82,ro:r*2.12,a:.56,gap:false},
+        {ri:r*2.12,ro:r*2.44,a:.40,gap:false},
+        {ri:r*2.44,ro:r*2.65,a:.24,gap:false},
+      ]
+
+      /* ── Back ring halves (π → 2π = top half in canvas coords) ── */
       ctx.save(); ctx.scale(1,Math.sin(TILT))
       RINGS.forEach(rr=>{
-        ctx.beginPath()
-        ctx.arc(0,0,rr.ro,Math.PI,Math.PI*2); ctx.arc(0,0,rr.ri,Math.PI*2,Math.PI,true)
-        ctx.closePath(); ctx.fillStyle=rr.col; ctx.fill()
-        if(!rr.gap){
-          const lg=ctx.createLinearGradient(-rr.ro,0,rr.ro,0)
-          lg.addColorStop(0,"rgba(0,0,0,.25)"); lg.addColorStop(.38,"rgba(255,255,255,.06)")
-          lg.addColorStop(.62,"rgba(255,255,255,.06)"); lg.addColorStop(1,"rgba(0,0,0,.25)")
-          ctx.beginPath()
-          ctx.arc(0,0,rr.ro,Math.PI,Math.PI*2); ctx.arc(0,0,rr.ri,Math.PI*2,Math.PI,true)
-          ctx.closePath(); ctx.fillStyle=lg; ctx.fill()
+        if(rr.gap){
+          // Dark Cassini gap — overwrite with near-black
+          ctx.beginPath(); ctx.arc(0,0,rr.ro,Math.PI,Math.PI*2,false); ctx.arc(0,0,rr.ri,Math.PI*2,Math.PI,true)
+          ctx.closePath(); ctx.fillStyle=`rgba(8,5,2,${rr.a})`; ctx.fill()
+          return
         }
+        // Ring fill
+        ctx.beginPath(); ctx.arc(0,0,rr.ro,Math.PI,Math.PI*2,false); ctx.arc(0,0,rr.ri,Math.PI*2,Math.PI,true)
+        ctx.closePath()
+        const rg2=ctx.createRadialGradient(0,0,rr.ri,0,0,rr.ro)
+        rg2.addColorStop(0,`rgba(220,185,105,${rr.a*.95})`)
+        rg2.addColorStop(.4,`rgba(200,165,88,${rr.a})`)
+        rg2.addColorStop(.75,`rgba(178,142,72,${rr.a*.85})`)
+        rg2.addColorStop(1,`rgba(145,115,55,${rr.a*.65})`)
+        ctx.fillStyle=rg2; ctx.fill()
+        // Lateral shading
+        const lg=ctx.createLinearGradient(-rr.ro,0,rr.ro,0)
+        lg.addColorStop(0,"rgba(0,0,0,.32)"); lg.addColorStop(.3,"rgba(255,255,255,.06)")
+        lg.addColorStop(.7,"rgba(255,255,255,.06)"); lg.addColorStop(1,"rgba(0,0,0,.32)")
+        ctx.beginPath(); ctx.arc(0,0,rr.ro,Math.PI,Math.PI*2,false); ctx.arc(0,0,rr.ri,Math.PI*2,Math.PI,true)
+        ctx.closePath(); ctx.fillStyle=lg; ctx.fill()
       })
       ctx.restore()
 
-      // Planet sphere via scrolling texture rows
-      ctx.save(); ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.clip()
-      const steps=Math.ceil(r*2)+2
-      for(let row=0;row<steps;row++){
-        const ny=(row/steps)*2-1
-        const cosLat=Math.sqrt(Math.max(0,1-ny*ny))
-        const rowH=r*2/steps+1
-        const rowY=-r+row*(r*2/steps)
-        const ty=Math.floor(((ny+1)/2)*satTex.height)
-        const rowW=cosLat*r*2
-        if(rowW<1) continue
-        ctx.drawImage(satTex,Math.floor(rot)%satTex.width,ty,satTex.width,1,-rowW/2,rowY,rowW,rowH)
-      }
-      ctx.restore()
+      /* ── Planet sphere — EVERYTHING clipped to circle ── */
+      ctx.save()
+      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.clip()
 
-      // Specular
-      const spec=ctx.createRadialGradient(-r*.30,-r*.34,0,-r*.18,-r*.22,r*.62)
-      spec.addColorStop(0,"rgba(255,252,235,.52)"); spec.addColorStop(.4,"rgba(255,248,220,.12)"); spec.addColorStop(1,"rgba(0,0,0,0)")
-      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fillStyle=spec; ctx.fill()
+      // Base sphere gradient (pole-to-pole)
+      const sphere=ctx.createLinearGradient(0,-r,0,r)
+      sphere.addColorStop(0,"#6a4420"); sphere.addColorStop(.10,"#9a6e32")
+      sphere.addColorStop(.22,"#c8923a"); sphere.addColorStop(.38,"#e0b252")
+      sphere.addColorStop(.50,"#f0cc68"); sphere.addColorStop(.62,"#e0b252")
+      sphere.addColorStop(.78,"#c8923a"); sphere.addColorStop(.90,"#9a6e32")
+      sphere.addColorStop(1,"#6a4420")
+      ctx.fillStyle=sphere; ctx.fillRect(-r,-r,r*2,r*2)
 
-      // Limb darkening
-      const limb=ctx.createRadialGradient(0,0,r*.50,0,0,r)
-      limb.addColorStop(0,"rgba(0,0,0,0)"); limb.addColorStop(.72,"rgba(0,0,0,0)"); limb.addColorStop(1,"rgba(0,0,0,.65)")
-      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fillStyle=limb; ctx.fill()
+      // Animated atmospheric bands (horizontal arcs)
+      const BANDS=[
+        {yf:-.70,hf:.07,dark:.26,phase:0   },
+        {yf:-.52,hf:.06,dark:.20,phase:1.2 },
+        {yf:-.33,hf:.11,dark:.18,phase:2.5 },
+        {yf:-.08,hf:.15,dark:.16,phase:0.8 },
+        {yf: .18,hf:.10,dark:.18,phase:3.1 },
+        {yf: .38,hf:.07,dark:.20,phase:1.8 },
+        {yf: .52,hf:.06,dark:.23,phase:2.2 },
+        {yf: .68,hf:.07,dark:.26,phase:0.5 },
+      ]
+      BANDS.forEach(b=>{
+        const yCenter=b.yf*r
+        const halfH  =b.hf*r
+        ctx.beginPath()
+        // Wavy top edge
+        ctx.moveTo(-r,yCenter-halfH)
+        for(let xi=-r;xi<=r;xi+=3){
+          const wave=Math.sin((xi/r)*Math.PI*4+band*3+b.phase)*r*.010
+          ctx.lineTo(xi,yCenter-halfH+wave)
+        }
+        ctx.lineTo(r,yCenter+halfH)
+        ctx.lineTo(-r,yCenter+halfH)
+        ctx.closePath()
+        ctx.fillStyle=`rgba(45,25,5,${b.dark})`; ctx.fill()
+      })
 
-      // Atmosphere glow
-      const atmo=ctx.createRadialGradient(0,0,r*.85,0,0,r*1.60)
-      atmo.addColorStop(0,"rgba(0,0,0,0)"); atmo.addColorStop(.78,"rgba(0,0,0,0)")
-      atmo.addColorStop(.90,"rgba(190,145,70,.12)"); atmo.addColorStop(1,"rgba(0,0,0,0)")
-      ctx.beginPath(); ctx.arc(0,0,r*1.60,0,Math.PI*2); ctx.fillStyle=atmo; ctx.fill()
+      // Subtle horizontal bright equatorial band
+      const eqGrad=ctx.createLinearGradient(0,-r*.08,0,r*.08)
+      eqGrad.addColorStop(0,"rgba(255,240,180,0)"); eqGrad.addColorStop(.5,"rgba(255,240,180,.08)"); eqGrad.addColorStop(1,"rgba(255,240,180,0)")
+      ctx.fillStyle=eqGrad; ctx.fillRect(-r,-r*.08,r*2,r*.16)
 
-      // Front ring halves
+      // Specular highlight — top-left
+      const spec=ctx.createRadialGradient(-r*.32,-r*.36,0,-r*.18,-r*.24,r*.58)
+      spec.addColorStop(0,"rgba(255,252,238,.52)"); spec.addColorStop(.38,"rgba(255,248,220,.14)"); spec.addColorStop(1,"rgba(0,0,0,0)")
+      ctx.fillStyle=spec; ctx.fillRect(-r,-r,r*2,r*2)
+
+      // Limb darkening — edge only, smooth fade
+      const limb=ctx.createRadialGradient(0,0,r*.60,0,0,r)
+      limb.addColorStop(0,"rgba(0,0,0,0)"); limb.addColorStop(.78,"rgba(0,0,0,0)"); limb.addColorStop(1,"rgba(0,0,0,.72)")
+      ctx.fillStyle=limb; ctx.fillRect(-r,-r,r*2,r*2)
+
+      ctx.restore() // release planet clip
+
+      /* ── Atmosphere glow (outside clip, soft halo) ── */
+      const atmo=ctx.createRadialGradient(0,0,r*.82,0,0,r*1.55)
+      atmo.addColorStop(0,"rgba(0,0,0,0)"); atmo.addColorStop(.80,"rgba(200,155,75,0)")
+      atmo.addColorStop(.92,"rgba(200,155,75,.10)"); atmo.addColorStop(1,"rgba(0,0,0,0)")
+      ctx.beginPath(); ctx.arc(0,0,r*1.55,0,Math.PI*2); ctx.fillStyle=atmo; ctx.fill()
+
+      /* ── Front ring halves (0 → π = bottom half in canvas coords) ── */
       ctx.save(); ctx.scale(1,Math.sin(TILT))
       RINGS.forEach(rr=>{
-        ctx.beginPath()
-        ctx.arc(0,0,rr.ro,0,Math.PI); ctx.arc(0,0,rr.ri,Math.PI,0,true)
-        ctx.closePath(); ctx.fillStyle=rr.col; ctx.fill()
-        if(!rr.gap){
-          const lg=ctx.createLinearGradient(-rr.ro,0,rr.ro,0)
-          lg.addColorStop(0,"rgba(0,0,0,.25)"); lg.addColorStop(.38,"rgba(255,255,255,.07)")
-          lg.addColorStop(.62,"rgba(255,255,255,.07)"); lg.addColorStop(1,"rgba(0,0,0,.25)")
-          ctx.beginPath()
-          ctx.arc(0,0,rr.ro,0,Math.PI); ctx.arc(0,0,rr.ri,Math.PI,0,true)
-          ctx.closePath(); ctx.fillStyle=lg; ctx.fill()
+        if(rr.gap){
+          ctx.beginPath(); ctx.arc(0,0,rr.ro,0,Math.PI,false); ctx.arc(0,0,rr.ri,Math.PI,0,true)
+          ctx.closePath(); ctx.fillStyle=`rgba(8,5,2,${rr.a})`; ctx.fill()
+          return
         }
+        ctx.beginPath(); ctx.arc(0,0,rr.ro,0,Math.PI,false); ctx.arc(0,0,rr.ri,Math.PI,0,true)
+        ctx.closePath()
+        const rg2=ctx.createRadialGradient(0,0,rr.ri,0,0,rr.ro)
+        rg2.addColorStop(0,`rgba(222,188,108,${rr.a*.98})`)
+        rg2.addColorStop(.4,`rgba(202,168,90,${rr.a})`)
+        rg2.addColorStop(.75,`rgba(180,145,74,${rr.a*.88})`)
+        rg2.addColorStop(1,`rgba(148,118,58,${rr.a*.68})`)
+        ctx.fillStyle=rg2; ctx.fill()
+        const lg=ctx.createLinearGradient(-rr.ro,0,rr.ro,0)
+        lg.addColorStop(0,"rgba(0,0,0,.28)"); lg.addColorStop(.32,"rgba(255,255,255,.07)")
+        lg.addColorStop(.68,"rgba(255,255,255,.07)"); lg.addColorStop(1,"rgba(0,0,0,.28)")
+        ctx.beginPath(); ctx.arc(0,0,rr.ro,0,Math.PI,false); ctx.arc(0,0,rr.ri,Math.PI,0,true)
+        ctx.closePath(); ctx.fillStyle=lg; ctx.fill()
       })
       ctx.restore()
-      ctx.restore()
+
+      ctx.restore() // main translate
     }
 
-    // ── Runtime particles ─────────────────────────────────────────────────────
+    /* ── Runtime particles ── */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
-
-    let dust: Dust[]=[], sparkles: Sparkle[]=[]
-    const shoots: Shoot[]=[]
+    let dust:Dust[]=[], sparkles:Sparkle[]=[]
+    const shoots:Shoot[]=[]
 
     function initParticles(){
       dust=[]
-      for(let i=0;i<80;i++) dust.push({
-        x:Math.random()*W,y:Math.random()*H,
-        vx:(Math.random()-.5)*.12,vy:(Math.random()-.5)*.08,
-        s:.5+Math.random()*3,a:.03+Math.random()*.12,
-        col:Math.random()>.5?"rgba(140,70,255,1)":"rgba(70,120,255,1)",
-        ph:Math.random()*Math.PI*2,fr:.002+Math.random()*.007,
+      for(let i=0;i<85;i++) dust.push({
+        x:Math.random()*W, y:Math.random()*H,
+        vx:(Math.random()-.5)*.12, vy:(Math.random()-.5)*.08,
+        s:.5+Math.random()*3, a:.03+Math.random()*.12,
+        col:Math.random()>.5?"rgba(145,68,255,1)":"rgba(68,118,255,1)",
+        ph:Math.random()*Math.PI*2, fr:.002+Math.random()*.007,
       })
       sparkles=[]
-      const SC=["#fff","#ddc8ff","#c0d8ff","#ffeedd","#b8f0ff","#ffd0f0"]
-      for(let i=0;i<35;i++) sparkles.push({
-        x:Math.random()*W,y:Math.random()*H,
-        s:.4+Math.random()*2.3,ph:Math.random()*Math.PI*2,
-        fr:.4+Math.random()*2.4,col:SC[Math.floor(Math.random()*SC.length)],
+      const SC=["#fff","#ddc8ff","#c0d8ff","#ffeedd","#b8f2ff","#ffd0f0"]
+      for(let i=0;i<38;i++) sparkles.push({
+        x:Math.random()*W, y:Math.random()*H,
+        s:.4+Math.random()*2.3, ph:Math.random()*Math.PI*2,
+        fr:.4+Math.random()*2.4, col:SC[Math.floor(Math.random()*SC.length)],
       })
     }
 
-    function spawnShoot(fast: boolean){
-      const a=(Math.random()>.5?.12:Math.PI-.12)+(Math.random()-.5)*.30
+    function spawnShoot(fast:boolean){
+      const a=(Math.random()>.5?.11:Math.PI-.11)+(Math.random()-.5)*.30
       const spd=fast?18+Math.random()*24:5+Math.random()*9
-      const COLS=["rgba(200,160,255,1)","rgba(160,210,255,1)","rgba(255,210,160,1)"]
+      const COLS=["rgba(205,158,255,1)","rgba(158,212,255,1)","rgba(255,212,158,1)","rgba(158,255,200,1)"]
       shoots.push({
-        x:Math.random()*W,y:Math.random()*H*.50,
-        vx:Math.cos(a)*spd,vy:Math.sin(a)*spd+1,
-        len:fast?130+Math.random()*240:60+Math.random()*110,
-        alpha:.95,dec:fast?.013+Math.random()*.012:.020+Math.random()*.014,
-        col:fast?"rgba(255,255,255,1)":COLS[Math.floor(Math.random()*3)],
+        x:Math.random()*W, y:Math.random()*H*.48,
+        vx:Math.cos(a)*spd, vy:Math.sin(a)*spd+.8,
+        len:fast?135+Math.random()*245:58+Math.random()*112,
+        alpha:.95, dec:fast?.012+Math.random()*.012:.020+Math.random()*.014,
+        col:fast?"rgba(255,255,255,1)":COLS[Math.floor(Math.random()*COLS.length)],
         w:fast?2:.9,
       })
     }
@@ -2149,54 +2167,58 @@ function StarfieldCanvas() {
     resize()
     window.addEventListener("resize",resize)
 
-    let ox=0,oy=0,shootT=0,raf=0
+    let ox=0, oy=0, shootT=0, raf=0
 
-    function tick(ts: number){
+    function tick(ts:number){
       raf=requestAnimationFrame(tick)
-      ox+=.022; oy+=.010; shootT++
+      ox+=.020; oy+=.009; shootT++
 
-      const OW=off.width,OH=off.height
+      const OW=off.width, OH=off.height
       ctx.fillStyle="#020108"; ctx.fillRect(0,0,W,H)
 
-      const nx=((-ox*.17)%OW+OW)%OW
-      const ny=((-oy*.12)%OH+OH)%OH
+      const nx=((-ox*.16)%OW+OW)%OW
+      const ny=((-oy*.11)%OH+OH)%OH
       for(let tx=-OW;tx<=W;tx+=OW)
         for(let ty=-OH;ty<=H;ty+=OH)
           ctx.drawImage(off,nx+tx,ny+ty)
 
       const t=ts*.001
 
+      // Dust
       for(const d of dust){
         d.x+=d.vx; d.y+=d.vy
         if(d.x<0)d.x=W; if(d.x>W)d.x=0; if(d.y<0)d.y=H; if(d.y>H)d.y=0
-        ctx.globalAlpha=d.a*(.55+.45*Math.sin(t*d.fr*Math.PI*2+d.ph))
+        ctx.globalAlpha=d.a*(.52+.48*Math.sin(t*d.fr*Math.PI*2+d.ph))
         ctx.beginPath(); ctx.arc(d.x,d.y,d.s,0,Math.PI*2); ctx.fillStyle=d.col; ctx.fill()
       }
       ctx.globalAlpha=1
 
+      // Sparkles (8-ray cross)
       for(const s of sparkles){
-        const p=.22+.78*Math.abs(Math.sin(t*s.fr+s.ph))
-        const r=s.s*(1+p*.7)
-        ctx.globalAlpha=p*.92; ctx.strokeStyle=s.col; ctx.lineWidth=.7
+        const p=.20+.80*Math.abs(Math.sin(t*s.fr+s.ph))
+        const r=s.s*(1+p*.72)
+        ctx.globalAlpha=p*.92; ctx.strokeStyle=s.col; ctx.lineWidth=.72
         ctx.beginPath(); ctx.moveTo(s.x-r,s.y); ctx.lineTo(s.x+r,s.y)
         ctx.moveTo(s.x,s.y-r); ctx.lineTo(s.x,s.y+r); ctx.stroke()
-        const rd=r*.52; ctx.beginPath()
+        const rd=r*.50; ctx.beginPath()
         ctx.moveTo(s.x-rd,s.y-rd); ctx.lineTo(s.x+rd,s.y+rd)
         ctx.moveTo(s.x+rd,s.y-rd); ctx.lineTo(s.x-rd,s.y+rd); ctx.stroke()
-        ctx.globalAlpha=p*.88; ctx.beginPath()
-        ctx.arc(s.x,s.y,s.s*.42,0,Math.PI*2); ctx.fillStyle=s.col; ctx.fill()
+        ctx.globalAlpha=p*.86; ctx.beginPath()
+        ctx.arc(s.x,s.y,s.s*.40,0,Math.PI*2); ctx.fillStyle=s.col; ctx.fill()
       }
       ctx.globalAlpha=1
 
+      // Saturn
       drawSaturn(ts)
 
-      if(shootT%185===0) spawnShoot(true)
-      if(shootT%310===0) spawnShoot(false)
+      // Shooting stars: fast white + slow coloured
+      if(shootT%182===0) spawnShoot(true)
+      if(shootT%305===0) spawnShoot(false)
       for(let i=shoots.length-1;i>=0;i--){
         const sh=shoots[i]
         const tail=ctx.createLinearGradient(sh.x,sh.y,sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len)
         tail.addColorStop(0,sh.col.replace(/[\d.]+\)$/,`${sh.alpha})`))
-        tail.addColorStop(.28,sh.col.replace(/[\d.]+\)$/,`${sh.alpha*.40})`))
+        tail.addColorStop(.26,sh.col.replace(/[\d.]+\)$/,`${sh.alpha*.38})`))
         tail.addColorStop(1,"rgba(0,0,0,0)")
         ctx.beginPath(); ctx.moveTo(sh.x,sh.y)
         ctx.lineTo(sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len)
@@ -2207,7 +2229,7 @@ function StarfieldCanvas() {
     }
 
     raf=requestAnimationFrame(tick)
-    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("resize",resize) }
+    return()=>{ cancelAnimationFrame(raf); window.removeEventListener("resize",resize) }
   },[])
 
   return (
@@ -6648,7 +6670,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       </div>
 
       {/* Bottom HUD - Player info and controls */}
-      <div className="relative z-20 bg-gradient-to-t from-black/95 via-black/90 to-transparent pt-2 pb-2 px-4">
+      <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-2 pb-2 px-4">
         {/* Player LP bar */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
