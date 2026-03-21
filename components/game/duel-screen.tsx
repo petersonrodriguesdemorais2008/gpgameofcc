@@ -1645,6 +1645,207 @@ const getElementGlow = (element: string): string => {
   }
 }
 
+// ─── DiceCanvas3D ─────────────────────────────────────────────────────────────
+// Standalone component: renders a 3D dice via Canvas 2D + manual perspective
+// projection + rAF. Never uses CSS preserve-3d (which flattens under keyframes).
+interface DiceCanvas3DProps {
+  result: number | null  // 1-6 when settled, null while tumbling
+}
+
+const DICE_PIPS: Record<number,[number,number][]> = {
+  1: [[50,50]],
+  2: [[28,28],[72,72]],
+  3: [[25,25],[50,50],[75,75]],
+  4: [[28,28],[72,28],[28,72],[72,72]],
+  5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6: [[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]],
+}
+
+const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
+  1:{rx:0,   ry:0  },
+  2:{rx:0,   ry:-90},
+  3:{rx:90,  ry:0  },
+  4:{rx:-90, ry:0  },
+  5:{rx:0,   ry:90 },
+  6:{rx:0,   ry:180},
+}
+
+// Face definitions: vertex indices + face number + normal direction
+const DICE_FACE_NORMALS: [number,number,number][] = [
+  [0,0,1],[0,0,-1],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]
+]
+const DICE_FACES = [
+  { vi:[4,5,6,7] as [number,number,number,number], num:1 },
+  { vi:[1,0,3,2] as [number,number,number,number], num:6 },
+  { vi:[5,1,2,6] as [number,number,number,number], num:2 },
+  { vi:[0,4,7,3] as [number,number,number,number], num:5 },
+  { vi:[7,6,2,3] as [number,number,number,number], num:3 },
+  { vi:[0,1,5,4] as [number,number,number,number], num:4 },
+]
+
+function DiceCanvas3D({ result }: DiceCanvas3DProps) {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null)
+  const rafRef    = React.useRef<number>(0)
+
+  React.useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")!
+    const W = canvas.width  = 220
+    const H = canvas.height = 220
+    const CX = W/2, CY = H/2
+    const S  = 70  // half-size of cube
+
+    // 8 vertices
+    const verts: [number,number,number][] = [
+      [-S,-S,-S],[S,-S,-S],[S,S,-S],[-S,S,-S],
+      [-S,-S, S],[S,-S, S],[S,S, S],[-S,S, S],
+    ]
+
+    const toRad = (d:number) => d * Math.PI / 180
+
+    function rotVert(x:number,y:number,z:number,rx:number,ry:number):[number,number,number] {
+      const ryr = toRad(ry)
+      const x2  = x*Math.cos(ryr) + z*Math.sin(ryr)
+      const z2  =-x*Math.sin(ryr) + z*Math.cos(ryr)
+      const rxr = toRad(rx)
+      const y2  = y*Math.cos(rxr) - z2*Math.sin(rxr)
+      const z3  = y*Math.sin(rxr) + z2*Math.cos(rxr)
+      return [x2, y2, z3]
+    }
+
+    function project(x:number,y:number,z:number):[number,number] {
+      const fov = 380, sc = fov/(fov+z)
+      return [CX+x*sc, CY+y*sc]
+    }
+
+    function drawPip(cx:number,cy:number,r:number) {
+      const g = ctx.createRadialGradient(cx-r*.25,cy-.28*r,r*.05,cx,cy,r)
+      g.addColorStop(0,"#444"); g.addColorStop(1,"#000")
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2)
+      ctx.fillStyle=g
+      ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=3
+      ctx.fill(); ctx.shadowBlur=0
+    }
+
+    function drawCube(rx:number,ry:number,sc:number,dy:number) {
+      ctx.clearRect(0,0,W,H)
+      ctx.save()
+      ctx.translate(CX,CY+dy); ctx.scale(sc,sc); ctx.translate(-CX,-CY)
+
+      const proj = verts.map(([x,y,z]) => {
+        const r = rotVert(x,y,z,rx,ry)
+        return { w:r, p:project(r[0],r[1],r[2]) }
+      })
+
+      const sorted = DICE_FACES.map((face,fi) => {
+        const n = rotVert(...DICE_FACE_NORMALS[fi] as [number,number,number],rx,ry)
+        const avgZ = face.vi.reduce((s,i)=>s+proj[i].w[2],0)/4
+        return { face, n2:n[2], avgZ }
+      }).sort((a,b)=>a.avgZ-b.avgZ)
+
+      sorted.forEach(({face,n2}) => {
+        if(n2 < -0.05) return
+        const pts = face.vi.map(i=>proj[i].p) as [number,number][]
+        const br  = Math.max(0,n2)
+        const li  = Math.round(210+br*45)
+        const liHi= Math.min(255,li+30)
+        const liLo= Math.max(155,li-35)
+
+        // Face
+        ctx.beginPath()
+        ctx.moveTo(pts[0][0],pts[0][1])
+        pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
+        ctx.closePath()
+        const g = ctx.createLinearGradient(pts[0][0],pts[0][1],pts[2][0],pts[2][1])
+        g.addColorStop(0,`rgb(${liHi},${liHi},${liHi})`)
+        g.addColorStop(1,`rgb(${liLo},${liLo},${liLo})`)
+        ctx.fillStyle=g; ctx.fill()
+        ctx.strokeStyle=`rgba(140,140,140,${0.35+br*0.45})`
+        ctx.lineWidth=1.5; ctx.stroke()
+
+        // Specular
+        if(br>0.35){
+          const sg=ctx.createRadialGradient(pts[0][0],pts[0][1],0,pts[0][0],pts[0][1],60)
+          sg.addColorStop(0,`rgba(255,255,255,${br*0.42})`); sg.addColorStop(1,"rgba(255,255,255,0)")
+          ctx.beginPath()
+          ctx.moveTo(pts[0][0],pts[0][1])
+          pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
+          ctx.closePath(); ctx.fillStyle=sg; ctx.fill()
+        }
+
+        // Pips via bilinear interpolation onto the projected quad
+        if(br > 0.05) {
+          const [tl,tr,br2,bl] = pts
+          const pipR = Math.max(3, 7*br)
+          ;(DICE_PIPS[face.num]??[]).forEach(([px,py])=>{
+            const tx=px/100, ty=py/100
+            const topX=tl[0]+(tr[0]-tl[0])*tx, topY=tl[1]+(tr[1]-tl[1])*tx
+            const botX=bl[0]+(br2[0]-bl[0])*tx, botY=bl[1]+(br2[1]-bl[1])*tx
+            drawPip(topX+(botX-topX)*ty, topY+(botY-topY)*ty, pipR)
+          })
+        }
+      })
+
+      ctx.restore()
+    }
+
+    // Physics
+    const target = result ? DICE_SETTLE[result] : {rx:0,ry:0}
+    const endRX  = target.rx + 720 + (Math.random()>.5?180:0)
+    const endRY  = target.ry + 1080+ (Math.random()>.5?180:0)
+    const TUMBLE=2200,SETTLE=380,BOUNCE=880
+    const scKF=[0.4,1.08,0.93,1.04,0.97,1.02,0.99,1.005,1]
+    const eOut=(t:number)=>1-Math.pow(1-t,3)
+    const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
+    const spr =(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*2*Math.PI/3)
+
+    let phase:"tumble"|"settle"|"bounce"|"done"="tumble"
+    let rx2=0,ry2=0,sc2=0.4,dy2=0
+    let fromRX=0,fromRY=0,fromSc=1
+    let t0:number|null=null,ps:number|null=null
+
+    function frame(ts:number){
+      if(!t0) t0=ts; if(!ps) ps=ts
+      const el=ts-ps
+
+      if(phase==="tumble"){
+        const p=Math.min(el/TUMBLE,1), e=eOut(p)
+        rx2=lerp(0,endRX,e); ry2=lerp(0,endRY,e)
+        const si=Math.min(Math.floor(p*(scKF.length-1)),scKF.length-2)
+        sc2=lerp(scKF[si],scKF[si+1],p*(scKF.length-1)-si)
+        dy2=0
+        if(p>=1){ phase="settle"; ps=ts; fromRX=rx2; fromRY=ry2; fromSc=sc2 }
+      } else if(phase==="settle"){
+        const p=Math.min(el/SETTLE,1), sp=spr(p)
+        const fRX=Math.round(fromRX/360)*360+target.rx
+        const fRY=Math.round(fromRY/360)*360+target.ry
+        rx2=lerp(fromRX,fRX,sp); ry2=lerp(fromRY,fRY,sp); sc2=lerp(fromSc,1,sp); dy2=0
+        if(p>=1){ rx2=fRX; ry2=fRY; sc2=1; phase="bounce"; ps=ts }
+      } else if(phase==="bounce"){
+        const bp=Math.min(el/BOUNCE,1)
+        if(bp<.22)       dy2=lerp(0,-28,bp/.22)
+        else if(bp<.44)  dy2=lerp(-28,0,(bp-.22)/.22)
+        else if(bp<.60)  dy2=lerp(0,-12,(bp-.44)/.16)
+        else if(bp<.76)  dy2=lerp(-12,0,(bp-.60)/.16)
+        else if(bp<.88)  dy2=lerp(0,-5,(bp-.76)/.12)
+        else             dy2=lerp(-5,0,(bp-.88)/.12)
+        if(bp>=1){ dy2=0; phase="done" }
+      }
+
+      drawCube(rx2,ry2,sc2,dy2)
+      if(phase!=="done") rafRef.current=requestAnimationFrame(frame)
+    }
+
+    rafRef.current = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [result])
+
+  return <canvas ref={canvasRef} style={{ width:220, height:220, display:"block" }} />
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
@@ -6150,286 +6351,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* ── Dice Roll Animation — Canvas 3D, sem CSS preserve-3d ── */}
+      {/* ── Dice Roll Animation ── */}
       {diceAnimation && (() => {
         const rolling = diceAnimation.rolling
         const r       = diceAnimation.result
-
         const COLORS: Record<number,string> = {
-          1:"#f87171", 2:"#fb923c", 3:"#facc15",
-          4:"#4ade80", 5:"#60a5fa", 6:"#c084fc",
+          1:"#f87171",2:"#fb923c",3:"#facc15",
+          4:"#4ade80",5:"#60a5fa",6:"#c084fc",
         }
         const LABELS: Record<number,string> = {
           1:"Resultado 1 — Baixo",  2:"Resultado 2 — Baixo",
           3:"Resultado 3 — Médio",  4:"Resultado 4 — Médio",
           5:"Resultado 5 — Alto",   6:"Resultado 6 — Máximo!",
         }
-        const col = r ? COLORS[r]  : "#ffffff"
-        const lbl = r ? LABELS[r]  : ""
-
-        /* Pip [cx%, cy%] for each face */
-        const PIPS: Record<number,[number,number][]> = {
-          1: [[50,50]],
-          2: [[28,28],[72,72]],
-          3: [[25,25],[50,50],[75,75]],
-          4: [[28,28],[72,28],[28,72],[72,72]],
-          5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
-          6: [[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]],
-        }
-
-        /* Canvas dice: pure JS projection, always 3D */
-        const DiceCanvas = () => {
-          const canvasRef = React.useRef<HTMLCanvasElement>(null)
-          const rafRef    = React.useRef<number>(0)
-
-          React.useEffect(() => {
-            const canvas = canvasRef.current
-            if (!canvas) return
-            const ctx = canvas.getContext("2d")!
-            const W = canvas.width = 220
-            const H = canvas.height = 220
-            const CX = W/2, CY = H/2
-
-            /* ── Cube geometry: 8 vertices of a unit cube ─────────────── */
-            const S = 70 // half-size
-            const verts: [number,number,number][] = [
-              [-S,-S,-S],[S,-S,-S],[S,S,-S],[-S,S,-S], // back face
-              [-S,-S, S],[S,-S, S],[S,S, S],[-S,S, S], // front face
-            ]
-            /* 6 faces: [v0,v1,v2,v3, faceNum, normalDir] */
-            type Face = { vi:[number,number,number,number]; num:number }
-            const faces: Face[] = [
-              { vi:[4,5,6,7], num:1 }, // front  +Z
-              { vi:[1,0,3,2], num:6 }, // back   -Z
-              { vi:[5,1,2,6], num:2 }, // right  +X
-              { vi:[0,4,7,3], num:5 }, // left   -X
-              { vi:[7,6,2,3], num:3 }, // top    +Y
-              { vi:[0,1,5,4], num:4 }, // bottom -Y
-            ]
-            /* face normals (pre-rotation) */
-            const normals: [number,number,number][] = [
-              [0,0,1],[0,0,-1],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]
-            ]
-
-            /* ── Which final rotation parks each face toward camera ──── */
-            /* target rx,ry so face-normal points toward +Z after rotation */
-            const SETTLE_TARGET: Record<number,{rx:number,ry:number}> = {
-              1:{rx:0,   ry:0  }, // front already faces camera
-              6:{rx:0,   ry:180},
-              2:{rx:0,   ry:-90},
-              5:{rx:0,   ry:90 },
-              3:{rx:90,  ry:0  },
-              4:{rx:-90, ry:0  },
-            }
-
-            /* ── Rotation helpers ────────────────────────────────────── */
-            const toRad = (d:number) => d*Math.PI/180
-            function rotVert(x:number,y:number,z:number,rx:number,ry:number):[number,number,number]{
-              // rotate Y
-              const rxr=toRad(rx), ryr=toRad(ry)
-              let x2 = x*Math.cos(ryr)+z*Math.sin(ryr)
-              let z2 =-x*Math.sin(ryr)+z*Math.cos(ryr)
-              // rotate X
-              let y2 = y*Math.cos(rxr)-z2*Math.sin(rxr)
-              let z3 = y*Math.sin(rxr)+z2*Math.cos(rxr)
-              return [x2,y2,z3]
-            }
-            function project(x:number,y:number,z:number):[number,number]{
-              const fov = 380
-              const scale = fov/(fov+z)
-              return [CX+x*scale, CY+y*scale]
-            }
-
-            /* ── Draw one pip circle on a face ───────────────────────── */
-            function drawPip(ctx:CanvasRenderingContext2D, cx:number,cy:number, r:number, shadow:number){
-              const grad = ctx.createRadialGradient(cx-r*.25,cy-r*.28,r*.05,cx,cy,r)
-              grad.addColorStop(0,"#444")
-              grad.addColorStop(1,"#000")
-              ctx.beginPath()
-              ctx.arc(cx,cy,r,0,Math.PI*2)
-              ctx.fillStyle=grad
-              ctx.shadowColor="rgba(0,0,0,.5)"
-              ctx.shadowBlur=shadow
-              ctx.fill()
-              ctx.shadowBlur=0
-            }
-
-            /* ── Draw pips mapped onto the projected quad ────────────── */
-            function drawPipsOnFace(
-              ctx:CanvasRenderingContext2D,
-              pts:[number,number][],   // 4 projected corners [tl,tr,br,bl]
-              faceNum:number,
-              brightness:number
-            ){
-              if(brightness<0.05) return
-              const pips = PIPS[faceNum]??[]
-              const pipR = 7 * brightness
-              const [tl,tr,br,bl] = pts
-
-              pips.forEach(([px,py])=>{
-                // bilinear interpolation: map pip [0..100,0..100] onto the quad
-                const tx=px/100, ty=py/100
-                const topX    = tl[0]+(tr[0]-tl[0])*tx
-                const topY    = tl[1]+(tr[1]-tl[1])*tx
-                const botX    = bl[0]+(br[0]-bl[0])*tx
-                const botY    = bl[1]+(br[1]-bl[1])*tx
-                const cx2     = topX+(botX-topX)*ty
-                const cy2     = topY+(botY-topY)*ty
-                drawPip(ctx,cx2,cy2,pipR*brightness,4*brightness)
-              })
-            }
-
-            /* ── Draw cube frame ─────────────────────────────────────── */
-            function drawCube(rx:number,ry:number){
-              ctx.clearRect(0,0,W,H)
-
-              // Project all 8 verts
-              const proj = verts.map(([x,y,z])=>{
-                const [rx2,ry2,rz2]=rotVert(x,y,z,rx,ry)
-                return { w:[rx2,ry2,rz2] as [number,number,number], p:project(rx2,ry2,rz2) }
-              })
-
-              // Sort faces back-to-front (painter's algorithm)
-              const sorted = faces.map((face,fi)=>{
-                const [n0,n1,n2]=rotVert(...normals[fi],rx,ry)
-                const avgZ = face.vi.reduce((s,i)=>s+proj[i].w[2],0)/4
-                return { face, fi, n2:n2, avgZ }
-              }).sort((a,b)=>a.avgZ-b.avgZ)
-
-              sorted.forEach(({face,fi,n2})=>{
-                // back-face cull: skip faces pointing away from camera
-                if(n2 < -0.05) return
-
-                const pts = face.vi.map(i=>proj[i].p) as [number,number][]
-                const brightness = Math.max(0, n2)
-
-                // Base white shading
-                const lightness = Math.round(215+brightness*40)
-                const baseColor = `rgb(${lightness},${lightness},${lightness})`
-
-                // Draw face polygon
-                ctx.beginPath()
-                ctx.moveTo(pts[0][0],pts[0][1])
-                pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
-                ctx.closePath()
-
-                // Face gradient: top-left highlight
-                const gx1=pts[0][0],gy1=pts[0][1]
-                const gx2=pts[2][0],gy2=pts[2][1]
-                const faceGrad=ctx.createLinearGradient(gx1,gy1,gx2,gy2)
-                faceGrad.addColorStop(0,`rgb(${Math.min(255,lightness+28)},${Math.min(255,lightness+28)},${Math.min(255,lightness+28)})`)
-                faceGrad.addColorStop(1,`rgb(${Math.max(160,lightness-30)},${Math.max(160,lightness-30)},${Math.max(160,lightness-30)})`)
-                ctx.fillStyle=faceGrad
-                ctx.fill()
-
-                // Edge outline
-                ctx.strokeStyle=`rgba(160,160,160,${0.4+brightness*0.4})`
-                ctx.lineWidth=1.5
-                ctx.stroke()
-
-                // Pips
-                const [tl,tr,br,bl]=[pts[0],pts[1],pts[2],pts[3]]
-                drawPipsOnFace(ctx,[tl,tr,br,bl],face.num,brightness)
-
-                // Specular highlight (top-left corner of face)
-                if(brightness>0.4){
-                  const hlGrad=ctx.createRadialGradient(gx1,gy1,0,gx1,gy1,55)
-                  hlGrad.addColorStop(0,`rgba(255,255,255,${brightness*0.45})`)
-                  hlGrad.addColorStop(1,"rgba(255,255,255,0)")
-                  ctx.beginPath()
-                  ctx.moveTo(pts[0][0],pts[0][1])
-                  pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
-                  ctx.closePath()
-                  ctx.fillStyle=hlGrad
-                  ctx.fill()
-                }
-              })
-            }
-
-            /* ── Physics state ───────────────────────────────────────── */
-            const target = r ? SETTLE_TARGET[r] : {rx:0,ry:0}
-            const endRX  = target.rx + 720 + (Math.random()>.5?180:0)
-            const endRY  = target.ry + 1080+ (Math.random()>.5?180:0)
-            let rx2=0, ry2=0
-            let bounceY=0, bounceSc=0.4
-
-            const TUMBLE_MS=2200, SETTLE_MS=380, BOUNCE_MS=880
-            let t0:number|null=null
-            type Phase="tumble"|"settle"|"bounce"|"done"
-            let phase:Phase="tumble"
-            let phaseStart:number|null=null
-            let fromRX=0,fromRY=0,fromSc=1
-
-            /* easing */
-            const easeOut3=(t:number)=>1-Math.pow(1-t,3)
-            const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
-            const spring=(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*2*Math.PI/3)
-
-            function frame(ts:number){
-              if(!t0) t0=ts
-              if(!phaseStart) phaseStart=ts
-
-              const elapsed=ts-phaseStart
-
-              if(phase==="tumble"){
-                const p=Math.min(elapsed/TUMBLE_MS,1)
-                const e=easeOut3(p)
-                rx2=lerp(0,endRX,e)
-                ry2=lerp(0,endRY,e)
-                // pulse scale during tumble
-                const scaleKF=[0.4,1.08,0.93,1.04,0.97,1.02,0.99,1.005,1]
-                const si=Math.min(Math.floor(p*(scaleKF.length-1)),scaleKF.length-2)
-                const st=p*(scaleKF.length-1)-si
-                bounceSc=lerp(scaleKF[si],scaleKF[si+1],st)
-                bounceY=0
-                if(p>=1){
-                  phase="settle"; phaseStart=ts
-                  fromRX=rx2; fromRY=ry2; fromSc=bounceSc
-                }
-              } else if(phase==="settle"){
-                const p=Math.min(elapsed/SETTLE_MS,1)
-                const sp=spring(p)
-                const finalRX=Math.round(fromRX/360)*360+target.rx
-                const finalRY=Math.round(fromRY/360)*360+target.ry
-                rx2=lerp(fromRX,finalRX,sp)
-                ry2=lerp(fromRY,finalRY,sp)
-                bounceSc=lerp(fromSc,1,sp)
-                bounceY=0
-                if(p>=1){
-                  rx2=finalRX; ry2=finalRY; bounceSc=1
-                  phase="bounce"; phaseStart=ts
-                }
-              } else if(phase==="bounce"){
-                const bp=Math.min(elapsed/BOUNCE_MS,1)
-                if(bp<.22)       bounceY=lerp(0,-28,bp/.22)
-                else if(bp<.44)  bounceY=lerp(-28,0,(bp-.22)/.22)
-                else if(bp<.60)  bounceY=lerp(0,-12,(bp-.44)/.16)
-                else if(bp<.76)  bounceY=lerp(-12,0,(bp-.60)/.16)
-                else if(bp<.88)  bounceY=lerp(0,-5,(bp-.76)/.12)
-                else             bounceY=lerp(-5,0,(bp-.88)/.12)
-                if(bp>=1){ bounceY=0; phase="done" }
-              }
-
-              ctx.save()
-              ctx.translate(0,bounceY)
-              ctx.scale(bounceSc,bounceSc)
-              drawCube(rx2,ry2)
-              ctx.restore()
-
-              if(phase!=="done") rafRef.current=requestAnimationFrame(frame)
-            }
-
-            rafRef.current=requestAnimationFrame(frame)
-            return ()=>cancelAnimationFrame(rafRef.current)
-          },[])
-
-          return (
-            <canvas
-              ref={canvasRef}
-              style={{ width:220, height:220, display:"block" }}
-            />
-          )
-        }
+        const col = r ? COLORS[r] : "#ffffff"
+        const lbl = r ? LABELS[r] : ""
 
         return (
           <div style={{
@@ -6451,23 +6387,25 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             {/* Backdrop */}
             <div style={{
               position:"absolute", inset:0,
-              background:"radial-gradient(ellipse at center, rgba(18,8,44,.93) 0%, rgba(0,0,0,.86) 100%)",
+              background:"radial-gradient(ellipse at center,rgba(18,8,44,.93) 0%,rgba(0,0,0,.86) 100%)",
               animation:"d-ovl 200ms ease-out forwards",
             }} />
 
-            {/* Sparks (on result) */}
-            {!rolling && r !== null && Array.from({length:16}).map((_,i)=>{
+            {/* Sparks on result */}
+            {!rolling && r !== null && Array.from({length:16}).map((_,i) => {
               const a=(i/16)*Math.PI*2, dist=76+(i%3)*28, sz=i%3===0?10:i%3===1?7:5
-              return <div key={i} style={{
-                position:"absolute", width:sz, height:sz, borderRadius:"50%",
-                background:col, boxShadow:`0 0 7px 2px ${col}`,
-                animation:`d-spark 700ms cubic-bezier(.2,0,.5,1) ${i*20}ms forwards`,
-                "--sx":`${Math.cos(a)*dist}px`, "--sy":`${Math.sin(a)*dist}px`,
-              } as React.CSSProperties} />
+              return (
+                <div key={i} style={{
+                  position:"absolute", width:sz, height:sz, borderRadius:"50%",
+                  background:col, boxShadow:`0 0 7px 2px ${col}`,
+                  animation:`d-spark 700ms cubic-bezier(.2,0,.5,1) ${i*20}ms forwards`,
+                  "--sx":`${Math.cos(a)*dist}px`, "--sy":`${Math.sin(a)*dist}px`,
+                } as React.CSSProperties} />
+              )
             })}
 
-            {/* Rings */}
-            {!rolling && r !== null && [0,90].map((delay,i)=>(
+            {/* Expansion rings on result */}
+            {!rolling && r !== null && [0,90].map((delay,i) => (
               <div key={i} style={{
                 position:"absolute", borderRadius:"50%",
                 width:120+i*24, height:120+i*24,
@@ -6476,7 +6414,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               }} />
             ))}
 
-            {/* Content column */}
+            {/* Content */}
             <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
 
               {/* Card name */}
@@ -6491,14 +6429,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 </p>
               </div>
 
-              {/* Canvas dice — always 3D */}
+              {/* 3D canvas dice — always 3D, rAF-driven */}
               <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center" }}>
-                <DiceCanvas />
-                {/* Ground shadow under canvas */}
+                <DiceCanvas3D result={r} />
                 <div style={{
                   width:80, height:12, borderRadius:"50%",
-                  background:"rgba(0,0,0,.5)", filter:"blur(7px)",
-                  marginTop:-8,
+                  background:"rgba(0,0,0,.5)", filter:"blur(7px)", marginTop:-8,
                 }} />
               </div>
 
@@ -6507,7 +6443,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 <div style={{ textAlign:"center" }}>
                   <p style={{ color:"#fff", fontWeight:700, fontSize:16, letterSpacing:"2px", textTransform:"uppercase", textShadow:"0 0 18px rgba(139,92,246,.9)", margin:"0 0 9px" }}>Rolando...</p>
                   <div style={{ display:"flex", gap:7, justifyContent:"center" }}>
-                    {[0,1,2].map(i=>(
+                    {[0,1,2].map(i => (
                       <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:"rgba(139,92,246,.9)", animation:`d-dot .7s ease-in-out ${i*.18}s infinite alternate` }} />
                     ))}
                   </div>
