@@ -2579,7 +2579,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     deck: [],
     graveyard: [],
     tap: [],
-    life: 20,
+    life: 50,
   })
   const [enemyField, setEnemyField] = useState<FieldState>({
     unitZone: [null, null, null, null],
@@ -2591,7 +2591,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     deck: [],
     graveyard: [],
     tap: [],
-    life: 20,
+    life: 50,
   })
   const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
   const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }>({})
@@ -3355,7 +3355,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       hand,
       deck: remainingDeck,
       tap: deck.tapCards ? [...deck.tapCards] : [],
-      life: 20,
+      life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
@@ -3372,7 +3372,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       hand: botHand,
       deck: botRemaining,
       tap: deck.tapCards ? [...deck.tapCards] : [],
-      life: 20,
+      life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
