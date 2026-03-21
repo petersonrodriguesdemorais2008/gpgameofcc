@@ -904,10 +904,17 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       allyUnits: 1,
     },
     canActivate: (context) => {
-      // Check for units with Darkness, Fire, or Aquos elements
+      // Cards treated as Fire by name even if element tag differs
+      const fireNames = ["scandinavian angel logi", "jaden hainaegi"]
+      const isFireByName = (u: any) =>
+        fireNames.some(n => u.name?.toLowerCase().includes(n))
+
       const validElements = ["darkness", "fire", "aquos"]
       const hasValidUnit = context.playerField.unitZone.some((u) =>
-        u !== null && validElements.includes(u.element?.toLowerCase() || "")
+        u !== null && (
+          validElements.includes(u.element?.toLowerCase() || "") ||
+          isFireByName(u)
+        )
       )
       if (!hasValidUnit) {
         return { canActivate: false, reason: "Precisa de unidade Darkness, Fire ou Aquos em campo" }
@@ -926,10 +933,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { success: false, message: "Unidade nao encontrada" }
       }
 
-      const validElements = ["darkness", "fire", "aquos"]
-      const unitElement = allyUnit.element?.toLowerCase() || ""
+      // Cards treated as Fire by name
+      const fireNames = ["scandinavian angel logi", "jaden hainaegi"]
+      const isFireByName = fireNames.some(n =>
+        allyUnit.name?.toLowerCase().includes(n)
+      )
 
-      if (!validElements.includes(unitElement)) {
+      const validElements = ["darkness", "fire", "aquos"]
+      const rawElement = allyUnit.element?.toLowerCase() || ""
+      // Override element to "fire" for named cards
+      const effectiveElement = isFireByName ? "fire" : rawElement
+
+      if (!validElements.includes(rawElement) && !isFireByName) {
         return { success: false, message: "Unidade deve ser Darkness, Fire ou Aquos" }
       }
 
@@ -940,7 +955,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
       if (diceResult >= 1 && diceResult <= 2) {
         dpBonus = 3
-        if (unitElement === "darkness") {
+        if (effectiveElement === "darkness") {
           // Bonus: Draw 1 card
           if (context.playerField.deck.length > 0) {
             const drawnCard = context.playerField.deck[0]
@@ -954,14 +969,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         }
       } else if (diceResult >= 3 && diceResult <= 4) {
         dpBonus = 4
-        if (unitElement === "fire") {
+        if (effectiveElement === "fire") {
           // Bonus: +2 LP
           context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Fire: +2 LP!"
         }
       } else {
         dpBonus = 5
-        if (unitElement === "aquos") {
+        if (effectiveElement === "aquos") {
           // Bonus: +3 LP
           context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
           bonusMessage = " Bonus Aquos: +3 LP!"
