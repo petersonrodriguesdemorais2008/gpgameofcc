@@ -1935,12 +1935,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [fehnonLrDouble, setFehnonLrDouble] = useState(false)
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
 
-  // ── Destruction sequencing: IDs of cards with an active on-field destruction animation.
-  //    DiscardAnimationManager delays the graveyard animation until this animation finishes. ──
-  const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
-  const markDestroyed = (card: GameCard) =>
-    setDestroyedCardIds(prev => { const s = new Set(prev); s.add(card.id); return s })
-
   const prevUnitZoneRef = useRef<(string | null)[]>([])
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const animationInProgressRef = useRef(false)
@@ -1996,7 +1990,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
-    markDestroyed(card)
     setTimeout(() => setDestructionAnimation(null), 1200)
   }, [])
   const rollDice = useCallback((cardName: string): Promise<number> => {
@@ -3286,7 +3279,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!funcCard) return
 
     if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") {
-      markDestroyed(funcCard)
       setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
         const destroyed = newFuncs[funcIndex]
@@ -3414,7 +3406,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
-        markDestroyed(unit)
         setEnemyField((prev) => {
           const newUnits = [...prev.unitZone]
           const destroyed = newUnits[index]
@@ -3429,7 +3420,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       } else {
         const func = enemyField.functionZone[index]
         if (!func) return
-        markDestroyed(func)
         setEnemyField((prev) => {
           const newFuncs = [...prev.functionZone]
           const destroyed = newFuncs[index]
@@ -3459,7 +3449,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (!target) return prev
       const newDp = target.currentDp - 1
       if (newDp <= 0) {
-        markDestroyed(target)
         newUnits[unitIndex] = null
         showEffectFeedback(`JULGAMENTO DIVINO: ${target.name} destruido! (0 DP)`, "success")
         return {
@@ -3484,7 +3473,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (type === "unit") {
       const target = enemyField.unitZone[index]
       if (!target) return
-      markDestroyed(target)
       setEnemyField((prev) => {
         const newUnits = [...prev.unitZone]
         newUnits[index] = null
@@ -3494,7 +3482,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     } else {
       const target = enemyField.functionZone[index]
       if (!target) return
-      markDestroyed(target)
       setEnemyField((prev) => {
         const newFunctions = [...prev.functionZone]
         newFunctions[index] = null
@@ -4448,8 +4435,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
             const targetIdx = unitIdx !== -1 ? unitIdx : -1
             if (targetIdx !== -1) {
-              const destroyedUnit = playerField.unitZone[targetIdx]
-              if (destroyedUnit) markDestroyed(destroyedUnit)
               setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const destroyed = newUnits[targetIdx]
@@ -4504,7 +4489,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
                         showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
                       } else {
-                        markDestroyed(defender)
                         newPlayerGraveyard.push(defender)
                         newPlayerUnitZone[playerUnitIndex] = null
                       }
@@ -4520,7 +4504,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   })
 
                   if (newAttackerDp <= 0) {
-                    markDestroyed(unit)
                     newEnemyGraveyard.push(unit)
                     newEnemyUnitZone[unitIdx] = null
                   } else {
@@ -6149,79 +6132,307 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* Dice Roll Animation */}
-      {diceAnimation && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/60 animate-fade-in" />
+      {/* ── Dice Roll Animation ── */}
+      {diceAnimation && (() => {
+        const r = diceAnimation.result
+        const rolling = diceAnimation.rolling
+        // Final rotation per face so the correct face points toward camera (+Z)
+        // CSS 3D: front=1, back=6, right=2, left=5, top=3, bottom=4
+        const faceRot: Record<number, string> = {
+          1: "rotateY(0deg)",
+          2: "rotateY(-90deg)",
+          3: "rotateX(90deg)",
+          4: "rotateX(-90deg)",
+          5: "rotateY(90deg)",
+          6: "rotateY(180deg)",
+        }
+        const isHigh = r !== null && r > 3
+        const resultColor = r === null ? "#38bdf8"
+          : r <= 2 ? "#ef4444"
+          : r === 3 ? "#f97316"
+          : r === 4 ? "#eab308"
+          : r === 5 ? "#22c55e"
+          : "#a855f7"
+        const resultLabel = r === null ? "" : r <= 2 ? "Resultado Baixo" : r === 3 ? "Médio-Baixo" : r === 4 ? "Médio-Alto" : r === 5 ? "Resultado Alto" : "Resultado Máximo!"
 
-          {/* Dice container */}
-          <div className="relative flex flex-col items-center gap-6">
-            {/* Card name */}
-            <div className="bg-gradient-to-r from-amber-900/90 to-orange-900/90 px-6 py-2 rounded-xl border border-amber-500/50 shadow-2xl">
-              <p className="text-amber-400 font-bold text-lg">{diceAnimation.cardName}</p>
-            </div>
+        // Dot layouts per face
+        const dotLayouts: Record<number, { top: string; left: string }[]> = {
+          1: [{ top:"50%", left:"50%" }],
+          2: [{ top:"25%", left:"25%" }, { top:"75%", left:"75%" }],
+          3: [{ top:"20%", left:"20%" }, { top:"50%", left:"50%" }, { top:"80%", left:"80%" }],
+          4: [{ top:"25%", left:"25%" }, { top:"25%", left:"75%" }, { top:"75%", left:"25%" }, { top:"75%", left:"75%" }],
+          5: [{ top:"25%", left:"25%" }, { top:"25%", left:"75%" }, { top:"50%", left:"50%" }, { top:"75%", left:"25%" }, { top:"75%", left:"75%" }],
+          6: [{ top:"20%", left:"28%" }, { top:"20%", left:"72%" }, { top:"50%", left:"28%" }, { top:"50%", left:"72%" }, { top:"80%", left:"28%" }, { top:"80%", left:"72%" }],
+        }
 
-            {/* 3D Dice */}
-            <div className={`dice-scene ${diceAnimation.rolling ? 'dice-rolling' : ''}`}>
-              <div className={`dice-cube ${!diceAnimation.rolling && diceAnimation.result ? `dice-face-${diceAnimation.result}` : ''}`}>
-                <div className="dice-face dice-face-1">
-                  <span className="dice-dot"></span>
-                </div>
-                <div className="dice-face dice-face-2">
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                </div>
-                <div className="dice-face dice-face-3">
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                </div>
-                <div className="dice-face dice-face-4">
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                </div>
-                <div className="dice-face dice-face-5">
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                </div>
-                <div className="dice-face dice-face-6">
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                  <span className="dice-dot"></span>
-                </div>
-              </div>
-            </div>
+        const Dot = ({ top, left }: { top: string; left: string }) => (
+          <div style={{
+            position:"absolute", top, left,
+            width:14, height:14,
+            transform:"translate(-50%,-50%)",
+            borderRadius:"50%",
+            background:"radial-gradient(circle at 35% 35%, #ffffff, #1e1b4b)",
+            boxShadow:"0 2px 4px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.3)",
+          }} />
+        )
 
-            {/* Result display */}
-            {!diceAnimation.rolling && diceAnimation.result && (
-              <div className="dice-result-display">
-                <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-4 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
-                  <p className="text-white font-bold text-3xl text-center">
-                    {diceAnimation.result}
-                  </p>
-                  <p className="text-cyan-200 text-sm text-center mt-1">
-                    {diceAnimation.result <= 3 ? "Resultado Baixo" : "Resultado Alto"}
-                  </p>
-                </div>
-              </div>
+        const faceStyles: { transform: string; bg: string; border: string }[] = [
+          // front (1), back (6), right (2), left (5), top (3), bottom (4)
+          { transform:`rotateY(0deg) translateZ(55px)`,   bg:"linear-gradient(135deg,#312e81,#1e1b4b)", border:"rgba(139,92,246,0.6)" },
+          { transform:`rotateY(180deg) translateZ(55px)`, bg:"linear-gradient(135deg,#1e1b4b,#312e81)", border:"rgba(139,92,246,0.4)" },
+          { transform:`rotateY(90deg) translateZ(55px)`,  bg:"linear-gradient(135deg,#2e1065,#1e1b4b)", border:"rgba(139,92,246,0.5)" },
+          { transform:`rotateY(-90deg) translateZ(55px)`, bg:"linear-gradient(135deg,#1e1b4b,#2e1065)", border:"rgba(139,92,246,0.5)" },
+          { transform:`rotateX(90deg) translateZ(55px)`,  bg:"linear-gradient(135deg,#3b0764,#1e1b4b)", border:"rgba(139,92,246,0.4)" },
+          { transform:`rotateX(-90deg) translateZ(55px)`, bg:"linear-gradient(135deg,#1e1b4b,#3b0764)", border:"rgba(139,92,246,0.4)" },
+        ]
+        const faceNumbers = [1, 6, 2, 5, 3, 4]
+
+        return (
+          <div style={{
+            position:"fixed", inset:0, zIndex:60,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            pointerEvents:"none",
+          }}>
+            <style>{`
+              @keyframes dice-overlay-in {
+                from { opacity:0 } to { opacity:1 }
+              }
+              @keyframes dice-tumble {
+                0%   { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg)   scale3d(0.4,0.4,0.4); opacity:0; }
+                8%   { opacity:1; transform: rotateX(120deg) rotateY(80deg)  rotateZ(30deg)  scale3d(1.1,1.1,1.1); }
+                20%  { transform: rotateX(280deg) rotateY(200deg) rotateZ(95deg)  scale3d(0.95,0.95,0.95); }
+                35%  { transform: rotateX(420deg) rotateY(340deg) rotateZ(170deg) scale3d(1.05,1.05,1.05); }
+                50%  { transform: rotateX(560deg) rotateY(460deg) rotateZ(230deg) scale3d(0.98,0.98,0.98); }
+                65%  { transform: rotateX(680deg) rotateY(560deg) rotateZ(290deg) scale3d(1.03,1.03,1.03); }
+                80%  { transform: rotateX(760deg) rotateY(640deg) rotateZ(330deg) scale3d(0.99,0.99,0.99); }
+                92%  { transform: rotateX(820deg) rotateY(700deg) rotateZ(358deg) scale3d(1.01,1.01,1.01); }
+                100% { transform: rotateX(840deg) rotateY(720deg) rotateZ(360deg) scale3d(1,1,1); opacity:1; }
+              }
+              @keyframes dice-settle-1 { to { transform: ${faceRot[1] ?? "rotateY(0deg)"} } }
+              @keyframes dice-settle-2 { to { transform: ${faceRot[2] ?? "rotateY(-90deg)"} } }
+              @keyframes dice-settle-3 { to { transform: ${faceRot[3] ?? "rotateX(90deg)"} } }
+              @keyframes dice-settle-4 { to { transform: ${faceRot[4] ?? "rotateX(-90deg)"} } }
+              @keyframes dice-settle-5 { to { transform: ${faceRot[5] ?? "rotateY(90deg)"} } }
+              @keyframes dice-settle-6 { to { transform: ${faceRot[6] ?? "rotateY(180deg)"} } }
+              @keyframes dice-bounce {
+                0%   { transform: translateY(0) }
+                20%  { transform: translateY(-28px) }
+                40%  { transform: translateY(0) }
+                55%  { transform: translateY(-12px) }
+                70%  { transform: translateY(0) }
+                82%  { transform: translateY(-5px) }
+                100% { transform: translateY(0) }
+              }
+              @keyframes dice-shadow-pulse {
+                0%,100% { transform: scaleX(1); opacity:0.5; }
+                20%     { transform: scaleX(0.55); opacity:0.2; }
+                40%     { transform: scaleX(1); opacity:0.5; }
+                55%     { transform: scaleX(0.72); opacity:0.3; }
+                70%     { transform: scaleX(1); opacity:0.5; }
+              }
+              @keyframes dice-glow-pulse {
+                0%,100% { box-shadow: 0 0 30px 12px ${resultColor}44, 0 0 60px 24px ${resultColor}22; }
+                50%     { box-shadow: 0 0 50px 20px ${resultColor}88, 0 0 90px 36px ${resultColor}44; }
+              }
+              @keyframes dice-result-pop {
+                0%   { transform:scale(0.3) translateY(20px); opacity:0; filter:blur(8px); }
+                60%  { transform:scale(1.12) translateY(-4px); opacity:1; filter:blur(0); }
+                80%  { transform:scale(0.96) translateY(1px); }
+                100% { transform:scale(1) translateY(0); opacity:1; }
+              }
+              @keyframes dice-particle {
+                0%   { transform:translate(0,0) scale(1); opacity:1; }
+                100% { transform:translate(var(--dpx),var(--dpy)) scale(0); opacity:0; }
+              }
+              @keyframes dice-ring-expand {
+                0%   { transform:scale(0); opacity:0.9; border-width:4px; }
+                100% { transform:scale(3.5); opacity:0; border-width:0px; }
+              }
+              @keyframes dice-number-glow {
+                0%,100% { text-shadow: 0 0 20px ${resultColor}, 0 0 40px ${resultColor}88; }
+                50%     { text-shadow: 0 0 40px ${resultColor}, 0 0 80px ${resultColor}, 0 0 120px ${resultColor}66; }
+              }
+              @keyframes dice-card-label {
+                0%   { opacity:0; transform:translateY(-12px); }
+                100% { opacity:1; transform:translateY(0); }
+              }
+            `}</style>
+
+            {/* Backdrop */}
+            <div style={{
+              position:"absolute", inset:0,
+              background:"radial-gradient(ellipse at center, rgba(30,27,75,0.85) 0%, rgba(0,0,0,0.75) 100%)",
+              animation:"dice-overlay-in 200ms ease-out forwards",
+            }} />
+
+            {/* Particle sparks on result (only when stopped) */}
+            {!rolling && r !== null && Array.from({length:12}).map((_,i) => {
+              const angle = (i / 12) * Math.PI * 2
+              const dist = 80 + (i % 3) * 30
+              return (
+                <div key={i} style={{
+                  position:"absolute",
+                  width: i % 3 === 0 ? 8 : 5,
+                  height: i % 3 === 0 ? 8 : 5,
+                  borderRadius:"50%",
+                  background: resultColor,
+                  boxShadow:`0 0 8px 3px ${resultColor}`,
+                  animation:`dice-particle 700ms cubic-bezier(0.2,0,0.5,1) ${i*30}ms forwards`,
+                  "--dpx": `${Math.cos(angle)*dist}px`,
+                  "--dpy": `${Math.sin(angle)*dist}px`,
+                } as React.CSSProperties} />
+              )
+            })}
+
+            {/* Expanding ring on result */}
+            {!rolling && r !== null && (
+              <div style={{
+                position:"absolute",
+                width:120, height:120,
+                borderRadius:"50%",
+                border:`4px solid ${resultColor}`,
+                boxShadow:`0 0 20px 8px ${resultColor}66`,
+                animation:"dice-ring-expand 600ms ease-out forwards",
+              }} />
             )}
 
-            {/* Rolling text */}
-            {diceAnimation.rolling && (
-              <p className="text-white font-bold text-xl animate-pulse">Rolando...</p>
-            )}
+            <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", gap:28 }}>
+
+              {/* Card name label */}
+              <div style={{
+                background:"linear-gradient(135deg, rgba(120,53,15,0.95), rgba(180,83,9,0.9))",
+                padding:"8px 28px", borderRadius:12,
+                border:"1px solid rgba(251,191,36,0.5)",
+                boxShadow:"0 4px 24px rgba(0,0,0,0.5), 0 0 20px rgba(251,146,60,0.2)",
+                animation:"dice-card-label 300ms ease-out forwards",
+              }}>
+                <p style={{ color:"#fcd34d", fontWeight:700, fontSize:17, letterSpacing:"0.5px", margin:0 }}>
+                  {diceAnimation.cardName}
+                </p>
+              </div>
+
+              {/* 3D Dice scene */}
+              <div style={{
+                perspective: 600,
+                width:130, height:160,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                position:"relative",
+              }}>
+                {/* Bounce wrapper (only when settled) */}
+                <div style={{
+                  animation: !rolling && r !== null ? "dice-bounce 800ms cubic-bezier(0.36,0.07,0.19,0.97) forwards" : undefined,
+                  position:"relative",
+                }}>
+                  {/* Cube */}
+                  <div style={{
+                    width:110, height:110,
+                    transformStyle:"preserve-3d",
+                    animation: rolling
+                      ? "dice-tumble 2000ms cubic-bezier(0.4,0,0.2,1) forwards"
+                      : r !== null
+                        ? `dice-settle-${r} 350ms cubic-bezier(0.34,1.56,0.64,1) forwards, dice-glow-pulse 1.2s ease-in-out 400ms infinite`
+                        : undefined,
+                  }}>
+                    {faceStyles.map((fs, fi) => {
+                      const faceNum = faceNumbers[fi]
+                      const dots = dotLayouts[faceNum] ?? []
+                      return (
+                        <div key={fi} style={{
+                          position:"absolute",
+                          width:110, height:110,
+                          borderRadius:14,
+                          background:fs.bg,
+                          border:`2px solid ${fs.border}`,
+                          boxShadow:`inset 0 1px 2px rgba(255,255,255,0.12), inset 0 -2px 4px rgba(0,0,0,0.4)`,
+                          transform:fs.transform,
+                          backfaceVisibility:"hidden",
+                        }}>
+                          {/* Corner number subtle */}
+                          <span style={{
+                            position:"absolute", top:5, left:8,
+                            fontSize:11, color:"rgba(255,255,255,0.22)",
+                            fontWeight:700, fontFamily:"monospace",
+                          }}>{faceNum}</span>
+                          {/* Dots */}
+                          {dots.map((d, di) => <Dot key={di} {...d} />)}
+                          {/* Face inner glow */}
+                          <div style={{
+                            position:"absolute", inset:0, borderRadius:13,
+                            background:"radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.08) 0%, transparent 65%)",
+                            pointerEvents:"none",
+                          }} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Ground shadow */}
+                <div style={{
+                  position:"absolute", bottom:-16,
+                  width:80, height:16, borderRadius:"50%",
+                  background:"rgba(0,0,0,0.45)",
+                  filter:"blur(6px)",
+                  animation: !rolling && r !== null ? "dice-shadow-pulse 800ms ease-in-out forwards" : undefined,
+                }} />
+              </div>
+
+              {/* Rolling text */}
+              {rolling && (
+                <div style={{ textAlign:"center" }}>
+                  <p style={{
+                    color:"white", fontWeight:700, fontSize:18,
+                    letterSpacing:"2px", textTransform:"uppercase",
+                    animation:"dice-overlay-in 300ms ease-out forwards",
+                    textShadow:"0 0 20px rgba(139,92,246,0.8)",
+                  }}>Rolando...</p>
+                  <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:8 }}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{
+                        width:8, height:8, borderRadius:"50%",
+                        background:"rgba(139,92,246,0.9)",
+                        animation:`dice-overlay-in 600ms ease-in-out ${i*180}ms infinite alternate`,
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Result display */}
+              {!rolling && r !== null && (
+                <div style={{
+                  animation:"dice-result-pop 500ms cubic-bezier(0.34,1.56,0.64,1) forwards",
+                  textAlign:"center",
+                }}>
+                  {/* Big number */}
+                  <div style={{
+                    fontSize:72, fontWeight:900,
+                    color: resultColor,
+                    lineHeight:1,
+                    fontFamily:"monospace",
+                    animation:"dice-number-glow 1.2s ease-in-out infinite",
+                    marginBottom:8,
+                  }}>{r}</div>
+
+                  {/* Label badge */}
+                  <div style={{
+                    display:"inline-block",
+                    padding:"6px 20px", borderRadius:20,
+                    background:`linear-gradient(135deg, ${resultColor}33, ${resultColor}11)`,
+                    border:`1.5px solid ${resultColor}88`,
+                    boxShadow:`0 0 16px ${resultColor}44`,
+                  }}>
+                    <p style={{
+                      color:resultColor, fontWeight:700, fontSize:13,
+                      letterSpacing:"1px", textTransform:"uppercase", margin:0,
+                    }}>{resultLabel}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Ordem de Laceração — Blue Slash Animation */}
       {lacerationAnimation && (
@@ -6956,7 +7167,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         enemyGraveyard={enemyField.graveyard}
         playerGraveyardRef={playerGraveyardRef}
         enemyGraveyardRef={enemyGraveyardRef}
-        destroyedCardIds={destroyedCardIds}
+        fieldRef={fieldRef}
       />
 
     </div>
