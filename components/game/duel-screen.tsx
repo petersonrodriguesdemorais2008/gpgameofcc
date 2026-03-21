@@ -1850,6 +1850,145 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
   )
 }
 // ──────────────────────────────────────────────────────────────────────────────
+// ─── StarfieldCanvas ───────────────────────────────────────────────────────────
+// Animated deep-space background: parallax star layers + nebula + shooting stars.
+
+function StarfieldCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")!
+
+    let W = 0, H = 0
+    function resize() {
+      W = canvas.width  = window.innerWidth
+      H = canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener("resize", resize)
+
+    type Star = {
+      x:number; y:number; z:number
+      size:number; alpha:number
+      twinkleSpeed:number; twinklePhase:number
+      color:string
+    }
+
+    const STAR_COLORS = [
+      "#ffffff","#ffffff","#ffffff",
+      "#c8d8ff","#ffeedd","#aaccff","#ffddaa",
+    ]
+
+    const stars: Star[] = []
+    for (let i = 0; i < 320; i++) {
+      const z = Math.random()
+      stars.push({
+        x: Math.random() * 2000,
+        y: Math.random() * 2000,
+        z,
+        size: 0.3 + z * 2.2 + Math.random() * 0.6,
+        alpha: 0.3 + z * 0.5 + Math.random() * 0.2,
+        twinkleSpeed: 0.4 + Math.random() * 1.8,
+        twinklePhase: Math.random() * Math.PI * 2,
+        color: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)],
+      })
+    }
+
+    type Shoot = { x:number; y:number; vx:number; vy:number; len:number; alpha:number; decay:number }
+    const shoots: Shoot[] = []
+    function spawnShoot() {
+      const angle = (Math.random() > 0.5 ? 0.15 : Math.PI - 0.15) + (Math.random() - 0.5) * 0.3
+      const speed = 12 + Math.random() * 18
+      shoots.push({
+        x: Math.random() * W, y: Math.random() * H * 0.55,
+        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed + 2,
+        len: 80 + Math.random() * 140,
+        alpha: 0.9, decay: 0.018 + Math.random() * 0.012,
+      })
+    }
+
+    // Pre-render nebula blobs onto offscreen canvas (2000x2000 logical)
+    const off = document.createElement("canvas")
+    off.width = off.height = 2000
+    const oc  = off.getContext("2d")!
+    ;[
+      {x:400, y:300, r:380, col:"rgba(60,20,120,.09)"},
+      {x:1400,y:500, r:320, col:"rgba(20,60,140,.07)"},
+      {x:800, y:1200,r:420, col:"rgba(80,10,100,.08)"},
+      {x:200, y:1400,r:280, col:"rgba(20,80,60,.06)"},
+      {x:1600,y:1500,r:350, col:"rgba(100,40,20,.07)"},
+      {x:1000,y:800, r:500, col:"rgba(30,30,100,.06)"},
+    ].forEach(n => {
+      const g = oc.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r)
+      g.addColorStop(0, n.col); g.addColorStop(1,"rgba(0,0,0,0)")
+      oc.beginPath(); oc.arc(n.x,n.y,n.r,0,Math.PI*2)
+      oc.fillStyle=g; oc.fill()
+    })
+
+    let ox=0, oy=0, shootTimer=0, raf=0
+
+    function tick(ts:number) {
+      raf = requestAnimationFrame(tick)
+      ox += 0.04; oy += 0.015
+
+      // Base
+      ctx.fillStyle = "#04030d"
+      ctx.fillRect(0,0,W,H)
+
+      // Nebula (tiled, slowest parallax)
+      const nx=((-ox*0.3)%2000+2000)%2000
+      const ny=((-oy*0.2)%2000+2000)%2000
+      for(let tx=-2000;tx<=W;tx+=2000)
+        for(let ty=-2000;ty<=H;ty+=2000)
+          ctx.drawImage(off,nx+tx,ny+ty)
+
+      // Stars
+      const t=ts*0.001
+      for(const s of stars){
+        const sx=((s.x-ox*(0.1+s.z*0.4))%W+W)%W
+        const sy=((s.y-oy*(0.1+s.z*0.2))%H+H)%H
+        const tw=0.7+0.3*Math.sin(t*s.twinkleSpeed+s.twinklePhase)
+        ctx.globalAlpha=s.alpha*tw
+        if(s.z>0.65&&s.size>1.4){
+          const grd=ctx.createRadialGradient(sx,sy,0,sx,sy,s.size*2.8)
+          grd.addColorStop(0,s.color); grd.addColorStop(0.4,s.color); grd.addColorStop(1,"rgba(0,0,0,0)")
+          ctx.beginPath(); ctx.arc(sx,sy,s.size*2.8,0,Math.PI*2)
+          ctx.fillStyle=grd; ctx.fill()
+        }
+        ctx.beginPath(); ctx.arc(sx,sy,s.size,0,Math.PI*2)
+        ctx.fillStyle=s.color; ctx.fill()
+      }
+      ctx.globalAlpha=1
+
+      // Shooting stars
+      if(++shootTimer%220===0) spawnShoot()
+      for(let i=shoots.length-1;i>=0;i--){
+        const sh=shoots[i]
+        const tail=ctx.createLinearGradient(sh.x,sh.y,sh.x-sh.vx/15*sh.len,sh.y-sh.vy/15*sh.len)
+        tail.addColorStop(0,`rgba(255,255,255,${sh.alpha})`)
+        tail.addColorStop(1,"rgba(255,255,255,0)")
+        ctx.beginPath(); ctx.moveTo(sh.x,sh.y)
+        ctx.lineTo(sh.x-sh.vx/15*sh.len,sh.y-sh.vy/15*sh.len)
+        ctx.strokeStyle=tail; ctx.lineWidth=1.5; ctx.stroke()
+        sh.x+=sh.vx; sh.y+=sh.vy; sh.alpha-=sh.decay
+        if(sh.alpha<=0||sh.x<-200||sh.x>W+200||sh.y>H+100) shoots.splice(i,1)
+      }
+    }
+
+    raf=requestAnimationFrame(tick)
+    return()=>{ cancelAnimationFrame(raf); window.removeEventListener("resize",resize) }
+  },[])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:0,pointerEvents:"none"}}
+    />
+  )
+}
+
 // ─── GameResultScreen ─────────────────────────────────────────────────────────
 
 interface GameResultScreenProps {
@@ -5484,7 +5623,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       suppressHydrationWarning={true}
       className={`relative h-screen flex flex-col overflow-hidden select-none touch-none`}
       style={{
-        background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 25%, #0f0f2f 50%, #1a1a3a 75%, #0a0a1a 100%)",
+        background: "#04030d",
       }}
       onMouseMove={(e) => {
         handleAttackMove(e)
@@ -5507,7 +5646,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         handleHandCardDragEnd()
       }}
     >
-      {/* Active Projectiles */}
+      {/* Animated starfield — sits at z-0 behind all UI */}
+      <StarfieldCanvas />
       {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
           key={proj.id}
