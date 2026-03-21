@@ -7158,27 +7158,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         function flyCSS(a:{fromX:number;fromY:number;midX:number;midY:number;toX:number;toY:number}, id:string) {
           return `
             @keyframes ${id}-fly {
-              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.65) rotateY(0deg) rotateZ(-10deg); opacity:0; filter:blur(5px) }
-              5%   { opacity:1; filter:blur(0) }
-              20%  { transform:translate(${a.midX*.3+a.fromX*.7-W/2}px,${a.midY*.3+a.fromY*.7-H/2}px) scale(0.9) rotateY(30deg) rotateZ(-5deg) }
-              48%  { transform:translate(${a.midX-W/2}px,${a.midY-H/2}px) scale(1.22) rotateY(90deg) rotateZ(2deg); filter:blur(0) }
+              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.72) rotateY(0deg) rotateZ(-6deg); opacity:0 }
+              8%   { opacity:1 }
+              46%  { transform:translate(${a.midX-W/2}px,${a.midY-H/2}px) scale(1.08) rotateY(90deg) rotateZ(2deg) }
               100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(1) rotateY(180deg) rotateZ(0deg); opacity:1 }
             }
-            @keyframes ${id}-trail0 {
-              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.6) rotateZ(-10deg); opacity:0.35 }
-              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(0.9) rotateZ(0deg); opacity:0 }
+            @keyframes ${id}-trail {
+              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.68); opacity:0.28 }
+              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(0.92); opacity:0 }
             }
-            @keyframes ${id}-trail1 {
-              0%   { transform:translate(${a.fromX-W/2}px,${a.fromY-H/2}px) scale(0.55) rotateZ(-10deg); opacity:0.22 }
-              100% { transform:translate(${a.toX-W/2}px,${a.toY-H/2}px) scale(0.85) rotateZ(0deg); opacity:0 }
-            }
-            @keyframes ${id}-spark {
-              0%   { transform:translate(${a.toX}px,${a.toY}px) scale(1.5); opacity:1 }
-              100% { transform:translate(${a.toX}px,${a.toY}px) translate(var(--sx),var(--sy)) scale(0); opacity:0 }
-            }
-            @keyframes ${id}-ring {
-              0%   { transform:translate(${a.toX-W/2-12}px,${a.toY-H/2-12}px) scale(0.5); opacity:0.9; border-width:3px }
-              100% { transform:translate(${a.toX-W/2-12}px,${a.toY-H/2-12}px) scale(1.6); opacity:0; border-width:1px }
+            @keyframes ${id}-land {
+              0%   { opacity:0; transform:translate(${a.toX-W/2-8}px,${a.toY-H/2-8}px) scale(0.85) }
+              60%  { transform:translate(${a.toX-W/2-8}px,${a.toY-H/2-8}px) scale(1.04) }
+              100% { opacity:1; transform:translate(${a.toX-W/2-8}px,${a.toY-H/2-8}px) scale(1) }
             }
           `
         }
@@ -7188,169 +7180,113 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <style>{`
               ${anim  ? flyCSS(anim,  'dcp') : ''}
               ${eAnim ? flyCSS(eAnim, 'dce') : ''}
-              @keyframes dc-glow-b  {
-                0%,100%{ box-shadow:0 0 12px 4px rgba(80,130,255,.6),0 0 0 1.5px rgba(150,180,255,.4),0 6px 24px rgba(0,0,0,.5) }
-                50%    { box-shadow:0 0 32px 12px rgba(100,150,255,.95),0 0 0 1.5px rgba(200,220,255,.7),0 0 60px 6px rgba(180,100,255,.45),0 6px 24px rgba(0,0,0,.5) }
-              }
-              @keyframes dc-arrive { 0%{transform:scale(1.35);opacity:0} 60%{transform:scale(.91)} 82%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
-              @keyframes dc-shine  { 0%{left:-120%;opacity:.95} 100%{left:230%;opacity:0} }
-              @keyframes dc-name   { 0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.9)} 100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)} }
-              @keyframes dc-deck-flash { 0%{opacity:0} 20%{opacity:1} 100%{opacity:0} }
+              @keyframes dc-glow { 0%,100%{box-shadow:0 0 8px 2px rgba(100,140,255,.35)} 50%{box-shadow:0 0 18px 6px rgba(120,160,255,.60)} }
+              @keyframes dc-shine { 0%{left:-110%;opacity:.7} 100%{left:220%;opacity:0} }
+              @keyframes dc-land-glow { 0%{opacity:0.7} 100%{opacity:0} }
             `}</style>
 
             {/* ── PLAYER draw ── */}
             {anim && (<>
-              {/* Deck lift flash */}
+              {/* Single subtle trail */}
               <div style={{
-                position:'absolute',
-                left:anim.fromX-40,top:anim.fromY-56,
-                width:80,height:24,borderRadius:6,
-                background:'rgba(120,160,255,0.28)',
-                filter:'blur(6px)',
-                animation:'dc-deck-flash .35s ease-out forwards',
+                position:'absolute',left:0,top:0,width:W,height:H,borderRadius:8,
+                background:'rgba(100,140,255,0.06)',
+                border:'1px solid rgba(140,180,255,0.14)',
+                animation:`dcp-trail .60s cubic-bezier(.4,.1,.2,1) .06s forwards`,
               }}/>
 
-              {/* Trail 0 */}
-              <div style={{
-                position:'absolute',left:0,top:0,width:W,height:H,borderRadius:9,
-                background:'rgba(100,150,255,0.09)',
-                border:'1px solid rgba(140,180,255,0.22)',
-                animation:`dcp-trail0 .62s cubic-bezier(.38,.08,.18,1) .05s forwards`,
-              }}/>
-              {/* Trail 1 */}
-              <div style={{
-                position:'absolute',left:0,top:0,width:W,height:H,borderRadius:9,
-                background:'rgba(100,150,255,0.05)',
-                border:'1px solid rgba(140,180,255,0.12)',
-                animation:`dcp-trail1 .70s cubic-bezier(.38,.08,.18,1) .12s forwards`,
-              }}/>
-
-              {/* Main card */}
+              {/* Card */}
               <div style={{
                 position:'absolute',left:0,top:0,width:W,height:H,
                 transformStyle:'preserve-3d',
-                animation:'dcp-fly .88s cubic-bezier(.28,.52,.34,.98) forwards',
-                filter:'drop-shadow(0 8px 18px rgba(0,0,0,0.7))',
+                animation:'dcp-fly .72s cubic-bezier(.28,.52,.34,.98) forwards',
+                filter:'drop-shadow(0 6px 14px rgba(0,0,0,0.55))',
               }}>
-                {/* BACK — real card back image */}
+                {/* Back */}
                 <div style={{
-                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:9,
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:8,
                   overflow:'hidden',
-                  animation:'dc-glow-b .88s ease-in-out',
+                  animation:'dc-glow .72s ease-in-out',
                 }}>
-                  <img
-                    src={CARD_BACK_IMAGE || "/placeholder.svg"}
-                    alt="card back"
-                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
-                  />
-                  {/* Light sweep over back during flight */}
-                  <div style={{
-                    position:'absolute',inset:0,
-                    background:'linear-gradient(135deg,rgba(255,255,255,0.14) 0%,transparent 50%)',
-                    borderRadius:9,pointerEvents:'none',
-                  }}/>
+                  <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="card back"
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                 </div>
-
-                {/* FRONT — revealed at peak of flip */}
+                {/* Front */}
                 <div style={{
                   position:'absolute',inset:0,backfaceVisibility:'hidden',
-                  transform:'rotateY(180deg)',borderRadius:9,overflow:'hidden',
-                  border:'1.5px solid rgba(255,255,255,0.28)',
+                  transform:'rotateY(180deg)',borderRadius:8,overflow:'hidden',
+                  border:'1px solid rgba(255,255,255,0.18)',
                 }}>
                   <img src={anim.cardImage} alt={anim.cardName}
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                  {/* Reveal shine */}
+                  {/* Soft reveal shine */}
                   <div style={{
-                    position:'absolute',top:0,bottom:0,width:'50%',
-                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.42),transparent)',
-                    animation:'dc-shine .40s ease-in-out .60s both',
-                    borderRadius:9,pointerEvents:'none',
+                    position:'absolute',top:0,bottom:0,width:'45%',
+                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)',
+                    animation:'dc-shine .35s ease-in-out .56s both',
+                    pointerEvents:'none',
                   }}/>
                 </div>
               </div>
 
-              {/* Arrival ring burst */}
-              <div style={{
-                position:'absolute',left:0,top:0,
-                width:W+24,height:H+24,borderRadius:11,
-                border:'3px solid rgba(140,190,255,0.7)',
-                animation:`dcp-ring .55s ease-out .78s both`,
-              }}/>
-
-              {/* 14 sparkles at destination */}
-              {Array.from({length:14}).map((_,i)=>{
-                const ang=(i/14)*Math.PI*2
-                const d=26+Math.floor(i%4)*14
-                const cols=['#c4b5fd','#60a5fa','#f9fafb','#fbbf24','#34d399']
-                const sz=3+(i%4)*2
-                return <div key={i} style={{
-                  position:'absolute',left:0,top:0,
-                  width:sz,height:sz,borderRadius:'50%',
-                  background:cols[i%5],
-                  boxShadow:`0 0 6px 2px ${cols[i%5]}`,
-                  animation:`dcp-spark .70s cubic-bezier(.12,0,.42,1) ${740+i*28}ms both`,
-                  '--sx':`${Math.cos(ang)*d}px`,'--sy':`${Math.sin(ang)*d}px`,
-                } as React.CSSProperties}/>
-              })}
-
-              {/* Arrival glow at destination (last hand slot) */}
+              {/* Subtle landing glow — just a soft halo, no ring burst */}
               <div style={{
                 position:'absolute',
-                left:anim.toX-W/2-10,top:anim.toY-H/2-10,
-                width:W+20,height:H+20,borderRadius:11,
-                background:'rgba(100,160,255,0.18)',
-                border:'1.5px solid rgba(160,200,255,0.55)',
-                animation:'dc-arrive .50s cubic-bezier(.34,1.56,.64,1) .78s both',
+                left:anim.toX-W/2-8,top:anim.toY-H/2-8,
+                width:W+16,height:H+16,borderRadius:10,
+                background:'rgba(100,150,255,0.10)',
+                border:'1px solid rgba(150,190,255,0.30)',
+                animation:'dcp-land .38s cubic-bezier(.34,1.4,.64,1) .70s both',
               }}/>
 
-              {/* Card name */}
+              {/* Landing flash — quick fade glow at destination */}
               <div style={{
                 position:'absolute',
-                left:anim.toX,top:anim.toY-H/2-36,
-                animation:'dc-name .32s ease-out .75s both',
-                background:'rgba(3,1,14,0.86)',backdropFilter:'blur(10px)',
-                padding:'4px 14px',borderRadius:7,
-                border:'1px solid rgba(150,190,255,0.28)',
-                fontSize:11,fontWeight:700,color:'#e2e8f0',letterSpacing:'.7px',
+                left:anim.toX-W/2-4,top:anim.toY-H/2-4,
+                width:W+8,height:H+8,borderRadius:9,
+                background:'rgba(160,200,255,0.14)',
+                filter:'blur(4px)',
+                animation:'dc-land-glow .5s ease-out .72s both',
+                pointerEvents:'none',
+              }}/>
+
+              {/* Card name — small, quick, fades away */}
+              <div style={{
+                position:'absolute',
+                left:anim.toX,top:anim.toY-H/2-28,
+                transform:'translateX(-50%)',
+                background:'rgba(3,1,14,0.78)',backdropFilter:'blur(8px)',
+                padding:'3px 10px',borderRadius:5,
+                border:'1px solid rgba(150,190,255,0.18)',
+                fontSize:10,fontWeight:600,color:'#cbd5e1',letterSpacing:'.5px',
                 whiteSpace:'nowrap',
+                animation:'dcp-land .28s ease-out .68s both',
               }}>
                 {anim.cardName}
               </div>
             </>)}
 
-            {/* ── ENEMY draw — real card back, no reveal ── */}
-            {eAnim && (<>
-              <div style={{
-                position:'absolute',left:0,top:0,width:W,height:H,borderRadius:9,
-                background:'rgba(220,38,38,0.06)',
-                border:'1px solid rgba(239,68,68,0.16)',
-                animation:`dce-trail0 .60s cubic-bezier(.38,.08,.18,1) .05s forwards`,
-              }}/>
+            {/* ── ENEMY draw — card back only, no effects ── */}
+            {eAnim && (
               <div style={{
                 position:'absolute',left:0,top:0,width:W,height:H,
                 transformStyle:'preserve-3d',
-                animation:'dce-fly .88s cubic-bezier(.28,.52,.34,.98) forwards',
-                filter:'drop-shadow(0 8px 18px rgba(0,0,0,0.7))',
+                animation:'dce-fly .72s cubic-bezier(.28,.52,.34,.98) forwards',
+                filter:'drop-shadow(0 6px 14px rgba(0,0,0,0.55))',
               }}>
                 <div style={{
-                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:9,
+                  position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:8,
                   overflow:'hidden',
                 }}>
-                  <img
-                    src={CARD_BACK_IMAGE || "/placeholder.svg"}
-                    alt="card back"
-                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
-                  />
-                  {/* Red tint so player knows it's enemy */}
+                  <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="card back"
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   <div style={{
-                    position:'absolute',inset:0,
-                    background:'rgba(180,20,20,0.22)',
-                    borderRadius:9,pointerEvents:'none',
-                    mixBlendMode:'multiply',
+                    position:'absolute',inset:0,background:'rgba(160,20,20,0.18)',
+                    borderRadius:8,pointerEvents:'none',mixBlendMode:'multiply',
                   }}/>
                 </div>
               </div>
-            </>)}
+            )}
           </div>
         )
       })()}
