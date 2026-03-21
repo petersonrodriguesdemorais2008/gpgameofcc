@@ -1935,6 +1935,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [fehnonLrDouble, setFehnonLrDouble] = useState(false)
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
 
+  // ── Destruction sequencing: IDs of cards with an active on-field destruction animation.
+  //    DiscardAnimationManager delays the graveyard animation until this animation finishes. ──
+  const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
+  const markDestroyed = (card: GameCard) =>
+    setDestroyedCardIds(prev => { const s = new Set(prev); s.add(card.id); return s })
+
   const prevUnitZoneRef = useRef<(string | null)[]>([])
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const animationInProgressRef = useRef(false)
@@ -1990,6 +1996,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
+    markDestroyed(card)
     setTimeout(() => setDestructionAnimation(null), 1200)
   }, [])
   const rollDice = useCallback((cardName: string): Promise<number> => {
@@ -3279,6 +3286,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!funcCard) return
 
     if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") {
+      markDestroyed(funcCard)
       setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
         const destroyed = newFuncs[funcIndex]
@@ -3406,6 +3414,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
+        markDestroyed(unit)
         setEnemyField((prev) => {
           const newUnits = [...prev.unitZone]
           const destroyed = newUnits[index]
@@ -3420,6 +3429,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       } else {
         const func = enemyField.functionZone[index]
         if (!func) return
+        markDestroyed(func)
         setEnemyField((prev) => {
           const newFuncs = [...prev.functionZone]
           const destroyed = newFuncs[index]
@@ -3449,6 +3459,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (!target) return prev
       const newDp = target.currentDp - 1
       if (newDp <= 0) {
+        markDestroyed(target)
         newUnits[unitIndex] = null
         showEffectFeedback(`JULGAMENTO DIVINO: ${target.name} destruido! (0 DP)`, "success")
         return {
@@ -3473,6 +3484,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (type === "unit") {
       const target = enemyField.unitZone[index]
       if (!target) return
+      markDestroyed(target)
       setEnemyField((prev) => {
         const newUnits = [...prev.unitZone]
         newUnits[index] = null
@@ -3482,6 +3494,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     } else {
       const target = enemyField.functionZone[index]
       if (!target) return
+      markDestroyed(target)
       setEnemyField((prev) => {
         const newFunctions = [...prev.functionZone]
         newFunctions[index] = null
@@ -4435,6 +4448,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
             const targetIdx = unitIdx !== -1 ? unitIdx : -1
             if (targetIdx !== -1) {
+              const destroyedUnit = playerField.unitZone[targetIdx]
+              if (destroyedUnit) markDestroyed(destroyedUnit)
               setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const destroyed = newUnits[targetIdx]
@@ -4489,6 +4504,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
                         showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
                       } else {
+                        markDestroyed(defender)
                         newPlayerGraveyard.push(defender)
                         newPlayerUnitZone[playerUnitIndex] = null
                       }
@@ -4504,6 +4520,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   })
 
                   if (newAttackerDp <= 0) {
+                    markDestroyed(unit)
                     newEnemyGraveyard.push(unit)
                     newEnemyUnitZone[unitIdx] = null
                   } else {
@@ -6939,7 +6956,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         enemyGraveyard={enemyField.graveyard}
         playerGraveyardRef={playerGraveyardRef}
         enemyGraveyardRef={enemyGraveyardRef}
-        fieldRef={fieldRef}
+        destroyedCardIds={destroyedCardIds}
       />
 
     </div>
