@@ -7030,57 +7030,44 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       {/* Card Inspection Overlay - Press and hold to view */}
       {inspectedCard && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85"
           onClick={() => setInspectedCard(null)}
           onTouchEnd={() => setInspectedCard(null)}
         >
           <div
-            className="relative"
+            className="relative flex flex-col items-center gap-4"
             style={{ animation: 'cardInspectIn 250ms ease-out forwards' }}
           >
-            {/* Large glow effects */}
-            <div className="absolute -inset-20 bg-gradient-to-br from-cyan-500/15 to-purple-500/15 blur-3xl rounded-full" />
-            <div className="absolute -inset-12 bg-gradient-to-br from-cyan-400/20 to-purple-400/20 blur-2xl rounded-3xl" />
-            <div className="absolute -inset-4 bg-white/5 blur-xl rounded-2xl" />
-            {/* Card - Much larger */}
-            <div className="relative rounded-3xl border-4 border-white/40 shadow-2xl overflow-hidden bg-slate-900"
+            {/* Subtle ambient glow */}
+            <div className="absolute -inset-16 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 blur-3xl rounded-full pointer-events-none" />
+
+            {/* Card — single image, no overlay duplicate */}
+            <div className="relative rounded-2xl border-2 border-white/30 shadow-2xl overflow-hidden"
               style={{ width: '280px', height: '392px' }}>
               <img
                 src={inspectedCard.image || "/placeholder.svg"}
                 alt={inspectedCard.name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
-              {/* Shine overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
             </div>
-            {/* Card info */}
-            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 text-center w-80">
-              <div className="text-white font-bold text-2xl drop-shadow-lg">{inspectedCard.name}</div>
-              {isUnitCard(inspectedCard) && (
-                <div className="flex flex-col items-center gap-1 mt-2">
-                  <div className={`text-xl font-semibold ${(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp
-                    ? "text-green-400"
-                    : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
-                      ? "text-red-400"
-                      : "text-cyan-400"
-                    }`}>
-                    {(inspectedCard as FieldCard).currentDp !== undefined ? (inspectedCard as FieldCard).currentDp : inspectedCard.dp} DP
-                  </div>
-                  {(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp !== inspectedCard.dp && (
-                    <div className="text-white/50 text-sm">
-                      (Base: {inspectedCard.dp} DP | {(inspectedCard as FieldCard).currentDp > inspectedCard.dp ? "+" : ""}{(inspectedCard as FieldCard).currentDp - inspectedCard.dp})
-                    </div>
-                  )}
-                </div>
-              )}
-              {!isUnitCard(inspectedCard) && (
-                <div className="text-purple-400 text-lg mt-2 font-semibold">Carta de Funcao</div>
-              )}
-            </div>
+
+            {/* DP badge — unit cards only */}
+            {isUnitCard(inspectedCard) && (
+              <div className={`px-5 py-1.5 rounded-full font-bold text-lg border ${
+                (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp
+                  ? "bg-green-900/60 border-green-400/60 text-green-300"
+                  : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
+                    ? "bg-red-900/60 border-red-400/60 text-red-300"
+                    : "bg-cyan-900/60 border-cyan-400/60 text-cyan-300"
+              }`}>
+                {(inspectedCard as FieldCard).currentDp !== undefined
+                  ? (inspectedCard as FieldCard).currentDp
+                  : inspectedCard.dp} DP
+              </div>
+            )}
+
             {/* Close hint */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 text-white/50 text-sm">
-              Toque para fechar
-            </div>
+            <div className="text-white/40 text-xs">Toque para fechar</div>
           </div>
         </div>
       )}
