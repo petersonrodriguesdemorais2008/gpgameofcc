@@ -6179,7 +6179,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       src={playmat.image || "/placeholder.svg"}
                       alt={playmat.name}
                       className="w-full h-full object-cover"
-                      style={{ opacity: 0.6 }}
+                      style={{ opacity: 0.75 }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-slate-900/60" />
                   </div>
