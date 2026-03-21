@@ -1874,66 +1874,71 @@ function StarfieldCanvas() {
       c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=g; c.fill()
     }
 
-    function galaxy(opts:{cx:number;cy:number;r:number;arms:number;tilt:number;
-      col1:string;col2:string;coreCol:string;clusterCol:string;dustCol:string}) {
-      const {cx,cy,r,arms,tilt,col1,col2,coreCol,clusterCol,dustCol}=opts
+    /* ── Per-galaxy offscreen canvases — drawn once, rotated each frame ── */
+    type GLayer = { cv:HTMLCanvasElement; x:number; y:number; angle:number; speed:number; half:number }
+    let galaxyLayers: GLayer[] = []
 
-      // Core glow layers
-      rg(oc,cx,cy,r*3.0,[[0,coreCol+".18)"],[.30,coreCol+".10)"],[.65,coreCol+".04)"],[1,"rgba(0,0,0,0)"]])
-      rg(oc,cx,cy,r*1.3,[[0,coreCol+".36)"],[.42,coreCol+".16)"],[1,"rgba(0,0,0,0)"]])
-      rg(oc,cx,cy,r*.40,[[0,"rgba(255,255,255,.78)"],[.28,coreCol+".60)"],[.70,coreCol+".15)"],[1,"rgba(0,0,0,0)"]])
+    function makeGalaxy(opts:{
+      r:number; arms:number; tilt:number
+      col1:string; col2:string; coreCol:string; clusterCol:string; dustCol:string
+    }): HTMLCanvasElement {
+      const {r,arms,tilt,col1,col2,coreCol,clusterCol,dustCol}=opts
+      const half = Math.ceil(r*3.4)
+      const size = half*2
+      const gc   = document.createElement("canvas")
+      gc.width   = gc.height = size
+      const c2   = gc.getContext("2d")!
 
-      oc.save(); oc.translate(cx,cy); oc.scale(1,tilt)
+      // Core glow (centered)
+      rg(c2,half,half,r*3.0,[[0,coreCol+".18)"],[.30,coreCol+".10)"],[.65,coreCol+".04)"],[1,"rgba(0,0,0,0)"]])
+      rg(c2,half,half,r*1.3,[[0,coreCol+".36)"],[.42,coreCol+".16)"],[1,"rgba(0,0,0,0)"]])
+      rg(c2,half,half,r*.40,[[0,"rgba(255,255,255,.78)"],[.28,coreCol+".60)"],[.70,coreCol+".15)"],[1,"rgba(0,0,0,0)"]])
+
+      c2.save(); c2.translate(half,half); c2.scale(1,tilt)
 
       // Disk haze
-      const dg=oc.createRadialGradient(0,0,0,0,0,r*2.5)
+      const dg=c2.createRadialGradient(0,0,0,0,0,r*2.5)
       dg.addColorStop(0,coreCol+".08)"); dg.addColorStop(.55,coreCol+".03)"); dg.addColorStop(1,"rgba(0,0,0,0)")
-      oc.beginPath(); oc.arc(0,0,r*2.5,0,Math.PI*2); oc.fillStyle=dg; oc.fill()
+      c2.beginPath(); c2.arc(0,0,r*2.5,0,Math.PI*2); c2.fillStyle=dg; c2.fill()
 
-      // Spiral arms — 400 stars per arm, per-dot colour
+      // Spiral arms
       for(let arm=0;arm<arms;arm++){
         const base=arm*(Math.PI*2/arms)
         for(let i=0;i<400;i++){
-          const t=i/400
-          const radius=0.05*r+t*r*2.2
+          const t=i/400, radius=0.05*r+t*r*2.2
           const angle=base+t*Math.PI*3.9+(Math.random()-.5)*.20
           const scatter=(Math.random()-.5)*radius*.20
-          const x=Math.cos(angle)*(radius+scatter)
-          const y=Math.sin(angle)*(radius+scatter)
+          const x=Math.cos(angle)*(radius+scatter), y=Math.sin(angle)*(radius+scatter)
           const bright=Math.pow(1-t,.65)
           const sz=0.2+bright*3.0+Math.random()*.9
           const alpha=(Math.random()>.55?.60+bright*.32:.06+bright*.28)*bright
-          oc.globalAlpha=Math.max(0,Math.min(1,alpha))
-          oc.beginPath(); oc.arc(x,y,sz,0,Math.PI*2)
-          oc.fillStyle=t<.15?"rgba(255,252,240,1)":Math.random()>.42?col1:col2
-          oc.fill()
+          c2.globalAlpha=Math.max(0,Math.min(1,alpha))
+          c2.beginPath(); c2.arc(x,y,sz,0,Math.PI*2)
+          c2.fillStyle=t<.15?"rgba(255,252,240,1)":Math.random()>.42?col1:col2
+          c2.fill()
         }
-        // Dust lane — dark streak along inner arm edge
         for(let i=0;i<90;i++){
-          const t=.04+i/90*.65
-          const radius=t*r*1.9, angle=base+t*Math.PI*3.7-.18
-          oc.globalAlpha=.07+t*.05
-          oc.beginPath(); oc.arc(Math.cos(angle)*radius,Math.sin(angle)*radius,1.2+t*3.5,0,Math.PI*2)
-          oc.fillStyle=dustCol; oc.fill()
+          const t=.04+i/90*.65, radius=t*r*1.9, angle=base+t*Math.PI*3.7-.18
+          c2.globalAlpha=.07+t*.05
+          c2.beginPath(); c2.arc(Math.cos(angle)*radius,Math.sin(angle)*radius,1.2+t*3.5,0,Math.PI*2)
+          c2.fillStyle=dustCol; c2.fill()
         }
       }
-
-      // Dense core star cluster
       for(let i=0;i<550;i++){
         const a=Math.random()*Math.PI*2, d=Math.pow(Math.random(),2)*r*.60
-        oc.globalAlpha=.18+Math.random()*.74
-        oc.beginPath(); oc.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*1.5,0,Math.PI*2)
-        oc.fillStyle=clusterCol; oc.fill()
+        c2.globalAlpha=.18+Math.random()*.74
+        c2.beginPath(); c2.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*1.5,0,Math.PI*2)
+        c2.fillStyle=clusterCol; c2.fill()
       }
-      // Outer halo
       for(let i=0;i<320;i++){
         const a=Math.random()*Math.PI*2, d=r*.35+Math.pow(Math.random(),.55)*r*2.0
-        oc.globalAlpha=.03+Math.random()*.20
-        oc.beginPath(); oc.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*.9,0,Math.PI*2)
-        oc.fillStyle=clusterCol; oc.fill()
+        c2.globalAlpha=.03+Math.random()*.20
+        c2.beginPath(); c2.arc(Math.cos(a)*d,Math.sin(a)*d,.2+Math.random()*.9,0,Math.PI*2)
+        c2.fillStyle=clusterCol; c2.fill()
       }
 
-      oc.restore(); oc.globalAlpha=1
+      c2.restore(); c2.globalAlpha=1
+      return gc
     }
 
     function buildOff() {
@@ -1941,32 +1946,7 @@ function StarfieldCanvas() {
       off.width=OW; off.height=OH
       oc.fillStyle="#020108"; oc.fillRect(0,0,OW,OH)
 
-      galaxy({cx:OW*.36,cy:OH*.44,r:OW*.17,arms:4,tilt:.50,
-        col1:"rgba(195,118,255,1)",col2:"rgba(105,152,255,1)",
-        coreCol:"rgba(155,75,255,",clusterCol:"#ead4ff",dustCol:"rgba(18,4,58,1)"})
-
-      galaxy({cx:OW*.80,cy:OH*.27,r:OW*.12,arms:3,tilt:.42,
-        col1:"rgba(75,158,255,1)",col2:"rgba(135,218,255,1)",
-        coreCol:"rgba(38,115,255,",clusterCol:"#c6e8ff",dustCol:"rgba(4,8,50,1)"})
-
-      galaxy({cx:OW*.16,cy:OH*.74,r:OW*.095,arms:3,tilt:.55,
-        col1:"rgba(242,108,255,1)",col2:"rgba(198,75,228,1)",
-        coreCol:"rgba(198,55,218,",clusterCol:"#ffccff",dustCol:"rgba(38,4,58,1)"})
-
-      galaxy({cx:OW*.54,cy:OH*.10,r:OW*.075,arms:2,tilt:.38,
-        col1:"rgba(55,218,228,1)",col2:"rgba(38,158,208,1)",
-        coreCol:"rgba(18,175,198,",clusterCol:"#b8f2ff",dustCol:"rgba(4,18,38,1)"})
-
-      galaxy({cx:OW*.92,cy:OH*.64,r:OW*.058,arms:2,tilt:.45,
-        col1:"rgba(128,75,255,1)",col2:"rgba(165,98,255,1)",
-        coreCol:"rgba(88,38,208,",clusterCol:"#ceb8ff",dustCol:"rgba(14,4,48,1)"})
-
-      // Galaxy left side — rose/violet spiral (mirrors right side balance)
-      galaxy({cx:OW*.06,cy:OH*.42,r:OW*.13,arms:3,tilt:.48,
-        col1:"rgba(255,105,185,1)",col2:"rgba(185,88,255,1)",
-        coreCol:"rgba(210,60,195,",clusterCol:"#ffc8ee",dustCol:"rgba(45,5,55,1)"})
-
-      // Nebula tendrils
+      // Nebula tendrils (static, in off canvas)
       ;[
         {px:.50,py:.31,rx:.36,ry:.082,rot: .28,col:"rgba(58,18,138,.13)"},
         {px:.24,py:.60,rx:.26,ry:.068,rot:-.20,col:"rgba(18,52,158,.11)"},
@@ -1989,7 +1969,31 @@ function StarfieldCanvas() {
         oc.fillStyle=SC[Math.floor(Math.random()*SC.length)]; oc.fill()
       }
       oc.globalAlpha=1
+
+      // Build galaxy layers (each in its own canvas, rotated each frame)
+      galaxyLayers = [
+        // Large purple spiral — centre-left
+        { cv:makeGalaxy({r:W*.13,arms:4,tilt:.50,col1:"rgba(195,118,255,1)",col2:"rgba(105,152,255,1)",coreCol:"rgba(155,75,255,",clusterCol:"#ead4ff",dustCol:"rgba(18,4,58,1)"}),
+          x:.36, y:.44, angle:0, speed:.000018, half:0 },
+        // Blue spiral — right
+        { cv:makeGalaxy({r:W*.09,arms:3,tilt:.42,col1:"rgba(75,158,255,1)",col2:"rgba(135,218,255,1)",coreCol:"rgba(38,115,255,",clusterCol:"#c6e8ff",dustCol:"rgba(4,8,50,1)"}),
+          x:.80, y:.27, angle:.8, speed:.000024, half:0 },
+        // Pink/magenta — bottom-left
+        { cv:makeGalaxy({r:W*.072,arms:3,tilt:.55,col1:"rgba(242,108,255,1)",col2:"rgba(198,75,228,1)",coreCol:"rgba(198,55,218,",clusterCol:"#ffccff",dustCol:"rgba(38,4,58,1)"}),
+          x:.15, y:.72, angle:1.5, speed:.000020, half:0 },
+        // Teal — top-centre
+        { cv:makeGalaxy({r:W*.058,arms:2,tilt:.38,col1:"rgba(55,218,228,1)",col2:"rgba(38,158,208,1)",coreCol:"rgba(18,175,198,",clusterCol:"#b8f2ff",dustCol:"rgba(4,18,38,1)"}),
+          x:.54, y:.11, angle:.4, speed:.000028, half:0 },
+        // Indigo small — far-right
+        { cv:makeGalaxy({r:W*.045,arms:2,tilt:.45,col1:"rgba(128,75,255,1)",col2:"rgba(165,98,255,1)",coreCol:"rgba(88,38,208,",clusterCol:"#ceb8ff",dustCol:"rgba(14,4,48,1)"}),
+          x:.90, y:.62, angle:2.1, speed:.000030, half:0 },
+        // Rose/violet — left side
+        { cv:makeGalaxy({r:W*.10,arms:3,tilt:.48,col1:"rgba(255,105,185,1)",col2:"rgba(185,88,255,1)",coreCol:"rgba(210,60,195,",clusterCol:"#ffc8ee",dustCol:"rgba(45,5,55,1)"}),
+          x:.08, y:.42, angle:3.0, speed:.000016, half:0 },
+      ]
+      galaxyLayers.forEach(g=>{ g.half = g.cv.width/2 })
     }
+
 
     /* ── Saturn — drawn entirely with gradients + arcs, fully clipped ── */
     function drawSaturn(ts:number) {
@@ -2039,8 +2043,7 @@ function StarfieldCanvas() {
       /* ── Planet sphere — EVERYTHING clipped to circle ── */
       ctx.save()
       ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.clip()
-
-      // Base sphere gradient (pole-to-pole)
+      ctx.rotate(ts * 0.000032)  // slow body rotation
       const sphere=ctx.createLinearGradient(0,-r,0,r)
       sphere.addColorStop(0,"#6a4420"); sphere.addColorStop(.10,"#9a6e32")
       sphere.addColorStop(.22,"#c8923a"); sphere.addColorStop(.38,"#e0b252")
@@ -2140,8 +2143,7 @@ function StarfieldCanvas() {
       /* ── Planet sphere — fully clipped ── */
       ctx.save()
       ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.clip()
-
-      // Base: pale aqua-cyan gradient pole-to-pole
+      ctx.rotate(ts * 0.000025)  // slow body rotation (Uranus rotates retrograde)
       const sphere = ctx.createLinearGradient(0,-r,0,r)
       sphere.addColorStop(0,  "#1a5560")
       sphere.addColorStop(.15,"#1e7a88")
@@ -2256,6 +2258,18 @@ function StarfieldCanvas() {
       for(let tx=-OW;tx<=W;tx+=OW)
         for(let ty=-OH;ty<=H;ty+=OH)
           ctx.drawImage(off,nx+tx,ny+ty)
+
+      // Animated galaxies — each rotates at its own speed
+      for(const g of galaxyLayers){
+        g.angle += g.speed
+        ctx.save()
+        ctx.globalAlpha = 0.88
+        ctx.translate(g.x*W, g.y*H)
+        ctx.rotate(g.angle)
+        ctx.drawImage(g.cv, -g.half, -g.half, g.cv.width, g.cv.height)
+        ctx.restore()
+      }
+      ctx.globalAlpha = 1
 
       const t=ts*.001
 
