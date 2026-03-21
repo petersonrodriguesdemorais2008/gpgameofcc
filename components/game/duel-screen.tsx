@@ -2652,6 +2652,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     cardName: string
     cardImage: string
     cardType: string
+    fromX: number; fromY: number
+    toX: number;   toY: number
+  } | null>(null)
+  const [enemyDrawAnimation, setEnemyDrawAnimation] = useState<{
+    fromX: number; fromY: number
+    toX: number;   toY: number
   } | null>(null)
   const [playerWentFirst, setPlayerWentFirst] = useState(true)
   const [playerField, setPlayerField] = useState<FieldState>({
@@ -2732,6 +2738,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const fieldRef = useRef<HTMLDivElement>(null)
   const playerGraveyardRef = useRef<HTMLDivElement>(null)
   const enemyGraveyardRef  = useRef<HTMLDivElement>(null)
+  const playerDeckRef      = useRef<HTMLDivElement>(null)
+  const enemyDeckRef       = useRef<HTMLDivElement>(null)
   const enemyUnitRectsRef = useRef<DOMRect[]>([])
   const isDraggingRef = useRef(false) // Track drag state
   const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
@@ -2976,9 +2984,24 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
   const showDrawAnimation = useCallback((card: GameCard) => {
-    setDrawAnimation({ visible: true, cardName: card.name, cardImage: card.image, cardType: card.type })
-    setTimeout(() => setDrawAnimation(null), 1300)
-  }, [])
+    const deckEl  = playerDeckRef.current
+    const fieldEl = fieldRef.current
+    if (!deckEl || !fieldEl) {
+      setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type, fromX:50, fromY:50, toX:50, toY:85 })
+      setTimeout(() => setDrawAnimation(null), 900)
+      return
+    }
+    const dRect = deckEl.getBoundingClientRect()
+    const fRect = fieldEl.getBoundingClientRect()
+    // from: centre of player deck
+    const fromX = ((dRect.left + dRect.width/2  - fRect.left) / fRect.width)  * 100
+    const fromY = ((dRect.top  + dRect.height/2 - fRect.top)  / fRect.height) * 100
+    // to: bottom-centre of field (hand area)
+    const toX   = 50
+    const toY   = 93
+    setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type, fromX, fromY, toX, toY })
+    setTimeout(() => setDrawAnimation(null), 900)
+  }, [playerDeckRef, fieldRef])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
     markDestroyed(card)
@@ -5219,6 +5242,17 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   const executeBotTurn = () => {
     if (enemyField.deck.length > 0) {
+      // Trigger enemy draw animation (card back only — player cannot see)
+      const deckEl  = enemyDeckRef.current
+      const fieldEl = fieldRef.current
+      if (deckEl && fieldEl) {
+        const dRect = deckEl.getBoundingClientRect()
+        const fRect = fieldEl.getBoundingClientRect()
+        const fromX = ((dRect.left + dRect.width/2  - fRect.left) / fRect.width)  * 100
+        const fromY = ((dRect.top  + dRect.height/2 - fRect.top)  / fRect.height) * 100
+        setEnemyDrawAnimation({ fromX, fromY, toX: 50, toY: 7 })
+        setTimeout(() => setEnemyDrawAnimation(null), 900)
+      }
       setEnemyField((prev) => ({
         ...prev,
         hand: [...prev.hand, prev.deck[0]],
@@ -6213,8 +6247,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     >
                       {enemyField.graveyard.length}
                     </div>
-                    <div className="w-16 h-24 relative">
-                      {enemyField.deck.length > 0 ? (
+                    <div ref={enemyDeckRef} className="w-16 h-24 relative">
                         <>
                           {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) => (
                             <div
@@ -6673,7 +6706,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 </div>
                 <div className="flex gap-1.5">
                   <div className="flex flex-col gap-1.5">
-                    <div className="w-16 h-24 relative">
+                    <div ref={playerDeckRef} className="w-16 h-24 relative">
                       {playerField.deck.length > 0 ? (
                         <>
                           {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) => (
@@ -7091,42 +7124,86 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* Draw Card Animation - Card pulled from deck to hand */}
+      {/* ── Player Draw Animation — card flies from deck to hand ── */}
       {drawAnimation && (
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-          {/* Card moving from deck position to hand */}
-          <div className="draw-card-container">
-            {/* Glow effect - follows card */}
-            <div className="draw-card-glow" />
-
-            {/* The card itself */}
-            <div className="draw-card-frame">
-              {/* Card back */}
-              <div className="draw-card-back">
-                <div className="absolute inset-1.5 border border-cyan-500/40 rounded" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 opacity-70" />
-                </div>
-              </div>
-
-              {/* Card front */}
-              <div className="draw-card-front">
-                <img
-                  src={drawAnimation.cardImage}
-                  alt={drawAnimation.cardName}
-                  className="w-full h-full object-cover"
-                />
-                {/* Shine effect */}
-                <div className="draw-card-shine" />
-              </div>
+          <style>{`
+            @keyframes dc-fly {
+              0%   { transform: translate(var(--dc-fx), var(--dc-fy)) scale(0.55) rotateY(0deg);   opacity:0.4 }
+              15%  { opacity:1 }
+              50%  { transform: translate(calc(var(--dc-fx)*.35 + var(--dc-tx)*.65), calc(var(--dc-fy)*.35 + var(--dc-ty)*.65)) scale(1.05) rotateY(90deg); }
+              100% { transform: translate(var(--dc-tx), var(--dc-ty)) scale(1) rotateY(180deg);  opacity:0 }
+            }
+            @keyframes dc-glow {
+              0%,100% { box-shadow: 0 0 8px 3px rgba(99,200,255,0.5) }
+              50%      { box-shadow: 0 0 22px 8px rgba(99,200,255,0.85) }
+            }
+            .dc-card {
+              position: absolute;
+              width: 56px;
+              height: 80px;
+              border-radius: 6px;
+              transform-style: preserve-3d;
+              animation: dc-fly 0.85s cubic-bezier(.22,.68,0,1.2) forwards;
+              animation-timing-function: cubic-bezier(.35,.1,.25,1);
+              --dc-fx: calc(var(--dfx) * 1vw - 50%);
+              --dc-fy: calc(var(--dfy) * 1vh - 50%);
+              --dc-tx: calc(var(--dtx) * 1vw - 50%);
+              --dc-ty: calc(var(--dty) * 1vh - 50%);
+              left: 50%; top: 50%;
+            }
+            .dc-back {
+              position: absolute; inset: 0; backface-visibility: hidden; border-radius: 6px;
+              background: linear-gradient(135deg,#1e3a5f,#0d1f36);
+              border: 1.5px solid rgba(99,200,255,0.55);
+              animation: dc-glow 0.85s ease-in-out;
+              display: flex; align-items: center; justify-content: center;
+            }
+            .dc-front {
+              position: absolute; inset: 0; backface-visibility: hidden; border-radius: 6px;
+              transform: rotateY(180deg); overflow: hidden;
+              border: 1.5px solid rgba(255,255,255,0.3);
+            }
+            .dc-trail {
+              position: absolute; width: 56px; height: 80px;
+              border-radius: 6px; pointer-events: none;
+              background: rgba(99,200,255,0.08);
+              animation: dc-fly 0.85s cubic-bezier(.35,.1,.25,1) forwards;
+              animation-delay: 0.04s;
+              left: 50%; top: 50%;
+              --dc-fx: calc(var(--dfx) * 1vw - 50%);
+              --dc-fy: calc(var(--dfy) * 1vh - 50%);
+              --dc-tx: calc(var(--dtx) * 1vw - 50%);
+              --dc-ty: calc(var(--dty) * 1vh - 50%);
+            }
+          `}</style>
+          {/* Trail */}
+          <div className="dc-trail" style={{"--dfx":drawAnimation.fromX,"--dfy":drawAnimation.fromY,"--dtx":drawAnimation.toX,"--dty":drawAnimation.toY} as React.CSSProperties} />
+          {/* Card */}
+          <div className="dc-card" style={{"--dfx":drawAnimation.fromX,"--dfy":drawAnimation.fromY,"--dtx":drawAnimation.toX,"--dty":drawAnimation.toY} as React.CSSProperties}>
+            <div className="dc-back">
+              <div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,#4fc3f7,#0277bd)",opacity:0.8}} />
+            </div>
+            <div className="dc-front">
+              <img src={drawAnimation.cardImage} alt={drawAnimation.cardName} style={{width:"100%",height:"100%",objectFit:"cover"}} />
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Card name - appears at peak */}
-          <div className="draw-card-name">
-            <span className="text-white font-bold text-sm drop-shadow-lg">
-              {drawAnimation.cardName}
-            </span>
+      {/* ── Enemy Draw Animation — card back only (opponent can't see your card) ── */}
+      {enemyDrawAnimation && (
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+          <div
+            className="dc-card"
+            style={{
+              "--dfx":enemyDrawAnimation.fromX,"--dfy":enemyDrawAnimation.fromY,
+              "--dtx":enemyDrawAnimation.toX,  "--dty":enemyDrawAnimation.toY,
+            } as React.CSSProperties}
+          >
+            <div className="dc-back">
+              <div style={{width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,#ef5350,#7b1fa2)",opacity:0.8}} />
+            </div>
           </div>
         </div>
       )}
