@@ -21,11 +21,11 @@ export interface AttackAnimationProps {
 type Phase = "charge" | "release" | "strike" | "impact" | "aftermath"
 
 const T = {
-  CHARGE:   180,
-  RELEASE:   40,
-  STRIKE:   250,
-  IMPACT:   100,   // slightly longer for weight
-  AFTERMATH: 380,
+  CHARGE:   220,   // longer build-up = more anticipation
+  RELEASE:   50,
+  STRIKE:   270,
+  IMPACT:   150,   // heavier freeze frame
+  AFTERMATH: 520,  // longer residual = more weight
   get TOTAL() { return this.CHARGE + this.RELEASE + this.STRIKE + this.IMPACT + this.AFTERMATH }
 }
 
@@ -78,6 +78,8 @@ export function ElementalAttackAnimation({
 
   const isUller  = /ullr|uller/i.test(attackerName || "")
   const isFehnon = /fehnon/i.test(attackerName || "")
+  const isCalem  = /calem/i.test(attackerName || "")
+  const isMorgana = /morgana/i.test(attackerName || "")
 
   const pts = useMemo(() => {
     const tbl: Record<string,[number,number,number,number]> = {
@@ -387,7 +389,14 @@ export function ElementalAttackAnimation({
       case "pyrus": case "fire": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
           display:"flex",alignItems:"center",...mv })}>
-          {/* Animated trail layers — each independently fading */}
+          {/* Speed lines — horizontal streaks across field */}
+          {[-22,-11,0,11,22].map((y,i)=>(
+            <div key={`sl${i}`} style={ss({ position:"fixed",left:0,top:`calc(50% + ${y*2}px)`,
+              width:"100vw",height:i===2?"2px":"1px",
+              background:`linear-gradient(to right,transparent,rgba(249,115,22,${0.22+Math.abs(i-2)*0.08}),transparent)`,
+              pointerEvents:"none",
+              animation:`a-speed-line ${T.STRIKE}ms cubic-bezier(0.04,0,0.08,1) ${i*8}ms forwards` })} />
+          ))}
           <div style={ss({ position:"absolute",width:"200px",height:"16px",
             background:"linear-gradient(to right,transparent,rgba(127,29,29,0.18),rgba(220,38,38,0.45),#f97316,rgba(251,146,60,0.5))",
             borderRadius:"9999px",filter:"blur(3.5px)",opacity:.9,
@@ -525,7 +534,14 @@ export function ElementalAttackAnimation({
       case "darkus": case "darkness": case "dark": return (
         <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
           display:"flex",alignItems:"center",...mv })}>
-          {/* Heavy dark wake */}
+          {/* Speed lines — dark purple streaks */}
+          {[-18,-9,0,9,18].map((y,i)=>(
+            <div key={`sl${i}`} style={ss({ position:"fixed",left:0,top:`calc(50% + ${y*2}px)`,
+              width:"100vw",height:i===2?"2px":"1px",
+              background:`linear-gradient(to right,transparent,rgba(88,28,135,${0.20+Math.abs(i-2)*0.07}),transparent)`,
+              pointerEvents:"none",
+              animation:`a-speed-line ${T.STRIKE}ms cubic-bezier(0.04,0,0.08,1) ${i*10}ms forwards` })} />
+          ))}
           <div style={ss({ position:"absolute",width:"180px",height:"10px",
             background:"linear-gradient(to right,transparent,rgba(88,28,135,0.18),#7e22ce,#a855f7)",
             borderRadius:"9999px",filter:"blur(3.5px)",opacity:.9,
@@ -630,13 +646,13 @@ export function ElementalAttackAnimation({
   // ══════════════════════════════════════════════════════════════════════════
   const Impact = () => {
     const fc: Record<string,string> = {
-      pyrus:"rgba(255,115,0,0.68)",   fire:"rgba(255,115,0,0.68)",
-      aquos:"rgba(56,189,248,0.56)",  aquo:"rgba(56,189,248,0.56)",   water:"rgba(56,189,248,0.56)",
-      terra:"rgba(120,53,15,0.56)",   subterra:"rgba(120,53,15,0.56)",
-      haos:"rgba(255,255,175,0.72)",  light:"rgba(255,255,175,0.72)", lightness:"rgba(255,255,175,0.72)",
-      darkus:"rgba(88,28,135,0.62)",  darkness:"rgba(88,28,135,0.62)", dark:"rgba(88,28,135,0.62)",
-      ventus:"rgba(52,211,153,0.56)", wind:"rgba(52,211,153,0.56)",
-      void:"rgba(203,213,225,0.62)",
+      pyrus:"rgba(255,115,0,0.72)",   fire:"rgba(255,115,0,0.72)",
+      aquos:"rgba(56,189,248,0.60)",  aquo:"rgba(56,189,248,0.60)",   water:"rgba(56,189,248,0.60)",
+      terra:"rgba(120,53,15,0.62)",   subterra:"rgba(120,53,15,0.62)",
+      haos:"rgba(255,255,175,0.76)",  light:"rgba(255,255,175,0.76)", lightness:"rgba(255,255,175,0.76)",
+      darkus:"rgba(88,28,135,0.70)",  darkness:"rgba(88,28,135,0.70)", dark:"rgba(88,28,135,0.70)",
+      ventus:"rgba(52,211,153,0.60)", wind:"rgba(52,211,153,0.60)",
+      void:"rgba(203,213,225,0.66)",
     }
     const gc: Record<string,string> = {
       pyrus:"rgba(249,115,22,1)",     aquos:"rgba(56,189,248,1)",
@@ -644,6 +660,16 @@ export function ElementalAttackAnimation({
       haos:"rgba(254,240,138,1)",     darkus:"rgba(88,28,135,1)",
       ventus:"rgba(52,211,153,1)",    ventus_uller:"rgba(52,211,153,1)",
       void:"rgba(203,213,225,1)",
+    }
+    // Chromatic aberration color pairs per element
+    const chroma: Record<string,[string,string]> = {
+      pyrus:    ["rgba(255,60,0,0.55)","rgba(255,180,0,0.55)"],
+      aquos:    ["rgba(0,120,255,0.50)","rgba(0,240,255,0.50)"],
+      terra:    ["rgba(180,80,0,0.50)","rgba(255,180,60,0.50)"],
+      haos:     ["rgba(255,255,80,0.55)","rgba(255,255,255,0.55)"],
+      darkus:   ["rgba(140,0,255,0.55)","rgba(80,0,180,0.55)"],
+      ventus:   ["rgba(0,200,120,0.50)","rgba(100,255,180,0.50)"],
+      void:     ["rgba(180,180,220,0.50)","rgba(255,255,255,0.50)"],
     }
     const rk = (e:string) => {
       const m:{[k:string]:string}={fire:"pyrus",aquo:"aquos",water:"aquos",subterra:"terra",
@@ -653,19 +679,46 @@ export function ElementalAttackAnimation({
       if(b==="ventus"&&isUller) return "ventus_uller"
       return b
     }
-    const flash = fc[el] ?? "rgba(255,255,255,0.56)"
-    const glow  = gc[rk(el)] ?? "rgba(255,255,255,1)"
+    const flash   = fc[el] ?? "rgba(255,255,255,0.60)"
+    const glow    = gc[rk(el)] ?? "rgba(255,255,255,1)"
+    const [cr, cb] = chroma[rk(el).replace("_fehnon","").replace("_uller","")] ?? ["rgba(255,0,0,0.44)","rgba(0,0,255,0.44)"]
 
     return (
       <div style={ss({ position:"absolute",left:0,top:0,width:0,height:0,
         transform:`rotate(${-aDeg}deg)` })}>
+
+        {/* Screen vignette — edges darken on impact */}
+        <div style={ss({ position:"fixed",left:0,top:0,width:"100vw",height:"100vh",
+          pointerEvents:"none",
+          background:"radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.58) 100%)",
+          animation:`a-vignette ${T.IMPACT}ms ease-out forwards` })} />
+
         {/* Full flash */}
         <div style={ss({ position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
           background:flash,animation:`a-hero-flash ${T.IMPACT}ms linear forwards`,pointerEvents:"none" })} />
+
+        {/* Chromatic aberration — red channel left */}
+        <div style={ss({ position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
+          background:cr,
+          animation:`a-chroma-r ${T.IMPACT}ms ease-out forwards`,pointerEvents:"none",
+          mixBlendMode:"screen" })} />
+        {/* Chromatic aberration — blue channel right */}
+        <div style={ss({ position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
+          background:cb,
+          animation:`a-chroma-b ${T.IMPACT}ms ease-out forwards`,pointerEvents:"none",
+          mixBlendMode:"screen" })} />
+
         {/* Compression orb */}
         <div style={ss({ position:"absolute",left:"-76px",top:"-76px",width:"152px",height:"152px",
           borderRadius:"50%",background:glow,filter:"blur(24px)",
           animation:`a-hero-compress ${T.IMPACT}ms ease-out forwards` })} />
+
+        {/* Outward shockwave ring */}
+        <div style={ss({ position:"absolute",left:"-60px",top:"-60px",width:"120px",height:"120px",
+          borderRadius:"50%",border:`6px solid white`,
+          boxShadow:`0 0 28px 12px ${glow}`,
+          animation:`a-shockwave ${T.IMPACT*1.4}ms cubic-bezier(0.1,0,0.3,1) forwards` })} />
+
         {/* Impact ring — freeze moment */}
         <div style={ss({ position:"absolute",left:"-44px",top:"-44px",width:"88px",height:"88px",
           borderRadius:"50%",border:"4px solid white",
@@ -675,6 +728,25 @@ export function ElementalAttackAnimation({
         <div style={ss({ position:"absolute",left:"-26px",top:"-26px",width:"52px",height:"52px",
           borderRadius:"50%",border:"2px solid white",opacity:.7,
           animation:`a-hero-ring ${T.IMPACT}ms ease-out 15ms forwards` })} />
+
+        {/* Horizontal ground shockwave */}
+        <div style={ss({ position:"absolute",left:"-120px",top:"20px",width:"240px",height:"12px",
+          background:`linear-gradient(to right,transparent,${glow},transparent)`,
+          borderRadius:"9999px",filter:"blur(3px)",
+          transformOrigin:"center center",
+          animation:`a-ground-wave ${T.IMPACT*1.2}ms ease-out forwards` })} />
+
+        {/* Smoke puffs bursting out */}
+        {[{sx:-28,c:"rgba(180,180,180,0.44)"},{sx:0,c:"rgba(200,200,200,0.38)"},{sx:28,c:"rgba(160,160,160,0.42)"}].map((s,i)=>(
+          <div key={i} style={ss({
+            position:"absolute",left:"-20px",top:"-10px",
+            width:"40px",height:"40px",borderRadius:"50%",
+            background:`radial-gradient(circle,${s.c},transparent)`,
+            filter:"blur(5px)",
+            animation:`a-smoke ${T.AFTERMATH*.7}ms ease-out ${i*35}ms forwards`,
+            "--sx":`${s.sx}px`,
+          } as React.CSSProperties)} />
+        ))}
       </div>
     )
   }
@@ -759,13 +831,13 @@ export function ElementalAttackAnimation({
         <div style={ss({ position:"absolute",left:"-80px",top:"-80px",width:"160px",height:"160px",
           animation:"a-local-shake 0.2s cubic-bezier(.36,.07,.19,.97) both" })}>
 
-          {/* 4 shockwave rings */}
-          {[{s:152,bw:3,d:0,op:1},{s:120,bw:2,d:24,op:.68},{s:86,bw:2,d:46,op:.48},{s:60,bw:1,d:0,op:.34}].map(({s,bw,d,op},i)=>(
+          {/* 5 shockwave rings — extra outer one for punch */}
+          {[{s:200,bw:2,d:0,op:.52},{s:152,bw:3,d:0,op:1},{s:120,bw:2,d:24,op:.68},{s:86,bw:2,d:46,op:.48},{s:60,bw:1,d:0,op:.34}].map(({s,bw,d,op},i)=>(
             <div key={i} style={ss({ position:"absolute",
               left:`${80-s/2}px`,top:`${80-s/2}px`,width:s,height:s,
               borderRadius:"50%",
-              border:`${bw}px solid ${i===1?c.r2:i===2?c.r3:c.r1}`,
-              boxShadow: i===0?`0 0 30px 13px ${c.cg}`:undefined,
+              border:`${bw}px solid ${i<=1?c.r1:i===2?c.r2:c.r3}`,
+              boxShadow: i===1?`0 0 30px 13px ${c.cg}`:undefined,
               opacity:op,
               animation:`a-ring ${T.AFTERMATH}ms ease-out ${d}ms forwards` })} />
           ))}
@@ -888,6 +960,39 @@ export function ElementalAttackAnimation({
             } as React.CSSProperties)} />
           )
         })}
+
+        {/* ── Shrapnel angular pieces — angular debris launched outward ── */}
+        {Array.from({length:8}).map((_,i) => {
+          const ang = iBase + (i / 8) * Math.PI * 2
+          const dist2 = 55 + (i % 3) * 22
+          const shx = Math.cos(ang) * dist2
+          const shy = Math.sin(ang) * dist2
+          const shr = (i * 47 + 30) % 360
+          const col = c.pc[(i*2) % c.pc.length]
+          return (
+            <div key={`sh${i}`} style={ss({
+              position:"absolute",
+              width:`${4 + (i%3)*2}px`,height:`${4 + (i%3)*2}px`,
+              background:col,
+              borderRadius:"1px",
+              boxShadow:`0 0 4px 1px ${col}`,
+              animation:`a-shrapnel ${T.AFTERMATH*.72}ms cubic-bezier(0.05,0.4,0.2,1) ${i*18}ms forwards`,
+              "--shx":`${shx}px`,"--shy":`${shy}px`,"--shr":`${shr}deg`,opacity:1,
+            } as React.CSSProperties)} />
+          )
+        })}
+
+        {/* ── Smoke column rising from impact point ── */}
+        {[{sx:-14,delay:0},{sx:0,delay:50},{sx:14,delay:90}].map((s,i)=>(
+          <div key={`smk${i}`} style={ss({
+            position:"absolute",left:"-14px",top:"-10px",
+            width:"28px",height:"28px",borderRadius:"50%",
+            background:"radial-gradient(circle,rgba(160,160,160,0.36),transparent)",
+            filter:"blur(5px)",
+            animation:`a-smoke ${T.AFTERMATH*.85}ms ease-out ${s.delay}ms forwards`,
+            "--sx":`${s.sx}px`,
+          } as React.CSSProperties)} />
+        ))}
       </div>
     )
   }
@@ -952,7 +1057,7 @@ export function ElementalAttackAnimation({
         @keyframes a-hero-flash     { 0%{opacity:1} 45%{opacity:.72} 100%{opacity:0} }
         @keyframes a-hero-compress  { 0%{transform:scale(.08);opacity:1} 45%{transform:scale(1.5);opacity:.92} 100%{transform:scale(2.2);opacity:0} }
         @keyframes a-hero-ring      { 0%{transform:scale(.18);opacity:1;border-width:7px} 100%{transform:scale(2.4);opacity:0;border-width:1px} }
-        @keyframes a-local-shake    { 0%{transform:translate(0,0)} 10%{transform:translate(-5px,-2px)} 22%{transform:translate(5px,3px)} 34%{transform:translate(-4px,1px)} 46%{transform:translate(3px,-2px)} 58%{transform:translate(-2px,1px)} 74%{transform:translate(1px,1px)} 100%{transform:translate(0,0)} }
+        @keyframes a-local-shake    { 0%{transform:translate(0,0)} 8%{transform:translate(-7px,-3px)} 18%{transform:translate(7px,4px)} 28%{transform:translate(-6px,2px)} 40%{transform:translate(5px,-3px)} 54%{transform:translate(-3px,2px)} 70%{transform:translate(2px,1px)} 100%{transform:translate(0,0)} }
         @keyframes a-ring           { 0%{transform:scale(.06);opacity:1;border-width:9px} 42%{opacity:.65} 100%{transform:scale(3.0);opacity:0;border-width:1px} }
         @keyframes a-core           { 0%{transform:scale(.02);opacity:1} 14%{transform:scale(1.42);opacity:1} 44%{transform:scale(1.08);opacity:.8} 100%{transform:scale(0);opacity:0} }
         @keyframes a-second-wave    { 0%{transform:scale(.08);opacity:0} 18%{opacity:1} 58%{opacity:.6} 100%{transform:scale(1.9);opacity:0} }
@@ -961,16 +1066,46 @@ export function ElementalAttackAnimation({
         @keyframes a-dark-abs       { 0%{opacity:0;transform-origin:right center;transform:rotate(0deg) scaleX(0)} 26%{opacity:.76} 100%{opacity:0;transform:scaleX(1)} }
         @keyframes a-void-glitch    { 0%{transform:scale(.18) skewX(0deg);opacity:.84} 38%{transform:scale(1.25) skewX(3deg);opacity:.52} 68%{transform:scale(1.7) skewX(-2deg);opacity:.22} 100%{transform:scale(2.3) skewX(0deg);opacity:0} }
         @keyframes a-fire-rise      { 0%{transform:translateY(0) scaleY(0);opacity:0} 20%{opacity:.8} 100%{transform:translateY(-50px) scaleY(1.5);opacity:0} }
-        @keyframes afterimage-fade  { 0%{opacity:.22} 100%{opacity:0} }
+        @keyframes afterimage-fade  { 0%{opacity:.28} 100%{opacity:0} }
+
+        /* ── NEW: speed lines across the field during strike ── */
+        @keyframes a-speed-line     { 0%{transform:translateX(-100%) scaleX(0);opacity:0} 4%{opacity:.7} 60%{opacity:.5} 100%{transform:translateX(0) scaleX(1);opacity:0} }
+        /* ── NEW: chromatic split on impact (R/B channel offset) ── */
+        @keyframes a-chroma-r       { 0%{opacity:.72;transform:translate(-6px,0)} 60%{opacity:.3} 100%{opacity:0;transform:translate(-14px,0)} }
+        @keyframes a-chroma-b       { 0%{opacity:.72;transform:translate(6px,0)} 60%{opacity:.3} 100%{opacity:0;transform:translate(14px,0)} }
+        /* ── NEW: impact shockwave that travels outward ── */
+        @keyframes a-shockwave      { 0%{transform:scale(0);opacity:.9;border-width:8px} 70%{opacity:.4} 100%{transform:scale(4.5);opacity:0;border-width:0px} }
+        /* ── NEW: smoke puff rising after hit ── */
+        @keyframes a-smoke          { 0%{transform:translate(var(--sx),0) scale(0.3);opacity:.72;filter:blur(3px)} 100%{transform:translate(var(--sx),-44px) scale(2.0);opacity:0;filter:blur(12px)} }
+        /* ── NEW: shrapnel angular pieces ── */
+        @keyframes a-shrapnel       { 0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1} 100%{transform:translate(var(--shx),var(--shy)) rotate(var(--shr)) scale(0);opacity:0} }
+        /* ── NEW: attacker flash-in at charge start ── */
+        @keyframes a-charge-zoom    { 0%{transform:scale(1.18);opacity:0;filter:blur(4px)} 50%{opacity:.84;filter:blur(0)} 100%{transform:scale(1);opacity:1;filter:blur(0)} }
+        /* ── NEW: ground shockwave horizontal ── */
+        @keyframes a-ground-wave    { 0%{transform:scaleX(0) scaleY(1);opacity:.8} 100%{transform:scaleX(1) scaleY(0.2);opacity:0} }
+        /* ── NEW: energy flare spike ── */
+        @keyframes a-flare          { 0%{transform:scaleY(0);opacity:1} 35%{opacity:.8} 100%{transform:scaleY(1);opacity:0} }
+        /* ── NEW: impact screen edge vignette ── */
+        @keyframes a-vignette       { 0%{opacity:.82} 100%{opacity:0} }
       `}</style>
 
       {attackerImage && inFlight && (
-        <div style={ss({ position:"absolute",left:startX-40,top:startY-56,
-          width:"80px",height:"112px",
-          backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
-          borderRadius:"8px",opacity:.2,filter:"blur(2px)",
-          animation:"afterimage-fade 200ms ease-out forwards",
-          pointerEvents:"none",zIndex:5 })} />
+        <>
+          {/* Attacker card ghost — fades as it launches */}
+          <div style={ss({ position:"absolute",left:startX-40,top:startY-56,
+            width:"80px",height:"112px",
+            backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
+            borderRadius:"8px",opacity:.28,filter:"blur(3px) brightness(1.6)",
+            animation:"afterimage-fade 280ms ease-out forwards",
+            pointerEvents:"none",zIndex:5 })} />
+          {/* Second ghost — delayed, more transparent */}
+          <div style={ss({ position:"absolute",left:startX-40,top:startY-56,
+            width:"80px",height:"112px",
+            backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
+            borderRadius:"8px",opacity:.14,filter:"blur(6px) brightness(2)",
+            animation:"afterimage-fade 400ms ease-out 60ms forwards",
+            pointerEvents:"none",zIndex:4 })} />
+        </>
       )}
 
       <div style={ctr} suppressHydrationWarning>{content}</div>
