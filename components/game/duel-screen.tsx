@@ -1935,6 +1935,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [fehnonLrDouble, setFehnonLrDouble] = useState(false)
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
 
+  // Destruction sequencing: IDs of cards with an active on-field destruction animation.
+  // DiscardAnimationManager delays graveyard animation until the field explosion finishes.
+  const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
+  const markDestroyed = useCallback((card: GameCard) =>
+    setDestroyedCardIds(prev => { const s = new Set(prev); s.add(card.id); return s })
+  , [])
+
   const prevUnitZoneRef = useRef<(string | null)[]>([])
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const animationInProgressRef = useRef(false)
@@ -1990,8 +1997,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
+    markDestroyed(card)
     setTimeout(() => setDestructionAnimation(null), 1200)
-  }, [])
+  }, [markDestroyed])
   const rollDice = useCallback((cardName: string): Promise<number> => {
     return new Promise((resolve) => {
       setDiceAnimation({ visible: true, rolling: true, result: null, cardName, onComplete: null })
@@ -3279,6 +3287,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!funcCard) return
 
     if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") {
+      markDestroyed(funcCard)
       setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
         const destroyed = newFuncs[funcIndex]
@@ -3406,6 +3415,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
+        markDestroyed(unit)
         setEnemyField((prev) => {
           const newUnits = [...prev.unitZone]
           const destroyed = newUnits[index]
@@ -3420,6 +3430,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       } else {
         const func = enemyField.functionZone[index]
         if (!func) return
+        markDestroyed(func)
         setEnemyField((prev) => {
           const newFuncs = [...prev.functionZone]
           const destroyed = newFuncs[index]
@@ -3449,6 +3460,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (!target) return prev
       const newDp = target.currentDp - 1
       if (newDp <= 0) {
+        markDestroyed(target)
         newUnits[unitIndex] = null
         showEffectFeedback(`JULGAMENTO DIVINO: ${target.name} destruido! (0 DP)`, "success")
         return {
@@ -3473,6 +3485,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (type === "unit") {
       const target = enemyField.unitZone[index]
       if (!target) return
+      markDestroyed(target)
       setEnemyField((prev) => {
         const newUnits = [...prev.unitZone]
         newUnits[index] = null
@@ -3482,6 +3495,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     } else {
       const target = enemyField.functionZone[index]
       if (!target) return
+      markDestroyed(target)
       setEnemyField((prev) => {
         const newFunctions = [...prev.functionZone]
         newFunctions[index] = null
@@ -4435,6 +4449,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
             const targetIdx = unitIdx !== -1 ? unitIdx : -1
             if (targetIdx !== -1) {
+              const destroyedUnit = playerField.unitZone[targetIdx]
+              if (destroyedUnit) markDestroyed(destroyedUnit)
               setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const destroyed = newUnits[targetIdx]
@@ -4489,6 +4505,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
                         showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
                       } else {
+                        markDestroyed(defender)
                         newPlayerGraveyard.push(defender)
                         newPlayerUnitZone[playerUnitIndex] = null
                       }
@@ -4504,6 +4521,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   })
 
                   if (newAttackerDp <= 0) {
+                    markDestroyed(unit)
                     newEnemyGraveyard.push(unit)
                     newEnemyUnitZone[unitIdx] = null
                   } else {
@@ -6132,62 +6150,286 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* ── Dice Roll Animation — 3D rAF-based, cube always preserve-3d ── */}
+      {/* ── Dice Roll Animation — Canvas 3D, sem CSS preserve-3d ── */}
       {diceAnimation && (() => {
         const rolling = diceAnimation.rolling
         const r       = diceAnimation.result
 
-        /* Pip positions [top%, left%] per face */
-        const PIPS: Record<number, [number,number][]> = {
-          1: [[50,50]],
-          2: [[25,25],[75,75]],
-          3: [[22,22],[50,50],[78,78]],
-          4: [[25,25],[25,75],[75,25],[75,75]],
-          5: [[25,25],[25,75],[50,50],[75,25],[75,75]],
-          6: [[22,26],[50,26],[78,26],[22,74],[50,74],[78,74]],
-        }
-        /* face order: front=1 back=6 right=2 left=5 top=3 bot=4 */
-        const FACE_NUMS = [1,6,2,5,3,4]
-        const FACE_CSS  = [
-          "translateZ(55px)",
-          "rotateY(180deg) translateZ(55px)",
-          "rotateY(90deg) translateZ(55px)",
-          "rotateY(-90deg) translateZ(55px)",
-          "rotateX(90deg) translateZ(55px)",
-          "rotateX(-90deg) translateZ(55px)",
-        ]
-
         const COLORS: Record<number,string> = {
-          1:"#f87171",2:"#fb923c",3:"#facc15",
-          4:"#4ade80",5:"#60a5fa",6:"#c084fc",
+          1:"#f87171", 2:"#fb923c", 3:"#facc15",
+          4:"#4ade80", 5:"#60a5fa", 6:"#c084fc",
         }
         const LABELS: Record<number,string> = {
-          1:"Resultado 1 — Baixo", 2:"Resultado 2 — Baixo",
-          3:"Resultado 3 — Médio", 4:"Resultado 4 — Médio",
-          5:"Resultado 5 — Alto",  6:"Resultado 6 — Máximo!",
+          1:"Resultado 1 — Baixo",  2:"Resultado 2 — Baixo",
+          3:"Resultado 3 — Médio",  4:"Resultado 4 — Médio",
+          5:"Resultado 5 — Alto",   6:"Resultado 6 — Máximo!",
         }
-        /* Which rx/ry parks a given face toward camera */
-        const SETTLE: Record<number,{rx:number,ry:number}> = {
-          1:{rx:0,   ry:0  }, 2:{rx:0,   ry:-90},
-          3:{rx:-90, ry:0  }, 4:{rx:90,  ry:0  },
-          5:{rx:0,   ry:90 }, 6:{rx:0,   ry:180},
+        const col = r ? COLORS[r]  : "#ffffff"
+        const lbl = r ? LABELS[r]  : ""
+
+        /* Pip [cx%, cy%] for each face */
+        const PIPS: Record<number,[number,number][]> = {
+          1: [[50,50]],
+          2: [[28,28],[72,72]],
+          3: [[25,25],[50,50],[75,75]],
+          4: [[28,28],[72,28],[28,72],[72,72]],
+          5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
+          6: [[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]],
         }
 
-        const col = r ? COLORS[r] : "#ffffff"
-        const lbl = r ? LABELS[r] : ""
+        /* Canvas dice: pure JS projection, always 3D */
+        const DiceCanvas = () => {
+          const canvasRef = React.useRef<HTMLCanvasElement>(null)
+          const rafRef    = React.useRef<number>(0)
 
-        const Pip = ({ top, left }: { top: number; left: number }) => (
-          <div style={{
-            position:"absolute", top:`${top}%`, left:`${left}%`,
-            width:13, height:13, borderRadius:"50%",
-            transform:"translate(-50%,-50%)",
-            background:"radial-gradient(circle at 36% 32%, #3a3a3a, #000)",
-            boxShadow:"0 1px 3px rgba(0,0,0,.55), inset 0 1px 1px rgba(255,255,255,.08)",
-          }} />
-        )
+          React.useEffect(() => {
+            const canvas = canvasRef.current
+            if (!canvas) return
+            const ctx = canvas.getContext("2d")!
+            const W = canvas.width = 220
+            const H = canvas.height = 220
+            const CX = W/2, CY = H/2
 
-        /* Unique key so useEffect re-runs each time card is played */
-        const animKey = `dice-${Date.now()}`
+            /* ── Cube geometry: 8 vertices of a unit cube ─────────────── */
+            const S = 70 // half-size
+            const verts: [number,number,number][] = [
+              [-S,-S,-S],[S,-S,-S],[S,S,-S],[-S,S,-S], // back face
+              [-S,-S, S],[S,-S, S],[S,S, S],[-S,S, S], // front face
+            ]
+            /* 6 faces: [v0,v1,v2,v3, faceNum, normalDir] */
+            type Face = { vi:[number,number,number,number]; num:number }
+            const faces: Face[] = [
+              { vi:[4,5,6,7], num:1 }, // front  +Z
+              { vi:[1,0,3,2], num:6 }, // back   -Z
+              { vi:[5,1,2,6], num:2 }, // right  +X
+              { vi:[0,4,7,3], num:5 }, // left   -X
+              { vi:[7,6,2,3], num:3 }, // top    +Y
+              { vi:[0,1,5,4], num:4 }, // bottom -Y
+            ]
+            /* face normals (pre-rotation) */
+            const normals: [number,number,number][] = [
+              [0,0,1],[0,0,-1],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]
+            ]
+
+            /* ── Which final rotation parks each face toward camera ──── */
+            /* target rx,ry so face-normal points toward +Z after rotation */
+            const SETTLE_TARGET: Record<number,{rx:number,ry:number}> = {
+              1:{rx:0,   ry:0  }, // front already faces camera
+              6:{rx:0,   ry:180},
+              2:{rx:0,   ry:-90},
+              5:{rx:0,   ry:90 },
+              3:{rx:90,  ry:0  },
+              4:{rx:-90, ry:0  },
+            }
+
+            /* ── Rotation helpers ────────────────────────────────────── */
+            const toRad = (d:number) => d*Math.PI/180
+            function rotVert(x:number,y:number,z:number,rx:number,ry:number):[number,number,number]{
+              // rotate Y
+              const rxr=toRad(rx), ryr=toRad(ry)
+              let x2 = x*Math.cos(ryr)+z*Math.sin(ryr)
+              let z2 =-x*Math.sin(ryr)+z*Math.cos(ryr)
+              // rotate X
+              let y2 = y*Math.cos(rxr)-z2*Math.sin(rxr)
+              let z3 = y*Math.sin(rxr)+z2*Math.cos(rxr)
+              return [x2,y2,z3]
+            }
+            function project(x:number,y:number,z:number):[number,number]{
+              const fov = 380
+              const scale = fov/(fov+z)
+              return [CX+x*scale, CY+y*scale]
+            }
+
+            /* ── Draw one pip circle on a face ───────────────────────── */
+            function drawPip(ctx:CanvasRenderingContext2D, cx:number,cy:number, r:number, shadow:number){
+              const grad = ctx.createRadialGradient(cx-r*.25,cy-r*.28,r*.05,cx,cy,r)
+              grad.addColorStop(0,"#444")
+              grad.addColorStop(1,"#000")
+              ctx.beginPath()
+              ctx.arc(cx,cy,r,0,Math.PI*2)
+              ctx.fillStyle=grad
+              ctx.shadowColor="rgba(0,0,0,.5)"
+              ctx.shadowBlur=shadow
+              ctx.fill()
+              ctx.shadowBlur=0
+            }
+
+            /* ── Draw pips mapped onto the projected quad ────────────── */
+            function drawPipsOnFace(
+              ctx:CanvasRenderingContext2D,
+              pts:[number,number][],   // 4 projected corners [tl,tr,br,bl]
+              faceNum:number,
+              brightness:number
+            ){
+              if(brightness<0.05) return
+              const pips = PIPS[faceNum]??[]
+              const pipR = 7 * brightness
+              const [tl,tr,br,bl] = pts
+
+              pips.forEach(([px,py])=>{
+                // bilinear interpolation: map pip [0..100,0..100] onto the quad
+                const tx=px/100, ty=py/100
+                const topX    = tl[0]+(tr[0]-tl[0])*tx
+                const topY    = tl[1]+(tr[1]-tl[1])*tx
+                const botX    = bl[0]+(br[0]-bl[0])*tx
+                const botY    = bl[1]+(br[1]-bl[1])*tx
+                const cx2     = topX+(botX-topX)*ty
+                const cy2     = topY+(botY-topY)*ty
+                drawPip(ctx,cx2,cy2,pipR*brightness,4*brightness)
+              })
+            }
+
+            /* ── Draw cube frame ─────────────────────────────────────── */
+            function drawCube(rx:number,ry:number){
+              ctx.clearRect(0,0,W,H)
+
+              // Project all 8 verts
+              const proj = verts.map(([x,y,z])=>{
+                const [rx2,ry2,rz2]=rotVert(x,y,z,rx,ry)
+                return { w:[rx2,ry2,rz2] as [number,number,number], p:project(rx2,ry2,rz2) }
+              })
+
+              // Sort faces back-to-front (painter's algorithm)
+              const sorted = faces.map((face,fi)=>{
+                const [n0,n1,n2]=rotVert(...normals[fi],rx,ry)
+                const avgZ = face.vi.reduce((s,i)=>s+proj[i].w[2],0)/4
+                return { face, fi, n2:n2, avgZ }
+              }).sort((a,b)=>a.avgZ-b.avgZ)
+
+              sorted.forEach(({face,fi,n2})=>{
+                // back-face cull: skip faces pointing away from camera
+                if(n2 < -0.05) return
+
+                const pts = face.vi.map(i=>proj[i].p) as [number,number][]
+                const brightness = Math.max(0, n2)
+
+                // Base white shading
+                const lightness = Math.round(215+brightness*40)
+                const baseColor = `rgb(${lightness},${lightness},${lightness})`
+
+                // Draw face polygon
+                ctx.beginPath()
+                ctx.moveTo(pts[0][0],pts[0][1])
+                pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
+                ctx.closePath()
+
+                // Face gradient: top-left highlight
+                const gx1=pts[0][0],gy1=pts[0][1]
+                const gx2=pts[2][0],gy2=pts[2][1]
+                const faceGrad=ctx.createLinearGradient(gx1,gy1,gx2,gy2)
+                faceGrad.addColorStop(0,`rgb(${Math.min(255,lightness+28)},${Math.min(255,lightness+28)},${Math.min(255,lightness+28)})`)
+                faceGrad.addColorStop(1,`rgb(${Math.max(160,lightness-30)},${Math.max(160,lightness-30)},${Math.max(160,lightness-30)})`)
+                ctx.fillStyle=faceGrad
+                ctx.fill()
+
+                // Edge outline
+                ctx.strokeStyle=`rgba(160,160,160,${0.4+brightness*0.4})`
+                ctx.lineWidth=1.5
+                ctx.stroke()
+
+                // Pips
+                const [tl,tr,br,bl]=[pts[0],pts[1],pts[2],pts[3]]
+                drawPipsOnFace(ctx,[tl,tr,br,bl],face.num,brightness)
+
+                // Specular highlight (top-left corner of face)
+                if(brightness>0.4){
+                  const hlGrad=ctx.createRadialGradient(gx1,gy1,0,gx1,gy1,55)
+                  hlGrad.addColorStop(0,`rgba(255,255,255,${brightness*0.45})`)
+                  hlGrad.addColorStop(1,"rgba(255,255,255,0)")
+                  ctx.beginPath()
+                  ctx.moveTo(pts[0][0],pts[0][1])
+                  pts.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]))
+                  ctx.closePath()
+                  ctx.fillStyle=hlGrad
+                  ctx.fill()
+                }
+              })
+            }
+
+            /* ── Physics state ───────────────────────────────────────── */
+            const target = r ? SETTLE_TARGET[r] : {rx:0,ry:0}
+            const endRX  = target.rx + 720 + (Math.random()>.5?180:0)
+            const endRY  = target.ry + 1080+ (Math.random()>.5?180:0)
+            let rx2=0, ry2=0
+            let bounceY=0, bounceSc=0.4
+
+            const TUMBLE_MS=2200, SETTLE_MS=380, BOUNCE_MS=880
+            let t0:number|null=null
+            type Phase="tumble"|"settle"|"bounce"|"done"
+            let phase:Phase="tumble"
+            let phaseStart:number|null=null
+            let fromRX=0,fromRY=0,fromSc=1
+
+            /* easing */
+            const easeOut3=(t:number)=>1-Math.pow(1-t,3)
+            const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
+            const spring=(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*2*Math.PI/3)
+
+            function frame(ts:number){
+              if(!t0) t0=ts
+              if(!phaseStart) phaseStart=ts
+
+              const elapsed=ts-phaseStart
+
+              if(phase==="tumble"){
+                const p=Math.min(elapsed/TUMBLE_MS,1)
+                const e=easeOut3(p)
+                rx2=lerp(0,endRX,e)
+                ry2=lerp(0,endRY,e)
+                // pulse scale during tumble
+                const scaleKF=[0.4,1.08,0.93,1.04,0.97,1.02,0.99,1.005,1]
+                const si=Math.min(Math.floor(p*(scaleKF.length-1)),scaleKF.length-2)
+                const st=p*(scaleKF.length-1)-si
+                bounceSc=lerp(scaleKF[si],scaleKF[si+1],st)
+                bounceY=0
+                if(p>=1){
+                  phase="settle"; phaseStart=ts
+                  fromRX=rx2; fromRY=ry2; fromSc=bounceSc
+                }
+              } else if(phase==="settle"){
+                const p=Math.min(elapsed/SETTLE_MS,1)
+                const sp=spring(p)
+                const finalRX=Math.round(fromRX/360)*360+target.rx
+                const finalRY=Math.round(fromRY/360)*360+target.ry
+                rx2=lerp(fromRX,finalRX,sp)
+                ry2=lerp(fromRY,finalRY,sp)
+                bounceSc=lerp(fromSc,1,sp)
+                bounceY=0
+                if(p>=1){
+                  rx2=finalRX; ry2=finalRY; bounceSc=1
+                  phase="bounce"; phaseStart=ts
+                }
+              } else if(phase==="bounce"){
+                const bp=Math.min(elapsed/BOUNCE_MS,1)
+                if(bp<.22)       bounceY=lerp(0,-28,bp/.22)
+                else if(bp<.44)  bounceY=lerp(-28,0,(bp-.22)/.22)
+                else if(bp<.60)  bounceY=lerp(0,-12,(bp-.44)/.16)
+                else if(bp<.76)  bounceY=lerp(-12,0,(bp-.60)/.16)
+                else if(bp<.88)  bounceY=lerp(0,-5,(bp-.76)/.12)
+                else             bounceY=lerp(-5,0,(bp-.88)/.12)
+                if(bp>=1){ bounceY=0; phase="done" }
+              }
+
+              ctx.save()
+              ctx.translate(0,bounceY)
+              ctx.scale(bounceSc,bounceSc)
+              drawCube(rx2,ry2)
+              ctx.restore()
+
+              if(phase!=="done") rafRef.current=requestAnimationFrame(frame)
+            }
+
+            rafRef.current=requestAnimationFrame(frame)
+            return ()=>cancelAnimationFrame(rafRef.current)
+          },[])
+
+          return (
+            <canvas
+              ref={canvasRef}
+              style={{ width:220, height:220, display:"block" }}
+            />
+          )
+        }
 
         return (
           <div style={{
@@ -6196,102 +6438,67 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             pointerEvents:"none",
           }}>
             <style>{`
-              @keyframes dice-ovl   { from{opacity:0} to{opacity:1} }
-              @keyframes dice-pop   { 0%{transform:scale(.2);opacity:0;filter:blur(8px)} 65%{transform:scale(1.1);opacity:1;filter:blur(0)} 82%{transform:scale(.96)} 100%{transform:scale(1);opacity:1} }
-              @keyframes dice-spark { 0%{transform:translate(0,0) scale(1.4);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
-              @keyframes dice-ring  { 0%{transform:scale(0);opacity:.9;border-width:5px} 100%{transform:scale(4.8);opacity:0;border-width:0} }
-              @keyframes dice-glow  { 0%,100%{text-shadow:0 0 16px ${col},0 0 32px ${col}88} 50%{text-shadow:0 0 32px ${col},0 0 64px ${col},0 0 96px ${col}55} }
-              @keyframes dice-badge { 0%,100%{box-shadow:0 0 0 0 ${col}44} 50%{box-shadow:0 0 0 8px transparent} }
-              @keyframes dice-dot   { 0%{opacity:.2} 100%{opacity:1} }
-              @keyframes dice-lbl   { 0%{opacity:0;transform:translateY(-8px)} 100%{opacity:1;transform:translateY(0)} }
+              @keyframes d-ovl   { from{opacity:0} to{opacity:1} }
+              @keyframes d-pop   { 0%{transform:scale(.2);opacity:0;filter:blur(8px)} 65%{transform:scale(1.1);opacity:1;filter:blur(0)} 82%{transform:scale(.96)} 100%{transform:scale(1);opacity:1} }
+              @keyframes d-spark { 0%{transform:translate(0,0) scale(1.4);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
+              @keyframes d-ring  { 0%{transform:scale(0);opacity:.9;border-width:5px} 100%{transform:scale(4.8);opacity:0;border-width:0} }
+              @keyframes d-glow  { 0%,100%{text-shadow:0 0 18px ${col},0 0 36px ${col}88} 50%{text-shadow:0 0 36px ${col},0 0 72px ${col},0 0 108px ${col}55} }
+              @keyframes d-badge { 0%,100%{box-shadow:0 0 0 0 ${col}44} 50%{box-shadow:0 0 0 8px transparent} }
+              @keyframes d-dot   { 0%{opacity:.18} 100%{opacity:1} }
+              @keyframes d-lbl   { 0%{opacity:0;transform:translateY(-8px)} 100%{opacity:1;transform:translateY(0)} }
             `}</style>
 
             {/* Backdrop */}
             <div style={{
               position:"absolute", inset:0,
-              background:"radial-gradient(ellipse at center, rgba(18,8,44,.92) 0%, rgba(0,0,0,.85) 100%)",
-              animation:"dice-ovl 200ms ease-out forwards",
+              background:"radial-gradient(ellipse at center, rgba(18,8,44,.93) 0%, rgba(0,0,0,.86) 100%)",
+              animation:"d-ovl 200ms ease-out forwards",
             }} />
 
-            {/* Sparks */}
-            {!rolling && r !== null && Array.from({length:14}).map((_,i) => {
-              const angle = (i/14)*Math.PI*2
-              const dist  = 72+(i%3)*26
-              const sz    = i%3===0?10:i%3===1?7:5
-              return (
-                <div key={i} style={{
-                  position:"absolute", width:sz, height:sz, borderRadius:"50%",
-                  background:col, boxShadow:`0 0 7px 2px ${col}`,
-                  animation:`dice-spark 680ms cubic-bezier(.2,0,.5,1) ${i*22}ms forwards`,
-                  "--sx":`${Math.cos(angle)*dist}px`,
-                  "--sy":`${Math.sin(angle)*dist}px`,
-                } as React.CSSProperties} />
-              )
+            {/* Sparks (on result) */}
+            {!rolling && r !== null && Array.from({length:16}).map((_,i)=>{
+              const a=(i/16)*Math.PI*2, dist=76+(i%3)*28, sz=i%3===0?10:i%3===1?7:5
+              return <div key={i} style={{
+                position:"absolute", width:sz, height:sz, borderRadius:"50%",
+                background:col, boxShadow:`0 0 7px 2px ${col}`,
+                animation:`d-spark 700ms cubic-bezier(.2,0,.5,1) ${i*20}ms forwards`,
+                "--sx":`${Math.cos(a)*dist}px`, "--sy":`${Math.sin(a)*dist}px`,
+              } as React.CSSProperties} />
             })}
 
             {/* Rings */}
-            {!rolling && r !== null && [0,85].map((delay,i) => (
+            {!rolling && r !== null && [0,90].map((delay,i)=>(
               <div key={i} style={{
-                position:"absolute",
-                width:120+i*24, height:120+i*24, borderRadius:"50%",
+                position:"absolute", borderRadius:"50%",
+                width:120+i*24, height:120+i*24,
                 border:`4px solid ${col}`, boxShadow:`0 0 18px 5px ${col}44`,
-                animation:`dice-ring ${560+i*90}ms ease-out ${delay}ms forwards`,
+                animation:`d-ring ${560+i*90}ms ease-out ${delay}ms forwards`,
               }} />
             ))}
 
-            {/* Content */}
-            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
+            {/* Content column */}
+            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
 
               {/* Card name */}
               <div style={{
                 background:"linear-gradient(135deg,rgba(110,50,5,.96),rgba(160,85,8,.93))",
                 padding:"8px 28px", borderRadius:12,
                 border:"1px solid rgba(251,191,36,.55)",
-                animation:"dice-lbl 300ms ease-out forwards",
+                animation:"d-lbl 300ms ease-out forwards",
               }}>
                 <p style={{ color:"#fcd34d", fontWeight:700, fontSize:15, margin:0, letterSpacing:".5px" }}>
                   {diceAnimation.cardName}
                 </p>
               </div>
 
-              {/* 3D scene — perspective on outer, preserve-3d on inner, rAF rotates cube */}
-              <div style={{ position:"relative" }}>
-                <div style={{ perspective:600, perspectiveOrigin:"50% 42%", width:160, height:160, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  {/* rig: receives translateY (bounce) and scale */}
-                  <div id={`dice-rig-${animKey}`} style={{ position:"relative", transformStyle:"preserve-3d" }}>
-                    {/* cube: receives rotateX/rotateY */}
-                    <div id={`dice-cube-${animKey}`} style={{ width:110, height:110, transformStyle:"preserve-3d", position:"relative" }}>
-                      {FACE_CSS.map((faceTransform, fi) => {
-                        const fn = FACE_NUMS[fi]
-                        return (
-                          <div key={fi} style={{
-                            position:"absolute", width:110, height:110,
-                            borderRadius:14, border:"2px solid #ccc",
-                            transform:faceTransform,
-                            backfaceVisibility:"visible",
-                            overflow:"hidden",
-                          }}>
-                            {/* base white */}
-                            <div style={{ position:"absolute", inset:0, background:"linear-gradient(145deg,#fff,#e6e6e6)" }} />
-                            {/* shine */}
-                            <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,rgba(255,255,255,.65) 0%,transparent 52%)" }} />
-                            {/* pips */}
-                            {(PIPS[fn] ?? []).map(([t,l], pi) => <Pip key={pi} top={t} left={l} />)}
-                            {/* corner number */}
-                            <span style={{ position:"absolute", top:5, left:8, fontSize:9, fontWeight:700, fontFamily:"monospace", color:"rgba(0,0,0,.14)" }}>{fn}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-                {/* Ground shadow */}
-                <div id={`dice-shadow-${animKey}`} style={{
-                  position:"absolute", bottom:-4, left:"50%",
+              {/* Canvas dice — always 3D */}
+              <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center" }}>
+                <DiceCanvas />
+                {/* Ground shadow under canvas */}
+                <div style={{
                   width:80, height:12, borderRadius:"50%",
-                  background:"rgba(0,0,0,.52)", filter:"blur(7px)",
-                  transform:"translateX(-50%)",
-                  transformOrigin:"center center",
+                  background:"rgba(0,0,0,.5)", filter:"blur(7px)",
+                  marginTop:-8,
                 }} />
               </div>
 
@@ -6300,8 +6507,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 <div style={{ textAlign:"center" }}>
                   <p style={{ color:"#fff", fontWeight:700, fontSize:16, letterSpacing:"2px", textTransform:"uppercase", textShadow:"0 0 18px rgba(139,92,246,.9)", margin:"0 0 9px" }}>Rolando...</p>
                   <div style={{ display:"flex", gap:7, justifyContent:"center" }}>
-                    {[0,1,2].map(i => (
-                      <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:"rgba(139,92,246,.9)", animation:`dice-dot .7s ease-in-out ${i*.18}s infinite alternate` }} />
+                    {[0,1,2].map(i=>(
+                      <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:"rgba(139,92,246,.9)", animation:`d-dot .7s ease-in-out ${i*.18}s infinite alternate` }} />
                     ))}
                   </div>
                 </div>
@@ -6309,99 +6516,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
               {/* Result */}
               {!rolling && r !== null && (
-                <div style={{ textAlign:"center", animation:"dice-pop .5s cubic-bezier(.34,1.56,.64,1) forwards" }}>
-                  <div style={{ fontSize:82, fontWeight:900, fontFamily:"monospace", lineHeight:1, color:col, animation:"dice-glow 1.3s ease-in-out infinite", marginBottom:10 }}>{r}</div>
-                  <div style={{ display:"inline-block", padding:"7px 22px", borderRadius:24, background:`${col}22`, border:`1.5px solid ${col}88`, animation:"dice-badge 1.4s ease-in-out infinite" }}>
+                <div style={{ textAlign:"center", animation:"d-pop .5s cubic-bezier(.34,1.56,.64,1) forwards" }}>
+                  <div style={{ fontSize:82, fontWeight:900, fontFamily:"monospace", lineHeight:1, color:col, animation:"d-glow 1.3s ease-in-out infinite", marginBottom:10 }}>{r}</div>
+                  <div style={{ display:"inline-block", padding:"7px 22px", borderRadius:24, background:`${col}22`, border:`1.5px solid ${col}88`, animation:"d-badge 1.4s ease-in-out infinite" }}>
                     <p style={{ color:col, fontWeight:700, fontSize:12, letterSpacing:"1px", textTransform:"uppercase", margin:0 }}>{lbl}</p>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* rAF animation script — runs once when rolling starts */}
-            {rolling && (
-              <script dangerouslySetInnerHTML={{ __html: `
-(function(){
-  var KEY='${animKey}';
-  var rig=document.getElementById('dice-rig-'+KEY);
-  var cube=document.getElementById('dice-cube-'+KEY);
-  var shad=document.getElementById('dice-shadow-'+KEY);
-  if(!rig||!cube) return;
-
-  var SETTLE={1:{rx:0,ry:0},2:{rx:0,ry:-90},3:{rx:-90,ry:0},4:{rx:90,ry:0},5:{rx:0,ry:90},6:{rx:0,ry:180}};
-  var result=${r ?? 0}||Math.ceil(Math.random()*6);
-  var target=SETTLE[result]||{rx:0,ry:0};
-
-  var endRX=target.rx+720+Math.round((Math.random()-.5)*4)*45;
-  var endRY=target.ry+1080+Math.round((Math.random()-.5)*4)*45;
-
-  var scaleKF=[.3,1.08,.93,1.04,.97,1.02,.99,1.005,1];
-  var TUMBLE=2000,rafId=null,t0=null;
-
-  function easeOut(t){return 1-Math.pow(1-t,3)}
-  function lerp(a,b,t){return a+(b-a)*t}
-
-  function tumble(ts){
-    if(!t0)t0=ts;
-    var p=Math.min((ts-t0)/TUMBLE,1);
-    var e=easeOut(p);
-    var crx=lerp(0,endRX,e);
-    var cry=lerp(0,endRY,e);
-    var si=Math.min(Math.floor(p*(scaleKF.length-1)),scaleKF.length-2);
-    var st=p*(scaleKF.length-1)-si;
-    var sc=lerp(scaleKF[si],scaleKF[si+1],st);
-    rig.style.transform='scale('+sc+')';
-    cube.style.transform='rotateX('+crx+'deg) rotateY('+cry+'deg)';
-    if(p<1){rafId=requestAnimationFrame(tumble);return;}
-    settle(endRX,endRY,sc);
-  }
-
-  function settle(fromRX,fromRY,fromSc){
-    var finalRX=Math.round(fromRX/360)*360+target.rx;
-    var finalRY=Math.round(fromRY/360)*360+target.ry;
-    var SETT=380,s0=null;
-    function frame(ts){
-      if(!s0)s0=ts;
-      var p=Math.min((ts-s0)/SETT,1);
-      var spring=p===1?1:1-Math.pow(2,-10*p)*Math.cos((p*10-.75)*2*Math.PI/3);
-      rig.style.transform='scale('+lerp(fromSc,1,spring)+')';
-      cube.style.transform='rotateX('+lerp(fromRX,finalRX,spring)+'deg) rotateY('+lerp(fromRY,finalRY,spring)+'deg)';
-      if(p<1){rafId=requestAnimationFrame(frame);return;}
-      bounce();
-    }
-    rafId=requestAnimationFrame(frame);
-  }
-
-  function bounce(){
-    var BOUNCE=850,b0=null;
-    function frame(ts){
-      if(!b0)b0=ts;
-      var bp=Math.min((ts-b0)/BOUNCE,1);
-      var ty=0;
-      if(bp<.22)      ty=lerp(0,-26,bp/.22);
-      else if(bp<.44) ty=lerp(-26,0,(bp-.22)/.22);
-      else if(bp<.60) ty=lerp(0,-11,(bp-.44)/.16);
-      else if(bp<.76) ty=lerp(-11,0,(bp-.6)/.16);
-      else if(bp<.88) ty=lerp(0,-4,(bp-.76)/.12);
-      else            ty=lerp(-4,0,(bp-.88)/.12);
-      rig.style.transform='translateY('+ty+'px) scale(1)';
-      if(shad){
-        var sc=ty<0?lerp(1,.45,Math.abs(ty)/26):1;
-        var op=ty<0?lerp(.52,.14,Math.abs(ty)/26):.52;
-        shad.style.transform='translateX(-50%) scaleX('+sc+')';
-        shad.style.opacity=op;
-      }
-      if(bp<1){rafId=requestAnimationFrame(frame);return;}
-      rig.style.transform='translateY(0) scale(1)';
-      if(shad){shad.style.transform='translateX(-50%) scaleX(1)';shad.style.opacity='.52';}
-    }
-    rafId=requestAnimationFrame(frame);
-  }
-
-  rafId=requestAnimationFrame(tumble);
-})();
-              ` }} />
-            )}
           </div>
         )
       })()}
@@ -7139,7 +7261,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         enemyGraveyard={enemyField.graveyard}
         playerGraveyardRef={playerGraveyardRef}
         enemyGraveyardRef={enemyGraveyardRef}
-        fieldRef={fieldRef}
+        destroyedCardIds={destroyedCardIds}
       />
 
     </div>
