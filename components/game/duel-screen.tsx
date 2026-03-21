@@ -1676,75 +1676,106 @@ function DiceCanvas3D({ result }: DiceCanvas3DProps) {
     const cube = cubeRef.current
     if(!rig||!cube) return
 
+    const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
+
+    // Current live rotation angles (degrees) — shared between idle and roll
+    let rx = 0, ry = 0
+    // Angular velocity (deg/frame at 60fps)
+    let vx = 1.4, vy = 2.2
     let busy = false
 
-    const easeOut=(t:number)=>1-Math.pow(1-t,3)
-    const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
+    // ── Idle: dice spins freely at constant velocity from frame 1 ──
+    function idleLoop(){
+      rafRef.current = requestAnimationFrame(idleLoop)
+      if(busy) return
+      rx += vx
+      ry += vy
+      rig.style.transform  = 'scale(1)'
+      cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+    }
+    rafRef.current = requestAnimationFrame(idleLoop)
 
     function doRoll(result:number){
       if(busy) return
-      busy=true
-      cancelAnimationFrame(rafRef.current)
+      busy = true
 
       const target = DICE_SETTLE[result]
-      const endRX  = target.rx + 720 + Math.round((Math.random()-.5)*180/45)*45
-      const endRY  = target.ry + 1080+ Math.round((Math.random()-.5)*180/45)*45
-      const TUMBLE = 2000
-      const scaleKF= [1,.3,1.08,.93,1.04,.97,1.02,.99,1]
-      let t0:number|null=null
+      // Final resting angles: align to face, add many full extra turns so it spins a lot
+      const extraX = (Math.random()>.5?1:-1) * (720 + Math.floor(Math.random()*3)*360)
+      const extraY = (Math.random()>.5?1:-1) * (1080+ Math.floor(Math.random()*3)*360)
+      const finalRX = Math.round(rx/360)*360 + target.rx + extraX
+      const finalRY = Math.round(ry/360)*360 + target.ry + extraY
 
-      function tumbleFrame(ts:number){
+      // ── Phase 1: SPIN & DECELERATE (2000ms) ──
+      // Angular velocity starts high, drops to 0 by end, steered toward target
+      const SPIN_MS = 2000
+      const startRX = rx, startRY = ry
+      let t0: number|null = null
+
+      function spinFrame(ts:number){
         if(!t0) t0=ts
-        const elapsed=ts-t0
-        const p=Math.min(elapsed/TUMBLE,1)
-        const e=easeOut(p)
-        const crx=lerp(0,endRX,e)
-        const cry=lerp(0,endRY,e)
-        const si=Math.min(Math.floor(p*(scaleKF.length-1)),scaleKF.length-2)
-        const sc=lerp(scaleKF[si],scaleKF[si+1],p*(scaleKF.length-1)-si)
-        rig.style.transform=`scale(${sc})`
-        cube.style.transform=`rotateX(${crx}deg) rotateY(${cry}deg)`
-        if(p<1){ rafRef.current=requestAnimationFrame(tumbleFrame); return }
+        const elapsed = ts - t0
+        const p = Math.min(elapsed/SPIN_MS, 1)
 
-        // Settle (spring)
-        const finalRX=Math.round(endRX/360)*360+target.rx
-        const finalRY=Math.round(endRY/360)*360+target.ry
-        const s0={rx:endRX,ry:endRY,sc}
-        const SETTLE=380; let st0:number|null=null
+        // easeIn to reach target: starts fast (linear) then bends into target
+        const e = p < 0.5
+          ? 2*p*p                     // ease-in: accelerate slightly at start
+          : 1 - Math.pow(-2*p+2,2)/2  // ease-out: decelerate into target
+
+        rx = lerp(startRX, finalRX, e)
+        ry = lerp(startRY, finalRY, e)
+
+        rig.style.transform  = 'scale(1)'
+        cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+
+        if(p < 1){ rafRef.current = requestAnimationFrame(spinFrame); return }
+
+        // ── Phase 2: SETTLE (spring overshoot, 380ms) ──
+        const snapRX = Math.round(finalRX/360)*360 + target.rx
+        const snapRY = Math.round(finalRY/360)*360 + target.ry
+        const fromRX = rx, fromRY = ry
+        const SETTLE = 380; let st0:number|null = null
+
         function settleFrame(ts:number){
           if(!st0) st0=ts
-          const sp=Math.min((ts-st0)/SETTLE,1)
-          const spring=sp===1?1:1-Math.pow(2,-10*sp)*Math.cos((sp*10-.75)*2*Math.PI/3)
-          rig.style.transform=`scale(${lerp(s0.sc,1,spring)})`
-          cube.style.transform=`rotateX(${lerp(s0.rx,finalRX,spring)}deg) rotateY(${lerp(s0.ry,finalRY,spring)}deg)`
+          const sp = Math.min((ts-st0)/SETTLE, 1)
+          const spring = sp===1 ? 1 : 1-Math.pow(2,-10*sp)*Math.cos((sp*10-.75)*2*Math.PI/3)
+          rx = lerp(fromRX, snapRX, spring)
+          ry = lerp(fromRY, snapRY, spring)
+          rig.style.transform  = 'scale(1)'
+          cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
           if(sp<1){ rafRef.current=requestAnimationFrame(settleFrame); return }
+          rx=snapRX; ry=snapRY
 
-          // Bounce
+          // ── Phase 3: BOUNCE (820ms) ──
           const BOUNCE=820; let bt0:number|null=null
           function bounceFrame(ts:number){
             if(!bt0) bt0=ts
             const bp=Math.min((ts-bt0)/BOUNCE,1)
             let ty=0
-            if(bp<.22)      ty=lerp(0,-26,bp/.22)
-            else if(bp<.44) ty=lerp(-26,0,(bp-.22)/.22)
-            else if(bp<.60) ty=lerp(0,-11,(bp-.44)/.16)
-            else if(bp<.76) ty=lerp(-11,0,(bp-.60)/.16)
-            else if(bp<.88) ty=lerp(0,-4,(bp-.76)/.12)
-            else             ty=lerp(-4,0,(bp-.88)/.12)
+            if(bp<.22)       ty=lerp(0,-26,bp/.22)
+            else if(bp<.44)  ty=lerp(-26,0,(bp-.22)/.22)
+            else if(bp<.60)  ty=lerp(0,-11,(bp-.44)/.16)
+            else if(bp<.76)  ty=lerp(-11,0,(bp-.60)/.16)
+            else if(bp<.88)  ty=lerp(0,-4,(bp-.76)/.12)
+            else              ty=lerp(-4,0,(bp-.88)/.12)
             rig.style.transform=`translateY(${ty}px) scale(1)`
             if(bp<1){ rafRef.current=requestAnimationFrame(bounceFrame); return }
             rig.style.transform='translateY(0) scale(1)'
             busy=false
+            // Resume gentle idle
+            vx=0.4; vy=0.6
+            rafRef.current=requestAnimationFrame(idleLoop)
           }
           rafRef.current=requestAnimationFrame(bounceFrame)
         }
         rafRef.current=requestAnimationFrame(settleFrame)
       }
-      rafRef.current=requestAnimationFrame(tumbleFrame)
+      rafRef.current=requestAnimationFrame(spinFrame)
     }
 
     rollRef.current=doRoll
-    if(result!==null) setTimeout(()=>doRoll(result),200)
+    if(result!==null) setTimeout(()=>doRoll(result),80)
     return()=>cancelAnimationFrame(rafRef.current)
   },[])
 
