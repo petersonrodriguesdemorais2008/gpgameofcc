@@ -1645,226 +1645,295 @@ const getElementGlow = (element: string): string => {
   }
 }
 
-// ─── DiceCanvas3D ─────────────────────────────────────────────────────────────
-// Canvas 2D + manual perspective projection + rAF physics.
-// Correct proportional cube: all 3 axes use the same half-size S.
-// Never uses CSS preserve-3d (flattens under @keyframes).
-
+// ─── DiceCanvas3D — Three.js WebGL, 3D premium dice ─────────────────────────
 interface DiceCanvas3DProps {
   result: number | null
+  cardName: string
 }
 
-// Pip [u,v] coords 0..1 on each face
-const DICE_PIPS: Record<number,[number,number][]> = {
-  1:[[.50,.50]],
-  2:[[.28,.28],[.72,.72]],
-  3:[[.25,.25],[.50,.50],[.75,.75]],
-  4:[[.28,.28],[.72,.28],[.28,.72],[.72,.72]],
-  5:[[.28,.28],[.72,.28],[.50,.50],[.28,.72],[.72,.72]],
-  6:[[.28,.22],[.72,.22],[.28,.50],[.72,.50],[.28,.78],[.72,.78]],
-}
+function DiceCanvas3D({ result, cardName }: DiceCanvas3DProps) {
+  const mountRef = useRef<HTMLDivElement>(null)
+  const rollRef  = useRef<((n: number) => void) | null>(null)
+  const rafRef   = useRef<number>(0)
 
-// rx,ry that parks each face number toward the camera (+Z)
-const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
-  1:{rx:0,   ry:0  },
-  6:{rx:0,   ry:180},
-  2:{rx:0,   ry:-90},
-  5:{rx:0,   ry:90 },
-  3:{rx:-90, ry:0  },
-  4:{rx:90,  ry:0  },
-}
-
-function DiceCanvas3D({ result }: DiceCanvas3DProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rafRef    = useRef<number>(0)
-
+  // Build scene once on mount
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    const mount = mountRef.current
+    if (!mount) return
 
-    const W = canvas.width  = 260
-    const H = canvas.height = 260
-    const CX = W/2, CY = H/2
-    const S  = 72   // half-side — SAME on all 3 axes = perfect cube
+    function boot(THREE: any) {
+      // Renderer
+      const W = 300, H = 300
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+      renderer.setSize(W, H)
+      renderer.setPixelRatio(Math.min(typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1, 2))
+      renderer.toneMapping = THREE.ACESFilmicToneMapping
+      renderer.toneMappingExposure = 1.1
+      mount.appendChild(renderer.domElement)
 
-    // 8 vertices of the cube
-    const V: [number,number,number][] = [
-      [-S,-S,-S],[S,-S,-S],[S,S,-S],[-S,S,-S],  // 0-3 back
-      [-S,-S, S],[S,-S, S],[S,S, S],[-S,S, S],  // 4-7 front
-    ]
+      // Scene + Camera
+      const scene  = new THREE.Scene()
+      scene.fog    = new THREE.FogExp2(0x000000, 0.012)
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100)
+      camera.position.set(0, 2.6, 6.2)
+      camera.lookAt(0, 0, 0)
 
-    // 6 faces: vertex indices, outward normal, face number
-    const FACES = [
-      {vi:[4,5,6,7], n:[0,0, 1] as [number,number,number], fn:1},
-      {vi:[1,0,3,2], n:[0,0,-1] as [number,number,number], fn:6},
-      {vi:[5,1,2,6], n:[1,0, 0] as [number,number,number], fn:2},
-      {vi:[0,4,7,3], n:[-1,0,0] as [number,number,number], fn:5},
-      {vi:[7,6,2,3], n:[0,-1,0] as [number,number,number], fn:3},
-      {vi:[0,1,5,4], n:[0, 1,0] as [number,number,number], fn:4},
-    ]
+      // 3-point lighting
+      scene.add(new THREE.AmbientLight(0xffffff, 0.35))
+      const key = new THREE.DirectionalLight(0xfff8f0, 1.1)
+      key.position.set(5, 7, 6)
+      scene.add(key)
+      const fill = new THREE.DirectionalLight(0xc0d8ff, 0.28)
+      fill.position.set(-5, 2, -4); scene.add(fill)
+      const rim = new THREE.DirectionalLight(0xffeedd, 0.18)
+      rim.position.set(0, -4, -5); scene.add(rim)
 
-    const toR = (d:number) => d*Math.PI/180
-    function rotY(v:[number,number,number],a:number):[number,number,number]{
-      const c=Math.cos(a),s=Math.sin(a)
-      return [v[0]*c+v[2]*s, v[1], -v[0]*s+v[2]*c]
-    }
-    function rotX(v:[number,number,number],a:number):[number,number,number]{
-      const c=Math.cos(a),s=Math.sin(a)
-      return [v[0], v[1]*c-v[2]*s, v[1]*s+v[2]*c]
-    }
-    function rot(v:[number,number,number],rx:number,ry:number):[number,number,number]{
-      return rotX(rotY(v,toR(ry)),toR(rx))
-    }
-    function proj(v:[number,number,number]):[number,number]{
-      const fov=420, z=v[2]+fov
-      return [CX+v[0]*fov/z, CY+v[1]*fov/z]
-    }
-
-    const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
-    const eOut=(t:number)=>1-Math.pow(1-t,3)
-    const spr =(t:number)=>t===1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*Math.PI*2/3)
-
-    // Directional light (top-right-front)
-    const LD:[number,number,number]=[.4,-.6,.7]
-    const lLen=Math.hypot(...LD)
-    const LN:[number,number,number]=[LD[0]/lLen,LD[1]/lLen,LD[2]/lLen]
-
-    function drawPip(cx:number,cy:number,r:number){
-      const g=ctx.createRadialGradient(cx-r*.3,cy-r*.3,r*.05,cx+r*.1,cy+r*.1,r*1.1)
-      g.addColorStop(0,"#555"); g.addColorStop(.6,"#111"); g.addColorStop(1,"#000")
-      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2)
-      ctx.fillStyle=g; ctx.fill()
-    }
-
-    function drawFrame(rx:number,ry:number,sc:number,dy:number){
-      ctx.clearRect(0,0,W,H)
-
-      // project all 8 vertices (scale+offset applied directly)
-      const pv = V.map(v => {
-        const r = rot(v,rx,ry)
-        const scaled:[number,number,number]=[r[0]*sc, r[1]*sc+dy, r[2]*sc]
-        return { w:r, p:proj(scaled) }
-      })
-
-      // painter: sort faces back→front by average world Z
-      const sorted = [...FACES].map(f=>{
-        const rn = rot(f.n,rx,ry)
-        const avgZ = f.vi.reduce((s,i)=>s+pv[i].w[2],0)/4
-        return {f, rn, avgZ}
-      }).sort((a,b)=>a.avgZ-b.avgZ)
-
-      sorted.forEach(({f,rn})=>{
-        // dot with camera direction +Z — cull back faces
-        const dot = rn[0]*0 + rn[1]*0 + rn[2]*1
-        if(dot < -0.02) return
-
-        const pts = f.vi.map(i=>pv[i].p) as [number,number][]
-
-        // Phong-ish: ambient + diffuse
-        const diffuse = Math.max(0, rn[0]*LN[0]+rn[1]*LN[1]+rn[2]*LN[2])
-        const light   = 0.30 + diffuse*0.70
-        const base    = Math.round(light*255)
-        const hi      = Math.min(255,Math.round(light*275))
-        const lo      = Math.max(140,Math.round(light*220))
-
-        // Fill face polygon
-        ctx.beginPath()
-        ctx.moveTo(pts[0][0],pts[0][1])
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1])
-        ctx.closePath()
-
-        // Gradient from bright corner to dark corner
-        const g=ctx.createLinearGradient(pts[0][0],pts[0][1],pts[2][0],pts[2][1])
-        g.addColorStop(0,`rgb(${hi},${hi},${hi})`)
-        g.addColorStop(1,`rgb(${lo},${lo},${lo})`)
-        ctx.fillStyle=g; ctx.fill()
-
-        // Edge
-        ctx.strokeStyle=`rgba(90,90,90,${0.28+diffuse*0.55})`
-        ctx.lineWidth=1.2; ctx.stroke()
-
-        // Specular glint on lit faces
-        if(diffuse>0.28){
-          const sg=ctx.createRadialGradient(pts[0][0],pts[0][1],0,pts[0][0],pts[0][1],S*sc*.85)
-          sg.addColorStop(0,`rgba(255,255,255,${diffuse*0.38})`)
-          sg.addColorStop(1,"rgba(255,255,255,0)")
-          ctx.beginPath()
-          ctx.moveTo(pts[0][0],pts[0][1])
-          for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1])
-          ctx.closePath(); ctx.fillStyle=sg; ctx.fill()
-        }
-
-        // Pips: bilinear interpolation across projected quad
-        if(dot>0.08){
-          const [p0,p1,p2,p3]=pts
-          const pipR = Math.max(4.5, 9*dot*sc)
-          ;(DICE_PIPS[f.fn]||[]).forEach(([u,v])=>{
-            const tx=lerp(p0[0],p1[0],u), ty=lerp(p0[1],p1[1],u)
-            const bx=lerp(p3[0],p2[0],u), by=lerp(p3[1],p2[1],u)
-            drawPip(lerp(tx,bx,v), lerp(ty,by,v), pipR)
-          })
-        }
-      })
-
-      // Soft ground shadow ellipse
-      const gy = CY + S*sc + dy + 16
-      const sg = ctx.createRadialGradient(CX,gy,2,CX,gy,S*sc*.92)
-      sg.addColorStop(0,"rgba(0,0,0,.42)"); sg.addColorStop(1,"rgba(0,0,0,0)")
-      ctx.beginPath(); ctx.ellipse(CX,gy,S*sc*.88,S*sc*.19,0,0,Math.PI*2)
-      ctx.fillStyle=sg; ctx.fill()
-    }
-
-    // Physics phases
-    const target = result ? DICE_SETTLE[result] : {rx:0,ry:0}
-    const endRX  = target.rx + 720 + (Math.random()>.5?180:0)
-    const endRY  = target.ry + 1080+ (Math.random()>.5?180:0)
-    const TUMBLE=2200, SETTLE_MS=370, BOUNCE=860
-    const scKF=[.35,1.10,.91,1.05,.96,1.02,.99,1.005,1]
-
-    let phase:"tumble"|"settle"|"bounce"|"done"="tumble"
-    let crx=0,cry=0,csc=.35,cdy=0
-    let fRX=0,fRY=0,fSc=1
-    let ps:number|null=null
-
-    function frame(ts:number){
-      if(!ps) ps=ts
-      const el=ts-ps
-
-      if(phase==="tumble"){
-        const p=Math.min(el/TUMBLE,1), e=eOut(p)
-        crx=lerp(0,endRX,e); cry=lerp(0,endRY,e)
-        const si=Math.min(Math.floor(p*(scKF.length-1)),scKF.length-2)
-        csc=lerp(scKF[si],scKF[si+1],p*(scKF.length-1)-si)
-        cdy=0
-        if(p>=1){phase="settle";ps=ts;fRX=crx;fRY=cry;fSc=csc}
-      } else if(phase==="settle"){
-        const p=Math.min(el/SETTLE_MS,1), sp=spr(p)
-        const dRX=Math.round(fRX/360)*360+target.rx
-        const dRY=Math.round(fRY/360)*360+target.ry
-        crx=lerp(fRX,dRX,sp); cry=lerp(fRY,dRY,sp); csc=lerp(fSc,1,sp); cdy=0
-        if(p>=1){crx=dRX;cry=dRY;csc=1;phase="bounce";ps=ts}
-      } else if(phase==="bounce"){
-        const bp=Math.min(el/BOUNCE,1)
-        if(bp<.22)      cdy=lerp(0,-30,bp/.22)
-        else if(bp<.44) cdy=lerp(-30,0,(bp-.22)/.22)
-        else if(bp<.60) cdy=lerp(0,-13,(bp-.44)/.16)
-        else if(bp<.76) cdy=lerp(-13,0,(bp-.60)/.16)
-        else if(bp<.88) cdy=lerp(0,-5,(bp-.76)/.12)
-        else            cdy=lerp(-5,0,(bp-.88)/.12)
-        if(bp>=1){cdy=0;phase="done"}
+      // Face textures
+      const PIPS: Record<number,[number,number][]> = {
+        1:[[.5,.5]],
+        2:[[.28,.28],[.72,.72]],
+        3:[[.25,.25],[.5,.5],[.75,.75]],
+        4:[[.28,.28],[.72,.28],[.28,.72],[.72,.72]],
+        5:[[.28,.28],[.72,.28],[.5,.5],[.28,.72],[.72,.72]],
+        6:[[.28,.22],[.72,.22],[.28,.5],[.72,.5],[.28,.78],[.72,.78]],
       }
 
-      drawFrame(crx,cry,csc,cdy)
-      if(phase!=="done") rafRef.current=requestAnimationFrame(frame)
+      function makeTex(n: number) {
+        const sz = 512
+        const cv = document.createElement("canvas")
+        cv.width = cv.height = sz
+        const c = cv.getContext("2d")!
+        // White face
+        c.fillStyle = "#f8f8f8"; c.fillRect(0, 0, sz, sz)
+        // Top-left bevel
+        const bev = c.createLinearGradient(0,0,sz*.4,sz*.4)
+        bev.addColorStop(0,"rgba(255,255,255,.6)"); bev.addColorStop(1,"rgba(255,255,255,0)")
+        c.fillStyle = bev; c.fillRect(0,0,sz,sz)
+        // Bottom-right shadow
+        const sh = c.createLinearGradient(sz*.6,sz*.6,sz,sz)
+        sh.addColorStop(0,"rgba(0,0,0,0)"); sh.addColorStop(1,"rgba(0,0,0,.07)")
+        c.fillStyle = sh; c.fillRect(0,0,sz,sz)
+        // Pips
+        const r = sz * .076
+        ;(PIPS[n]||[]).forEach(([u,v]) => {
+          const cx = u*sz, cy = v*sz
+          c.save()
+          c.shadowColor = "rgba(0,0,0,.3)"; c.shadowBlur = r*.6
+          c.shadowOffsetX = r*.12; c.shadowOffsetY = r*.16
+          const g = c.createRadialGradient(cx-r*.32,cy-r*.32,r*.04,cx+r*.08,cy+r*.08,r*1.1)
+          g.addColorStop(0,"#2a2a2a"); g.addColorStop(.5,"#0d0d0d"); g.addColorStop(1,"#000")
+          c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2)
+          c.fillStyle = g; c.fill(); c.restore()
+          // Glint
+          c.beginPath(); c.arc(cx-r*.3,cy-r*.3,r*.28,0,Math.PI*2)
+          c.fillStyle = "rgba(255,255,255,.25)"; c.fill()
+        })
+        // Corner label
+        c.font = `bold ${Math.round(sz*.09)}px monospace`
+        c.fillStyle = "rgba(0,0,0,.1)"; c.fillText(String(n), sz*.045, sz*.13)
+        return new THREE.CanvasTexture(cv)
+      }
+
+      // BoxGeometry face order: +X,-X,+Y,-Y,+Z,-Z = right,left,top,bottom,front,back
+      // Standard dice: 1=front(+Z),6=back(-Z),2=right(+X),5=left(-X),3=top(+Y),4=bottom(-Y)
+      const mats = [2,5,3,4,1,6].map(n =>
+        new THREE.MeshStandardMaterial({ map: makeTex(n), roughness: .12, metalness: .06 })
+      )
+      const dice = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), mats)
+      scene.add(dice)
+
+      // Target rotations
+      const TARGET: Record<number,{x:number,y:number}> = {
+        1:{x:0,         y:0          },
+        6:{x:0,         y:Math.PI    },
+        2:{x:0,         y:-Math.PI/2 },
+        5:{x:0,         y:Math.PI/2  },
+        3:{x:Math.PI/2, y:0          },
+        4:{x:-Math.PI/2,y:0          },
+      }
+
+      const lerp   = (a:number,b:number,t:number) => a+(b-a)*t
+      const spring = (t:number) => t>=1?1:1-Math.pow(2,-10*t)*Math.cos((t*10-.75)*Math.PI*2/3)
+      const eOut3  = (t:number) => 1-Math.pow(1-t,3)
+
+      let busy = false, idleId = 0
+
+      function startIdle() {
+        idleId = requestAnimationFrame(function idle() {
+          idleId = requestAnimationFrame(idle)
+          if (busy) return
+          dice.rotation.y += .007; dice.rotation.x += .004
+          renderer.render(scene, camera)
+        })
+      }
+
+      function doRoll(result: number) {
+        if (busy) return
+        busy = true
+        cancelAnimationFrame(idleId)
+        cancelAnimationFrame(rafRef.current)
+
+        const tgt  = TARGET[result]
+        const baseX = Math.round(dice.rotation.x/(Math.PI*2))*Math.PI*2
+        const baseY = Math.round(dice.rotation.y/(Math.PI*2))*Math.PI*2
+        const targX = baseX + tgt.x + (Math.random()>.5?Math.PI*4:-Math.PI*4) + Math.PI*2*Math.ceil(Math.random()*2)
+        const targY = baseY + tgt.y + (Math.random()>.5?Math.PI*6:-Math.PI*6) + Math.PI*2*Math.ceil(Math.random()*2)
+
+        // Random spin axis velocities for tumble
+        const vx = (6+Math.random()*12)*(Math.random()>.5?1:-1)
+        const vy = (8+Math.random()*16)*(Math.random()>.5?1:-1)
+        const vz = (4+Math.random()*8)*(Math.random()>.5?1:-1)
+
+        // ── LAUNCH: dice starts below-left, flies up into frame with arc ──
+        // Phase timings (ms)
+        const LAUNCH_MS = 420   // throw arc into view
+        const TUMBLE_MS = 1600  // free spin in air
+        const SETTLE_MS = 420   // spring to final face
+        const BOUNCE_MS = 900   // physical bounces
+
+        let phase = "launch"
+        let phaseStart = performance.now()
+
+        // Launch start position: below and slightly off to the side
+        const launchFromX =  (Math.random()>.5 ? -1 : 1) * (1.8 + Math.random())
+        const launchFromY = -5.5  // well below camera view
+        const launchFromZ =  0
+
+        // Initial rotation — tumbling as it flies in
+        const launchRX = Math.random() * Math.PI * 2
+        const launchRY = Math.random() * Math.PI * 2
+        dice.position.set(launchFromX, launchFromY, launchFromZ)
+        dice.rotation.set(launchRX, launchRY, Math.random()*Math.PI*2)
+        dice.scale.setScalar(0.4)
+
+        let tumbleStartRX = 0, tumbleStartRY = 0, tumbleStartRZ = 0
+        let settleStartRX = 0, settleStartRY = 0
+        let bounceStart = 0
+
+        function tick() {
+          rafRef.current = requestAnimationFrame(tick)
+          const now = performance.now()
+          const el  = now - phaseStart
+
+          if (phase === "launch") {
+            // Arc from off-screen into center, with spin building up
+            const p  = Math.min(el / LAUNCH_MS, 1)
+            const ep = eOut3(p)
+            // Position: arc from launchFrom → (0, 0, 0)
+            dice.position.x = lerp(launchFromX, 0, ep)
+            dice.position.y = lerp(launchFromY, 0, ep) + Math.sin(p * Math.PI) * 1.5
+            dice.position.z = 0
+            // Scale: grows from 0.4 → 1 as it comes into view
+            dice.scale.setScalar(lerp(0.4, 1, ep))
+            // Spin accelerates during launch
+            dice.rotation.x += (vx * p * 0.6) * Math.PI/180
+            dice.rotation.y += (vy * p * 0.6) * Math.PI/180
+            dice.rotation.z += (vz * p * 0.5) * Math.PI/180
+
+            if (p >= 1) {
+              phase = "tumble"
+              phaseStart = now
+              tumbleStartRX = dice.rotation.x
+              tumbleStartRY = dice.rotation.y
+              tumbleStartRZ = dice.rotation.z
+              dice.position.set(0, 0, 0)
+              dice.scale.setScalar(1)
+            }
+
+          } else if (phase === "tumble") {
+            const p = Math.min(el / TUMBLE_MS, 1)
+            // Free spin: full speed early, decelerating late
+            if (p < 0.65) {
+              dice.rotation.x += vx * (1 - p * 0.8) * Math.PI/180
+              dice.rotation.y += vy * (1 - p * 0.8) * Math.PI/180
+              dice.rotation.z += vz * (1 - p * 0.9) * Math.PI/180
+            } else {
+              // Steer toward target
+              dice.rotation.x = lerp(dice.rotation.x, targX, 0.045)
+              dice.rotation.y = lerp(dice.rotation.y, targY, 0.045)
+              dice.rotation.z = lerp(dice.rotation.z, 0, 0.07)
+            }
+            // Subtle float during spin
+            dice.position.y = Math.sin(el * 0.004) * 0.12
+
+            if (p >= 1) {
+              phase = "settle"
+              phaseStart = now
+              settleStartRX = dice.rotation.x
+              settleStartRY = dice.rotation.y
+              dice.position.y = 0
+            }
+
+          } else if (phase === "settle") {
+            const p  = Math.min(el / SETTLE_MS, 1)
+            const sp = spring(p)
+            dice.rotation.x = lerp(settleStartRX, targX, sp)
+            dice.rotation.y = lerp(settleStartRY, targY, sp)
+            dice.rotation.z = lerp(dice.rotation.z, 0, .1)
+            dice.position.y = lerp(dice.position.y, 0, .1)
+            dice.scale.setScalar(lerp(dice.scale.x, 1, .15))
+
+            if (p >= 1) {
+              dice.rotation.x = targX; dice.rotation.y = targY
+              dice.rotation.z = 0; dice.scale.setScalar(1); dice.position.y = 0
+              phase = "bounce"
+              bounceStart = now
+            }
+
+          } else if (phase === "bounce") {
+            const bp = Math.min((now - bounceStart) / BOUNCE_MS, 1)
+            let dy = 0
+            if      (bp<.22) dy=lerp(0,.55,bp/.22)
+            else if (bp<.44) dy=lerp(.55,0,(bp-.22)/.22)
+            else if (bp<.60) dy=lerp(0,.22,(bp-.44)/.16)
+            else if (bp<.76) dy=lerp(.22,0,(bp-.60)/.16)
+            else if (bp<.88) dy=lerp(0,.08,(bp-.76)/.12)
+            else             dy=lerp(.08,0,(bp-.88)/.12)
+            dice.position.y = dy
+
+            if (bp >= 1) {
+              dice.position.y = 0
+              cancelAnimationFrame(rafRef.current)
+              busy = false
+              startIdle()
+            }
+          }
+
+          renderer.render(scene, camera)
+        }
+        tick()
+      }
+
+      rollRef.current = doRoll
+      startIdle()
+
+      // Roll immediately if result already set
+      if (result !== null) setTimeout(() => doRoll(result), 200)
     }
 
-    rafRef.current=requestAnimationFrame(frame)
-    return ()=>cancelAnimationFrame(rafRef.current)
+    if ((window as any).THREE) {
+      boot((window as any).THREE)
+    } else {
+      const s = document.createElement("script")
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+      s.onload = () => boot((window as any).THREE)
+      document.head.appendChild(s)
+    }
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      // Renderer cleanup handled by React unmount of the div
+    }
+  }, [])
+
+  // Trigger roll when result changes from null → number
+  useEffect(() => {
+    if (result !== null && rollRef.current) {
+      rollRef.current(result)
+    }
   }, [result])
 
-  return <canvas ref={canvasRef} style={{ width:260, height:260, display:"block" }} />
+  return <div ref={mountRef} style={{ width:300, height:300, display:"block" }} />
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -6374,20 +6443,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* ── Dice Roll Animation ── */}
+      {/* ── Dice Roll Animation — Premium Three.js 3D ── */}
       {diceAnimation && (() => {
         const rolling = diceAnimation.rolling
         const r       = diceAnimation.result
+
         const COLORS: Record<number,string> = {
           1:"#f87171",2:"#fb923c",3:"#facc15",
           4:"#4ade80",5:"#60a5fa",6:"#c084fc",
         }
         const LABELS: Record<number,string> = {
-          1:"Resultado 1 — Baixo",  2:"Resultado 2 — Baixo",
-          3:"Resultado 3 — Médio",  4:"Resultado 4 — Médio",
-          5:"Resultado 5 — Alto",   6:"Resultado 6 — Máximo!",
+          1:"Resultado Baixo",  2:"Resultado Baixo",
+          3:"Resultado Médio",  4:"Resultado Médio",
+          5:"Resultado Alto",   6:"Máximo Absoluto!",
         }
-        const col = r ? COLORS[r] : "#ffffff"
+        const col = r ? COLORS[r] : "#a78bfa"
         const lbl = r ? LABELS[r] : ""
 
         return (
@@ -6397,77 +6467,97 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             pointerEvents:"none",
           }}>
             <style>{`
-              @keyframes d-ovl   { from{opacity:0} to{opacity:1} }
-              @keyframes d-pop   { 0%{transform:scale(.2);opacity:0;filter:blur(8px)} 65%{transform:scale(1.1);opacity:1;filter:blur(0)} 82%{transform:scale(.96)} 100%{transform:scale(1);opacity:1} }
-              @keyframes d-spark { 0%{transform:translate(0,0) scale(1.4);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
-              @keyframes d-ring  { 0%{transform:scale(0);opacity:.9;border-width:5px} 100%{transform:scale(4.8);opacity:0;border-width:0} }
-              @keyframes d-glow  { 0%,100%{text-shadow:0 0 18px ${col},0 0 36px ${col}88} 50%{text-shadow:0 0 36px ${col},0 0 72px ${col},0 0 108px ${col}55} }
-              @keyframes d-badge { 0%,100%{box-shadow:0 0 0 0 ${col}44} 50%{box-shadow:0 0 0 8px transparent} }
-              @keyframes d-dot   { 0%{opacity:.18} 100%{opacity:1} }
+              @keyframes d-in    { from{opacity:0} to{opacity:1} }
+              @keyframes d-pop   { 0%{transform:scale(.15);opacity:0;filter:blur(10px)} 60%{transform:scale(1.08);opacity:1;filter:blur(0)} 80%{transform:scale(.97)} 100%{transform:scale(1);opacity:1} }
+              @keyframes d-spark { 0%{transform:translate(0,0) scale(1.5);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
+              @keyframes d-ring  { 0%{transform:scale(0);opacity:.95;border-width:6px} 100%{transform:scale(5.5);opacity:0;border-width:0} }
+              @keyframes d-numgl { 0%,100%{text-shadow:0 0 20px ${col},0 0 40px ${col}88} 50%{text-shadow:0 0 40px ${col},0 0 80px ${col},0 0 120px ${col}66} }
+              @keyframes d-badge { 0%,100%{box-shadow:0 0 0 0 ${col}44} 50%{box-shadow:0 0 0 9px transparent} }
+              @keyframes d-dot   { 0%{opacity:.15;transform:scale(.7)} 100%{opacity:1;transform:scale(1)} }
               @keyframes d-lbl   { 0%{opacity:0;transform:translateY(-8px)} 100%{opacity:1;transform:translateY(0)} }
+              @keyframes d-flash { 0%{opacity:0} 20%{opacity:.7} 100%{opacity:0} }
             `}</style>
 
-            {/* Backdrop */}
+            {/* Backdrop — deep purple radial */}
             <div style={{
               position:"absolute", inset:0,
-              background:"radial-gradient(ellipse at center,rgba(18,8,44,.93) 0%,rgba(0,0,0,.86) 100%)",
-              animation:"d-ovl 200ms ease-out forwards",
+              background:"radial-gradient(ellipse at 40% 38%, rgba(26,10,58,.95) 0%, rgba(10,4,20,.92) 55%, rgba(0,0,0,.96) 100%)",
+              animation:"d-in 220ms ease-out forwards",
+            }} />
+            {/* Subtle secondary glow */}
+            <div style={{
+              position:"absolute", inset:0, pointerEvents:"none",
+              background:"radial-gradient(ellipse at 60% 70%, rgba(88,28,135,.14) 0%, transparent 58%)",
             }} />
 
-            {/* Sparks on result */}
-            {!rolling && r !== null && Array.from({length:16}).map((_,i) => {
-              const a=(i/16)*Math.PI*2, dist=76+(i%3)*28, sz=i%3===0?10:i%3===1?7:5
+            {/* Result flash overlay */}
+            {!rolling && r !== null && (
+              <div style={{
+                position:"absolute", inset:0, borderRadius:0,
+                background:`${col}18`,
+                animation:"d-flash .6s ease-out forwards",
+                pointerEvents:"none",
+              }} />
+            )}
+
+            {/* Sparks */}
+            {!rolling && r !== null && Array.from({length:20}).map((_,i) => {
+              const a=(i/20)*Math.PI*2, dist=92+(i%4)*28
+              const sz=i%4===0?12:i%4===1?8:i%4===2?6:4
               return (
                 <div key={i} style={{
                   position:"absolute", width:sz, height:sz, borderRadius:"50%",
-                  background:col, boxShadow:`0 0 7px 2px ${col}`,
-                  animation:`d-spark 700ms cubic-bezier(.2,0,.5,1) ${i*20}ms forwards`,
+                  background:col, boxShadow:`0 0 8px 3px ${col}`,
+                  animation:`d-spark 750ms cubic-bezier(.15,0,.45,1) ${i*18}ms both`,
                   "--sx":`${Math.cos(a)*dist}px`, "--sy":`${Math.sin(a)*dist}px`,
                 } as React.CSSProperties} />
               )
             })}
 
-            {/* Expansion rings on result */}
-            {!rolling && r !== null && [0,90].map((delay,i) => (
+            {/* 3 expansion rings */}
+            {!rolling && r !== null && [0,100,200].map((delay,i) => (
               <div key={i} style={{
                 position:"absolute", borderRadius:"50%",
-                width:120+i*24, height:120+i*24,
-                border:`4px solid ${col}`, boxShadow:`0 0 18px 5px ${col}44`,
-                animation:`d-ring ${560+i*90}ms ease-out ${delay}ms forwards`,
+                width:130+i*30, height:130+i*30,
+                border:`5px solid ${col}`, boxShadow:`0 0 20px 6px ${col}44`,
+                animation:`d-ring ${580+i*100}ms ease-out ${delay}ms both`,
               }} />
             ))}
 
-            {/* Content */}
-            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-
-              {/* Card name */}
+            {/* Content column */}
+            <div style={{
+              position:"relative", zIndex:1,
+              display:"flex", flexDirection:"column", alignItems:"center", gap:0,
+            }}>
+              {/* Card name tag */}
               <div style={{
-                background:"linear-gradient(135deg,rgba(110,50,5,.96),rgba(160,85,8,.93))",
-                padding:"8px 28px", borderRadius:12,
-                border:"1px solid rgba(251,191,36,.55)",
-                animation:"d-lbl 300ms ease-out forwards",
+                background:"linear-gradient(135deg,rgba(120,53,8,.97),rgba(180,90,10,.93))",
+                padding:"9px 32px", borderRadius:12, marginBottom:18,
+                border:"1px solid rgba(251,191,36,.6)",
+                boxShadow:"0 0 20px rgba(251,146,60,.18)",
+                animation:"d-lbl 280ms ease-out forwards",
               }}>
-                <p style={{ color:"#fcd34d", fontWeight:700, fontSize:15, margin:0, letterSpacing:".5px" }}>
+                <p style={{ color:"#fcd34d", fontWeight:700, fontSize:15, margin:0, letterSpacing:".6px" }}>
                   {diceAnimation.cardName}
                 </p>
               </div>
 
-              {/* 3D canvas dice — always 3D, rAF-driven */}
-              <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center" }}>
-                <DiceCanvas3D result={r} />
-                <div style={{
-                  width:100, height:14, borderRadius:"50%",
-                  background:"rgba(0,0,0,.5)", filter:"blur(8px)", marginTop:-18,
-                }} />
-              </div>
+              {/* THREE.js dice — 300×300 */}
+              <DiceCanvas3D result={r} cardName={diceAnimation.cardName} />
 
-              {/* Rolling text */}
+              {/* Rolling indicator */}
               {rolling && (
-                <div style={{ textAlign:"center" }}>
-                  <p style={{ color:"#fff", fontWeight:700, fontSize:16, letterSpacing:"2px", textTransform:"uppercase", textShadow:"0 0 18px rgba(139,92,246,.9)", margin:"0 0 9px" }}>Rolando...</p>
-                  <div style={{ display:"flex", gap:7, justifyContent:"center" }}>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:10, marginTop:14 }}>
+                  <p style={{ color:"#fff", fontWeight:700, fontSize:15, letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 20px rgba(139,92,246,.9)", margin:0 }}>
+                    Rolando...
+                  </p>
+                  <div style={{ display:"flex", gap:7 }}>
                     {[0,1,2].map(i => (
-                      <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:"rgba(139,92,246,.9)", animation:`d-dot .7s ease-in-out ${i*.18}s infinite alternate` }} />
+                      <div key={i} style={{
+                        width:9, height:9, borderRadius:"50%",
+                        background:"rgba(139,92,246,.9)",
+                        animation:`d-dot .65s ease-in-out ${i*.2}s infinite alternate`,
+                      }} />
                     ))}
                   </div>
                 </div>
@@ -6475,10 +6565,24 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
               {/* Result */}
               {!rolling && r !== null && (
-                <div style={{ textAlign:"center", animation:"d-pop .5s cubic-bezier(.34,1.56,.64,1) forwards" }}>
-                  <div style={{ fontSize:82, fontWeight:900, fontFamily:"monospace", lineHeight:1, color:col, animation:"d-glow 1.3s ease-in-out infinite", marginBottom:10 }}>{r}</div>
-                  <div style={{ display:"inline-block", padding:"7px 22px", borderRadius:24, background:`${col}22`, border:`1.5px solid ${col}88`, animation:"d-badge 1.4s ease-in-out infinite" }}>
-                    <p style={{ color:col, fontWeight:700, fontSize:12, letterSpacing:"1px", textTransform:"uppercase", margin:0 }}>{lbl}</p>
+                <div style={{
+                  textAlign:"center", marginTop:6,
+                  animation:"d-pop .55s cubic-bezier(.34,1.56,.64,1) forwards",
+                }}>
+                  <div style={{
+                    fontSize:96, fontWeight:900, fontFamily:"monospace", lineHeight:1,
+                    color:col, marginBottom:10,
+                    animation:`d-numgl 1.4s ease-in-out .55s infinite`,
+                  }}>{r}</div>
+                  <div style={{
+                    display:"inline-block", padding:"8px 26px", borderRadius:24,
+                    background:`${col}20`, border:`1.5px solid ${col}88`,
+                    animation:"d-badge 1.5s ease-in-out infinite",
+                  }}>
+                    <p style={{
+                      color:col, fontWeight:700, fontSize:13,
+                      letterSpacing:"1.5px", textTransform:"uppercase", margin:0,
+                    }}>{lbl}</p>
                   </div>
                 </div>
               )}
