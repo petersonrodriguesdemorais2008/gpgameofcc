@@ -3621,7 +3621,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
-      addLog('player', `Jogou Unidade`, `${cardToPlace.name} (${fieldCard.currentDp}DP)`) — ao entrar em campo, olha top 3, escolhe 1 para mão, resto para o fundo
+      addLog('player', `Jogou Unidade`, `${cardToPlace.name} (${fieldCard.currentDp}DP)`)
       if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
         setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
