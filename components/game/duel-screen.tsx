@@ -2745,6 +2745,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     cardName: string
     options: { id: string; label: string; description: string }[]
     onChoose: (optionId: string) => void
+    gridLayout?: boolean
   } | null>(null)
 
   // Deck search modal (Pedra de Afiar and future search effects)
@@ -5259,6 +5260,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               setChoiceModal({
                 visible: true,
                 cardName: "Cálice do Monarca — Descarte 1 carta para destruir 2 unidades inimigas",
+                gridLayout: true,
                 options: [
                   ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
@@ -7841,13 +7843,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
                     // Determine if this card has an activatable ability
                     const cardName = card?.name.toLowerCase() ?? ''
+                    // Only cards with a MANUAL main-phase ability get the green glow.
+                    // Attack-triggered effects (Arthur Veredito/Cálice, Mordred Camlann) do NOT need a click — they fire automatically when the player drags to attack.
                     const hasAbility = card && isPlayerTurn && phase === "main" && (
                       (cardName.includes("merlin") && !merlinUsed) ||
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
-                      (cardName.includes("mordred") && !mordredCamlannUsed) ||
-                      (cardName.includes("arthur") && card.dp === 3 && (arthurUrVeredito === null || turn - arthurUrVeredito >= 2)) ||
-                      (cardName.includes("arthur") && card.dp === 4 && (arthurLrCalice === null || turn - arthurLrCalice >= 2)) ||
                       (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
                       (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed)
                     )
@@ -8995,18 +8996,33 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4">
             <h3 className="text-purple-400 font-bold text-xl mb-4">{choiceModal.cardName}</h3>
             <p className="text-white/80 text-sm mb-5">Escolha um dos efeitos:</p>
-            <div className="flex flex-col gap-3">
-              {choiceModal.options.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => choiceModal.onChoose(option.id)}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
-                >
-                  <div className="text-lg">{option.label}</div>
-                  <div className="text-xs text-white/70 mt-1">{option.description}</div>
-                </button>
-              ))}
-            </div>
+            {choiceModal.gridLayout ? (
+              <div className="grid grid-cols-3 gap-2">
+                {choiceModal.options.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => choiceModal.onChoose(option.id)}
+                    className={`bg-gradient-to-b ${option.id === 'skip' ? 'from-slate-600 to-slate-700 hover:from-slate-500 col-span-3' : 'from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600'} text-white font-bold py-2 px-2 rounded-lg border border-purple-400/40 transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[60px]`}
+                  >
+                    <div className="text-[11px] font-bold leading-tight text-center">{option.label}</div>
+                    {option.description && <div className="text-[9px] text-white/60 mt-0.5 text-center">{option.description}</div>}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {choiceModal.options.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => choiceModal.onChoose(option.id)}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
+                  >
+                    <div className="text-lg">{option.label}</div>
+                    <div className="text-xs text-white/70 mt-1">{option.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
             <Button
               onClick={() => setChoiceModal(null)}
               size="sm"
