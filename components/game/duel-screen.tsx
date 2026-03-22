@@ -2969,6 +2969,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Rei Arthur effect states ──
+  const [arthurUrVeredito, setArthurUrVeredito] = useState<number|null>(null)   // last turn UR used Veredito
+  const [arthurLrCalice, setArthurLrCalice] = useState<number|null>(null)        // last turn LR used Cálice
+  const [arthurLrCaliceMode, setArthurLrCaliceMode] = useState(false)            // LR: awaiting 2-target selection
+  const [arthurLrCaliceTargets, setArthurLrCaliceTargets] = useState<number[]>([]) // LR: selected targets
+
   // ── Morgana Pendragon effect states ──
   const [morganaEclipseLastTurn, setMorganaEclipseLastTurn] = useState<number|null>(null)       // SR: Ressonância em Eclipse cooldown
   const [morganaSinfoniaLastTurn, setMorganaSinfoniaLastTurn] = useState<number|null>(null)     // UR: Sinfonia Relâmpago cooldown
@@ -3628,6 +3634,34 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+      // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
+      if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
+        setTimeout(() => {
+          const hasMefisto = playerField.ultimateZone?.ability === "MEFISTO"
+          if (hasMefisto && playerField.deck.length > 0) {
+            setChoiceModal({
+              visible: true,
+              cardName: "O Preço da Coroa — Comprar 1 carta?",
+              options: [
+                { id: "draw", label: "Comprar 1 carta", description: "Compre a carta do topo do deck" },
+                { id: "skip", label: "Não comprar", description: "Pular esta oportunidade" },
+              ],
+              onChoose: (optId) => {
+                setChoiceModal(null)
+                if (optId === "draw") {
+                  const drawn = playerField.deck[0]
+                  if (drawn) {
+                    showDrawAnimation(drawn)
+                    setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+                    showEffectFeedback(`O PREÇO DA COROA: ${drawn.name} comprada!`, "success")
+                  }
+                }
+              },
+            })
+          }
+        }, 400)
+      }
+
       if (cardToPlace.name.toLowerCase().includes("balin")) {
         setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
@@ -3835,6 +3869,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           enemyField,
           setPlayerField,
           setEnemyField,
+        }
+
+        // ── REI ARTHUR SR 2DP: Soberania das Sombras — block healing cards while on field ──
+        const _arthurSrOnField = enemyField.unitZone.some(u =>
+          u && u.name.toLowerCase().includes("rei arthur") && u.dp === 2
+        )
+        const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas"]
+        const _isHealingCard = _healingCardIds.some(id => effectToUse.id?.includes(id)) ||
+          (cardToPlace.name.toLowerCase().includes("bandagem") || cardToPlace.name.toLowerCase().includes("cristal recuperador") ||
+           cardToPlace.name.toLowerCase().includes("kit médico") || cardToPlace.name.toLowerCase().includes("soro recuperador"))
+        if (_arthurSrOnField && _isHealingCard) {
+          showEffectFeedback("SOBERANIA DAS SOMBRAS: Rei Arthur impede a ativação de cartas de Cura!", "error")
+          return
         }
 
         // Check if card can be activated
@@ -4944,6 +4991,132 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── REI ARTHUR UR 3DP: Veredito do Rei Tirano — antes de atacar, descarte 1 carta → destrua 1 unidade inimiga (a cada 2 turnos) ──
+        if (attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 3) {
+          if (arthurUrVeredito === null || turn - arthurUrVeredito >= 2) {
+            const hasHandCards = playerField.hand.length > 0
+            const hasEnemyTargets = enemyField.unitZone.some(u => u !== null)
+            if (hasHandCards && hasEnemyTargets) {
+              // Show hand selection to discard, then enemy unit selection
+              setChoiceModal({
+                visible: true,
+                cardName: "Veredito do Rei Tirano — Descarte 1 carta para destruir 1 unidade inimiga",
+                options: [
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
+                  { id: "skip", label: "Não usar", description: "Atacar normalmente" },
+                ],
+                onChoose: (optId) => {
+                  setChoiceModal(null)
+                  if (optId === "skip") return
+                  const discardIdx = parseInt(optId)
+                  const discarded = playerField.hand[discardIdx]
+                  if (!discarded) return
+                  // Discard the card
+                  setPlayerField(prev => ({
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== discardIdx),
+                    graveyard: [...prev.graveyard, discarded],
+                  }))
+                  setArthurUrVeredito(turn)
+                  // Now select enemy unit to destroy
+                  const enemyTargets = enemyField.unitZone
+                    .map((u, i) => ({u, i}))
+                    .filter(({u}) => u !== null)
+                  if (enemyTargets.length === 1) {
+                    const target = enemyTargets[0].u!
+                    markDestroyed(target)
+                    setEnemyField(prev => {
+                      const newUnits = [...prev.unitZone]
+                      newUnits[enemyTargets[0].i] = null
+                      return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
+                    })
+                    showEffectFeedback(`VEREDITO DO REI TIRANO: ${target.name} destruída!`, "success")
+                  } else {
+                    setChoiceModal({
+                      visible: true,
+                      cardName: "Veredito do Rei Tirano — Escolha a unidade inimiga para destruir",
+                      options: enemyTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
+                      onChoose: (targetId) => {
+                        setChoiceModal(null)
+                        const tIdx = parseInt(targetId)
+                        const target = enemyField.unitZone[tIdx]
+                        if (!target) return
+                        markDestroyed(target)
+                        setEnemyField(prev => {
+                          const newUnits = [...prev.unitZone]
+                          newUnits[tIdx] = null
+                          return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
+                        })
+                        showEffectFeedback(`VEREDITO DO REI TIRANO: ${target.name} destruída!`, "success")
+                      },
+                    })
+                  }
+                },
+              })
+            }
+          }
+        }
+
+        // ── REI ARTHUR LR 4DP: Cálice do Monarca — antes de atacar, descarte 1 carta → destrua 2 unidades inimigas; se carta mágica → +2DP (a cada 2 turnos) ──
+        if (attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 4) {
+          if (arthurLrCalice === null || turn - arthurLrCalice >= 2) {
+            const hasHandCards = playerField.hand.length > 0
+            const enemyUnitCount = enemyField.unitZone.filter(u => u !== null).length
+            if (hasHandCards && enemyUnitCount > 0) {
+              setChoiceModal({
+                visible: true,
+                cardName: "Cálice do Monarca — Descarte 1 carta para destruir 2 unidades inimigas",
+                options: [
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
+                  { id: "skip", label: "Não usar", description: "Atacar normalmente" },
+                ],
+                onChoose: (optId) => {
+                  setChoiceModal(null)
+                  if (optId === "skip") return
+                  const discardIdx = parseInt(optId)
+                  const discarded = playerField.hand[discardIdx]
+                  if (!discarded) return
+                  const isMagic = discarded.type === "function" || discarded.type === "action"
+                  setPlayerField(prev => ({
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== discardIdx),
+                    graveyard: [...prev.graveyard, discarded],
+                  }))
+                  setArthurLrCalice(turn)
+                  // +2DP if discarded card is magic
+                  if (isMagic) {
+                    const attackerIdx = attackState.attackerIndex!
+                    setPlayerField(prev => {
+                      const newUnits = [...prev.unitZone]
+                      if (newUnits[attackerIdx]) {
+                        const cur = newUnits[attackerIdx]!
+                        newUnits[attackerIdx] = { ...cur, currentDp: (cur.currentDp ?? cur.dp) + 2 }
+                      }
+                      return { ...prev, unitZone: newUnits }
+                    })
+                    showEffectFeedback("CÁLICE DO MONARCA: Carta mágica! Arthur +2DP!", "success")
+                  }
+                  // Destroy up to 2 enemy units
+                  const enemyTargetPool = enemyField.unitZone.map((u,i) => ({u,i})).filter(({u}) => u !== null)
+                  const toDestroy = enemyTargetPool.slice(0, Math.min(2, enemyTargetPool.length))
+                  toDestroy.forEach(({u, i}) => {
+                    if (u) markDestroyed(u)
+                  })
+                  setEnemyField(prev => {
+                    const newUnits = [...prev.unitZone]
+                    const newGrave = [...prev.graveyard]
+                    toDestroy.forEach(({u, i}) => {
+                      if (newUnits[i]) { newGrave.push(newUnits[i]!); newUnits[i] = null }
+                    })
+                    return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: newGrave }
+                  })
+                  showEffectFeedback(`CÁLICE DO MONARCA: ${toDestroy.length} unidade(s) destruída(s)!`, "warning")
+                },
+              })
+            }
+          }
+        }
+
         // CALEM LR 4DP: Julgamento do Vazio Eterno
         // Requires Miguel Arcanjo equipped. Fires BEFORE the normal attack.
         // Check attacker by name (dp===4 = base dp, always true for LR regardless of buffs)
@@ -5155,6 +5328,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("FLUXO DE RUPTURA: 2DP de dano direto ao oponente!", "warning")
+                }, 500)
+              }
+
+              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ──
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 2) {
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 3) }))
+                  showEffectFeedback("ECLIPSE DE AVALON: 3DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
@@ -5895,15 +6076,27 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
             // Pick target from current player field
             const currentPlayerUnits = playerField.unitZone
+            // ── REI ARTHUR UR 3DP: Presença Esmagadora — bot units with 3 or 4 DP cannot target him ──
+            // ── REI ARTHUR LR 4DP: O Preço da Coroa — bot units with 5 or 6 DP cannot target him ──
+            const _arthurUrBlocker = (attackerDp: number, targetUnit: FieldCard | null) => {
+              if (!targetUnit || !targetUnit.name.toLowerCase().includes("rei arthur")) return false
+              if (targetUnit.dp === 3 && (attackerDp === 3 || attackerDp === 4)) return true
+              if (targetUnit.dp === 4 && (attackerDp === 5 || attackerDp === 6)) return true
+              return false
+            }
             const playerUnitIndex = difficulty === 'hard'
               ? (() => {
-                  const cands = currentPlayerUnits.map((u,i) => ({u,i})).filter(({u,i}) => u !== null && !destroyedPlayerSlots.has(i))
+                  const cands = currentPlayerUnits.map((u,i) => ({u,i})).filter(({u,i}) =>
+                    u !== null && !destroyedPlayerSlots.has(i) && !_arthurUrBlocker(unit.currentDp ?? unit.dp, u as FieldCard)
+                  )
                   if (cands.length === 0) return -1
                   const beatable = cands.filter(({u}) => u!.currentDp < unit.currentDp)
                   const pool = beatable.length > 0 ? beatable : cands
                   return pool.reduce((w,cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
                 })()
-              : currentPlayerUnits.findIndex((u,i) => u !== null && !destroyedPlayerSlots.has(i))
+              : currentPlayerUnits.findIndex((u,i) =>
+                  u !== null && !destroyedPlayerSlots.has(i) && !_arthurUrBlocker(unit.currentDp ?? unit.dp, u as FieldCard)
+                )
 
             if (playerUnitIndex !== -1) {
               const defender = currentPlayerUnits[playerUnitIndex] as FieldCard
