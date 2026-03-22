@@ -2969,6 +2969,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Unit ability confirmation modal ──
+  const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; activate:()=>void} | null>(null)
+
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
   const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
@@ -7530,6 +7533,24 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       draggedHandCard.currentY! < window.innerHeight * 0.6
                     const canAttack = card && canUnitAttackNow(card as FieldCard)
 
+                    // Determine if this card has an activatable ability
+                    const cardName = card?.name.toLowerCase() ?? ''
+                    const hasAbility = card && isPlayerTurn && phase === "main" && (
+                      (cardName.includes("merlin") && !merlinUsed) ||
+                      (cardName.includes("oswin") && !oswinUsed) ||
+                      ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
+                      (cardName.includes("mordred") && !mordredCamlannUsed) ||
+                      (cardName.includes("arthur") && card.dp === 3 && (arthurUrVeredito === null || turn - arthurUrVeredito >= 2)) ||
+                      (cardName.includes("arthur") && card.dp === 4 && (arthurLrCalice === null || turn - arthurLrCalice >= 2))
+                    )
+                    const getAbilityFn = (): (() => void) | null => {
+                      if (!card) return null
+                      if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
+                      if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
+                      if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
+                      return null
+                    }
+
                     return (
                       <div
                         key={i}
@@ -7539,6 +7560,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                             placeCard("unit", i)
                           } else if (itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card) {
                             handleAllyUnitSelect(i)
+                          } else if (hasAbility && getAbilityFn()) {
+                            setUnitAbilityConfirm({ name: card!.name, activate: getAbilityFn()! })
                           }
                         }}
                         className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
@@ -7551,17 +7574,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                                 ? "border-blue-400/50 bg-blue-500/20"
                                 : itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card
                                   ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
-                                  : canAttack
-                                    ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
-                                    : "border-blue-700/40"
+                                  : hasAbility
+                                    ? "border-emerald-400 cursor-pointer shadow-[0_0_12px_3px_rgba(52,211,153,0.7)]"
+                                    : canAttack
+                                      ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
+                                      : "border-blue-700/40"
                           }`}
                         style={{
                           transform: cardAnimations[`player-${i}`] || "none",
                           zIndex: cardAnimations[`player-${i}`] ? 50 : 1,
                         }}
                       >
-                        {/* Yellow glow for playable/attackable cards */}
-                        {canAttack && (
+                        {/* Green glow for ability-ready cards */}
+                        {hasAbility && (
+                          <div className="absolute -inset-1 bg-emerald-400/30 rounded blur-sm animate-pulse -z-10" />
+                        )}
+                        {/* Yellow glow for attackable cards */}
+                        {!hasAbility && canAttack && (
                           <div className="absolute -inset-1 bg-yellow-400/40 rounded blur-sm animate-pulse -z-10" />
                         )}
                         {card && (
@@ -7572,7 +7601,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                               fill
                               className="object-cover"
                               onMouseDown={(e) => {
-                                if (canAttack) {
+                                if (canAttack && !hasAbility) {
                                   handleAttackStart(i, e)
                                 } else {
                                   handleCardPressStart(card)
@@ -7581,7 +7610,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                               onMouseUp={handleCardPressEnd}
                               onMouseLeave={handleCardPressEnd}
                               onTouchStart={(e) => {
-                                if (canAttack) {
+                                if (canAttack && !hasAbility) {
                                   handleAttackStart(i, e)
                                 } else {
                                   handleCardPressStart(card)
@@ -7589,39 +7618,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                               }}
                               onTouchEnd={handleCardPressEnd}
                             />
-                            {canAttack && (
+                            {canAttack && !hasAbility && (
                               <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-[10px] text-center font-bold animate-pulse">
                                 {t("dragToAttack")}
                               </div>
                             )}
-                            {!canAttack && card && turn <= (card as FieldCard).canAttackTurn && (
+                            {hasAbility && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-emerald-600/90 text-white text-[8px] text-center font-bold py-0.5">
+                                ✦ HABILIDADE
+                              </div>
+                            )}
+                            {!canAttack && !hasAbility && card && turn <= (card as FieldCard).canAttackTurn && (
                               <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center">
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
-                            )}
-                            {/* Mr. P ability button */}
-                            {card && isPlayerTurn && phase === "main" &&
-                              (card.name.toLowerCase().includes("mr. p") || card.name.toLowerCase().includes("mr p") || card.name.toLowerCase().includes("penguim")) && !mrPManuscritoUsed && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); activateMrPAbility() }}
-                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-600 hover:bg-slate-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-pulse whitespace-nowrap z-20"
-                              >MANUS.</button>
-                            )}
-                            {/* Merlin ability button */}
-                            {card && isPlayerTurn && phase === "main" &&
-                              card.name.toLowerCase().includes("merlin") && !merlinUsed && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); activateMerlinAbility() }}
-                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-violet-600 hover:bg-violet-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-pulse whitespace-nowrap z-20"
-                              >VISÃO</button>
-                            )}
-                            {/* Oswin ability button */}
-                            {card && isPlayerTurn && phase === "main" &&
-                              card.name.toLowerCase().includes("oswin") && !oswinUsed && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); activateOswinAbility() }}
-                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-600 hover:bg-amber-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-pulse whitespace-nowrap z-20"
-                              >LUCRO</button>
                             )}
                           </>
                         )}
@@ -8784,6 +8794,43 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           >
             CANCELAR
           </button>
+        </div>
+      )}
+
+      {/* Unit Ability Confirmation Modal */}
+      {unitAbilityConfirm && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setUnitAbilityConfirm(null)}
+        >
+          <div
+            className="relative bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl border-2 border-emerald-500/60 shadow-2xl shadow-emerald-900/40 p-6 max-w-xs w-full mx-4 text-center"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Glow accent */}
+            <div className="absolute inset-0 rounded-2xl bg-emerald-500/5 pointer-events-none" />
+            <div className="text-emerald-400 text-xs font-bold tracking-widest uppercase mb-1">Efeito de Habilidade</div>
+            <div className="text-white font-bold text-lg mb-1">{unitAbilityConfirm.name}</div>
+            <div className="text-slate-300 text-sm mb-5">Ativar Efeito de Habilidade?</div>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  setUnitAbilityConfirm(null)
+                  unitAbilityConfirm.activate()
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
+              >
+                ✓ Sim
+              </button>
+              <button
+                onClick={() => setUnitAbilityConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition-colors"
+              >
+                ✗ Não
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
