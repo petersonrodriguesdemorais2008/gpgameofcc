@@ -4604,6 +4604,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
       }
       setPhase("battle")
+    } else if (phase === "battle") {
       // ULLRBOGI: remove +3 DP from Ullr when leaving battle phase
       if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
         const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
