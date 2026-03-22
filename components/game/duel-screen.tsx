@@ -1010,15 +1010,21 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const isLightnessByName = (u: any) =>
         lightnessNames.some(n => u.name?.toLowerCase().includes(n))
 
-      const validElements = ["neutral", "lightness", "ventus", "void"]
+      // Cards treated as Darkness by name
+      const darknessNames = ["morgana pendragon"]
+      const isDarknessByName = (u: any) =>
+        darknessNames.some(n => u.name?.toLowerCase().includes(n))
+
+      const validElements = ["neutral", "lightness", "ventus", "void", "darkness"]
       const hasValidUnit = context.playerField.unitZone.some((u) =>
         u !== null && (
           validElements.includes(u.element?.toLowerCase() || "") ||
-          isLightnessByName(u)
+          isLightnessByName(u) ||
+          isDarknessByName(u)
         )
       )
       if (!hasValidUnit) {
-        return { canActivate: false, reason: "Precisa de unidade Neutral, Lightness, Ventus ou Void em campo" }
+        return { canActivate: false, reason: "Precisa de unidade Neutral, Lightness, Ventus, Void ou Darkness em campo" }
       }
       return { canActivate: true }
     },
@@ -1040,16 +1046,25 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         allyUnit.name?.toLowerCase().includes(n)
       )
 
-      const validElements = ["neutral", "lightness", "ventus", "void"]
+      // Cards treated as Darkness by name
+      const darknessNames = ["morgana pendragon"]
+      const isDarknessByName = darknessNames.some(n =>
+        allyUnit.name?.toLowerCase().includes(n)
+      )
+
+      const validElements = ["neutral", "lightness", "ventus", "void", "darkness"]
       const rawElement = allyUnit.element?.toLowerCase() || ""
       // Treat Void as Neutral for dice bonus purposes
       // Treat named Lightness cards as Lightness even if element tag differs
+      // Treat named Darkness cards as Darkness even if element tag differs
       const effectiveElement = isLightnessByName
         ? "lightness"
-        : rawElement === "void" ? "neutral" : rawElement
+        : isDarknessByName
+          ? "darkness"
+          : rawElement === "void" ? "neutral" : rawElement
 
-      if (!validElements.includes(rawElement) && !isLightnessByName) {
-        return { success: false, message: "Unidade deve ser Neutral, Lightness, Ventus ou Void" }
+      if (!validElements.includes(rawElement) && !isLightnessByName && !isDarknessByName) {
+        return { success: false, message: "Unidade deve ser Neutral, Lightness, Ventus, Void ou Darkness" }
       }
 
       const diceResult = targets.diceResult || 1
@@ -1077,6 +1092,10 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           // Bonus: +2 LP
           context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Lightness: +2 LP!"
+        } else if (effectiveElement === "darkness") {
+          // Bonus: enemy loses 2 LP
+          context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
+          bonusMessage = " Bonus Darkness: Inimigo -2 LP!"
         }
       } else {
         dpBonus = 5
