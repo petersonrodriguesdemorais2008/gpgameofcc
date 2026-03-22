@@ -5177,7 +5177,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     // Throttled drop target check - only every 50ms
     const now = Date.now()
-    if (!dragPosRef.current.lastCheck || now - dragPosRef.current.lastCheck > 50) {
+    if (!dragPosRef.current.lastCheck || now - dragPosRef.current.lastCheck > 16) {
       dragPosRef.current.lastCheck = now
 
       const elements = document.elementsFromPoint(clientX, clientY)
@@ -6534,7 +6534,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                             handleAllyUnitSelect(i)
                           }
                         }}
-                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -6616,7 +6616,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         key={i}
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                        className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -6675,7 +6675,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   <div
                     data-player-scenario-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
-                    className={`h-16 w-24 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
+                    className={`h-16 w-24 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
                         ? "border-green-500 bg-green-900/40 cursor-pointer"
@@ -6704,7 +6704,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   <div
                     data-player-ultimate-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                    className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
+                    className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
                         ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
@@ -6952,7 +6952,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   style={{
                     transform: `rotate(${rotation}deg) translateY(${isSelected ? -24 : translateY}px) scale(${isSelected ? 1.08 : 1})`,
                     zIndex: isSelected ? 100 : 50 - Math.abs(offset),
-                    transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease-out',
+                    transition: 'transform 0.10s ease-out, opacity 0.08s ease-out',
                   }}
                 >
                   {/* Playable card glow effect */}
@@ -6966,7 +6966,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     className={`relative w-20 h-28 rounded-xl border-3 shadow-xl bg-slate-900 transition-all duration-150 ${isSelected
                       ? "border-yellow-400 ring-4 ring-yellow-400/40 shadow-yellow-500/50"
                       : canPlay
-                        ? "border-yellow-400/70 hover:border-yellow-400 hover:shadow-2xl hover:-translate-y-4 hover:scale-105 shadow-yellow-500/30"
+                        ? "border-yellow-400/70 hover:border-yellow-400 shadow-yellow-500/30"
                         : "border-slate-600/50"
                       }`}
                   >
@@ -6994,6 +6994,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           className="fixed top-0 left-0 pointer-events-none z-[70]"
           style={{
             willChange: 'transform',
+            contain: 'layout style paint',
             transform: `translate(${dragPosRef.current.x - 40}px, ${dragPosRef.current.y - 56}px) rotate(0deg) scale(1.1)`,
           }}
         >
