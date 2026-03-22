@@ -4647,20 +4647,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
       setPhase("battle")
     } else if (phase === "battle") {
-      // ULLRBOGI: remove +3 DP from Ullr when leaving battle phase
-      if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
-        const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
-        if (ullrIdx !== -1) {
-          setPlayerField((prev) => {
-            const newUnits = [...prev.unitZone]
-            const unit = newUnits[ullrIdx]
-            if (unit) {
-              newUnits[ullrIdx] = { ...unit, currentDp: Math.max(0, unit.currentDp - 3) }
-            }
-            return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
-          })
-        }
-      }
       endTurn()
     }
   }
@@ -6075,6 +6061,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   const endTurn = () => {
     setPhase("end")
+
+    // ── ULLRBOGI: remove +3 DP from Ullr when leaving battle phase ──
+    // This runs regardless of whether endTurn was called from advancePhase or directly
+    if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
+      const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+      if (ullrIdx !== -1) {
+        setPlayerField((prev) => {
+          const newUnits = [...prev.unitZone]
+          const unit = newUnits[ullrIdx]
+          if (unit) {
+            newUnits[ullrIdx] = { ...unit, currentDp: Math.max(0, unit.currentDp - 3) }
+          }
+          return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+        })
+      }
+    }
+
     setCalemUrDoubleAttack(false)
     // Morgana cooldowns persist across turns (they track last-used turn number)
     // Eclipse active resets if it was applied last turn
