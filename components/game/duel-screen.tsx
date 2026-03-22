@@ -4721,12 +4721,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const attacker = playerField.unitZone[attackState.attackerIndex]
       if (attacker) {
 
-        // ── FEHNON SR: Laceração — draw on every attack, if Unit → attack again ──
+        // ── FEHNON SR 2DP: Laceração — compra 1 carta ao atacar; se Unidade → ataca novamente ──
         if (attacker.id === "fehnon-sr") {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            showDrawAnimation(drawn)
             if (isUnit) {
               setFehnonSrDouble(true)
               showEffectFeedback("LACERAÇÃO: Carta Unidade! Fehnon pode atacar novamente!", "success")
@@ -4736,28 +4737,44 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
-        // ── FEHNON UR: Ordem de Laceração — draw on every attack, if Unit → attack again + ignore traps ──
+        // ── FEHNON UR 3DP: Ordem de Laceração — compra 1 carta ao atacar; se Unidade → ataca novamente (traps ignorados) ──
+        // Singularidade Zero: pode realizar até 2 ataques por batalha SE equipado com Protonix Sword
         if (attacker.id === "fehnon-ur") {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
-            if (isUnit && !fehnonUrUsedDoubleThisTurn) {
+            showDrawAnimation(drawn)
+            // Only grant double attack if Protonix Sword is equipped (Singularidade Zero condition)
+            const hasProtonixSword =
+              playerField.ultimateZone?.ability === "PROTONIX SWORD" &&
+              playerField.ultimateZone?.requiresUnit?.toLowerCase().includes("fehnon")
+            if (isUnit && !fehnonUrUsedDoubleThisTurn && hasProtonixSword) {
               setFehnonUrDouble(true)
-              showEffectFeedback("ORDEM DE LACERAÇÃO: Carta Unidade! Fehnon ataca novamente (traps ignorados)!", "success")
+              showEffectFeedback("ORDEM DE LACERAÇÃO: Carta Unidade + Protonix Sword! Fehnon ataca novamente (traps ignorados)!", "success")
+            } else if (isUnit && !fehnonUrUsedDoubleThisTurn && !hasProtonixSword) {
+              // Without Protonix Sword, still draw but no second attack
+              showEffectFeedback("ORDEM DE LACERAÇÃO: Carta Unidade comprada! (Precisa de Protonix Sword para atacar novamente)", "info")
             } else {
               showEffectFeedback("ORDEM DE LACERAÇÃO: Carta comprada!", "info")
             }
           }
         }
 
-        // ── FEHNON LR: Laceração do Mundo — draw on every attack, if Unit or Action → +3DP + attack again ──
+        // ── FEHNON LR 4DP: Laceração do Mundo — compra 1 carta ao atacar
+        // Requer ODEN SWORD: se Unidade ou Action Function → +3DP + ataca novamente ──
         if (attacker.id === "fehnon-lr") {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isUnitOrAction = ["unit","troops","ultimateGuardian","ultimateElemental","action"].includes(drawn.type)
+            // "Unit or Action Function" = unit, troops, ultimates, or function cards
+            const isUnitOrAction = ["unit","troops","ultimateGuardian","ultimateElemental","function","action"].includes(drawn.type)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
-            if (isUnitOrAction) {
+            showDrawAnimation(drawn)
+            // Check ODEN SWORD is equipped on Fehnon LR (Laceração do Mundo requirement)
+            const hasOdenSword =
+              playerField.ultimateZone?.ability === "ODEN SWORD" &&
+              playerField.ultimateZone?.requiresUnit?.toLowerCase().includes("fehnon")
+            if (isUnitOrAction && hasOdenSword) {
               setFehnonLrDouble(true)
               setFehnonLrBonusDp(3)
               setPlayerField((prev) => {
@@ -4769,7 +4786,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 }
                 return { ...prev, unitZone: newUnitZone }
               })
-              showEffectFeedback("LACERAÇÃO DO MUNDO: Fehnon +3DP e pode atacar novamente!", "success")
+              showEffectFeedback(`LACERAÇÃO DO MUNDO: ${drawn.name} (${drawn.type})! Fehnon +3DP e ataca novamente!`, "success")
+            } else if (isUnitOrAction && !hasOdenSword) {
+              showEffectFeedback("LACERAÇÃO DO MUNDO: Carta comprada! (Equipe ODEN SWORD para o efeito completo)", "info")
             } else {
               showEffectFeedback("LACERAÇÃO DO MUNDO: Carta comprada!", "info")
             }
@@ -5004,15 +5023,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
               })
 
-              // ── FEHNON SR: Fluxo de Ruptura — on destroy: 2DP direct damage ──
+              // ── FEHNON SR 2DP: Fluxo de Ruptura — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.id === "fehnon-sr") {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("FLUXO DE RUPTURA: 2DP de dano direto ao oponente!", "warning")
-                }, 600)
+                }, 500)
               }
 
-              // ── FEHNON UR: Singularidade Zero — on destroy: +2DP until end of turn ──
+              // ── FEHNON UR 3DP: Singularidade Zero — ao destruir unidade: +2DP até o final do turno ──
               if (newDefenderDp <= 0 && attacker.id === "fehnon-ur") {
                 setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
@@ -5023,15 +5042,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   }
                   return { ...prev, unitZone: newUnitZone }
                 })
-                showEffectFeedback("SINGULARIDADE ZERO: Fehnon +2DP até o final do turno!", "success")
+                showEffectFeedback("SINGULARIDADE ZERO: Fehnon UR +2DP até o final do turno!", "success")
               }
 
-              // ── FEHNON LR: Ruptura do Núcleo Supremo — on destroy: 2DP direct damage ──
+              // ── FEHNON LR 4DP: Ruptura do Núcleo Supremo — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.id === "fehnon-lr") {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("RUPTURA DO NÚCLEO SUPREMO: 2DP de dano direto ao oponente!", "warning")
-                }, 600)
+                }, 500)
               }
 
               if (newDefenderDp <= 0 && attacker.id === "calem-sr") {
@@ -5098,9 +5117,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
 
-            // Fehnon SR: direct attack also triggers Laceração draw
+            // Fehnon: direct attack also counts for double-attack flags
             const keepReadyDirect =
               (fehnonSrDouble && attacker.id === "fehnon-sr") ||
+              (fehnonUrDouble && attacker.id === "fehnon-ur") ||
               (fehnonLrDouble && attacker.id === "fehnon-lr")
 
             setPlayerField((prev) => {
@@ -5109,6 +5129,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               return { ...prev, unitZone: newUnitZone }
             })
             if (fehnonSrDouble && attacker.id === "fehnon-sr") setFehnonSrDouble(false)
+            if (fehnonUrDouble && attacker.id === "fehnon-ur") { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
             if (fehnonLrDouble && attacker.id === "fehnon-lr") setFehnonLrDouble(false)
           }
           setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
