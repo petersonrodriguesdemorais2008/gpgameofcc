@@ -2969,6 +2969,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Merlin / Oswin effect states ──
+  const [merlinUsed, setMerlinUsed] = useState(false)   // Visão Além do Agora — once per duel
+  const [oswinUsed, setOswinUsed] = useState(false)     // Lucro na Crise — once per duel
+
+  // ── Galahad / Mordred effect states ──
+  const [mordredCamlannUsed, setMordredCamlannUsed] = useState(false)  // once per duel
+
   // ── Rei Arthur effect states ──
   const [arthurUrVeredito, setArthurUrVeredito] = useState<number|null>(null)   // last turn UR used Veredito
   const [arthurLrCalice, setArthurLrCalice] = useState<number|null>(null)        // last turn LR used Cálice
@@ -4948,6 +4955,28 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── MORDRED 1DP: Destino de Camlann — compra 1 carta ao atacar (1x por duelo); se Tropas → +2DP ──
+        if (attacker.name.toLowerCase().includes("mordred") && !mordredCamlannUsed) {
+          const drawn = playerField.deck[0]
+          if (drawn) {
+            const isTroop = drawn.type === "troops"
+            setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            showDrawAnimation(drawn)
+            setMordredCamlannUsed(true)
+            if (isTroop) {
+              setPlayerField(prev => {
+                const newUnits = [...prev.unitZone]
+                const idx = attackState.attackerIndex!
+                if (newUnits[idx]) newUnits[idx] = { ...newUnits[idx]!, currentDp: (newUnits[idx]!.currentDp ?? newUnits[idx]!.dp) + 2 }
+                return { ...prev, unitZone: newUnits }
+              })
+              showEffectFeedback(`DESTINO DE CAMLANN: Carta de Tropas! Mordred +2DP!`, "success")
+            } else {
+              showEffectFeedback(`DESTINO DE CAMLANN: ${drawn.name} comprada!`, "info")
+            }
+          }
+        }
+
         // CALEM SR: Pulso da Nulidade - draw on attack every 3 turns
         if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 2 && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
@@ -5494,6 +5523,124 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setMorganaActionBlocked(hasMorganaLr)
   }, [playerField.unitZone])
 
+  // ── Merlin: Visão Além do Agora ──
+  const activateMerlinAbility = () => {
+    if (merlinUsed) { showEffectFeedback("Visão Além do Agora já foi usada neste duelo!", "error"); return }
+    const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
+    if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
+    setMerlinUsed(true)
+    if (top5.length <= 2) {
+      // All cards go to hand
+      setPlayerField(prev => ({
+        ...prev,
+        hand: [...prev.hand, ...top5],
+        deck: prev.deck.slice(top5.length),
+      }))
+      top5.forEach(c => showDrawAnimation(c))
+      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c=>c.name).join(", ")} adicionadas!`, "success")
+      return
+    }
+    // Show choice to pick 2
+    setChoiceModal({
+      visible: true,
+      cardName: "Visão Além do Agora — Escolha 2 cartas para a mão",
+      options: top5.map((c, i) => ({ id: String(i), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') })),
+      onChoose: (firstId) => {
+        const first = parseInt(firstId)
+        const remaining = top5.filter((_, i) => i !== first)
+        setChoiceModal({
+          visible: true,
+          cardName: `Visão Além do Agora — Escolha a 2ª carta (${top5[first].name} selecionada)`,
+          options: remaining.map((c, i) => ({ id: String(i), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') })),
+          onChoose: (secondId) => {
+            setChoiceModal(null)
+            const second = parseInt(secondId)
+            const chosen = [top5[first], remaining[second]]
+            const toBottom = top5.filter((_, i) => i !== first && i !== (remaining[second] === top5.find((_, j) => j !== first && j === parseInt(secondId)) ? parseInt(secondId) : -1))
+            // Actually: pick indices from top5
+            const chosenIndices = [first]
+            // find the index of remaining[second] in top5
+            let count = 0
+            for (let i = 0; i < top5.length; i++) {
+              if (i !== first) {
+                if (count === second) { chosenIndices.push(i); break }
+                count++
+              }
+            }
+            const chosenCards = chosenIndices.map(i => top5[i])
+            const bottomCards = top5.filter((_, i) => !chosenIndices.includes(i))
+            setPlayerField(prev => ({
+              ...prev,
+              hand: [...prev.hand, ...chosenCards],
+              deck: [...prev.deck.slice(5), ...bottomCards],
+            }))
+            chosenCards.forEach(c => showDrawAnimation(c))
+            showEffectFeedback(`VISÃO ALÉM DO AGORA: ${chosenCards.map(c=>c.name).join(", ")} adicionadas à mão!`, "success")
+          },
+        })
+      },
+    })
+  }
+
+  // ── Oswin: Lucro na Crise ──
+  const activateOswinAbility = () => {
+    if (oswinUsed) { showEffectFeedback("Lucro na Crise já foi usada neste duelo!", "error"); return }
+    const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
+    if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
+    setOswinUsed(true)
+    // Item cards: type "function" cards that are items (by name or category)
+    const itemCards = top5.filter(c =>
+      c.type === "function" || c.type === "action" || (c.category && c.category.toLowerCase().includes("item"))
+    )
+    const hasItems = itemCards.length > 0
+    const maxChoose = hasItems ? Math.min(2, itemCards.length) : 1
+    const pool = hasItems ? itemCards : top5
+
+    if (pool.length === 1) {
+      setPlayerField(prev => ({
+        ...prev,
+        hand: [...prev.hand, pool[0]],
+        deck: [...prev.deck.slice(top5.length), ...top5.filter(c => c !== pool[0])],
+      }))
+      showDrawAnimation(pool[0])
+      showEffectFeedback(`LUCRO NA CRISE: ${pool[0].name} adicionada à mão!`, "success")
+      return
+    }
+
+    const pickCount = maxChoose
+    const picks: number[] = []
+
+    const pickNext = () => {
+      if (picks.length >= pickCount) {
+        const chosenCards = picks.map(i => pool[i])
+        const bottomCards = top5.filter(c => !chosenCards.includes(c))
+        setPlayerField(prev => ({
+          ...prev,
+          hand: [...prev.hand, ...chosenCards],
+          deck: [...prev.deck.slice(5), ...bottomCards],
+        }))
+        chosenCards.forEach(c => showDrawAnimation(c))
+        showEffectFeedback(`LUCRO NA CRISE: ${chosenCards.map(c=>c.name).join(", ")} adicionadas à mão!`, "success")
+        return
+      }
+      const available = pool.filter((_, i) => !picks.includes(i))
+      setChoiceModal({
+        visible: true,
+        cardName: `Lucro na Crise — Escolha carta ${picks.length + 1}/${pickCount}${hasItems ? " (Itens encontrados!)" : ""}`,
+        options: available.map((c, i) => {
+          const origIdx = pool.indexOf(c)
+          return { id: String(origIdx), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') }
+        }),
+        onChoose: (optId) => {
+          setChoiceModal(null)
+          picks.push(parseInt(optId))
+          pickNext()
+        },
+      })
+    }
+    pickNext()
+  }
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -5982,6 +6129,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             const unitIdx = playerField.unitZone.findIndex((u) => u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
             if (unitIdx !== -1) {
               const unit = playerField.unitZone[unitIdx]
+              // ── GALAHAD: Coração Imaculado — immune to card effect removal ──
+              if (unit?.name.toLowerCase().includes("galahad")) {
+                showEffectFeedback("CORAÇÃO IMACULADO: Galahad é imune a efeitos! Bot TWILIGH AVALON falhou.", "error")
+              } else {
               setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const returned = newUnits[unitIdx]
@@ -5995,6 +6146,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               })
               setEnemyUgAbilityUsed(true)
               showEffectFeedback(`Bot TWILIGH AVALON: ${unit?.name} devolvida! -3 LP!`, "error")
+              }
             }
           } else if (ug.ability === "MEFISTO") {
             // Destroy any player card (unit or function) - once per duel
@@ -6006,6 +6158,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             if (targetIdx !== -1) {
               const destroyedUnit = playerField.unitZone[targetIdx]
               if (destroyedUnit) markDestroyed(destroyedUnit)
+              // ── GALAHAD: Coração Imaculado — cannot be destroyed by card effects ──
+              if (playerField.unitZone[targetIdx]?.name.toLowerCase().includes("galahad")) {
+                showEffectFeedback("CORAÇÃO IMACULADO: Galahad é imune a efeitos de destruição!", "error")
+                setEnemyUgAbilityUsed(true)
+                return prev
+              }
               setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const destroyed = newUnits[targetIdx]
@@ -7316,6 +7474,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                               <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center">
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
+                            )}
+                            {/* Merlin ability button */}
+                            {card && isPlayerTurn && phase === "main" &&
+                              card.name.toLowerCase().includes("merlin") && !merlinUsed && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); activateMerlinAbility() }}
+                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-violet-600 hover:bg-violet-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-pulse whitespace-nowrap z-20"
+                              >VISÃO</button>
+                            )}
+                            {/* Oswin ability button */}
+                            {card && isPlayerTurn && phase === "main" &&
+                              card.name.toLowerCase().includes("oswin") && !oswinUsed && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); activateOswinAbility() }}
+                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-600 hover:bg-amber-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-pulse whitespace-nowrap z-20"
+                              >LUCRO</button>
                             )}
                           </>
                         )}
