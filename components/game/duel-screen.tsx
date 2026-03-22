@@ -5363,7 +5363,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         deck: prev.deck.slice(1),
       }))
       addLog('enemy', 'Comprou carta')
-    }
 
     setTimeout(() => {
       setEnemyField((prev) => {
