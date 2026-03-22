@@ -2962,6 +2962,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
 
 
+  // ── Pre-game setup state ──
+  type Difficulty = 'easy' | 'medium' | 'hard'
+  const [setupStep, setSetupStep] = useState<'selectDeck' | 'selectDifficulty' | 'selectBotDeck'>('selectDeck')
+  const [pendingPlayerDeck, setPendingPlayerDeck] = useState<DeckWithImages | null>(null)
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
+  const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
+
   // ── Morgana Pendragon effect states ──
   const [morganaEclipseLastTurn, setMorganaEclipseLastTurn] = useState<number|null>(null)       // SR: Ressonância em Eclipse cooldown
   const [morganaSinfoniaLastTurn, setMorganaSinfoniaLastTurn] = useState<number|null>(null)     // UR: Sinfonia Relâmpago cooldown
@@ -3516,13 +3523,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) => el.getBoundingClientRect())
   }, [])
 
-  const startGame = (deck: DeckWithImages) => {
-    setSelectedDeck(deck)
+  const startGame = (playerDeck: DeckWithImages, botDeckArg?: DeckWithImages, diff?: 'easy'|'medium'|'hard') => {
+    const activeDifficulty = diff ?? difficulty
+    const activeBotDeck = botDeckArg ?? selectedBotDeck ?? playerDeck
+    setSelectedDeck(playerDeck)
+    setDifficulty(activeDifficulty)
 
     const playerFirst = Math.random() > 0.5
     setPlayerWentFirst(playerFirst)
 
-    const shuffledDeck = [...deck.cards].sort(() => Math.random() - 0.5)
+    const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
     const hand = shuffledDeck.slice(0, 5)
     const remainingDeck = shuffledDeck.slice(5)
 
@@ -3530,7 +3540,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       ...prev,
       hand,
       deck: remainingDeck,
-      tap: deck.tapCards ? [...deck.tapCards] : [],
+      tap: playerDeck.tapCards ? [...playerDeck.tapCards] : [],
       life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
@@ -3539,15 +3549,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       graveyard: [],
     }))
 
-    const botDeck = [...deck.cards].sort(() => Math.random() - 0.5)
-    const botHand = botDeck.slice(0, 5)
-    const botRemaining = botDeck.slice(5)
+    const shuffledBotDeck = [...activeBotDeck.cards].sort(() => Math.random() - 0.5)
+    const botHand = shuffledBotDeck.slice(0, 5)
+    const botRemaining = shuffledBotDeck.slice(5)
 
     setEnemyField((prev) => ({
       ...prev,
       hand: botHand,
       deck: botRemaining,
-      tap: deck.tapCards ? [...deck.tapCards] : [],
+      tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
       life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
@@ -5484,6 +5494,42 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
   }
 
+  // ── Bot difficulty helpers ──
+  const botShouldPlayCard = () => {
+    // easy: 50% chance to skip playing a card; medium: always; hard: always + prioritize
+    if (difficulty === 'easy') return Math.random() > 0.5
+    return true
+  }
+  const botShouldAttack = () => {
+    // easy: 40% chance to skip attacking; medium: 80%; hard: always
+    if (difficulty === 'easy') return Math.random() > 0.6
+    if (difficulty === 'medium') return Math.random() > 0.2
+    return true
+  }
+  // Hard: pick best attacker (highest DP), Medium: random, Easy: random
+  const botPickAttacker = (units: (FieldCard|null)[]) => {
+    const available = units.map((u,i) => ({u,i})).filter(({u}) => u && !u.hasAttacked)
+    if (available.length === 0) return -1
+    if (difficulty === 'hard') {
+      return available.reduce((best, cur) =>
+        (cur.u!.currentDp > best.u!.currentDp) ? cur : best
+      ).i
+    }
+    return available[Math.floor(Math.random() * available.length)].i
+  }
+  // Hard: pick weakest enemy target; Medium: random; Easy: random
+  const botPickTarget = (units: (FieldCard|null)[], attackerDp: number) => {
+    const targets = units.map((u,i) => ({u,i})).filter(({u}) => u !== null)
+    if (targets.length === 0) return -1
+    if (difficulty === 'hard') {
+      // Prefer targets Calem can beat; else pick weakest
+      const beatable = targets.filter(({u}) => u!.currentDp < attackerDp)
+      const pool = beatable.length > 0 ? beatable : targets
+      return pool.reduce((w, cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
+    }
+    return targets[Math.floor(Math.random() * targets.length)].i
+  }
+
   const executeBotTurn = () => {
     // ── MORGANA SR 2DP: Ressonância em Eclipse — if active, enemy cannot draw ──
     const _eclipseActive = morganaEclipseActive && (turn - morganaEclipseActive.turn === 1)
@@ -5594,7 +5640,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           const card = newHand[i]
           // Skip ultimate cards - they can only go in ultimate zone
           if (card && isUnitCard(card) && !isUltimateCard(card)) {
-            const emptySlot = newUnitZone.findIndex((s) => s === null)
+            if (!botShouldPlayCard()) continue  // difficulty: easy may skip
+            const emptySlot = difficulty === 'hard'
+              // Hard: prefer strongest unit in highest slot
+              ? newUnitZone.findIndex((s) => s === null)
+              : newUnitZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newUnitZone[emptySlot] = {
                 ...card,
@@ -5666,7 +5716,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       })
 
       setTimeout(() => {
-        const botCanAttack = playerWentFirst ? turn >= 2 : turn >= 3 // Simplified bot attack condition
+        const botCanAttack = (playerWentFirst ? turn >= 2 : turn >= 3) && botShouldAttack()
 
         // Bot ULLRBOGI: +3 DP to Ullr during battle phase
         setEnemyField((prevEnemy) => {
@@ -5778,10 +5828,28 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             // Track which player slots were already destroyed this loop to prevent duplicate graveyard adds
             const destroyedPlayerSlots = new Set<number>()
 
-            newEnemyUnitZone.forEach((unit, unitIdx) => {
+            // Hard: sort attackers by DP desc; Easy/Medium: random order
+            const attackerOrder = difficulty === 'hard'
+              ? [...newEnemyUnitZone.keys()].sort((a,b) =>
+                  ((newEnemyUnitZone[b]?.currentDp ?? 0) - (newEnemyUnitZone[a]?.currentDp ?? 0)))
+              : [...newEnemyUnitZone.keys()].sort(() => Math.random() - 0.5)
+
+            attackerOrder.forEach((unitIdx) => {
+              const unit = newEnemyUnitZone[unitIdx]
               if (unit && !unit.hasAttacked) {
                 // Only attack slots that haven't been destroyed earlier in this same loop
-                const playerUnitIndex = playerField.unitZone.findIndex((u, idx) => u !== null && !destroyedPlayerSlots.has(idx))
+                const playerUnitIndex = difficulty === 'hard'
+                  // Hard: prefer beatable targets, then weakest
+                  ? (() => {
+                      const candidates = playerField.unitZone
+                        .map((u,i) => ({u,i}))
+                        .filter(({u,i}) => u !== null && !destroyedPlayerSlots.has(i))
+                      if (candidates.length === 0) return -1
+                      const beatable = candidates.filter(({u}) => u!.currentDp < unit.currentDp)
+                      const pool = beatable.length > 0 ? beatable : candidates
+                      return pool.reduce((w,cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
+                    })()
+                  : playerField.unitZone.findIndex((u, idx) => u !== null && !destroyedPlayerSlots.has(idx))
 
                 if (playerUnitIndex !== -1) {
                   const defender = playerField.unitZone[playerUnitIndex] as FieldCard
@@ -6298,35 +6366,132 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }, [playerField.life, enemyField.life, gameStarted, mode, selectedDeck?.name])
 
   if (!gameStarted) {
+    const difficulties = [
+      { id:'easy'   as const, label:'Fácil',  emoji:'🟢', desc:'Bot joga cartas aleatoriamente, ataca sem estratégia e não usa habilidades.', color:'from-green-700 to-green-600 hover:from-green-600 hover:to-green-500 border-green-500/40' },
+      { id:'medium' as const, label:'Médio',  emoji:'🟡', desc:'Bot prioriza unidades fortes, usa habilidades e pensa antes de atacar.',      color:'from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 border-amber-500/40' },
+      { id:'hard'   as const, label:'Difícil', emoji:'🔴', desc:'Bot joga otimizado: gestão de campo, habilidades, sequência de ataques e traps.', color:'from-red-800 to-red-700 hover:from-red-700 hover:to-red-600 border-red-500/40' },
+    ]
+
     return (
-      <div className="min-h-screen flex flex-col">
-        <div className="flex items-center justify-between p-4 bg-black/50">
-          <Button onClick={onBack} variant="ghost" className="text-white">
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 to-black">
+        <div className="flex items-center justify-between p-4 bg-black/60 border-b border-white/10">
+          <Button onClick={setupStep === 'selectDeck' ? onBack : () => setSetupStep(setupStep === 'selectBotDeck' ? (mode === 'bot' ? 'selectDifficulty' : 'selectDeck') : 'selectDeck')} variant="ghost" className="text-white">
             <ArrowLeft className="mr-2 h-5 w-5" />
-            {t("back")}
+            {setupStep === 'selectDeck' ? t("back") : "Voltar"}
           </Button>
           <h1 className="text-2xl font-bold text-white">{mode === "bot" ? t("vsBot") : t("vsPlayer")}</h1>
           <div className="w-20" />
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <h2 className="text-xl text-white mb-6">Selecione um Deck</h2>
+        {/* Progress indicator (bot mode only) */}
+        {mode === 'bot' && (
+          <div className="flex justify-center gap-3 pt-4 pb-2">
+            {['Seu Deck','Dificuldade','Deck Inimigo'].map((label,i) => {
+              const stepIdx = setupStep === 'selectDeck' ? 0 : setupStep === 'selectDifficulty' ? 1 : 2
+              return (
+                <div key={i} className={`flex items-center gap-1.5 text-xs font-semibold transition-all ${i === stepIdx ? 'text-cyan-300' : i < stepIdx ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border ${i === stepIdx ? 'bg-cyan-600 border-cyan-400 text-white' : i < stepIdx ? 'bg-slate-600 border-slate-500 text-slate-300' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>{i+1}</div>
+                  {label}
+                  {i < 2 && <div className={`w-6 h-px ${i < stepIdx ? 'bg-slate-500' : 'bg-slate-700'}`} />}
+                </div>
+              )
+            })}
+          </div>
+        )}
 
-          {typedDecks.length === 0 ? (
-            <p className="text-slate-400">Crie um deck primeiro no menu Construir Deck!</p>
-          ) : (
-            <div className="grid gap-4 w-full max-w-md">
-              {typedDecks.map((deck) => (
-                <Button
-                  key={deck.id}
-                  onClick={() => startGame(deck)}
-                  className="h-16 text-lg bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500"
+        <div className="flex-1 flex flex-col items-center justify-center p-4 gap-6">
+
+          {/* ── STEP 1: Select player deck ── */}
+          {setupStep === 'selectDeck' && (
+            <>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-white mb-1">Escolha seu Deck</h2>
+                <p className="text-slate-400 text-sm">Selecione o deck que você vai usar no duelo</p>
+              </div>
+              {typedDecks.length === 0 ? (
+                <p className="text-slate-400">Crie um deck primeiro no menu Construir Deck!</p>
+              ) : (
+                <div className="grid gap-3 w-full max-w-md">
+                  {typedDecks.map((deck) => (
+                    <button
+                      key={deck.id}
+                      onClick={() => {
+                        setPendingPlayerDeck(deck)
+                        if (mode === 'bot') setSetupStep('selectDifficulty')
+                        else startGame(deck)
+                      }}
+                      className="w-full h-16 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 border border-slate-500/30 hover:border-cyan-500/40 transition-all text-left group"
+                    >
+                      <Swords className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                      <div>
+                        <div className="font-bold text-white text-base">{deck.name}</div>
+                        <div className="text-xs text-slate-400">{deck.cards.length} cartas</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── STEP 2: Select difficulty (bot mode only) ── */}
+          {setupStep === 'selectDifficulty' && mode === 'bot' && (
+            <>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-white mb-1">Dificuldade</h2>
+                <p className="text-slate-400 text-sm">Como o oponente deve jogar?</p>
+              </div>
+              <div className="grid gap-4 w-full max-w-md">
+                {difficulties.map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => { setDifficulty(d.id); setSetupStep('selectBotDeck') }}
+                    className={`w-full flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r border transition-all text-left ${d.color}`}
+                  >
+                    <span className="text-3xl">{d.emoji}</span>
+                    <div>
+                      <div className="font-bold text-white text-lg">{d.label}</div>
+                      <div className="text-sm text-white/70 leading-snug mt-0.5">{d.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ── STEP 3: Select bot deck (bot mode only) ── */}
+          {setupStep === 'selectBotDeck' && mode === 'bot' && (
+            <>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-white mb-1">Deck do Oponente</h2>
+                <p className="text-slate-400 text-sm">Escolha qual deck o Bot vai usar</p>
+              </div>
+              <div className="grid gap-3 w-full max-w-md">
+                <button
+                  onClick={() => { setSelectedBotDeck(null); startGame(pendingPlayerDeck!, undefined, difficulty) }}
+                  className="w-full h-14 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 border border-slate-500/30 hover:border-purple-500/40 transition-all text-left"
                 >
-                  <Swords className="mr-2" />
-                  {deck.name} ({deck.cards.length} cartas)
-                </Button>
-              ))}
-            </div>
+                  <span className="text-xl">🎲</span>
+                  <div>
+                    <div className="font-bold text-slate-200">Aleatório</div>
+                    <div className="text-xs text-slate-500">O Bot usa um deck aleatório</div>
+                  </div>
+                </button>
+                {typedDecks.map((deck) => (
+                  <button
+                    key={deck.id}
+                    onClick={() => { setSelectedBotDeck(deck); startGame(pendingPlayerDeck!, deck, difficulty) }}
+                    className="w-full h-14 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-red-900/40 to-red-800/30 hover:from-red-800/60 hover:to-red-700/40 border border-red-500/20 hover:border-red-500/50 transition-all text-left group"
+                  >
+                    <Swords className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform" />
+                    <div>
+                      <div className="font-bold text-white">{deck.name}</div>
+                      <div className="text-xs text-slate-400">{deck.cards.length} cartas</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -6500,6 +6665,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <span className="text-xs text-slate-400">{t("turn")}</span>
             <span className="block text-2xl font-bold text-amber-400">{turn}</span>
           </div>
+          {mode === 'bot' && (
+            <div className={`px-2 py-1 rounded text-[9px] font-bold border ${
+              difficulty === 'easy' ? 'bg-green-900/50 border-green-600/40 text-green-300'
+              : difficulty === 'medium' ? 'bg-amber-900/50 border-amber-600/40 text-amber-300'
+              : 'bg-red-900/50 border-red-600/40 text-red-300'
+            }`}>
+              {difficulty === 'easy' ? '🟢 Fácil' : difficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
+            </div>
+          )}
           <div
             className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${isPlayerTurn
               ? "bg-green-600/20 border-green-500 text-green-400"
