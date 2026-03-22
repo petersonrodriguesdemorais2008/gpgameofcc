@@ -5555,53 +5555,61 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
     setMerlinUsed(true)
+
+    // Each card in top5 is tagged with its original index so selection maps back cleanly
+    const tagged = top5.map((card, idx) => ({ card, idx }))
+
     if (top5.length <= 2) {
-      // All cards go to hand
+      // Fewer than 3 cards — all go to hand
       setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, ...top5],
         deck: prev.deck.slice(top5.length),
       }))
-      top5.forEach(c => showDrawAnimation(c))
-      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c=>c.name).join(", ")} adicionadas!`, "success")
+      top5.forEach(card => showDrawAnimation(card))
+      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c => c.name).join(", ")} adicionadas!`, "success")
       return
     }
-    // Show choice to pick 2
+
+    // Pick 1st card
     setChoiceModal({
       visible: true,
-      cardName: "Visão Além do Agora — Escolha 2 cartas para a mão",
-      options: top5.map((c, i) => ({ id: String(i), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') })),
-      onChoose: (firstId) => {
-        const first = parseInt(firstId)
-        const remaining = top5.filter((_, i) => i !== first)
+      cardName: "Visão Além do Agora — Escolha a 1ª carta para a mão",
+      options: tagged.map(({ card, idx }) => ({
+        id: String(idx),
+        label: card.name,
+        description: `${card.type}${card.dp ? ` · ${card.dp}DP` : ''}`,
+      })),
+      onChoose: (firstIdStr) => {
+        const firstIdx = parseInt(firstIdStr)
+        const firstCard = top5[firstIdx]
+
+        // Pick 2nd card from the remaining
+        const remainingTagged = tagged.filter(({ idx }) => idx !== firstIdx)
         setChoiceModal({
           visible: true,
-          cardName: `Visão Além do Agora — Escolha a 2ª carta (${top5[first].name} selecionada)`,
-          options: remaining.map((c, i) => ({ id: String(i), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') })),
-          onChoose: (secondId) => {
+          cardName: `Visão Além do Agora — Escolha a 2ª carta (${firstCard.name} escolhida)`,
+          options: remainingTagged.map(({ card, idx }) => ({
+            id: String(idx),
+            label: card.name,
+            description: `${card.type}${card.dp ? ` · ${card.dp}DP` : ''}`,
+          })),
+          onChoose: (secondIdStr) => {
             setChoiceModal(null)
-            const second = parseInt(secondId)
-            const chosen = [top5[first], remaining[second]]
-            const toBottom = top5.filter((_, i) => i !== first && i !== (remaining[second] === top5.find((_, j) => j !== first && j === parseInt(secondId)) ? parseInt(secondId) : -1))
-            // Actually: pick indices from top5
-            const chosenIndices = [first]
-            // find the index of remaining[second] in top5
-            let count = 0
-            for (let i = 0; i < top5.length; i++) {
-              if (i !== first) {
-                if (count === second) { chosenIndices.push(i); break }
-                count++
-              }
-            }
-            const chosenCards = chosenIndices.map(i => top5[i])
-            const bottomCards = top5.filter((_, i) => !chosenIndices.includes(i))
+            const secondIdx = parseInt(secondIdStr)
+            const chosenIndices = new Set([firstIdx, secondIdx])
+            const chosenCards = top5.filter((_, i) => chosenIndices.has(i))
+            const bottomCards = top5.filter((_, i) => !chosenIndices.has(i))
             setPlayerField(prev => ({
               ...prev,
               hand: [...prev.hand, ...chosenCards],
-              deck: [...prev.deck.slice(5), ...bottomCards],
+              deck: [...prev.deck.slice(top5.length), ...bottomCards],
             }))
-            chosenCards.forEach(c => showDrawAnimation(c))
-            showEffectFeedback(`VISÃO ALÉM DO AGORA: ${chosenCards.map(c=>c.name).join(", ")} adicionadas à mão!`, "success")
+            chosenCards.forEach(card => showDrawAnimation(card))
+            showEffectFeedback(
+              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c => c.name).join(", ")} adicionadas à mão!`,
+              "success"
+            )
           },
         })
       },
