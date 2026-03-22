@@ -5856,10 +5856,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   const defenderDp = defender.currentDp
                   const attackerDp = unit.currentDp
 
+                  // Bot combat is one-sided: only the DEFENDER (player unit) takes damage.
+                  // The bot attacker never dies from its own attack, matching how player attacks work.
                   const newDefenderDp = defenderDp - attackerDp
-                  const newAttackerDp = attackerDp - defenderDp
-
-
 
                   setPlayerField((prevPlayer) => {
                     const newPlayerUnitZone = [...prevPlayer.unitZone]
@@ -5944,13 +5943,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     }
                   })
 
-                  if (newAttackerDp <= 0) {
-                    markDestroyed(unit)
-                    newEnemyGraveyard.push(unit)
-                    newEnemyUnitZone[unitIdx] = null
-                  } else {
-                    newEnemyUnitZone[unitIdx] = { ...unit, currentDp: newAttackerDp, hasAttacked: true }
-                  }
+                  // Bot attacker always survives its own attack (no self-damage)
+                  newEnemyUnitZone[unitIdx] = { ...unit, hasAttacked: true }
                 } else {
                   setPlayerField((prevPlayer) => ({
                     ...prevPlayer,
