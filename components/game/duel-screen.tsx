@@ -5817,181 +5817,164 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         })
 
         if (botCanAttack) {
-          // Build the ordered list of attackers synchronously from latest state
-          const snapEnemyUnits = [...enemyField.unitZone]
-          const snapPlayerUnits = [...playerField.unitZone]
-
-          const attackerOrder = difficulty === 'hard'
-            ? [...snapEnemyUnits.keys()].filter(i => snapEnemyUnits[i] && !snapEnemyUnits[i]!.hasAttacked)
-                .sort((a,b) => (snapEnemyUnits[b]?.currentDp ?? 0) - (snapEnemyUnits[a]?.currentDp ?? 0))
-            : [...snapEnemyUnits.keys()].filter(i => snapEnemyUnits[i] && !snapEnemyUnits[i]!.hasAttacked)
+          // Sequential bot attack: fire one unit at a time using a recursive function.
+          // Each call reads live state via setEnemyField/setPlayerField, avoiding stale closures.
+          const attackerIndices = difficulty === 'hard'
+            ? [...enemyField.unitZone.keys()]
+                .filter(i => enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
+                .sort((a,b) => (enemyField.unitZone[b]?.currentDp ?? 0) - (enemyField.unitZone[a]?.currentDp ?? 0))
+            : [...enemyField.unitZone.keys()]
+                .filter(i => enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
                 .sort(() => Math.random() - 0.5)
 
           const destroyedPlayerSlots = new Set<number>()
 
-          // Fire each attack sequentially with a delay between them
-          attackerOrder.forEach((unitIdx, attackSequence) => {
-            const delay = attackSequence * (PROJECTILE_DURATION + 600) // stagger each attack
+          const fireBotAttack = (remaining: number[]) => {
+            if (remaining.length === 0) return
 
-            setTimeout(() => {
-              const currentEnemyUnits = enemyField.unitZone
-              const currentPlayerUnits = playerField.unitZone
-              const unit = currentEnemyUnits[unitIdx]
-              if (!unit || unit.hasAttacked) return
+            const [unitIdx, ...rest] = remaining
+            // Read CURRENT state directly from enemyField snapshot captured at loop start.
+            // We only schedule one attack at a time so hasAttacked is always current.
+            const unit = enemyField.unitZone[unitIdx]
+            if (!unit || unit.hasAttacked) {
+              // Skip this unit, move to next immediately
+              fireBotAttack(rest)
+              return
+            }
 
-              // Find target
-              const playerUnitIndex = difficulty === 'hard'
-                ? (() => {
-                    const candidates = currentPlayerUnits.map((u,i) => ({u,i})).filter(({u,i}) => u !== null && !destroyedPlayerSlots.has(i))
-                    if (candidates.length === 0) return -1
-                    const beatable = candidates.filter(({u}) => u!.currentDp < unit.currentDp)
-                    const pool = beatable.length > 0 ? beatable : candidates
-                    return pool.reduce((w,cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
-                  })()
-                : currentPlayerUnits.findIndex((u,i) => u !== null && !destroyedPlayerSlots.has(i))
+            // Get DOM positions
+            const attackerEl = document.querySelector(`[data-enemy-unit="${unitIdx}"]`)
+            const attackerRect = attackerEl?.getBoundingClientRect()
+            const startX = attackerRect ? attackerRect.left + attackerRect.width / 2 : window.innerWidth / 2
+            const startY = attackerRect ? attackerRect.top + attackerRect.height / 2 : window.innerHeight / 3
 
-              // ── Get DOM positions for animation ──
-              const attackerEl = document.querySelector(`[data-enemy-unit="${unitIdx}"]`)
-              const attackerRect = attackerEl?.getBoundingClientRect()
-              const startX = attackerRect ? attackerRect.left + attackerRect.width / 2 : window.innerWidth / 2
-              const startY = attackerRect ? attackerRect.top + attackerRect.height / 2 : window.innerHeight / 3
+            // Pick target from current player field
+            const currentPlayerUnits = playerField.unitZone
+            const playerUnitIndex = difficulty === 'hard'
+              ? (() => {
+                  const cands = currentPlayerUnits.map((u,i) => ({u,i})).filter(({u,i}) => u !== null && !destroyedPlayerSlots.has(i))
+                  if (cands.length === 0) return -1
+                  const beatable = cands.filter(({u}) => u!.currentDp < unit.currentDp)
+                  const pool = beatable.length > 0 ? beatable : cands
+                  return pool.reduce((w,cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
+                })()
+              : currentPlayerUnits.findIndex((u,i) => u !== null && !destroyedPlayerSlots.has(i))
 
-              if (playerUnitIndex !== -1) {
-                const defender = currentPlayerUnits[playerUnitIndex] as FieldCard
-                const defenderDp = defender.currentDp ?? defender.dp
-                const attackerDp = unit.currentDp ?? unit.dp
-                const newDefenderDp = defenderDp - attackerDp
+            if (playerUnitIndex !== -1) {
+              const defender = currentPlayerUnits[playerUnitIndex] as FieldCard
+              const defenderDp = defender.currentDp ?? defender.dp
+              const attackerDp = unit.currentDp ?? unit.dp
+              const newDefenderDp = defenderDp - attackerDp
 
-                // Target DOM position
-                const targetEl = document.querySelector(`[data-player-unit-slot="${playerUnitIndex}"]`)
-                const targetRect = targetEl?.getBoundingClientRect()
-                const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
-                const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.7
+              const targetEl = document.querySelector(`[data-player-unit-slot="${playerUnitIndex}"]`)
+              const targetRect = targetEl?.getBoundingClientRect()
+              const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
+              const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.7
 
-                // Show feedback + trigger projectile animation
-                showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
+              showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
 
-                const projId = `bot-proj-${Date.now()}-${unitIdx}`
-                setActiveProjectiles(prev => [...prev, {
-                  id: projId,
-                  startX, startY, targetX, targetY,
-                  element: unit.element || "neutral",
-                  attackerImage: unit.image,
-                  attackerName: unit.name,
-                  isDirect: false,
-                }])
+              // Fire projectile — ONLY this unit
+              const projId = `bot-proj-${Date.now()}-${unitIdx}`
+              setActiveProjectiles(prev => [...prev, {
+                id: projId, startX, startY, targetX, targetY,
+                element: unit.element || "neutral",
+                attackerImage: unit.image,
+                attackerName: unit.name,
+                isDirect: false,
+              }])
 
-                // Card jump animation on defender
-                const jumpKey = `player-${playerUnitIndex}`
-                const diffX = (startX - targetX) * 0.25
-                const diffY = (startY - targetY) * 0.25
-                setTimeout(() => {
-                  setCardAnimations(prev => ({ ...prev, [jumpKey]: `translate3d(${diffX}px,${diffY}px,0) scale(0.95) rotate(${Math.random()*4-2}deg)` }))
-                  setTimeout(() => {
-                    setCardAnimations(prev => { const n = {...prev}; delete n[jumpKey]; return n })
-                  }, 350)
-                }, 150)
+              // Card jump on defender
+              const jumpKey = `player-${playerUnitIndex}`
+              setTimeout(() => {
+                const dx = (startX - targetX) * 0.25
+                const dy = (startY - targetY) * 0.25
+                setCardAnimations(prev => ({ ...prev, [jumpKey]: `translate3d(${dx}px,${dy}px,0) scale(0.95) rotate(${Math.random()*4-2}deg)` }))
+                setTimeout(() => setCardAnimations(prev => { const n={...prev}; delete n[jumpKey]; return n }), 350)
+              }, 150)
 
-                // Apply damage after projectile lands
-                if (newDefenderDp <= 0) destroyedPlayerSlots.add(playerUnitIndex)
+              if (newDefenderDp <= 0) destroyedPlayerSlots.add(playerUnitIndex)
 
-                setTimeout(() => {
-                  setPlayerField((prevPlayer) => {
-                    const newPlayerUnitZone = [...prevPlayer.unitZone]
-                    const newPlayerGraveyard = [...prevPlayer.graveyard]
-
-                    const isProtectedByProtonix = prevPlayer.ultimateZone &&
-                      prevPlayer.ultimateZone.ability === "PROTONIX SWORD" &&
-                      prevPlayer.ultimateZone.requiresUnit === defender.name
-
-                    if (newDefenderDp <= 0) {
-                      if (isProtectedByProtonix) {
-                        newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
-                        showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
-                      } else {
-                        markDestroyed(defender)
-                        newPlayerGraveyard.push(defender)
-                        newPlayerUnitZone[playerUnitIndex] = null
-                        if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
-                          setTimeout(() => {
-                            setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) }))
-                            showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning")
-                          }, 500)
-                        }
-                        if (defender.name.toLowerCase().includes("lancelot")) {
-                          setTimeout(() => {
-                            setPlayerField(prevP => {
-                              const funcCards = prevP.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
-                              if (funcCards.length === 0) { showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info"); return prevP }
-                              if (funcCards.length === 1) {
-                                showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcCards[0].name} recuperada!`, "success")
-                                return { ...prevP, hand: [...prevP.hand, funcCards[0]], graveyard: prevP.graveyard.filter(gc => gc.id !== funcCards[0].id) }
-                              }
-                              setChoiceModal({
-                                visible: true,
-                                cardName: "Virtude do Cavaleiro — Recuperar 1 Function",
-                                options: funcCards.slice(0,6).map((gc,i) => ({ id: String(i), label: gc.name, description: gc.type + " · " + (gc.element || "Neutro") })),
-                                onChoose: (optId) => {
-                                  setChoiceModal(null)
-                                  const chosen = funcCards[parseInt(optId)]
-                                  if (!chosen) return
-                                  setPlayerField(prevP2 => ({ ...prevP2, hand: [...prevP2.hand, chosen], graveyard: prevP2.graveyard.filter(gc => gc.id !== chosen.id) }))
-                                  showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${chosen.name} recuperada!`, "success")
-                                },
-                              })
-                              return prevP
-                            })
-                          }, 600)
-                        }
-                        triggerExplosion(targetX, targetY, unit.element || "neutral")
-                      }
+              // Apply damage after projectile lands, then chain next attack
+              setTimeout(() => {
+                setPlayerField((prevPlayer) => {
+                  const newUnitZone = [...prevPlayer.unitZone]
+                  const newGrave = [...prevPlayer.graveyard]
+                  const isProtonix = prevPlayer.ultimateZone?.ability === "PROTONIX SWORD" && prevPlayer.ultimateZone?.requiresUnit === defender.name
+                  if (newDefenderDp <= 0) {
+                    if (isProtonix) {
+                      newUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
+                      showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
                     } else {
-                      newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: newDefenderDp }
+                      markDestroyed(defender)
+                      newGrave.push(defender)
+                      newUnitZone[playerUnitIndex] = null
                       triggerExplosion(targetX, targetY, unit.element || "neutral")
+                      if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
+                        setTimeout(() => { setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) })); showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning") }, 400)
+                      }
+                      if (defender.name.toLowerCase().includes("lancelot")) {
+                        setTimeout(() => {
+                          setPlayerField(prevP => {
+                            const funcs = prevP.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                            if (funcs.length === 0) { showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info"); return prevP }
+                            if (funcs.length === 1) { showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcs[0].name} recuperada!`, "success"); return { ...prevP, hand: [...prevP.hand, funcs[0]], graveyard: prevP.graveyard.filter(gc => gc.id !== funcs[0].id) } }
+                            setChoiceModal({ visible:true, cardName:"Virtude do Cavaleiro — Recuperar 1 Function", options: funcs.slice(0,6).map((gc,i)=>({id:String(i),label:gc.name,description:gc.type+" · "+(gc.element||"Neutro")})), onChoose:(optId)=>{ setChoiceModal(null); const ch=funcs[parseInt(optId)]; if(!ch)return; setPlayerField(p2=>({...p2,hand:[...p2.hand,ch],graveyard:p2.graveyard.filter(gc=>gc.id!==ch.id)})); showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${ch.name} recuperada!`,"success") } })
+                            return prevP
+                          })
+                        }, 500)
+                      }
                     }
+                  } else {
+                    newUnitZone[playerUnitIndex] = { ...defender, currentDp: newDefenderDp }
+                    triggerExplosion(targetX, targetY, unit.element || "neutral")
+                  }
+                  return { ...prevPlayer, unitZone: newUnitZone, graveyard: newGrave }
+                })
 
-                    return { ...prevPlayer, unitZone: newPlayerUnitZone, graveyard: newPlayerGraveyard }
-                  })
+                // Mark this unit as attacked
+                setEnemyField(prev => {
+                  const u2 = [...prev.unitZone]
+                  if (u2[unitIdx]) u2[unitIdx] = { ...u2[unitIdx]!, hasAttacked: true }
+                  return { ...prev, unitZone: u2 as (FieldCard | null)[] }
+                })
 
-                  // Mark bot attacker as used
-                  setEnemyField(prev => {
-                    const newUnits = [...prev.unitZone]
-                    if (newUnits[unitIdx]) newUnits[unitIdx] = { ...newUnits[unitIdx]!, hasAttacked: true }
-                    return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
-                  })
-                }, PROJECTILE_DURATION)
+                // Fire next attack after a short pause
+                setTimeout(() => fireBotAttack(rest), 400)
+              }, PROJECTILE_DURATION)
 
-              } else {
-                // Direct attack to player LP
-                const directEl = document.querySelector("[data-direct-attack]")
-                const directRect = directEl?.getBoundingClientRect()
-                const targetX = directRect ? directRect.left + directRect.width / 2 : window.innerWidth / 2
-                const targetY = directRect ? directRect.top + directRect.height / 2 : window.innerHeight * 0.8
+            } else {
+              // Direct attack
+              const directEl = document.querySelector("[data-direct-attack]")
+              const directRect = directEl?.getBoundingClientRect()
+              const targetX = directRect ? directRect.left + directRect.width / 2 : window.innerWidth / 2
+              const targetY = directRect ? directRect.top + directRect.height / 2 : window.innerHeight * 0.8
 
-                showEffectFeedback(`${unit.name} ataque direto!`, "warning")
+              showEffectFeedback(`${unit.name} ataque direto!`, "warning")
 
-                const projId = `bot-direct-${Date.now()}-${unitIdx}`
-                setActiveProjectiles(prev => [...prev, {
-                  id: projId,
-                  startX, startY, targetX, targetY,
-                  element: unit.element || "neutral",
-                  attackerImage: unit.image,
-                  attackerName: unit.name,
-                  isDirect: true,
-                }])
+              const projId = `bot-direct-${Date.now()}-${unitIdx}`
+              setActiveProjectiles(prev => [...prev, {
+                id: projId, startX, startY, targetX, targetY,
+                element: unit.element || "neutral",
+                attackerImage: unit.image,
+                attackerName: unit.name,
+                isDirect: true,
+              }])
 
-                setTimeout(() => {
-                  setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - (unit.currentDp ?? unit.dp)) }))
-                  setEnemyField(prev => {
-                    const newUnits = [...prev.unitZone]
-                    if (newUnits[unitIdx]) newUnits[unitIdx] = { ...newUnits[unitIdx]!, hasAttacked: true }
-                    return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
-                  })
-                }, PROJECTILE_DURATION)
-              }
-            }, delay)
-          })
+              setTimeout(() => {
+                setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - (unit.currentDp ?? unit.dp)) }))
+                setEnemyField(prev => {
+                  const u2 = [...prev.unitZone]
+                  if (u2[unitIdx]) u2[unitIdx] = { ...u2[unitIdx]!, hasAttacked: true }
+                  return { ...prev, unitZone: u2 as (FieldCard | null)[] }
+                })
+                setTimeout(() => fireBotAttack(rest), 400)
+              }, PROJECTILE_DURATION)
+            }
+          }
+
+          fireBotAttack(attackerIndices)
         }
+
 
         // Bot ULLRBOGI: remove +3 DP when leaving battle phase
         setEnemyField((prevEnemy) => {
