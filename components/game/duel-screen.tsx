@@ -4722,7 +4722,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (attacker) {
 
         // ── FEHNON SR 2DP: Laceração — compra 1 carta ao atacar; se Unidade → ataca novamente ──
-        if (attacker.id === "fehnon-sr") {
+        if (attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
@@ -4739,7 +4739,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
         // ── FEHNON UR 3DP: Ordem de Laceração — compra 1 carta ao atacar; se Unidade → ataca novamente (traps ignorados) ──
         // Singularidade Zero: pode realizar até 2 ataques por batalha SE equipado com Protonix Sword
-        if (attacker.id === "fehnon-ur") {
+        if (attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
@@ -4763,7 +4763,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
         // ── FEHNON LR 4DP: Laceração do Mundo — compra 1 carta ao atacar
         // Requer ODEN SWORD: se Unidade ou Action Function → +3DP + ataca novamente ──
-        if (attacker.id === "fehnon-lr") {
+        if (attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) {
           const drawn = playerField.deck[0]
           if (drawn) {
             // "Unit or Action Function" = unit, troops, ultimates, or function cards
@@ -5024,7 +5024,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               })
 
               // ── FEHNON SR 2DP: Fluxo de Ruptura — ao destruir unidade: 2DP dano direto ──
-              if (newDefenderDp <= 0 && attacker.id === "fehnon-sr") {
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("FLUXO DE RUPTURA: 2DP de dano direto ao oponente!", "warning")
@@ -5032,7 +5032,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               }
 
               // ── FEHNON UR 3DP: Singularidade Zero — ao destruir unidade: +2DP até o final do turno ──
-              if (newDefenderDp <= 0 && attacker.id === "fehnon-ur") {
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) {
                 setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
                   const idx = attackState.attackerIndex!
@@ -5046,7 +5046,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               }
 
               // ── FEHNON LR 4DP: Ruptura do Núcleo Supremo — ao destruir unidade: 2DP dano direto ──
-              if (newDefenderDp <= 0 && attacker.id === "fehnon-lr") {
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("RUPTURA DO NÚCLEO SUPREMO: 2DP de dano direto ao oponente!", "warning")
@@ -5088,9 +5088,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
               const keepAttackReady =
                 (calemUrDoubleAttack && attacker.id === "calem-ur") ||
-                (fehnonSrDouble && attacker.id === "fehnon-sr") ||
-                (fehnonUrDouble && attacker.id === "fehnon-ur") ||
-                (fehnonLrDouble && attacker.id === "fehnon-lr")
+                (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
+                (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
+                (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
 
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
@@ -5098,9 +5098,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 return { ...prev, unitZone: newUnitZone }
               })
               if (calemUrDoubleAttack && attacker.id === "calem-ur") setCalemUrDoubleAttack(false)
-              if (fehnonSrDouble && attacker.id === "fehnon-sr") setFehnonSrDouble(false)
-              if (fehnonUrDouble && attacker.id === "fehnon-ur") { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
-              if (fehnonLrDouble && attacker.id === "fehnon-lr") { setFehnonLrDouble(false) }
+              if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
+              if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
+              if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) { setFehnonLrDouble(false) }
             }
           } else if (attackState.targetInfo!.type === "direct") {
             const directZone = document.querySelector("[data-direct-attack]")
@@ -5119,18 +5119,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
             // Fehnon: direct attack also counts for double-attack flags
             const keepReadyDirect =
-              (fehnonSrDouble && attacker.id === "fehnon-sr") ||
-              (fehnonUrDouble && attacker.id === "fehnon-ur") ||
-              (fehnonLrDouble && attacker.id === "fehnon-lr")
+              (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
+              (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
+              (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
 
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
               newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepReadyDirect }
               return { ...prev, unitZone: newUnitZone }
             })
-            if (fehnonSrDouble && attacker.id === "fehnon-sr") setFehnonSrDouble(false)
-            if (fehnonUrDouble && attacker.id === "fehnon-ur") { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
-            if (fehnonLrDouble && attacker.id === "fehnon-lr") setFehnonLrDouble(false)
+            if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
+            if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
+            if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) setFehnonLrDouble(false)
           }
           setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
           setTimeout(() => {
@@ -5700,9 +5700,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         if (!unit) return null
         if (unit.id === "calem-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
         // Fehnon UR: Singularidade Zero +2DP buff resets at end of turn
-        if (unit.id === "fehnon-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
+        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3) return { ...unit, hasAttacked: false, currentDp: unit.dp }
         // Fehnon LR: +3DP bonus resets at end of turn
-        if (unit.id === "fehnon-lr" && fehnonLrBonusDp > 0) return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
+        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp > 0) return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
         // dados-da-calamidade debuff
         if ((unit as any).calamidadeDebuffTurn === turn + 1) {
           const cur = (unit as any).currentDp || unit.dp
