@@ -2961,6 +2961,28 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [fehnonLrDouble, setFehnonLrDouble] = useState(false)
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
 
+  // ── Duel Log ──
+  type DuelLogEntry = { id:string; turn:number; who:'player'|'enemy'|'system'; action:string; detail?:string }
+  const [duelLog, setDuelLog] = useState<DuelLogEntry[]>([])
+  const duelLogRef = useRef<HTMLDivElement>(null)
+  const addLog = useCallback((who:'player'|'enemy'|'system', action:string, detail?:string) => {
+    setDuelLog(prev => {
+      const entry: DuelLogEntry = { id:`log-${Date.now()}-${Math.random()}`, turn, who, action, detail }
+      const next = [...prev, entry]
+      return next.length > 80 ? next.slice(next.length - 80) : next
+    })
+  }, [turn])
+  useEffect(() => {
+    if (duelLogRef.current) {
+      duelLogRef.current.scrollTop = duelLogRef.current.scrollHeight
+    }
+  }, [duelLog])
+  // Log turn banner whenever who-goes changes
+  useEffect(() => {
+    if (!gameStarted) return
+    addLog('system', `— TURNO ${turn} —`, isPlayerTurn ? 'Vez do Jogador' : 'Vez do Oponente')
+  }, [turn, isPlayerTurn])
+
   // Destruction sequencing: IDs of cards with an active on-field destruction animation.
   // DiscardAnimationManager delays graveyard animation until the field explosion finishes.
   const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
@@ -3599,8 +3621,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
-
-      // BALIN: Vigília Eterna — ao entrar em campo, olha top 3, escolhe 1 para mão, resto para o fundo
+      addLog('player', `Jogou Unidade`, `${cardToPlace.name} (${fieldCard.currentDp}DP)`) — ao entrar em campo, olha top 3, escolhe 1 para mão, resto para o fundo
       if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
         setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
@@ -3705,6 +3726,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             hand: prev.hand.filter((_, i) => i !== cardIndex),
           }
         })
+        addLog('player', 'Armadilha face-down', cardToPlace.name)
         setSelectedHandCard(null)
         setDraggedHandCard(null)
         return
@@ -3913,8 +3935,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         // Effect doesn't require targets - resolve immediately
         const result = effectToUse.resolve(effectContext)
         if (result.success) {
-
-          // Special handling for Pedra de Afiar - open deck search modal
+          addLog('player', 'Ativou Action Function', cardToPlace.name)
           if (result.message === "PEDRA_AFIAR_SEARCH") {
             // Collect all Ultimate Gear cards in the player's deck
             const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
@@ -4588,8 +4609,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: [...prev.hand, drawnCard],
           deck: prev.deck.slice(1),
         }))
+        addLog('player', 'Comprou carta', drawnCard.name)
       }
       setPhase("main")
+      addLog('player', 'Fase Principal')
     } else if (phase === "main") {
       // ULLRBOGI: +3 DP to Ullr when entering battle phase
       if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
@@ -4607,7 +4630,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
       }
       setPhase("battle")
-    } else if (phase === "battle") {
+      addLog('player', 'Fase de Batalha')
       // ULLRBOGI: remove +3 DP from Ullr when leaving battle phase
       if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
         const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
@@ -5022,6 +5045,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 }
                 return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
               })
+              // Log the attack
+              if (newDefenderDp <= 0) {
+                addLog('player', `${attacker.name} destruiu`, `${defender.name} (${attackerDp} vs ${defenderDp}DP)`)
+              } else {
+                addLog('player', `${attacker.name} atacou`, `${defender.name} (-${attackerDp}DP → ${newDefenderDp}DP)`)
+              }
 
               // ── FEHNON SR 2DP: Fluxo de Ruptura — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
@@ -5116,8 +5145,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
-
-            // Fehnon: direct attack also counts for double-attack flags
+            addLog('player', `${attacker.name} ataque direto`, `-${attacker.currentDp || attacker.dp}LP ao oponente`)
             const keepReadyDirect =
               (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
               (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
@@ -5334,7 +5362,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         hand: [...prev.hand, prev.deck[0]],
         deck: prev.deck.slice(1),
       }))
-    }
+      addLog('enemy', 'Comprou carta')
 
     setTimeout(() => {
       setEnemyField((prev) => {
@@ -5420,6 +5448,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 canAttackTurn: turn,
               }
               newHand.splice(i, 1)
+              addLog('enemy', 'Jogou Unidade', card.name)
             }
           }
         }
@@ -5589,6 +5618,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   const newDefenderDp = defenderDp - attackerDp
                   const newAttackerDp = attackerDp - defenderDp
 
+                  // Log bot attack
+                  if (newDefenderDp <= 0) {
+                    addLog('enemy', `${unit.name} destruiu`, `${defender.name} (${attackerDp} vs ${defenderDp}DP)`)
+                  } else {
+                    addLog('enemy', `${unit.name} atacou`, `${defender.name} (-${attackerDp}DP)`)
+                  }
+
                   setPlayerField((prevPlayer) => {
                     const newPlayerUnitZone = [...prevPlayer.unitZone]
                     const newPlayerGraveyard = [...prevPlayer.graveyard]
@@ -5631,6 +5667,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     ...prevPlayer,
                     life: Math.max(0, prevPlayer.life - unit.currentDp),
                   }))
+                  addLog('enemy', `${unit.name} ataque direto`, `-${unit.currentDp}LP`)
                   newEnemyUnitZone[unitIdx] = { ...unit, hasAttacked: true }
                 }
               }
@@ -6249,11 +6286,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             {isPlayerTurn ? t("yourTurn") : t("enemyTurn")}
           </div>
         </div>
-
-        <Button onClick={surrender} size="sm" variant="ghost" className="text-slate-400 hover:text-red-400">
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          {t("surrender")}
-        </Button>
       </div>
 
       {/* Enemy hand (card backs) */}
@@ -6271,8 +6303,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       </div>
 
-      {/* Main Battle Area with Playmat */}
-      <div className="flex-1 flex items-center justify-center px-2 py-1">
+      {/* Main Battle Area with Playmat + Duel Log */}
+      <div className="flex-1 flex items-stretch px-2 py-1 gap-2">
+        {/* Playmat (left/centre) */}
+        <div className="flex-1 flex items-center justify-center">
         <div
           className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
           style={{
@@ -6876,12 +6910,110 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             </div>
           </div>
         </div>
+        </div>{/* end playmat flex-1 */}
+
+        {/* Duel Log Panel (right side) */}
+        <div className="flex flex-col gap-1.5 z-20" style={{width:'112px',minWidth:'108px'}}>
+          {/* Surrender button — TOP */}
+          <button
+            onClick={surrender}
+            className="w-full py-1.5 rounded-lg text-[10px] font-bold text-red-400 border border-red-800/60 bg-red-950/40 hover:bg-red-900/60 transition-colors"
+          >
+            ✕ Desistir
+          </button>
+
+          {/* Log header */}
+          <div className="text-center text-[9px] font-bold text-cyan-400 tracking-widest uppercase py-0.5 border-b border-cyan-800/50">
+            Duel Log
+          </div>
+
+          {/* Log entries */}
+          <div
+            ref={duelLogRef}
+            className="flex-1 overflow-y-auto flex flex-col gap-0.5"
+            style={{
+              scrollbarWidth:'none',
+              maxHeight:'calc(100vh - 260px)',
+            }}
+          >
+            {duelLog.map(entry => {
+              const isSystem = entry.who === 'system'
+              const isEnemy  = entry.who === 'enemy'
+              const bg = isSystem
+                ? 'rgba(251,191,36,0.08)'
+                : isEnemy
+                  ? 'rgba(239,68,68,0.10)'
+                  : 'rgba(59,130,246,0.10)'
+              const border = isSystem
+                ? 'rgba(251,191,36,0.35)'
+                : isEnemy
+                  ? 'rgba(239,68,68,0.40)'
+                  : 'rgba(59,130,246,0.40)'
+              const nameColor = isSystem ? '#fbbf24' : isEnemy ? '#f87171' : '#93c5fd'
+              return (
+                <div key={entry.id} style={{
+                  background:bg,
+                  border:`1px solid ${border}`,
+                  borderRadius:5,
+                  padding:'2px 4px',
+                  fontSize:9,
+                  lineHeight:'1.3',
+                }}>
+                  {isSystem ? (
+                    <div style={{color:nameColor,fontWeight:700,textAlign:'center',fontSize:9}}>{entry.action}</div>
+                  ) : (
+                    <>
+                      <div style={{color:nameColor,fontWeight:700,fontSize:8,marginBottom:1}}>
+                        {isEnemy ? '⚔ Oponente' : '🛡 Você'}
+                      </div>
+                      <div style={{color:'#e2e8f0',fontSize:9,fontWeight:600}}>{entry.action}</div>
+                      {entry.detail && <div style={{color:'#94a3b8',fontSize:8,marginTop:1}}>{entry.detail}</div>}
+                    </>
+                  )}
+                </div>
+              )
+            })}
+            {duelLog.length === 0 && (
+              <div style={{color:'#475569',fontSize:9,textAlign:'center',paddingTop:8}}>
+                Nenhuma ação ainda...
+              </div>
+            )}
+          </div>
+
+          {/* Phase / action buttons — BOTTOM */}
+          <div className="flex flex-col gap-1">
+            {isPlayerTurn && phase === "draw" && (
+              <button
+                onClick={advancePhase}
+                className="w-full py-2 rounded-lg text-[10px] font-bold bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white shadow-lg shadow-green-900/50 transition-colors"
+              >
+                {t("drawCard")}
+              </button>
+            )}
+            {isPlayerTurn && phase === "main" && (
+              <button
+                onClick={advancePhase}
+                className="w-full py-2 rounded-lg text-[10px] font-bold bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white shadow-lg shadow-blue-900/50 transition-colors"
+              >
+                {t("toBattle")}
+              </button>
+            )}
+            {isPlayerTurn && phase === "battle" && (
+              <button
+                onClick={endTurn}
+                className="w-full py-2 rounded-lg text-[10px] font-bold bg-gradient-to-b from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg shadow-amber-900/50 transition-colors"
+              >
+                {t("endTurn")}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Bottom HUD - Player info and controls */}
-      <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-2 pb-2 px-4">
+      {/* Bottom HUD - Player info only (buttons moved to Duel Log panel) */}
+      <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-1 pb-2 px-4">
         {/* Player LP bar */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center mb-2">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
               <span className="text-white font-bold">P1</span>
@@ -6890,37 +7022,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               <span className="text-xs text-slate-400">Você</span>
               <div className="text-xl font-bold text-blue-400">LP: {playerField.life}</div>
             </div>
-          </div>
-
-          {/* Phase buttons - Fixed height to prevent layout shift */}
-          <div className="flex gap-2 min-h-[40px]">
-            {isPlayerTurn && phase === "draw" && (
-              <Button
-                onClick={advancePhase}
-                size="default"
-                className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold px-6 shadow-lg shadow-green-500/30"
-              >
-                {t("drawCard")}
-              </Button>
-            )}
-            {isPlayerTurn && phase === "main" && (
-              <Button
-                onClick={advancePhase}
-                size="default"
-                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold px-6 shadow-lg shadow-blue-500/30"
-              >
-                {t("toBattle")}
-              </Button>
-            )}
-            {isPlayerTurn && phase === "battle" && (
-              <Button
-                onClick={endTurn}
-                size="default"
-                className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold px-6 shadow-lg shadow-amber-500/30"
-              >
-                {t("endTurn")}
-              </Button>
-            )}
           </div>
         </div>
 
