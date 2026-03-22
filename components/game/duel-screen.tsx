@@ -3599,7 +3599,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           unitZone: newUnitZone,
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
-      })`)
+      })
       if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
         setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
