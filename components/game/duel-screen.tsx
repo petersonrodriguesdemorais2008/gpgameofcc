@@ -5654,13 +5654,69 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // Bot plays Function/Action/Trap cards correctly:
+        // - Continuous functions (Alvorada, Grande Ordem, etc.) → stay in functionZone
+        // - Traps → placed face-down in functionZone
+        // - Action functions → activate effect immediately, go to graveyard (not placed in zone)
+        const _morganaLrBlockFuncs = playerField.unitZone.some(u =>
+          u && u.name.toLowerCase().includes("morgana") && u.dp === 4
+        )
+        const continuousFunctionNames = ["alvorada de albion", "a grande ordem"]
+
         for (let i = newHand.length - 1; i >= 0; i--) {
           const card = newHand[i]
-          // Skip scenario and ultimate cards
-          if (card && !isUnitCard(card) && card.type !== "scenario") {
+          if (!card || isUnitCard(card) || card.type === "scenario" || isUltimateCard(card)) continue
+          if (_morganaLrBlockFuncs) continue  // Morgana LR blocks bot from playing functions
+
+          const cardNameLower = card.name.toLowerCase()
+          const isContinuous = continuousFunctionNames.some(n => cardNameLower.includes(n))
+          const isTrap = card.type === "trap"
+
+          if (isContinuous) {
+            // Place continuous function in zone — it buffs units passively
             const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
-              newFunctionZone[emptySlot] = card
+              newFunctionZone[emptySlot] = { ...card, isFaceDown: false }
+              newHand = newHand.filter((_, idx) => idx !== i)
+              setTimeout(() => showEffectFeedback(`Bot jogou: ${card.name}!`, "warning"), 300)
+            }
+          } else if (isTrap) {
+            // Traps are placed face-down only
+            const emptySlot = newFunctionZone.findIndex((s) => s === null)
+            if (emptySlot !== -1) {
+              newFunctionZone[emptySlot] = { ...card, isFaceDown: true }
+              newHand = newHand.filter((_, idx) => idx !== i)
+            }
+          } else {
+            // Action function — activate effect and send to graveyard (don't place in zone)
+            const effect = getFunctionCardEffect(card)
+            if (effect) {
+              const effectContext: EffectContext = {
+                playerField: prev,            // enemy field is "player" from bot's perspective
+                enemyField: playerField,       // player field is "enemy" from bot's perspective
+                setPlayerField: setEnemyField,
+                setEnemyField: setPlayerField,
+                turn,
+                showEffectFeedback,
+              }
+              try {
+                // Only activate if canActivate passes
+                const canCheck = effect.canActivate ? effect.canActivate(effectContext) : { canActivate: true }
+                if (canCheck.canActivate && !effect.requiresDice && !effect.requiresTargets) {
+                  const result = effect.resolve(effectContext, {})
+                  if (result.success) {
+                    // Card goes to graveyard after activation
+                    setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+                    newHand = newHand.filter((_, idx) => idx !== i)
+                    setTimeout(() => showEffectFeedback(`Bot ativou: ${card.name}!`, "warning"), 200)
+                  }
+                }
+                // If needs targets or dice — bot can't handle them, skip (don't place in zone)
+              } catch {
+                // effect error — skip this card
+              }
+            } else {
+              // No registered effect — don't place in function zone, just skip
               newHand = newHand.filter((_, idx) => idx !== i)
             }
           }
