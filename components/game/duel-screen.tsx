@@ -7938,51 +7938,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
       {/* Card Inspection Overlay */}
-      {inspectedCard && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
-          onClick={() => setInspectedCard(null)}
-          onTouchEnd={() => setInspectedCard(null)}
-        >
-          <div style={{ animation: "cardInspectIn 250ms ease-out forwards" }} className="relative flex flex-col items-center">
-            {/* Glow de fundo */}
-            <div className="absolute -inset-20 bg-gradient-to-br from-cyan-500/15 to-purple-500/15 blur-3xl rounded-full" />
-
-            {/* Carta grande */}
-            <div
-              className="relative rounded-3xl border-4 border-white/40 shadow-2xl overflow-hidden bg-slate-900"
-              style={{ width: "280px", height: "392px" }}
-            >
-              <Image
-                src={inspectedCard.image || "/placeholder.svg"}
-                alt={inspectedCard.name}
-                fill
-                className="object-contain"
-              />
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-            </div>
-
-            {/* Nome e DP */}
-            <div className="mt-8 text-center bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10">
-              <div className="text-white font-bold text-2xl tracking-wide">{inspectedCard.name}</div>
-              {isUnitCard(inspectedCard) && (
-                <div className="text-cyan-400 text-lg font-bold mt-1">
-                  DP: {(inspectedCard as any).currentDp || inspectedCard.dp}
-                </div>
-              )}
-              <p className="text-slate-400 text-sm mt-2 max-w-xs line-clamp-2 italic">
-                {(inspectedCard as any).description || inspectedCard.ability || "Tactical Unit Profile"}
-              </p>
-            </div>
-
-            <div className="mt-6 text-white/50 text-sm animate-pulse flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-white/20" />
-              Toque para fechar
-            </div>
-          </div>
-        </div>
-      )}
-
       <style jsx global>{`
         @keyframes shake {
           0% { transform: translate(1px, 1px) rotate(0deg); }
