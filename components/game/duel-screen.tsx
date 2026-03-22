@@ -2969,6 +2969,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Mr. P / Vivian effect states ──
+  const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
+  const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
+
   // ── Merlin / Oswin effect states ──
   const [merlinUsed, setMerlinUsed] = useState(false)   // Visão Além do Agora — once per duel
   const [oswinUsed, setOswinUsed] = useState(false)     // Lucro na Crise — once per duel
@@ -3641,6 +3645,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+      // ── VIVIAN: Abraço das Profundezas — ao entrar em campo, pode evocar unidade 2/3DP do deck ──
+      if (cardToPlace.name.toLowerCase().includes("vivian") && !vivianAbracoUsed) {
+        setTimeout(() => activateVivianAbility(), 300)
+      }
+
       // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
       if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
         setTimeout(() => {
@@ -4955,6 +4964,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── MR. P: A Pena é Mais Forte que a Espada — seleciona 1 carta da mão do oponente para descartar ──
+        if (attacker.name.toLowerCase().includes("mr. p") || attacker.name.toLowerCase().includes("mr p") || attacker.name.toLowerCase().includes("penguim")) {
+          if (enemyField.hand.length > 0) {
+            // Bot hand is unknown — discard random card (bot doesn't reveal hand)
+            const randIdx = Math.floor(Math.random() * enemyField.hand.length)
+            const discarded = enemyField.hand[randIdx]
+            setEnemyField(prev => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== randIdx),
+              graveyard: [...prev.graveyard, discarded],
+            }))
+            showEffectFeedback(`A PENA É MAIS FORTE: ${discarded.name} descartada da mão do oponente!`, "success")
+          } else {
+            showEffectFeedback("A PENA É MAIS FORTE: Oponente não tem cartas na mão!", "info")
+          }
+        }
+
         // ── MORDRED 1DP: Destino de Camlann — compra 1 carta ao atacar (1x por duelo); se Tropas → +2DP ──
         if (attacker.name.toLowerCase().includes("mordred") && !mordredCamlannUsed) {
           const drawn = playerField.deck[0]
@@ -5639,6 +5665,96 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       })
     }
     pickNext()
+  }
+
+  // ── Mr. P: Manuscrito de Guerra — (optional) select enemy unit, -2DP ──
+  const activateMrPAbility = () => {
+    const enemyTargets = enemyField.unitZone
+      .map((u, i) => ({ u, i }))
+      .filter(({ u }) => u !== null)
+    if (enemyTargets.length === 0) {
+      showEffectFeedback("Nenhuma unidade inimiga no campo!", "error")
+      return
+    }
+    setChoiceModal({
+      visible: true,
+      cardName: "Manuscrito de Guerra — Selecione uma unidade inimiga para -2DP",
+      options: [
+        ...enemyTargets.slice(0, 4).map(({ u, i }) => ({
+          id: String(i),
+          label: u!.name,
+          description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0, (u!.currentDp ?? u!.dp) - 2)}DP`,
+        })),
+        { id: "skip", label: "Não usar", description: "Pular este efeito" },
+      ],
+      onChoose: (optId) => {
+        setChoiceModal(null)
+        if (optId === "skip") return
+        const idx = parseInt(optId)
+        setEnemyField(prev => {
+          const newUnits = [...prev.unitZone]
+          if (newUnits[idx]) {
+            const u = newUnits[idx]!
+            newUnits[idx] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 2) }
+          }
+          return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+        })
+        setMrPManuscritoUsed(true)
+        showEffectFeedback(`MANUSCRITO DE GUERRA: ${enemyTargets.find(t => t.i === idx)?.u?.name} -2DP!`, "success")
+      },
+    })
+  }
+
+  // ── Vivian: Abraço das Profundezas — on summon, special-summon a 2 or 3DP unit from deck ──
+  const activateVivianAbility = () => {
+    if (vivianAbracoUsed) return
+    const emptySlot = playerField.unitZone.findIndex(s => s === null)
+    if (emptySlot === -1) {
+      showEffectFeedback("Campo cheio! Não é possível evocar mais unidades.", "error")
+      return
+    }
+    const candidates = playerField.deck.filter(c =>
+      isUnitCard(c) && !isUltimateCard(c) && (c.dp === 2 || c.dp === 3)
+    )
+    if (candidates.length === 0) {
+      showEffectFeedback("Nenhuma unidade de 2 ou 3DP no deck!", "info")
+      return
+    }
+    const uniqueByName = candidates.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i)
+    setChoiceModal({
+      visible: true,
+      cardName: "Abraço das Profundezas — Escolha uma unidade (2 ou 3DP) do deck para evocar",
+      options: uniqueByName.slice(0, 6).map((c, i) => ({
+        id: c.id,
+        label: c.name,
+        description: `${c.dp}DP · ${c.element || "Neutro"}`,
+      })),
+      onChoose: (cardId) => {
+        setChoiceModal(null)
+        const chosen = playerField.deck.find(c => c.id === cardId)
+        if (!chosen) return
+        const fieldCard: FieldCard = {
+          ...chosen,
+          currentDp: calculateCardDP(chosen, playerField, false),
+          canAttack: false,
+          hasAttacked: false,
+          canAttackTurn: turn,
+        }
+        setPlayerField(prev => {
+          const newUnitZone = [...prev.unitZone]
+          const slot = newUnitZone.findIndex(s => s === null)
+          if (slot === -1) return prev
+          newUnitZone[slot] = fieldCard
+          return {
+            ...prev,
+            unitZone: newUnitZone as (FieldCard | null)[],
+            deck: prev.deck.filter(c => c.id !== cardId),
+          }
+        })
+        setVivianAbracoUsed(true)
+        showEffectFeedback(`ABRAÇO DAS PROFUNDEZAS: ${chosen.name} evocada do deck!`, "success")
+      },
+    })
   }
 
   // Cleanup on unmount
@@ -7474,6 +7590,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                               <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center">
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
+                            )}
+                            {/* Mr. P ability button */}
+                            {card && isPlayerTurn && phase === "main" &&
+                              (card.name.toLowerCase().includes("mr. p") || card.name.toLowerCase().includes("mr p") || card.name.toLowerCase().includes("penguim")) && !mrPManuscritoUsed && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); activateMrPAbility() }}
+                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-600 hover:bg-slate-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-pulse whitespace-nowrap z-20"
+                              >MANUS.</button>
                             )}
                             {/* Merlin ability button */}
                             {card && isPlayerTurn && phase === "main" &&
