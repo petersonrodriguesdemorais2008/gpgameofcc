@@ -4551,6 +4551,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const handleJulgamentoVazioTarget = (type: "unit" | "function", index: number) => {
     if (!julgamentoVazioTargetMode.active) return
 
+    const attackerIdx = julgamentoVazioTargetMode.attackerIndex
+
     if (type === "unit") {
       const target = enemyField.unitZone[index]
       if (!target) return
@@ -4573,7 +4575,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       showEffectFeedback(`JULGAMENTO DO VAZIO ETERNO: ${target.name} destruído!`, "success")
     }
 
+    // Mark attacker as having attacked and fully reset attack arrow/drag state
+    if (attackerIdx !== null) {
+      setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[attackerIdx]) {
+          newUnitZone[attackerIdx] = { ...newUnitZone[attackerIdx]!, hasAttacked: true }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+    }
     setJulgamentoVazioTargetMode({ active: false, attackerIndex: null })
+    setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
+    isDraggingRef.current = false
+    animationInProgressRef.current = false
   }
 
   // Cancel UG target mode
