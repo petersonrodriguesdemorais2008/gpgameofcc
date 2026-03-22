@@ -3428,6 +3428,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
     }
 
+    // ── LANCELOT: Virtude do Cavaleiro — +2DP if any Void unit on owner's field ──
+    if (card.name.toLowerCase().includes("lancelot")) {
+      const ownerUnitZone = isEnemy ? enemyField.unitZone : playerField.unitZone
+      const hasVoidUnit = ownerUnitZone.some(u => u !== null && u.id !== card.id && (u.element === "Void" || u.element === "Darkus"))
+      if (hasVoidUnit) dp += 2
+    }
+
     // Check scenarios (both can be active at the same time in some games, but here we check both fields)
     const scenarios = [
       { card: playerField.scenarioZone, isPlayer: true, field: playerField },
@@ -3608,11 +3615,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
-      if (cardToPlace.id === "balin-r" || cardToPlace.id === "balin-sr") {
+      if (cardToPlace.name.toLowerCase().includes("balin")) {
         setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
           if (top3.length === 0) return
           if (top3.length === 1) {
+            showDrawAnimation(top3[0])
             setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, top3[0]],
@@ -3637,6 +3645,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 const chosen = top3[pickedIdx]
                 const toBottom = top3.filter((_, i) => i !== pickedIdx)
                 showEffectFeedback(`Vigília Eterna: ${chosen.name} adicionada à mão!`, "success")
+                showDrawAnimation(chosen)
                 return {
                   ...prev,
                   hand: [...prev.hand, chosen],
@@ -4936,20 +4945,34 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
-        // CALEM LR: Julgamento do Vazio Eterno - check graveyard
-        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 4) {
-          // Julgamento do Vazio Eterno requires Miguel Arcanjo equipped
-          const _hasMiguelArcanjo = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
-          if (_hasMiguelArcanjo) {
-          const lastGraveyardCard = playerField.graveyard[playerField.graveyard.length - 1]
-          if (lastGraveyardCard && (lastGraveyardCard.type === "unit" || lastGraveyardCard.type === "ultimateGuardian" || lastGraveyardCard.type === "ultimateElemental" || lastGraveyardCard.type === "action")) {
-            const hasEnemyTargets = enemyField.unitZone.some(u => u !== null) || enemyField.functionZone.some(f => f !== null)
+        // CALEM LR: Julgamento do Vazio Eterno
+        // Requires Miguel Arcanjo equipped on Calem. Fires BEFORE the normal attack.
+        // If graveyard top is Unit or Function → select enemy card to destroy.
+        // If no enemy cards → +4DP. Either way, the normal attack still proceeds after.
+        const _calemLr = attacker.name.toLowerCase().includes("calem") && attacker.dp === 4
+        const _miguelOn  = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
+        if (_calemLr && _miguelOn) {
+          const lastCard = playerField.graveyard[playerField.graveyard.length - 1]
+          const isValidTrigger = lastCard && (
+            lastCard.type === "unit" || lastCard.type === "troops" ||
+            lastCard.type === "ultimateGuardian" || lastCard.type === "ultimateElemental" ||
+            lastCard.type === "function" || lastCard.type === "action"
+          )
+          if (isValidTrigger) {
+            const hasEnemyTargets =
+              enemyField.unitZone.some(u => u !== null) ||
+              enemyField.functionZone.some(f => f !== null)
             if (hasEnemyTargets) {
+              // Pause the attack — open target selector
+              // The attacker index is preserved so the effect can mark it later
               setJulgamentoVazioTargetMode({ active: true, attackerIndex: attackState.attackerIndex })
               setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
+              isDraggingRef.current = false
+              animationInProgressRef.current = false
               showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: Selecione uma carta do oponente para destruir!", "warning")
-              return
+              return  // exit — attack cancelled in favour of the effect
             } else {
+              // No targets → +4DP, then continue with normal attack
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
@@ -4960,9 +4983,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 return { ...prev, unitZone: newUnitZone }
               })
               showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: Sem alvos! Calem +4DP!", "success")
+              // Fall through → normal attack proceeds below
             }
           }
-          } // end _hasMiguelArcanjo
         }
 
         // Generate projectile animation
@@ -5268,6 +5291,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       animationInProgressRef.current = false
     }
   }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, enemyField.graveyard, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, morganaEclipseLastTurn, morganaSinfoniaLastTurn, morganaDiscordiaLastTurn, setEnemyField, setPlayerField, setAttackState, showEffectFeedback, setChoiceModal])
+
+  // ── Lancelot: Virtude do Cavaleiro — recalc DP when field changes ──
+  useEffect(() => {
+    setPlayerField(prev => {
+      const hasVoidUnit = prev.unitZone.some(u => u !== null && (u.element === "Void" || u.element === "Darkus"))
+      const newUnitZone = prev.unitZone.map(u => {
+        if (!u || !u.name.toLowerCase().includes("lancelot")) return u
+        // recalc without Void bonus first, then re-apply
+        const baseCalc = calculateCardDP(u, { ...prev, unitZone: prev.unitZone }, false)
+        return { ...u, currentDp: baseCalc }
+      })
+      return { ...prev, unitZone: newUnitZone as (FieldCard | null)[] }
+    })
+  }, [playerField.unitZone.map(u => u?.id).join(',')])
 
   // ── Morgana UR 3DP: Domínio Eterno — block traps while on field ──
   useEffect(() => {
@@ -5701,6 +5738,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 const newUnits = [...prev.unitZone]
                 const destroyed = newUnits[targetIdx]
                 newUnits[targetIdx] = null
+                // ── LANCELOT: Virtude do Cavaleiro — recovery on destroy by effect ──
+                if (destroyed && destroyed.name.toLowerCase().includes("lancelot")) {
+                  const funcCards = prev.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                  if (funcCards.length > 0) {
+                    const first = funcCards[0]
+                    setTimeout(() => showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${first.name} recuperada do cemitério!`, "success"), 700)
+                    return {
+                      ...prev,
+                      unitZone: newUnits as (FieldCard | null)[],
+                      graveyard: destroyed ? [...prev.graveyard.filter(gc => gc.id !== first.id), destroyed] : prev.graveyard,
+                      hand: [...prev.hand, first],
+                    }
+                  }
+                }
                 return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
               })
               setEnemyUgAbilityUsed(true)
@@ -5724,9 +5775,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             const newEnemyUnitZone = [...prevEnemy.unitZone]
             const newEnemyGraveyard = [...prevEnemy.graveyard]
 
+            // Track which player slots were already destroyed this loop to prevent duplicate graveyard adds
+            const destroyedPlayerSlots = new Set<number>()
+
             newEnemyUnitZone.forEach((unit, unitIdx) => {
               if (unit && !unit.hasAttacked) {
-                const playerUnitIndex = playerField.unitZone.findIndex((u) => u !== null)
+                // Only attack slots that haven't been destroyed earlier in this same loop
+                const playerUnitIndex = playerField.unitZone.findIndex((u, idx) => u !== null && !destroyedPlayerSlots.has(idx))
 
                 if (playerUnitIndex !== -1) {
                   const defender = playerField.unitZone[playerUnitIndex] as FieldCard
@@ -5756,12 +5811,58 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         markDestroyed(defender)
                         newPlayerGraveyard.push(defender)
                         newPlayerUnitZone[playerUnitIndex] = null
+                        destroyedPlayerSlots.add(playerUnitIndex)
                         // ── MORGANA UR 3DP: Domínio Eterno — removed from field → enemy loses 3LP ──
                         if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
                           setTimeout(() => {
                             setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) }))
                             showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning")
                           }, 600)
+                        }
+
+                        // ── LANCELOT: Virtude do Cavaleiro — ao ser destruído, recupera 1 Function do cemitério ──
+                        if (defender.name.toLowerCase().includes("lancelot")) {
+                          setTimeout(() => {
+                            setPlayerField(prevP => {
+                              const funcCards = prevP.graveyard.filter(gc =>
+                                gc.type === "function" || gc.type === "trap" || gc.type === "action"
+                              )
+                              if (funcCards.length === 0) {
+                                showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info")
+                                return prevP
+                              }
+                              if (funcCards.length === 1) {
+                                showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcCards[0].name} recuperada!`, "success")
+                                return {
+                                  ...prevP,
+                                  hand: [...prevP.hand, funcCards[0]],
+                                  graveyard: prevP.graveyard.filter(gc => gc.id !== funcCards[0].id),
+                                }
+                              }
+                              // Multiple options — show choice modal
+                              setChoiceModal({
+                                visible: true,
+                                cardName: "Virtude do Cavaleiro — Recuperar 1 Function",
+                                options: funcCards.slice(0, 6).map((gc, i) => ({
+                                  id: String(i),
+                                  label: gc.name,
+                                  description: gc.type + " · " + (gc.element || "Neutro"),
+                                })),
+                                onChoose: (optId: string) => {
+                                  setChoiceModal(null)
+                                  const chosen = funcCards[parseInt(optId)]
+                                  if (!chosen) return
+                                  setPlayerField(prevP2 => ({
+                                    ...prevP2,
+                                    hand: [...prevP2.hand, chosen],
+                                    graveyard: prevP2.graveyard.filter(gc => gc.id !== chosen.id),
+                                  }))
+                                  showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${chosen.name} recuperada!`, "success")
+                                },
+                              })
+                              return prevP
+                            })
+                          }, 700)
                         }
                       }
                     } else {
