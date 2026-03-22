@@ -2969,6 +2969,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Hrotti states ──
+  const [hrottiSrLastTurn, setHrottiSrLastTurn] = useState<number|null>(null)      // Avareza de Fafnir cooldown (3 turns)
+  const [hrottiSrAttackLastTurn, setHrottiSrAttackLastTurn] = useState<number|null>(null)  // Corte do Medo Rúnico cooldown (2 turns)
+  const [hrottiUrUsed, setHrottiUrUsed] = useState(false)                           // Herança de Andvaranaut — once ever
+  const [hrottiUrNullifyUntil, setHrottiUrNullifyUntil] = useState<number|null>(null)  // turn until UG effects nullified
+  const [hrottiLrTidalActiveTurn, setHrottiLrTidalActiveTurn] = useState<number|null>(null)  // turn Tidal first activated
+  const [hrottiLrIraUsed, setHrottiLrIraUsed] = useState(false)                    // Ira Maelstrom triggered this battle
+
   // ── Unit ability confirmation modal ──
   const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; activate:()=>void} | null>(null)
 
@@ -3889,6 +3897,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           setPlayerField,
           setEnemyField,
         }
+
+        // ── HROTTI LR: Tidal de Midgard — bloqueia habilidades/magias/armadilhas do oponente durante as primeiras 4 turnos ──
+        // (This blocks enemy function card activations — handled in the bot executeBotTurn via _morganaLrBlock pattern)
+        // For player's perspective: this has no direct UI block needed since bot is auto
 
         // ── REI ARTHUR SR 2DP: Soberania das Sombras — block healing cards while on field ──
         const _arthurSrOnField = enemyField.unitZone.some(u =>
@@ -4984,6 +4996,45 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── HROTTI SR: Corte do Medo Rúnico — antes de atacar, todas unidades inimigas -1DP (a cada 2 turnos na fase de batalha) ──
+        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 1) {
+          if (hrottiSrAttackLastTurn === null || turn - hrottiSrAttackLastTurn >= 2) {
+            const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
+            if (hasEnemyUnits) {
+              setEnemyField(prev => ({
+                ...prev,
+                unitZone: prev.unitZone.map(u => u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 1) } : null) as (FieldCard|null)[],
+              }))
+              setHrottiSrAttackLastTurn(turn)
+              showEffectFeedback("CORTE DO MEDO RÚNICO: Todas as unidades inimigas -1DP!", "warning")
+            }
+          }
+        }
+
+        // ── HROTTI UR: Fafnisbani — se alvo tem ≤3DP total, Hrotti +2DP antes do ataque ──
+        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 2) {
+          if (attackState.targetInfo?.type === "unit" && attackState.targetInfo.index !== undefined) {
+            const target = enemyField.unitZone[attackState.targetInfo.index]
+            if (target && (target.currentDp ?? target.dp) <= 3) {
+              const attackerIdx = attackState.attackerIndex!
+              setPlayerField(prev => {
+                const newUnits = [...prev.unitZone]
+                if (newUnits[attackerIdx]) {
+                  const h = newUnits[attackerIdx]!
+                  newUnits[attackerIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + 2 }
+                }
+                return { ...prev, unitZone: newUnits }
+              })
+              showEffectFeedback(`FAFNISBANI: ${target.name} tem ≤3DP! Hrotti +2DP!`, "success")
+            }
+          }
+        }
+
+        // ── HROTTI LR: Tidal de Midgard — registra quando entra em batalha pela primeira vez ──
+        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 3) {
+          if (hrottiLrTidalActiveTurn === null) setHrottiLrTidalActiveTurn(turn)
+        }
+
         // ── MORDRED 1DP: Destino de Camlann — compra 1 carta ao atacar (1x por duelo); se Tropas → +2DP ──
         if (attacker.name.toLowerCase().includes("mordred") && !mordredCamlannUsed) {
           const drawn = playerField.deck[0]
@@ -5497,6 +5548,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               }, 400)
             }
 
+            // ── HROTTI LR: Ira Maelstrom — after dealing direct battle damage ──
+            if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 3 && !hrottiLrIraUsed) {
+              setHrottiLrIraUsed(true)
+              setTimeout(() => activateHrottiLrIra(), 500)
+            }
+
             const keepReadyDirect =
               (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
               (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
@@ -5766,6 +5823,125 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         showEffectFeedback(`ABRAÇO DAS PROFUNDEZAS: ${chosen.name} evocada do deck!`, "success")
       },
     })
+  }
+
+  // ── Hrotti SR: Avareza de Fafnir — discard own field cards for +1DP each (every 3 turns) ──
+  const activateHrottiSrAbility = () => {
+    if (hrottiSrLastTurn !== null && turn - hrottiSrLastTurn < 3) {
+      showEffectFeedback(`Avareza de Fafnir disponível no turno ${hrottiSrLastTurn + 3}!`, "error"); return
+    }
+    // Collect all active cards on player field (units except Hrotti, functions, scenario, ultimate)
+    const fieldOptions: { id: string; label: string; description: string; zone: string; index: number }[] = []
+    playerField.unitZone.forEach((u, i) => {
+      if (u && !u.name.toLowerCase().includes("hrotti"))
+        fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp}DP`, zone: 'unit', index: i })
+    })
+    playerField.functionZone.forEach((f, i) => {
+      if (f && !f.isFaceDown)
+        fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function`, zone: 'func', index: i })
+    })
+    if (playerField.scenarioZone)
+      fieldOptions.push({ id: 'scenario', label: playerField.scenarioZone.name, description: 'Cenário', zone: 'scenario', index: 0 })
+    if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
+
+    // Multi-select via sequential choice — show all options with "Confirmar" at end
+    const selected: string[] = []
+    const confirmAndApply = () => {
+      if (selected.length === 0) { showEffectFeedback("Nenhuma carta selecionada.", "info"); return }
+      const bonus = selected.length
+      // Remove selected cards from field
+      setPlayerField(prev => {
+        let newUnitZone = [...prev.unitZone]
+        let newFuncZone = [...prev.functionZone]
+        let newScenario = prev.scenarioZone
+        let newGrave = [...prev.graveyard]
+        let newUltimate = prev.ultimateZone
+        selected.forEach(sel => {
+          if (sel.startsWith('unit-')) {
+            const idx = parseInt(sel.replace('unit-', ''))
+            if (newUnitZone[idx]) { newGrave.push(newUnitZone[idx]!); newUnitZone[idx] = null }
+          } else if (sel.startsWith('func-')) {
+            const idx = parseInt(sel.replace('func-', ''))
+            if (newFuncZone[idx]) { newGrave.push(newFuncZone[idx]!); newFuncZone[idx] = null }
+          } else if (sel === 'scenario') {
+            if (newScenario) { newGrave.push(newScenario); newScenario = null }
+          }
+        })
+        // Apply +1DP per card to Hrotti SR
+        const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 1)
+        if (hrottiIdx !== -1 && newUnitZone[hrottiIdx]) {
+          const h = newUnitZone[hrottiIdx]!
+          newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, graveyard: newGrave }
+      })
+      setHrottiSrLastTurn(turn)
+      showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
+    }
+
+    // Build choice with "Confirmar" option
+    const buildModal = () => {
+      const available = fieldOptions.filter(o => !selected.includes(o.id))
+      setChoiceModal({
+        visible: true,
+        cardName: `Avareza de Fafnir — Selecione cartas para descartar (${selected.length} selecionadas)`,
+        options: [
+          ...available.map(o => ({ id: o.id, label: o.label, description: o.description })),
+          { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length > 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
+        ],
+        onChoose: (optId) => {
+          setChoiceModal(null)
+          if (optId === '__confirm__') { confirmAndApply(); return }
+          selected.push(optId)
+          buildModal()
+        },
+      })
+    }
+    buildModal()
+  }
+
+  // ── Hrotti UR: Herança de Andvaranaut — nullify all Ultimate Gear effects for 3 turns (once ever) ──
+  const activateHrottiUrAbility = () => {
+    if (hrottiUrUsed) { showEffectFeedback("Herança de Andvaranaut já foi usada!", "error"); return }
+    setHrottiUrUsed(true)
+    setHrottiUrNullifyUntil(turn + 3)
+    showEffectFeedback("HERANÇA DE ANDVARANAUT: Todos os efeitos de Ultimate Gear anulados por 3 turnos!", "warning")
+  }
+
+  // ── Hrotti LR: Ira Maelstrom — after dealing battle damage: shuffle top of enemy deck to bottom; look at own top ──
+  const activateHrottiLrIra = () => {
+    // Move enemy's top deck card to bottom
+    if (enemyField.deck.length > 0) {
+      const top = enemyField.deck[0]
+      setEnemyField(prev => ({
+        ...prev,
+        deck: [...prev.deck.slice(1), top],
+      }))
+      showEffectFeedback("IRA MAELSTROM: Carta do topo do deck inimigo enviada ao fundo!", "warning")
+    }
+    // Look at own top and choose to keep or bottom
+    const ownTop = playerField.deck[0]
+    if (ownTop) {
+      setChoiceModal({
+        visible: true,
+        cardName: `Ira Maelstrom — Carta do topo: ${ownTop.name}`,
+        options: [
+          { id: 'keep', label: 'Manter no topo', description: `${ownTop.name} permanece no topo` },
+          { id: 'bottom', label: 'Enviar ao fundo', description: `${ownTop.name} vai ao fundo do seu deck` },
+        ],
+        onChoose: (optId) => {
+          setChoiceModal(null)
+          if (optId === 'bottom') {
+            setPlayerField(prev => ({
+              ...prev,
+              deck: [...prev.deck.slice(1), prev.deck[0]],
+            }))
+            showEffectFeedback(`IRA MAELSTROM: ${ownTop.name} enviada ao fundo do seu deck!`, "info")
+          }
+        },
+      })
+    }
+    setHrottiLrIraUsed(false) // Reset for next battle
   }
 
   // Cleanup on unmount
@@ -6105,12 +6281,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         const _morganaLrBlockFuncs = playerField.unitZone.some(u =>
           u && u.name.toLowerCase().includes("morgana") && u.dp === 4
         )
+        // ── HROTTI LR: Tidal de Midgard — block bot functions for 4 turns from activation ──
+        const _hrottiLrTidalBlock = hrottiLrTidalActiveTurn !== null && turn - hrottiLrTidalActiveTurn < 4
         const continuousFunctionNames = ["alvorada de albion", "a grande ordem"]
 
         for (let i = newHand.length - 1; i >= 0; i--) {
           const card = newHand[i]
           if (!card || isUnitCard(card) || card.type === "scenario" || isUltimateCard(card)) continue
-          if (_morganaLrBlockFuncs) continue  // Morgana LR blocks bot from playing functions
+          if (_morganaLrBlockFuncs || _hrottiLrTidalBlock) continue  // Morgana LR or Hrotti LR blocks bot from playing functions
 
           const cardNameLower = card.name.toLowerCase()
           const isContinuous = continuousFunctionNames.some(n => cardNameLower.includes(n))
@@ -6560,6 +6738,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
 
     setCalemUrDoubleAttack(false)
+    setHrottiLrIraUsed(false)
     // Morgana cooldowns persist across turns (they track last-used turn number)
     // Eclipse active resets if it was applied last turn
     if (morganaEclipseActive && turn - morganaEclipseActive.turn >= 1) setMorganaEclipseActive(null)
@@ -7541,13 +7720,17 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
                       (cardName.includes("mordred") && !mordredCamlannUsed) ||
                       (cardName.includes("arthur") && card.dp === 3 && (arthurUrVeredito === null || turn - arthurUrVeredito >= 2)) ||
-                      (cardName.includes("arthur") && card.dp === 4 && (arthurLrCalice === null || turn - arthurLrCalice >= 2))
+                      (cardName.includes("arthur") && card.dp === 4 && (arthurLrCalice === null || turn - arthurLrCalice >= 2)) ||
+                      (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
+                      (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed)
                     )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
+                      if (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
+                      if (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) return activateHrottiUrAbility
                       return null
                     }
 
