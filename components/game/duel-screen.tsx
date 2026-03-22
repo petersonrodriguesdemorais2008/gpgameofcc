@@ -5018,10 +5018,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 }
                 return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
               })
-              // Log the attack
-              if (newDefenderDp <= 0) {`)
-              } else {`)
-              }
+
 
               // ── FEHNON SR 2DP: Fluxo de Ruptura — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
@@ -5587,10 +5584,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   const newDefenderDp = defenderDp - attackerDp
                   const newAttackerDp = attackerDp - defenderDp
 
-                  // Log bot attack
-                  if (newDefenderDp <= 0) {`)
-                  } else {`)
-                  }
+
 
                   setPlayerField((prevPlayer) => {
                     const newPlayerUnitZone = [...prevPlayer.unitZone]
