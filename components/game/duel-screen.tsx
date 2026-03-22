@@ -4879,7 +4879,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // CALEM SR: Pulso da Nulidade - draw on attack every 3 turns
-        if (attacker.id === "calem-sr" && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
+        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 2 && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isVoidTroop = (drawn.element === "Void" && drawn.type === "troops")
@@ -4894,21 +4894,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               }
               return { ...prev, deck: newDeck, hand: newHand, unitZone: newUnitZone }
             })
+            showDrawAnimation(drawn)
             setPulsoNulidadeLastUsedTurn(turn)
             showEffectFeedback(isVoidTroop ? "PULSO DA NULIDADE: Calem +1DP (carta Void Tropas)!" : "PULSO DA NULIDADE: Carta comprada!", "info")
           }
         }
 
         // CALEM UR: Impacto sem Fé - draw on attack every 3 turns, if Unit → attack again
-        if (attacker.id === "calem-ur" && (impactoSemFeLastUsedTurn === null || turn - impactoSemFeLastUsedTurn >= 3)) {
+        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 3 && (impactoSemFeLastUsedTurn === null || turn - impactoSemFeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isUnit = ["unit", "ultimateGuardian", "ultimateElemental"].includes(drawn.type)
+            const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
             setPlayerField((prev) => {
               const newDeck = [...prev.deck.slice(1)]
               const newHand = [...prev.hand, drawn]
               return { ...prev, deck: newDeck, hand: newHand }
             })
+            showDrawAnimation(drawn)
             setImpactoSemFeLastUsedTurn(turn)
             if (isUnit) {
               setCalemUrDoubleAttack(true)
@@ -4920,7 +4922,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // CALEM LR: Julgamento do Vazio Eterno - check graveyard
-        if (attacker.id === "calem-lr" && attackState.targetInfo.type === "unit") {
+        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 4) {
+          // Julgamento do Vazio Eterno requires Miguel Arcanjo equipped
+          const _hasMiguelArcanjo = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
+          if (_hasMiguelArcanjo) {
           const lastGraveyardCard = playerField.graveyard[playerField.graveyard.length - 1]
           if (lastGraveyardCard && (lastGraveyardCard.type === "unit" || lastGraveyardCard.type === "ultimateGuardian" || lastGraveyardCard.type === "ultimateElemental" || lastGraveyardCard.type === "action")) {
             const hasEnemyTargets = enemyField.unitZone.some(u => u !== null) || enemyField.functionZone.some(f => f !== null)
@@ -4942,6 +4947,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: Sem alvos! Calem +4DP!", "success")
             }
           }
+          } // end _hasMiguelArcanjo
         }
 
         // Generate projectile animation
@@ -5141,14 +5147,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 }, 500)
               }
 
-              if (newDefenderDp <= 0 && attacker.id === "calem-sr") {
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 2) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
                   showEffectFeedback("VÁCUO DE ESSÊNCIA: 1DP de dano direto ao oponente!", "warning")
                 }, 600)
               }
 
-              if (newDefenderDp <= 0 && attacker.id === "calem-ur") {
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) {
                 setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
                   const idx = attackState.attackerIndex!
@@ -5161,21 +5167,25 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 showEffectFeedback("HORIZONTE DE EVENTOS: Calem +2DP até o final do turno!", "success")
               }
 
-              if (newDefenderDp <= 0 && attacker.id === "calem-lr") {
-                setPlayerField((prev) => {
-                  const newUnitZone = [...prev.unitZone]
-                  const idx = attackState.attackerIndex!
-                  if (newUnitZone[idx]) {
-                    const cur = newUnitZone[idx]!
-                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
-                  }
-                  return { ...prev, unitZone: newUnitZone }
-                })
-                showEffectFeedback("LEGIÃO DO GUARDIÃO ALADO: Calem +3DP!", "success")
+              if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 4) {
+                // Legião do Guardião Alado requires Miguel Arcanjo equipped
+                const hasMiguelArcanjo = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
+                if (hasMiguelArcanjo) {
+                  setPlayerField((prev) => {
+                    const newUnitZone = [...prev.unitZone]
+                    const idx = attackState.attackerIndex!
+                    if (newUnitZone[idx]) {
+                      const cur = newUnitZone[idx]!
+                      newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
+                    }
+                    return { ...prev, unitZone: newUnitZone }
+                  })
+                  showEffectFeedback("LEGIÃO DO GUARDIÃO ALADO: Calem +3DP! (Miguel Arcanjo)", "success")
+                }
               }
 
               const keepAttackReady =
-                (calemUrDoubleAttack && attacker.id === "calem-ur") ||
+                (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) ||
                 (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
                 (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
                 (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
@@ -5185,7 +5195,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
                 return { ...prev, unitZone: newUnitZone }
               })
-              if (calemUrDoubleAttack && attacker.id === "calem-ur") setCalemUrDoubleAttack(false)
+              if (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) setCalemUrDoubleAttack(false)
               if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
               if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
               if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) { setFehnonLrDouble(false) }
@@ -5832,7 +5842,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       ...prev,
       unitZone: prev.unitZone.map((unit) => {
         if (!unit) return null
-        if (unit.id === "calem-ur") return { ...unit, hasAttacked: false, currentDp: unit.dp }
+        if (unit.name.toLowerCase().includes("calem") && unit.dp === 3) return { ...unit, hasAttacked: false, currentDp: unit.dp }
         // Fehnon UR: Singularidade Zero +2DP buff resets at end of turn
         if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3) return { ...unit, hasAttacked: false, currentDp: unit.dp }
         // Fehnon LR: +3DP bonus resets at end of turn
