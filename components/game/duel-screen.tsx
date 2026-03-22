@@ -3362,7 +3362,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
   }
 
+  // Cards that go in the Ultimate Zone (gear/weapons only)
+  // Rei Arthur (ultimateGuardian) is a UNIT and goes in the Unit Zone
   const isUltimateCard = (card: GameCard) => {
+    if (card.name.toLowerCase().includes("rei arthur")) return false
     return (
       card.type === "ultimateGear" ||
       card.type === "ultimateGuardian"
