@@ -6304,10 +6304,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       </div>
 
-      {/* Main Battle Area with Playmat + Duel Log */}
-      <div className="flex-1 flex items-stretch px-2 py-1 gap-2">
-        {/* Playmat (left/centre) */}
-        <div className="flex-1 flex items-center justify-center">
+      {/* Main Battle Area — centered arena */}
+      <div className="flex-1 flex items-center justify-center px-2 py-1">
         <div
           className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
           style={{
@@ -6911,107 +6909,169 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             </div>
           </div>
         </div>
-        </div>{/* end playmat flex-1 */}
 
-        {/* Duel Log Panel (right side) */}
-        <div className="flex flex-col gap-1.5 z-20" style={{width:'112px',minWidth:'108px'}}>
-          {/* Surrender button — TOP */}
-          <button
-            onClick={surrender}
-            className="w-full py-1.5 rounded-lg text-[10px] font-bold text-red-400 border border-red-800/60 bg-red-950/40 hover:bg-red-900/60 transition-colors"
-          >
-            ✕ Desistir
-          </button>
+      </div>
 
-          {/* Log header */}
-          <div className="text-center text-[9px] font-bold text-cyan-400 tracking-widest uppercase py-0.5 border-b border-cyan-800/50">
-            Duel Log
-          </div>
 
-          {/* Log entries */}
-          <div
-            ref={duelLogRef}
-            className="flex-1 overflow-y-auto flex flex-col gap-0.5"
-            style={{
-              scrollbarWidth:'none',
-              maxHeight:'calc(100vh - 260px)',
-            }}
-          >
-            {duelLog.map(entry => {
-              const isSystem = entry.who === 'system'
-              const isEnemy  = entry.who === 'enemy'
-              const bg = isSystem
-                ? 'rgba(251,191,36,0.08)'
-                : isEnemy
-                  ? 'rgba(239,68,68,0.10)'
-                  : 'rgba(59,130,246,0.10)'
-              const border = isSystem
-                ? 'rgba(251,191,36,0.35)'
-                : isEnemy
-                  ? 'rgba(239,68,68,0.40)'
-                  : 'rgba(59,130,246,0.40)'
-              const nameColor = isSystem ? '#fbbf24' : isEnemy ? '#f87171' : '#93c5fd'
+      {/* ══════════════════════════════════════════════════
+           DUEL LOG — fixed right panel, full field height
+          ══════════════════════════════════════════════════ */}
+      <div
+        style={{
+          position:'fixed', right:0, top:0, bottom:0,
+          width:130, zIndex:30,
+          display:'flex', flexDirection:'column',
+          padding:'8px 6px',
+          pointerEvents:'none',
+        }}
+      >
+        {/* SURRENDER — top */}
+        <button
+          onClick={surrender}
+          style={{
+            pointerEvents:'all',
+            width:'100%', marginBottom:6,
+            padding:'6px 0', borderRadius:8,
+            fontSize:10, fontWeight:700,
+            color:'#f87171',
+            background:'rgba(127,29,29,0.55)',
+            border:'1px solid rgba(239,68,68,0.35)',
+            backdropFilter:'blur(6px)',
+            cursor:'pointer',
+            letterSpacing:'.5px',
+          }}
+        >
+          ✕ Desistir
+        </button>
+
+        {/* LOG HEADER */}
+        <div style={{
+          textAlign:'center', fontSize:9, fontWeight:800,
+          letterSpacing:'2px', textTransform:'uppercase',
+          color:'#67e8f9',
+          padding:'3px 0 4px',
+          borderBottom:'1px solid rgba(103,232,249,0.20)',
+          marginBottom:4,
+        }}>
+          ⚔ Duel Log
+        </div>
+
+        {/* LOG ENTRIES — scrollable, fills remaining height */}
+        <div
+          ref={duelLogRef}
+          style={{
+            flex:1, overflowY:'auto', overflowX:'hidden',
+            display:'flex', flexDirection:'column', gap:3,
+            scrollbarWidth:'none',
+            pointerEvents:'all',
+          }}
+        >
+          {duelLog.length === 0 && (
+            <div style={{color:'#334155',fontSize:9,textAlign:'center',marginTop:16}}>
+              Aguardando ações...
+            </div>
+          )}
+          {duelLog.map((entry) => {
+            const isSystem = entry.who === 'system'
+            const isEnemy  = entry.who === 'enemy'
+
+            if (isSystem) {
+              // Turn banner
               return (
                 <div key={entry.id} style={{
-                  background:bg,
-                  border:`1px solid ${border}`,
-                  borderRadius:5,
-                  padding:'2px 4px',
-                  fontSize:9,
-                  lineHeight:'1.3',
+                  textAlign:'center',
+                  padding:'4px 2px',
+                  margin:'2px 0',
+                  borderRadius:6,
+                  background:'linear-gradient(90deg,transparent,rgba(251,191,36,0.12),transparent)',
+                  borderTop:'1px solid rgba(251,191,36,0.25)',
+                  borderBottom:'1px solid rgba(251,191,36,0.25)',
                 }}>
-                  {isSystem ? (
-                    <div style={{color:nameColor,fontWeight:700,textAlign:'center',fontSize:9}}>{entry.action}</div>
-                  ) : (
-                    <>
-                      <div style={{color:nameColor,fontWeight:700,fontSize:8,marginBottom:1}}>
-                        {isEnemy ? '⚔ Oponente' : '🛡 Você'}
-                      </div>
-                      <div style={{color:'#e2e8f0',fontSize:9,fontWeight:600}}>{entry.action}</div>
-                      {entry.detail && <div style={{color:'#94a3b8',fontSize:8,marginTop:1}}>{entry.detail}</div>}
-                    </>
-                  )}
+                  <div style={{fontSize:9,fontWeight:800,color:'#fbbf24',letterSpacing:1}}>{entry.action}</div>
+                  {entry.detail && <div style={{fontSize:8,color:'rgba(251,191,36,0.65)',marginTop:1}}>{entry.detail}</div>}
                 </div>
               )
-            })}
-            {duelLog.length === 0 && (
-              <div style={{color:'#475569',fontSize:9,textAlign:'center',paddingTop:8}}>
-                Nenhuma ação ainda...
-              </div>
-            )}
-          </div>
+            }
 
-          {/* Phase / action buttons — BOTTOM */}
-          <div className="flex flex-col gap-1">
-            {isPlayerTurn && phase === "draw" && (
-              <button
-                onClick={advancePhase}
-                className="w-full py-2 rounded-lg text-[10px] font-bold bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white shadow-lg shadow-green-900/50 transition-colors"
-              >
-                {t("drawCard")}
-              </button>
-            )}
-            {isPlayerTurn && phase === "main" && (
-              <button
-                onClick={advancePhase}
-                className="w-full py-2 rounded-lg text-[10px] font-bold bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white shadow-lg shadow-blue-900/50 transition-colors"
-              >
-                {t("toBattle")}
-              </button>
-            )}
-            {isPlayerTurn && phase === "battle" && (
-              <button
-                onClick={endTurn}
-                className="w-full py-2 rounded-lg text-[10px] font-bold bg-gradient-to-b from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg shadow-amber-900/50 transition-colors"
-              >
-                {t("endTurn")}
-              </button>
-            )}
-          </div>
+            const accent = isEnemy ? '#f87171' : '#60a5fa'
+            const bg     = isEnemy ? 'rgba(239,68,68,0.07)' : 'rgba(59,130,246,0.07)'
+            const bdr    = isEnemy ? 'rgba(239,68,68,0.28)' : 'rgba(59,130,246,0.28)'
+            const icon   = isEnemy ? '⚔' : '🛡'
+
+            return (
+              <div key={entry.id} style={{
+                background:bg,
+                border:`1px solid ${bdr}`,
+                borderRadius:6,
+                padding:'4px 5px',
+                position:'relative',
+                overflow:'hidden',
+              }}>
+                {/* left accent bar */}
+                <div style={{
+                  position:'absolute',left:0,top:0,bottom:0,width:2,
+                  background:accent,borderRadius:'6px 0 0 6px',opacity:.7,
+                }}/>
+                <div style={{paddingLeft:6}}>
+                  <div style={{
+                    display:'flex', alignItems:'center', gap:3,
+                    marginBottom:2,
+                  }}>
+                    <span style={{fontSize:9}}>{icon}</span>
+                    <span style={{fontSize:8,fontWeight:700,color:accent,letterSpacing:.3}}>
+                      {isEnemy ? 'Oponente' : 'Você'}
+                    </span>
+                  </div>
+                  <div style={{fontSize:9,fontWeight:600,color:'#e2e8f0',lineHeight:1.3}}>
+                    {entry.action}
+                  </div>
+                  {entry.detail && (
+                    <div style={{fontSize:8,color:'#94a3b8',marginTop:2,lineHeight:1.2}}>
+                      {entry.detail}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* PHASE BUTTONS — bottom */}
+        <div style={{display:'flex',flexDirection:'column',gap:4,marginTop:6,pointerEvents:'all'}}>
+          {isPlayerTurn && phase === "draw" && (
+            <button onClick={advancePhase} style={{
+              width:'100%', padding:'8px 0', borderRadius:8,
+              fontSize:10, fontWeight:800, color:'#fff',
+              background:'linear-gradient(135deg,#16a34a,#15803d)',
+              border:'1px solid rgba(74,222,128,0.35)',
+              cursor:'pointer', letterSpacing:.4,
+              boxShadow:'0 2px 12px rgba(22,163,74,0.4)',
+            }}>{t("drawCard")}</button>
+          )}
+          {isPlayerTurn && phase === "main" && (
+            <button onClick={advancePhase} style={{
+              width:'100%', padding:'8px 0', borderRadius:8,
+              fontSize:10, fontWeight:800, color:'#fff',
+              background:'linear-gradient(135deg,#2563eb,#1d4ed8)',
+              border:'1px solid rgba(96,165,250,0.35)',
+              cursor:'pointer', letterSpacing:.4,
+              boxShadow:'0 2px 12px rgba(37,99,235,0.4)',
+            }}>{t("toBattle")}</button>
+          )}
+          {isPlayerTurn && phase === "battle" && (
+            <button onClick={endTurn} style={{
+              width:'100%', padding:'8px 0', borderRadius:8,
+              fontSize:10, fontWeight:800, color:'#fff',
+              background:'linear-gradient(135deg,#d97706,#b45309)',
+              border:'1px solid rgba(251,191,36,0.35)',
+              cursor:'pointer', letterSpacing:.4,
+              boxShadow:'0 2px 12px rgba(217,119,6,0.4)',
+            }}>{t("endTurn")}</button>
+          )}
         </div>
       </div>
 
-      {/* Bottom HUD - Player info only (buttons moved to Duel Log panel) */}
+      {/* Bottom HUD */}
       <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-1 pb-2 px-4">
         {/* Player LP bar */}
         <div className="flex items-center mb-2">
