@@ -5860,6 +5860,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   // The bot attacker never dies from its own attack, matching how player attacks work.
                   const newDefenderDp = defenderDp - attackerDp
 
+                  // Mark slot destroyed SYNCHRONOUSLY before setPlayerField so subsequent
+                  // forEach iterations skip this slot via destroyedPlayerSlots.has()
+                  if (newDefenderDp <= 0) {
+                    destroyedPlayerSlots.add(playerUnitIndex)
+                  }
+
                   setPlayerField((prevPlayer) => {
                     const newPlayerUnitZone = [...prevPlayer.unitZone]
                     const newPlayerGraveyard = [...prevPlayer.graveyard]
@@ -5878,7 +5884,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         markDestroyed(defender)
                         newPlayerGraveyard.push(defender)
                         newPlayerUnitZone[playerUnitIndex] = null
-                        destroyedPlayerSlots.add(playerUnitIndex)
+                        // (destroyedPlayerSlots.add already called above, synchronously)
                         // ── MORGANA UR 3DP: Domínio Eterno — removed from field → enemy loses 3LP ──
                         if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
                           setTimeout(() => {
