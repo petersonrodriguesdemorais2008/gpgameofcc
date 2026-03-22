@@ -2969,6 +2969,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Logi states ──
+  const [logiSrKillsThisBattle, setLogiSrKillsThisBattle] = useState(0)           // Incêndio Vivo: extra attacks this battle
+  const [logiUrDevorarLastTurn, setLogiUrDevorarLastTurn] = useState<number|null>(null)  // Devorar o Mundo cooldown (3 turns)
+
   // ── Hrotti states ──
   const [hrottiSrLastTurn, setHrottiSrLastTurn] = useState<number|null>(null)      // Avareza de Fafnir cooldown (3 turns)
   const [hrottiSrAttackLastTurn, setHrottiSrAttackLastTurn] = useState<number|null>(null)  // Corte do Medo Rúnico cooldown (2 turns)
@@ -3656,6 +3660,53 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+      // ── LOGI UR: Cinzas do Mundo — ao entrar em campo, +2DP a outra unidade (ou compra 1 carta) ──
+      if (cardToPlace.name.toLowerCase().includes("logi") && cardToPlace.dp === 2) {
+        setTimeout(() => {
+          // Look at current state after placement
+          const otherUnits = playerField.unitZone
+            .map((u, i) => ({ u, i }))
+            .filter(({ u }) => u !== null && !u.name.toLowerCase().includes("logi"))
+          if (otherUnits.length === 0) {
+            // No other units — draw a card
+            const drawn = playerField.deck[0]
+            if (drawn) {
+              showDrawAnimation(drawn)
+              setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+              showEffectFeedback("CINZAS DO MUNDO: Nenhuma unidade! Comprou 1 carta.", "info")
+            }
+          } else if (otherUnits.length === 1) {
+            const { u, i } = otherUnits[0]
+            setPlayerField(prev => {
+              const newUnits = [...prev.unitZone]
+              if (newUnits[i]) newUnits[i] = { ...newUnits[i]!, currentDp: (newUnits[i]!.currentDp ?? newUnits[i]!.dp) + 2 }
+              return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
+            })
+            showEffectFeedback(`CINZAS DO MUNDO: ${u!.name} +2DP permanente!`, "success")
+          } else {
+            setChoiceModal({
+              visible: true,
+              cardName: "Cinzas do Mundo — Escolha 1 unidade para receber +2DP",
+              options: otherUnits.slice(0, 4).map(({ u, i }) => ({
+                id: String(i),
+                label: u!.name,
+                description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
+              })),
+              onChoose: (optId) => {
+                setChoiceModal(null)
+                const idx = parseInt(optId)
+                setPlayerField(prev => {
+                  const newUnits = [...prev.unitZone]
+                  if (newUnits[idx]) newUnits[idx] = { ...newUnits[idx]!, currentDp: (newUnits[idx]!.currentDp ?? newUnits[idx]!.dp) + 2 }
+                  return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
+                })
+                showEffectFeedback(`CINZAS DO MUNDO: ${otherUnits.find(o => o.i === idx)?.u?.name} +2DP permanente!`, "success")
+              },
+            })
+          }
+        }, 350)
+      }
+
       // ── VIVIAN: Abraço das Profundezas — ao entrar em campo, pode evocar unidade 2/3DP do deck ──
       if (cardToPlace.name.toLowerCase().includes("vivian") && !vivianAbracoUsed) {
         setTimeout(() => activateVivianAbility(), 300)
@@ -4996,6 +5047,39 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── LOGI SR: Incêndio Vivo — handled via keepAttackReady after kill (see on-destroy block) ──
+        // ── LOGI SR: Explosão de Muspell — after attack, +1DP to a fire unit in battle ──
+        // (triggered in on-destroy / post-attack block below)
+
+        // ── LOGI UR: Devorar o Mundo — antes de atacar, todas unidades inimigas -2DP (destruídas se 0), a cada 3 turnos ──
+        if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 2) {
+          if (logiUrDevorarLastTurn === null || turn - logiUrDevorarLastTurn >= 3) {
+            const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
+            if (hasEnemyUnits) {
+              setLogiUrDevorarLastTurn(turn)
+              const toDestroy: number[] = []
+              setEnemyField(prev => {
+                const newUnits = [...prev.unitZone]
+                const newGrave = [...prev.graveyard]
+                prev.unitZone.forEach((u, i) => {
+                  if (!u) return
+                  const newDp = (u.currentDp ?? u.dp) - 2
+                  if (newDp <= 0) {
+                    markDestroyed(u)
+                    newGrave.push(u)
+                    newUnits[i] = null
+                    toDestroy.push(i)
+                  } else {
+                    newUnits[i] = { ...u, currentDp: newDp }
+                  }
+                })
+                return { ...prev, unitZone: newUnits as (FieldCard|null)[], graveyard: newGrave }
+              })
+              showEffectFeedback("DEVORAR O MUNDO: Todas as unidades inimigas -2DP!", "warning")
+            }
+          }
+        }
+
         // ── HROTTI SR: Corte do Medo Rúnico — antes de atacar, todas unidades inimigas -1DP (a cada 2 turnos na fase de batalha) ──
         if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 1) {
           if (hrottiSrAttackLastTurn === null || turn - hrottiSrAttackLastTurn >= 2) {
@@ -5507,7 +5591,49 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 }
               }
 
+              // ── LOGI SR: Incêndio Vivo — ao destruir unidade, Logi pode atacar novamente ──
+              const isLogiSrKill = newDefenderDp <= 0 && attacker.name.toLowerCase().includes("logi") && attacker.dp === 1
+              if (isLogiSrKill) {
+                setLogiSrKillsThisBattle(prev => prev + 1)
+                showEffectFeedback("INCÊNDIO VIVO: Logi destruiu uma unidade! Pode atacar novamente!", "success")
+              }
+
+              // ── LOGI SR: Explosão de Muspell — após ataque, +1DP a unidade de fogo no campo ──
+              if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 1) {
+                const fireUnits = playerField.unitZone
+                  .map((u, i) => ({ u, i }))
+                  .filter(({ u }) => u !== null && (u.element === "Pyrus" || u.element === "Fire") && !u.name.toLowerCase().includes("logi"))
+                if (fireUnits.length === 1) {
+                  const { u, i } = fireUnits[0]
+                  setPlayerField(prev => {
+                    const nz = [...prev.unitZone]
+                    if (nz[i]) nz[i] = { ...nz[i]!, currentDp: (nz[i]!.currentDp ?? nz[i]!.dp) + 1 }
+                    return { ...prev, unitZone: nz as (FieldCard|null)[] }
+                  })
+                  showEffectFeedback(`EXPLOSÃO DE MUSPELL: ${u!.name} +1DP até o final da fase de batalha!`, "success")
+                } else if (fireUnits.length > 1) {
+                  setChoiceModal({
+                    visible: true,
+                    cardName: "Explosão de Muspell — Escolha 1 unidade de fogo para +1DP",
+                    options: fireUnits.slice(0, 4).map(({ u, i }) => ({
+                      id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`
+                    })),
+                    onChoose: (optId) => {
+                      setChoiceModal(null)
+                      const idx = parseInt(optId)
+                      setPlayerField(prev => {
+                        const nz = [...prev.unitZone]
+                        if (nz[idx]) nz[idx] = { ...nz[idx]!, currentDp: (nz[idx]!.currentDp ?? nz[idx]!.dp) + 1 }
+                        return { ...prev, unitZone: nz as (FieldCard|null)[] }
+                      })
+                      showEffectFeedback(`EXPLOSÃO DE MUSPELL: ${fireUnits.find(f=>f.i===idx)?.u?.name} +1DP!`, "success")
+                    },
+                  })
+                }
+              }
+
               const keepAttackReady =
+                (isLogiSrKill) ||
                 (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) ||
                 (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
                 (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
@@ -6739,6 +6865,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     setCalemUrDoubleAttack(false)
     setHrottiLrIraUsed(false)
+    setLogiSrKillsThisBattle(0)
     // Morgana cooldowns persist across turns (they track last-used turn number)
     // Eclipse active resets if it was applied last turn
     if (morganaEclipseActive && turn - morganaEclipseActive.turn >= 1) setMorganaEclipseActive(null)
