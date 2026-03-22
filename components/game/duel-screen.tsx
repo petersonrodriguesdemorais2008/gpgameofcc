@@ -2962,6 +2962,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
 
 
+  // ── Morgana Pendragon effect states ──
+  const [morganaEclipseLastTurn, setMorganaEclipseLastTurn] = useState<number|null>(null)       // SR: Ressonância em Eclipse cooldown
+  const [morganaSinfoniaLastTurn, setMorganaSinfoniaLastTurn] = useState<number|null>(null)     // UR: Sinfonia Relâmpago cooldown
+  const [morganaDiscordiaLastTurn, setMorganaDiscordiaLastTurn] = useState<number|null>(null)   // LR: Sinfonia da Discórdia cooldown
+  const [morganaEclipseActive, setMorganaEclipseActive] = useState<{target:'direct'|'unit';turn:number}|null>(null)  // SR: eclipse debuff on enemy
+  const [morganaTrapBlocked, setMorganaTrapBlocked] = useState(false)     // UR 3dp: traps blocked while on field
+  const [morganaActionBlocked, setMorganaActionBlocked] = useState(false) // LR 4dp: actions+traps blocked while on field
+
   // Destruction sequencing: IDs of cards with an active on-field destruction animation.
   // DiscardAnimationManager delays graveyard animation until the field explosion finishes.
   const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
@@ -4792,6 +4800,84 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── MORGANA SR 2DP: Ressonância em Eclipse — ao declarar ataque (cada 2 turnos) ──
+        if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
+          if (morganaEclipseLastTurn === null || turn - morganaEclipseLastTurn >= 2) {
+            setMorganaEclipseActive({ target: attackState.targetInfo!.type === "direct" ? "direct" : "unit", turn })
+            setMorganaEclipseLastTurn(turn)
+            showEffectFeedback("RESSONÂNCIA EM ECLIPSE: Se sobreviver, oponente não pode comprar ou ativar habilidades no próximo turno!", "warning")
+          }
+        }
+
+        // ── MORGANA UR 3DP: Sinfonia Relâmpago — ao atacar, a cada 3 turnos destrói 2 Functions/Traps ──
+        if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 3) {
+          if (morganaSinfoniaLastTurn === null || turn - morganaSinfoniaLastTurn >= 3) {
+            const destroyableEnemy = enemyField.functionZone
+              .map((f, i) => ({ f, i }))
+              .filter(({ f }) => f !== null)
+              .slice(0, 2)
+            if (destroyableEnemy.length > 0) {
+              setMorganaSinfoniaLastTurn(turn)
+              const discardCount = destroyableEnemy.length * 3
+              setEnemyField(prev => {
+                const newFuncs = [...prev.functionZone]
+                const newGrave = [...prev.graveyard]
+                const newDeck = [...prev.deck]
+                const newGraveFromDeck: typeof prev.graveyard[0][] = []
+                destroyableEnemy.forEach(({ i }) => {
+                  if (newFuncs[i]) { newGrave.push(newFuncs[i]!); newFuncs[i] = null }
+                })
+                // Discard top 3 per destroyed card
+                const topCards = newDeck.slice(0, discardCount)
+                const restDeck = newDeck.slice(discardCount)
+                return { ...prev, functionZone: newFuncs as any, graveyard: [...newGrave, ...topCards], deck: restDeck }
+              })
+              showEffectFeedback(`SINFONIA RELÂMPAGO: ${destroyableEnemy.length} cartas destruídas! Oponente descarta ${discardCount} cartas do deck!`, "warning")
+            }
+          }
+        }
+
+        // ── MORGANA LR 4DP: Sinfonia da Discórdia — roubar 1 carta do cemitério inimigo a cada 2 turnos ──
+        if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 4) {
+          if (morganaDiscordiaLastTurn === null || turn - morganaDiscordiaLastTurn >= 2) {
+            const stealableCards = enemyField.graveyard.filter(c =>
+              c.type === "function" || c.type === "action" || c.type === "trap"
+            )
+            if (stealableCards.length > 0) {
+              setMorganaDiscordiaLastTurn(turn)
+              // Show choice modal to pick which graveyard card to steal
+              const options = stealableCards.slice(0, 6).map((c, i) => ({
+                id: String(i),
+                label: c.name,
+                description: `${c.type} · ${c.element || "Neutro"}`,
+              }))
+              setChoiceModal({
+                visible: true,
+                cardName: "Sinfonia da Discórdia — Escolha 1 carta do cemitério inimigo",
+                options,
+                onChoose: (optionId: string) => {
+                  setChoiceModal(null)
+                  const idx = parseInt(optionId)
+                  const stolen = stealableCards[idx]
+                  if (!stolen) return
+                  // Remove from enemy graveyard, shuffle into player deck, enemy loses 2LP
+                  setEnemyField(prev => {
+                    const newGrave = [...prev.graveyard]
+                    const removeIdx = newGrave.findIndex(c => c.id === stolen.id)
+                    if (removeIdx !== -1) newGrave.splice(removeIdx, 1)
+                    return { ...prev, graveyard: newGrave, life: Math.max(0, prev.life - 2) }
+                  })
+                  setPlayerField(prev => {
+                    const newDeck = [...prev.deck, stolen].sort(() => Math.random() - 0.5)
+                    return { ...prev, deck: newDeck }
+                  })
+                  showEffectFeedback(`SINFONIA DA DISCÓRDIA: "${stolen.name}" roubada e embaralhada no seu deck! Oponente -2LP!`, "success")
+                },
+              })
+            }
+          }
+        }
+
         // CALEM SR: Pulso da Nulidade - draw on attack every 3 turns
         if (attacker.id === "calem-sr" && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
@@ -4929,7 +5015,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             const defender = enemyField.unitZone[attackState.targetInfo!.index]
             if (defender) {
               // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
-              const trapPortaoIndex = enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
+              // ── MORGANA UR/LR: Domínio Eterno/Horizontes — traps blocked ──
+              const _morganaTrapBlock = playerField.unitZone.some(u =>
+                u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)
+              )
+              const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
               if (trapPortaoIndex !== -1) {
                 setEnemyField(prev => {
                   const newFuncs = [...prev.functionZone]
@@ -4959,7 +5049,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
               // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
               if (attackerDp > 0) {
-                const trapContraAtaqueIndex = enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown)
+                const trapContraAtaqueIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown)
                 if (trapContraAtaqueIndex !== -1) {
                   setEnemyField(prev => {
                     const newFuncs = [...prev.functionZone]
@@ -5114,6 +5204,17 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
+
+            // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
+            if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
+              const hasEnemyLight = enemyField.unitZone.some(u => u && (u.element === "Haos" || u.element === "Light" || u.element === "Lightness"))
+              const drain = hasEnemyLight ? 2 : 1
+              setTimeout(() => {
+                setPlayerField(prev => ({ ...prev, life: prev.life + drain }))
+                showEffectFeedback(`ACORDE DO ABISMO: Morgana drena ${drain}LP!${hasEnemyLight ? " (Unidade Luz inimiga — drenagem dobrada!)" : ""}`, "success")
+              }, 400)
+            }
+
             const keepReadyDirect =
               (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
               (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
@@ -5141,7 +5242,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
       animationInProgressRef.current = false
     }
-  }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, setEnemyField, setPlayerField, setAttackState, showEffectFeedback])
+  }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, enemyField.graveyard, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, morganaEclipseLastTurn, morganaSinfoniaLastTurn, morganaDiscordiaLastTurn, setEnemyField, setPlayerField, setAttackState, showEffectFeedback, setChoiceModal])
+
+  // ── Morgana UR 3DP: Domínio Eterno — block traps while on field ──
+  useEffect(() => {
+    const hasMorganaUr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
+    setMorganaTrapBlocked(hasMorganaUr)
+  }, [playerField.unitZone])
+
+  // ── Morgana LR 4DP: Domínio de Horizontes — block all actions+traps while on field ──
+  useEffect(() => {
+    const hasMorganaLr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
+    setMorganaActionBlocked(hasMorganaLr)
+  }, [playerField.unitZone])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -5310,7 +5423,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const executeBotTurn = () => {
-    if (enemyField.deck.length > 0) {
+    // ── MORGANA SR 2DP: Ressonância em Eclipse — if active, enemy cannot draw ──
+    const _eclipseActive = morganaEclipseActive && (turn - morganaEclipseActive.turn === 1)
+    if (_eclipseActive) {
+      showEffectFeedback("RESSONÂNCIA EM ECLIPSE: Oponente impedido de comprar carta este turno!", "warning")
+      setMorganaEclipseActive(null)
+    }
+
+    if (!_eclipseActive && enemyField.deck.length > 0) {
       // Trigger enemy draw animation (card back only — player cannot see)
       const deckEl  = enemyDeckRef.current
       const fieldEl = fieldRef.current
@@ -5330,7 +5450,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         hand: [...prev.hand, prev.deck[0]],
         deck: prev.deck.slice(1),
       }))
-    }
+    } // end !_eclipseActive
 
     setTimeout(() => {
       setEnemyField((prev) => {
@@ -5353,7 +5473,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               if (drawn) {
                 newHand.push(drawn)
                 setEnemyField(e => ({ ...e, deck: e.deck.slice(1) }))
-                showEffectFeedback(`Bot: ${card.name} ativado! Bot comprou 1 carta.`, "warning")
+                // ── MORGANA LR 4DP: Domínio de Horizontes — bot cannot activate function cards ──
+        const _morganaLrBlock = playerField.unitZone.some(u =>
+          u && u.name.toLowerCase().includes("morgana") && u.dp === 4
+        )
+        if (!_morganaLrBlock) {
+          showEffectFeedback(`Bot: ${card.name} ativado! Bot comprou 1 carta.`, "warning")
+        }
               }
             }
             break // Only one scenario at a time
@@ -5605,6 +5731,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                         markDestroyed(defender)
                         newPlayerGraveyard.push(defender)
                         newPlayerUnitZone[playerUnitIndex] = null
+                        // ── MORGANA UR 3DP: Domínio Eterno — removed from field → enemy loses 3LP ──
+                        if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
+                          setTimeout(() => {
+                            setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) }))
+                            showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning")
+                          }, 600)
+                        }
                       }
                     } else {
                       newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: newDefenderDp }
@@ -5686,6 +5819,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const endTurn = () => {
     setPhase("end")
     setCalemUrDoubleAttack(false)
+    // Morgana cooldowns persist across turns (they track last-used turn number)
+    // Eclipse active resets if it was applied last turn
+    if (morganaEclipseActive && turn - morganaEclipseActive.turn >= 1) setMorganaEclipseActive(null)
     setFehnonSrDouble(false)
     setFehnonUrDouble(false)
     setFehnonUrUsedDoubleThisTurn(false)
@@ -6246,6 +6382,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           >
             {isPlayerTurn ? t("yourTurn") : t("enemyTurn")}
           </div>
+          {/* Morgana passive effects indicator */}
+          {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)) && (
+            <div className="px-2 py-1 rounded text-[9px] font-bold bg-purple-900/60 border border-purple-500/50 text-purple-300">
+              {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
+                ? "🌑 Actions+Traps bloqueados"
+                : "🌑 Traps bloqueadas"}
+            </div>
+          )}
         </div>
 
         <Button onClick={surrender} size="sm" variant="ghost" className="text-slate-400 hover:text-red-400">
