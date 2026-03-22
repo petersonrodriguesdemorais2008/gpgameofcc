@@ -909,11 +909,17 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const isFireByName = (u: any) =>
         fireNames.some(n => u.name?.toLowerCase().includes(n))
 
+      // Cards treated as Darkness by name
+      const darknessNames = ["morgana pendragon"]
+      const isDarknessByName = (u: any) =>
+        darknessNames.some(n => u.name?.toLowerCase().includes(n))
+
       const validElements = ["darkness", "fire", "aquos"]
       const hasValidUnit = context.playerField.unitZone.some((u) =>
         u !== null && (
           validElements.includes(u.element?.toLowerCase() || "") ||
-          isFireByName(u)
+          isFireByName(u) ||
+          isDarknessByName(u)
         )
       )
       if (!hasValidUnit) {
@@ -939,12 +945,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         allyUnit.name?.toLowerCase().includes(n)
       )
 
+      // Cards treated as Darkness by name
+      const darknessNames = ["morgana pendragon"]
+      const isDarknessByName = darknessNames.some(n =>
+        allyUnit.name?.toLowerCase().includes(n)
+      )
+
       const validElements = ["darkness", "fire", "aquos"]
       const rawElement = allyUnit.element?.toLowerCase() || ""
-      // Override element to "fire" for named cards
-      const effectiveElement = isFireByName ? "fire" : rawElement
+      // Override element for named cards
+      const effectiveElement = isFireByName ? "fire" : isDarknessByName ? "darkness" : rawElement
 
-      if (!validElements.includes(rawElement) && !isFireByName) {
+      if (!validElements.includes(rawElement) && !isFireByName && !isDarknessByName) {
         return { success: false, message: "Unidade deve ser Darkness, Fire ou Aquos" }
       }
 
