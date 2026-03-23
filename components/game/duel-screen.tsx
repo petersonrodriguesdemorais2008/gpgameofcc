@@ -2936,7 +2936,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   } | null>(null)
   const [lacerationAnimation, setLacerationAnimation] = useState(false)
   const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
-  const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
   const [draggedHandCard, setDraggedHandCard] = useState<{ index: number; card: GameCard; currentY?: number } | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [droppingCard, setDroppingCard] = useState<{ card: GameCard; targetX: number; targetY: number } | null>(null)
@@ -4137,11 +4136,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           if (cardToPlace.name === "Sinfonia Relâmpago") {
             setSinfoniaAnimation(true)
             setTimeout(() => setSinfoniaAnimation(false), 1600)
-          }
-          // SINFONIA RELÂMPAGO: trigger lightning + musical notes animation
-          if (cardToPlace.name === "Sinfonia Relâmpago") {
-            setSinfoniaAnimation(true)
-            setTimeout(() => setSinfoniaAnimation(false), 1800)
           }
 
           // Special handling for Cristal Recuperador - draw a card and check if Function type
@@ -9303,44 +9297,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             }}>♫ Sinfonia Relâmpago ♫</span>
           </div>
 
-        </div>
-      )}
-
-      {sinfoniaAnimation && (
-        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 sin-bg" />
-          <svg className="absolute inset-0 w-full h-full sin-bolt" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="sinLG" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#7c3aed"/>
-                <stop offset="45%" stopColor="#ffffff"/>
-                <stop offset="100%" stopColor="#6d28d9"/>
-              </linearGradient>
-            </defs>
-            <polyline points="0,20 14,14 22,7 32,19 44,4 56,16 67,2 79,14 91,6 100,12"
-              fill="none" stroke="url(#sinLG)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter:"drop-shadow(0 0 6px #e879f9) drop-shadow(0 0 14px #a855f7)" }}/>
-            <polyline points="0,20 14,14 22,7 32,19 44,4 56,16 67,2 79,14 91,6 100,12"
-              fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5" strokeLinecap="round"/>
-          </svg>
-          <svg className="absolute inset-0 w-full h-full sin-bolt2" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <polyline points="30,0 27,10 36,16 22,26 32,32 18,42"
-              fill="none" stroke="#e879f9" strokeWidth="1.2" strokeLinecap="round"
-              style={{ filter:"drop-shadow(0 0 5px #a855f7)" }}/>
-          </svg>
-          <div className="absolute sin-burst" style={{
-            left:"50%", top:"18%", width:"160px", height:"160px",
-            marginLeft:"-80px", marginTop:"-80px", borderRadius:"50%",
-            background:"radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(232,121,249,0.7) 25%, rgba(168,85,247,0.3) 55%, transparent 72%)",
-          }}/>
-          <div className="absolute sin-note" style={{ left:"8%",  top:"5%",  fontSize:"40px", color:"#f0abfc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0s" }}>♬</div>
-          <div className="absolute sin-note" style={{ left:"78%", top:"3%",  fontSize:"44px", color:"#c084fc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0.05s" }}>♪</div>
-          <div className="absolute sin-note" style={{ left:"44%", top:"6%",  fontSize:"36px", color:"#f0abfc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0.08s" }}>♫</div>
-          <div className="absolute sin-note" style={{ left:"86%", top:"19%", fontSize:"30px", color:"#c084fc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0.03s" }}>♩</div>
-          <div className="absolute inset-0 sin-flash" style={{ background:"radial-gradient(ellipse 100% 60% at 50% 10%, rgba(255,255,255,0.45) 0%, rgba(232,121,249,0.25) 45%, transparent 75%)" }}/>
-          <div className="absolute sin-title" style={{ left:"50%", top:"38%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
-            <span style={{ fontSize:"22px", fontWeight:900, color:"#fff", letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 14px #f0abfc, 0 0 28px #a855f7, 0 2px 6px rgba(0,0,0,0.9)" }}>♫ Sinfonia Relâmpago ♫</span>
-          </div>
         </div>
       )}
 
