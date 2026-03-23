@@ -2936,6 +2936,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   } | null>(null)
   const [lacerationAnimation, setLacerationAnimation] = useState(false)
   const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
+  const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
   const [draggedHandCard, setDraggedHandCard] = useState<{ index: number; card: GameCard; currentY?: number } | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [droppingCard, setDroppingCard] = useState<{ card: GameCard; targetX: number; targetY: number } | null>(null)
@@ -4132,6 +4133,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           if (cardToPlace.name === "Ordem de Laceração") {
             setLacerationAnimation(true)
             setTimeout(() => setLacerationAnimation(false), 1800)
+          }
+          if (cardToPlace.name === "Sinfonia Relâmpago") {
+            setSinfoniaAnimation(true)
+            setTimeout(() => setSinfoniaAnimation(false), 1600)
           }
           // SINFONIA RELÂMPAGO: trigger lightning + musical notes animation
           if (cardToPlace.name === "Sinfonia Relâmpago") {
@@ -9301,6 +9306,44 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
+      {sinfoniaAnimation && (
+        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 sin-bg" />
+          <svg className="absolute inset-0 w-full h-full sin-bolt" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sinLG" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#7c3aed"/>
+                <stop offset="45%" stopColor="#ffffff"/>
+                <stop offset="100%" stopColor="#6d28d9"/>
+              </linearGradient>
+            </defs>
+            <polyline points="0,20 14,14 22,7 32,19 44,4 56,16 67,2 79,14 91,6 100,12"
+              fill="none" stroke="url(#sinLG)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter:"drop-shadow(0 0 6px #e879f9) drop-shadow(0 0 14px #a855f7)" }}/>
+            <polyline points="0,20 14,14 22,7 32,19 44,4 56,16 67,2 79,14 91,6 100,12"
+              fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5" strokeLinecap="round"/>
+          </svg>
+          <svg className="absolute inset-0 w-full h-full sin-bolt2" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline points="30,0 27,10 36,16 22,26 32,32 18,42"
+              fill="none" stroke="#e879f9" strokeWidth="1.2" strokeLinecap="round"
+              style={{ filter:"drop-shadow(0 0 5px #a855f7)" }}/>
+          </svg>
+          <div className="absolute sin-burst" style={{
+            left:"50%", top:"18%", width:"160px", height:"160px",
+            marginLeft:"-80px", marginTop:"-80px", borderRadius:"50%",
+            background:"radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(232,121,249,0.7) 25%, rgba(168,85,247,0.3) 55%, transparent 72%)",
+          }}/>
+          <div className="absolute sin-note" style={{ left:"8%",  top:"5%",  fontSize:"40px", color:"#f0abfc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0s" }}>♬</div>
+          <div className="absolute sin-note" style={{ left:"78%", top:"3%",  fontSize:"44px", color:"#c084fc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0.05s" }}>♪</div>
+          <div className="absolute sin-note" style={{ left:"44%", top:"6%",  fontSize:"36px", color:"#f0abfc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0.08s" }}>♫</div>
+          <div className="absolute sin-note" style={{ left:"86%", top:"19%", fontSize:"30px", color:"#c084fc", textShadow:"0 0 12px #e879f9, 0 0 24px #7c3aed", animationDelay:"0.03s" }}>♩</div>
+          <div className="absolute inset-0 sin-flash" style={{ background:"radial-gradient(ellipse 100% 60% at 50% 10%, rgba(255,255,255,0.45) 0%, rgba(232,121,249,0.25) 45%, transparent 75%)" }}/>
+          <div className="absolute sin-title" style={{ left:"50%", top:"38%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
+            <span style={{ fontSize:"22px", fontWeight:900, color:"#fff", letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 14px #f0abfc, 0 0 28px #a855f7, 0 2px 6px rgba(0,0,0,0.9)" }}>♫ Sinfonia Relâmpago ♫</span>
+          </div>
+        </div>
+      )}
+
       {/* Card Destruction Animation */}      {/* Card Destruction Animation */}
       {destructionAnimation && (
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
@@ -9942,6 +9985,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         .sinfonia-title { animation: sinfoniaTitle 1.8s cubic-bezier(0.34,1.4,0.64,1) forwards; }
 
+
+        /* ── SINFONIA RELÂMPAGO CSS ── */
+        @keyframes sinBg { 0% { opacity:.45 } 40% { opacity:.2 } 100% { opacity:0 } }
+        .sin-bg { animation: sinBg 1.6s ease-out forwards; background:rgba(88,28,135,1); }
+        @keyframes sinBolt { 0% { opacity:1 } 45% { opacity:.7 } 72%,100% { opacity:0 } }
+        .sin-bolt  { animation: sinBolt 1.6s ease-out forwards; }
+        .sin-bolt2 { animation: sinBolt 1.6s ease-out .07s forwards; }
+        @keyframes sinBurst { 0% { transform:scale(.15); opacity:1 } 22% { transform:scale(1.3); opacity:.85 } 50% { transform:scale(.9); opacity:.55 } 75% { transform:scale(2); opacity:.15 } 100% { transform:scale(2.8); opacity:0 } }
+        .sin-burst { animation: sinBurst 1.6s ease-out forwards; }
+        @keyframes sinNote { 0% { opacity:1; transform:scale(.5) translateY(8px) } 22% { opacity:1; transform:scale(1.3) translateY(-6px) } 55% { opacity:1; transform:scale(1) translateY(0) } 78% { opacity:.5; transform:scale(1) translateY(-22px) } 100% { opacity:0; transform:scale(.6) translateY(-42px) } }
+        .sin-note { animation: sinNote 1.6s ease-out forwards; }
+        @keyframes sinFlash { 0% { opacity:.9 } 22% { opacity:.4 } 48%,100% { opacity:0 } }
+        .sin-flash { animation: sinFlash 1.6s ease-out forwards; }
+        @keyframes sinTitle { 0% { opacity:1; transform:translateX(-50%) scale(.7) } 18% { opacity:1; transform:translateX(-50%) scale(1.05) } 40% { transform:translateX(-50%) scale(1) } 75% { opacity:1 } 100% { opacity:0; transform:translateX(-50%) translateY(-12px) } }
+        .sin-title { animation: sinTitle 1.6s ease-out forwards; }
 
         @keyframes lacerationDmgNumber {
           0%,18%  { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.4) rotate(-8deg); }
