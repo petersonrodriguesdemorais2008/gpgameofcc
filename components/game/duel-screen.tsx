@@ -3663,49 +3663,58 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       })
       // ── LOGI UR: Cinzas do Mundo — ao entrar em campo, +2DP a outra unidade (ou compra 1 carta) ──
       if (cardToPlace.name.toLowerCase().includes("logi") && cardToPlace.dp === 2) {
+        // Use functional setter to read FRESH state after Logi was placed
         setTimeout(() => {
-          // Look at current state after placement
-          const otherUnits = playerField.unitZone
-            .map((u, i) => ({ u, i }))
-            .filter(({ u }) => u !== null && !u.name.toLowerCase().includes("logi"))
-          if (otherUnits.length === 0) {
-            // No other units — draw a card
-            const drawn = playerField.deck[0]
-            if (drawn) {
-              showDrawAnimation(drawn)
-              setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
-              showEffectFeedback("CINZAS DO MUNDO: Nenhuma unidade! Comprou 1 carta.", "info")
+          setPlayerField(prev => {
+            const otherUnits = prev.unitZone
+              .map((u, i) => ({ u, i }))
+              .filter(({ u }) => u !== null && !u.name.toLowerCase().includes("logi"))
+            if (otherUnits.length === 0) {
+              // No other units — draw a card
+              const drawn = prev.deck[0]
+              if (drawn) {
+                showDrawAnimation(drawn)
+                showEffectFeedback("CINZAS DO MUNDO: Nenhuma unidade! Comprou 1 carta.", "info")
+                return { ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }
+              }
+              return prev
             }
-          } else if (otherUnits.length === 1) {
-            const { u, i } = otherUnits[0]
-            setPlayerField(prev => {
+            if (otherUnits.length === 1) {
+              const { u, i } = otherUnits[0]
               const newUnits = [...prev.unitZone]
-              if (newUnits[i]) newUnits[i] = { ...newUnits[i]!, currentDp: (newUnits[i]!.currentDp ?? newUnits[i]!.dp) + 2 }
+              newUnits[i] = { ...newUnits[i]!, currentDp: (newUnits[i]!.currentDp ?? newUnits[i]!.dp) + 2 }
+              showEffectFeedback(`CINZAS DO MUNDO: ${u!.name} +2DP permanente!`, "success")
               return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
-            })
-            showEffectFeedback(`CINZAS DO MUNDO: ${u!.name} +2DP permanente!`, "success")
-          } else {
-            setChoiceModal({
-              visible: true,
-              cardName: "Cinzas do Mundo — Escolha 1 unidade para receber +2DP",
-              options: otherUnits.slice(0, 4).map(({ u, i }) => ({
-                id: String(i),
-                label: u!.name,
-                description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
-              })),
-              onChoose: (optId) => {
-                setChoiceModal(null)
-                const idx = parseInt(optId)
-                setPlayerField(prev => {
-                  const newUnits = [...prev.unitZone]
-                  if (newUnits[idx]) newUnits[idx] = { ...newUnits[idx]!, currentDp: (newUnits[idx]!.currentDp ?? newUnits[idx]!.dp) + 2 }
-                  return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
-                })
-                showEffectFeedback(`CINZAS DO MUNDO: ${otherUnits.find(o => o.i === idx)?.u?.name} +2DP permanente!`, "success")
-              },
-            })
-          }
-        }, 350)
+            }
+            // Multiple options — show modal (read options from fresh state)
+            const opts = otherUnits.slice(0, 4)
+            setTimeout(() => {
+              setChoiceModal({
+                visible: true,
+                cardName: "Cinzas do Mundo — Escolha 1 unidade para receber +2DP",
+                options: opts.map(({ u, i }) => ({
+                  id: String(i),
+                  label: u!.name,
+                  description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
+                })),
+                onChoose: (optId) => {
+                  setChoiceModal(null)
+                  const idx = parseInt(optId)
+                  setPlayerField(prev2 => {
+                    const newUnits = [...prev2.unitZone]
+                    if (newUnits[idx]) {
+                      const chosen = newUnits[idx]!
+                      newUnits[idx] = { ...chosen, currentDp: (chosen.currentDp ?? chosen.dp) + 2 }
+                      showEffectFeedback(`CINZAS DO MUNDO: ${chosen.name} +2DP permanente!`, "success")
+                    }
+                    return { ...prev2, unitZone: newUnits as (FieldCard|null)[] }
+                  })
+                },
+              })
+            }, 0)
+            return prev
+          })
+        }, 400)
       }
 
       // ── VIVIAN: Abraço das Profundezas — ao entrar em campo, pode evocar unidade 2/3DP do deck ──
@@ -5053,12 +5062,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         // (triggered in on-destroy / post-attack block below)
 
         // ── LOGI UR: Devorar o Mundo — antes de atacar, todas unidades inimigas -2DP (destruídas se 0), a cada 3 turnos ──
+        // Flag to signal that Devorar ran this attack cycle (used in attack resolution to re-check target)
+        let _devorarRanThisAttack = false
         if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 2) {
           if (logiUrDevorarLastTurn === null || turn - logiUrDevorarLastTurn >= 3) {
             const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
             if (hasEnemyUnits) {
               setLogiUrDevorarLastTurn(turn)
-              const toDestroy: number[] = []
+              _devorarRanThisAttack = true
               setEnemyField(prev => {
                 const newUnits = [...prev.unitZone]
                 const newGrave = [...prev.graveyard]
@@ -5069,7 +5080,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                     markDestroyed(u)
                     newGrave.push(u)
                     newUnits[i] = null
-                    toDestroy.push(i)
                   } else {
                     newUnits[i] = { ...u, currentDp: newDp }
                   }
@@ -5419,7 +5429,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         setTimeout(() => {
           // Reset fully after projectile lands
           if (attackState.targetInfo!.type === "unit" && attackState.targetInfo!.index !== undefined) {
-            const defender = enemyField.unitZone[attackState.targetInfo!.index]
+            // If Devorar o Mundo ran this cycle, the closure's enemyField is stale.
+            // We use prev.unitZone inside the setEnemyField updater to get fresh state.
+            // For the outer guard, if Devorar ran, we skip the stale check and let the updater handle it.
+            const defender = _devorarRanThisAttack
+              ? (enemyField.unitZone[attackState.targetInfo!.index] ?? { name: '__devorar_check__' })
+              : enemyField.unitZone[attackState.targetInfo!.index]
             if (defender) {
               // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
               // ── MORGANA UR/LR: Domínio Eterno/Horizontes — traps blocked ──
@@ -5475,14 +5490,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               const targetElement = document.querySelector(`[data-enemy-unit="${targetIndex}"]`)
               const targetRect = targetElement?.getBoundingClientRect()
 
+              // Recompute damage using fresh enemy state via functional updater
               setEnemyField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const newGraveyard = [...prev.graveyard]
+                // Re-check from fresh prev state — Devorar may have already destroyed this unit
+                const freshDefender = prev.unitZone[targetIndex]
+                if (!freshDefender) return prev  // already destroyed by Devorar or other effect
+                // Recompute dp from fresh state to avoid stale closure issues
+                const freshAttackerDp = attacker.currentDp ?? attacker.dp
+                const freshDefenderDp = freshDefender.currentDp ?? freshDefender.dp
+                const freshNewDefenderDp = freshDefenderDp - freshAttackerDp
                 const isProtectedByProtonix = prev.ultimateZone &&
                   prev.ultimateZone.ability === "PROTONIX SWORD" &&
-                  prev.ultimateZone.requiresUnit === defender.name
+                  prev.ultimateZone.requiresUnit === freshDefender.name
 
-                if (newDefenderDp <= 0) {
+                if (freshNewDefenderDp <= 0) {
                   if (isProtectedByProtonix) {
                     newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
                     showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
