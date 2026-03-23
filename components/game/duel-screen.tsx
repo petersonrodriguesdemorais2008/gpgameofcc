@@ -5153,7 +5153,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // ── HROTTI SR: Corte do Medo Rúnico — antes de atacar, todas unidades inimigas -1DP (a cada 2 turnos na fase de batalha) ──
-        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 1) {
+        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 2) {
           if (hrottiSrAttackLastTurn === null || turn - hrottiSrAttackLastTurn >= 2) {
             const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
             if (hasEnemyUnits) {
@@ -5168,7 +5168,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // ── HROTTI UR: Fafnisbani — se alvo tem ≤3DP total, Hrotti +2DP antes do ataque ──
-        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 2) {
+        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 3) {
           if (attackState.targetInfo?.type === "unit" && attackState.targetInfo.index !== undefined) {
             const target = enemyField.unitZone[attackState.targetInfo.index]
             if (target && (target.currentDp ?? target.dp) <= 3) {
@@ -5187,7 +5187,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // ── HROTTI LR: Tidal de Midgard — registra quando entra em batalha pela primeira vez ──
-        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 3) {
+        if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 4) {
           if (hrottiLrTidalActiveTurn === null) setHrottiLrTidalActiveTurn(turn)
         }
 
@@ -5761,7 +5761,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             }
 
             // ── HROTTI LR: Ira Maelstrom — after dealing direct battle damage ──
-            if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 3 && !hrottiLrIraUsed) {
+            if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 4 && !hrottiLrIraUsed) {
               setHrottiLrIraUsed(true)
               setTimeout(() => activateHrottiLrIra(), 500)
             }
@@ -6130,7 +6130,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         })
         // Apply +1DP per card to Hrotti SR
-        const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 1)
+        const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
         if (hrottiIdx !== -1 && newUnitZone[hrottiIdx]) {
           const h = newUnitZone[hrottiIdx]!
           newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
@@ -8037,8 +8037,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       (cardName.includes("merlin") && !merlinUsed) ||
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
-                      (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
-                      (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) ||
+                      (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
+                      (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) ||
                       (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) ||
                       (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
                     )
@@ -8047,8 +8047,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
-                      if (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
-                      if (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) return activateHrottiUrAbility
+                      if (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
+                      if (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) return activateHrottiUrAbility
                       if (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) return activateUllrSrAbility
                       if (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
                       return null
