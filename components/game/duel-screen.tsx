@@ -2970,6 +2970,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // ── Ullr states ──
+  const [ullrSrMarcaUsed, setUllrSrMarcaUsed] = useState(false)                      // Marca da Caçada — once per duel (or cooldown?) — description says always active, treat as once per main phase
+  const [ullrUrJuramentoLastTurn, setUllrUrJuramentoLastTurn] = useState<number|null>(null)  // Juramento Eterno — every 4 turns
+  const [ullrUrFlechaUsed, setUllrUrFlechaUsed] = useState(false)                    // Flecha de Skadi — once ever
+
   // ── Logi states ──
   const [logiSrKillsThisBattle, setLogiSrKillsThisBattle] = useState(0)           // Incêndio Vivo: extra attacks this battle
   const [logiUrDevorarLastTurn, setLogiUrDevorarLastTurn] = useState<number|null>(null)  // Devorar o Mundo cooldown (3 turns)
@@ -5057,6 +5062,57 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // ── ULLR SR: Veredicto de Ullr — ao atacar, compra 1 carta; se Ventus → compra +1 ──
+        if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 1) {
+          const drawn1 = playerField.deck[0]
+          if (drawn1) {
+            const isVentus1 = drawn1.element === "Ventus" || drawn1.element === "Wind"
+            setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn1] }))
+            showDrawAnimation(drawn1)
+            showEffectFeedback(`VEREDICTO DE ULLR: ${drawn1.name} comprada!${isVentus1 ? " É Ventus! Compra mais 1!" : ""}`, isVentus1 ? "success" : "info")
+            if (isVentus1) {
+              const drawn2 = playerField.deck[1] // index 1 since deck[0] was drawn1
+              if (drawn2) {
+                setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn2] }))
+                showDrawAnimation(drawn2)
+                setTimeout(() => showEffectFeedback(`VEREDICTO DE ULLR: ${drawn2.name} (bônus Ventus)!`, "success"), 400)
+              }
+            }
+          }
+        }
+
+        // ── ULLR UR: Flecha de Skadi — antes de atacar, pode destruir 1 unidade inimiga com 2DP (uma vez) ──
+        if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 2 && !ullrUrFlechaUsed) {
+          const twoDpTargets = enemyField.unitZone
+            .map((u,i) => ({u,i}))
+            .filter(({u}) => u !== null && (u.currentDp ?? u.dp) === 2)
+          if (twoDpTargets.length > 0) {
+            setChoiceModal({
+              visible: true,
+              cardName: "Flecha de Skadi — Destruir 1 unidade inimiga com 2DP?",
+              options: [
+                ...twoDpTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
+                { id: "skip", label: "Não usar", description: "Atacar normalmente" },
+              ],
+              onChoose: (optId) => {
+                setChoiceModal(null)
+                if (optId === "skip") return
+                const idx = parseInt(optId)
+                const target = enemyField.unitZone[idx]
+                if (!target) return
+                markDestroyed(target)
+                setEnemyField(prev => {
+                  const newUnits = [...prev.unitZone]
+                  newUnits[idx] = null
+                  return { ...prev, unitZone: newUnits as (FieldCard|null)[], graveyard: [...prev.graveyard, target] }
+                })
+                setUllrUrFlechaUsed(true)
+                showEffectFeedback(`FLECHA DE SKADI: ${target.name} destruída!`, "success")
+              },
+            })
+          }
+        }
+
         // ── LOGI SR: Incêndio Vivo — handled via keepAttackReady after kill (see on-destroy block) ──
         // ── LOGI SR: Explosão de Muspell — after attack, +1DP to a fire unit in battle ──
         // (triggered in on-destroy / post-attack block below)
@@ -6145,6 +6201,59 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setHrottiLrIraUsed(false) // Reset for next battle
   }
 
+  // ── Ullr SR: Marca da Caçada — choose enemy unit, Ventus -2DP / other -1DP (once per main phase) ──
+  const activateUllrSrAbility = () => {
+    const enemyTargets = enemyField.unitZone.map((u,i) => ({u,i})).filter(({u}) => u !== null)
+    if (enemyTargets.length === 0) { showEffectFeedback("Nenhuma unidade inimiga no campo!", "error"); return }
+    setChoiceModal({
+      visible: true,
+      cardName: "Marca da Caçada — Selecione uma unidade inimiga como alvo",
+      options: enemyTargets.slice(0,4).map(({u,i}) => {
+        const isVentus = u!.element === "Ventus" || u!.element === "Wind"
+        const dpLoss = isVentus ? 2 : 1
+        return { id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0,(u!.currentDp ?? u!.dp)-dpLoss)}DP${isVentus ? " (Ventus: -2DP)" : " (-1DP)"}` }
+      }),
+      onChoose: (optId) => {
+        setChoiceModal(null)
+        const idx = parseInt(optId)
+        setEnemyField(prev => {
+          const newUnits = [...prev.unitZone]
+          const u = newUnits[idx]
+          if (!u) return prev
+          const isVentus = u.element === "Ventus" || u.element === "Wind"
+          const dpLoss = isVentus ? 2 : 1
+          newUnits[idx] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - dpLoss) }
+          return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
+        })
+        setUllrSrMarcaUsed(true)
+        const tgt = enemyTargets.find(t => t.i === idx)
+        const isVentus = tgt?.u?.element === "Ventus" || tgt?.u?.element === "Wind"
+        showEffectFeedback(`MARCA DA CAÇADA: ${tgt?.u?.name} ${isVentus ? "-2DP (Ventus)" : "-1DP"}!`, "success")
+      },
+    })
+  }
+
+  // ── Ullr UR: Juramento Eterno — all Wind/Ventus units +2DP (or +3DP with Ullrbogi), every 4 turns ──
+  const activateUllrUrAbility = () => {
+    if (ullrUrJuramentoLastTurn !== null && turn - ullrUrJuramentoLastTurn < 4) {
+      showEffectFeedback(`Juramento Eterno disponível no turno ${ullrUrJuramentoLastTurn + 4}!`, "error"); return
+    }
+    const hasUllrbogi = playerField.ultimateZone?.ability === "ULLRBOGI"
+    const bonus = hasUllrbogi ? 3 : 2
+    setPlayerField(prev => {
+      const newUnits = prev.unitZone.map(u => {
+        if (!u) return null
+        if (u.element === "Ventus" || u.element === "Wind") {
+          return { ...u, currentDp: (u.currentDp ?? u.dp) + bonus }
+        }
+        return u
+      })
+      return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
+    })
+    setUllrUrJuramentoLastTurn(turn)
+    showEffectFeedback(`JURAMENTO ETERNO: Todas as unidades Ventus +${bonus}DP${hasUllrbogi ? " (Ullrbogi!)" : ""}!`, "success")
+  }
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -6941,6 +7050,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setCalemUrDoubleAttack(false)
     setHrottiLrIraUsed(false)
     setLogiSrKillsThisBattle(0)
+    setUllrSrMarcaUsed(false)
     // Morgana cooldowns persist across turns (they track last-used turn number)
     // Eclipse active resets if it was applied last turn
     if (morganaEclipseActive && turn - morganaEclipseActive.turn >= 1) setMorganaEclipseActive(null)
@@ -7923,7 +8033,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
                       (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
-                      (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed)
+                      (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) ||
+                      (cardName.includes("ullr") && card.dp === 1 && !ullrSrMarcaUsed) ||
+                      (cardName.includes("ullr") && card.dp === 2 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
                     )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
@@ -7932,6 +8044,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
                       if (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
                       if (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) return activateHrottiUrAbility
+                      if (cardName.includes("ullr") && card.dp === 1 && !ullrSrMarcaUsed) return activateUllrSrAbility
+                      if (cardName.includes("ullr") && card.dp === 2 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
                       return null
                     }
 
