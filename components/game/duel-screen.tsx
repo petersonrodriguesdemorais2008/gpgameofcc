@@ -2972,6 +2972,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+
+  // ── Multiplayer state ──
+  interface OnlineRoomData { roomId:string;roomCode:string;isHost:boolean;hostId:string;hostName:string;hostDeck:any;guestId:string|null;guestName:string|null;guestDeck:any;hostReady:boolean;guestReady:boolean }
+  const [onlinePhase, setOnlinePhase]       = useState<"lobby"|"duel"|null>(null)
+  const [onlineRoomData, setOnlineRoomData] = useState<OnlineRoomData|null>(null)
   // ── Ullr states ──
   const [ullrSrMarcaUsed, setUllrSrMarcaUsed] = useState(false)                      // Marca da Caçada — once per duel (or cooldown?) — description says always active, treat as once per main phase
   const [ullrUrJuramentoLastTurn, setUllrUrJuramentoLastTurn] = useState<number|null>(null)  // Juramento Eterno — every 4 turns
@@ -7426,6 +7431,27 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
   }, [playerField.life, enemyField.life, gameStarted, mode, selectedDeck?.name])
 
+
+  // ── VS JOGADOR: show MultiplayerLobby ──────────────────────────────────
+  if (mode === "player" && onlinePhase === "lobby") {
+    return (
+      <MultiplayerLobby
+        onBack={() => setOnlinePhase(null)}
+        onStartDuel={(rd) => { setOnlineRoomData(rd); setOnlinePhase("duel") }}
+      />
+    )
+  }
+
+  // ── VS JOGADOR: show OnlineDuelScreen ───────────────────────────────────
+  if (mode === "player" && onlinePhase === "duel" && onlineRoomData) {
+    return (
+      <OnlineDuelScreen
+        roomData={onlineRoomData}
+        onBack={() => { setOnlinePhase("lobby"); setOnlineRoomData(null) }}
+      />
+    )
+  }
+
   if (!gameStarted) {
     const difficulties = [
       { id:'easy'   as const, label:'Fácil',  emoji:'🟢', desc:'Bot joga cartas aleatoriamente, ataca sem estratégia e não usa habilidades.', color:'from-green-700 to-green-600 hover:from-green-600 hover:to-green-500 border-green-500/40' },
@@ -7479,7 +7505,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       onClick={() => {
                         setPendingPlayerDeck(deck)
                         if (mode === 'bot') setSetupStep('selectDifficulty')
-                        else startGame(deck)
+                        else setOnlinePhase("lobby")
                       }}
                       className="w-full h-16 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 border border-slate-500/30 hover:border-cyan-500/40 transition-all text-left group"
                     >
