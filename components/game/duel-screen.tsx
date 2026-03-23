@@ -6093,78 +6093,85 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (hrottiSrLastTurn !== null && turn - hrottiSrLastTurn < 3) {
       showEffectFeedback(`Avareza de Fafnir disponível no turno ${hrottiSrLastTurn + 3}!`, "error"); return
     }
-    // Collect all active cards on player field (units except Hrotti, functions, scenario, ultimate)
-    const fieldOptions: { id: string; label: string; description: string; zone: string; index: number }[] = []
-    playerField.unitZone.forEach((u, i) => {
-      if (u && !u.name.toLowerCase().includes("hrotti"))
-        fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp}DP`, zone: 'unit', index: i })
-    })
-    playerField.functionZone.forEach((f, i) => {
-      if (f)
-        fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}`, zone: 'func', index: i })
-    })
-    if (playerField.scenarioZone)
-      fieldOptions.push({ id: 'scenario', label: playerField.scenarioZone.name, description: 'Cenário', zone: 'scenario', index: 0 })
-    if (playerField.ultimateZone)
-      fieldOptions.push({ id: 'ultimate', label: playerField.ultimateZone.name, description: 'Ultimate Zone', zone: 'ultimate', index: 0 })
-    if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
 
-    // Multi-select via sequential choice — show all options with "Confirmar" at end
-    const selected: string[] = []
-    const confirmAndApply = () => {
-      if (selected.length === 0) { showEffectFeedback("Nenhuma carta selecionada.", "info"); return }
-      const bonus = selected.length
-      // Remove selected cards from field
-      setPlayerField(prev => {
-        let newUnitZone = [...prev.unitZone]
-        let newFuncZone = [...prev.functionZone]
-        let newScenario = prev.scenarioZone
-        let newGrave = [...prev.graveyard]
-        let newUltimate = prev.ultimateZone
-        selected.forEach(sel => {
-          if (sel.startsWith('unit-')) {
-            const idx = parseInt(sel.replace('unit-', ''))
-            if (newUnitZone[idx]) { newGrave.push(newUnitZone[idx]!); newUnitZone[idx] = null }
-          } else if (sel.startsWith('func-')) {
-            const idx = parseInt(sel.replace('func-', ''))
-            if (newFuncZone[idx]) { newGrave.push(newFuncZone[idx]!); newFuncZone[idx] = null }
-          } else if (sel === 'scenario') {
-            if (newScenario) { newGrave.push(newScenario); newScenario = null }
-          } else if (sel === 'ultimate') {
-            if (newUltimate) { newGrave.push(newUltimate); newUltimate = null }
+    // Read FRESH state to avoid stale closure — build options inside setPlayerField then show modal
+    // Snapshot fresh state right now via a functional read trick
+    let freshField = playerField
+    setPlayerField(prev => { freshField = prev; return prev })
+
+    setTimeout(() => {
+      // Collect ALL active cards — Unidades (exceto Hrotti), Functions, Cenário, Ultimate Zone
+      const fieldOptions: { id: string; label: string; description: string }[] = []
+      freshField.unitZone.forEach((u, i) => {
+        if (u && !u.name.toLowerCase().includes("hrotti"))
+          fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp ?? u.dp}DP` })
+      })
+      freshField.functionZone.forEach((f, i) => {
+        if (f)
+          fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}` })
+      })
+      if (freshField.scenarioZone)
+        fieldOptions.push({ id: 'scenario', label: freshField.scenarioZone.name, description: 'Cenário' })
+      if (freshField.ultimateZone)
+        fieldOptions.push({ id: 'ultimate', label: freshField.ultimateZone.name, description: 'Ultimate Zone' })
+
+      if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
+
+      const selected: string[] = []
+
+      const applyDiscard = () => {
+        if (selected.length === 0) { showEffectFeedback("Nenhuma carta selecionada.", "info"); return }
+        const bonus = selected.length
+        setPlayerField(prev => {
+          const newUnitZone = [...prev.unitZone]
+          const newFuncZone = [...prev.functionZone]
+          let newScenario = prev.scenarioZone
+          let newUltimate = prev.ultimateZone
+          const newGrave = [...prev.graveyard]
+          selected.forEach(sel => {
+            if (sel.startsWith('unit-')) {
+              const idx = parseInt(sel.replace('unit-', ''))
+              if (newUnitZone[idx]) { newGrave.push(newUnitZone[idx]!); newUnitZone[idx] = null }
+            } else if (sel.startsWith('func-')) {
+              const idx = parseInt(sel.replace('func-', ''))
+              if (newFuncZone[idx]) { newGrave.push(newFuncZone[idx]!); newFuncZone[idx] = null }
+            } else if (sel === 'scenario') {
+              if (newScenario) { newGrave.push(newScenario); newScenario = null }
+            } else if (sel === 'ultimate') {
+              if (newUltimate) { newGrave.push(newUltimate); newUltimate = null }
+            }
+          })
+          // +1DP per card discarded to Hrotti SR
+          const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
+          if (hrottiIdx !== -1 && newUnitZone[hrottiIdx]) {
+            const h = newUnitZone[hrottiIdx]!
+            newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
           }
+          return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, ultimateZone: newUltimate, graveyard: newGrave }
         })
-        // Apply +1DP per card to Hrotti SR
-        const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
-        if (hrottiIdx !== -1 && newUnitZone[hrottiIdx]) {
-          const h = newUnitZone[hrottiIdx]!
-          newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
-        }
-        return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, ultimateZone: newUltimate, graveyard: newGrave }
-      })
-      setHrottiSrLastTurn(turn)
-      showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
-    }
+        setHrottiSrLastTurn(turn)
+        showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
+      }
 
-    // Build choice with "Confirmar" option
-    const buildModal = () => {
-      const available = fieldOptions.filter(o => !selected.includes(o.id))
-      setChoiceModal({
-        visible: true,
-        cardName: `Avareza de Fafnir — Selecione cartas para descartar (${selected.length} selecionadas)`,
-        options: [
-          ...available.map(o => ({ id: o.id, label: o.label, description: o.description })),
-          { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length > 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
-        ],
-        onChoose: (optId) => {
-          setChoiceModal(null)
-          if (optId === '__confirm__') { confirmAndApply(); return }
-          selected.push(optId)
-          buildModal()
-        },
-      })
-    }
-    buildModal()
+      const showPicker = () => {
+        const available = fieldOptions.filter(o => !selected.includes(o.id))
+        setChoiceModal({
+          visible: true,
+          cardName: `Avareza de Fafnir — Escolha cartas para descartar (${selected.length} selecionadas)`,
+          options: [
+            ...available.map(o => ({ id: o.id, label: o.label, description: o.description })),
+            { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length > 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
+          ],
+          onChoose: (optId) => {
+            setChoiceModal(null)
+            if (optId === '__confirm__') { applyDiscard(); return }
+            selected.push(optId)
+            showPicker()
+          },
+        })
+      }
+      showPicker()
+    }, 0)
   }
 
   // ── Hrotti UR: Herança de Andvaranaut — nullify all Ultimate Gear effects for 3 turns (once ever) ──
