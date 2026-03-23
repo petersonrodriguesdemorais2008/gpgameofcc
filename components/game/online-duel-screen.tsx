@@ -6718,6 +6718,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         setIsMyTurn(true)
         setTurn(prev => prev + 1)
         setPhase("draw")
+        setNormalSummonUsed(false) // reset for my new turn
         setPlayerField(prev => ({
           ...prev,
           unitZone: prev.unitZone.map(u => u ? { ...u, canAttack: true, hasAttacked: false } : null),
@@ -6915,6 +6916,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setTurn(nextTurn)
       setIsMyTurn(false)
       setPhase("draw")
+      setNormalSummonUsed(false) // reset for next turn
 
       setEnemyField((prev) => ({
         ...prev,
@@ -7800,6 +7802,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
                           if (cardName.includes('hrotti') && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return 'hrottiSr'
                           if (cardName.includes('hrotti') && card.dp === 3 && !hrottiUrUsed) return 'hrottiUr'
+                          if (cardName.includes('ullr') && card.dp === 2 && !ullrSrMarcaUsed) return 'ullrSr'
+                          if (cardName.includes('ullr') && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return 'ullrUr'
                           return ''
                         })() })
                           }
@@ -9111,6 +9115,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                   else if (key === 'mrp') activateMrPAbility()
                   else if (key === 'hrottiSr') activateHrottiSrAbility()
                   else if (key === 'hrottiUr') activateHrottiUrAbility()
+                  else if (key === 'ullrSr') activateUllrSrAbility()
+                  else if (key === 'ullrUr') activateUllrUrAbility()
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
               >
