@@ -6100,11 +6100,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp}DP`, zone: 'unit', index: i })
     })
     playerField.functionZone.forEach((f, i) => {
-      if (f && !f.isFaceDown)
-        fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function`, zone: 'func', index: i })
+      if (f)
+        fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}`, zone: 'func', index: i })
     })
     if (playerField.scenarioZone)
       fieldOptions.push({ id: 'scenario', label: playerField.scenarioZone.name, description: 'Cenário', zone: 'scenario', index: 0 })
+    if (playerField.ultimateZone)
+      fieldOptions.push({ id: 'ultimate', label: playerField.ultimateZone.name, description: 'Ultimate Zone', zone: 'ultimate', index: 0 })
     if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
 
     // Multi-select via sequential choice — show all options with "Confirmar" at end
@@ -6128,6 +6130,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             if (newFuncZone[idx]) { newGrave.push(newFuncZone[idx]!); newFuncZone[idx] = null }
           } else if (sel === 'scenario') {
             if (newScenario) { newGrave.push(newScenario); newScenario = null }
+          } else if (sel === 'ultimate') {
+            if (newUltimate) { newGrave.push(newUltimate); newUltimate = null }
           }
         })
         // Apply +1DP per card to Hrotti SR
@@ -6136,7 +6140,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           const h = newUnitZone[hrottiIdx]!
           newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
         }
-        return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, graveyard: newGrave }
+        return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, ultimateZone: newUltimate, graveyard: newGrave }
       })
       setHrottiSrLastTurn(turn)
       showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
