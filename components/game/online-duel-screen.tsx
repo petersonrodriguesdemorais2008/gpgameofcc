@@ -3996,6 +3996,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             deck: newDeck,
           }
         })
+        // ── Broadcast brotherhood function placement ──
+        sendActionRef.current({
+          type: "place_card", playerId,
+          data: { zone: "function", index: slotIndex, card: cardToPlace, source: "hand", isTrap: false },
+          timestamp: Date.now(),
+        })
         setSelectedHandCard(null)
         setDraggedHandCard(null)
         return
@@ -4376,6 +4382,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             hand: prev.hand.filter((_, i) => i !== cardIndex),
             graveyard: [...prev.graveyard, cardToPlace],
           }))
+          // ── Broadcast function card use ──
+          sendActionRef.current({
+            type: "use_function_card", playerId,
+            data: { card: cardToPlace, source: "hand" },
+            timestamp: Date.now(),
+          })
           setSelectedHandCard(null)
           setDraggedHandCard(null)
           return
@@ -4393,6 +4405,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           functionZone: newFunctionZone,
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
+      })
+      sendActionRef.current({
+        type: "place_card", playerId,
+        data: { zone: "function", index: slotIndex, card: cardToPlace, source: "hand", isTrap: false },
+        timestamp: Date.now(),
       })
     }
 
@@ -4457,6 +4474,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
     })
 
+    // ── Broadcast scenario placement ──
+    sendActionRef.current({
+      type: "place_card", playerId,
+      data: { zone: "scenario", card: cardToPlace, source: "hand" },
+      timestamp: Date.now(),
+    })
     setSelectedHandCard(null)
     setDraggedHandCard(null)
   }
@@ -4558,6 +4581,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
     })
 
+    // ── Broadcast ultimate placement ──
+    sendActionRef.current({
+      type: "place_card", playerId,
+      data: { zone: "ultimate", card: cardToPlace, source: "hand" },
+      timestamp: Date.now(),
+    })
     // Reset one-time ability flag for a new UG
     setPlayerUgAbilityUsed(false)
     setSelectedHandCard(null)
@@ -6718,6 +6747,53 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           return prev
         })
         break
+
+      case "use_function_card": {
+        // Opponent used a function/item card — update visible state
+        const card = action.data.card
+        setEnemyField(prev => ({
+          ...prev,
+          hand: prev.hand.slice(0, -1),
+          graveyard: [...prev.graveyard, card],
+        }))
+        // If it targeted a player unit, apply damage/effect
+        if (action.data.targets?.allyUnitIndex != null) {
+          const idx = action.data.targets.allyUnitIndex
+          setPlayerField(prev => {
+            const nUZ = [...prev.unitZone]
+            const unit = nUZ[idx]
+            if (unit && card.abilityDescription?.toLowerCase().includes("-2dp")) {
+              unit.currentDp = Math.max(0, (unit.currentDp ?? unit.dp) - 2)
+              if (unit.currentDp <= 0) {
+                const nGY = [...prev.graveyard, unit]
+                nUZ[idx] = null
+                return { ...prev, unitZone: nUZ, graveyard: nGY }
+              }
+            }
+            return { ...prev, unitZone: nUZ }
+          })
+        }
+        break
+      }
+
+      case "phase_change":
+        // No visual needed — phases are driven by turn ownership
+        break
+
+      case "life_change":
+        if (action.data.target === "enemy") {
+          setEnemyField(prev => ({ ...prev, life: Math.max(0, action.data.newLife) }))
+        } else {
+          setPlayerField(prev => ({ ...prev, life: Math.max(0, action.data.newLife) }))
+        }
+        break
+
+      case "field_update":
+        // Full field sync — used for complex effects
+        if (action.data.enemyField) {
+          setEnemyField(prev => ({ ...prev, ...action.data.enemyField }))
+        }
+        break
     }
   }, [enemyField, playerField, turn, triggerExplosion])
 
@@ -7120,6 +7196,18 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             ...prev,
             graveyard: [...prev.graveyard, cardToUse],
           }))
+          // ── Broadcast item card use ──
+          sendActionRef.current({
+            type: "use_function_card", playerId,
+            data: {
+              card: cardToUse,
+              targets: {
+                enemyUnitIndex: targets.enemyUnitIndices?.[0] ?? null,
+                allyUnitIndex: targets.allyUnitIndices?.[0] ?? null,
+              },
+            },
+            timestamp: Date.now(),
+          })
         } else {
           showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
         }
