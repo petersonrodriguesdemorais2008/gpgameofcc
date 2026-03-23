@@ -49,19 +49,6 @@ interface OnlineDuelScreenProps {
   onBack: () => void
 }
 
-interface RoomData {
-  roomId: string
-  roomCode: string
-  isHost: boolean
-  hostId: string
-  hostName: string
-  hostDeck: GameDeck | null
-  guestId: string | null
-  guestName: string | null
-  guestDeck: GameDeck | null
-  hostReady: boolean
-  guestReady: boolean
-}
 
 type Phase = "draw" | "main" | "battle" | "end"
 
@@ -2735,7 +2722,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const { t } = useLanguage()
   const { addMatchRecord, getPlaymatForDeck } = useGame()
   const mode = "online"
-  const supabase = createClient()
+  const supabase = (() => {
+    try { return createClient() } catch (e) { console.error("[OnlineDuelScreen] Supabase init failed:", e); return null }
+  })()
 
   // ─── Multiplayer identity ────────────────────────────────────────────────
   const playerId   = roomData.isHost ? roomData.hostId : (roomData.guestId || "")
@@ -6951,11 +6940,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // ─── Start game on mount ─────────────────────────────────────────────────
   useEffect(() => {
-    if (selectedDeck) {
-      initGame(selectedDeck, oppDeckTyped)
-      subscribeToActions()
-      subscribeToChat()
+    if (!selectedDeck) {
+      console.error("[OnlineDuelScreen] selectedDeck is null — cannot start game")
+      return
     }
+    initGame(selectedDeck, oppDeckTyped)
+    subscribeToActions()
+    subscribeToChat()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
