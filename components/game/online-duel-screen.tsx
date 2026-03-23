@@ -6385,6 +6385,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         setUllrSrMarcaUsed(true)
         const tgt = enemyTargets.find(t => t.i === idx)
         const isVentus = tgt?.u?.element === "Ventus" || tgt?.u?.element === "Wind"
+        sendActionRef.current({
+          type: "ability_used", playerId,
+          data: { ability: "ullrSr", targetIndex: idx, dpChange: isVentus ? -2 : -1 },
+          timestamp: Date.now(),
+        })
         showEffectFeedback(`MARCA DA CAÇADA: ${tgt?.u?.name} ${isVentus ? "-2DP (Ventus)" : "-1DP"}!`, "success")
       },
     })
@@ -6408,6 +6413,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
     })
     setUllrUrJuramentoLastTurn(turn)
+    sendActionRef.current({
+      type: "ability_used", playerId,
+      data: { ability: "ullrUr", bonus },
+      timestamp: Date.now(),
+    })
     showEffectFeedback(`JURAMENTO ETERNO: Todas as unidades Ventus +${bonus}DP${hasUllrbogi ? " (Ullrbogi!)" : ""}!`, "success")
   }
 
@@ -6585,12 +6595,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // sendActionRef allows calling sendAction from closures defined before it
   const sendActionRef = useRef<(action: DuelAction) => Promise<void>>(async () => {})
+  // handleOpponentActionRef — always points to latest version (avoids stale closure in subscription)
+  const handleOpponentActionRef = useRef<(action: DuelAction) => void>(() => {})
 
   const sendAction = useCallback(async (action: DuelAction) => {
     if (!supabase) return
     try {
-      const { data: seqData } = await supabase.rpc('get_next_action_sequence', { p_room_id: roomData.roomId })
-      const seq = seqData || 1
+      // Use timestamp as sequence — avoids extra RPC round-trip for speed
+      const seq = action.timestamp
       await supabase.from("duel_actions").insert({
         room_id: roomData.roomId,
         player_id: playerId,
@@ -6605,6 +6617,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // Keep ref in sync
   useEffect(() => { sendActionRef.current = sendAction }, [sendAction])
+  useEffect(() => { handleOpponentActionRef.current = handleOpponentAction }, [handleOpponentAction])
 
   const handleOpponentAction = useCallback((action: DuelAction) => {
     const actionId = `${action.type}-${action.timestamp}`
@@ -6664,7 +6677,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
       case "attack": {
         const { attackerIndex, targetType, targetIndex, damage, attackerCard } = action.data
-        const attacker = enemyField.unitZone[attackerIndex] ?? attackerCard
+        // Use attackerCard from action data (never stale)
+        const attacker = attackerCard ?? enemyField.unitZone[attackerIndex]
 
         // Projectile from enemy → my field
         const getCoords = (sel: string) => {
@@ -6790,11 +6804,52 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         break
 
       case "field_update":
-        // Full field sync — used for complex effects
         if (action.data.enemyField) {
           setEnemyField(prev => ({ ...prev, ...action.data.enemyField }))
         }
         break
+
+      case "tap_to_hand":
+        // Opponent moved a card from TAP to hand — update visible hand size
+        setEnemyField(prev => ({
+          ...prev,
+          hand: [...prev.hand, null as any], // opponent drew 1 more card
+          tap: prev.tap.filter(t => t?.id !== action.data.card?.id),
+        }))
+        break
+
+      case "use_ability":
+      case "ability_used": {
+        const ab = action.data.ability
+        // Ullr SR: Marca da Caçada — debuff enemy unit (which is MY unit from opponent's perspective)
+        if (ab === "ullrSr" && action.data.targetIndex !== undefined) {
+          setPlayerField(prev => {
+            const nUZ = [...prev.unitZone]
+            const u = nUZ[action.data.targetIndex]
+            if (u) {
+              nUZ[action.data.targetIndex] = {
+                ...u,
+                currentDp: Math.max(0, (u.currentDp ?? u.dp) + (action.data.dpChange ?? -1))
+              }
+            }
+            return { ...prev, unitZone: nUZ as (FieldCard|null)[] }
+          })
+        }
+        // Ullr UR: Juramento Eterno — buff opponent's Ventus units (enemy field for me)
+        if (ab === "ullrUr" && action.data.bonus) {
+          setEnemyField(prev => ({
+            ...prev,
+            unitZone: prev.unitZone.map(u => {
+              if (!u) return null
+              if (u.element === "Ventus" || u.element === "Wind") {
+                return { ...u, currentDp: (u.currentDp ?? u.dp) + action.data.bonus }
+              }
+              return u
+            }) as (FieldCard|null)[]
+          }))
+        }
+        break
+      }
     }
   }, [enemyField, playerField, turn, triggerExplosion])
 
@@ -6810,16 +6865,18 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         table: "duel_actions", filter: `room_id=eq.${roomData.roomId}`,
       }, (payload: { new: any }) => {
         const row = payload.new
-        if (row.player_id === playerId) return // ignore own actions
+        if (row.player_id === playerId) return
         let data = row.action_data
         if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
-        handleOpponentAction(data)
+        // Always use ref — avoids stale closure capturing old field state
+        handleOpponentActionRef.current(data)
+        lastActionTimeRef.current = row.created_at
       })
       .subscribe()
 
     actionsChannelRef.current = channel
 
-    // Polling fallback every 1.5s
+    // Aggressive polling fallback: 400ms
     if (actionsPollRef.current) clearInterval(actionsPollRef.current)
     actionsPollRef.current = setInterval(async () => {
       const { data: rows } = await supabase
@@ -6829,16 +6886,17 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         .neq("player_id", playerId)
         .gt("created_at", lastActionTimeRef.current)
         .order("sequence_number", { ascending: true })
+        .limit(10)
       if (rows && rows.length > 0) {
         for (const row of rows) {
           let actionData = row.action_data
           if (typeof actionData === "string") { try { actionData = JSON.parse(actionData) } catch {} }
-          handleOpponentAction(actionData)
+          handleOpponentActionRef.current(actionData)
           lastActionTimeRef.current = row.created_at
         }
       }
-    }, 1500)
-  }, [supabase, roomData.roomId, playerId, handleOpponentAction])
+    }, 400)
+  }, [supabase, roomData.roomId, playerId])
 
   // ─── Online chat ─────────────────────────────────────────────────────────
   const subscribeToChat = useCallback(() => {
@@ -9268,6 +9326,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                                 setPlayerField((prev) => {
                                   const newTap = prev.tap.filter((_, idx) => idx !== i)
                                   return { ...prev, tap: newTap, hand: [...prev.hand, card] }
+                                })
+                                sendActionRef.current({
+                                  type: "tap_to_hand", playerId,
+                                  data: { card, index: i },
+                                  timestamp: Date.now(),
                                 })
                                 setTapView(null)
                                 showEffectFeedback(`TAP: ${card.name} adicionada à mão!`, "success")
