@@ -3405,6 +3405,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // Rei Arthur (ultimateGuardian) is a UNIT and goes in the Unit Zone
   const isUltimateCard = (card: GameCard) => {
     if (card.name.toLowerCase().includes("rei arthur")) return false
+    if (card.name.toLowerCase().includes("hrotti")) return false
     return (
       card.type === "ultimateGear" ||
       card.type === "ultimateGuardian"
