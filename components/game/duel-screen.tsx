@@ -5734,6 +5734,56 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
   }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, enemyField.graveyard, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, morganaEclipseLastTurn, morganaSinfoniaLastTurn, morganaDiscordiaLastTurn, setEnemyField, setPlayerField, setAttackState, showEffectFeedback, setChoiceModal])
 
+  // ── Global 0DP Sweep — any unit that reaches 0 or below DP is auto-destroyed ──
+  useEffect(() => {
+    if (!gameStarted) return
+
+    // Player units
+    const playerHasZeroDp = playerField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
+    if (playerHasZeroDp) {
+      setPlayerField(prev => {
+        let changed = false
+        const newUnits = prev.unitZone.map(u => {
+          if (!u || (u.currentDp ?? u.dp) > 0) return u
+          markDestroyed(u)
+          changed = true
+          return null
+        })
+        if (!changed) return prev
+        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
+        return {
+          ...prev,
+          unitZone: newUnits as (FieldCard | null)[],
+          graveyard: [...prev.graveyard, ...destroyed],
+        }
+      })
+    }
+
+    // Enemy units
+    const enemyHasZeroDp = enemyField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
+    if (enemyHasZeroDp) {
+      setEnemyField(prev => {
+        let changed = false
+        const newUnits = prev.unitZone.map(u => {
+          if (!u || (u.currentDp ?? u.dp) > 0) return u
+          markDestroyed(u)
+          changed = true
+          return null
+        })
+        if (!changed) return prev
+        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
+        return {
+          ...prev,
+          unitZone: newUnits as (FieldCard | null)[],
+          graveyard: [...prev.graveyard, ...destroyed],
+        }
+      })
+    }
+  }, [
+    playerField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
+    enemyField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
+  ])
+
   // ── Lancelot: Virtude do Cavaleiro — recalc DP when field changes ──
   useEffect(() => {
     setPlayerField(prev => {
