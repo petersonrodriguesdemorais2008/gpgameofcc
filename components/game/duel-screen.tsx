@@ -2953,6 +2953,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
   const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null>(null)
   const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
+  const [normalSummonUsed, setNormalSummonUsed] = useState(false)  // 1 normal unit summon per turn
   const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
   const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
 
@@ -3651,6 +3652,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const isUnit = isUnitCard(cardToPlace)
     if (zone === "unit" && isUnit) {
       if (playerField.unitZone[slotIndex] !== null) return
+      // Limit: only 1 normal summon per turn
+      if (normalSummonUsed) {
+        showEffectFeedback("Você já evocou uma Unidade neste turno!", "error")
+        return
+      }
 
       const fieldCard: FieldCard = {
         ...cardToPlace,
@@ -3669,6 +3675,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+      setNormalSummonUsed(true)
       // ── LOGI UR: Cinzas do Mundo — ao entrar em campo, +2DP a outra unidade (ou compra 1 carta) ──
       if (cardToPlace.name.toLowerCase().includes("logi") && cardToPlace.dp === 2) {
         // Use functional setter to read FRESH state after Logi was placed
@@ -7060,6 +7067,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     setCalemUrDoubleAttack(false)
     setHrottiLrIraUsed(false)
+    setNormalSummonUsed(false)
     setLogiSrKillsThisBattle(0)
     setUllrSrMarcaUsed(false)
     // Morgana cooldowns persist across turns (they track last-used turn number)
