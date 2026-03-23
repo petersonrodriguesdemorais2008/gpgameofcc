@@ -2993,6 +2993,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
+  const [mrpTargetMode, setMrpTargetMode] = useState(false)  // true while player is picking enemy unit
   const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
 
   // ── Merlin / Oswin effect states ──
@@ -7954,7 +7955,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       key={i}
                       data-enemy-unit={i}
                       onClick={() => {
-                        if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                        if (mrpTargetMode && card) {
+                          handleMrpTarget(i)
+                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
                           handleUgTargetEnemyCard("unit", i)
                         } else if (ugTargetMode.active && ugTargetMode.type === "julgamento_divino" && card) {
                           handleJulgamentoDivinoTarget(i)
@@ -7964,7 +7967,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                           handleEnemyUnitSelect(i)
                         }
                       }}
-                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
+                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(mrpTargetMode && card) ||
+                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
@@ -9399,6 +9403,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {mrpTargetMode && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/60 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-yellow-300 font-bold text-sm mb-1">MANUSCRITO DE GUERRA</h3>
+          <p className="text-yellow-200/80 text-xs mb-2">Selecione 1 unidade inimiga para -2DP</p>
+          <button onClick={() => setMrpTargetMode(false)} className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold">CANCELAR</button>
         </div>
       )}
 
