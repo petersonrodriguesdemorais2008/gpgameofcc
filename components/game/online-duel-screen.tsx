@@ -9386,4 +9386,3 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   )
 }
 
-export default DuelScreen
