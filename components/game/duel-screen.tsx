@@ -2989,7 +2989,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [hrottiLrIraUsed, setHrottiLrIraUsed] = useState(false)                    // Ira Maelstrom triggered this battle
 
   // ── Unit ability confirmation modal ──
-  const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; activate:()=>void} | null>(null)
+  const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null>(null)
 
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
@@ -6094,32 +6094,26 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       showEffectFeedback(`Avareza de Fafnir disponível no turno ${hrottiSrLastTurn + 3}!`, "error"); return
     }
 
-    // Read FRESH state to avoid stale closure — build options inside setPlayerField then show modal
-    // Snapshot fresh state right now via a functional read trick
-    let freshField = playerField
-    setPlayerField(prev => { freshField = prev; return prev })
+    // Build field options from current playerField (now safe — called fresh from key lookup)
+    const fieldOptions: { id: string; label: string; description: string }[] = []
+    playerField.unitZone.forEach((u, i) => {
+      if (u && !u.name.toLowerCase().includes("hrotti"))
+        fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp ?? u.dp}DP` })
+    })
+    playerField.functionZone.forEach((f, i) => {
+      if (f)
+        fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}` })
+    })
+    if (playerField.scenarioZone)
+      fieldOptions.push({ id: 'scenario', label: playerField.scenarioZone.name, description: 'Cenário' })
+    if (playerField.ultimateZone)
+      fieldOptions.push({ id: 'ultimate', label: playerField.ultimateZone.name, description: 'Ultimate Zone' })
 
-    setTimeout(() => {
-      // Collect ALL active cards — Unidades (exceto Hrotti), Functions, Cenário, Ultimate Zone
-      const fieldOptions: { id: string; label: string; description: string }[] = []
-      freshField.unitZone.forEach((u, i) => {
-        if (u && !u.name.toLowerCase().includes("hrotti"))
-          fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp ?? u.dp}DP` })
-      })
-      freshField.functionZone.forEach((f, i) => {
-        if (f)
-          fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}` })
-      })
-      if (freshField.scenarioZone)
-        fieldOptions.push({ id: 'scenario', label: freshField.scenarioZone.name, description: 'Cenário' })
-      if (freshField.ultimateZone)
-        fieldOptions.push({ id: 'ultimate', label: freshField.ultimateZone.name, description: 'Ultimate Zone' })
+    if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
 
-      if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
+    const selected: string[] = []
 
-      const selected: string[] = []
-
-      const applyDiscard = () => {
+    const applyDiscard = () => {
         if (selected.length === 0) { showEffectFeedback("Nenhuma carta selecionada.", "info"); return }
         const bonus = selected.length
         setPlayerField(prev => {
@@ -6170,8 +6164,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           },
         })
       }
-      showPicker()
-    }, 0)
+    showPicker()
   }
 
   // ── Hrotti UR: Herança de Andvaranaut — nullify all Ultimate Gear effects for 3 turns (once ever) ──
@@ -8076,7 +8069,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                           } else if (itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card) {
                             handleAllyUnitSelect(i)
                           } else if (hasAbility && getAbilityFn()) {
-                            setUnitAbilityConfirm({ name: card!.name, activate: getAbilityFn()! })
+                            setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
+                          if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
+                          if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
+                          if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
+                          if (cardName.includes('hrotti') && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return 'hrottiSr'
+                          if (cardName.includes('hrotti') && card.dp === 3 && !hrottiUrUsed) return 'hrottiUr'
+                          return ''
+                        })() })
                           }
                         }}
                         className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
@@ -9379,8 +9379,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => {
+                  const key = unitAbilityConfirm?.abilityKey
                   setUnitAbilityConfirm(null)
-                  unitAbilityConfirm.activate()
+                  if (key === 'merlin') activateMerlinAbility()
+                  else if (key === 'oswin') activateOswinAbility()
+                  else if (key === 'mrp') activateMrPAbility()
+                  else if (key === 'hrottiSr') activateHrottiSrAbility()
+                  else if (key === 'hrottiUr') activateHrottiUrAbility()
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
               >
