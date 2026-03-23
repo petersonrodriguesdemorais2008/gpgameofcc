@@ -430,6 +430,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     cardType: string
   } | null>(null)
 
+  // explosionEffects was missing useState — this was the crash
+  const [explosionEffects, setExplosionEffects] = useState<ExplosionEffect[]>([])
   // Helper to show effect feedback
   const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "warning" = "success") => {
     setEffectFeedback({ active: true, message, type })
@@ -456,16 +458,6 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }
     requestAnimationFrame(shake)
   }, [])
-
-
-  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
-    // Add a quick flash before explosion
-    setImpactFlash({ active: true, color: "rgba(255, 255, 255, 0.6)" })
-    setTimeout(() => setImpactFlash({ active: false, color: "#ffffff" }), 16)
-
-    triggerCameraShake()
-    triggerExplosion(x, y, element)
-  }, [triggerCameraShake, triggerExplosion])
 
   const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) => {
     const el = element?.toLowerCase()
@@ -600,6 +592,16 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setExplosionEffects((prev) => prev.filter((e) => e.id !== effectId))
     }, 1100) // Snappier decay
   }, [])
+
+  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
+    // Add a quick flash before explosion
+    setImpactFlash({ active: true, color: "rgba(255, 255, 255, 0.6)" })
+    setTimeout(() => setImpactFlash({ active: false, color: "#ffffff" }), 16)
+
+    triggerCameraShake()
+    triggerExplosion(x, y, element)
+  }, [triggerCameraShake])
+
 
   // Animation Rendering Loop
   useEffect(() => {
