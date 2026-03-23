@@ -6580,10 +6580,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        // Bot normal summon limit: 1 unit per turn (same rule as player)
+        let botNormalSummonUsed = false
         for (let i = newHand.length - 1; i >= 0; i--) {
           const card = newHand[i]
           // Skip ultimate cards - they can only go in ultimate zone
           if (card && isUnitCard(card) && !isUltimateCard(card)) {
+            if (botNormalSummonUsed) continue  // already summoned one unit this turn
             if (!botShouldPlayCard()) continue  // difficulty: easy may skip
             const emptySlot = difficulty === 'hard'
               // Hard: prefer strongest unit in highest slot
@@ -6598,6 +6601,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 canAttackTurn: turn,
               }
               newHand.splice(i, 1)
+              botNormalSummonUsed = true
             }
           }
         }
@@ -8489,7 +8493,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 : card.type === "scenario"
                   ? playerField.scenarioZone === null
                   : isUnitCard(card)
-                    ? playerField.unitZone.some(slot => slot === null)
+                    ? playerField.unitZone.some(slot => slot === null) && !normalSummonUsed
                     : playerField.functionZone.some(slot => slot === null)
               const canPlay = isPlayerTurn && phase === "main" && hasSpaceInZone
 
