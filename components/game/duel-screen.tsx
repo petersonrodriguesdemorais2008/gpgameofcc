@@ -4135,7 +4135,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
           if (cardToPlace.name === "Sinfonia Relâmpago") {
             setSinfoniaAnimation(true)
-            setTimeout(() => setSinfoniaAnimation(false), 1600)
+            setTimeout(() => setSinfoniaAnimation(false), 1500)
           }
 
           // Special handling for Cristal Recuperador - draw a card and check if Function type
@@ -9137,170 +9137,40 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* Sinfonia Relâmpago — Purple Lightning & Musical Notes Animation */}
+      {/* Sinfonia Relâmpago Animation */}
       {sinfoniaAnimation && (
         <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
-
-          {/* Immediate deep purple screen tint focused on enemy field (top half) */}
-          <div className="absolute inset-0 sinfonia-bg-flash" />
-
-          {/* ── WHITE FLASH — instant hit at frame 0 ── */}
-          <div className="absolute sinfonia-hit-flash" style={{
-            left: 0, right: 0, top: 0, height: "42%",
-            background: "radial-gradient(ellipse 100% 100% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(232,121,249,0.4) 40%, transparent 100%)",
-          }} />
-
-          {/* ── BOLT 1 — wide horizontal slash across enemy field (Y: 18%) ── */}
-          <svg className="absolute inset-0 w-full h-full sinfonia-bolt-1" viewBox="0 0 100 100" preserveAspectRatio="none"
-            style={{ filter: "drop-shadow(0 0 5px #e879f9) drop-shadow(0 0 12px #a855f7)" }}>
-            <polyline points="0,18 12,15 19,9 28,20 38,6 50,17 61,3 73,15 84,5 100,13"
-              fill="none" stroke="url(#sinG1)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            <polyline points="0,18 12,15 19,9 28,20 38,6 50,17 61,3 73,15 84,5 100,13"
-              fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="0.5" strokeLinecap="round"/>
+          {/* Purple tint */}
+          <div className="absolute inset-0 sin-bg" />
+          {/* Single main lightning bolt across enemy field */}
+          <svg className="absolute inset-0 w-full h-full sin-bolt" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs>
-              <linearGradient id="sinG1" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#7c3aed"/><stop offset="30%" stopColor="#e879f9"/>
-                <stop offset="55%" stopColor="#ffffff"/><stop offset="80%" stopColor="#c084fc"/>
+              <linearGradient id="sinLG" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#7c3aed"/>
+                <stop offset="50%" stopColor="#ffffff"/>
                 <stop offset="100%" stopColor="#6d28d9"/>
               </linearGradient>
             </defs>
+            <polyline points="0,20 16,13 26,5 38,18 52,3 65,16 78,4 92,14 100,9"
+              fill="none" stroke="url(#sinLG)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter:"drop-shadow(0 0 8px #e879f9)" }}/>
+            <polyline points="0,20 16,13 26,5 38,18 52,3 65,16 78,4 92,14 100,9"
+              fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.5" strokeLinecap="round"/>
           </svg>
-
-          {/* ── BOLT 2 — diagonal vertical through enemy field ── */}
-          <svg className="absolute inset-0 w-full h-full sinfonia-bolt-2" viewBox="0 0 100 100" preserveAspectRatio="none"
-            style={{ filter: "drop-shadow(0 0 4px #d946ef) drop-shadow(0 0 10px #9333ea)" }}>
-            <polyline points="28,0 25,8 33,14 20,22 30,27 16,38 27,42 22,52"
-              fill="none" stroke="url(#sinG2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            <polyline points="28,0 25,8 33,14 20,22 30,27 16,38 27,42 22,52"
-              fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.35" strokeLinecap="round"/>
-            <defs>
-              <linearGradient id="sinG2" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#f0abfc"/><stop offset="50%" stopColor="#ffffff"/><stop offset="100%" stopColor="#7c3aed"/>
-              </linearGradient>
-            </defs>
-          </svg>
-
-          {/* ── BOLT 3 — right side diagonal with branches ── */}
-          <svg className="absolute inset-0 w-full h-full sinfonia-bolt-3" viewBox="0 0 100 100" preserveAspectRatio="none"
-            style={{ filter: "drop-shadow(0 0 3px #c026d3)" }}>
-            <polyline points="72,0 69,7 78,12 65,20 74,25 60,38 70,44 76,55"
-              fill="none" stroke="url(#sinG3)" strokeWidth="1.0" strokeLinecap="round" strokeLinejoin="round"/>
-            <polyline points="65,20 55,24 48,30" fill="none" stroke="#e879f9" strokeWidth="0.6" strokeLinecap="round"/>
-            <polyline points="70,44 82,48 90,44" fill="none" stroke="#c084fc" strokeWidth="0.5" strokeLinecap="round"/>
-            <defs>
-              <linearGradient id="sinG3" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#f0abfc"/><stop offset="100%" stopColor="#6d28d9"/>
-              </linearGradient>
-            </defs>
-          </svg>
-
-          {/* ── BOLT 4 — extra thin bolt (upper right corner) ── */}
-          <svg className="absolute inset-0 w-full h-full sinfonia-bolt-4" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <polyline points="85,0 82,5 90,9 78,16 87,21 80,30"
-              fill="none" stroke="#f0abfc" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter: "drop-shadow(0 0 3px #e879f9)" }}/>
-          </svg>
-
-          {/* ── SHOCKWAVE RINGS centered on enemy field (top 25%) ── */}
-          {[0,1,2,3].map((i) => (
-            <div key={`ring-${i}`} className="absolute sinfonia-ring" style={{
-              left: "50%", top: `${14 + i * 4}%`,
-              width: `${100 + i * 60}px`, height: `${100 + i * 60}px`,
-              marginLeft: `-${50 + i * 30}px`, marginTop: `-${50 + i * 30}px`,
-              borderRadius: "50%",
-              border: `${2.5 - i * 0.4}px solid rgba(232,121,249,${0.95 - i * 0.18})`,
-              boxShadow: `0 0 ${14 + i * 8}px ${5 + i * 3}px rgba(168,85,247,0.7), inset 0 0 ${10+i*5}px rgba(232,121,249,0.3)`,
-              animationDelay: `${i * 0.07}s`,
-            }} />
-          ))}
-
-          {/* ── MUSICAL NOTES — clustered in enemy field area ── */}
-          {[
-            { x:"8%",  y:"3%",  size:38, delay:0.0,  note:"♬", rot:-15 },
-            { x:"78%", y:"2%",  size:44, delay:0.04, note:"♪", rot:10  },
-            { x:"45%", y:"4%",  size:36, delay:0.06, note:"♫", rot:5   },
-            { x:"20%", y:"18%", size:32, delay:0.08, note:"♩", rot:-8  },
-            { x:"62%", y:"14%", size:40, delay:0.03, note:"♬", rot:12  },
-            { x:"88%", y:"20%", size:30, delay:0.10, note:"♪", rot:-5  },
-            { x:"5%",  y:"28%", size:34, delay:0.12, note:"♫", rot:20  },
-            { x:"52%", y:"24%", size:36, delay:0.05, note:"♩", rot:-12 },
-            { x:"35%", y:"8%",  size:28, delay:0.09, note:"♬", rot:8   },
-          ].map((n, i) => (
-            <div key={`note-${i}`} className="absolute sinfonia-note" style={{
-              left: n.x, top: n.y,
-              fontSize: `${n.size}px`,
-              color: i % 2 === 0 ? "#f0abfc" : "#c084fc",
-              textShadow: `0 0 14px #e879f9, 0 0 28px #a855f7, 0 0 50px rgba(168,85,247,0.7)`,
-              fontWeight: "bold",
-              animationDelay: `${n.delay}s`,
-              lineHeight: 1,
-              transform: `rotate(${n.rot}deg)`,
-            }}>{n.note}</div>
-          ))}
-
-          {/* ── SPARKS — dense in enemy field (top 40%) ── */}
-          {[...Array(32)].map((_, i) => (
-            <div key={`spark-${i}`} className="absolute sinfonia-spark" style={{
-              left: `${3 + (i * 19) % 94}%`,
-              top:  `${1 + (i * 11) % 38}%`,
-              width:  `${1 + (i % 3)}px`,
-              height: `${8 + (i % 6) * 4}px`,
-              background: i % 3 === 0
-                ? "linear-gradient(180deg,#fff 0%,#e879f9 55%,transparent 100%)"
-                : i % 3 === 1
-                  ? "linear-gradient(180deg,#f0abfc 0%,#a855f7 65%,transparent 100%)"
-                  : "linear-gradient(180deg,#fff 0%,#c084fc 55%,transparent 100%)",
-              borderRadius: "1px",
-              transform: `rotate(${(i * 41) % 340}deg)`,
-              boxShadow: "0 0 5px 1px rgba(168,85,247,0.9)",
-              animationDelay: `${(i * 0.025)}s`,
-            }} />
-          ))}
-
-          {/* ── CENTRAL BURST — on enemy field (top ~20%) ── */}
-          <div className="absolute sinfonia-burst" style={{
-            left:"50%", top:"18%",
-            width:"180px", height:"180px",
-            marginLeft:"-90px", marginTop:"-90px",
-            background:"radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(240,171,252,0.85) 18%, rgba(168,85,247,0.55) 40%, transparent 70%)",
-            borderRadius:"50%",
-          }} />
-
-          {/* ── ELECTRIC ARCS radiating from burst center ── */}
-          <svg className="absolute inset-0 w-full h-full sinfonia-arcs" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {[
-              {x1:50,y1:18,x2:22,y2:30},{x1:50,y1:18,x2:75,y2:25},
-              {x1:50,y1:18,x2:82,y2:8}, {x1:50,y1:18,x2:20,y2:5},
-              {x1:50,y1:18,x2:55,y2:38},{x1:50,y1:18,x2:40,y2:38},
-              {x1:50,y1:18,x2:5,y2:20}, {x1:50,y1:18,x2:95,y2:30},
-            ].map((arc, i) => (
-              <line key={i} x1={arc.x1} y1={arc.y1} x2={arc.x2} y2={arc.y2}
-                stroke={i % 2 === 0 ? "#e879f9" : "#c084fc"} strokeWidth="0.4" strokeLinecap="round"
-                style={{ filter:"drop-shadow(0 0 2px #a855f7)" }}
-                className="sinfonia-arc-line"
-              />
-            ))}
-          </svg>
-
-          {/* ── FLASH PULSES centered on enemy field ── */}
-          <div className="absolute inset-0 sinfonia-flash-1" style={{ background:"radial-gradient(ellipse 100% 55% at 50% 8%, rgba(255,255,255,0.5) 0%, rgba(232,121,249,0.35) 40%, transparent 75%)" }} />
-          <div className="absolute inset-0 sinfonia-flash-2" style={{ background:"radial-gradient(ellipse 100% 60% at 50% 18%, rgba(232,121,249,0.5) 0%, transparent 70%)" }} />
-          <div className="absolute inset-0 sinfonia-flash-3" style={{ background:"radial-gradient(ellipse 100% 55% at 50% 22%, rgba(168,85,247,0.4) 0%, transparent 68%)" }} />
-
-          {/* ── TITLE — above enemy field ── */}
-          <div className="absolute sinfonia-title" style={{ left:"50%", top:"5%", transform:"translateX(-50%)", textAlign:"center", whiteSpace:"nowrap" }}>
-            <span style={{
-              fontSize:"22px", fontWeight:900, color:"#ffffff",
-              letterSpacing:"4px", textTransform:"uppercase",
-              textShadow:"0 0 16px #f0abfc, 0 0 32px #a855f7, 0 0 64px rgba(168,85,247,0.8), 0 2px 8px rgba(0,0,0,0.95)",
-              fontFamily:"system-ui, sans-serif",
-            }}>♫ Sinfonia Relâmpago ♫</span>
+          {/* 3 musical notes */}
+          <div className="absolute sin-note" style={{ left:"12%", top:"8%",  fontSize:"42px", color:"#f0abfc", textShadow:"0 0 14px #a855f7", animationDelay:"0s" }}>♬</div>
+          <div className="absolute sin-note" style={{ left:"80%", top:"5%",  fontSize:"38px", color:"#c084fc", textShadow:"0 0 14px #a855f7", animationDelay:"0.06s" }}>♪</div>
+          <div className="absolute sin-note" style={{ left:"48%", top:"10%", fontSize:"34px", color:"#f0abfc", textShadow:"0 0 14px #a855f7", animationDelay:"0.03s" }}>♫</div>
+          {/* Glow flash on enemy field */}
+          <div className="absolute sin-flash" style={{ left:0, right:0, top:0, height:"45%", background:"radial-gradient(ellipse 100% 80% at 50% 0%, rgba(232,121,249,0.35) 0%, transparent 75%)" }} />
+          {/* Title */}
+          <div className="absolute sin-title" style={{ left:"50%", top:"36%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
+            <span style={{ fontSize:"20px", fontWeight:900, color:"#fff", letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 12px #f0abfc, 0 0 24px #a855f7, 0 2px 6px rgba(0,0,0,0.9)" }}>♫ Sinfonia Relâmpago ♫</span>
           </div>
-
         </div>
       )}
 
-      {/* Card Destruction Animation */}      {/* Card Destruction Animation */}
+      {/* Card Destruction Animation */}      {/* Card Destruction Animation */}      {/* Card Destruction Animation */}
       {destructionAnimation && (
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
           {/* Shatter card animation at destruction position */}
@@ -9818,144 +9688,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* ── SINFONIA RELÂMPAGO ANIMATION CSS — v2: instant start, enemy field focus ── */
-
-        @keyframes sinfoniaBgFlash {
-          0%   { background: rgba(88,28,135,0.5); }
-          8%   { background: rgba(88,28,135,0.38); }
-          45%  { background: rgba(88,28,135,0.18); }
-          100% { background: rgba(88,28,135,0); }
-        }
-        .sinfonia-bg-flash { animation: sinfoniaBgFlash 1.8s ease-out forwards; }
-
-        @keyframes sinfoniaHitFlash {
-          0%   { opacity: 1; }
-          12%  { opacity: 0.7; }
-          30%  { opacity: 0.3; }
-          50%,100% { opacity: 0; }
-        }
-        .sinfonia-hit-flash { animation: sinfoniaHitFlash 1.8s ease-out forwards; }
-
-        @keyframes sinfoniaBolt1 {
-          0%       { opacity: 1; }
-          30%      { opacity: 0.85; }
-          55%      { opacity: 0.4; }
-          70%,100% { opacity: 0; }
-        }
-        .sinfonia-bolt-1 { animation: sinfoniaBolt1 1.8s cubic-bezier(0.04,0.9,0.1,1) forwards; }
-
-        @keyframes sinfoniaBolt2 {
-          0%       { opacity: 0.9; }
-          35%      { opacity: 0.75; }
-          60%,100% { opacity: 0; }
-        }
-        .sinfonia-bolt-2 { animation: sinfoniaBolt2 1.8s ease-out 0.06s forwards; }
-
-        @keyframes sinfoniaBolt3 {
-          0%       { opacity: 0.8; }
-          40%      { opacity: 0.55; }
-          62%,100% { opacity: 0; }
-        }
-        .sinfonia-bolt-3 { animation: sinfoniaBolt3 1.8s ease-out 0.10s forwards; }
-
-        @keyframes sinfoniaBolt4 {
-          0%       { opacity: 0.7; }
-          38%      { opacity: 0.4; }
-          58%,100% { opacity: 0; }
-        }
-        .sinfonia-bolt-4 { animation: sinfoniaBolt4 1.8s ease-out 0.04s forwards; }
-
-        @keyframes sinfoniaRing {
-          0%       { transform: scale(0.1); opacity: 1; }
-          40%      { transform: scale(1.8); opacity: 0.7; }
-          75%      { transform: scale(3.2); opacity: 0.2; }
-          100%     { transform: scale(4.5); opacity: 0; }
-        }
-        .sinfonia-ring { animation: sinfoniaRing 1.8s cubic-bezier(0.15,0.85,0.3,1) forwards; }
-
-        @keyframes sinfoniaNote {
-          0%       { opacity: 1; transform: scale(0.4) translateY(12px) rotate(var(--nr,0deg)); }
-          20%      { opacity: 1; transform: scale(1.4) translateY(-8px) rotate(var(--nr,0deg)); }
-          42%      { transform: scale(1.0) translateY(0) rotate(var(--nr,0deg)); opacity: 1; }
-          68%      { opacity: 0.7; transform: scale(1.1) translateY(-22px) rotate(var(--nr,0deg)); }
-          88%,100% { opacity: 0; transform: scale(0.5) translateY(-48px) rotate(var(--nr,0deg)); }
-        }
-        .sinfonia-note { animation: sinfoniaNote 1.8s cubic-bezier(0.34,1.5,0.64,1) forwards; }
-
-        @keyframes sinfoniaSpark {
-          0%       { opacity: 1; transform: scale(1.1); }
-          45%      { opacity: 0.7; transform: scale(0.8) translateY(-14px); }
-          100%     { opacity: 0; transform: scale(0.1) translateY(-30px); }
-        }
-        .sinfonia-spark { animation: sinfoniaSpark 1.8s ease-out forwards; }
-
-        @keyframes sinfoniaBurst {
-          0%       { transform: scale(0.2); opacity: 1; }
-          22%      { transform: scale(1.5); opacity: 0.9; }
-          45%      { transform: scale(1.0); opacity: 0.65; }
-          68%      { transform: scale(2.0); opacity: 0.25; }
-          100%     { transform: scale(2.8); opacity: 0; }
-        }
-        .sinfonia-burst { animation: sinfoniaBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
-
-        @keyframes sinfoniaArcLine {
-          0%       { opacity: 1; stroke-dasharray: 100 0; }
-          45%      { opacity: 0.55; }
-          70%,100% { opacity: 0; }
-        }
-        .sinfonia-arc-line { animation: sinfoniaArcLine 1.8s ease-out forwards; }
-        .sinfonia-arcs line:nth-child(1) { animation-delay: 0.08s; }
-        .sinfonia-arcs line:nth-child(2) { animation-delay: 0.10s; }
-        .sinfonia-arcs line:nth-child(3) { animation-delay: 0.06s; }
-        .sinfonia-arcs line:nth-child(4) { animation-delay: 0.12s; }
-        .sinfonia-arcs line:nth-child(5) { animation-delay: 0.09s; }
-        .sinfonia-arcs line:nth-child(6) { animation-delay: 0.11s; }
-        .sinfonia-arcs line:nth-child(7) { animation-delay: 0.07s; }
-        .sinfonia-arcs line:nth-child(8) { animation-delay: 0.13s; }
-
-        @keyframes sinfoniaFlash1 {
-          0%   { opacity: 0.9; }
-          12%  { opacity: 0.7; }
-          28%,100% { opacity: 0; }
-        }
-        @keyframes sinfoniaFlash2 {
-          0%   { opacity: 0; }
-          8%   { opacity: 0.85; }
-          24%,100% { opacity: 0; }
-        }
-        @keyframes sinfoniaFlash3 {
-          0%   { opacity: 0; }
-          14%  { opacity: 0.7; }
-          38%,100% { opacity: 0; }
-        }
-        .sinfonia-flash-1 { animation: sinfoniaFlash1 1.8s ease-out forwards; }
-        .sinfonia-flash-2 { animation: sinfoniaFlash2 1.8s ease-out forwards; }
-        .sinfonia-flash-3 { animation: sinfoniaFlash3 1.8s ease-out forwards; }
-
-        @keyframes sinfoniaTitle {
-          0%       { opacity: 1; transform: translateX(-50%) scale(0.7) translateY(6px); }
-          16%      { opacity: 1; transform: translateX(-50%) scale(1.1) translateY(-3px); }
-          36%      { transform: translateX(-50%) scale(1.0) translateY(0); }
-          70%      { opacity: 1; }
-          100%     { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(0.9); }
-        }
-        .sinfonia-title { animation: sinfoniaTitle 1.8s cubic-bezier(0.34,1.4,0.64,1) forwards; }
-
-
         /* ── SINFONIA RELÂMPAGO CSS ── */
-        @keyframes sinBg { 0% { opacity:.45 } 40% { opacity:.2 } 100% { opacity:0 } }
-        .sin-bg { animation: sinBg 1.6s ease-out forwards; background:rgba(88,28,135,1); }
-        @keyframes sinBolt { 0% { opacity:1 } 45% { opacity:.7 } 72%,100% { opacity:0 } }
-        .sin-bolt  { animation: sinBolt 1.6s ease-out forwards; }
-        .sin-bolt2 { animation: sinBolt 1.6s ease-out .07s forwards; }
-        @keyframes sinBurst { 0% { transform:scale(.15); opacity:1 } 22% { transform:scale(1.3); opacity:.85 } 50% { transform:scale(.9); opacity:.55 } 75% { transform:scale(2); opacity:.15 } 100% { transform:scale(2.8); opacity:0 } }
-        .sin-burst { animation: sinBurst 1.6s ease-out forwards; }
-        @keyframes sinNote { 0% { opacity:1; transform:scale(.5) translateY(8px) } 22% { opacity:1; transform:scale(1.3) translateY(-6px) } 55% { opacity:1; transform:scale(1) translateY(0) } 78% { opacity:.5; transform:scale(1) translateY(-22px) } 100% { opacity:0; transform:scale(.6) translateY(-42px) } }
-        .sin-note { animation: sinNote 1.6s ease-out forwards; }
-        @keyframes sinFlash { 0% { opacity:.9 } 22% { opacity:.4 } 48%,100% { opacity:0 } }
-        .sin-flash { animation: sinFlash 1.6s ease-out forwards; }
-        @keyframes sinTitle { 0% { opacity:1; transform:translateX(-50%) scale(.7) } 18% { opacity:1; transform:translateX(-50%) scale(1.05) } 40% { transform:translateX(-50%) scale(1) } 75% { opacity:1 } 100% { opacity:0; transform:translateX(-50%) translateY(-12px) } }
-        .sin-title { animation: sinTitle 1.6s ease-out forwards; }
+        @keyframes sinBg    { 0%{opacity:.4} 50%{opacity:.15} 100%{opacity:0} }
+        @keyframes sinBolt  { 0%{opacity:1}  40%{opacity:.7}  70%{opacity:.2}  85%,100%{opacity:0} }
+        @keyframes sinNote  { 0%{opacity:1;transform:scale(.5) translateY(6px)} 25%{opacity:1;transform:scale(1.25) translateY(-5px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-18px)} 100%{opacity:0;transform:scale(.7) translateY(-35px)} }
+        @keyframes sinFlash { 0%{opacity:.9} 25%{opacity:.4}  55%,100%{opacity:0} }
+        @keyframes sinTitle { 0%{opacity:1;transform:translateX(-50%) scale(.75)} 20%{opacity:1;transform:translateX(-50%) scale(1.05)} 45%{transform:translateX(-50%) scale(1)} 75%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(-10px)} }
+        .sin-bg    { animation: sinBg    1.5s ease-out forwards; background:rgba(88,28,135,1); }
+        .sin-bolt  { animation: sinBolt  1.5s ease-out forwards; }
+        .sin-note  { animation: sinNote  1.5s ease-out forwards; }
+        .sin-flash { animation: sinFlash 1.5s ease-out forwards; }
+        .sin-title { animation: sinTitle 1.5s ease-out forwards; }
+
 
         @keyframes lacerationDmgNumber {
           0%,18%  { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.4) rotate(-8deg); }
