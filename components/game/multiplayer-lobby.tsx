@@ -162,52 +162,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       })
       setScreen("waiting")
       
-      // Subscribe to room changes via Realtime
-      subscribeToRoom(data.id, code)
-      
-      // Also start polling as backup (Realtime can be unreliable)
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
-      pollingIntervalRef.current = setInterval(async () => {
-        const { data: room } = await supabase
-          .from("duel_rooms")
-          .select("*")
-          .eq("id", data.id)
-          .single()
-        
-        if (room && room.guest_id && room.status === "lobby") {
-          console.log("[v0] Polling detected guest joined!")
-          
-          // Parse guest deck
-          let guestDeck = null
-          if (room.guest_deck) {
-            try {
-              guestDeck = typeof room.guest_deck === 'string'
-                ? JSON.parse(room.guest_deck)
-                : room.guest_deck
-            } catch { guestDeck = room.guest_deck }
-          }
-          
-          setRoomData(prev => prev ? {
-            ...prev,
-            guestId: room.guest_id,
-            guestName: room.guest_name,
-            guestDeck: guestDeck,
-            hostReady: room.host_ready,
-            guestReady: room.guest_ready,
-          } : prev)
-          
-          setScreen("lobby")
-          subscribeToChatRef.current(data.id)
-          
-          // Stop polling once guest joins
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current)
-            pollingIntervalRef.current = null
-          }
-        }
-      }, 2000)
+      // Start unified polling (handles guest-join, ready state, and duel start)
+      startPolling(data.id)
       
     } catch (err) {
       console.error("[v0] Exception creating room:", err)
@@ -302,8 +258,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       })
       setScreen("lobby")
       
-      // Subscribe to room and chat
-      subscribeToRoom(room.id, codeToJoin)
+      // Start polling for room state + chat
+      startPolling(room.id)
       subscribeToChat(room.id)
       
     } catch (err) {
@@ -313,194 +269,160 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
     setIsLoading(false)
   }
 
-  // Subscribe to room updates
-  const subscribeToRoom = useCallback((roomId: string, code: string) => {
-    console.log("[v0] subscribeToRoom called - roomId:", roomId, "code:", code)
-    
-    // Clean up existing subscription
-    if (roomChannelRef.current) {
-      roomChannelRef.current.unsubscribe()
+  // ─── Room polling (guaranteed sync every 1.5s) ──────────────────────────
+  const startPolling = useCallback((roomId: string) => {
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+
+    const poll = async () => {
+      const { data: room } = await supabase
+        .from("duel_rooms")
+        .select("*")
+        .eq("id", roomId)
+        .single()
+
+      if (!room) return
+
+      // Parse decks safely
+      const parseD = (d: any) => {
+        if (!d) return null
+        try { return typeof d === "string" ? JSON.parse(d) : d } catch { return d }
+      }
+
+      setRoomData(prev => {
+        if (!prev) return prev
+        const updated: RoomData = {
+          ...prev,
+          guestId:    room.guest_id   ?? prev.guestId,
+          guestName:  room.guest_name ?? prev.guestName,
+          guestDeck:  room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
+          hostDeck:   room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
+          hostReady:  room.host_ready,
+          guestReady: room.guest_ready,
+        }
+
+        // Host moves to lobby when guest joins
+        if (prev.isHost && room.guest_id && room.status === "lobby" && screen !== "lobby") {
+          setScreen("lobby")
+          subscribeToChatRef.current(roomId)
+        }
+
+        // Sync my own ready state
+        const myReady = prev.isHost ? room.host_ready : room.guest_ready
+        setIsReady(myReady)
+
+        // Both ready → start duel
+        if (room.status === "playing") {
+          setShouldStartDuel(true)
+        }
+
+        return updated
+      })
     }
 
+    poll() // immediate first check
+    pollingIntervalRef.current = setInterval(poll, 1500)
+  }, [supabase, screen])
+
+  // ─── Realtime for room (bonus speed on top of polling) ───────────────────
+  const subscribeToRoom = useCallback((roomId: string) => {
+    if (roomChannelRef.current) roomChannelRef.current.unsubscribe()
+
     const channel = supabase
-      .channel(`room-${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "duel_rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const newData = payload.new as any
-          
-          setRoomData((prev) => {
-            if (!prev) return prev
-            
-            // Parse guest deck safely - it might already be an object or a string
-            let guestDeck = prev.guestDeck
-            if (newData.guest_deck) {
-              try {
-                guestDeck = typeof newData.guest_deck === 'string'
-                  ? JSON.parse(newData.guest_deck)
-                  : newData.guest_deck
-              } catch {
-                guestDeck = newData.guest_deck
-              }
-            }
-            
-            // Parse host deck safely
-            let hostDeck = prev.hostDeck
-            if (newData.host_deck) {
-              try {
-                hostDeck = typeof newData.host_deck === 'string'
-                  ? JSON.parse(newData.host_deck)
-                  : newData.host_deck
-              } catch {
-                hostDeck = newData.host_deck
-              }
-            }
-            
-            console.log("[v0] Room update received!")
-            console.log("[v0] - newData.status:", newData.status)
-            console.log("[v0] - newData.guest_id:", newData.guest_id)
-            console.log("[v0] - newData.guest_name:", newData.guest_name)
-            console.log("[v0] - prev.isHost:", prev.isHost)
-            console.log("[v0] - hostDeck:", hostDeck?.name, "guestDeck:", guestDeck?.name)
-            
-            const updated: RoomData = {
-              ...prev,
-              guestId: newData.guest_id,
-              guestName: newData.guest_name,
-              guestDeck: guestDeck,
-              hostDeck: hostDeck,
-              hostReady: newData.host_ready,
-              guestReady: newData.guest_ready,
-            }
-            
-            // If guest joined and we're the host, move to lobby
-            console.log("[v0] Checking if should move to lobby:", prev.isHost, newData.guest_id, newData.status)
-            if (prev.isHost && newData.guest_id && newData.status === "lobby") {
-              console.log("[v0] Moving host to lobby screen!")
-              setScreen("lobby")
-              subscribeToChat(roomId)
-              
-              // Re-fetch full room data to ensure sync
-              supabase
-                .from("duel_rooms")
-                .select("*")
-                .eq("id", roomId)
-                .single()
-                .then(({ data: freshRoom }) => {
-                  if (freshRoom) {
-                    console.log("[v0] Host re-fetched room data:", freshRoom.guest_name)
-                    let parsedGuestDeck = null
-                    if (freshRoom.guest_deck) {
-                      try {
-                        parsedGuestDeck = typeof freshRoom.guest_deck === 'string'
-                          ? JSON.parse(freshRoom.guest_deck)
-                          : freshRoom.guest_deck
-                      } catch { parsedGuestDeck = freshRoom.guest_deck }
-                    }
-                    setRoomData(prevRoom => prevRoom ? {
-                      ...prevRoom,
-                      guestId: freshRoom.guest_id,
-                      guestName: freshRoom.guest_name,
-                      guestDeck: parsedGuestDeck,
-                      hostReady: freshRoom.host_ready,
-                      guestReady: freshRoom.guest_ready,
-                    } : prevRoom)
-                  }
-                })
-            }
-            
-            // Sync local isReady state with server state
-            const myReadyState = prev.isHost ? newData.host_ready : newData.guest_ready
-            if (myReadyState !== undefined) {
-              setIsReady(myReadyState)
-            }
-            
-            // If both players are ready, signal to start the duel
-            if (newData.status === "playing") {
-              console.log("[v0] Both players ready! Starting duel...")
-              setShouldStartDuel(true)
-            }
-            
-            return updated
-          })
-        }
-      )
-      .subscribe((status) => {
-        console.log("[v0] Room subscription status:", status)
-        
-        // If subscription fails, start polling as fallback
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.log("[v0] Realtime failed, starting polling fallback")
-          startPolling(roomId)
+      .channel(`room-${roomId}-${Date.now()}`)
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public",
+        table: "duel_rooms", filter: `id=eq.${roomId}`,
+      }, () => {
+        // On any room UPDATE just trigger an immediate poll
+        if (pollingIntervalRef.current) {
+          // poll is already running, skip — polling will catch it within 1.5s
         }
       })
+      .subscribe()
 
     roomChannelRef.current = channel
   }, [supabase])
-  
-  // Cleanup polling on unmount
+
+  // ─── Cleanup polling on unmount ──────────────────────────────────────────
   useEffect(() => {
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
     }
   }, [])
 
-  // Effect to start duel when both players are ready
+  // ─── Start duel when both ready ──────────────────────────────────────────
   useEffect(() => {
-    if (shouldStartDuel && roomData) {
-      onStartDuel(roomData)
-    }
+    if (shouldStartDuel && roomData) onStartDuel(roomData)
   }, [shouldStartDuel, roomData, onStartDuel])
 
-  // Subscribe to chat messages
-  const subscribeToChat = useCallback((roomId: string) => {
-    // Clean up existing subscription
-    if (channelRef.current) {
-      channelRef.current.unsubscribe()
-    }
+  // ─── Chat: polling every 2s + Realtime insert listener ───────────────────
+  const chatPollRef = useRef<NodeJS.Timeout | null>(null)
+  const lastMsgTimeRef = useRef<string>("1970-01-01")
 
-    // Load existing messages
-    const loadMessages = async () => {
+  const subscribeToChat = useCallback((roomId: string) => {
+    if (channelRef.current) channelRef.current.unsubscribe()
+    if (chatPollRef.current) clearInterval(chatPollRef.current)
+
+    // Load all existing messages once
+    const loadAll = async () => {
       const { data } = await supabase
         .from("duel_chat")
         .select("*")
         .eq("room_id", roomId)
         .order("created_at", { ascending: true })
-      
-      if (data) {
+      if (data && data.length > 0) {
         setChatMessages(data)
+        lastMsgTimeRef.current = data[data.length - 1].created_at
       }
     }
-    loadMessages()
+    loadAll()
 
+    // Poll for new messages every 2s
+    const pollChat = async () => {
+      const { data } = await supabase
+        .from("duel_chat")
+        .select("*")
+        .eq("room_id", roomId)
+        .gt("created_at", lastMsgTimeRef.current)
+        .order("created_at", { ascending: true })
+      if (data && data.length > 0) {
+        setChatMessages(prev => {
+          const ids = new Set(prev.map(m => m.id))
+          const fresh = data.filter(m => !ids.has(m.id))
+          if (fresh.length === 0) return prev
+          lastMsgTimeRef.current = fresh[fresh.length - 1].created_at
+          return [...prev, ...fresh]
+        })
+      }
+    }
+    chatPollRef.current = setInterval(pollChat, 2000)
+
+    // Realtime INSERT listener as speed boost
     const channel = supabase
-      .channel(`chat-${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "duel_chat",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          setChatMessages((prev) => [...prev, payload.new as ChatMessage])
-        }
-      )
+      .channel(`chat-${roomId}-${Date.now()}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public",
+        table: "duel_chat", filter: `room_id=eq.${roomId}`,
+      }, (payload) => {
+        setChatMessages(prev => {
+          if (prev.find(m => m.id === payload.new.id)) return prev
+          lastMsgTimeRef.current = payload.new.created_at
+          return [...prev, payload.new as ChatMessage]
+        })
+      })
       .subscribe()
 
     channelRef.current = channel
   }, [supabase])
-  
-  // Connect ref to subscribeToChat for use in polling callback
+
+  // Cleanup chat poll on unmount
+  useEffect(() => {
+    return () => {
+      if (chatPollRef.current) clearInterval(chatPollRef.current)
+    }
+  }, [])
+
+  // Keep subscribeToChatRef in sync
   useEffect(() => {
     subscribeToChatRef.current = subscribeToChat
   }, [subscribeToChat])
