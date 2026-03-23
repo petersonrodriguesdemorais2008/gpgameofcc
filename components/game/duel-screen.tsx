@@ -5063,7 +5063,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // ── ULLR SR: Veredicto de Ullr — ao atacar, compra 1 carta; se Ventus → compra +1 ──
-        if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 1) {
+        if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 2) {
           const drawn1 = playerField.deck[0]
           if (drawn1) {
             const isVentus1 = drawn1.element === "Ventus" || drawn1.element === "Wind"
@@ -5082,7 +5082,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
 
         // ── ULLR UR: Flecha de Skadi — antes de atacar, pode destruir 1 unidade inimiga com 2DP (uma vez) ──
-        if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 2 && !ullrUrFlechaUsed) {
+        if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 3 && !ullrUrFlechaUsed) {
           const twoDpTargets = enemyField.unitZone
             .map((u,i) => ({u,i}))
             .filter(({u}) => u !== null && (u.currentDp ?? u.dp) === 2)
@@ -8034,8 +8034,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
                       (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
                       (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) ||
-                      (cardName.includes("ullr") && card.dp === 1 && !ullrSrMarcaUsed) ||
-                      (cardName.includes("ullr") && card.dp === 2 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
+                      (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) ||
+                      (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
                     )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
@@ -8044,8 +8044,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
                       if (cardName.includes("hrotti") && card.dp === 1 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
                       if (cardName.includes("hrotti") && card.dp === 2 && !hrottiUrUsed) return activateHrottiUrAbility
-                      if (cardName.includes("ullr") && card.dp === 1 && !ullrSrMarcaUsed) return activateUllrSrAbility
-                      if (cardName.includes("ullr") && card.dp === 2 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
+                      if (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) return activateUllrSrAbility
+                      if (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
                       return null
                     }
 
