@@ -8364,7 +8364,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                   </div>
                     {/* TAP Pile Button with availability glow and card preview */}
                     {(() => {
-                      const isTapAvailable = turn > 0 && turn % 3 === 0 && isPlayerTurn && phase === "main"
+                      const isTapAvailable = turn > 0 && turn % 3 === 0 && isPlayerTurn && phase === "main" && playerField.tap.length > 0
                       return (
                         <div className="relative group/tap">
                           <div
