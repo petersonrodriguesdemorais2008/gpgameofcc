@@ -2717,7 +2717,7 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
+export default function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const { t } = useLanguage()
   const { addMatchRecord, getPlaymatForDeck } = useGame()
   const mode = "online"
