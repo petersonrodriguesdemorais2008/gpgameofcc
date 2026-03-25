@@ -1624,7 +1624,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
-function getBaseCardId(cardId: string): string {
+const getBaseCardId = (cardId: string): string => {
   // Card IDs in deck are formatted as: "original-id-deck-timestamp"
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
@@ -1635,7 +1635,7 @@ function getBaseCardId(cardId: string): string {
 }
 
 // Helper function to get effect for a card - also checks by card name
-function getFunctionCardEffect(card: { id: string; name?: string }): FunctionCardEffect | null {
+const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
   // First try by base ID
   const baseId = getBaseCardId(card.id)
   if (FUNCTION_CARD_EFFECTS[baseId]) {
@@ -1650,7 +1650,7 @@ function getFunctionCardEffect(card: { id: string; name?: string }): FunctionCar
 }
 
 // Helper to check if a Function card can be activated
-function canActivateFunctionCard(cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } {
+const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
   const effect = getFunctionCardEffect({ id: cardId })
   if (!effect) {
     return { canActivate: true } // Unknown cards can be placed normally
@@ -1664,7 +1664,7 @@ function canActivateFunctionCard(cardId: string, context: EffectContext): { canA
 //   return { image: deck.playmatImage }
 // }
 
-function getElementColors(element: string): string[] {
+const getElementColors = (element: string): string[] => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -1694,7 +1694,7 @@ function getElementColors(element: string): string[] {
   }
 }
 
-function getElementGlow(element: string): string {
+const getElementGlow = (element: string): string => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -2717,11 +2717,14 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-export default function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
+export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const { t } = useLanguage()
   const { addMatchRecord, getPlaymatForDeck } = useGame()
   const mode = "online"
+
   const supabase = createClient()
+
+
 
   // ─── Multiplayer identity ────────────────────────────────────────────────
   const playerId   = roomData.isHost ? roomData.hostId : (roomData.guestId || "")
@@ -7329,6 +7332,19 @@ export default function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenP
     }
   }, [playerField.life, enemyField.life, gameStarted, mode, selectedDeck?.name])
 
+
+  // ── Validate roomData before rendering ──────────────────────────────────
+  if (!roomData?.roomId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <p className="text-red-400 text-xl font-bold mb-4">Erro ao iniciar duelo</p>
+          <p className="text-slate-400 mb-6">Dados da sala inválidos.</p>
+          <button onClick={onBack} className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl">Voltar</button>
+        </div>
+      </div>
+    )
+  }
 
   // Online: show loading until game initializes
   if (!gameStarted) {
