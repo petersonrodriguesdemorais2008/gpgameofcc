@@ -10,9 +10,8 @@ import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords, X } from "lucide-react"
 import Image from "next/image"
-import dynamic from "next/dynamic"
 import { MultiplayerLobby } from "./multiplayer-lobby"
-const OnlineDuelScreen = dynamic(() => import("./online-duel-screen"), { ssr: false })
+import { OnlineDuelScreen } from "./online-duel-screen"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 
@@ -1610,7 +1609,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
-function getBaseCardId(cardId: string): string {
+const getBaseCardId = (cardId: string): string => {
   // Card IDs in deck are formatted as: "original-id-deck-timestamp"
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
@@ -1621,7 +1620,7 @@ function getBaseCardId(cardId: string): string {
 }
 
 // Helper function to get effect for a card - also checks by card name
-function getFunctionCardEffect(card: { id: string; name?: string }): FunctionCardEffect | null {
+const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
   // First try by base ID
   const baseId = getBaseCardId(card.id)
   if (FUNCTION_CARD_EFFECTS[baseId]) {
@@ -1636,7 +1635,7 @@ function getFunctionCardEffect(card: { id: string; name?: string }): FunctionCar
 }
 
 // Helper to check if a Function card can be activated
-function canActivateFunctionCard(cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } {
+const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
   const effect = getFunctionCardEffect({ id: cardId })
   if (!effect) {
     return { canActivate: true } // Unknown cards can be placed normally
@@ -1650,7 +1649,7 @@ function canActivateFunctionCard(cardId: string, context: EffectContext): { canA
 //   return { image: deck.playmatImage }
 // }
 
-function getElementColors(element: string): string[] {
+const getElementColors = (element: string): string[] => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -1680,7 +1679,7 @@ function getElementColors(element: string): string[] {
   }
 }
 
-function getElementGlow(element: string): string {
+const getElementGlow = (element: string): string => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -2660,6 +2659,40 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
   )
 }
 // ──────────────────────────────────────────────────────────────────────────────
+
+
+// ─── Error Boundary for OnlineDuelScreen crashes ─────────────────────────────
+class OnlineDuelErrorBoundary extends React.Component<
+  { children: React.ReactNode; onBack: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: any) { super(props); this.state = { hasError: false } }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error, info: any) {
+    console.error("[OnlineDuel crash]", error.message, error.stack, info)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-900">
+          <div className="text-center p-8">
+            <p className="text-red-400 text-2xl font-bold mb-4">Erro no Duelo</p>
+            <p className="text-slate-400 mb-6 max-w-md">
+              Ocorreu um erro ao iniciar o duelo online. Tente novamente.
+            </p>
+            <button
+              onClick={this.props.onBack}
+              className="px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition-colors"
+            >
+              Voltar ao Lobby
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const { t } = useLanguage()
@@ -7446,10 +7479,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // ── VS JOGADOR: show OnlineDuelScreen ───────────────────────────────────
   if (mode === "player" && onlinePhase === "duel" && onlineRoomData) {
     return (
-      <OnlineDuelScreen
-        roomData={onlineRoomData}
-        onBack={() => { setOnlinePhase("lobby"); setOnlineRoomData(null) }}
-      />
+      <OnlineDuelErrorBoundary onBack={() => { setOnlinePhase("lobby"); setOnlineRoomData(null) }}>
+        <OnlineDuelScreen
+          roomData={onlineRoomData}
+          onBack={() => { setOnlinePhase("lobby"); setOnlineRoomData(null) }}
+        />
+      </OnlineDuelErrorBoundary>
     )
   }
 
