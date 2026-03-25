@@ -5,15 +5,46 @@ import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-// REMOVED: import { useGame, type Deck as GameDeck, type Card as GameCard } from "@/contexts/game-context"
 import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Swords, X } from "lucide-react"
+import { ArrowLeft, Swords, X, MessageCircle, Send } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
+import type { RealtimeChannel } from "@supabase/supabase-js"
 import { MultiplayerLobby } from "./multiplayer-lobby"
-import { OnlineDuelScreen } from "./online-duel-screen"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
+
+// ─── Multiplayer types ───────────────────────────────────────────────────────
+interface RoomData {
+  roomId: string
+  roomCode: string
+  isHost: boolean
+  hostId: string
+  hostName: string
+  hostDeck: GameDeck | null
+  guestId: string | null
+  guestName: string | null
+  guestDeck: GameDeck | null
+  hostReady: boolean
+  guestReady: boolean
+}
+
+interface OnlineDuelAction {
+  type: string
+  playerId: string
+  data: any
+  timestamp: number
+}
+
+interface OnlineChatMsg {
+  id: string
+  sender_id: string
+  sender_name: string
+  message: string
+  created_at: string
+}
 
 interface DuelScreenProps {
   mode: "bot" | "player"
@@ -3011,6 +3042,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   interface OnlineRoomData { roomId:string;roomCode:string;isHost:boolean;hostId:string;hostName:string;hostDeck:any;guestId:string|null;guestName:string|null;guestDeck:any;hostReady:boolean;guestReady:boolean }
   const [onlinePhase, setOnlinePhase]       = useState<"lobby"|"duel"|null>(null)
   const [onlineRoomData, setOnlineRoomData] = useState<OnlineRoomData|null>(null)
+
+  // ── Multiplayer Supabase layer ────────────────────────────────────────────
+  const supabase = createClient()
+  const mpActionsChannelRef  = useRef<RealtimeChannel | null>(null)
+  const mpChatChannelRef     = useRef<RealtimeChannel | null>(null)
+  const mpActionsPollRef     = useRef<NodeJS.Timeout | null>(null)
+  const mpLastActionTimeRef  = useRef<string>("1970-01-01")
+  const mpProcessedIdsRef    = useRef<Set<string>>(new Set())
+  const mpSendActionRef      = useRef<(a: OnlineDuelAction) => void>(() => {})
+  const mpHandleOpponentRef  = useRef<(a: OnlineDuelAction) => void>(() => {})
+
+  // Online chat
+  const [mpChat, setMpChat]               = useState<OnlineChatMsg[]>([])
+  const [mpChatInput, setMpChatInput]     = useState("")
+  const [mpShowChat, setMpShowChat]       = useState(false)
+  const mpChatRef                         = useRef<HTMLDivElement>(null)
   // ── Ullr states ──
   const [ullrSrMarcaUsed, setUllrSrMarcaUsed] = useState(false)                      // Marca da Caçada — once per duel (or cooldown?) — description says always active, treat as once per main phase
   const [ullrUrJuramentoLastTurn, setUllrUrJuramentoLastTurn] = useState<number|null>(null)  // Juramento Eterno — every 4 turns
@@ -3655,9 +3702,58 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setPhase("draw")
     setIsPlayerTurn(playerFirst)
 
-    if (!playerFirst) {
-      setTimeout(() => executeBotTurn(), 1000)
+    if (mode === "bot") {
+      if (!playerFirst) {
+        setTimeout(() => executeBotTurn(), 1000)
+      }
     }
+    // For mode === "player": opponent state is driven by handleOpponentAction
+  }
+
+  // Called when multiplayer duel starts — initializes player deck, sets enemy as placeholder
+  const startOnlineDuel = (rd: OnlineRoomData) => {
+    const myDeckRaw  = rd.isHost ? rd.hostDeck : rd.guestDeck
+    const oppDeckRaw = rd.isHost ? rd.guestDeck : rd.hostDeck
+    const parseD = (raw: any): DeckWithImages | null => {
+      if (!raw) return null
+      try {
+        const d = typeof raw === "string" ? JSON.parse(raw) : raw
+        if (!Array.isArray(d.cards)) d.cards = []
+        if (!d.tapCards) d.tapCards = []
+        return d as DeckWithImages
+      } catch { return null }
+    }
+    const myDeck  = parseD(myDeckRaw)
+    const oppDeck = parseD(oppDeckRaw)
+    if (!myDeck || myDeck.cards.length === 0) return
+
+    startGame(myDeck, parseD(oppDeckRaw) ?? myDeck, undefined)
+
+    // Override enemy field with placeholder (opponent state comes via Supabase)
+    if (oppDeck) {
+      setEnemyField(prev => ({
+        ...prev,
+        hand: Array(5).fill(null),
+        deck: Array(Math.max(0, oppDeck.cards.length - 5)).fill(null),
+        tap:  oppDeck.tapCards ? [...oppDeck.tapCards] : [],
+        life: 50,
+        unitZone: [null, null, null, null],
+        functionZone: [null, null, null, null],
+        scenarioZone: null,
+        ultimateZone: null,
+        graveyard: [],
+      }))
+    }
+    // Host goes first
+    setIsPlayerTurn(rd.isHost)
+    // Broadcast initial draw
+    setTimeout(() => {
+      mpSendActionRef.current({
+        type: "draw", playerId: rd.isHost ? rd.hostId : (rd.guestId || ""),
+        data: { handSize: 5, deckSize: myDeck.cards.length - 5 },
+        timestamp: Date.now(),
+      })
+    }, 300)
   }
 
   const drawCard = () => {
@@ -3715,6 +3811,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
       })
       setNormalSummonUsed(true)
+      // Broadcast unit placement in online mode
+      if (mode === "player" && onlineRoomData) {
+        const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+        mpSendActionRef.current({
+          type: "place_card", playerId: myId,
+          data: { zone: "unit", index: slotIndex, card: cardToPlace, source: "hand" },
+          timestamp: Date.now(),
+        })
+      }
       // ── LOGI UR: Cinzas do Mundo — ao entrar em campo, +2DP a outra unidade (ou compra 1 carta) ──
       if (cardToPlace.name.toLowerCase().includes("logi") && cardToPlace.dp === 2) {
         // Use functional setter to read FRESH state after Logi was placed
@@ -5510,6 +5615,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             isDirect: attackState.targetInfo!.type === "direct"
           },
         ])
+        // Broadcast attack in online mode
+        if (mode === "player" && onlineRoomData) {
+          const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+          mpSendActionRef.current({
+            type: "attack", playerId: myId,
+            data: {
+              attackerIndex: attackState.attackerIndex,
+              targetType: attackState.targetInfo!.type,
+              targetIndex: attackState.targetInfo!.index,
+              damage: attacker.currentDp ?? attacker.dp,
+              attackerCard: { id: attacker.id, name: attacker.name, element: attacker.element, image: attacker.image, dp: attacker.dp },
+            },
+            timestamp: Date.now(),
+          })
+        }
 
         // Trigger Card Jump Animation
         const key = `player-${attackState.attackerIndex}`
@@ -7159,8 +7279,271 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
       if (mode === "bot") {
         setTimeout(() => executeBotTurn(), 1000)
+      } else if (mode === "player" && onlineRoomData) {
+        const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+        setNormalSummonUsed(false)
+        mpSendActionRef.current({
+          type: "end_turn", playerId: myId,
+          data: { turn: nextTurn }, timestamp: Date.now(),
+        })
       }
     }, 500)
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  MULTIPLAYER LAYER — active when mode === "player" && onlinePhase === "duel"
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const mpSendAction = useCallback(async (action: OnlineDuelAction) => {
+    if (!supabase || !onlineRoomData) return
+    const mpId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+    try {
+      await supabase.from("duel_actions").insert({
+        room_id: onlineRoomData.roomId,
+        player_id: mpId,
+        action_type: action.type,
+        action_data: JSON.stringify(action),
+        sequence_number: action.timestamp,
+      })
+    } catch {}
+  }, [supabase, onlineRoomData])
+
+  useEffect(() => { mpSendActionRef.current = mpSendAction }, [mpSendAction])
+
+  const mpHandleOpponentAction = useCallback((action: OnlineDuelAction) => {
+    const uid = `${action.type}-${action.timestamp}`
+    if (mpProcessedIdsRef.current.has(uid)) return
+    mpProcessedIdsRef.current.add(uid)
+
+    switch (action.type) {
+      case "draw":
+        setEnemyField(prev => ({
+          ...prev,
+          hand: Array(action.data.handSize ?? 5).fill(null),
+          deck: Array(action.data.deckSize ?? 0).fill(null),
+        }))
+        break
+      case "place_card": {
+        const card = action.data.card
+        const src = action.data.source || "hand"
+        if (action.data.zone === "unit") {
+          setEnemyField(prev => {
+            const nUZ = [...prev.unitZone]
+            nUZ[action.data.index] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn }
+            const ns = { ...prev, unitZone: nUZ }
+            if (src === "tap") ns.tap = prev.tap.filter((t: any) => t?.id !== card.id)
+            else ns.hand = prev.hand.slice(0, -1)
+            return ns
+          })
+        } else if (action.data.zone === "function") {
+          setEnemyField(prev => {
+            const nFZ = [...prev.functionZone]
+            nFZ[action.data.index] = action.data.isTrap ? { ...card, isFaceDown: true } : card
+            const ns = { ...prev, functionZone: nFZ }
+            if (src === "tap") ns.tap = prev.tap.filter((t: any) => t?.id !== card.id)
+            else ns.hand = prev.hand.slice(0, -1)
+            return ns
+          })
+        } else if (action.data.zone === "scenario") {
+          setEnemyField(prev => ({
+            ...prev,
+            scenarioZone: card,
+            hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
+            tap: src === "tap" ? prev.tap.filter((t: any) => t?.id !== card.id) : prev.tap,
+          }))
+        } else if (action.data.zone === "ultimate") {
+          setEnemyField(prev => ({
+            ...prev,
+            ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn },
+            hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
+            tap: src === "tap" ? prev.tap.filter((t: any) => t?.id !== card.id) : prev.tap,
+          }))
+        }
+        break
+      }
+      case "attack": {
+        const { attackerIndex, targetType, targetIndex, damage, attackerCard } = action.data
+        const attacker = attackerCard ?? enemyField.unitZone[attackerIndex]
+        const getEl = (sel: string) => {
+          const el = document.querySelector(sel)
+          if (!el) return null
+          const r = el.getBoundingClientRect()
+          return { x: r.left + r.width/2, y: r.top + r.height/2 }
+        }
+        const attackerEl = document.querySelector(`[data-enemy-unit="${attackerIndex}"]`)
+        const aR = attackerEl?.getBoundingClientRect()
+        const sX = aR ? aR.left + aR.width/2 : window.innerWidth/2
+        const sY = aR ? aR.top + aR.height/2 : 0
+        const tgt = targetType === "direct"
+          ? getEl("[data-direct-attack]")
+          : getEl(`[data-player-unit-slot="${targetIndex}"]`)
+        if (tgt && attacker) {
+          const pId = `opp-${Date.now()}`
+          setActiveProjectiles((prev: any[]) => [...prev, {
+            id: pId, startX: sX, startY: sY,
+            targetX: tgt!.x, targetY: tgt!.y,
+            element: attacker.element || "neutral",
+            attackerImage: attacker.image,
+            attackerName: attacker.name,
+            isDirect: targetType === "direct",
+          }])
+        }
+        setTimeout(() => {
+          if (targetType === "direct") {
+            setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - damage) }))
+          } else {
+            setPlayerField(prev => {
+              const nUZ = [...prev.unitZone]
+              const t = nUZ[targetIndex]
+              if (t) {
+                const nDp = Math.max(0, (t.currentDp ?? t.dp) - damage)
+                if (nDp <= 0) { nUZ[targetIndex] = null; return { ...prev, unitZone: nUZ, graveyard: [...prev.graveyard, t] } }
+                nUZ[targetIndex] = { ...t, currentDp: nDp }
+              }
+              return { ...prev, unitZone: nUZ }
+            })
+          }
+        }, 600)
+        break
+      }
+      case "end_turn":
+        setIsPlayerTurn(true)
+        setTurn(prev => prev + 1)
+        setPhase("draw")
+        setNormalSummonUsed(false)
+        setPlayerField(prev => ({
+          ...prev,
+          unitZone: prev.unitZone.map(u => u ? { ...u, canAttack: true, hasAttacked: false } : null),
+          ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false } : null,
+        }))
+        break
+      case "use_function_card":
+        setEnemyField(prev => ({
+          ...prev,
+          hand: prev.hand.slice(0, -1),
+          graveyard: action.data.card ? [...prev.graveyard, action.data.card] : prev.graveyard,
+        }))
+        break
+      case "tap_to_hand":
+        setEnemyField(prev => ({
+          ...prev,
+          hand: [...prev.hand, null as any],
+          tap: prev.tap.filter((t: any) => t?.id !== action.data.card?.id),
+        }))
+        break
+      case "surrender":
+        setGameResult("won")
+        setWinReason("surrender")
+        break
+      case "ability_used": {
+        const ab = action.data.ability
+        if (ab === "ullrSr" && action.data.targetIndex !== undefined) {
+          setPlayerField(prev => {
+            const nUZ = [...prev.unitZone]
+            const u = nUZ[action.data.targetIndex]
+            if (u) nUZ[action.data.targetIndex] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + (action.data.dpChange ?? -1)) }
+            return { ...prev, unitZone: nUZ as any }
+          })
+        }
+        if (ab === "ullrUr" && action.data.bonus) {
+          setEnemyField(prev => ({
+            ...prev,
+            unitZone: prev.unitZone.map(u => {
+              if (!u) return null
+              if (u.element === "Ventus" || u.element === "Wind")
+                return { ...u, currentDp: (u.currentDp ?? u.dp) + action.data.bonus }
+              return u
+            }) as any
+          }))
+        }
+        break
+      }
+    }
+  }, [enemyField, playerField, turn])
+
+  useEffect(() => { mpHandleOpponentRef.current = mpHandleOpponentAction }, [mpHandleOpponentAction])
+
+  // Subscribe to opponent actions + chat (only when online duel is active)
+  useEffect(() => {
+    if (mode !== "player" || !gameStarted || !onlineRoomData || !supabase) return
+    const roomId = onlineRoomData.roomId
+    const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+
+    // Realtime channel
+    const ch = supabase
+      .channel(`duel-actions-${roomId}-${Date.now()}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public",
+        table: "duel_actions", filter: `room_id=eq.${roomId}`,
+      }, (payload: any) => {
+        const row = payload.new
+        if (row.player_id === myId) return
+        let data = row.action_data
+        if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
+        mpHandleOpponentRef.current(data)
+        mpLastActionTimeRef.current = row.created_at
+      })
+      .subscribe()
+    mpActionsChannelRef.current = ch
+
+    // Polling fallback 400ms
+    mpActionsPollRef.current = setInterval(async () => {
+      const { data: rows } = await supabase
+        .from("duel_actions").select("*")
+        .eq("room_id", roomId).neq("player_id", myId)
+        .gt("created_at", mpLastActionTimeRef.current)
+        .order("sequence_number", { ascending: true }).limit(10)
+      if (rows && rows.length > 0) {
+        for (const row of rows) {
+          let d = row.action_data
+          if (typeof d === "string") { try { d = JSON.parse(d) } catch {} }
+          mpHandleOpponentRef.current(d)
+          mpLastActionTimeRef.current = row.created_at
+        }
+      }
+    }, 400)
+
+    // Chat
+    supabase.from("duel_chat").select("*").eq("room_id", roomId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => { if (data) setMpChat(data) })
+
+    const chatCh = supabase
+      .channel(`duel-chat-${roomId}-${Date.now()}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public",
+        table: "duel_chat", filter: `room_id=eq.${roomId}`,
+      }, (payload: any) => {
+        setMpChat(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
+      })
+      .subscribe()
+    mpChatChannelRef.current = chatCh
+
+    return () => {
+      ch.unsubscribe()
+      chatCh.unsubscribe()
+      if (mpActionsPollRef.current) clearInterval(mpActionsPollRef.current)
+    }
+  }, [mode, gameStarted, onlineRoomData?.roomId])
+
+  // Auto-scroll chat
+  useEffect(() => {
+    if (mpChatRef.current) mpChatRef.current.scrollTop = mpChatRef.current.scrollHeight
+  }, [mpChat])
+
+  const mpSendChat = async () => {
+    if (!mpChatInput.trim() || !supabase || !onlineRoomData) return
+    const msg = mpChatInput.trim()
+    setMpChatInput("")
+    const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+    const myName = onlineRoomData.isHost ? onlineRoomData.hostName : (onlineRoomData.guestName || "Jogador")
+    await supabase.from("duel_chat").insert({
+      room_id: onlineRoomData.roomId,
+      sender_id: myId,
+      sender_name: myName,
+      message: msg,
+    })
   }
 
   const endEnemyTurn = () => {
@@ -7471,20 +7854,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     return (
       <MultiplayerLobby
         onBack={() => setOnlinePhase(null)}
-        onStartDuel={(rd) => { setOnlineRoomData(rd); setOnlinePhase("duel") }}
+        onStartDuel={(rd) => {
+          setOnlineRoomData(rd)
+          setOnlinePhase("duel")
+          // Start game immediately — no separate screen needed
+          startOnlineDuel(rd)
+        }}
       />
-    )
-  }
-
-  // ── VS JOGADOR: show OnlineDuelScreen ───────────────────────────────────
-  if (mode === "player" && onlinePhase === "duel" && onlineRoomData) {
-    return (
-      <OnlineDuelErrorBoundary onBack={() => { setOnlinePhase("lobby"); setOnlineRoomData(null) }}>
-        <OnlineDuelScreen
-          roomData={onlineRoomData}
-          onBack={() => { setOnlinePhase("lobby"); setOnlineRoomData(null) }}
-        />
-      </OnlineDuelErrorBoundary>
     )
   }
 
@@ -9822,6 +10198,47 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         enemyGraveyardRef={enemyGraveyardRef}
         destroyedCardIds={destroyedCardIds}
       />
+
+      {/* Online chat — only in multiplayer */}
+      {mode === "player" && gameStarted && (
+        <>
+          {mpShowChat && (
+            <div className="fixed bottom-20 right-4 z-[500] w-72 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden" style={{height:"320px"}}>
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-800 border-b border-slate-700">
+                <span className="text-white text-sm font-bold">Chat Online</span>
+                <button onClick={() => setMpShowChat(false)} className="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+              </div>
+              <div ref={mpChatRef} className="flex-1 overflow-y-auto p-2 space-y-1">
+                {mpChat.map(msg => {
+                  const myId = onlineRoomData?.isHost ? onlineRoomData.hostId : (onlineRoomData?.guestId || "")
+                  return (
+                    <div key={msg.id} className={`text-xs p-1.5 rounded ${msg.sender_id === myId ? "bg-amber-900/40 text-amber-200 text-right" : "bg-slate-800 text-slate-200"}`}>
+                      <span className="font-semibold">{msg.sender_name}: </span>{msg.message}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="flex gap-1 p-2 border-t border-slate-700">
+                <Input value={mpChatInput} onChange={e => setMpChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && mpSendChat()}
+                  placeholder="Mensagem..." className="flex-1 h-8 text-xs bg-slate-800 border-slate-600 text-white" />
+                <button onClick={mpSendChat} className="px-2 py-1 bg-amber-600 hover:bg-amber-500 rounded text-white">
+                  <Send className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+          <button onClick={() => setMpShowChat(v => !v)}
+            className="fixed bottom-4 right-4 z-[500] w-12 h-12 bg-amber-600 hover:bg-amber-500 rounded-full shadow-lg flex items-center justify-center transition-all">
+            <MessageCircle className="w-5 h-5 text-white" />
+            {mpChat.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
+                {mpChat.length > 9 ? "9+" : mpChat.length}
+              </span>
+            )}
+          </button>
+        </>
+      )}
 
     </div>
   )
