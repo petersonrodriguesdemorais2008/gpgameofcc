@@ -10,8 +10,9 @@ import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords, X } from "lucide-react"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { MultiplayerLobby } from "./multiplayer-lobby"
-import OnlineDuelScreen from "./online-duel-screen"
+const OnlineDuelScreen = dynamic(() => import("./online-duel-screen"), { ssr: false })
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 
