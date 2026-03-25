@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords, X } from "lucide-react"
 import Image from "next/image"
 import { MultiplayerLobby } from "./multiplayer-lobby"
-import { OnlineDuelScreen } from "./online-duel-screen"
+import OnlineDuelScreen from "./online-duel-screen"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 
