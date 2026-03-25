@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React, { Component } from "react"
 import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -2662,7 +2662,7 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
 
 
 // ─── Error Boundary for OnlineDuelScreen crashes ─────────────────────────────
-class OnlineDuelErrorBoundary extends React.Component<
+class OnlineDuelErrorBoundary extends Component<
   { children: React.ReactNode; onBack: () => void },
   { hasError: boolean }
 > {
