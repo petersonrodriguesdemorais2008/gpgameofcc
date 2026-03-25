@@ -1610,7 +1610,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
-const getBaseCardId = (cardId: string): string => {
+function getBaseCardId(cardId: string): string {
   // Card IDs in deck are formatted as: "original-id-deck-timestamp"
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
@@ -1621,7 +1621,7 @@ const getBaseCardId = (cardId: string): string => {
 }
 
 // Helper function to get effect for a card - also checks by card name
-const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
+function getFunctionCardEffect(card: { id: string; name?: string }): FunctionCardEffect | null {
   // First try by base ID
   const baseId = getBaseCardId(card.id)
   if (FUNCTION_CARD_EFFECTS[baseId]) {
@@ -1636,7 +1636,7 @@ const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCar
 }
 
 // Helper to check if a Function card can be activated
-const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
+function canActivateFunctionCard(cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } {
   const effect = getFunctionCardEffect({ id: cardId })
   if (!effect) {
     return { canActivate: true } // Unknown cards can be placed normally
@@ -1650,7 +1650,7 @@ const canActivateFunctionCard = (cardId: string, context: EffectContext): { canA
 //   return { image: deck.playmatImage }
 // }
 
-const getElementColors = (element: string): string[] => {
+function getElementColors(element: string): string[] {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -1680,7 +1680,7 @@ const getElementColors = (element: string): string[] => {
   }
 }
 
-const getElementGlow = (element: string): string => {
+function getElementGlow(element: string): string {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
