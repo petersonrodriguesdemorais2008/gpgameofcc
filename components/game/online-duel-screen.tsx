@@ -2731,9 +2731,22 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     ? (roomData.guestName || "Convidado")
     : (roomData.hostName  || "Anfitrião")
 
-  // Cast decks to DeckWithImages
-  const selectedDeck   = myDeckRaw  as DeckWithImages | null
-  const oppDeckTyped   = oppDeckRaw as DeckWithImages | null
+  // Safe deck parser — handles JSON string, plain object, or null
+  const parseDeck = (raw: any): DeckWithImages | null => {
+    if (!raw) return null
+    try {
+      const d = typeof raw === "string" ? JSON.parse(raw) : raw
+      // Ensure cards array exists
+      if (!d.cards || !Array.isArray(d.cards)) d.cards = []
+      // Ensure tapCards exists
+      if (!d.tapCards) d.tapCards = []
+      return d as DeckWithImages
+    } catch {
+      return null
+    }
+  }
+  const selectedDeck = parseDeck(myDeckRaw)
+  const oppDeckTyped = parseDeck(oppDeckRaw)
 
   const [gameStarted, setGameStarted] = useState(false)
   const [isMyTurn, setIsMyTurn]       = useState(roomData.isHost) // host goes first
@@ -3648,7 +3661,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // ─── initGame: called once on mount for multiplayer ────────────────────────
   const initGame = (playerDeck: DeckWithImages, opponentDeck: DeckWithImages | null) => {
-    const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
+    // Safety: ensure cards is always an array
+    const safeCards = Array.isArray(playerDeck.cards) ? playerDeck.cards : []
+    const shuffledDeck = [...safeCards].sort(() => Math.random() - 0.5)
     const hand = shuffledDeck.slice(0, 5)
     const remainingDeck = shuffledDeck.slice(5)
 
@@ -6937,10 +6952,24 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // ─── Start game on mount ─────────────────────────────────────────────────
   useEffect(() => {
-    if (selectedDeck) {
-      initGame(selectedDeck, oppDeckTyped)
+    const deck = selectedDeck
+    if (deck && Array.isArray(deck.cards) && deck.cards.length > 0) {
+      initGame(deck, oppDeckTyped)
       subscribeToActions()
       subscribeToChat()
+    } else {
+      // Deck not ready yet (can happen if Supabase data hasn't fully loaded)
+      // Retry once after 500ms
+      const timer = setTimeout(() => {
+        const retryDeck = roomData.isHost ? roomData.hostDeck : roomData.guestDeck
+        const parsed = retryDeck ? (typeof retryDeck === "string" ? (() => { try { return JSON.parse(retryDeck) } catch { return null } })() : retryDeck) : null
+        if (parsed && Array.isArray(parsed.cards) && parsed.cards.length > 0) {
+          initGame(parsed as DeckWithImages, oppDeckTyped)
+          subscribeToActions()
+          subscribeToChat()
+        }
+      }, 500)
+      return () => clearTimeout(timer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -7303,12 +7332,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // Online: show loading until game initializes
   if (!gameStarted) {
+    const deckOk = selectedDeck && Array.isArray((selectedDeck as any).cards) && (selectedDeck as any).cards.length > 0
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white text-xl font-bold">Iniciando duelo...</p>
-          <p className="text-slate-400 text-sm mt-2">Conectando com {opponentName}</p>
+          <p className="text-slate-400 text-sm mt-2">
+            {deckOk ? `Conectando com ${opponentName}` : "Carregando deck..."}
+          </p>
+          {!deckOk && (
+            <p className="text-red-400 text-xs mt-3">
+              Se ficar travado aqui, volte e tente novamente.
+            </p>
+          )}
         </div>
       </div>
     )
