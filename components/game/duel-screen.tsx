@@ -3766,6 +3766,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       hand: [...prev.hand, drawnCard],
       deck: prev.deck.slice(1),
     }))
+    mpBroadcast("draw", { handSize: playerField.hand.length + 1, deckSize: playerField.deck.length - 1 })
   }
 
   const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
@@ -4015,6 +4016,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             hand: prev.hand.filter((_, i) => i !== cardIndex),
           }
         })
+        mpBroadcast("place_card", { zone: "function", index: slotIndex, card: cardToPlace, isTrap: true, source: "hand" })
         setSelectedHandCard(null)
         setDraggedHandCard(null)
         return
@@ -4044,6 +4046,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             deck: newDeck,
           }
         })
+        mpBroadcast("place_card", { zone: "function", index: slotIndex, card: cardToPlace, isTrap: false, source: "hand" })
         setSelectedHandCard(null)
         setDraggedHandCard(null)
         return
@@ -4424,6 +4427,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             hand: prev.hand.filter((_, i) => i !== cardIndex),
             graveyard: [...prev.graveyard, cardToPlace],
           }))
+          mpBroadcast("use_function_card", { card: cardToPlace, source: "hand" })
           setSelectedHandCard(null)
           setDraggedHandCard(null)
           return
@@ -4442,6 +4446,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+      mpBroadcast("place_card", { zone: "function", index: slotIndex, card: cardToPlace, isTrap: false, source: "hand" })
     }
 
     setSelectedHandCard(null) // Clear selection if using drag-drop
@@ -4505,6 +4510,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
     })
 
+    mpBroadcast("place_card", { zone: "scenario", card: cardToPlace, source: "hand" })
     setSelectedHandCard(null)
     setDraggedHandCard(null)
   }
@@ -4606,6 +4612,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
     })
 
+    mpBroadcast("place_card", { zone: "ultimate", card: cardToPlace, source: "hand" })
     // Reset one-time ability flag for a new UG
     setPlayerUgAbilityUsed(false)
     setSelectedHandCard(null)
@@ -6044,6 +6051,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (merlinUsed) { showEffectFeedback("Visão Além do Agora já foi usada neste duelo!", "error"); return }
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
+    mpBroadcast("ability_used", { ability: "merlin" })
     setMerlinUsed(true)
 
     // Each card in top5 is tagged with its original index so selection maps back cleanly
@@ -6111,6 +6119,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (oswinUsed) { showEffectFeedback("Lucro na Crise já foi usada neste duelo!", "error"); return }
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
+    mpBroadcast("ability_used", { ability: "oswin" })
     setOswinUsed(true)
     // Item cards: type "function" cards that are items (by name or category)
     const itemCards = top5.filter(c =>
@@ -6310,6 +6319,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
           return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, ultimateZone: newUltimate, graveyard: newGrave }
         })
+        mpBroadcast("ability_used", { ability: "hrottiSr" })
         setHrottiSrLastTurn(turn)
         showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
       }
@@ -6337,6 +6347,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // ── Hrotti UR: Herança de Andvaranaut — nullify all Ultimate Gear effects for 3 turns (once ever) ──
   const activateHrottiUrAbility = () => {
     if (hrottiUrUsed) { showEffectFeedback("Herança de Andvaranaut já foi usada!", "error"); return }
+    mpBroadcast("ability_used", { ability: "hrottiUr" })
     setHrottiUrUsed(true)
     setHrottiUrNullifyUntil(turn + 3)
     showEffectFeedback("HERANÇA DE ANDVARANAUT: Todos os efeitos de Ultimate Gear anulados por 3 turnos!", "warning")
@@ -6405,6 +6416,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         setUllrSrMarcaUsed(true)
         const tgt = enemyTargets.find(t => t.i === idx)
         const isVentus = tgt?.u?.element === "Ventus" || tgt?.u?.element === "Wind"
+        mpBroadcast("ability_used", { ability: "ullrSr", targetIndex: idx, dpChange: isVentus ? -2 : -1 })
         showEffectFeedback(`MARCA DA CAÇADA: ${tgt?.u?.name} ${isVentus ? "-2DP (Ventus)" : "-1DP"}!`, "success")
       },
     })
@@ -6427,6 +6439,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       })
       return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
     })
+    mpBroadcast("ability_used", { ability: "ullrUr", bonus })
     setUllrUrJuramentoLastTurn(turn)
     showEffectFeedback(`JURAMENTO ETERNO: Todas as unidades Ventus +${bonus}DP${hasUllrbogi ? " (Ullrbogi!)" : ""}!`, "success")
   }
@@ -7311,84 +7324,120 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   useEffect(() => { mpSendActionRef.current = mpSendAction }, [mpSendAction])
 
+  // NOTE: Uses NO external state in deps — all state reads go through functional updaters
+  // This prevents stale closure issues entirely.
   const mpHandleOpponentAction = useCallback((action: OnlineDuelAction) => {
     const uid = `${action.type}-${action.timestamp}`
     if (mpProcessedIdsRef.current.has(uid)) return
     mpProcessedIdsRef.current.add(uid)
 
     switch (action.type) {
+
+      // ── Opponent drew a card ──────────────────────────────────────────────
       case "draw":
         setEnemyField(prev => ({
           ...prev,
-          hand: Array(action.data.handSize ?? 5).fill(null),
-          deck: Array(action.data.deckSize ?? 0).fill(null),
+          hand: Array(action.data.handSize ?? prev.hand.length + 1).fill(null),
+          deck: Array(action.data.deckSize ?? Math.max(0, prev.deck.length - 1)).fill(null),
         }))
         break
+
+      // ── Opponent placed a card ────────────────────────────────────────────
       case "place_card": {
         const card = action.data.card
-        const src = action.data.source || "hand"
+        const src  = action.data.source || "hand"
+        const rmCard = (prev: any) =>
+          src === "tap"
+            ? prev.tap.filter((t: any) => t?.id !== card.id)
+            : prev.tap
+
         if (action.data.zone === "unit") {
-          setEnemyField(prev => {
-            const nUZ = [...prev.unitZone]
-            nUZ[action.data.index] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn }
-            const ns = { ...prev, unitZone: nUZ }
-            if (src === "tap") ns.tap = prev.tap.filter((t: any) => t?.id !== card.id)
-            else ns.hand = prev.hand.slice(0, -1)
-            return ns
+          setTurn(currentTurn => {
+            setEnemyField(prev => {
+              const nUZ = [...prev.unitZone]
+              nUZ[action.data.index] = {
+                ...card, currentDp: card.dp,
+                canAttack: false, hasAttacked: false, canAttackTurn: currentTurn,
+              }
+              return {
+                ...prev, unitZone: nUZ,
+                hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
+                tap: rmCard(prev),
+              }
+            })
+            return currentTurn // don't change turn
           })
         } else if (action.data.zone === "function") {
           setEnemyField(prev => {
             const nFZ = [...prev.functionZone]
-            nFZ[action.data.index] = action.data.isTrap ? { ...card, isFaceDown: true } : card
-            const ns = { ...prev, functionZone: nFZ }
-            if (src === "tap") ns.tap = prev.tap.filter((t: any) => t?.id !== card.id)
-            else ns.hand = prev.hand.slice(0, -1)
-            return ns
+            nFZ[action.data.index] = action.data.isTrap
+              ? { ...card, isFaceDown: true, isSettingDown: true }
+              : card
+            return {
+              ...prev, functionZone: nFZ,
+              hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
+              tap: rmCard(prev),
+            }
           })
         } else if (action.data.zone === "scenario") {
           setEnemyField(prev => ({
-            ...prev,
-            scenarioZone: card,
+            ...prev, scenarioZone: card,
             hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
-            tap: src === "tap" ? prev.tap.filter((t: any) => t?.id !== card.id) : prev.tap,
+            tap: rmCard(prev),
           }))
         } else if (action.data.zone === "ultimate") {
-          setEnemyField(prev => ({
-            ...prev,
-            ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn },
-            hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
-            tap: src === "tap" ? prev.tap.filter((t: any) => t?.id !== card.id) : prev.tap,
-          }))
+          setTurn(currentTurn => {
+            setEnemyField(prev => ({
+              ...prev,
+              ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: currentTurn },
+              hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
+              tap: rmCard(prev),
+            }))
+            return currentTurn
+          })
         }
         break
       }
+
+      // ── Opponent attacked ─────────────────────────────────────────────────
       case "attack": {
         const { attackerIndex, targetType, targetIndex, damage, attackerCard } = action.data
-        const attacker = attackerCard ?? enemyField.unitZone[attackerIndex]
-        const getEl = (sel: string) => {
+        // Resolve DOM positions immediately (not in stale closure)
+        const getElPos = (sel: string) => {
           const el = document.querySelector(sel)
           if (!el) return null
           const r = el.getBoundingClientRect()
           return { x: r.left + r.width/2, y: r.top + r.height/2 }
         }
-        const attackerEl = document.querySelector(`[data-enemy-unit="${attackerIndex}"]`)
-        const aR = attackerEl?.getBoundingClientRect()
-        const sX = aR ? aR.left + aR.width/2 : window.innerWidth/2
-        const sY = aR ? aR.top + aR.height/2 : 0
+        const aEl = document.querySelector(`[data-enemy-unit="${attackerIndex}"]`)
+        const aR  = aEl?.getBoundingClientRect()
+        const sX  = aR ? aR.left + aR.width/2  : window.innerWidth  * 0.5
+        const sY  = aR ? aR.top  + aR.height/2 : window.innerHeight * 0.25
         const tgt = targetType === "direct"
-          ? getEl("[data-direct-attack]")
-          : getEl(`[data-player-unit-slot="${targetIndex}"]`)
-        if (tgt && attacker) {
-          const pId = `opp-${Date.now()}`
-          setActiveProjectiles((prev: any[]) => [...prev, {
-            id: pId, startX: sX, startY: sY,
-            targetX: tgt!.x, targetY: tgt!.y,
-            element: attacker.element || "neutral",
-            attackerImage: attacker.image,
-            attackerName: attacker.name,
-            isDirect: targetType === "direct",
-          }])
-        }
+          ? getElPos("[data-direct-attack]")
+          : getElPos(`[data-player-unit-slot="${targetIndex}"]`)
+
+        // Show projectile animation
+        setEnemyField(prev => {
+          const attacker = attackerCard ?? prev.unitZone[attackerIndex]
+          if (attacker && tgt) {
+            const pId = `opp-${Date.now()}`
+            setActiveProjectiles((pp: any[]) => [...pp, {
+              id: pId, startX: sX, startY: sY,
+              targetX: tgt.x, targetY: tgt.y,
+              element: attacker.element || "neutral",
+              attackerImage: attacker.image,
+              attackerName: attacker.name,
+              isDirect: targetType === "direct",
+            }])
+          }
+          // Mark attacker as having attacked
+          const nUZ = [...prev.unitZone]
+          if (nUZ[attackerIndex]) nUZ[attackerIndex] = { ...nUZ[attackerIndex]!, hasAttacked: true }
+          return { ...prev, unitZone: nUZ }
+        })
+
+        // Apply damage after animation
         setTimeout(() => {
           if (targetType === "direct") {
             setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - damage) }))
@@ -7396,17 +7445,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             setPlayerField(prev => {
               const nUZ = [...prev.unitZone]
               const t = nUZ[targetIndex]
-              if (t) {
-                const nDp = Math.max(0, (t.currentDp ?? t.dp) - damage)
-                if (nDp <= 0) { nUZ[targetIndex] = null; return { ...prev, unitZone: nUZ, graveyard: [...prev.graveyard, t] } }
-                nUZ[targetIndex] = { ...t, currentDp: nDp }
+              if (!t) return prev
+              const nDp = Math.max(0, (t.currentDp ?? t.dp) - damage)
+              if (nDp <= 0) {
+                nUZ[targetIndex] = null
+                return { ...prev, unitZone: nUZ, graveyard: [...prev.graveyard, t] }
               }
+              nUZ[targetIndex] = { ...t, currentDp: nDp }
               return { ...prev, unitZone: nUZ }
             })
           }
         }, 600)
         break
       }
+
+      // ── Opponent ended their turn ─────────────────────────────────────────
       case "end_turn":
         setIsPlayerTurn(true)
         setTurn(prev => prev + 1)
@@ -7414,17 +7467,58 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         setNormalSummonUsed(false)
         setPlayerField(prev => ({
           ...prev,
-          unitZone: prev.unitZone.map(u => u ? { ...u, canAttack: true, hasAttacked: false } : null),
-          ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false } : null,
+          unitZone: prev.unitZone.map(u =>
+            u ? { ...u, canAttack: true, hasAttacked: false } : null
+          ),
+          ultimateZone: prev.ultimateZone
+            ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false }
+            : null,
+        }))
+        setEnemyField(prev => ({
+          ...prev,
+          unitZone: prev.unitZone.map(u =>
+            u ? { ...u, hasAttacked: false } : null
+          ),
         }))
         break
+
+      // ── Opponent used a function/item card ────────────────────────────────
       case "use_function_card":
         setEnemyField(prev => ({
           ...prev,
           hand: prev.hand.slice(0, -1),
-          graveyard: action.data.card ? [...prev.graveyard, action.data.card] : prev.graveyard,
+          graveyard: action.data.card
+            ? [...prev.graveyard, action.data.card]
+            : prev.graveyard,
         }))
+        // If card damaged player's life
+        if (action.data.lifeDamage) {
+          setPlayerField(prev => ({
+            ...prev,
+            life: Math.max(0, prev.life - action.data.lifeDamage),
+          }))
+        }
+        // If card destroyed a player unit
+        if (action.data.destroyPlayerUnitIndex !== undefined) {
+          setPlayerField(prev => {
+            const nUZ = [...prev.unitZone]
+            const u = nUZ[action.data.destroyPlayerUnitIndex]
+            if (u) { nUZ[action.data.destroyPlayerUnitIndex] = null; return { ...prev, unitZone: nUZ, graveyard: [...prev.graveyard, u] } }
+            return prev
+          })
+        }
+        // If card debuffed a player unit
+        if (action.data.debuffPlayerUnit !== undefined && action.data.dpChange) {
+          setPlayerField(prev => {
+            const nUZ = [...prev.unitZone]
+            const u = nUZ[action.data.debuffPlayerUnit]
+            if (u) nUZ[action.data.debuffPlayerUnit] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + action.data.dpChange) }
+            return { ...prev, unitZone: nUZ as any }
+          })
+        }
         break
+
+      // ── Opponent moved TAP card to hand ───────────────────────────────────
       case "tap_to_hand":
         setEnemyField(prev => ({
           ...prev,
@@ -7432,35 +7526,63 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           tap: prev.tap.filter((t: any) => t?.id !== action.data.card?.id),
         }))
         break
+
+      // ── Opponent surrendered ──────────────────────────────────────────────
       case "surrender":
         setGameResult("won")
         setWinReason("surrender")
         break
+
+      // ── Opponent used a unit ability ──────────────────────────────────────
       case "ability_used": {
         const ab = action.data.ability
-        if (ab === "ullrSr" && action.data.targetIndex !== undefined) {
+        // Ullr SR: debuffs a player unit
+        if (ab === "ullrSr") {
           setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
-            const u = nUZ[action.data.targetIndex]
-            if (u) nUZ[action.data.targetIndex] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + (action.data.dpChange ?? -1)) }
+            const idx = action.data.targetIndex
+            if (idx !== undefined && nUZ[idx]) {
+              nUZ[idx] = { ...nUZ[idx]!, currentDp: Math.max(0, (nUZ[idx]!.currentDp ?? nUZ[idx]!.dp) + (action.data.dpChange ?? -1)) }
+            }
             return { ...prev, unitZone: nUZ as any }
           })
         }
-        if (ab === "ullrUr" && action.data.bonus) {
+        // Ullr UR: buffs enemy Ventus units
+        if (ab === "ullrUr") {
           setEnemyField(prev => ({
             ...prev,
             unitZone: prev.unitZone.map(u => {
               if (!u) return null
               if (u.element === "Ventus" || u.element === "Wind")
-                return { ...u, currentDp: (u.currentDp ?? u.dp) + action.data.bonus }
+                return { ...u, currentDp: (u.currentDp ?? u.dp) + (action.data.bonus ?? 2) }
               return u
-            }) as any
+            }) as any,
           }))
+        }
+        // Merlin: opponent looks at top 5 cards (no visual change needed for us)
+        // Oswin, MrP, Hrotti: these affect enemy's own state — already handled by
+        // use_function_card or field_sync
+        break
+      }
+
+      // ── Full field sync (for complex effects) ─────────────────────────────
+      case "field_sync": {
+        if (action.data.myLife !== undefined) {
+          setEnemyField(prev => ({ ...prev, life: action.data.myLife }))
+        }
+        if (action.data.oppLife !== undefined) {
+          setPlayerField(prev => ({ ...prev, life: action.data.oppLife }))
+        }
+        if (action.data.enemyUnitZone) {
+          setEnemyField(prev => ({ ...prev, unitZone: action.data.enemyUnitZone }))
+        }
+        if (action.data.playerUnitZone) {
+          setPlayerField(prev => ({ ...prev, unitZone: action.data.playerUnitZone }))
         }
         break
       }
     }
-  }, [enemyField, playerField, turn])
+  }, [])  // Empty deps — all state mutations use functional updaters
 
   useEffect(() => { mpHandleOpponentRef.current = mpHandleOpponentAction }, [mpHandleOpponentAction])
 
@@ -7532,6 +7654,26 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (mpChatRef.current) mpChatRef.current.scrollTop = mpChatRef.current.scrollHeight
   }, [mpChat])
 
+
+  // Helper: broadcast an action only in online mode
+  const mpBroadcast = useCallback((type: string, data: any) => {
+    if (mode !== "player" || !onlineRoomData) return
+    const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+    mpSendActionRef.current({ type, playerId: myId, data, timestamp: Date.now() })
+  }, [mode, onlineRoomData])
+
+
+  // Helper: broadcast full field sync for complex effects  
+  const mpFieldSync = useCallback((opts?: { myLife?: number; oppLife?: number; myUnits?: any; oppUnits?: any }) => {
+    if (mode !== "player" || !onlineRoomData) return
+    mpBroadcast("field_sync", {
+      myLife:         opts?.myLife,
+      oppLife:        opts?.oppLife,
+      enemyUnitZone:  opts?.myUnits,   // MY units become opponent's enemyUnitZone
+      playerUnitZone: opts?.oppUnits,  // OPP units become opponent's playerUnitZone
+    })
+  }, [mode, onlineRoomData, mpBroadcast])
+
   const mpSendChat = async () => {
     if (!mpChatInput.trim() || !supabase || !onlineRoomData) return
     const msg = mpChatInput.trim()
@@ -7587,6 +7729,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const surrender = () => {
+    mpBroadcast("surrender", {})
     setGameResult("lost")
     addMatchRecord({
       id: `match-${Date.now()}`,
@@ -7802,6 +7945,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             ...prev,
             graveyard: [...prev.graveyard, cardToUse],
           }))
+          mpBroadcast("use_function_card", {
+            card: cardToUse,
+            targets: {
+              enemyUnitIndex: targets.enemyUnitIndices?.[0] ?? null,
+              allyUnitIndex: targets.allyUnitIndices?.[0] ?? null,
+            },
+          })
         } else {
           showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
         }
@@ -9992,6 +10142,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                                   const newTap = prev.tap.filter((_, idx) => idx !== i)
                                   return { ...prev, tap: newTap, hand: [...prev.hand, card] }
                                 })
+                                mpBroadcast("tap_to_hand", { card, index: i })
                                 setTapView(null)
                                 showEffectFeedback(`TAP: ${card.name} adicionada à mão!`, "success")
                               }
