@@ -3042,9 +3042,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   interface OnlineRoomData { roomId:string;roomCode:string;isHost:boolean;hostId:string;hostName:string;hostDeck:any;guestId:string|null;guestName:string|null;guestDeck:any;hostReady:boolean;guestReady:boolean }
   const [onlinePhase, setOnlinePhase]       = useState<"lobby"|"duel"|null>(null)
   const [onlineRoomData, setOnlineRoomData] = useState<OnlineRoomData|null>(null)
+  const onlineRoomDataRef = useRef<OnlineRoomData|null>(null) // always latest, safe in callbacks
 
   // ── Multiplayer Supabase layer ────────────────────────────────────────────
-  const supabase = createClient()
+  const supabaseRef = useRef(createClient())  // created once, never changes
+  const supabase = supabaseRef.current
   const mpActionsChannelRef  = useRef<RealtimeChannel | null>(null)
   const mpChatChannelRef     = useRef<RealtimeChannel | null>(null)
   const mpActionsPollRef     = useRef<NodeJS.Timeout | null>(null)
@@ -3746,14 +3748,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
     // Host goes first
     setIsPlayerTurn(rd.isHost)
-    // Broadcast initial draw
-    setTimeout(() => {
-      mpSendActionRef.current({
-        type: "draw", playerId: rd.isHost ? rd.hostId : (rd.guestId || ""),
-        data: { handSize: 5, deckSize: myDeck.cards.length - 5 },
-        timestamp: Date.now(),
-      })
-    }, 300)
+    // Broadcast initial draw — use direct call, 500ms delay to ensure subscription is up
+    const initPlayerId = rd.isHost ? rd.hostId : (rd.guestId || "")
+    const initDeckSize = myDeck.cards.length - 5
+    setTimeout(async () => {
+      const sb = supabaseRef.current
+      if (!sb) return
+      const action = { type: "draw", playerId: initPlayerId, data: { handSize: 5, deckSize: initDeckSize }, timestamp: Date.now() }
+      try {
+        await sb.from("duel_actions").insert({
+          room_id: rd.roomId, player_id: initPlayerId,
+          action_type: "draw", action_data: JSON.stringify(action),
+          sequence_number: action.timestamp,
+        })
+      } catch {}
+    }, 500)
   }
 
   const drawCard = () => {
@@ -7309,20 +7318,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const mpSendAction = useCallback(async (action: OnlineDuelAction) => {
-    if (!supabase || !onlineRoomData) return
-    const mpId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+    const sb = supabaseRef.current
+    const rd = onlineRoomDataRef.current
+    if (!sb || !rd) return
+    const mpId = rd.isHost ? rd.hostId : (rd.guestId || "")
     try {
-      await supabase.from("duel_actions").insert({
-        room_id: onlineRoomData.roomId,
+      await sb.from("duel_actions").insert({
+        room_id: rd.roomId,
         player_id: mpId,
         action_type: action.type,
         action_data: JSON.stringify(action),
         sequence_number: action.timestamp,
       })
-    } catch {}
-  }, [supabase, onlineRoomData])
+    } catch(e) { console.error("[mp] sendAction failed:", e) }
+  }, [])  // no deps — reads from refs
 
   useEffect(() => { mpSendActionRef.current = mpSendAction }, [mpSendAction])
+  useEffect(() => { onlineRoomDataRef.current = onlineRoomData }, [onlineRoomData])
 
   // NOTE: Uses NO external state in deps — all state reads go through functional updaters
   // This prevents stale closure issues entirely.
@@ -7588,12 +7600,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   // Subscribe to opponent actions + chat (only when online duel is active)
   useEffect(() => {
-    if (mode !== "player" || !gameStarted || !onlineRoomData || !supabase) return
+    if (mode !== "player" || !gameStarted || !onlineRoomData) return
+    const sb = supabaseRef.current
+    if (!sb) return
     const roomId = onlineRoomData.roomId
     const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
 
     // Realtime channel
-    const ch = supabase
+    const ch = sb
       .channel(`duel-actions-${roomId}-${Date.now()}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
@@ -7611,7 +7625,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     // Polling fallback 400ms
     mpActionsPollRef.current = setInterval(async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await sb
         .from("duel_actions").select("*")
         .eq("room_id", roomId).neq("player_id", myId)
         .gt("created_at", mpLastActionTimeRef.current)
@@ -7627,11 +7641,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }, 400)
 
     // Chat
-    supabase.from("duel_chat").select("*").eq("room_id", roomId)
+    sb.from("duel_chat").select("*").eq("room_id", roomId)
       .order("created_at", { ascending: true })
       .then(({ data }) => { if (data) setMpChat(data) })
 
-    const chatCh = supabase
+    const chatCh = sb
       .channel(`duel-chat-${roomId}-${Date.now()}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
@@ -7657,22 +7671,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   // Helper: broadcast an action only in online mode
   const mpBroadcast = useCallback((type: string, data: any) => {
-    if (mode !== "player" || !onlineRoomData) return
-    const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
+    const rd = onlineRoomDataRef.current
+    if (!rd) return
+    const myId = rd.isHost ? rd.hostId : (rd.guestId || "")
     mpSendActionRef.current({ type, playerId: myId, data, timestamp: Date.now() })
-  }, [mode, onlineRoomData])
+  }, [])  // no deps — reads from refs
 
 
   // Helper: broadcast full field sync for complex effects  
   const mpFieldSync = useCallback((opts?: { myLife?: number; oppLife?: number; myUnits?: any; oppUnits?: any }) => {
-    if (mode !== "player" || !onlineRoomData) return
+    if (!onlineRoomDataRef.current) return
     mpBroadcast("field_sync", {
       myLife:         opts?.myLife,
       oppLife:        opts?.oppLife,
-      enemyUnitZone:  opts?.myUnits,   // MY units become opponent's enemyUnitZone
-      playerUnitZone: opts?.oppUnits,  // OPP units become opponent's playerUnitZone
+      enemyUnitZone:  opts?.myUnits,
+      playerUnitZone: opts?.oppUnits,
     })
-  }, [mode, onlineRoomData, mpBroadcast])
+  }, [mpBroadcast])
 
   const mpSendChat = async () => {
     if (!mpChatInput.trim() || !supabase || !onlineRoomData) return
