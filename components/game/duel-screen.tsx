@@ -1758,6 +1758,38 @@ const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
   5:{rx:0,  ry:90 }, 6:{rx:0,  ry:180},
 }
 
+
+// ─── Sound System ──────────────────────────────────────────────────────────────
+// Paths relative to /public — all lowercase, served as static files by Next.js
+const SOUNDS = {
+  cardSummon:      "/audio/duel/Card_Summon.wav",
+  unitAttack:      "/audio/duel/Unit_Attack.wav",
+  cardDestruction: "/audio/duel/Card_Destruction.wav",
+  cardToGraveyard: "/audio/duel/Card_to_Graveyard.wav",
+  confirm:         "/audio/ui/Confirm.wav",
+  reject:          "/audio/ui/Reject.wav",
+} as const
+
+type SoundKey = keyof typeof SOUNDS
+
+// Cache Audio objects so they don't reload every call
+const audioCache: Partial<Record<SoundKey, HTMLAudioElement>> = {}
+
+function playSound(key: SoundKey, volume = 0.7) {
+  if (typeof window === "undefined") return
+  try {
+    let audio = audioCache[key]
+    if (!audio) {
+      audio = new Audio(SOUNDS[key])
+      audioCache[key] = audio
+    }
+    // Allow overlapping — clone for rapid successive plays
+    const instance = audio.cloneNode() as HTMLAudioElement
+    instance.volume = Math.max(0, Math.min(1, volume))
+    instance.play().catch(() => {}) // ignore autoplay policy errors
+  } catch {}
+}
+
 function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=>void }) {
   const rigRef  = useRef<HTMLDivElement>(null)
   const cubeRef = useRef<HTMLDivElement>(null)
@@ -3109,9 +3141,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // Destruction sequencing: IDs of cards with an active on-field destruction animation.
   // DiscardAnimationManager delays graveyard animation until the field explosion finishes.
   const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
-  const markDestroyed = useCallback((card: GameCard) =>
+  const markDestroyed = useCallback((card: GameCard) => {
+    playSound("cardToGraveyard", 0.6)
     setDestroyedCardIds(prev => { const s = new Set(prev); s.add(card.id); return s })
-  , [])
+  }, [])
 
   const prevUnitZoneRef = useRef<(string | null)[]>([])
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
@@ -3200,6 +3233,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setTimeout(() => setDrawAnimation(null), 1100)
   }, [playerDeckRef, handContainerRef, playerField.hand.length])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
+    playSound("cardDestruction")
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
     markDestroyed(card)
     setTimeout(() => setDestructionAnimation(null), 1200)
@@ -3820,6 +3854,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
+      playSound("cardSummon")
       setNormalSummonUsed(true)
       // Broadcast unit placement in online mode
       if (mode === "player" && onlineRoomData) {
@@ -4025,6 +4060,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             hand: prev.hand.filter((_, i) => i !== cardIndex),
           }
         })
+        playSound("cardSummon", 0.55)
         mpBroadcast("place_card", { zone: "function", index: slotIndex, card: cardToPlace, isTrap: true, source: "hand" })
         setSelectedHandCard(null)
         setDraggedHandCard(null)
@@ -4519,6 +4555,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
     })
 
+    playSound("cardSummon", 0.5)
     mpBroadcast("place_card", { zone: "scenario", card: cardToPlace, source: "hand" })
     setSelectedHandCard(null)
     setDraggedHandCard(null)
@@ -4621,6 +4658,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
     })
 
+    playSound("cardSummon", 0.6)
     mpBroadcast("place_card", { zone: "ultimate", card: cardToPlace, source: "hand" })
     // Reset one-time ability flag for a new UG
     setPlayerUgAbilityUsed(false)
@@ -5616,6 +5654,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           }
         }
 
+        playSound("unitAttack")
         const projId = `proj-${Date.now()}-${currentAttackId}`
         setActiveProjectiles((prev) => [
           ...prev,
@@ -7842,6 +7881,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const surrender = () => {
+    playSound("reject", 0.8)
     mpBroadcast("surrender", {})
     setGameResult("lost")
     addMatchRecord({
@@ -9955,7 +9995,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 {choiceModal.options.map((option) => (
                   <button
                     key={option.id}
-                    onClick={() => choiceModal.onChoose(option.id)}
+                    onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
                     className={`bg-gradient-to-b ${option.id === 'skip' ? 'from-slate-600 to-slate-700 hover:from-slate-500 col-span-3' : 'from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600'} text-white font-bold py-2 px-2 rounded-lg border border-purple-400/40 transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[60px]`}
                   >
                     <div className="text-[11px] font-bold leading-tight text-center">{option.label}</div>
@@ -9968,7 +10008,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 {choiceModal.options.map((option) => (
                   <button
                     key={option.id}
-                    onClick={() => choiceModal.onChoose(option.id)}
+                    onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
                     className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
                   >
                     <div className="text-lg">{option.label}</div>
@@ -10096,6 +10136,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => {
+                  playSound("confirm")
                   const key = unitAbilityConfirm?.abilityKey
                   setUnitAbilityConfirm(null)
                   if (key === 'merlin') activateMerlinAbility()
@@ -10109,7 +10150,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
                 ✓ Sim
               </button>
               <button
-                onClick={() => setUnitAbilityConfirm(null)}
+                onClick={() => { playSound("reject", 0.5); setUnitAbilityConfirm(null) }}
                 className="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition-colors"
               >
                 ✗ Não
