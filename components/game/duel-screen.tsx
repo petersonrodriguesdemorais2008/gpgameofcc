@@ -7320,17 +7320,23 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const mpSendAction = useCallback(async (action: OnlineDuelAction) => {
     const sb = supabaseRef.current
     const rd = onlineRoomDataRef.current
-    if (!sb || !rd) return
+    console.log("[MP] sendAction called:", action.type, "| sb:", !!sb, "| rd:", !!rd)
+    if (!sb || !rd) { console.warn("[MP] sendAction ABORTED — missing sb or rd"); return }
     const mpId = rd.isHost ? rd.hostId : (rd.guestId || "")
-    try {
-      await sb.from("duel_actions").insert({
-        room_id: rd.roomId,
-        player_id: mpId,
-        action_type: action.type,
-        action_data: JSON.stringify(action),
-        sequence_number: action.timestamp,
-      })
-    } catch(e) { console.error("[mp] sendAction failed:", e) }
+    // Use a safe sequence number (not timestamp — too large for integer column)
+    const seqNum = Date.now() % 2147483647
+    const { error } = await sb.from("duel_actions").insert({
+      room_id: rd.roomId,
+      player_id: mpId,
+      action_type: action.type,
+      action_data: JSON.stringify(action),
+      sequence_number: seqNum,
+    })
+    if (error) {
+      console.error("[MP] sendAction INSERT failed:", error.message, error.details)
+    } else {
+      console.log("[MP] sendAction INSERT OK:", action.type)
+    }
   }, [])  // no deps — reads from refs
 
   useEffect(() => { mpSendActionRef.current = mpSendAction }, [mpSendAction])
@@ -7606,6 +7612,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const roomId = onlineRoomData.roomId
     const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
 
+    console.log("[MP] Starting subscription. roomId:", roomId, "| myId:", myId)
+    
     // Realtime channel
     const ch = sb
       .channel(`duel-actions-${roomId}-${Date.now()}`)
@@ -7614,23 +7622,29 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         table: "duel_actions", filter: `room_id=eq.${roomId}`,
       }, (payload: any) => {
         const row = payload.new
-        if (row.player_id === myId) return
+        console.log("[MP] Realtime received:", row.action_type, "from:", row.player_id, "| myId:", myId)
+        if (row.player_id === myId) { console.log("[MP] Ignoring own action"); return }
         let data = row.action_data
         if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
+        console.log("[MP] Processing opponent action:", data?.type)
         mpHandleOpponentRef.current(data)
         mpLastActionTimeRef.current = row.created_at
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        console.log("[MP] Realtime subscription status:", status)
+      })
     mpActionsChannelRef.current = ch
 
     // Polling fallback 400ms
     mpActionsPollRef.current = setInterval(async () => {
-      const { data: rows } = await sb
+      const { data: rows, error: pollErr } = await sb
         .from("duel_actions").select("*")
         .eq("room_id", roomId).neq("player_id", myId)
         .gt("created_at", mpLastActionTimeRef.current)
-        .order("sequence_number", { ascending: true }).limit(10)
+        .order("created_at", { ascending: true }).limit(10)
+      if (pollErr) { console.error("[MP] Poll error:", pollErr.message); return }
       if (rows && rows.length > 0) {
+        console.log("[MP] Poll found", rows.length, "new action(s)")
         for (const row of rows) {
           let d = row.action_data
           if (typeof d === "string") { try { d = JSON.parse(d) } catch {} }
@@ -7672,8 +7686,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // Helper: broadcast an action only in online mode
   const mpBroadcast = useCallback((type: string, data: any) => {
     const rd = onlineRoomDataRef.current
-    if (!rd) return
+    if (!rd) { console.warn("[MP] mpBroadcast called but no roomData"); return }
     const myId = rd.isHost ? rd.hostId : (rd.guestId || "")
+    console.log("[MP] mpBroadcast:", type)
     mpSendActionRef.current({ type, playerId: myId, data, timestamp: Date.now() })
   }, [])  // no deps — reads from refs
 
