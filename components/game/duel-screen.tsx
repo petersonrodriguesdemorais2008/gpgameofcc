@@ -6216,6 +6216,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
         })
         setMrPManuscritoUsed(true)
+        mpBroadcast("ability_used", { ability: "mrp", targetIndex: idx, dpChange: -2 })
         showEffectFeedback(`MANUSCRITO DE GUERRA: ${enemyTargets.find(t => t.i === idx)?.u?.name} -2DP!`, "success")
       },
     })
@@ -7578,26 +7579,41 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             }) as any,
           }))
         }
-        // Merlin: opponent looks at top 5 cards (no visual change needed for us)
-        // Oswin, MrP, Hrotti: these affect enemy's own state — already handled by
-        // use_function_card or field_sync
+        // MrP: debuffs a player unit (-2DP)
+        if (ab === "mrp" && action.data.targetIndex !== undefined) {
+          setPlayerField(prev => {
+            const nUZ = [...prev.unitZone]
+            const u = nUZ[action.data.targetIndex]
+            if (u) nUZ[action.data.targetIndex] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + (action.data.dpChange ?? -2)) }
+            return { ...prev, unitZone: nUZ as any }
+          })
+        }
+        // Merlin/Oswin: affect opponent's own deck/hand — field_sync handles the visual
         break
       }
 
-      // ── Full field sync (for complex effects) ─────────────────────────────
+      // ── Full field sync — applies everything the sender broadcasts ─────────
       case "field_sync": {
-        if (action.data.myLife !== undefined) {
-          setEnemyField(prev => ({ ...prev, life: action.data.myLife }))
-        }
-        if (action.data.oppLife !== undefined) {
-          setPlayerField(prev => ({ ...prev, life: action.data.oppLife }))
-        }
-        if (action.data.enemyUnitZone) {
-          setEnemyField(prev => ({ ...prev, unitZone: action.data.enemyUnitZone }))
-        }
-        if (action.data.playerUnitZone) {
-          setPlayerField(prev => ({ ...prev, unitZone: action.data.playerUnitZone }))
-        }
+        const d = action.data
+        setEnemyField(prev => {
+          const upd: any = { ...prev }
+          if (d.myLife      !== undefined) upd.life         = d.myLife
+          if (d.myUnits     !== undefined) upd.unitZone     = d.myUnits
+          if (d.myFuncs     !== undefined) upd.functionZone = d.myFuncs
+          if (d.myScenario  !== undefined) upd.scenarioZone = d.myScenario
+          if (d.myUltimate  !== undefined) upd.ultimateZone = d.myUltimate
+          if (d.myGraveyard !== undefined) upd.graveyard    = d.myGraveyard
+          if (d.myHandLen   !== undefined) upd.hand         = Array(d.myHandLen).fill(null)
+          if (d.myDeckLen   !== undefined) upd.deck         = Array(d.myDeckLen).fill(null)
+          // Legacy fields
+          if (d.oppLife !== undefined) {
+            setPlayerField(p => ({ ...p, life: d.oppLife }))
+          }
+          if (d.playerUnitZone !== undefined) {
+            setPlayerField(p => ({ ...p, unitZone: d.playerUnitZone }))
+          }
+          return upd
+        })
         break
       }
     }
@@ -7736,6 +7752,54 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       message: msg,
     })
   }
+
+
+  // ── Broadcast field state after every significant change (online mode only) ──
+  // This catches ALL state changes regardless of whether we added a specific broadcast
+  const mpLastSyncRef = useRef<string>("")
+  useEffect(() => {
+    if (mode !== "player" || !gameStarted || !onlineRoomDataRef.current) return
+    
+    // Build a compact state snapshot to detect real changes
+    const snapshot = JSON.stringify({
+      myLife: playerField.life,
+      myUnits: playerField.unitZone.map(u => u ? { id: u.id, dp: u.currentDp ?? u.dp, hasAttacked: u.hasAttacked } : null),
+      myFuncs: playerField.functionZone.map(f => f ? { id: f.id, isFaceDown: (f as any).isFaceDown } : null),
+      myScenario: playerField.scenarioZone?.id,
+      myUltimate: playerField.ultimateZone?.id,
+      myGravLen: playerField.graveyard.length,
+      myHandLen: playerField.hand.length,
+      myDeckLen: playerField.deck.length,
+    })
+    
+    if (snapshot === mpLastSyncRef.current) return
+    mpLastSyncRef.current = snapshot
+    
+    // Broadcast full player field to opponent
+    // Small delay to batch rapid successive changes
+    const t = setTimeout(() => {
+      mpBroadcast("field_sync", {
+        myLife:       playerField.life,
+        myUnits:      playerField.unitZone,
+        myFuncs:      playerField.functionZone,
+        myScenario:   playerField.scenarioZone,
+        myUltimate:   playerField.ultimateZone,
+        myGraveyard:  playerField.graveyard,
+        myHandLen:    playerField.hand.length,
+        myDeckLen:    playerField.deck.length,
+      })
+    }, 80)
+    return () => clearTimeout(t)
+  }, [
+    mode, gameStarted,
+    playerField.life,
+    playerField.unitZone,
+    playerField.functionZone,
+    playerField.scenarioZone,
+    playerField.ultimateZone,
+    playerField.graveyard.length,
+    playerField.hand.length,
+  ])
 
   const endEnemyTurn = () => {
     setPhase("end")
