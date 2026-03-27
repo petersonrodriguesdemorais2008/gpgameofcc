@@ -7324,13 +7324,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!sb || !rd) { console.warn("[MP] sendAction ABORTED — missing sb or rd"); return }
     const mpId = rd.isHost ? rd.hostId : (rd.guestId || "")
     // Use a safe sequence number (not timestamp — too large for integer column)
-    const seqNum = Date.now() % 2147483647
     const { error } = await sb.from("duel_actions").insert({
       room_id: rd.roomId,
       player_id: mpId,
       action_type: action.type,
       action_data: JSON.stringify(action),
-      sequence_number: seqNum,
+      sequence_number: 1,
     })
     if (error) {
       console.error("[MP] sendAction INSERT failed:", error.message, error.details)
@@ -7345,9 +7344,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // NOTE: Uses NO external state in deps — all state reads go through functional updaters
   // This prevents stale closure issues entirely.
   const mpHandleOpponentAction = useCallback((action: OnlineDuelAction) => {
-    const uid = `${action.type}-${action.timestamp}`
+    // Dedup by timestamp+type (unique per action sent)
+    const uid = `${action.type}-${action.timestamp}-${action.playerId}`
     if (mpProcessedIdsRef.current.has(uid)) return
     mpProcessedIdsRef.current.add(uid)
+    // Keep set small
+    if (mpProcessedIdsRef.current.size > 500) mpProcessedIdsRef.current.clear()
 
     switch (action.type) {
 
@@ -7548,7 +7550,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       // ── Opponent surrendered ──────────────────────────────────────────────
       case "surrender":
         setGameResult("won")
-        setWinReason("surrender")
         break
 
       // ── Opponent used a unit ability ──────────────────────────────────────
@@ -7613,20 +7614,38 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
 
     console.log("[MP] Starting subscription. roomId:", roomId, "| myId:", myId)
+    // Fetch any actions already in DB (in case we missed some)
+    ;(async () => {
+      const { data: existing } = await sb
+        .from("duel_actions").select("*")
+        .eq("room_id", roomId).neq("player_id", myId)
+        .order("created_at", { ascending: true }).limit(50)
+      if (existing && existing.length > 0) {
+        console.log("[MP] Found", existing.length, "existing actions on subscribe")
+        for (const row of existing) {
+          let d = row.action_data
+          if (typeof d === "string") { try { d = JSON.parse(d) } catch {} }
+          mpHandleOpponentRef.current(d)
+          mpLastActionTimeRef.current = row.created_at
+        }
+      }
+    })()
     
     // Realtime channel
     const ch = sb
       .channel(`duel-actions-${roomId}-${Date.now()}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
-        table: "duel_actions", filter: `room_id=eq.${roomId}`,
+        table: "duel_actions",
+        // No server-side filter — filter client-side to avoid RLS/replica issues
       }, (payload: any) => {
         const row = payload.new
-        console.log("[MP] Realtime received:", row.action_type, "from:", row.player_id, "| myId:", myId)
-        if (row.player_id === myId) { console.log("[MP] Ignoring own action"); return }
+        // Only process actions for this room from opponent
+        if (row.room_id !== roomId) return
+        if (row.player_id === myId) return
+        console.log("[MP] Realtime received:", row.action_type, "from opponent")
         let data = row.action_data
         if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
-        console.log("[MP] Processing opponent action:", data?.type)
         mpHandleOpponentRef.current(data)
         mpLastActionTimeRef.current = row.created_at
       })
@@ -7639,17 +7658,17 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     mpActionsPollRef.current = setInterval(async () => {
       const { data: rows, error: pollErr } = await sb
         .from("duel_actions").select("*")
-        .eq("room_id", roomId).neq("player_id", myId)
-        .gt("created_at", mpLastActionTimeRef.current)
-        .order("created_at", { ascending: true }).limit(10)
+        .eq("room_id", roomId)
+        .neq("player_id", myId)
+        .order("created_at", { ascending: true })
+        .limit(20)
       if (pollErr) { console.error("[MP] Poll error:", pollErr.message); return }
       if (rows && rows.length > 0) {
-        console.log("[MP] Poll found", rows.length, "new action(s)")
+        console.log("[MP] Poll found", rows.length, "action(s)")
         for (const row of rows) {
           let d = row.action_data
           if (typeof d === "string") { try { d = JSON.parse(d) } catch {} }
           mpHandleOpponentRef.current(d)
-          mpLastActionTimeRef.current = row.created_at
         }
       }
     }, 400)
