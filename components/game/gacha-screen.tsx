@@ -21,22 +21,6 @@ interface PackData {
   highestRarity: "R" | "SR" | "UR" | "LR"
 }
 
-// Retirado da GachaScreen para evitar reinicialização por frame
-interface Particle {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  size: number
-  color: string
-  alpha: number
-  life: number
-  type: "orb" | "spark" | "ring" | "meteor"
-  angle?: number
-  radius?: number
-  speed?: number
-}
-
 const BANNERS = {
   fsg: {
     name: "Fundadores da Santa Guerra",
@@ -72,25 +56,22 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const { coins, setCoins, addToCollection, allCards, spendableFP, spendFriendPoints } = useGame()
   const [currentBanner, setCurrentBanner] = useState<BannerType>("fsg")
   const [isOpening, setIsOpening] = useState(false)
-  const[openedCards, setOpenedCards] = useState<Card[]>([])
+  const [openedCards, setOpenedCards] = useState<Card[]>([])
   const [showResults, setShowResults] = useState(false)
   const [rarityTier, setRarityTier] = useState<"normal" | "rare" | "epic" | "legendary">("normal")
   const [phase, setPhase] = useState(0)
   const [fpReward, setFpReward] = useState<number | null>(null)
   const [revealIndex, setRevealIndex] = useState(-1)
-  const[screenShake, setScreenShake] = useState(false)
-  
-  // Elementos essenciais salvos fora do React Render Flow p/ fluidez absurda
+  const [screenShake, setScreenShake] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>()
-  const particlesRef = useRef<Particle[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
   
   // New pack-based animation states
-  const[packs, setPacks] = useState<PackData[]>([])
+  const [packs, setPacks] = useState<PackData[]>([])
   const [currentPackIndex, setCurrentPackIndex] = useState(0)
   const [packPhase, setPackPhase] = useState<"entering" | "shaking" | "opening" | "revealing" | "done">("entering")
-  const[cardRevealIndex, setCardRevealIndex] = useState(-1)
+  const [cardRevealIndex, setCardRevealIndex] = useState(-1)
   const [pullCount, setPullCount] = useState(0)
 
   const COST_SINGLE = 1
@@ -127,23 +108,37 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Previne resizes desnecessários que deletam todo o trace left-behind visual instantâneamente.
-    if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight
-    }
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
 
     const centerX = canvas.width / 2
     const centerY = canvas.height / 2
 
     const colors: Record<string, string[]> = {
-      normal:["#64748b", "#94a3b8", "#cbd5e1"],
+      normal: ["#64748b", "#94a3b8", "#cbd5e1"],
       rare: ["#8b5cf6", "#a78bfa", "#c4b5fd"],
-      epic:["#f59e0b", "#fbbf24", "#fcd34d"],
-      legendary:["#ef4444", "#f97316", "#fbbf24", "#eab308"],
+      epic: ["#f59e0b", "#fbbf24", "#fcd34d"],
+      legendary: ["#ef4444", "#f97316", "#fbbf24", "#eab308"],
     }
 
     const tierColors = colors[rarityTier]
+
+    interface Particle {
+      x: number
+      y: number
+      vx: number
+      vy: number
+      size: number
+      color: string
+      alpha: number
+      life: number
+      type: "orb" | "spark" | "ring" | "meteor"
+      angle?: number
+      radius?: number
+      speed?: number
+    }
+
+    const particles: Particle[] = []
     let time = 0
 
     const animate = () => {
@@ -153,9 +148,9 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       ctx.fillStyle = packPhase === "opening" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.05)"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      // Ambient particles persistentes (Usando useRef)
-      if (particlesRef.current.length < 80 && time % 3 === 0) {
-        particlesRef.current.push({
+      // Ambient particles during all phases
+      if (particles.length < 80 && time % 3 === 0) {
+        particles.push({
           x: Math.random() * canvas.width,
           y: canvas.height + 10,
           vx: (Math.random() - 0.5) * 2,
@@ -168,12 +163,12 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         })
       }
 
-      // Opening explosion particles (Agora sem sobrepor velhos rastros ao engatilhar de fase!)
+      // Opening explosion particles
       if (packPhase === "opening" && time < 20) {
         for (let i = 0; i < 15; i++) {
           const angle = Math.random() * Math.PI * 2
           const speed = 8 + Math.random() * 15
-          particlesRef.current.push({
+          particles.push({
             x: centerX,
             y: centerY,
             vx: Math.cos(angle) * speed,
@@ -187,10 +182,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         }
       }
 
-      // Loop Traseiro pra remover de trás-para-frente s/ alterar offset natural:
-      for (let i = particlesRef.current.length - 1; i >= 0; i--) {
-        const p = particlesRef.current[i]
-
+      // Update and draw particles
+      particles.forEach((p, i) => {
         p.x += p.vx
         p.y += p.vy
         p.vx *= 0.98
@@ -199,8 +192,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         p.life--
 
         if (p.life <= 0 || p.alpha <= 0) {
-            particlesRef.current.splice(i, 1)
-            continue
+          particles.splice(i, 1)
+          return
         }
 
         const safeSize = Math.max(0.1, p.size)
@@ -210,7 +203,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         ctx.globalAlpha = Math.max(0, p.alpha)
         ctx.fill()
 
-        // Glow effect extra
+        // Glow effect
         const glowSize = safeSize * 3
         if (glowSize > 0) {
           const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize)
@@ -222,14 +215,14 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           ctx.globalAlpha = Math.max(0, p.alpha * 0.4)
           ctx.fill()
         }
-      }
+      })
 
       ctx.globalAlpha = 1
       animationRef.current = requestAnimationFrame(animate)
     }
 
     animate()
-  },[packPhase, rarityTier])
+  }, [packPhase, rarityTier])
 
   useEffect(() => {
     if (isOpening || showResults) {
@@ -241,7 +234,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  },[isOpening, showResults, drawParticles])
+  }, [isOpening, showResults, drawParticles])
 
   // Card reveal animation
   useEffect(() => {
@@ -271,7 +264,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       }, 800)
       return () => clearTimeout(timer)
     }
-  },[packPhase, cardRevealIndex, currentPackIndex, packs.length])
+  }, [packPhase, cardRevealIndex, currentPackIndex, packs.length])
 
   // Pack phase progression
   useEffect(() => {
@@ -296,17 +289,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       }, 600)
       return () => clearTimeout(timer)
     }
-  },[packPhase, isOpening, packs.length])
+  }, [packPhase, isOpening, packs.length])
 
   const pullGacha = (count: number) => {
     const totalCost = count === 1 ? COST_SINGLE : COST_MULTI
     if (coins < totalCost) return
 
     setCoins(coins - totalCost)
-    
-    // Zera todas partículas antes do evento para ambiente imersivo total e limpo
-    particlesRef.current =[] 
-    
     setIsOpening(true)
     setPullCount(count)
     setCurrentPackIndex(0)
@@ -316,10 +305,10 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
     const numPacks = count
     const newPacks: PackData[] = []
-    const allPulledCards: Card[] =[]
+    const allPulledCards: Card[] = []
 
     for (let packNum = 0; packNum < numPacks; packNum++) {
-      const packCards: Card[] =[]
+      const packCards: Card[] = []
       
       for (let i = 0; i < CARDS_PER_PACK; i++) {
         const rand = Math.random() * 100
@@ -342,7 +331,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       }
 
       // Determine highest rarity in pack
-      const rarities =["R", "SR", "UR", "LR"] as const
+      const rarities = ["R", "SR", "UR", "LR"] as const
       let highestRarity: "R" | "SR" | "UR" | "LR" = "R"
       for (const card of packCards) {
         if (rarities.indexOf(card.rarity) > rarities.indexOf(highestRarity)) {
@@ -377,9 +366,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const pullFriendshipGacha = () => {
     if (spendableFP < FP_COST) return
     if (!spendFriendPoints(FP_COST)) return
-    
-    // Zera canvas memory
-    particlesRef.current =[] 
 
     setIsOpening(true)
     setPhase(1)
@@ -412,7 +398,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     setPackPhase("entering")
     setCardRevealIndex(-1)
     setPullCount(0)
-    particlesRef.current =[] // Zera memory em reset puro
   }
 
   const getRarityColor = (rarity: string) => {
@@ -460,31 +445,29 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.5)_100%)]" />
       </div>
       
-      {/* Background CSS particles (escondemos via !(isOpening || showResults) p/ preservar GPU e não conflitarmos os 2 visuais) */}
-      {!(isOpening || showResults) && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-700 ease-in-out">
-          {[...Array(20)].map((_, i) => {
-            const colors =["#38bdf8", "#a855f7", "#fbbf24", "#22d3ee", "#f472b6"]
-            const color = colors[i % colors.length]
-            const size = 2 + (i % 4)
-            return (
-              <div
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  width: `${size}px`,
-                  height: `${size}px`,
-                  left: `${(i * 5) % 100}%`,
-                  top: `${(i * 12) % 100}%`,
-                  background: color,
-                  boxShadow: `0 0 ${size * 4}px ${color}80`,
-                  animation: `floatParticle ${8 + (i % 6)}s ease-in-out ${i * 0.5}s infinite`,
-                }}
-              />
-            )
-          })}
-        </div>
-      )}
+      {/* Background particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => {
+          const colors = ["#38bdf8", "#a855f7", "#fbbf24", "#22d3ee", "#f472b6"]
+          const color = colors[i % colors.length]
+          const size = 2 + (i % 4)
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                left: `${(i * 5) % 100}%`,
+                top: `${(i * 12) % 100}%`,
+                background: color,
+                boxShadow: `0 0 ${size * 4}px ${color}80`,
+                animation: `floatParticle ${8 + (i % 6)}s ease-in-out ${i * 0.5}s infinite`,
+              }}
+            />
+          )
+        })}
+      </div>
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-r from-black/80 via-purple-900/50 to-black/80 border-b border-cyan-500/30 backdrop-blur-sm">
@@ -742,7 +725,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                     packs[currentPackIndex].highestRarity === "UR" ? "text-amber-400" :
                     packs[currentPackIndex].highestRarity === "SR" ? "text-purple-400" : "text-slate-400"
                   }`}>
-                    {packs[currentPackIndex].highestRarity === "LR" && "LENDÁRIO!"}
+                    {packs[currentPackIndex].highestRarity === "LR" && "LENDARIO!"}
                     {packs[currentPackIndex].highestRarity === "UR" && "ULTRA RARO!"}
                     {packs[currentPackIndex].highestRarity === "SR" && "SUPER RARO!"}
                     {packs[currentPackIndex].highestRarity === "R" && "Cartas obtidas!"}
