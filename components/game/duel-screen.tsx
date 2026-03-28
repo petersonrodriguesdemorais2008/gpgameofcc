@@ -1,6 +1,7 @@
 "use client"
 
 import React, { Component } from "react"
+import DUEL_OST_SRC from "./duel-ost"
 import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -1795,9 +1796,10 @@ let _duelOstAudio: HTMLAudioElement | null = null
 function getDuelOst(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null
   if (!_duelOstAudio) {
-    _duelOstAudio = new Audio("/audio/Duel_Game_OST.mp3")
-    _duelOstAudio.loop   = true
-    _duelOstAudio.volume = 0.35
+    // Use embedded base64 src — no static file needed
+    _duelOstAudio = new Audio(DUEL_OST_SRC)
+    _duelOstAudio.loop    = true
+    _duelOstAudio.volume  = 0.35
     _duelOstAudio.preload = "auto"
   }
   return _duelOstAudio
