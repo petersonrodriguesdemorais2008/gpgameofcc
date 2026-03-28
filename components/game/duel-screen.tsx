@@ -1762,6 +1762,7 @@ const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
 // ─── Sound System ──────────────────────────────────────────────────────────────
 // Paths relative to /public — all lowercase, served as static files by Next.js
 const SOUNDS = {
+  // Try both .wav and .WAV extensions — Vercel is case-sensitive on Linux
   cardSummon:      "/audio/duel/Card_Summon.wav",
   unitAttack:      "/audio/duel/Unit_Attack.wav",
   cardDestruction: "/audio/duel/Card_Destruction.wav",
@@ -1769,6 +1770,16 @@ const SOUNDS = {
   confirm:         "/audio/ui/Confirm.wav",
   reject:          "/audio/ui/Reject.wav",
 } as const
+
+// Fallback paths with original filenames (case variants)
+const SOUNDS_FALLBACK: Partial<Record<string, string[]>> = {
+  cardSummon:      ["/audio/duel/Card_Summon.WAV", "/audio/duel/Card_Summon.wav"],
+  unitAttack:      ["/audio/duel/Unit_Atack.WAV",  "/audio/duel/Unit_Attack.WAV", "/audio/duel/Unit_Attack.wav"],
+  cardDestruction: ["/audio/duel/Card_Destruction.WAV", "/audio/duel/Card_Destruction.wav"],
+  cardToGraveyard: ["/audio/duel/Card_to_Cemitery_Zone.wav", "/audio/duel/Card_to_Graveyard.WAV", "/audio/duel/Card_to_Graveyard.wav"],
+  confirm:         ["/audio/ui/Configuration_Confirm.wav", "/audio/ui/Confirm.WAV", "/audio/ui/Confirm.wav"],
+  reject:          ["/audio/ui/Configuration_Reject.wav",  "/audio/ui/Reject.WAV",  "/audio/ui/Reject.wav"],
+}
 
 type SoundKey = keyof typeof SOUNDS
 
@@ -1784,22 +1795,39 @@ function preloadSounds() {
   })
 }
 
+// Try to play audio from a list of paths, stop at first success
+async function tryPlayFromPaths(paths: string[], volume: number): Promise<boolean> {
+  for (const src of paths) {
+    try {
+      const audio = new Audio(src)
+      audio.volume = volume
+      await audio.play()
+      return true
+    } catch {}
+  }
+  return false
+}
+
 function playSound(key: SoundKey, volume = 0.7) {
   if (typeof window === "undefined") return
-  preloadSounds()
-  // Always create a fresh Audio instance — most reliable cross-browser approach
-  const audio = new Audio(SOUNDS[key])
-  audio.volume = Math.max(0, Math.min(1, volume))
-  const promise = audio.play()
-  if (promise) {
-    promise.catch((err) => {
-      // First interaction hasn't happened yet — user hasn't interacted with page
-      // This is normal on first load; sounds will work after first click
-      if (err.name !== "NotAllowedError") {
-        console.warn("[Sound]", key, err.message)
+  const vol = Math.max(0, Math.min(1, volume))
+  const primary = SOUNDS[key]
+  const fallbacks = SOUNDS_FALLBACK[key] ?? []
+  const allPaths = [primary, ...fallbacks]
+
+  ;(async () => {
+    for (const src of allPaths) {
+      try {
+        const audio = new Audio(src)
+        audio.volume = vol
+        await audio.play()
+        return // success — stop trying
+      } catch (e: any) {
+        if (e?.name === "NotAllowedError") return // browser policy, don't retry
+        // File not found or format error — try next path
       }
-    })
-  }
+    }
+  })()
 }
 
 function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=>void }) {
@@ -3705,13 +3733,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   // Test audio files on first game start (dev helper)
   const testAudioFiles = () => {
     if (typeof window === "undefined") return
-    Object.entries(SOUNDS).forEach(([key, src]) => {
+    // Test all paths including fallbacks
+    const allToTest: string[] = []
+    Object.values(SOUNDS).forEach(src => allToTest.push(src))
+    Object.values(SOUNDS_FALLBACK).forEach(paths => paths?.forEach(p => allToTest.push(p)))
+    const unique = [...new Set(allToTest)]
+    
+    unique.forEach(src => {
       fetch(src, { method: "HEAD" })
         .then(r => {
-          if (!r.ok) console.error(`[Sound] ❌ Missing: ${src} (${r.status})`)
-          else console.log(`[Sound] ✅ Found: ${src}`)
+          if (r.ok) console.log(`[Sound] ✅ FOUND: ${src}`)
+          else console.warn(`[Sound] ❌ ${r.status}: ${src}`)
         })
-        .catch(() => console.error(`[Sound] ❌ Cannot reach: ${src}`))
+        .catch(() => console.warn(`[Sound] ❌ unreachable: ${src}`))
     })
   }
 
