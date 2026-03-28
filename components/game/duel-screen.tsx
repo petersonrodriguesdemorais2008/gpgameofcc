@@ -1772,22 +1772,34 @@ const SOUNDS = {
 
 type SoundKey = keyof typeof SOUNDS
 
-// Cache Audio objects so they don't reload every call
-const audioCache: Partial<Record<SoundKey, HTMLAudioElement>> = {}
+// Preload all sounds on first user interaction so they're ready instantly
+let _soundsPreloaded = false
+function preloadSounds() {
+  if (_soundsPreloaded || typeof window === "undefined") return
+  _soundsPreloaded = true
+  Object.values(SOUNDS).forEach(src => {
+    const a = new Audio(src)
+    a.preload = "auto"
+    a.load()
+  })
+}
 
 function playSound(key: SoundKey, volume = 0.7) {
   if (typeof window === "undefined") return
-  try {
-    let audio = audioCache[key]
-    if (!audio) {
-      audio = new Audio(SOUNDS[key])
-      audioCache[key] = audio
-    }
-    // Allow overlapping — clone for rapid successive plays
-    const instance = audio.cloneNode() as HTMLAudioElement
-    instance.volume = Math.max(0, Math.min(1, volume))
-    instance.play().catch(() => {}) // ignore autoplay policy errors
-  } catch {}
+  preloadSounds()
+  // Always create a fresh Audio instance — most reliable cross-browser approach
+  const audio = new Audio(SOUNDS[key])
+  audio.volume = Math.max(0, Math.min(1, volume))
+  const promise = audio.play()
+  if (promise) {
+    promise.catch((err) => {
+      // First interaction hasn't happened yet — user hasn't interacted with page
+      // This is normal on first load; sounds will work after first click
+      if (err.name !== "NotAllowedError") {
+        console.warn("[Sound]", key, err.message)
+      }
+    })
+  }
 }
 
 function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=>void }) {
@@ -3690,6 +3702,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) => el.getBoundingClientRect())
   }, [])
 
+  // Test audio files on first game start (dev helper)
+  const testAudioFiles = () => {
+    if (typeof window === "undefined") return
+    Object.entries(SOUNDS).forEach(([key, src]) => {
+      fetch(src, { method: "HEAD" })
+        .then(r => {
+          if (!r.ok) console.error(`[Sound] ❌ Missing: ${src} (${r.status})`)
+          else console.log(`[Sound] ✅ Found: ${src}`)
+        })
+        .catch(() => console.error(`[Sound] ❌ Cannot reach: ${src}`))
+    })
+  }
+
   const startGame = (playerDeck: DeckWithImages, botDeckArg?: DeckWithImages, diff?: 'easy'|'medium'|'hard') => {
     const activeDifficulty = diff ?? difficulty
     const activeBotDeck = botDeckArg ?? selectedBotDeck ?? playerDeck
@@ -3737,6 +3762,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setTurn(1)
     setPhase("draw")
     setIsPlayerTurn(playerFirst)
+    testAudioFiles() // verify audio files are reachable
 
     if (mode === "bot") {
       if (!playerFirst) {
