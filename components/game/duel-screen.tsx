@@ -1789,6 +1789,60 @@ function playSound(key: SoundKey, volume = 0.7) {
   } catch {}
 }
 
+// ─── Duel OST ────────────────────────────────────────────────────────────────
+let _duelOstAudio: HTMLAudioElement | null = null
+
+function getDuelOst(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null
+  if (!_duelOstAudio) {
+    _duelOstAudio = new Audio("/audio/Duel_Game_OST.mp3")
+    _duelOstAudio.loop   = true
+    _duelOstAudio.volume = 0.35
+    _duelOstAudio.preload = "auto"
+  }
+  return _duelOstAudio
+}
+
+function startDuelOst() {
+  const ost = getDuelOst()
+  if (!ost) return
+  if (!ost.paused) return // already playing
+  ost.currentTime = 0
+  ost.play().catch(() => {
+    // Browser blocked autoplay — will start on next user interaction
+    const resume = () => {
+      ost.play().catch(() => {})
+      document.removeEventListener("click", resume)
+      document.removeEventListener("keydown", resume)
+      document.removeEventListener("touchstart", resume)
+    }
+    document.addEventListener("click",      resume, { once: true })
+    document.addEventListener("keydown",    resume, { once: true })
+    document.addEventListener("touchstart", resume, { once: true })
+  })
+}
+
+function stopDuelOst(fadeOut = true) {
+  const ost = getDuelOst()
+  if (!ost || ost.paused) return
+  if (!fadeOut) { ost.pause(); ost.currentTime = 0; return }
+  // Smooth fade-out over 1.5s
+  const startVol = ost.volume
+  const steps = 30
+  let step = 0
+  const interval = setInterval(() => {
+    step++
+    if (!ost) { clearInterval(interval); return }
+    ost.volume = Math.max(0, startVol * (1 - step / steps))
+    if (step >= steps) {
+      clearInterval(interval)
+      ost.pause()
+      ost.currentTime = 0
+      ost.volume = 0.35 // reset for next time
+    }
+  }, 50)
+}
+
 function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=>void }) {
   const rigRef  = useRef<HTMLDivElement>(null)
   const cubeRef = useRef<HTMLDivElement>(null)
@@ -3742,7 +3796,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     setTurn(1)
     setPhase("draw")
     setIsPlayerTurn(playerFirst)
-    testAudioFiles() // verify audio files are reachable
+    testAudioFiles()
+    startDuelOst() // start background music
 
     if (mode === "bot") {
       if (!playerFirst) {
@@ -7888,6 +7943,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
   const surrender = () => {
     playSound("reject", 0.8)
+    stopDuelOst()
     mpBroadcast("surrender", {})
     setGameResult("lost")
     addMatchRecord({
@@ -8134,6 +8190,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     if (playerField.life <= 0) {
       gameResultRecordedRef.current = true
+      stopDuelOst()
       setGameResult("lost")
       addMatchRecord({
         id: `match-${Date.now()}`,
@@ -8145,6 +8202,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       })
     } else if (enemyField.life <= 0) {
       gameResultRecordedRef.current = true
+      stopDuelOst()
       setGameResult("won")
       addMatchRecord({
         id: `match-${Date.now()}`,
