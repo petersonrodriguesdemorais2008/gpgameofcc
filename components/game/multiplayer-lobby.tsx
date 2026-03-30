@@ -32,9 +32,11 @@ interface RoomData {
   hostId: string
   hostName: string
   hostDeck: Deck | null
+  hostAvatarUrl: string | null
   guestId: string | null
   guestName: string | null
   guestDeck: Deck | null
+  guestAvatarUrl: string | null
   hostReady: boolean
   guestReady: boolean
 }
@@ -117,6 +119,7 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         room_code: code,
         host_id: hostUUID,
         host_name: playerProfile.name || "Jogador",
+        host_avatar_url: playerProfile.avatarUrl || null,
         host_deck: selectedDeck ? JSON.stringify(selectedDeck) : null,
         status: "waiting",
         host_ready: false,
@@ -153,10 +156,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         isHost: true,
         hostId: hostUUID,
         hostName: playerProfile.name || "Jogador",
+        hostAvatarUrl: playerProfile.avatarUrl || null,
         hostDeck: selectedDeck,
         guestId: null,
         guestName: null,
         guestDeck: null,
+        guestAvatarUrl: null,
         hostReady: false,
         guestReady: false,
       })
@@ -218,6 +223,7 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         .update({
           guest_id: guestUUID,
           guest_name: playerProfile.name || "Jogador",
+          guest_avatar_url: playerProfile.avatarUrl || null,
           guest_deck: selectedDeck ? JSON.stringify(selectedDeck) : null,
           status: "lobby",
         })
@@ -249,9 +255,11 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         isHost: false,
         hostId: room.host_id,
         hostName: room.host_name,
+        hostAvatarUrl: room.host_avatar_url || null,
         hostDeck: hostDeck,
         guestId: guestUUID,
         guestName: playerProfile.name,
+        guestAvatarUrl: playerProfile.avatarUrl || null,
         guestDeck: selectedDeck,
         hostReady: room.host_ready,
         guestReady: false,
@@ -292,10 +300,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         if (!prev) return prev
         const updated: RoomData = {
           ...prev,
-          guestId:    room.guest_id   ?? prev.guestId,
-          guestName:  room.guest_name ?? prev.guestName,
-          guestDeck:  room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
-          hostDeck:   room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
+          guestId:       room.guest_id        ?? prev.guestId,
+          guestName:     room.guest_name      ?? prev.guestName,
+          guestAvatarUrl: room.guest_avatar_url ?? prev.guestAvatarUrl,
+          hostAvatarUrl:  room.host_avatar_url  ?? prev.hostAvatarUrl,
+          guestDeck:     room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
+          hostDeck:      room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
           hostReady:  room.host_ready,
           guestReady: room.guest_ready,
         }
@@ -310,8 +320,38 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         const myReady = prev.isHost ? room.host_ready : room.guest_ready
         setIsReady(myReady)
 
-        // Both ready → start duel
+        // Both ready → start duel — fetch fresh room to guarantee decks are present
         if (room.status === "playing") {
+          // Re-fetch to make sure we have the latest deck data before starting
+          const { data: freshRoom } = await supabase
+            .from("duel_rooms")
+            .select("*")
+            .eq("id", roomId)
+            .single()
+          
+          if (freshRoom) {
+            const parseD2 = (d: any) => {
+              if (!d) return null
+              try {
+                const parsed = typeof d === "string" ? JSON.parse(d) : d
+                if (!parsed.cards || !Array.isArray(parsed.cards)) parsed.cards = []
+                if (!parsed.tapCards) parsed.tapCards = []
+                return parsed
+              } catch { return null }
+            }
+            setRoomData(prev => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                hostDeck:      parseD2(freshRoom.host_deck)    ?? prev.hostDeck,
+                guestDeck:     parseD2(freshRoom.guest_deck)   ?? prev.guestDeck,
+                hostName:      freshRoom.host_name             ?? prev.hostName,
+                guestName:     freshRoom.guest_name            ?? prev.guestName,
+                hostAvatarUrl: freshRoom.host_avatar_url       ?? prev.hostAvatarUrl,
+                guestAvatarUrl: freshRoom.guest_avatar_url     ?? prev.guestAvatarUrl,
+              }
+            })
+          }
           setShouldStartDuel(true)
         }
 
@@ -844,9 +884,9 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
             }`}>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-12 h-12 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden border-2 border-amber-500/50">
-                  {roomData.isHost && playerProfile.avatarUrl ? (
+                  {roomData.hostAvatarUrl ? (
                     <Image 
-                      src={playerProfile.avatarUrl} 
+                      src={roomData.hostAvatarUrl} 
                       alt={roomData.hostName} 
                       width={48} 
                       height={48} 
@@ -881,9 +921,9 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
             }`}>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-12 h-12 rounded-full bg-blue-500/30 flex items-center justify-center overflow-hidden border-2 border-blue-500/50">
-                  {!roomData.isHost && playerProfile.avatarUrl ? (
+                  {roomData.guestAvatarUrl ? (
                     <Image 
-                      src={playerProfile.avatarUrl} 
+                      src={roomData.guestAvatarUrl} 
                       alt={roomData.guestName || "Guest"} 
                       width={48} 
                       height={48} 
