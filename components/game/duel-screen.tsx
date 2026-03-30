@@ -3211,6 +3211,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const mpSendActionRef      = useRef<(a: OnlineDuelAction) => void>(() => {})
   const mpHandleOpponentRef  = useRef<(a: OnlineDuelAction) => void>(() => {})
 
+  // Opponent playmat image URL (for online mode)
+  const [opponentPlaymatImage, setOpponentPlaymatImage] = useState<string | null>(null)
+
   // Online chat
   const [mpChat, setMpChat]               = useState<OnlineChatMsg[]>([])
   const [mpChatInput, setMpChatInput]     = useState("")
@@ -3914,6 +3917,28 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     }
     // Host goes first
     setIsPlayerTurn(rd.isHost)
+    // Broadcast my playmat to opponent
+    const myPlaymat = myDeck ? getPlaymatForDeck(myDeck as any) : null
+    if (myPlaymat?.image) {
+      setTimeout(async () => {
+        const sb = supabaseRef.current
+        const playmatAction = {
+          type: "playmat_sync",
+          playerId: rd.isHost ? rd.hostId : (rd.guestId || ""),
+          data: { playmatImage: myPlaymat.image },
+          timestamp: Date.now(),
+        }
+        if (!sb) return
+        await sb.from("duel_actions").insert({
+          room_id: rd.roomId,
+          player_id: rd.isHost ? rd.hostId : (rd.guestId || ""),
+          action_type: "playmat_sync",
+          action_data: JSON.stringify(playmatAction),
+          sequence_number: 1,
+        }).catch(() => {})
+      }, 200)
+    }
+
     // Broadcast initial draw — use direct call, 500ms delay to ensure subscription is up
     const initPlayerId = rd.isHost ? rd.hostId : (rd.guestId || "")
     const initDeckSize = myDeck.cards.length - 5
@@ -7763,6 +7788,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         break
       }
 
+      // ── Opponent sent their playmat ──────────────────────────────────────
+      case "playmat_sync":
+        if (action.data.playmatImage) {
+          setOpponentPlaymatImage(action.data.playmatImage)
+        }
+        break
+
       // ── Full field sync — applies everything the sender broadcasts ─────────
       case "field_sync": {
         const d = action.data
@@ -7774,8 +7806,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           if (d.myScenario  !== undefined) upd.scenarioZone = d.myScenario
           if (d.myUltimate  !== undefined) upd.ultimateZone = d.myUltimate
           if (d.myGraveyard !== undefined) upd.graveyard    = d.myGraveyard
-          if (d.myHandLen   !== undefined) upd.hand         = Array(d.myHandLen).fill(null)
-          if (d.myDeckLen   !== undefined) upd.deck         = Array(d.myDeckLen).fill(null)
+          if (d.myHandLen      !== undefined) upd.hand         = Array(d.myHandLen).fill(null)
+          if (d.myDeckLen      !== undefined) upd.deck         = Array(d.myDeckLen).fill(null)
+          if (d.myPlaymatImage !== undefined && d.myPlaymatImage) {
+            setOpponentPlaymatImage(d.myPlaymatImage)
+          }
           // Legacy fields
           if (d.oppLife !== undefined) {
             setPlayerField(p => ({ ...p, life: d.oppLife }))
@@ -7947,17 +7982,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     mpLastSyncRef.current = snapshot
     
     // Broadcast full player field to opponent
-    // Small delay to batch rapid successive changes
+    const myPlaymatImg = selectedDeck ? getPlaymatForDeck(selectedDeck as any)?.image ?? null : null
     const t = setTimeout(() => {
       mpBroadcast("field_sync", {
-        myLife:       playerField.life,
-        myUnits:      playerField.unitZone,
-        myFuncs:      playerField.functionZone,
-        myScenario:   playerField.scenarioZone,
-        myUltimate:   playerField.ultimateZone,
-        myGraveyard:  playerField.graveyard,
-        myHandLen:    playerField.hand.length,
-        myDeckLen:    playerField.deck.length,
+        myLife:         playerField.life,
+        myUnits:        playerField.unitZone,
+        myFuncs:        playerField.functionZone,
+        myScenario:     playerField.scenarioZone,
+        myUltimate:     playerField.ultimateZone,
+        myGraveyard:    playerField.graveyard,
+        myHandLen:      playerField.hand.length,
+        myDeckLen:      playerField.deck.length,
+        myPlaymatImage: myPlaymatImg,
       })
     }, 80)
     return () => clearTimeout(t)
@@ -8662,10 +8698,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         >
           {/* Playmat container with border */}
           <div className="absolute inset-0 rounded-xl border-4 border-amber-600/30 bg-gradient-to-b from-slate-900/90 to-slate-800/90">
-            {/* Enemy side background */}
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-red-950/30 to-transparent" />
+            {/* Opponent Playmat Background (top half) */}
+            {mode === "player" && opponentPlaymatImage ? (
+              <div className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
+                <img
+                  src={opponentPlaymatImage}
+                  alt="Opponent playmat"
+                  className="w-full h-full object-cover"
+                  style={{ opacity: 0.75, transform: "scaleY(-1)" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/60" />
+              </div>
+            ) : (
+              <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-red-950/30 to-transparent" />
+            )}
 
-            {/* Player Playmat Background */}
+            {/* Player Playmat Background (bottom half) */}
             {(() => {
               const playmat = selectedDeck ? getPlaymatForDeck(selectedDeck) : null
               if (playmat) {
