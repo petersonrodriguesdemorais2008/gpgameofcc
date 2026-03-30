@@ -854,6 +854,75 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
   // ========== DICE FUNCTION CARDS ==========
 
+  "dados-da-fortuna": {
+    id: "dados-da-fortuna",
+    name: "Dados da Fortuna",
+    requiresTargets: true,
+    requiresDice: true,
+    targetConfig: {
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      const hasAllyUnit = context.playerField.unitZone.some((u) => u !== null)
+      if (!hasAllyUnit) {
+        return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma unidade sua" }
+      }
+
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit  = context.playerField.unitZone[allyIndex]
+      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const diceResult = targets.diceResult || 1
+      const currentDp  = allyUnit.currentDp ?? allyUnit.dp
+
+      let dpBonus  = 0
+      let drawAmt  = 0
+      let label    = ""
+
+      if (diceResult <= 2) {
+        dpBonus = 1; drawAmt = 0
+        label = `Dado: ${diceResult}! ${allyUnit.name} +1DP!`
+      } else if (diceResult <= 4) {
+        dpBonus = 2; drawAmt = 1
+        label = `Dado: ${diceResult}! ${allyUnit.name} +2DP e compre 1 carta!`
+      } else {
+        dpBonus = 3; drawAmt = 2
+        label = `Dado: ${diceResult}! ${allyUnit.name} +3DP e compre 2 cartas!`
+      }
+
+      // Apply DP buff
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = {
+            ...newUnitZone[allyIndex]!,
+            currentDp: currentDp + dpBonus,
+          }
+        }
+        // Draw cards inline if any
+        if (drawAmt > 0) {
+          const actualDraw  = Math.min(drawAmt, prev.deck.length)
+          const drawnCards  = prev.deck.slice(0, actualDraw)
+          return {
+            ...prev,
+            unitZone: newUnitZone,
+            hand: [...prev.hand, ...drawnCards],
+            deck: prev.deck.slice(actualDraw),
+          }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+
+      return { success: true, message: label }
+    },
+  },
+
   "dados-do-destino-gentil": {
     id: "dados-do-destino-gentil",
     name: "Dados do Destino Gentil",
