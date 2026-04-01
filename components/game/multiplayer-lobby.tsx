@@ -296,70 +296,69 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         try { return typeof d === "string" ? JSON.parse(d) : d } catch { return d }
       }
 
-      // Host moves to lobby when guest joins — done outside setRoomData
-      if (roomData?.isHost && room.guest_id && room.status === "lobby" && screen !== "lobby") {
-        setScreen("lobby")
-        subscribeToChatRef.current(roomId)
-      }
-
-      // Sync my own ready state
-      const myReady = roomData?.isHost ? room.host_ready : room.guest_ready
-      setIsReady(myReady)
-
       setRoomData(prev => {
         if (!prev) return prev
         const updated: RoomData = {
           ...prev,
-          guestId:        room.guest_id          ?? prev.guestId,
-          guestName:      room.guest_name        ?? prev.guestName,
-          guestAvatarUrl: room.guest_avatar_url  ?? prev.guestAvatarUrl,
-          hostAvatarUrl:  room.host_avatar_url   ?? prev.hostAvatarUrl,
-          guestDeck:      room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
-          hostDeck:       room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
-          hostReady:      room.host_ready,
-          guestReady:     room.guest_ready,
+          guestId:       room.guest_id        ?? prev.guestId,
+          guestName:     room.guest_name      ?? prev.guestName,
+          guestAvatarUrl: room.guest_avatar_url ?? prev.guestAvatarUrl,
+          hostAvatarUrl:  room.host_avatar_url  ?? prev.hostAvatarUrl,
+          guestDeck:     room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
+          hostDeck:      room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
+          hostReady:  room.host_ready,
+          guestReady: room.guest_ready,
+        }
+
+        // Host moves to lobby when guest joins
+        if (prev.isHost && room.guest_id && room.status === "lobby" && screen !== "lobby") {
+          setScreen("lobby")
+          subscribeToChatRef.current(roomId)
+        }
+
+        // Sync my own ready state
+        const myReady = prev.isHost ? room.host_ready : room.guest_ready
+        setIsReady(myReady)
+
+        // Both ready → start duel — fetch fresh room to guarantee decks are present
+        if (room.status === "playing") {
+          // Re-fetch to make sure we have the latest deck data before starting
+          const { data: freshRoom } = await supabase
+            .from("duel_rooms")
+            .select("*")
+            .eq("id", roomId)
+            .single()
+          
+          if (freshRoom) {
+            const parseD2 = (d: any) => {
+              if (!d) return null
+              try {
+                const parsed = typeof d === "string" ? JSON.parse(d) : d
+                if (!parsed.cards || !Array.isArray(parsed.cards)) parsed.cards = []
+                if (!parsed.tapCards) parsed.tapCards = []
+                return parsed
+              } catch { return null }
+            }
+            setRoomData(prev => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                hostDeck:      parseD2(freshRoom.host_deck)    ?? prev.hostDeck,
+                guestDeck:     parseD2(freshRoom.guest_deck)   ?? prev.guestDeck,
+                hostName:      freshRoom.host_name             ?? prev.hostName,
+                guestName:     freshRoom.guest_name            ?? prev.guestName,
+                hostAvatarUrl: freshRoom.host_avatar_url       ?? prev.hostAvatarUrl,
+                guestAvatarUrl: freshRoom.guest_avatar_url     ?? prev.guestAvatarUrl,
+              }
+            })
+          }
+          setShouldStartDuel(true)
         }
 
         return updated
       })
+    }
 
-      // Both ready → start duel — async fetch OUTSIDE setRoomData (updaters must be sync)
-      if (room.status === "playing") {
-        const parseD2 = (d: any) => {
-          if (!d) return null
-          try {
-            const parsed = typeof d === "string" ? JSON.parse(d) : d
-            if (!parsed.cards || !Array.isArray(parsed.cards)) parsed.cards = []
-            if (!parsed.tapCards) parsed.tapCards = []
-            return parsed
-          } catch { return null }
-        }
-        // Re-fetch to get latest deck data
-        supabase
-          .from("duel_rooms")
-          .select("*")
-          .eq("id", roomId)
-          .single()
-          .then(({ data: freshRoom }) => {
-            if (freshRoom) {
-              setRoomData(prev => {
-                if (!prev) return prev
-                return {
-                  ...prev,
-                  hostDeck:       parseD2(freshRoom.host_deck)    ?? prev.hostDeck,
-                  guestDeck:      parseD2(freshRoom.guest_deck)   ?? prev.guestDeck,
-                  hostName:       freshRoom.host_name             ?? prev.hostName,
-                  guestName:      freshRoom.guest_name            ?? prev.guestName,
-                  hostAvatarUrl:  freshRoom.host_avatar_url       ?? prev.hostAvatarUrl,
-                  guestAvatarUrl: freshRoom.guest_avatar_url      ?? prev.guestAvatarUrl,
-                }
-              })
-            }
-            setShouldStartDuel(true)
-          })
-      }
-
-    } // closes poll() async body
     poll() // immediate first check
     pollingIntervalRef.current = setInterval(poll, 1500)
   }, [supabase, screen])
