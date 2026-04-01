@@ -296,16 +296,17 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         try { return typeof d === "string" ? JSON.parse(d) : d } catch { return d }
       }
 
+      // Update roomData synchronously (no await inside setter)
       setRoomData(prev => {
         if (!prev) return prev
         const updated: RoomData = {
           ...prev,
-          guestId:       room.guest_id        ?? prev.guestId,
-          guestName:     room.guest_name      ?? prev.guestName,
+          guestId:        room.guest_id         ?? prev.guestId,
+          guestName:      room.guest_name       ?? prev.guestName,
           guestAvatarUrl: room.guest_avatar_url ?? prev.guestAvatarUrl,
           hostAvatarUrl:  room.host_avatar_url  ?? prev.hostAvatarUrl,
-          guestDeck:     room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
-          hostDeck:      room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
+          guestDeck:      room.guest_deck ? parseD(room.guest_deck) : prev.guestDeck,
+          hostDeck:       room.host_deck  ? parseD(room.host_deck)  : prev.hostDeck,
           hostReady:  room.host_ready,
           guestReady: room.guest_ready,
         }
@@ -317,46 +318,40 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         }
 
         // Sync my own ready state
-        const myReady = prev.isHost ? room.host_ready : room.guest_ready
-        setIsReady(myReady)
-
-        // Both ready → start duel — fetch fresh room to guarantee decks are present
-        if (room.status === "playing") {
-          // Re-fetch to make sure we have the latest deck data before starting
-          const { data: freshRoom } = await supabase
-            .from("duel_rooms")
-            .select("*")
-            .eq("id", roomId)
-            .single()
-          
-          if (freshRoom) {
-            const parseD2 = (d: any) => {
-              if (!d) return null
-              try {
-                const parsed = typeof d === "string" ? JSON.parse(d) : d
-                if (!parsed.cards || !Array.isArray(parsed.cards)) parsed.cards = []
-                if (!parsed.tapCards) parsed.tapCards = []
-                return parsed
-              } catch { return null }
-            }
-            setRoomData(prev => {
-              if (!prev) return prev
-              return {
-                ...prev,
-                hostDeck:      parseD2(freshRoom.host_deck)    ?? prev.hostDeck,
-                guestDeck:     parseD2(freshRoom.guest_deck)   ?? prev.guestDeck,
-                hostName:      freshRoom.host_name             ?? prev.hostName,
-                guestName:     freshRoom.guest_name            ?? prev.guestName,
-                hostAvatarUrl: freshRoom.host_avatar_url       ?? prev.hostAvatarUrl,
-                guestAvatarUrl: freshRoom.guest_avatar_url     ?? prev.guestAvatarUrl,
-              }
-            })
-          }
-          setShouldStartDuel(true)
-        }
+        setIsReady(prev.isHost ? room.host_ready : room.guest_ready)
 
         return updated
       })
+
+      // Both ready → fetch fresh data then start duel (async, outside setter)
+      if (room.status === "playing") {
+        const parseD2 = (d: any) => {
+          if (!d) return null
+          try {
+            const parsed = typeof d === "string" ? JSON.parse(d) : d
+            if (!parsed.cards || !Array.isArray(parsed.cards)) parsed.cards = []
+            if (!parsed.tapCards) parsed.tapCards = []
+            return parsed
+          } catch { return null }
+        }
+        const { data: freshRoom } = await supabase
+          .from("duel_rooms").select("*").eq("id", roomId).single()
+        if (freshRoom) {
+          setRoomData(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              hostDeck:       parseD2(freshRoom.host_deck)    ?? prev.hostDeck,
+              guestDeck:      parseD2(freshRoom.guest_deck)   ?? prev.guestDeck,
+              hostName:       freshRoom.host_name             ?? prev.hostName,
+              guestName:      freshRoom.guest_name            ?? prev.guestName,
+              hostAvatarUrl:  freshRoom.host_avatar_url       ?? prev.hostAvatarUrl,
+              guestAvatarUrl: freshRoom.guest_avatar_url      ?? prev.guestAvatarUrl,
+            }
+          })
+        }
+        setShouldStartDuel(true)
+      }
     }
 
     poll() // immediate first check
