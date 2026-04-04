@@ -1775,9 +1775,10 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
       if (diceResult <= 4) return { success: true, message: `Dado: ${diceResult}! Nada acontece.` }
       const newDp = currentDp + 8
+      const currentTurn = (context.playerField as any).turnNumber ?? 0
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
-        if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2 } as any
+        if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: currentTurn + 2 } as any
         return { ...prev, unitZone: newUnitZone as any }
       })
       return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +8DP! (−5DP em 2 turnos)` }
@@ -8324,13 +8325,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     // Check if this is a dice card (they don't need selectedEnemyIndex)
     const cardId = getBaseCardId(itemSelectionMode.itemCard.id || "")
-    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
 
     // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda" || itemSelectionMode.itemCard?.name === "Cálice de Vinho Sagrado" || itemSelectionMode.itemCard?.name === "Dados da Calamidade"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
@@ -8413,15 +8414,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     if (effect) {
       const effectContext: EffectContext = {
-        playerField,
+        playerField: { ...playerField, turnNumber: turn } as any,
         enemyField,
         setPlayerField,
         setEnemyField,
       }
-
-      const targets: EffectTargets = {
-        enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
-        allyUnitIndices: [index],
         chosenOption: itemSelectionMode.chosenOption || undefined,
       }
 
@@ -10610,7 +10607,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
             {(() => {
               const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
-              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
 
               if (isDiceCard) {
                 return (
