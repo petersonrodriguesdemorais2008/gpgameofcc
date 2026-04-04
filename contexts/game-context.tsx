@@ -1338,7 +1338,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "veredito-do-rei-tirano",
     name: "Veredito do Rei Tirano",
-    image: "/images/cards/VEREDITO_DO_REI_TIRANO.png",
+    image: "/images/cards/veredito-do-rei-tirano.png",
     rarity: "UR",
     type: "magic",
     element: "Darkus",
@@ -1353,7 +1353,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "julgamento-do-vazio-eterno",
     name: "Julgamento do Vazio Eterno",
-    image: "/images/cards/Julgamento_do_Vazio_Eterno.png",
+    image: "/images/cards/julgamento-do-vazio-eterno.png",
     rarity: "UR",
     type: "magic",
     element: "Haos",
