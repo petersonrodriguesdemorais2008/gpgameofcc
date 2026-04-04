@@ -1721,9 +1721,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
 
       const currentLife = context.playerField.life
-      const maxLife = 20
-      const healAmount = Math.min(1, maxLife - currentLife)
-      const newLife = currentLife + healAmount
+      const newLife = currentLife + 1
       const currentDp = allyUnit.currentDp || allyUnit.dp
       const newDp = currentDp + 1
 
@@ -1735,8 +1733,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { ...prev, life: newLife, unitZone: newUnitZone }
       })
 
-      const healMsg = healAmount > 0 ? `+${healAmount} LP (${currentLife} -> ${newLife})` : "LP já no máximo"
-      return { success: true, message: `Cálice de Vinho Sagrado! ${healMsg} | ${allyUnit.name} +1DP (${currentDp} -> ${newDp})` }
+      return { success: true, message: `Cálice de Vinho Sagrado! +1 LP (${currentLife} -> ${newLife}) | ${allyUnit.name} +1DP (${currentDp} -> ${newDp})` }
     },
   },
 
