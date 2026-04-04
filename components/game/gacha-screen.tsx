@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame, type Card } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Heart, Sparkles, Star } from "lucide-react"
+import { ArrowLeft, Heart, Sparkles, Star, Gift, Clock, Zap, Crown } from "lucide-react"
 import Image from "next/image"
 
 interface GachaScreenProps {
@@ -51,6 +51,36 @@ const BANNERS = {
   },
 }
 
+// ── Daily Gacha helpers ──────────────────────────────────────────────────────
+const DAILY_GACHA_KEY = "gpgame_daily_gacha_date"
+
+function getTodayKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+function getDailyGachaUsed(): boolean {
+  if (typeof window === "undefined") return false
+  return localStorage.getItem(DAILY_GACHA_KEY) === getTodayKey()
+}
+
+function markDailyGachaUsed() {
+  if (typeof window === "undefined") return
+  localStorage.setItem(DAILY_GACHA_KEY, getTodayKey())
+}
+
+function getTimeUntilMidnight(): string {
+  const now = new Date()
+  const midnight = new Date()
+  midnight.setHours(24, 0, 0, 0)
+  const diff = midnight.getTime() - now.getTime()
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function GachaScreen({ onBack }: GachaScreenProps) {
   const { t } = useLanguage()
   const { coins, setCoins, addToCollection, allCards, spendableFP, spendFriendPoints } = useGame()
@@ -66,7 +96,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>()
   const containerRef = useRef<HTMLDivElement>(null)
-  
+
+  // Daily gacha state
+  const [dailyUsed, setDailyUsed] = useState(false)
+  const [timeUntilReset, setTimeUntilReset] = useState("")
+
   // New pack-based animation states
   const [packs, setPacks] = useState<PackData[]>([])
   const [currentPackIndex, setCurrentPackIndex] = useState(0)
@@ -80,6 +114,20 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const FP_COST = 50
 
   const banner = BANNERS[currentBanner]
+
+  // Init daily gacha state
+  useEffect(() => {
+    setDailyUsed(getDailyGachaUsed())
+  }, [])
+
+  // Countdown timer for daily reset
+  useEffect(() => {
+    if (!dailyUsed) return
+    const tick = () => setTimeUntilReset(getTimeUntilMidnight())
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [dailyUsed])
 
   // Get pack rarity color based on highest card - premium glow effects
   const getPackGlowColor = (rarity: string) => {
@@ -363,6 +411,52 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     addToCollection(allPulledCards)
   }
 
+  const pullDailyGacha = () => {
+    if (dailyUsed || isOpening) return
+
+    markDailyGachaUsed()
+    setDailyUsed(true)
+    setIsOpening(true)
+    setPullCount(1)
+    setCurrentPackIndex(0)
+    setPackPhase("entering")
+    setCardRevealIndex(-1)
+    setRevealIndex(-1)
+
+    const packCards: Card[] = []
+    for (let i = 0; i < CARDS_PER_PACK; i++) {
+      const rand = Math.random() * 100
+      let targetRarity: "R" | "SR" | "UR" | "LR"
+      if (rand < 0.3) targetRarity = "LR"
+      else if (rand < 4) targetRarity = "UR"
+      else if (rand < 28) targetRarity = "SR"
+      else targetRarity = "R"
+
+      let available = allCards.filter((c) => c.rarity === targetRarity)
+      if (available.length === 0) available = allCards
+      const card = { ...available[Math.floor(Math.random() * available.length)], id: `${available[0].id}-daily-${Date.now()}-${i}` }
+      packCards.push(card)
+    }
+
+    const rarities = ["R", "SR", "UR", "LR"] as const
+    let highestRarity: "R" | "SR" | "UR" | "LR" = "R"
+    for (const card of packCards) {
+      if (rarities.indexOf(card.rarity) > rarities.indexOf(highestRarity)) highestRarity = card.rarity
+    }
+
+    const hasLR = packCards.some((c) => c.rarity === "LR")
+    const hasUR = packCards.some((c) => c.rarity === "UR")
+    const hasSR = packCards.some((c) => c.rarity === "SR")
+    if (hasLR) setRarityTier("legendary")
+    else if (hasUR) setRarityTier("epic")
+    else if (hasSR) setRarityTier("rare")
+    else setRarityTier("normal")
+
+    setPacks([{ id: 0, cards: packCards, isOpened: false, isRevealing: false, highestRarity }])
+    setOpenedCards(packCards)
+    addToCollection(packCards)
+  }
+
   const pullFriendshipGacha = () => {
     if (spendableFP < FP_COST) return
     if (!spendFriendPoints(FP_COST)) return
@@ -428,191 +522,282 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Ultra Premium Background */}
+      {/* Background */}
       <div className="fixed inset-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-purple-950/30 to-slate-950" />
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(ellipse 100% 60% at 50% -10%, rgba(168, 85, 247, 0.2) 0%, transparent 60%),
-              radial-gradient(ellipse 80% 50% at 80% 110%, rgba(56, 189, 248, 0.12) 0%, transparent 50%),
-              radial-gradient(ellipse 60% 40% at 10% 90%, rgba(251, 191, 36, 0.08) 0%, transparent 40%)
-            `,
-          }}
-        />
-        <div className="absolute inset-0 morph-bg opacity-50" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.5)_100%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a1a] via-[#0d0820] to-[#0a0a1a]" />
+        <div className="absolute inset-0" style={{background:`radial-gradient(ellipse 110% 55% at 50% -5%, rgba(139,92,246,0.22) 0%, transparent 55%),radial-gradient(ellipse 70% 45% at 85% 105%, rgba(56,189,248,0.10) 0%, transparent 45%),radial-gradient(ellipse 55% 40% at 5% 85%, rgba(251,191,36,0.07) 0%, transparent 40%)`}} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_25%,rgba(0,0,0,0.55)_100%)]" />
+        {/* Subtle grid */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:`linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,backgroundSize:"40px 40px"}} />
       </div>
-      
-      {/* Background particles */}
+
+      {/* Floating particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => {
-          const colors = ["#38bdf8", "#a855f7", "#fbbf24", "#22d3ee", "#f472b6"]
+        {[...Array(24)].map((_, i) => {
+          const colors = ["#38bdf8","#a855f7","#fbbf24","#22d3ee","#f472b6","#4ade80"]
           const color = colors[i % colors.length]
-          const size = 2 + (i % 4)
+          const size = 1.5 + (i % 3)
           return (
-            <div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                width: `${size}px`,
-                height: `${size}px`,
-                left: `${(i * 5) % 100}%`,
-                top: `${(i * 12) % 100}%`,
-                background: color,
-                boxShadow: `0 0 ${size * 4}px ${color}80`,
-                animation: `floatParticle ${8 + (i % 6)}s ease-in-out ${i * 0.5}s infinite`,
-              }}
-            />
+            <div key={i} className="absolute rounded-full" style={{width:`${size}px`,height:`${size}px`,left:`${(i*4.3)%100}%`,top:`${(i*9.7)%100}%`,background:color,boxShadow:`0 0 ${size*5}px ${color}90`,animation:`floatParticle ${9+(i%7)}s ease-in-out ${i*0.4}s infinite`}} />
           )
         })}
       </div>
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-r from-black/80 via-purple-900/50 to-black/80 border-b border-cyan-500/30 backdrop-blur-sm">
-        <Button onClick={onBack} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
-          <ArrowLeft className="mr-2 h-5 w-5" />
-          {t("back")}
-        </Button>
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-clip-text text-transparent">
-          GACHA
-        </h1>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-gradient-to-r from-slate-800/90 to-slate-700/90 px-4 py-2 rounded-full border border-cyan-400/30 shadow-lg">
-            <div className="w-10 h-10 relative -my-1">
-              <Image src="/images/icons/gacha-coin.png" alt="Gacha Coin" width={40} height={40} className="w-full h-full object-contain drop-shadow-lg" />
-            </div>
-            <span className="font-bold text-white text-lg">{coins}</span>
+      {/* ── HEADER ── */}
+      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b border-white/[0.07] backdrop-blur-md" style={{background:"rgba(10,10,26,0.8)"}}>
+        <button onClick={onBack} className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">{t("back")}</span>
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          <Crown className="w-5 h-5 text-amber-400" />
+          <h1 className="text-xl font-black tracking-widest bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
+            GACHA
+          </h1>
+          <Crown className="w-5 h-5 text-amber-400" />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-slate-800/80 to-slate-700/80 px-3 py-1.5 rounded-full border border-amber-400/20">
+            <Image src="/images/icons/gacha-coin.png" alt="Coin" width={22} height={22} className="object-contain" />
+            <span className="font-bold text-white text-sm">{coins.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-2 bg-gradient-to-r from-pink-600/90 to-rose-500/90 px-4 py-2 rounded-full border border-pink-400/50 shadow-lg shadow-pink-500/20">
-            <Heart className="w-5 h-5 text-white fill-white" />
-            <span className="font-bold text-white">{spendableFP} FP</span>
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-pink-700/80 to-rose-600/80 px-3 py-1.5 rounded-full border border-pink-400/30">
+            <Heart className="w-3.5 h-3.5 text-white fill-white" />
+            <span className="font-bold text-white text-sm">{spendableFP} FP</span>
           </div>
         </div>
       </div>
 
-      {/* Banner tabs */}
-      <div className="relative z-10 flex justify-center gap-2 p-4">
+      {/* ── DAILY GACHA BANNER ── */}
+      <div className="relative z-10 mx-4 mt-4">
+        <div className={`relative overflow-hidden rounded-2xl border transition-all duration-500 ${
+          dailyUsed
+            ? "border-slate-700/50 bg-slate-900/60"
+            : "border-emerald-500/50 bg-gradient-to-r from-emerald-950/80 via-teal-950/80 to-emerald-950/80"
+        }`}
+          style={!dailyUsed ? {boxShadow:"0 0 30px rgba(16,185,129,0.15), 0 0 60px rgba(16,185,129,0.07)"} : {}}
+        >
+          {/* Shimmer on available */}
+          {!dailyUsed && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/8 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{animation:"shimmer 2.5s ease-in-out infinite"}} />
+          )}
+
+          <div className="flex items-center gap-4 p-4">
+            {/* Icon */}
+            <div className={`relative flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center border ${
+              dailyUsed ? "bg-slate-800/80 border-slate-700" : "bg-emerald-500/20 border-emerald-500/50"
+            }`}>
+              {dailyUsed
+                ? <Clock className="w-7 h-7 text-slate-500" />
+                : <Gift className="w-7 h-7 text-emerald-400" style={{filter:"drop-shadow(0 0 8px rgba(16,185,129,0.7))"}} />
+              }
+              {!dailyUsed && (
+                <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                  FREE
+                </span>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className={`text-base font-black tracking-wide ${dailyUsed ? "text-slate-500" : "text-emerald-300"}`}>
+                  GACHA DIÁRIO
+                </span>
+                {!dailyUsed && <Zap className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />}
+              </div>
+              <p className={`text-xs ${dailyUsed ? "text-slate-600" : "text-emerald-500/80"}`}>
+                {dailyUsed ? "Já usado hoje — volte amanhã" : "1 pack grátis todo dia • Todas as raridades disponíveis"}
+              </p>
+              {dailyUsed && timeUntilReset && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Clock className="w-3 h-3 text-slate-600" />
+                  <span className="text-slate-600 text-xs font-mono">Reseta em {timeUntilReset}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Button */}
+            <button
+              onClick={pullDailyGacha}
+              disabled={dailyUsed || isOpening}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 border ${
+                dailyUsed || isOpening
+                  ? "bg-slate-800/60 border-slate-700 text-slate-600 cursor-not-allowed"
+                  : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border-emerald-400/50 text-white hover:scale-105 shadow-lg shadow-emerald-500/30"
+              }`}
+            >
+              {dailyUsed ? "Usado" : "PUXAR"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── BANNER TABS ── */}
+      <div className="relative z-10 flex gap-2 px-4 pt-4 pb-2">
         {(["fsg", "anl", "friendship"] as BannerType[]).map((bannerKey) => (
-          <Button
+          <button
             key={bannerKey}
             onClick={() => setCurrentBanner(bannerKey)}
-            className={`px-6 py-3 font-bold transition-all duration-300 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 border ${
               currentBanner === bannerKey
-                ? `bg-gradient-to-r ${BANNERS[bannerKey].color} scale-110 shadow-lg border-2 border-white/30`
-                : "bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50"
+                ? `bg-gradient-to-r ${BANNERS[bannerKey].color} border-white/25 shadow-lg scale-[1.03]`
+                : "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-slate-400 hover:text-white"
             }`}
           >
-            {bannerKey === "friendship" && <Heart className="w-4 h-4 mr-1 fill-current" />}
-            {bannerKey === "fsg" && <Star className="w-4 h-4 mr-1" />}
-            {bannerKey === "anl" && <Sparkles className="w-4 h-4 mr-1" />}
-            {bannerKey.toUpperCase()}
-          </Button>
+            {bannerKey === "friendship" && <Heart className="w-3.5 h-3.5 fill-current" />}
+            {bannerKey === "fsg" && <Star className="w-3.5 h-3.5" />}
+            {bannerKey === "anl" && <Sparkles className="w-3.5 h-3.5" />}
+            <span>{bannerKey === "fsg" ? "FSG" : bannerKey === "anl" ? "ANL" : "AMIZADE"}</span>
+          </button>
         ))}
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-4">
+      {/* ── MAIN CONTENT ── */}
+      <div className="relative z-10 flex-1 flex flex-col items-center px-4 pb-6">
         {currentBanner !== "friendship" ? (
           <>
-            {/* Normal Banner */}
-            <div className="relative w-full max-w-3xl aspect-video rounded-2xl overflow-hidden shadow-2xl border-2 border-cyan-500/30 mb-6 group">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
-              <Image
-                src={banner.bannerImage || "/placeholder.svg"}
-                alt={banner.name}
-                fill
-                sizes="(max-width: 768px) 100vw, 768px"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            {/* Banner image */}
+            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl mb-5 group" style={{aspectRatio:"16/7",border:"1px solid rgba(255,255,255,0.08)"}}>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
+              <Image src={banner.bannerImage || "/placeholder.svg"} alt={banner.name} fill sizes="(max-width:768px) 100vw, 768px" className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
+              {/* Shine sweep */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-20" />
+              {/* Bottom info overlay */}
+              <div className="absolute bottom-0 left-0 right-0 z-20 px-5 py-3">
+                <h2 className={`text-2xl font-black ${banner.accentColor} drop-shadow-lg`}>{banner.name}</h2>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-white/60 text-xs flex items-center gap-1"><Sparkles className="w-3 h-3" />4 cartas por pack</span>
+                  <span className="text-white/40 text-xs">•</span>
+                  <span className="text-white/60 text-xs">Todas raridades</span>
+                  <span className="text-white/40 text-xs">•</span>
+                  <span className="text-white/40 text-xs">{banner.code}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="text-center mb-4">
-              <h2 className={`text-3xl font-bold ${banner.accentColor} drop-shadow-lg`}>{banner.name}</h2>
-              <p className="text-white/70 text-sm mt-2 flex items-center justify-center gap-2">
-                <Sparkles className="w-4 h-4" />4 cartas por pack - Todas as raridades disponiveis
-                <Sparkles className="w-4 h-4" />
-              </p>
-              <p className="text-slate-500 text-xs mt-1">Codigo: {banner.code}</p>
-            </div>
-
-            <div className="flex gap-4 mt-4">
-              <Button
+            {/* Pull buttons */}
+            <div className="flex gap-3 w-full max-w-md">
+              {/* Single pull */}
+              <button
                 onClick={() => pullGacha(1)}
                 disabled={coins < COST_SINGLE || isOpening}
-                className="group relative px-10 py-5 text-lg font-bold bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 disabled:opacity-50 border-2 border-amber-400/50 shadow-lg shadow-amber-500/30 transition-all hover:scale-105 hover:shadow-amber-500/50"
+                className="flex-1 relative group rounded-2xl overflow-hidden border-2 border-amber-400/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 hover:border-amber-400/70"
+                style={{background:"linear-gradient(135deg, #78350f, #92400e, #b45309)"}}
               >
-  <span className="relative z-10 flex items-center gap-2">
-  {t("gacha1")}
-  <Image src="/images/icons/gacha-coin.png" alt="Coin" width={32} height={32} className="w-8 h-8 object-contain" />
-  {COST_SINGLE}
-  </span>
-              </Button>
-              <Button
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                <div className="relative px-4 py-4 flex flex-col items-center gap-2">
+                  <span className="text-white/70 text-xs font-semibold tracking-widest uppercase">1 Pack</span>
+                  <span className="text-white text-xl font-black">{t("gacha1")}</span>
+                  <div className="flex items-center gap-1.5 bg-black/30 rounded-full px-3 py-1">
+                    <Image src="/images/icons/gacha-coin.png" alt="Coin" width={18} height={18} className="object-contain" />
+                    <span className="text-amber-300 font-bold text-sm">{COST_SINGLE}</span>
+                  </div>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              </button>
+
+              {/* Multi pull */}
+              <button
                 onClick={() => pullGacha(10)}
                 disabled={coins < COST_MULTI || isOpening}
-                className="group relative px-10 py-5 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 disabled:opacity-50 border-2 border-purple-400/50 shadow-lg shadow-purple-500/30 transition-all hover:scale-105 hover:shadow-purple-500/50"
+                className="flex-[1.4] relative group rounded-2xl overflow-hidden border-2 border-purple-400/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 hover:border-purple-400/80"
+                style={{background:"linear-gradient(135deg, #3b0764, #4c1d95, #6d28d9)"}}
               >
-  <span className="relative z-10 flex items-center gap-2">
-  {t("gacha10")}
-  <Image src="/images/icons/gacha-coin.png" alt="Coin" width={32} height={32} className="w-8 h-8 object-contain" />
-  {COST_MULTI}
-  </span>
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                {/* HOT badge */}
+                <div className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-bl-xl rounded-tr-xl z-10 animate-pulse">
                   HOT
-                </span>
-              </Button>
+                </div>
+                <div className="relative px-4 py-4 flex flex-col items-center gap-2">
+                  <span className="text-white/70 text-xs font-semibold tracking-widest uppercase">10 Packs</span>
+                  <span className="text-white text-xl font-black">{t("gacha10")}</span>
+                  <div className="flex items-center gap-1.5 bg-black/30 rounded-full px-3 py-1">
+                    <Image src="/images/icons/gacha-coin.png" alt="Coin" width={18} height={18} className="object-contain" />
+                    <span className="text-purple-300 font-bold text-sm">{COST_MULTI}</span>
+                  </div>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              </button>
+            </div>
+
+            {/* Rates info */}
+            <div className="mt-4 flex items-center gap-4 text-xs text-slate-600">
+              <span className="text-red-500/70 font-bold">LR 0.5%</span>
+              <span className="text-slate-700">•</span>
+              <span className="text-amber-500/70 font-bold">UR 4.5%</span>
+              <span className="text-slate-700">•</span>
+              <span className="text-purple-500/70 font-bold">SR 25%</span>
+              <span className="text-slate-700">•</span>
+              <span className="text-slate-500 font-bold">R 70%</span>
             </div>
           </>
         ) : (
           <>
             {/* Friendship Gacha */}
-            <div className="relative w-full max-w-xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-rose-500/20 blur-3xl" />
-              <div className="relative bg-gradient-to-br from-pink-900/60 to-rose-900/60 rounded-3xl p-8 border-2 border-pink-500/40 text-center backdrop-blur-sm shadow-2xl shadow-pink-500/20">
-                <div className="mb-6 relative">
-                  <div className="absolute inset-0 bg-pink-400/20 blur-2xl rounded-full" />
-                  <Heart className="relative w-24 h-24 mx-auto text-pink-400 fill-pink-400 animate-pulse drop-shadow-lg" />
-                </div>
-                <h2 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-rose-300 to-pink-400 bg-clip-text text-transparent mb-3">
-                  Gacha de Amizade
-                </h2>
-                <p className="text-pink-200/80 mb-6 text-lg">Use seus Pontos de Afinidade para ganhar Moedas!</p>
-                <div className="bg-black/40 rounded-2xl p-5 mb-6 border border-pink-500/20">
-                  <p className="text-slate-300 text-sm mb-3 font-medium">Recompensas possiveis:</p>
-                  <div className="flex justify-center gap-8">
-  <div className="text-center">
-  <div className="flex items-center justify-center gap-1">
-  <Image src="/images/icons/gacha-coin.png" alt="Coin" width={32} height={32} className="w-8 h-8 object-contain" />
-  <p className="text-amber-400 font-bold text-2xl">300</p>
-  </div>
-  <p className="text-xs text-slate-400 mt-1">Sorte Normal (80%)</p>
-  </div>
-  <div className="text-center relative">
-  <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full" />
-  <div className="relative flex items-center justify-center gap-1">
-  <Image src="/images/icons/gacha-coin.png" alt="Coin" width={36} height={36} className="w-9 h-9 object-contain" />
-  <p className="text-yellow-300 font-bold text-2xl animate-pulse">3.000</p>
-  </div>
-  <p className="text-xs text-slate-400 mt-1">Sorte Grande (20%)</p>
-  </div>
+            <div className="relative w-full max-w-md mt-2">
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-600/15 to-rose-600/15 blur-3xl rounded-3xl" />
+              <div className="relative rounded-3xl p-7 border border-pink-500/25 backdrop-blur-sm shadow-2xl overflow-hidden" style={{background:"linear-gradient(135deg, rgba(131,24,67,0.5), rgba(159,18,57,0.5))"}}>
+                {/* Decorative hearts */}
+                <div className="absolute top-3 right-4 text-pink-800/30 text-5xl select-none pointer-events-none">♥</div>
+                <div className="absolute bottom-4 left-3 text-rose-800/20 text-3xl select-none pointer-events-none">♥</div>
+
+                <div className="flex flex-col items-center text-center">
+                  <div className="relative mb-4">
+                    <div className="absolute inset-0 bg-pink-500/20 blur-2xl rounded-full" />
+                    <Heart className="relative w-16 h-16 text-pink-400 fill-pink-400 drop-shadow-lg" style={{filter:"drop-shadow(0 0 12px rgba(236,72,153,0.8))",animation:"heartbeat 1.5s ease-in-out infinite"}} />
                   </div>
+
+                  <h2 className="text-3xl font-black bg-gradient-to-r from-pink-300 via-rose-200 to-pink-300 bg-clip-text text-transparent mb-1">
+                    Gacha de Amizade
+                  </h2>
+                  <p className="text-pink-300/70 text-sm mb-5">Use Pontos de Afinidade para ganhar Moedas de Gacha</p>
+
+                  {/* Rewards */}
+                  <div className="w-full bg-black/30 rounded-2xl p-4 mb-5 border border-pink-500/15">
+                    <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wider">Recompensas Possíveis</p>
+                    <div className="flex justify-center gap-6">
+                      <div className="text-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <Image src="/images/icons/gacha-coin.png" alt="Coin" width={26} height={26} className="object-contain" />
+                          <span className="text-amber-400 font-black text-xl">300</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Normal (80%)</p>
+                      </div>
+                      <div className="w-px bg-pink-800/50" />
+                      <div className="text-center relative">
+                        <div className="absolute inset-0 bg-yellow-400/10 blur-xl rounded-full" />
+                        <div className="relative flex items-center justify-center gap-1 mb-1">
+                          <Image src="/images/icons/gacha-coin.png" alt="Coin" width={30} height={30} className="object-contain" />
+                          <span className="text-yellow-300 font-black text-xl">3.000</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Sorte Grande (20%)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-pink-900/70 text-[11px] mb-4">* Os FP gastos aqui não afetam sua barra de afinidade</p>
+
+                  <button
+                    onClick={pullFriendshipGacha}
+                    disabled={spendableFP < FP_COST || isOpening}
+                    className="w-full py-4 rounded-2xl font-black text-lg border-2 border-pink-400/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 hover:shadow-xl hover:shadow-pink-500/25 flex items-center justify-center gap-3"
+                    style={{background:"linear-gradient(135deg, #db2777, #be185d, #e11d48)"}}
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    Puxar
+                    <span className="flex items-center gap-1 bg-black/20 rounded-full px-3 py-0.5 text-sm">
+                      <Heart className="w-3.5 h-3.5 fill-white" />
+                      {FP_COST} FP
+                    </span>
+                  </button>
+
+                  {spendableFP < FP_COST && (
+                    <p className="text-pink-800/80 text-xs mt-2">Você tem {spendableFP} FP — faltam {FP_COST - spendableFP} FP</p>
+                  )}
                 </div>
-                <p className="text-xs text-pink-300/60 mb-6">
-                  * Os FP gastos aqui nao afetam sua barra de afinidade com amigos
-                </p>
-                <Button
-                  onClick={pullFriendshipGacha}
-                  disabled={spendableFP < FP_COST || isOpening}
-                  className="px-10 py-5 text-lg font-bold bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 disabled:opacity-50 border-2 border-pink-400/50 shadow-lg shadow-pink-500/30 transition-all hover:scale-105"
-                >
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Puxar
-                  <Heart className="w-5 h-5 ml-2 fill-white" />
-                  {FP_COST} FP
-                </Button>
               </div>
             </div>
           </>
@@ -1030,6 +1215,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           25% { transform: scale(1.1); }
           50% { transform: scale(1); }
           75% { transform: scale(1.05); }
+        }
+        @keyframes shimmer {
+          0%   { transform: translateX(-100%); }
+          60%  { transform: translateX(200%); }
+          100% { transform: translateX(200%); }
         }
       `}</style>
     </div>
