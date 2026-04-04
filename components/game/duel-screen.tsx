@@ -8419,6 +8419,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         setPlayerField,
         setEnemyField,
       }
+
+      const targets: EffectTargets = {
+        enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
+        allyUnitIndices: [index],
         chosenOption: itemSelectionMode.chosenOption || undefined,
       }
 
