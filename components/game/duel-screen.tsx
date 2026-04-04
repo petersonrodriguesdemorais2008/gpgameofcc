@@ -1701,6 +1701,45 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "calice-de-vinho-sagrado": {
+    id: "calice-de-vinho-sagrado",
+    name: "Cálice de Vinho Sagrado",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
+      if (!hasAllyUnits) return { canActivate: false, reason: "Você precisa ter uma Unidade em campo" }
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      if (currentLife >= maxLife && !hasAllyUnits) return { canActivate: false, reason: "Sem efeito possível" }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) return { success: false, message: "Selecione uma Unidade sua" }
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(1, maxLife - currentLife)
+      const newLife = currentLife + healAmount
+      const currentDp = allyUnit.currentDp || allyUnit.dp
+      const newDp = currentDp + 1
+
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
+        }
+        return { ...prev, life: newLife, unitZone: newUnitZone }
+      })
+
+      const healMsg = healAmount > 0 ? `+${healAmount} LP (${currentLife} -> ${newLife})` : "LP já no máximo"
+      return { success: true, message: `Cálice de Vinho Sagrado! ${healMsg} | ${allyUnit.name} +1DP (${currentDp} -> ${newDp})` }
+    },
+  },
+
   "dados-da-calamidade": {
     id: "dados-da-calamidade",
     name: "Dados da Calamidade",
@@ -4394,8 +4433,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
       const isVeredito = cardToPlace.name === "Veredito do Rei Tirano"
       const isJulgamentoVazioEterno = cardToPlace.name === "Julgamento do Vazio Eterno"
+      const isCaliceDeVinhoSagrado = cardToPlace.name === "Cálice de Vinho Sagrado"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazioEterno) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazioEterno || isCaliceDeVinhoSagrado) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -4425,6 +4465,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isChamadoDaTavola) effectToUse = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
           else if (isVeredito) effectToUse = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
           else if (isJulgamentoVazioEterno) effectToUse = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
+          else if (isCaliceDeVinhoSagrado) effectToUse = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
         }
 
         if (!effectToUse) return // Safety check
@@ -8337,6 +8378,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isChamadoDaTavola2 = itemSelectionMode.itemCard.name === "Chamado da Távola"
       const isVeredito2 = itemSelectionMode.itemCard.name === "Veredito do Rei Tirano"
       const isJulgamentoVazioEterno2 = itemSelectionMode.itemCard.name === "Julgamento do Vazio Eterno"
+      const isCaliceDeVinhoSagrado2 = itemSelectionMode.itemCard.name === "Cálice de Vinho Sagrado"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -8366,6 +8408,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isChamadoDaTavola2) effect = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
       else if (isVeredito2) effect = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
       else if (isJulgamentoVazioEterno2) effect = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
+      else if (isCaliceDeVinhoSagrado2) effect = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
     }
 
     if (effect) {
