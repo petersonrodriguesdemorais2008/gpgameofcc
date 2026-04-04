@@ -1254,6 +1254,20 @@ const ALL_CARDS: Card[] = [
     category: "Item Funcion Card",
   },
   {
+    id: "calice-de-vinho-sagrado",
+    name: "Cálice de Vinho Sagrado",
+    image: "/images/cards/calice-de-vinho-sagrado.png",
+    rarity: "SR",
+    type: "item",
+    element: "Haos",
+    dp: 0,
+    ability: "Bênção do Cálice",
+    abilityDescription:
+      "Restaure 1LP de sua Vida total, em seguida escolha uma Unidade em seu campo e adicione +1DP a ela.",
+    attack: "",
+    category: "Item Funcion Card",
+  },
+  {
     id: "contra-ataque-surpresa",
     name: "Contra-Ataque Surpresa",
     image: "/images/cards/contra-ataque-surpresa.png",
