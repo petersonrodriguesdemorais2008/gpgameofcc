@@ -223,125 +223,148 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const drawParticles = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
+    const cx = canvas.width / 2
+    const cy = canvas.height / 2
 
-    const centerX = canvas.width / 2
-    const centerY = canvas.height / 2
-
-    const colors: Record<string, string[]> = {
-      normal: ["#64748b", "#94a3b8", "#cbd5e1"],
-      rare: ["#8b5cf6", "#a78bfa", "#c4b5fd"],
-      epic: ["#f59e0b", "#fbbf24", "#fcd34d"],
-      legendary: ["#ef4444", "#f97316", "#fbbf24", "#eab308"],
+    const palettes: Record<string, string[]> = {
+      normal:    ["#64748b","#94a3b8","#cbd5e1","#e2e8f0"],
+      rare:      ["#7c3aed","#8b5cf6","#a78bfa","#c4b5fd","#ede9fe"],
+      epic:      ["#fbbf24","#f59e0b","#fcd34d","#fde68a","#ffffff"],
+      legendary: ["#ef4444","#f97316","#fbbf24","#22c55e","#3b82f6","#8b5cf6","#ec4899"],
     }
-
-    const tierColors = colors[rarityTier]
+    const cols = palettes[rarityTier]
 
     interface Particle {
-      x: number
-      y: number
-      vx: number
-      vy: number
-      size: number
-      color: string
-      alpha: number
-      life: number
-      type: "orb" | "spark" | "ring" | "meteor"
-      angle?: number
-      radius?: number
-      speed?: number
+      x: number; y: number; vx: number; vy: number
+      size: number; color: string; alpha: number; life: number; maxLife: number
+      type: "spark"|"orb"|"ring"|"star"
+      angle?: number; spin?: number; trail?: {x:number;y:number}[]
     }
 
     const particles: Particle[] = []
-    let time = 0
+    let t = 0
 
-    const animate = () => {
-      time++
-
-      // Clear with fade effect
-      ctx.fillStyle = packPhase === "opening" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.05)"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      // Ambient particles during all phases
-      if (particles.length < 80 && time % 3 === 0) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: canvas.height + 10,
-          vx: (Math.random() - 0.5) * 2,
-          vy: -2 - Math.random() * 3,
-          size: 2 + Math.random() * 4,
-          color: tierColors[Math.floor(Math.random() * tierColors.length)],
-          alpha: 0.8,
-          life: 180,
-          type: "spark",
-        })
-      }
-
-      // Opening explosion particles
-      if (packPhase === "opening" && time < 20) {
-        for (let i = 0; i < 15; i++) {
-          const angle = Math.random() * Math.PI * 2
-          const speed = 8 + Math.random() * 15
-          particles.push({
-            x: centerX,
-            y: centerY,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            size: 4 + Math.random() * 8,
-            color: tierColors[Math.floor(Math.random() * tierColors.length)],
-            alpha: 1,
-            life: 60,
-            type: "spark",
-          })
-        }
-      }
-
-      // Update and draw particles
-      particles.forEach((p, i) => {
-        p.x += p.vx
-        p.y += p.vy
-        p.vx *= 0.98
-        p.vy *= 0.98
-        p.alpha -= 0.008
-        p.life--
-
-        if (p.life <= 0 || p.alpha <= 0) {
-          particles.splice(i, 1)
-          return
-        }
-
-        const safeSize = Math.max(0.1, p.size)
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, safeSize, 0, Math.PI * 2)
-        ctx.fillStyle = p.color
-        ctx.globalAlpha = Math.max(0, p.alpha)
-        ctx.fill()
-
-        // Glow effect
-        const glowSize = safeSize * 3
-        if (glowSize > 0) {
-          const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize)
-          glow.addColorStop(0, p.color)
-          glow.addColorStop(1, "transparent")
-          ctx.beginPath()
-          ctx.arc(p.x, p.y, glowSize, 0, Math.PI * 2)
-          ctx.fillStyle = glow
-          ctx.globalAlpha = Math.max(0, p.alpha * 0.4)
-          ctx.fill()
-        }
-      })
-
-      ctx.globalAlpha = 1
-      animationRef.current = requestAnimationFrame(animate)
+    const spawnAmbient = () => {
+      if (particles.length >= 120) return
+      const side = Math.random()
+      const x = side < 0.5 ? Math.random() * canvas.width : (Math.random() < 0.5 ? -10 : canvas.width + 10)
+      const y = side < 0.5 ? canvas.height + 10 : Math.random() * canvas.height
+      particles.push({ x, y, vx:(Math.random()-0.5)*1.5, vy:-1.5-Math.random()*2.5,
+        size:1.5+Math.random()*3, color:cols[Math.floor(Math.random()*cols.length)],
+        alpha:0.9, life:200, maxLife:200, type:"spark" })
     }
 
+    const spawnBurst = (num:number, x:number, y:number, speed:number) => {
+      for (let i=0;i<num;i++) {
+        const a = (Math.PI*2/num)*i + Math.random()*0.4
+        const s = speed * (0.7+Math.random()*0.6)
+        particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
+          size:3+Math.random()*6, color:cols[Math.floor(Math.random()*cols.length)],
+          alpha:1, life:70, maxLife:70, type:Math.random()<0.3?"star":"spark",
+          spin:((Math.random()-0.5)*0.3), trail:[] })
+      }
+    }
+
+    const spawnRing = (x:number,y:number,radius:number,count:number) => {
+      for(let i=0;i<count;i++){
+        const a=(Math.PI*2/count)*i
+        particles.push({x:x+Math.cos(a)*radius,y:y+Math.sin(a)*radius,
+          vx:Math.cos(a)*2,vy:Math.sin(a)*2,
+          size:2+Math.random()*3,color:cols[Math.floor(Math.random()*cols.length)],
+          alpha:1,life:50,maxLife:50,type:"spark",trail:[]})
+      }
+    }
+
+    const animate = () => {
+      t++
+      const fade = packPhase==="opening"?"rgba(0,0,0,0.25)":packPhase==="revealing"?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.06)"
+      ctx.fillStyle=fade; ctx.fillRect(0,0,canvas.width,canvas.height)
+
+      // Ambient
+      if(t%2===0) spawnAmbient()
+
+      // Opening burst — multi-wave
+      if(packPhase==="opening") {
+        if(t===1) { spawnBurst(40,cx,cy,18); spawnRing(cx,cy,0,20) }
+        if(t===8) { spawnBurst(30,cx,cy,12); spawnRing(cx,cy,60,16) }
+        if(t===16){ spawnBurst(20,cx,cy,8);  spawnRing(cx,cy,100,12) }
+      }
+
+      // Revealing — occasional sparkle bursts near cards
+      if(packPhase==="revealing" && t%25===0 && cardRevealIndex>=0) {
+        const cardX = cx + (cardRevealIndex - 1.5) * 80
+        spawnBurst(8, cardX + (Math.random()-0.5)*60, cy + (Math.random()-0.5)*60, 5)
+      }
+
+      // Shaking — tension particles
+      if(packPhase==="shaking" && t%4===0) {
+        spawnBurst(4, cx+(Math.random()-0.5)*60, cy+(Math.random()-0.5)*80, 3)
+      }
+
+      ctx.globalAlpha=1
+
+      for(let i=particles.length-1;i>=0;i--){
+        const p=particles[i]
+        p.x+=p.vx; p.y+=p.vy
+        p.vx*=0.96; p.vy*=0.96
+        p.life--
+        const pct=p.life/p.maxLife
+        p.alpha=pct*(p.type==="orb"?0.7:0.9)
+
+        if(p.life<=0){particles.splice(i,1);continue}
+
+        // Trail
+        if(p.trail){ p.trail.unshift({x:p.x,y:p.y}); if(p.trail.length>8)p.trail.pop() }
+
+        ctx.save()
+        if(p.type==="star"){
+          ctx.globalAlpha=Math.max(0,p.alpha)
+          ctx.translate(p.x,p.y)
+          if(p.spin) ctx.rotate(p.spin*t)
+          ctx.fillStyle=p.color
+          // 4-point star
+          const r=p.size; const inner=r*0.4
+          ctx.beginPath()
+          for(let k=0;k<8;k++){
+            const a=(Math.PI/4)*k
+            const radius=k%2===0?r:inner
+            k===0?ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius):ctx.lineTo(Math.cos(a)*radius,Math.sin(a)*radius)
+          }
+          ctx.closePath(); ctx.fill()
+        } else {
+          // Particle core
+          ctx.globalAlpha=Math.max(0,p.alpha)
+          ctx.beginPath()
+          ctx.arc(p.x,p.y,Math.max(0.1,p.size),0,Math.PI*2)
+          ctx.fillStyle=p.color; ctx.fill()
+          // Glow halo
+          const gs=Math.max(0.1,p.size*4)
+          const grd=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,gs)
+          grd.addColorStop(0,p.color); grd.addColorStop(1,"transparent")
+          ctx.globalAlpha=Math.max(0,p.alpha*0.35)
+          ctx.beginPath(); ctx.arc(p.x,p.y,gs,0,Math.PI*2)
+          ctx.fillStyle=grd; ctx.fill()
+          // Trail
+          if(p.trail&&p.trail.length>1){
+            ctx.globalAlpha=Math.max(0,p.alpha*0.25)
+            ctx.strokeStyle=p.color; ctx.lineWidth=Math.max(0.1,p.size*0.5)
+            ctx.beginPath(); ctx.moveTo(p.trail[0].x,p.trail[0].y)
+            p.trail.forEach(pt=>ctx.lineTo(pt.x,pt.y))
+            ctx.stroke()
+          }
+        }
+        ctx.restore()
+      }
+      ctx.globalAlpha=1
+      animationRef.current=requestAnimationFrame(animate)
+    }
     animate()
-  }, [packPhase, rarityTier])
+  }, [packPhase, rarityTier, cardRevealIndex])
 
   useEffect(() => {
     if (isOpening || showResults) {
@@ -355,58 +378,50 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }
   }, [isOpening, showResults, drawParticles])
 
-  // Card reveal animation
+  // Card reveal animation — dramatic delays for rares
   useEffect(() => {
     if (packPhase === "revealing" && cardRevealIndex < CARDS_PER_PACK) {
-      const timer = setTimeout(() => {
-        setCardRevealIndex((prev) => prev + 1)
-      }, 300)
+      const card = packs[currentPackIndex]?.cards[cardRevealIndex]
+      // Dramatic pause before UR/LR reveals
+      const delay = card?.rarity === "LR" ? 900 : card?.rarity === "UR" ? 600 : card?.rarity === "SR" ? 400 : 280
+      const timer = setTimeout(() => setCardRevealIndex((prev) => prev + 1), delay)
       return () => clearTimeout(timer)
     }
-  }, [packPhase, cardRevealIndex])
+  }, [packPhase, cardRevealIndex, packs, currentPackIndex])
 
   // Auto advance to next pack or finish
   useEffect(() => {
     if (packPhase === "revealing" && cardRevealIndex >= CARDS_PER_PACK) {
       const timer = setTimeout(() => {
         if (currentPackIndex < packs.length - 1) {
-          // Move to next pack
           setCurrentPackIndex((prev) => prev + 1)
           setPackPhase("entering")
           setCardRevealIndex(-1)
         } else {
-          // All packs opened - show final results
           setPackPhase("done")
           setShowResults(true)
           setIsOpening(false)
         }
-      }, 800)
+      }, 1000)
       return () => clearTimeout(timer)
     }
   }, [packPhase, cardRevealIndex, currentPackIndex, packs.length])
 
-  // Pack phase progression
+  // Pack phase progression — entering → tearing → opening → revealing
   useEffect(() => {
     if (!isOpening || packs.length === 0) return
-
     if (packPhase === "entering") {
-      const timer = setTimeout(() => setPackPhase("shaking"), 600)
-      return () => clearTimeout(timer)
+      const t = setTimeout(() => setPackPhase("shaking"), 700)
+      return () => clearTimeout(t)
     }
     if (packPhase === "shaking") {
       setScreenShake(true)
-      const timer = setTimeout(() => {
-        setScreenShake(false)
-        setPackPhase("opening")
-      }, 800)
-      return () => clearTimeout(timer)
+      const t = setTimeout(() => { setScreenShake(false); setPackPhase("opening") }, 900)
+      return () => clearTimeout(t)
     }
     if (packPhase === "opening") {
-      const timer = setTimeout(() => {
-        setPackPhase("revealing")
-        setCardRevealIndex(0)
-      }, 600)
-      return () => clearTimeout(timer)
+      const t = setTimeout(() => { setPackPhase("revealing"); setCardRevealIndex(0) }, 900)
+      return () => clearTimeout(t)
     }
   }, [packPhase, isOpening, packs.length])
 
@@ -943,18 +958,37 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         </div>
       )}
 
-      {/* Cinematic Opening Overlay */}
+      {/* ══════════════════════════════════════════════════════════
+           CINEMATIC PACK OPENING OVERLAY
+          ══════════════════════════════════════════════════════════ */}
       {(isOpening || showResults) && currentBanner !== "friendship" && (
-        <div ref={containerRef} className={`fixed inset-0 z-50 bg-gradient-to-b from-slate-900 via-black to-slate-900 ${screenShake ? "animate-shake" : ""}`}>
-          {/* Canvas for particle system */}
-          <canvas ref={canvasRef} className="absolute inset-0" />
+        <div
+          ref={containerRef}
+          className={`fixed inset-0 z-50 overflow-hidden ${screenShake ? "animate-shake" : ""}`}
+          style={{background:"radial-gradient(ellipse at 50% 40%, #0a0a2e 0%, #000000 70%)"}}
+        >
+          {/* Particle canvas */}
+          <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+
+          {/* Dynamic vignette that reacts to rarity */}
+          {packPhase !== "done" && packs[currentPackIndex] && (
+            <div className="absolute inset-0 pointer-events-none transition-all duration-700" style={{
+              background: packs[currentPackIndex].highestRarity === "LR"
+                ? "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(239,68,68,0.15) 70%, rgba(139,0,0,0.4) 100%)"
+                : packs[currentPackIndex].highestRarity === "UR"
+                ? "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(56,189,248,0.12) 70%, rgba(0,50,100,0.35) 100%)"
+                : packs[currentPackIndex].highestRarity === "SR"
+                ? "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(168,85,247,0.10) 70%, rgba(50,0,80,0.30) 100%)"
+                : "radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.5) 100%)"
+            }} />
+          )}
 
           {/* Pack counter */}
           {packs.length > 1 && packPhase !== "done" && (
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30">
-              <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/20">
-                <span className="text-white font-bold text-lg">
-                  Pack {currentPackIndex + 1} / {packs.length}
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30">
+              <div className="bg-black/70 backdrop-blur-md px-5 py-2 rounded-full border border-white/15">
+                <span className="text-white/80 font-bold text-sm tracking-widest">
+                  PACK {currentPackIndex + 1} <span className="text-white/30">/</span> {packs.length}
                 </span>
               </div>
             </div>
@@ -962,283 +996,334 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
           {/* Skip button */}
           {packPhase !== "done" && (
-            <Button
-              onClick={() => {
-                setPackPhase("done")
-                setShowResults(true)
-                setIsOpening(false)
-              }}
-              className="absolute top-6 right-6 z-30 bg-white/10 hover:bg-white/20 border border-white/30"
+            <button
+              onClick={() => { setPackPhase("done"); setShowResults(true); setIsOpening(false) }}
+              className="absolute top-5 right-5 z-30 text-xs font-bold text-white/40 hover:text-white/80 transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/25 backdrop-blur-sm"
             >
-              Pular Tudo
-            </Button>
+              Pular
+            </button>
           )}
 
-          {/* Pack Opening Animation */}
+          {/* ── PACK PHASE ── */}
           {packPhase !== "done" && packs[currentPackIndex] && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              {/* Current Pack */}
-              <div className="relative">
-                {/* Pack glow based on highest rarity */}
-                <div
-                  className="absolute inset-0 blur-3xl rounded-3xl transition-all duration-500"
-                  style={{
-                    background: getPackGlowColor(packs[currentPackIndex].highestRarity),
-                    opacity: packPhase === "opening" ? 1 : 0.6,
-                    transform: packPhase === "opening" ? "scale(2)" : "scale(1.3)",
-                  }}
-                />
+              {(() => {
+                const pack = packs[currentPackIndex]
+                const rarity = pack.highestRarity
 
-                {/* Pack image */}
-                <div
-                  className="relative w-52 h-80 transition-all duration-500"
-                  style={{
-                    animation:
-                      packPhase === "entering"
-                        ? "packEnter 0.6s ease-out forwards"
-                        : packPhase === "shaking"
-                          ? "packShake 0.1s ease-in-out infinite"
-                          : packPhase === "opening"
-                            ? "packOpen 0.6s ease-out forwards"
-                            : undefined,
-                  }}
-                >
-                  <Image
-                    src={banner.packImage || "/placeholder.svg"}
-                    alt="Pack"
-                    fill
-                    sizes="320px"
-                    className="object-contain drop-shadow-2xl"
-                    style={{
-                      filter: `drop-shadow(0 0 40px ${getPackGlowColor(packs[currentPackIndex].highestRarity)})`,
-                    }}
-                  />
-                </div>
+                // Rarity-based color theme
+                const rarityGlow =
+                  rarity === "LR" ? { inner:"rgba(239,68,68,0.9)", outer:"rgba(251,191,36,0.5)", text:"text-red-400", label:"LENDÁRIO!" } :
+                  rarity === "UR" ? { inner:"rgba(56,189,248,0.85)", outer:"rgba(99,179,237,0.4)", text:"text-sky-300", label:"ULTRA RARO!" } :
+                  rarity === "SR" ? { inner:"rgba(168,85,247,0.8)",  outer:"rgba(192,132,252,0.3)", text:"text-purple-400", label:"SUPER RARO!" } :
+                                   { inner:"rgba(148,163,184,0.5)", outer:"rgba(200,200,200,0.15)", text:"text-slate-400", label:"" }
 
-                {/* Opening burst effect */}
-                {packPhase === "opening" && (
+                return (
                   <>
-                    <div className="absolute inset-0 bg-white rounded-3xl" style={{ animation: "flashOut 0.4s ease-out forwards" }} />
-                    {[...Array(12)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute left-1/2 top-1/2 w-1 h-32 bg-gradient-to-t from-transparent via-white to-transparent"
-                        style={{
-                          transform: `rotate(${i * 30}deg) translateY(-50%)`,
-                          transformOrigin: "center bottom",
-                          animation: "burstRay 0.5s ease-out forwards",
-                          opacity: 0,
-                          animationDelay: `${i * 0.02}s`,
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-              </div>
+                    {/* ── PACK DISPLAY ── */}
+                    {(packPhase === "entering" || packPhase === "shaking" || packPhase === "opening") && (
+                      <div className="relative flex flex-col items-center">
 
-              {/* Pack text */}
-              <p
-                className="mt-8 text-2xl font-bold text-white/90 tracking-wider"
-                style={{ animation: "fadeIn 0.3s ease-out forwards" }}
-              >
-                {packPhase === "entering" && "Preparando pack..."}
-                {packPhase === "shaking" && "Abrindo..."}
-                {packPhase === "opening" && (
-                  <span className={`${
-                    packs[currentPackIndex].highestRarity === "LR" ? "text-red-400" :
-                    packs[currentPackIndex].highestRarity === "UR" ? "text-amber-400" :
-                    packs[currentPackIndex].highestRarity === "SR" ? "text-purple-400" : "text-slate-400"
-                  }`}>
-                    {packs[currentPackIndex].highestRarity === "LR" && "LENDARIO!"}
-                    {packs[currentPackIndex].highestRarity === "UR" && "ULTRA RARO!"}
-                    {packs[currentPackIndex].highestRarity === "SR" && "SUPER RARO!"}
-                    {packs[currentPackIndex].highestRarity === "R" && "Cartas obtidas!"}
-                  </span>
-                )}
-              </p>
+                        {/* Ambient halo behind pack */}
+                        <div className="absolute inset-0 pointer-events-none" style={{
+                          background: `radial-gradient(ellipse 200px 250px at 50% 50%, ${rarityGlow.inner} 0%, transparent 70%)`,
+                          filter:"blur(30px)",
+                          animation: packPhase==="shaking" ? "haloFlicker 0.15s ease-in-out infinite" : "haloPulse 2s ease-in-out infinite",
+                        }} />
 
-              {/* Cards reveal for current pack */}
-              {packPhase === "revealing" && (
-                <div className="mt-8 flex gap-5 justify-center" style={{ animation: "cardsSlideUp 0.4s ease-out forwards" }}>
-                  {packs[currentPackIndex].cards.map((card, idx) => {
-                    const isRevealed = idx <= cardRevealIndex
-                    return (
-                      <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2">
-                        {/* Card with 3D flip */}
+                        {/* TEARING ANIMATION: top flap */}
+                        {packPhase === "opening" && (
+                          <div className="absolute top-0 left-0 right-0 z-20 overflow-hidden pointer-events-none" style={{height:"35%"}}>
+                            {/* Torn top piece */}
+                            <div style={{
+                              position:"absolute", inset:0,
+                              backgroundImage:`url(${banner.packImage})`,
+                              backgroundSize:"cover", backgroundPosition:"top",
+                              transformOrigin:"top center",
+                              animation:"tearTopFlap 0.85s cubic-bezier(0.22,1,0.36,1) forwards",
+                              filter:`drop-shadow(0 0 12px ${rarityGlow.inner})`,
+                            }} />
+                            {/* Tear edge — jagged SVG mask */}
+                            <svg className="absolute bottom-0 left-0 w-full" height="16" viewBox="0 0 208 16" preserveAspectRatio="none" style={{animation:"tearEdgeShake 0.85s ease-out forwards"}}>
+                              <path d="M0,0 L0,8 L12,3 L24,12 L38,2 L52,14 L68,4 L80,10 L96,1 L110,13 L124,5 L138,11 L152,2 L166,14 L180,4 L194,12 L208,3 L208,0 Z" fill={rarityGlow.inner} opacity="0.9"/>
+                              <path d="M0,16 L0,8 L12,3 L24,12 L38,2 L52,14 L68,4 L80,10 L96,1 L110,13 L124,5 L138,11 L152,2 L166,14 L180,4 L194,12 L208,3 L208,16 Z" fill="#000" opacity="0.6"/>
+                            </svg>
+                            {/* Tear sparks */}
+                            {[...Array(8)].map((_,i) => (
+                              <div key={i} className="absolute" style={{
+                                left:`${10+i*12}%`, bottom:"10px",
+                                width:"3px", height:`${6+Math.random()*10}px`,
+                                background:`linear-gradient(to top, ${rarityGlow.inner}, white)`,
+                                borderRadius:"2px",
+                                animation:`tearSpark 0.5s ease-out ${i*0.04}s forwards`,
+                                opacity:0,
+                              }} />
+                            ))}
+                            {/* Energy beam from tear */}
+                            <div style={{
+                              position:"absolute", bottom:"-20px", left:"50%", transform:"translateX(-50%)",
+                              width:"4px", height:"40px",
+                              background:`linear-gradient(to bottom, white, ${rarityGlow.inner}, transparent)`,
+                              filter:`blur(2px)`,
+                              animation:"tearBeam 0.85s ease-out forwards", opacity:0,
+                            }} />
+                          </div>
+                        )}
+
+                        {/* Pack body */}
                         <div
-                          className="relative w-24 h-36 md:w-28 md:h-40"
+                          className="relative"
                           style={{
-                            perspective: "1000px",
-                            opacity: idx <= cardRevealIndex + 1 ? 1 : 0,
-                            transition: "opacity 0.3s ease-out",
+                            width:"208px", height:"308px",
+                            animation:
+                              packPhase==="entering"  ? "packEnterEpic 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards" :
+                              packPhase==="shaking"   ? "packShakeEpic 0.12s ease-in-out infinite" :
+                              packPhase==="opening"   ? "packOpenEpic 0.85s cubic-bezier(0.22,1,0.36,1) forwards" :
+                              undefined,
+                            filter: `drop-shadow(0 0 30px ${rarityGlow.inner}) drop-shadow(0 0 60px ${rarityGlow.outer})`,
                           }}
                         >
-                          <div
-                            className="relative w-full h-full"
-                            style={{
-                              transformStyle: "preserve-3d",
-                              transform: isRevealed ? "rotateY(0deg)" : "rotateY(180deg)",
-                              transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-                            }}
-                          >
-                            {/* Card Front */}
-                            <div
-                              className="absolute inset-0 overflow-hidden"
+                          <Image src={banner.packImage||"/placeholder.svg"} alt="Pack" fill sizes="208px" className="object-contain" />
+                          {/* Holographic sheen overlay */}
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{
+                            background:"linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)",
+                            animation:"packSheen 3s ease-in-out infinite",
+                          }} />
+                        </div>
+
+                        {/* Burst rays on opening */}
+                        {packPhase === "opening" && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            {[...Array(16)].map((_,i) => (
+                              <div key={i} className="absolute" style={{
+                                width:"3px", height:"180px",
+                                background:`linear-gradient(to top, transparent, ${rarityGlow.inner}, white, transparent)`,
+                                transform:`rotate(${i*(360/16)}deg)`,
+                                transformOrigin:"50% 100%",
+                                top:"50%", left:"50%", marginLeft:"-1.5px",
+                                animation:`burstRayEpic 0.85s cubic-bezier(0.22,1,0.36,1) ${i*0.015}s forwards`,
+                                opacity:0, borderRadius:"2px",
+                                filter:`blur(1px) drop-shadow(0 0 4px ${rarityGlow.inner})`,
+                              }} />
+                            ))}
+                            {/* Central flash */}
+                            <div className="absolute inset-0 rounded-full" style={{
+                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 30%, transparent 70%)`,
+                              animation:"centralFlash 0.85s ease-out forwards",
+                            }} />
+                          </div>
+                        )}
+
+                        {/* Rarity announcement */}
+                        {packPhase === "opening" && rarity !== "R" && (
+                          <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 whitespace-nowrap" style={{animation:"rarityAnnounce 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards", opacity:0, transform:"translateX(-50%) scale(0.5)"}}>
+                            <span className={`text-3xl font-black tracking-widest drop-shadow-2xl ${rarityGlow.text}`}
                               style={{
-                                backfaceVisibility: "hidden",
-                                boxShadow: isRevealed ? getRarityGlow(card.rarity) : "none",
-                              }}
-                            >
-                              {/* Shine effect */}
-                              {isRevealed && (
+                                textShadow: rarity==="LR" ? "0 0 20px #ef4444, 0 0 40px #fbbf24" :
+                                  rarity==="UR" ? "0 0 20px #38bdf8, 0 0 40px #7dd3fc" :
+                                  "0 0 20px #a855f7, 0 0 35px #c084fc"
+                              }}>
+                              {rarityGlow.label}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── CARD REVEAL ── */}
+                    {packPhase === "revealing" && (
+                      <div className="flex flex-col items-center gap-6 w-full" style={{animation:"revealContainerIn 0.4s ease-out forwards"}}>
+                        <div className="flex gap-4 justify-center px-4">
+                          {pack.cards.map((card, idx) => {
+                            const isRevealed = idx < cardRevealIndex
+                            const isRevealing = idx === cardRevealIndex - 1
+                            const isPending = idx >= cardRevealIndex
+
+                            // Per-card rarity glow while revealed
+                            const cardGlowStyle =
+                              card.rarity==="LR" ? "0 0 25px rgba(239,68,68,0.9), 0 0 50px rgba(251,191,36,0.5)" :
+                              card.rarity==="UR" ? "0 0 20px rgba(56,189,248,0.85), 0 0 40px rgba(99,179,237,0.4)" :
+                              card.rarity==="SR" ? "0 0 18px rgba(168,85,247,0.8), 0 0 35px rgba(192,132,252,0.3)" :
+                              "0 0 10px rgba(148,163,184,0.4)"
+
+                            return (
+                              <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2">
+                                {/* Rarity pre-glow (lights up before card turns) */}
+                                <div className="relative" style={{perspective:"900px"}}>
+                                  {/* Pre-reveal anticipation glow */}
+                                  {isPending && idx === cardRevealIndex && (
+                                    <div className="absolute inset-0 rounded-xl pointer-events-none z-10" style={{
+                                      background: card.rarity==="LR"
+                                        ? "radial-gradient(ellipse, rgba(239,68,68,0.6) 0%, transparent 70%)"
+                                        : card.rarity==="UR"
+                                        ? "radial-gradient(ellipse, rgba(56,189,248,0.5) 0%, transparent 70%)"
+                                        : card.rarity==="SR"
+                                        ? "radial-gradient(ellipse, rgba(168,85,247,0.4) 0%, transparent 70%)"
+                                        : "none",
+                                      filter:"blur(8px)",
+                                      animation:"anticipateGlow 0.6s ease-in-out infinite alternate",
+                                    }} />
+                                  )}
+
+                                  {/* 3D flip container */}
+                                  <div
+                                    className="relative w-24 h-36 md:w-28 md:h-40"
+                                    style={{
+                                      transformStyle:"preserve-3d",
+                                      transform: isRevealed ? "rotateY(0deg)" : "rotateY(-180deg)",
+                                      transition: isRevealing
+                                        ? `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)`
+                                        : "none",
+                                      opacity: isPending && idx > cardRevealIndex ? 0.15 : 1,
+                                    }}
+                                  >
+                                    {/* ── CARD FRONT ── */}
+                                    <div className="absolute inset-0 overflow-hidden rounded-xl"
+                                      style={{ backfaceVisibility:"hidden", boxShadow: isRevealed ? cardGlowStyle : "none" }}>
+                                      <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="128px" className="object-cover" />
+
+                                      {/* Shine sweep on reveal */}
+                                      {isRevealing && (
+                                        <div className="absolute inset-0 z-20 pointer-events-none"
+                                          style={{background:"linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.7) 50%, transparent 60%)",
+                                            animation:"shineSweep 0.6s ease-out 0.3s forwards", transform:"translateX(-100%)"}} />
+                                      )}
+
+                                      {/* LR holographic rainbow border */}
+                                      {card.rarity==="LR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none rounded-xl" style={{
+                                          background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
+                                          backgroundSize:"300% 100%", animation:"rainbowShift 1.5s linear infinite",
+                                          padding:"3px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                          WebkitMaskComposite:"xor", maskComposite:"exclude",
+                                        }} />
+                                      )}
+                                      {/* LR overlay shimmer */}
+                                      {card.rarity==="LR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          background:"linear-gradient(135deg,transparent 30%,rgba(255,255,255,0.08) 50%,transparent 70%)",
+                                          backgroundSize:"200% 200%", animation:"lrHoloShimmer 3s ease-in-out infinite",
+                                        }} />
+                                      )}
+                                      {/* UR diamond border + sparkles */}
+                                      {card.rarity==="UR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none rounded-xl" style={{
+                                          border:"2px solid rgba(56,189,248,0.9)",
+                                          boxShadow:"inset 0 0 12px rgba(56,189,248,0.3)",
+                                          animation:"urDiamondPulse 1.8s ease-in-out infinite",
+                                        }} />
+                                      )}
+                                      {/* SR gold glow */}
+                                      {card.rarity==="SR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none rounded-xl" style={{
+                                          border:"2px solid rgba(168,85,247,0.8)",
+                                          animation:"srGoldPulse 2s ease-in-out infinite",
+                                        }} />
+                                      )}
+                                    </div>
+
+                                    {/* ── CARD BACK ── */}
+                                    <div className="absolute inset-0 rounded-xl overflow-hidden"
+                                      style={{ backfaceVisibility:"hidden", transform:"rotateY(180deg)" }}>
+                                      <Image src="/images/gacha/card-back.png" alt="Card Back" fill sizes="128px" className="object-cover" />
+                                      {/* Rarity glow aura on back while pending reveal */}
+                                      {!isRevealed && idx <= cardRevealIndex && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          background: card.rarity==="LR"
+                                            ? "linear-gradient(135deg,rgba(239,68,68,0.3),rgba(251,191,36,0.3))"
+                                            : card.rarity==="UR"
+                                            ? "rgba(56,189,248,0.25)"
+                                            : card.rarity==="SR"
+                                            ? "rgba(168,85,247,0.2)"
+                                            : "transparent",
+                                          animation:"backGlowPulse 0.8s ease-in-out infinite alternate",
+                                        }} />
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Rarity badge */}
                                 <div
-                                  className="absolute inset-0 z-20 bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
+                                  className={`px-3 py-0.5 text-center text-xs font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded-md`}
                                   style={{
-                                    transform: "translateX(-100%)",
-                                    animation: "shineAcross 0.5s ease-out forwards",
-                                    animationDelay: "0.3s",
+                                    opacity: isRevealed ? 1 : 0,
+                                    transform: isRevealed ? "translateY(0) scale(1)" : "translateY(-6px) scale(0.8)",
+                                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.35s",
+                                    boxShadow: isRevealed ? cardGlowStyle.split(",")[0] : "none",
                                   }}
-                                />
-                              )}
-
-                              <Image src={card.image || "/placeholder.svg"} alt={card.name} fill sizes="(max-width: 768px) 25vw, 128px" className="object-cover" />
-
-                              {/* LR rainbow border */}
-                              {card.rarity === "LR" && isRevealed && (
-                                <div
-                                  className="absolute inset-0 pointer-events-none"
-                                  style={{
-                                    background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
-                                    backgroundSize: "200% 100%",
-                                    animation: "rainbowShift 2s linear infinite",
-                                    padding: "3px",
-                                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                                    WebkitMaskComposite: "xor",
-                                    maskComposite: "exclude",
-                                  }}
-                                />
-                              )}
-
-                              {/* UR golden glow */}
-                              {card.rarity === "UR" && isRevealed && (
-                                <div
-                                  className="absolute inset-0 pointer-events-none border-2 border-amber-400/80"
-                                  style={{ animation: "pulseGlow 1.5s ease-in-out infinite" }}
-                                />
-                              )}
-                            </div>
-
-                            {/* Card Back */}
-                            <div
-                              className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center"
-                              style={{
-                                backfaceVisibility: "hidden",
-                                transform: "rotateY(180deg)",
-                              }}
-                            >
-                              <div className="w-[85%] h-[90%] border-2 border-slate-600 bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
-                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 border-2 border-amber-400 flex items-center justify-center">
-                                  <span className="text-white font-bold text-lg md:text-xl">G</span>
+                                >
+                                  {card.rarity}
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Rarity badge below card */}
-                        <div
-                          className={`px-3 py-1 text-center text-sm font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded-md`}
-                          style={{
-                            opacity: isRevealed ? 1 : 0,
-                            transform: isRevealed ? "translateY(0)" : "translateY(-10px)",
-                            transition: "all 0.4s ease-out 0.3s",
-                          }}
-                        >
-                          {card.rarity}
+                            )
+                          })}
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                    )}
+                  </>
+                )
+              })()}
             </div>
           )}
 
-          {/* Final Results Grid */}
+          {/* ── FINAL RESULTS ── */}
           {packPhase === "done" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-4" style={{ animation: "fadeIn 0.4s ease-out forwards" }}>
-              <h2 className="text-3xl font-bold text-white mb-6">
-                {pullCount === 1 ? "Cartas Obtidas" : `${pullCount} Packs Abertos!`}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4" style={{animation:"fadeIn 0.5s ease-out forwards"}}>
+              <h2 className="text-3xl font-black text-white mb-2 tracking-wider" style={{textShadow:"0 0 20px rgba(255,255,255,0.3)"}}>
+                {pullCount === 1 ? "Cartas Obtidas!" : `${pullCount} Packs Abertos!`}
               </h2>
+              <p className="text-slate-500 text-xs mb-5 tracking-widest uppercase">{openedCards.length} cartas na coleção</p>
 
-              {/* All cards grouped by pack */}
-              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl px-4">
+              <div className="max-h-[62vh] overflow-y-auto w-full max-w-5xl px-4">
                 {packs.map((pack, packIdx) => (
-                  <div key={pack.id} className="mb-8">
-                    {packs.length > 1 && (
-                      <p className="text-slate-400 text-sm mb-3 pl-2">Pack {packIdx + 1}</p>
-                    )}
-                    <div className="flex gap-4 justify-center flex-wrap">
-                      {pack.cards.map((card, cardIdx) => (
-                        <div
-                          key={`${card.id}-final-${cardIdx}`}
-                          className="flex flex-col items-center gap-1.5"
-                          style={{
-                            animation: `cardPopIn 0.3s ease-out forwards`,
-                            animationDelay: `${(packIdx * 4 + cardIdx) * 0.05}s`,
-                            opacity: 0,
-                          }}
-                        >
-                          <div
-                            className="relative w-20 h-28 md:w-24 md:h-32 overflow-hidden transition-transform hover:scale-110 hover:z-10"
-                            style={{ boxShadow: getRarityGlow(card.rarity) }}
-                          >
-                            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill sizes="96px" className="object-cover" />
-
-                            {card.rarity === "LR" && (
-                              <div
-                                className="absolute inset-0 pointer-events-none"
-                                style={{
-                                  background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
-                                  backgroundSize: "200% 100%",
-                                  animation: "rainbowShift 2s linear infinite",
-                                  padding: "2px",
-                                  WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                                  WebkitMaskComposite: "xor",
-                                  maskComposite: "exclude",
-                                }}
-                              />
-                            )}
-
-                            {card.rarity === "UR" && (
-                              <div
-                                className="absolute inset-0 pointer-events-none border-2 border-amber-400/80"
-                                style={{ animation: "pulseGlow 1.5s ease-in-out infinite" }}
-                              />
-                            )}
+                  <div key={pack.id} className="mb-6">
+                    {packs.length > 1 && <p className="text-slate-600 text-xs mb-2 pl-1 uppercase tracking-widest">Pack {packIdx + 1}</p>}
+                    <div className="flex gap-3 justify-center flex-wrap">
+                      {pack.cards.map((card, cardIdx) => {
+                        const cardGlow =
+                          card.rarity==="LR" ? "0 0 20px rgba(239,68,68,0.8),0 0 40px rgba(251,191,36,0.4)" :
+                          card.rarity==="UR" ? "0 0 18px rgba(56,189,248,0.8),0 0 35px rgba(99,179,237,0.3)" :
+                          card.rarity==="SR" ? "0 0 15px rgba(168,85,247,0.7)" : "none"
+                        return (
+                          <div key={`${card.id}-final-${cardIdx}`} className="flex flex-col items-center gap-1.5"
+                            style={{animation:"cardPopIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards",
+                              animationDelay:`${(packIdx*4+cardIdx)*0.06}s`, opacity:0}}>
+                            <div className="relative w-[72px] h-[100px] md:w-[88px] md:h-[124px] overflow-hidden rounded-lg transition-transform hover:scale-110 hover:z-10 cursor-pointer"
+                              style={{boxShadow:cardGlow}}>
+                              <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="96px" className="object-cover" />
+                              {card.rarity==="LR" && (
+                                <div className="absolute inset-0 pointer-events-none" style={{
+                                  background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
+                                  backgroundSize:"300% 100%", animation:"rainbowShift 1.5s linear infinite",
+                                  padding:"2px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                  WebkitMaskComposite:"xor", maskComposite:"exclude"}} />
+                              )}
+                              {card.rarity==="UR" && (
+                                <div className="absolute inset-0 pointer-events-none rounded-lg" style={{
+                                  border:"2px solid rgba(56,189,248,0.8)", animation:"urDiamondPulse 1.8s ease-in-out infinite"}} />
+                              )}
+                              {card.rarity==="SR" && (
+                                <div className="absolute inset-0 pointer-events-none rounded-lg" style={{
+                                  border:"1.5px solid rgba(168,85,247,0.7)", animation:"srGoldPulse 2s ease-in-out infinite"}} />
+                              )}
+                            </div>
+                            <div className={`px-2 py-0.5 text-center text-[10px] font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded`}>
+                              {card.rarity}
+                            </div>
                           </div>
-
-                          {/* Rarity badge below */}
-                          <div
-                            className={`px-2 py-0.5 text-center text-xs font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded`}
-                          >
-                            {card.rarity}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Confirm button */}
-              <Button
-                onClick={closeResults}
-                className="mt-6 px-12 py-4 text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 border-2 border-green-400/50"
-                style={{ animation: "scaleIn 0.3s ease-out forwards", animationDelay: "0.3s", opacity: 0 }}
-              >
+              <button onClick={closeResults}
+                className="mt-5 px-10 py-3.5 text-lg font-black rounded-2xl border-2 border-emerald-400/50 transition-all hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30"
+                style={{background:"linear-gradient(135deg,#059669,#10b981,#34d399)",animation:"scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards",opacity:0}}>
                 CONFIRMAR
-              </Button>
+              </button>
             </div>
           )}
         </div>
@@ -1281,84 +1366,177 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       )}
 
       <style jsx>{`
+        /* ── Ambient float ── */
         @keyframes floatParticle {
-          0%   { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.2; }
-          25%  { transform: translateY(-20px) translateX(10px) scale(1.1); opacity: 0.7; }
-          50%  { transform: translateY(-40px) translateX(-5px) scale(1.2); opacity: 0.9; }
-          75%  { transform: translateY(-25px) translateX(12px) scale(1.1); opacity: 0.6; }
-          100% { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.2; }
+          0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.15; }
+          33%  { transform: translateY(-30px) translateX(8px) scale(1.15); opacity: 0.8; }
+          66%  { transform: translateY(-50px) translateX(-6px) scale(1.2); opacity: 0.9; }
+          100% { transform: translateY(-80px) translateX(4px) scale(0.8); opacity: 0; }
         }
-        @keyframes packEnter {
-          0% { transform: translateY(-150px) scale(0.5) rotate(-10deg); opacity: 0; }
-          60% { transform: translateY(20px) scale(1.05) rotate(2deg); opacity: 1; }
-          100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+
+        /* ── Pack enter ── */
+        @keyframes packEnterEpic {
+          0%   { transform: translateY(-200px) scale(0.4) rotate(-8deg); opacity: 0; filter: brightness(0); }
+          50%  { transform: translateY(18px) scale(1.07) rotate(1.5deg); opacity: 1; filter: brightness(1.4); }
+          75%  { transform: translateY(-6px) scale(0.98) rotate(-0.5deg); }
+          100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
         }
-        @keyframes packShake {
-          0%, 100% { transform: translateX(0) rotate(0deg); }
-          25% { transform: translateX(-8px) rotate(-2deg); }
-          75% { transform: translateX(8px) rotate(2deg); }
+
+        /* ── Pack shake — intensifying ── */
+        @keyframes packShakeEpic {
+          0%   { transform: translateX(0) rotate(0deg); }
+          15%  { transform: translateX(-7px) rotate(-1.5deg) scale(1.01); }
+          30%  { transform: translateX(9px) rotate(2deg) scale(1.02); }
+          45%  { transform: translateX(-11px) rotate(-2.5deg) scale(1.03); }
+          60%  { transform: translateX(10px) rotate(2deg) scale(1.02); }
+          75%  { transform: translateX(-8px) rotate(-1.5deg) scale(1.01); }
+          100% { transform: translateX(0) rotate(0deg); }
         }
-        @keyframes packOpen {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.3); opacity: 1; }
-          100% { transform: scale(0) rotate(180deg); opacity: 0; }
+
+        /* ── Pack open ── */
+        @keyframes packOpenEpic {
+          0%   { transform: scale(1) rotate(0deg) translateY(0); opacity: 1; }
+          20%  { transform: scale(1.12) rotate(0.5deg) translateY(-8px); }
+          50%  { transform: scale(1.35) rotate(-1deg) translateY(-15px); opacity: 0.9; filter: brightness(2.5); }
+          80%  { transform: scale(0.5) rotate(5deg) translateY(20px); opacity: 0.3; }
+          100% { transform: scale(0) rotate(12deg) translateY(40px); opacity: 0; }
         }
-        @keyframes burstRay {
-          0% { opacity: 0; transform: rotate(var(--r, 0deg)) scaleY(0); }
-          30% { opacity: 1; }
-          100% { opacity: 0; transform: rotate(var(--r, 0deg)) scaleY(3); }
+
+        /* ── Tearing animations ── */
+        @keyframes tearTopFlap {
+          0%   { transform: rotate(0deg) translateY(0); opacity: 1; }
+          30%  { transform: rotate(-2deg) translateY(-5px); }
+          60%  { transform: rotate(-8deg) translateY(-30px) scale(1.05); opacity: 0.8; }
+          100% { transform: rotate(-20deg) translateY(-120px) translateX(-40px) scale(0.7); opacity: 0; }
         }
-        @keyframes flashOut {
-          0% { opacity: 1; }
-          100% { opacity: 0; }
+        @keyframes tearEdgeShake {
+          0%,100% { transform: scaleX(1); }
+          25%     { transform: scaleX(1.02) translateX(2px); }
+          75%     { transform: scaleX(0.99) translateX(-1px); }
         }
-        @keyframes fadeIn {
-          0% { opacity: 0; }
-          100% { opacity: 1; }
+        @keyframes tearSpark {
+          0%   { transform: translateY(0) scaleY(0.2); opacity: 0; }
+          30%  { opacity: 1; transform: translateY(-12px) scaleY(1); }
+          60%  { opacity: 0.6; transform: translateY(-22px) scaleY(0.6); }
+          100% { opacity: 0; transform: translateY(-35px) scaleY(0.1); }
         }
-        @keyframes cardsSlideUp {
-          0% { transform: translateY(50px); opacity: 0; }
-          100% { transform: translateY(0); opacity: 1; }
+        @keyframes tearBeam {
+          0%   { opacity: 0; transform: translateX(-50%) scaleY(0); }
+          20%  { opacity: 1; transform: translateX(-50%) scaleY(1.5); }
+          60%  { opacity: 0.6; transform: translateX(-50%) scaleY(1); }
+          100% { opacity: 0; transform: translateX(-50%) scaleY(2) translateY(-20px); }
         }
-        @keyframes scaleIn {
-          0% { transform: scale(0.8); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
+
+        /* ── Burst rays ── */
+        @keyframes burstRayEpic {
+          0%   { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(0) translateY(-50%); }
+          20%  { opacity: 1; }
+          60%  { opacity: 0.6; transform: rotate(var(--r,0deg)) scaleY(1) translateY(-50%); }
+          100% { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(2.5) translateY(-50%); }
         }
-        @keyframes shineAcross {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
+        @keyframes centralFlash {
+          0%   { opacity: 0; transform: scale(0); }
+          15%  { opacity: 1; transform: scale(0.8); }
+          40%  { opacity: 0.7; transform: scale(1.2); }
+          100% { opacity: 0; transform: scale(2.5); }
+        }
+
+        /* ── Rarity announce ── */
+        @keyframes rarityAnnounce {
+          0%   { opacity: 0; transform: translateX(-50%) scale(0.4) rotate(-5deg); }
+          60%  { opacity: 1; transform: translateX(-50%) scale(1.1) rotate(1deg); }
+          80%  { transform: translateX(-50%) scale(0.97) rotate(-0.5deg); }
+          100% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
+        }
+
+        /* ── Halo behind pack ── */
+        @keyframes haloPulse {
+          0%,100% { opacity: 0.6; transform: scale(1); }
+          50%     { opacity: 1; transform: scale(1.15); }
+        }
+        @keyframes haloFlicker {
+          0%,100% { opacity: 0.7; transform: scale(1.05) rotate(0deg); }
+          33%     { opacity: 1; transform: scale(1.2) rotate(1deg); }
+          66%     { opacity: 0.9; transform: scale(1.1) rotate(-1deg); }
+        }
+        @keyframes packSheen {
+          0%,100% { background-position: 200% 200%; opacity: 0.6; }
+          50%     { background-position: -100% -100%; opacity: 1; }
+        }
+
+        /* ── Card flip effects ── */
+        @keyframes shineSweep {
+          0%   { transform: translateX(-150%); }
+          100% { transform: translateX(250%); }
+        }
+        @keyframes anticipateGlow {
+          0%   { opacity: 0.3; transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes backGlowPulse {
+          0%   { opacity: 0.4; }
+          100% { opacity: 0.9; }
+        }
+
+        /* ── Rarity borders ── */
+        @keyframes urDiamondPulse {
+          0%,100% { box-shadow: 0 0 10px rgba(56,189,248,0.5), inset 0 0 8px rgba(56,189,248,0.2); border-color: rgba(56,189,248,0.7); }
+          50%     { box-shadow: 0 0 25px rgba(56,189,248,0.9), 0 0 50px rgba(99,179,237,0.4), inset 0 0 15px rgba(56,189,248,0.4); border-color: rgba(56,189,248,1); }
+        }
+        @keyframes srGoldPulse {
+          0%,100% { box-shadow: 0 0 8px rgba(168,85,247,0.5); border-color: rgba(168,85,247,0.6); }
+          50%     { box-shadow: 0 0 20px rgba(168,85,247,0.9), 0 0 40px rgba(192,132,252,0.3); border-color: rgba(168,85,247,1); }
+        }
+        @keyframes lrHoloShimmer {
+          0%,100% { background-position: 200% 200%; opacity: 0.5; }
+          50%     { background-position: -100% -100%; opacity: 1; }
         }
         @keyframes rainbowShift {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
+          0%   { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
         }
         @keyframes pulseGlow {
-          0%, 100% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
-          50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+          0%,100% { box-shadow: 0 0 15px rgba(251,191,36,0.5); }
+          50%     { box-shadow: 0 0 30px rgba(251,191,36,0.9); }
+        }
+
+        /* ── Global ── */
+        @keyframes revealContainerIn {
+          0%   { opacity: 0; transform: translateY(30px) scale(0.95); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes fadeIn {
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          0%   { transform: scale(0.7); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
         }
         @keyframes cardPopIn {
-          0% { transform: scale(0) rotate(-10deg); opacity: 0; }
-          60% { transform: scale(1.1) rotate(2deg); }
+          0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
+          55%  { transform: scale(1.12) rotate(2deg); }
+          80%  { transform: scale(0.97) rotate(-0.5deg); }
           100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-          20%, 40%, 60%, 80% { transform: translateX(8px); }
+          0%,100% { transform: translateX(0) rotate(0deg); }
+          10%,50%,90% { transform: translateX(-10px) rotate(-1deg); }
+          30%,70% { transform: translateX(10px) rotate(1deg); }
         }
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
+        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          25% { transform: scale(1.1); }
-          50% { transform: scale(1); }
-          75% { transform: scale(1.05); }
+          0%,100% { transform: scale(1); }
+          25%     { transform: scale(1.1); }
+          75%     { transform: scale(1.05); }
         }
         @keyframes shimmer {
           0%   { transform: translateX(-100%); }
-          60%  { transform: translateX(200%); }
-          100% { transform: translateX(200%); }
+          60%,100% { transform: translateX(200%); }
+        }
+        @keyframes floatCard {
+          0%,100% { transform: translateY(0); }
+          50%     { transform: translateY(-8px); }
         }
       `}</style>
     </div>
