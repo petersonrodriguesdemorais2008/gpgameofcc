@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame, type Card } from "@/contexts/game-context"
+import { useGame, type Card, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Heart, Sparkles, Star, Gift, Clock, Zap, Crown, BookOpen, X } from "lucide-react"
 import Image from "next/image"
@@ -175,9 +175,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   // New pack-based animation states
   const [packs, setPacks] = useState<PackData[]>([])
   const [currentPackIndex, setCurrentPackIndex] = useState(0)
-  const [packPhase, setPackPhase] = useState<"entering" | "shaking" | "opening" | "revealing" | "done">("entering")
+  const [packPhase, setPackPhase] = useState<"entering" | "floating" | "shaking" | "opening" | "revealing" | "done">("entering")
   const [cardRevealIndex, setCardRevealIndex] = useState(-1)
   const [pullCount, setPullCount] = useState(0)
+  // Drag/swipe to open
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
+  const [swipeProgress, setSwipeProgress] = useState(0)
+  const [swipeComplete, setSwipeComplete] = useState(false)
 
   const COST_SINGLE = 1
   const COST_MULTI = 10
@@ -407,20 +411,20 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }
   }, [packPhase, cardRevealIndex, currentPackIndex, packs.length])
 
-  // Pack phase progression — entering → tearing → opening → revealing
+  // Pack phase progression — entering → floating (wait swipe) → shaking → opening → revealing
   useEffect(() => {
     if (!isOpening || packs.length === 0) return
     if (packPhase === "entering") {
-      const t = setTimeout(() => setPackPhase("shaking"), 700)
+      const t = setTimeout(() => { setPackPhase("floating"); setSwipeProgress(0); setSwipeComplete(false) }, 800)
       return () => clearTimeout(t)
     }
     if (packPhase === "shaking") {
       setScreenShake(true)
-      const t = setTimeout(() => { setScreenShake(false); setPackPhase("opening") }, 900)
+      const t = setTimeout(() => { setScreenShake(false); setPackPhase("opening") }, 700)
       return () => clearTimeout(t)
     }
     if (packPhase === "opening") {
-      const t = setTimeout(() => { setPackPhase("revealing"); setCardRevealIndex(0) }, 900)
+      const t = setTimeout(() => { setPackPhase("revealing"); setCardRevealIndex(0) }, 1000)
       return () => clearTimeout(t)
     }
   }, [packPhase, isOpening, packs.length])
@@ -578,6 +582,9 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     setPackPhase("entering")
     setCardRevealIndex(-1)
     setPullCount(0)
+    setSwipeProgress(0)
+    setSwipeStartX(null)
+    setSwipeComplete(false)
   }
 
   const getRarityColor = (rarity: string) => {
@@ -1010,119 +1017,166 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
               {(() => {
                 const pack = packs[currentPackIndex]
                 const rarity = pack.highestRarity
-
-                // Rarity-based color theme
                 const rarityGlow =
                   rarity === "LR" ? { inner:"rgba(239,68,68,0.9)", outer:"rgba(251,191,36,0.5)", text:"text-red-400", label:"LENDÁRIO!" } :
                   rarity === "UR" ? { inner:"rgba(56,189,248,0.85)", outer:"rgba(99,179,237,0.4)", text:"text-sky-300", label:"ULTRA RARO!" } :
-                  rarity === "SR" ? { inner:"rgba(168,85,247,0.8)",  outer:"rgba(192,132,252,0.3)", text:"text-purple-400", label:"SUPER RARO!" } :
+                  rarity === "SR" ? { inner:"rgba(168,85,247,0.8)", outer:"rgba(192,132,252,0.3)", text:"text-purple-400", label:"SUPER RARO!" } :
                                    { inner:"rgba(148,163,184,0.5)", outer:"rgba(200,200,200,0.15)", text:"text-slate-400", label:"" }
+
+                // Swipe handlers
+                const handleSwipeStart = (clientX: number) => {
+                  if (packPhase !== "floating") return
+                  setSwipeStartX(clientX)
+                }
+                const handleSwipeMove = (clientX: number) => {
+                  if (packPhase !== "floating" || swipeStartX === null) return
+                  const delta = clientX - swipeStartX
+                  const progress = Math.min(1, Math.max(0, delta / 160))
+                  setSwipeProgress(progress)
+                  if (progress >= 1 && !swipeComplete) {
+                    setSwipeComplete(true)
+                    setSwipeProgress(1)
+                    setSwipeStartX(null)
+                    setPackPhase("shaking")
+                  }
+                }
+                const handleSwipeEnd = () => {
+                  if (swipeProgress < 1) { setSwipeProgress(0); setSwipeStartX(null) }
+                }
 
                 return (
                   <>
-                    {/* ── PACK DISPLAY ── */}
-                    {(packPhase === "entering" || packPhase === "shaking" || packPhase === "opening") && (
-                      <div className="relative flex flex-col items-center">
+                    {/* ── ENTERING + FLOATING + OPENING phases ── */}
+                    {(packPhase === "entering" || packPhase === "floating" || packPhase === "shaking" || packPhase === "opening") && (
+                      <div className="relative flex flex-col items-center select-none">
 
-                        {/* Ambient halo behind pack */}
-                        <div className="absolute inset-0 pointer-events-none" style={{
-                          background: `radial-gradient(ellipse 200px 250px at 50% 50%, ${rarityGlow.inner} 0%, transparent 70%)`,
-                          filter:"blur(30px)",
-                          animation: packPhase==="shaking" ? "haloFlicker 0.15s ease-in-out infinite" : "haloPulse 2s ease-in-out infinite",
+                        {/* Ambient halo */}
+                        <div className="absolute pointer-events-none" style={{
+                          inset:"-60px", borderRadius:"50%",
+                          background:`radial-gradient(ellipse at 50% 50%, ${rarityGlow.inner} 0%, transparent 65%)`,
+                          filter:"blur(35px)",
+                          animation: packPhase==="shaking" ? "haloFlicker 0.1s ease-in-out infinite" :
+                            packPhase==="floating" ? "haloPulse 1.8s ease-in-out infinite" : "haloPulse 2s ease-in-out infinite",
+                          opacity: packPhase==="entering" ? 0.4 : 0.8,
                         }} />
 
-                        {/* TEARING ANIMATION: top flap */}
-                        {packPhase === "opening" && (
-                          <div className="absolute top-0 left-0 right-0 z-20 overflow-hidden pointer-events-none" style={{height:"35%"}}>
-                            {/* Torn top piece */}
-                            <div style={{
-                              position:"absolute", inset:0,
-                              backgroundImage:`url(${banner.packImage})`,
-                              backgroundSize:"cover", backgroundPosition:"top",
-                              transformOrigin:"top center",
-                              animation:"tearTopFlap 0.85s cubic-bezier(0.22,1,0.36,1) forwards",
-                              filter:`drop-shadow(0 0 12px ${rarityGlow.inner})`,
-                            }} />
-                            {/* Tear edge — jagged SVG mask */}
-                            <svg className="absolute bottom-0 left-0 w-full" height="16" viewBox="0 0 208 16" preserveAspectRatio="none" style={{animation:"tearEdgeShake 0.85s ease-out forwards"}}>
-                              <path d="M0,0 L0,8 L12,3 L24,12 L38,2 L52,14 L68,4 L80,10 L96,1 L110,13 L124,5 L138,11 L152,2 L166,14 L180,4 L194,12 L208,3 L208,0 Z" fill={rarityGlow.inner} opacity="0.9"/>
-                              <path d="M0,16 L0,8 L12,3 L24,12 L38,2 L52,14 L68,4 L80,10 L96,1 L110,13 L124,5 L138,11 L152,2 L166,14 L180,4 L194,12 L208,3 L208,16 Z" fill="#000" opacity="0.6"/>
-                            </svg>
-                            {/* Tear sparks */}
-                            {[...Array(8)].map((_,i) => (
-                              <div key={i} className="absolute" style={{
-                                left:`${10+i*12}%`, bottom:"10px",
-                                width:"3px", height:`${6+Math.random()*10}px`,
-                                background:`linear-gradient(to top, ${rarityGlow.inner}, white)`,
-                                borderRadius:"2px",
-                                animation:`tearSpark 0.5s ease-out ${i*0.04}s forwards`,
-                                opacity:0,
-                              }} />
-                            ))}
-                            {/* Energy beam from tear */}
-                            <div style={{
-                              position:"absolute", bottom:"-20px", left:"50%", transform:"translateX(-50%)",
-                              width:"4px", height:"40px",
-                              background:`linear-gradient(to bottom, white, ${rarityGlow.inner}, transparent)`,
-                              filter:`blur(2px)`,
-                              animation:"tearBeam 0.85s ease-out forwards", opacity:0,
-                            }} />
+                        {/* "Abra!" label — only in floating */}
+                        {packPhase === "floating" && (
+                          <div className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap"
+                            style={{animation:"abraLabel 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
+                            <span className="text-white/90 font-black text-xl tracking-widest" style={{
+                              textShadow:`0 0 14px ${rarityGlow.inner}, 0 0 28px ${rarityGlow.outer}`}}>
+                              Abra!
+                            </span>
                           </div>
                         )}
 
                         {/* Pack body */}
-                        <div
-                          className="relative"
-                          style={{
-                            width:"208px", height:"308px",
-                            animation:
-                              packPhase==="entering"  ? "packEnterEpic 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards" :
-                              packPhase==="shaking"   ? "packShakeEpic 0.12s ease-in-out infinite" :
-                              packPhase==="opening"   ? "packOpenEpic 0.85s cubic-bezier(0.22,1,0.36,1) forwards" :
-                              undefined,
-                            filter: `drop-shadow(0 0 30px ${rarityGlow.inner}) drop-shadow(0 0 60px ${rarityGlow.outer})`,
-                          }}
-                        >
+                        <div className="relative" style={{
+                          width:"208px", height:"308px",
+                          animation:
+                            packPhase==="entering" ? "packEnterEpic 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards" :
+                            packPhase==="floating" ? "packFloat 2.4s ease-in-out infinite" :
+                            packPhase==="shaking"  ? "packShakeEpic 0.1s ease-in-out infinite" :
+                            packPhase==="opening"  ? "packOpenEpic 1s cubic-bezier(0.22,1,0.36,1) forwards" :
+                            undefined,
+                          filter:`drop-shadow(0 0 30px ${rarityGlow.inner}) drop-shadow(0 0 60px ${rarityGlow.outer})`,
+                        }}>
                           <Image src={banner.packImage||"/placeholder.svg"} alt="Pack" fill sizes="208px" className="object-contain" />
-                          {/* Holographic sheen overlay */}
-                          <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{
-                            background:"linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)",
-                            animation:"packSheen 3s ease-in-out infinite",
+                          {/* Holographic sheen */}
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg" style={{
+                            background:"linear-gradient(135deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%)",
+                            animation:"packSheen 3.5s ease-in-out infinite",
                           }} />
+
+                          {/* ── TEAR LINE + SWIPE ZONE (only in floating) ── */}
+                          {packPhase === "floating" && (
+                            <div
+                              className="absolute left-0 right-0 z-30 cursor-grab active:cursor-grabbing"
+                              style={{top:"28%", height:"44px", touchAction:"none"}}
+                              onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); handleSwipeStart(e.clientX) }}
+                              onPointerMove={e => handleSwipeMove(e.clientX)}
+                              onPointerUp={handleSwipeEnd}
+                              onPointerCancel={handleSwipeEnd}
+                            >
+                              {/* Tear perforation line */}
+                              <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex items-center gap-[3px] px-1">
+                                {[...Array(28)].map((_,i) => (
+                                  <div key={i} className="flex-1 h-[2px] rounded-full" style={{
+                                    background: swipeProgress > i/28
+                                      ? `linear-gradient(to right, white, ${rarityGlow.inner})`
+                                      : "rgba(255,255,255,0.25)",
+                                    transition:"background 0.1s",
+                                    boxShadow: swipeProgress > i/28 ? `0 0 6px ${rarityGlow.inner}` : "none",
+                                  }} />
+                                ))}
+                              </div>
+
+                              {/* Scissor / swipe arrow indicator */}
+                              <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-100"
+                                style={{left:`${4 + swipeProgress * 88}%`}}>
+                                <div className="flex items-center gap-1"
+                                  style={{animation: swipeProgress === 0 ? "swipeHint 1.2s ease-in-out infinite" : "none",
+                                    filter:`drop-shadow(0 0 8px ${rarityGlow.inner})`}}>
+                                  <span style={{fontSize:"20px", lineHeight:1}}>✂</span>
+                                  {swipeProgress < 0.05 && (
+                                    <span className="text-white/70 text-[10px] font-bold ml-1 whitespace-nowrap" style={{animation:"swipeHintText 1.2s ease-in-out infinite"}}>
+                                      ← rasgar
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Progress glow fill */}
+                              {swipeProgress > 0 && (
+                                <div className="absolute top-0 left-0 bottom-0 pointer-events-none rounded-r-full" style={{
+                                  width:`${swipeProgress*100}%`,
+                                  background:`linear-gradient(to right, transparent, ${rarityGlow.inner}20)`,
+                                  borderRight:`2px solid ${rarityGlow.inner}`,
+                                  boxShadow:`0 0 12px ${rarityGlow.inner}`,
+                                }} />
+                              )}
+                            </div>
+                          )}
                         </div>
+
+                        {/* Swipe instruction text */}
+                        {packPhase === "floating" && swipeProgress === 0 && (
+                          <div className="mt-6 text-center pointer-events-none" style={{animation:"abraLabel 0.6s ease-out 0.2s both"}}>
+                            <p className="text-white/40 text-xs tracking-widest">arraste a linha para rasgar</p>
+                          </div>
+                        )}
 
                         {/* Burst rays on opening */}
                         {packPhase === "opening" && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            {[...Array(16)].map((_,i) => (
+                            {[...Array(18)].map((_,i) => (
                               <div key={i} className="absolute" style={{
-                                width:"3px", height:"180px",
+                                width:"2.5px", height:"200px",
                                 background:`linear-gradient(to top, transparent, ${rarityGlow.inner}, white, transparent)`,
-                                transform:`rotate(${i*(360/16)}deg)`,
+                                transform:`rotate(${i*(360/18)}deg)`,
                                 transformOrigin:"50% 100%",
-                                top:"50%", left:"50%", marginLeft:"-1.5px",
-                                animation:`burstRayEpic 0.85s cubic-bezier(0.22,1,0.36,1) ${i*0.015}s forwards`,
+                                top:"50%", left:"50%", marginLeft:"-1.25px",
+                                animation:`burstRayEpic 1s cubic-bezier(0.22,1,0.36,1) ${i*0.012}s forwards`,
                                 opacity:0, borderRadius:"2px",
                                 filter:`blur(1px) drop-shadow(0 0 4px ${rarityGlow.inner})`,
                               }} />
                             ))}
-                            {/* Central flash */}
                             <div className="absolute inset-0 rounded-full" style={{
-                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 30%, transparent 70%)`,
-                              animation:"centralFlash 0.85s ease-out forwards",
+                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 25%, transparent 65%)`,
+                              animation:"centralFlash 1s ease-out forwards",
                             }} />
                           </div>
                         )}
 
                         {/* Rarity announcement */}
                         {packPhase === "opening" && rarity !== "R" && (
-                          <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 whitespace-nowrap" style={{animation:"rarityAnnounce 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards", opacity:0, transform:"translateX(-50%) scale(0.5)"}}>
+                          <div className="absolute -bottom-20 left-1/2 whitespace-nowrap pointer-events-none"
+                            style={{animation:"rarityAnnounce 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.35s forwards",
+                              opacity:0, transform:"translateX(-50%) scale(0.5)"}}>
                             <span className={`text-3xl font-black tracking-widest drop-shadow-2xl ${rarityGlow.text}`}
-                              style={{
-                                textShadow: rarity==="LR" ? "0 0 20px #ef4444, 0 0 40px #fbbf24" :
-                                  rarity==="UR" ? "0 0 20px #38bdf8, 0 0 40px #7dd3fc" :
-                                  "0 0 20px #a855f7, 0 0 35px #c084fc"
-                              }}>
+                              style={{textShadow: rarity==="LR"?"0 0 20px #ef4444, 0 0 40px #fbbf24":
+                                rarity==="UR"?"0 0 20px #38bdf8, 0 0 40px #7dd3fc":"0 0 20px #a855f7, 0 0 35px #c084fc"}}>
                               {rarityGlow.label}
                             </span>
                           </div>
@@ -1225,7 +1279,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                     {/* ── CARD BACK ── */}
                                     <div className="absolute inset-0 rounded-xl overflow-hidden"
                                       style={{ backfaceVisibility:"hidden", transform:"rotateY(180deg)" }}>
-                                      <Image src="/images/gacha/card-back.png" alt="Card Back" fill sizes="128px" className="object-cover" />
+                                      <Image src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="Card Back" fill sizes="128px" className="object-cover" />
                                       {/* Rarity glow aura on back while pending reveal */}
                                       {!isRevealed && idx <= cardRevealIndex && (
                                         <div className="absolute inset-0 pointer-events-none" style={{
@@ -1366,6 +1420,31 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       )}
 
       <style jsx>{`
+        /* ── Pack float idle ── */
+        @keyframes packFloat {
+          0%,100% { transform: translateY(0px) rotate(0deg); }
+          30%     { transform: translateY(-12px) rotate(0.5deg); }
+          70%     { transform: translateY(-8px) rotate(-0.3deg); }
+        }
+
+        /* ── "Abra!" label ── */
+        @keyframes abraLabel {
+          0%   { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.85); }
+          60%  { opacity: 1; transform: translateX(-50%) translateY(2px) scale(1.05); }
+          100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+
+        /* ── Swipe hint wiggle ── */
+        @keyframes swipeHint {
+          0%,100% { transform: translateX(0); opacity: 0.7; }
+          40%     { transform: translateX(18px); opacity: 1; }
+          80%     { transform: translateX(8px); opacity: 0.9; }
+        }
+        @keyframes swipeHintText {
+          0%,100% { opacity: 0.5; }
+          50%     { opacity: 1; }
+        }
+
         /* ── Ambient float ── */
         @keyframes floatParticle {
           0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.15; }
