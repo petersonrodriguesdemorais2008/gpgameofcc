@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame, type Card } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Heart, Sparkles, Star, Gift, Clock, Zap, Crown, BookOpen, ChevronDown, ChevronUp, X } from "lucide-react"
+import { ArrowLeft, Heart, Sparkles, Star, Gift, Clock, Zap, Crown, BookOpen, X } from "lucide-react"
 import Image from "next/image"
 
 interface GachaScreenProps {
@@ -169,6 +169,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [dailyUsed, setDailyUsed] = useState(false)
   const [timeUntilReset, setTimeUntilReset] = useState("")
   const [showCardPool, setShowCardPool] = useState(false)
+  const [zoomedPoolCard, setZoomedPoolCard] = useState<{ image: string; name: string; rarity: string } | null>(null)
 
   // New pack-based animation states
   const [packs, setPacks] = useState<PackData[]>([])
@@ -578,14 +579,32 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
   const getRarityGlow = (rarity: string) => {
     switch (rarity) {
-      case "LR":
-        return "0 0 30px rgba(239,68,68,0.8), 0 0 60px rgba(251,191,36,0.5)"
-      case "UR":
-        return "0 0 25px rgba(251,191,36,0.7)"
-      case "SR":
-        return "0 0 20px rgba(168,85,247,0.6)"
-      default:
-        return "none"
+      case "LR": return "0 0 30px rgba(239,68,68,0.8), 0 0 60px rgba(251,191,36,0.5)"
+      case "UR": return "0 0 25px rgba(251,191,36,0.7)"
+      case "SR": return "0 0 20px rgba(168,85,247,0.6)"
+      default: return "none"
+    }
+  }
+
+  // Look up a card's image from allCards by name + optional rarity
+  const findCardImage = (name: string, rarity?: string): string => {
+    const match = allCards.find(c =>
+      c.name === name && (
+        !rarity ||
+        rarity === "R/SR" ||
+        c.rarity === rarity
+      )
+    )
+    return match?.image || "/placeholder.svg"
+  }
+
+  const getRarityBadgeStyle = (rarity: string) => {
+    switch (rarity) {
+      case "LR": return "bg-gradient-to-r from-red-500 to-amber-500 text-white"
+      case "UR": return "bg-gradient-to-r from-amber-400 to-yellow-500 text-black"
+      case "SR": return "bg-purple-500 text-white"
+      case "R/SR": return "bg-slate-500 text-white"
+      default: return "bg-slate-600 text-white"
     }
   }
 
@@ -663,169 +682,167 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       <div className="relative z-10 flex-1 flex flex-col items-center px-4 pb-6">
         {currentBanner !== "friendship" ? (
           <>
-            {/* Banner image */}
-            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl mb-4 group" style={{aspectRatio:"16/7",border:"1px solid rgba(255,255,255,0.08)"}}>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
-              <Image src={banner.bannerImage || "/placeholder.svg"} alt={banner.name} fill sizes="(max-width:768px) 100vw, 768px" className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-20" />
-              <div className="absolute bottom-0 left-0 right-0 z-20 px-4 py-3">
-                <h2 className={`text-xl font-black ${banner.accentColor} drop-shadow-lg`}>{banner.name}</h2>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className="text-white/55 text-xs flex items-center gap-1"><Sparkles className="w-3 h-3"/>4 cartas por pack</span>
-                  <span className="text-white/30 text-xs">•</span>
-                  <span className="text-white/55 text-xs">Todas raridades</span>
-                  <span className="text-white/30 text-xs">•</span>
-                  <span className="text-white/30 text-xs">{banner.code}</span>
-                </div>
-              </div>
-            </div>
+            {/* ── MAIN AREA: banner left | card pool right ── */}
+            <div className={`flex gap-3 w-full mb-3 ${showCardPool ? "max-w-5xl" : "max-w-3xl"} transition-all duration-300`}>
 
-            {/* ── PULL BUTTONS ROW: Daily | Single | Multi ── */}
-            <div className="flex gap-2.5 w-full max-w-xl mb-3">
-
-              {/* DAILY GACHA — takes the place of 1-pack */}
-              <button
-                onClick={pullDailyGacha}
-                disabled={dailyUsed || isOpening}
-                className={`flex-1 relative group rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
-                  dailyUsed || isOpening
-                    ? "border-slate-700/50 opacity-60 cursor-not-allowed"
-                    : "border-emerald-500/60 hover:scale-105 hover:border-emerald-400"
-                }`}
-                style={{background: dailyUsed ? "linear-gradient(135deg,#0f1a13,#111b14)" : "linear-gradient(135deg,#064e3b,#065f46,#047857)"}}
-              >
-                {/* shimmer */}
-                {!dailyUsed && !isOpening && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-300/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                )}
-                {/* FREE badge */}
-                {!dailyUsed && (
-                  <div className="absolute -top-px -right-px bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg rounded-tr-xl z-10 animate-pulse">FREE</div>
-                )}
-                <div className="relative px-3 py-4 flex flex-col items-center gap-1.5">
-                  {dailyUsed
-                    ? <Clock className="w-6 h-6 text-slate-600" />
-                    : <Gift className="w-6 h-6 text-emerald-300" style={{filter:"drop-shadow(0 0 6px rgba(52,211,153,0.8))"}} />
-                  }
-                  <span className={`text-[11px] font-black tracking-widest uppercase ${dailyUsed ? "text-slate-600" : "text-emerald-200"}`}>Diário</span>
-                  {dailyUsed && timeUntilReset ? (
-                    <span className="text-slate-700 text-[10px] font-mono">{timeUntilReset}</span>
-                  ) : (
-                    <span className={`text-[11px] font-bold ${dailyUsed ? "text-slate-700" : "text-emerald-400"}`}>
-                      {dailyUsed ? "Usado" : "GRÁTIS"}
-                    </span>
+              {/* LEFT COL: banner + buttons + rates */}
+              <div className="flex flex-col flex-1 min-w-0">
+                {/* Banner image */}
+                <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl mb-3 group" style={{aspectRatio:"16/7", border:"1px solid rgba(255,255,255,0.08)"}}>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
+                  <Image src={banner.bannerImage || "/placeholder.svg"} alt={banner.name} fill sizes="(max-width:768px) 100vw, 640px" className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 z-20" />
+                  {/* Bottom info */}
+                  <div className="absolute bottom-0 left-0 right-0 z-20 px-4 py-2.5">
+                    <h2 className={`text-lg font-black ${banner.accentColor} drop-shadow-lg`}>{banner.name}</h2>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-white/50 text-[11px] flex items-center gap-1"><Sparkles className="w-2.5 h-2.5"/>4 cartas por pack</span>
+                      <span className="text-white/30 text-[11px]">•</span>
+                      <span className="text-white/50 text-[11px]">{banner.code}</span>
+                    </div>
+                  </div>
+                  {/* Ver Cartas button — bottom-right of banner */}
+                  {CARD_POOLS[currentBanner]?.length > 0 && (
+                    <button
+                      onClick={() => setShowCardPool(v => !v)}
+                      className={`absolute bottom-2.5 right-3 z-30 flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all duration-200 ${
+                        showCardPool
+                          ? "bg-white/20 border-white/30 text-white"
+                          : "bg-black/50 border-white/15 text-white/70 hover:bg-black/70 hover:text-white hover:border-white/30"
+                      } backdrop-blur-sm`}
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      {showCardPool ? "Fechar" : "Ver Cartas"}
+                    </button>
                   )}
                 </div>
-              </button>
 
-              {/* SINGLE PULL */}
-              <button
-                onClick={() => pullGacha(1)}
-                disabled={coins < COST_SINGLE || isOpening}
-                className="flex-1 relative group rounded-2xl overflow-hidden border-2 border-amber-400/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 hover:border-amber-400/70"
-                style={{background:"linear-gradient(135deg,#78350f,#92400e,#b45309)"}}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                <div className="relative px-3 py-4 flex flex-col items-center gap-1.5">
-                  <span className="text-white/60 text-[11px] font-semibold tracking-widest uppercase">1 Pack</span>
-                  <span className="text-white text-base font-black">{t("gacha1")}</span>
-                  <div className="flex items-center gap-1 bg-black/30 rounded-full px-2.5 py-0.5">
-                    <Image src="/images/icons/gacha-coin.png" alt="Coin" width={15} height={15} className="object-contain" />
-                    <span className="text-amber-300 font-bold text-xs">{COST_SINGLE}</span>
-                  </div>
-                </div>
-              </button>
-
-              {/* MULTI PULL */}
-              <button
-                onClick={() => pullGacha(10)}
-                disabled={coins < COST_MULTI || isOpening}
-                className="flex-[1.3] relative group rounded-2xl overflow-hidden border-2 border-purple-400/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 hover:border-purple-400/80"
-                style={{background:"linear-gradient(135deg,#3b0764,#4c1d95,#6d28d9)"}}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                <div className="absolute -top-px -right-px bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] font-black px-2.5 py-0.5 rounded-bl-lg rounded-tr-xl z-10 animate-pulse">HOT</div>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                <div className="relative px-3 py-4 flex flex-col items-center gap-1.5">
-                  <span className="text-white/60 text-[11px] font-semibold tracking-widest uppercase">10 Packs</span>
-                  <span className="text-white text-base font-black">{t("gacha10")}</span>
-                  <div className="flex items-center gap-1 bg-black/30 rounded-full px-2.5 py-0.5">
-                    <Image src="/images/icons/gacha-coin.png" alt="Coin" width={15} height={15} className="object-contain" />
-                    <span className="text-purple-300 font-bold text-xs">{COST_MULTI}</span>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {/* ── RATES + VER CARTAS ── */}
-            <div className="flex items-center justify-between w-full max-w-xl mb-3">
-              <div className="flex items-center gap-3 text-[11px]">
-                <span className="text-red-500/70 font-bold">LR 0.5%</span>
-                <span className="text-slate-700">·</span>
-                <span className="text-amber-500/70 font-bold">UR 4.5%</span>
-                <span className="text-slate-700">·</span>
-                <span className="text-purple-500/70 font-bold">SR 25%</span>
-                <span className="text-slate-700">·</span>
-                <span className="text-slate-500 font-bold">R 70%</span>
-              </div>
-              {CARD_POOLS[currentBanner]?.length > 0 && (
-                <button
-                  onClick={() => setShowCardPool(v => !v)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 hover:bg-white/5"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  Ver Cartas
-                  {showCardPool ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
-              )}
-            </div>
-
-            {/* ── CARD POOL VIEWER ── */}
-            {showCardPool && CARD_POOLS[currentBanner] && (
-              <div className="w-full max-w-xl rounded-2xl overflow-hidden border border-white/10 mb-2" style={{background:"rgba(8,8,20,0.92)"}}>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-slate-400" />
-                    <span className="text-white font-bold text-sm">Cartas disponíveis — {banner.name}</span>
-                  </div>
-                  <button onClick={() => setShowCardPool(false)} className="text-slate-600 hover:text-white transition-colors">
-                    <X className="w-4 h-4" />
+                {/* Pull buttons */}
+                <div className="flex gap-2 mb-2.5">
+                  {/* DAILY */}
+                  <button onClick={pullDailyGacha} disabled={dailyUsed || isOpening}
+                    className={`flex-1 relative group rounded-xl overflow-hidden border-2 transition-all duration-300 ${dailyUsed || isOpening ? "border-slate-700/50 opacity-60 cursor-not-allowed" : "border-emerald-500/60 hover:scale-105 hover:border-emerald-400"}`}
+                    style={{background: dailyUsed ? "linear-gradient(135deg,#0f1a13,#111b14)" : "linear-gradient(135deg,#064e3b,#065f46,#047857)"}}>
+                    {!dailyUsed && !isOpening && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-300/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />}
+                    {!dailyUsed && <div className="absolute -top-px -right-px bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg rounded-tr-xl z-10 animate-pulse">FREE</div>}
+                    <div className="relative px-2 py-3 flex flex-col items-center gap-1">
+                      {dailyUsed ? <Clock className="w-5 h-5 text-slate-600" /> : <Gift className="w-5 h-5 text-emerald-300" style={{filter:"drop-shadow(0 0 6px rgba(52,211,153,0.8))"}} />}
+                      <span className={`text-[10px] font-black tracking-widest uppercase ${dailyUsed ? "text-slate-600" : "text-emerald-200"}`}>Diário</span>
+                      {dailyUsed && timeUntilReset ? <span className="text-slate-700 text-[9px] font-mono">{timeUntilReset}</span> : <span className={`text-[10px] font-bold ${dailyUsed ? "text-slate-700" : "text-emerald-400"}`}>{dailyUsed ? "Usado" : "GRÁTIS"}</span>}
+                    </div>
                   </button>
-                </div>
-                <div className="max-h-[52vh] overflow-y-auto p-3 space-y-3">
-                  {CARD_POOLS[currentBanner].map((group) => (
-                    <div key={group.category}>
-                      <div className="flex items-center gap-2 mb-2 px-1">
-                        <span className="text-base">{group.emoji}</span>
-                        <span className="text-xs font-black text-slate-300 tracking-wider uppercase">{group.category}</span>
-                        <span className="text-xs text-slate-600 ml-auto">({group.cards.length})</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {group.cards.map((card, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-white/[0.04] rounded-lg px-3 py-2 border border-white/[0.06]">
-                            <span className="text-white/80 text-xs font-semibold flex-1 truncate">{card.name}</span>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              {card.rarity && (
-                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                                  card.rarity === "LR" ? "bg-red-500/30 text-red-300" :
-                                  card.rarity === "UR" ? "bg-amber-500/30 text-amber-300" :
-                                  card.rarity === "SR" ? "bg-purple-500/30 text-purple-300" :
-                                  card.rarity === "R/SR" ? "bg-slate-500/30 text-slate-300" :
-                                  "bg-slate-600/30 text-slate-400"
-                                }`}>{card.rarity}</span>
-                              )}
-                              {card.dp && <span className="text-cyan-400/80 text-[10px] font-bold">{card.dp}</span>}
-                              {card.note && <span className="text-slate-600 text-[10px]">{card.note}</span>}
-                            </div>
-                          </div>
-                        ))}
+                  {/* SINGLE */}
+                  <button onClick={() => pullGacha(1)} disabled={coins < COST_SINGLE || isOpening}
+                    className="flex-1 relative group rounded-xl overflow-hidden border-2 border-amber-400/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105"
+                    style={{background:"linear-gradient(135deg,#78350f,#92400e,#b45309)"}}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                    <div className="relative px-2 py-3 flex flex-col items-center gap-1">
+                      <span className="text-white/60 text-[10px] font-semibold tracking-widest uppercase">1 Pack</span>
+                      <span className="text-white text-sm font-black">{t("gacha1")}</span>
+                      <div className="flex items-center gap-1 bg-black/30 rounded-full px-2 py-0.5">
+                        <Image src="/images/icons/gacha-coin.png" alt="Coin" width={13} height={13} className="object-contain" />
+                        <span className="text-amber-300 font-bold text-[10px]">{COST_SINGLE}</span>
                       </div>
                     </div>
-                  ))}
+                  </button>
+                  {/* MULTI */}
+                  <button onClick={() => pullGacha(10)} disabled={coins < COST_MULTI || isOpening}
+                    className="flex-[1.3] relative group rounded-xl overflow-hidden border-2 border-purple-400/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105"
+                    style={{background:"linear-gradient(135deg,#3b0764,#4c1d95,#6d28d9)"}}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                    <div className="absolute -top-px -right-px bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg rounded-tr-xl z-10 animate-pulse">HOT</div>
+                    <div className="relative px-2 py-3 flex flex-col items-center gap-1">
+                      <span className="text-white/60 text-[10px] font-semibold tracking-widest uppercase">10 Packs</span>
+                      <span className="text-white text-sm font-black">{t("gacha10")}</span>
+                      <div className="flex items-center gap-1 bg-black/30 rounded-full px-2 py-0.5">
+                        <Image src="/images/icons/gacha-coin.png" alt="Coin" width={13} height={13} className="object-contain" />
+                        <span className="text-purple-300 font-bold text-[10px]">{COST_MULTI}</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Rates */}
+                <div className="flex items-center gap-2.5 text-[10px]">
+                  <span className="text-red-500/70 font-bold">LR 0.5%</span>
+                  <span className="text-slate-700">·</span>
+                  <span className="text-amber-500/70 font-bold">UR 4.5%</span>
+                  <span className="text-slate-700">·</span>
+                  <span className="text-purple-500/70 font-bold">SR 25%</span>
+                  <span className="text-slate-700">·</span>
+                  <span className="text-slate-500 font-bold">R 70%</span>
                 </div>
               </div>
-            )}
+
+              {/* RIGHT COL: card pool panel */}
+              {showCardPool && CARD_POOLS[currentBanner] && (
+                <div className="w-72 flex-shrink-0 rounded-2xl overflow-hidden border border-white/10 flex flex-col" style={{background:"rgba(7,7,18,0.95)"}}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.07] flex-shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-white font-bold text-xs">Cartas da Box</span>
+                    </div>
+                    <button onClick={() => setShowCardPool(false)} className="text-slate-600 hover:text-white transition-colors p-0.5 rounded">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Scrollable card grid */}
+                  <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
+                    {CARD_POOLS[currentBanner].map((group) => (
+                      <div key={group.category}>
+                        {/* Category header */}
+                        <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
+                          <span className="text-sm">{group.emoji}</span>
+                          <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">{group.category}</span>
+                          <span className="text-[10px] text-slate-700 ml-auto">({group.cards.length})</span>
+                        </div>
+                        {/* Card grid */}
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {group.cards.map((poolCard, idx) => {
+                            const img = findCardImage(poolCard.name, poolCard.rarity)
+                            const displayRarity = poolCard.rarity || "R"
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => setZoomedPoolCard({ image: img, name: poolCard.name, rarity: displayRarity })}
+                                className="flex flex-col items-center gap-1 group/card"
+                              >
+                                {/* Card art */}
+                                <div
+                                  className="relative w-full rounded-lg overflow-hidden border transition-all duration-200 group-hover/card:scale-110 group-hover/card:z-10"
+                                  style={{
+                                    aspectRatio: "3/4",
+                                    borderColor: displayRarity === "LR" ? "rgba(239,68,68,0.6)" :
+                                      displayRarity === "UR" ? "rgba(251,191,36,0.5)" :
+                                      displayRarity === "SR" ? "rgba(168,85,247,0.4)" :
+                                      "rgba(100,116,139,0.3)",
+                                    boxShadow: displayRarity === "LR" ? "0 0 8px rgba(239,68,68,0.4)" :
+                                      displayRarity === "UR" ? "0 0 6px rgba(251,191,36,0.35)" :
+                                      displayRarity === "SR" ? "0 0 5px rgba(168,85,247,0.3)" : "none"
+                                  }}
+                                >
+                                  <Image src={img} alt={poolCard.name} fill sizes="60px" className="object-cover" />
+                                  {/* LR rainbow border */}
+                                  {displayRarity === "LR" && (
+                                    <div className="absolute inset-0 pointer-events-none" style={{background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",backgroundSize:"200% 100%",animation:"rainbowShift 2s linear infinite",padding:"2px",WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",WebkitMaskComposite:"xor",maskComposite:"exclude"}} />
+                                  )}
+                                </div>
+                                {/* Rarity badge */}
+                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-full text-center ${getRarityBadgeStyle(displayRarity)}`}>
+                                  {displayRarity}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <>
@@ -877,6 +894,48 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           </>
         )}
       </div>
+
+      {/* ── CARD POOL ZOOM MODAL ── */}
+      {zoomedPoolCard && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-6"
+          onClick={() => setZoomedPoolCard(null)}
+        >
+          <div className="relative" style={{animation:"cardPopIn 0.3s ease-out forwards"}}>
+            {/* Glow aura */}
+            <div className="absolute inset-0 blur-3xl rounded-2xl scale-110" style={{
+              background: zoomedPoolCard.rarity === "LR" ? "rgba(239,68,68,0.5)" :
+                zoomedPoolCard.rarity === "UR" ? "rgba(251,191,36,0.45)" :
+                zoomedPoolCard.rarity === "SR" ? "rgba(168,85,247,0.4)" : "rgba(100,116,139,0.3)"
+            }} />
+            {/* Card image */}
+            <div className="relative w-56 rounded-2xl overflow-hidden shadow-2xl" style={{
+              aspectRatio:"3/4",
+              boxShadow: zoomedPoolCard.rarity === "LR" ? "0 0 40px rgba(239,68,68,0.7), 0 0 80px rgba(251,191,36,0.4)" :
+                zoomedPoolCard.rarity === "UR" ? "0 0 35px rgba(251,191,36,0.7)" :
+                zoomedPoolCard.rarity === "SR" ? "0 0 30px rgba(168,85,247,0.6)" : "none"
+            }}>
+              <Image src={zoomedPoolCard.image} alt={zoomedPoolCard.name} fill sizes="224px" className="object-cover" />
+              {/* LR rainbow */}
+              {zoomedPoolCard.rarity === "LR" && (
+                <div className="absolute inset-0 pointer-events-none" style={{background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",backgroundSize:"200% 100%",animation:"rainbowShift 2s linear infinite",padding:"3px",WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",WebkitMaskComposite:"xor",maskComposite:"exclude"}} />
+              )}
+              {/* UR border */}
+              {zoomedPoolCard.rarity === "UR" && (
+                <div className="absolute inset-0 pointer-events-none border-2 border-amber-400/80" style={{animation:"pulseGlow 1.5s ease-in-out infinite"}} />
+              )}
+            </div>
+          </div>
+          {/* Name + rarity */}
+          <div className="mt-4 text-center" style={{animation:"fadeIn 0.4s ease-out 0.15s both"}}>
+            <p className="text-white font-black text-xl drop-shadow-lg">{zoomedPoolCard.name}</p>
+            <span className={`inline-block mt-2 px-4 py-1 rounded-full text-sm font-black ${getRarityBadgeStyle(zoomedPoolCard.rarity)}`}>
+              {zoomedPoolCard.rarity}
+            </span>
+          </div>
+          <p className="mt-4 text-slate-600 text-xs">Toque para fechar</p>
+        </div>
+      )}
 
       {/* Cinematic Opening Overlay */}
       {(isOpening || showResults) && currentBanner !== "friendship" && (
