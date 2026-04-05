@@ -169,6 +169,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [dailyUsed, setDailyUsed] = useState(false)
   const [timeUntilReset, setTimeUntilReset] = useState("")
   const [showCardPool, setShowCardPool] = useState(false)
+  const [cardPoolSection, setCardPoolSection] = useState(0)
   const [zoomedPoolCard, setZoomedPoolCard] = useState<{ image: string; name: string; rarity: string } | null>(null)
 
   // New pack-based animation states
@@ -663,7 +664,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         {(["fsg", "anl", "friendship"] as BannerType[]).map((bannerKey) => (
           <button
             key={bannerKey}
-            onClick={() => { setCurrentBanner(bannerKey); setShowCardPool(false) }}
+            onClick={() => { setCurrentBanner(bannerKey); setShowCardPool(false); setCardPoolSection(0) }}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 border ${
               currentBanner === bannerKey
                 ? `bg-gradient-to-r ${BANNERS[bannerKey].color} border-white/25 shadow-lg scale-[1.03]`
@@ -776,29 +777,47 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
               {/* RIGHT COL: card pool panel */}
               {showCardPool && CARD_POOLS[currentBanner] && (
-                <div className="w-72 flex-shrink-0 rounded-2xl overflow-hidden border border-white/10 flex flex-col" style={{background:"rgba(7,7,18,0.95)"}}>
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.07] flex-shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="text-white font-bold text-xs">Cartas da Box</span>
+                <div className="w-72 flex-shrink-0 rounded-2xl border border-white/10 flex flex-col" style={{background:"rgba(7,7,18,0.97)", height:"fit-content", maxHeight:"calc(100vh - 220px)"}}>
+
+                  {/* Header with section tabs */}
+                  <div className="flex-shrink-0 border-b border-white/[0.07]">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-white font-bold text-xs">Cartas da Box</span>
+                      </div>
+                      <button onClick={() => setShowCardPool(false)} className="text-slate-600 hover:text-white transition-colors p-0.5 rounded">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button onClick={() => setShowCardPool(false)} className="text-slate-600 hover:text-white transition-colors p-0.5 rounded">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Section selector — horizontal scroll */}
+                    <div className="flex gap-1 px-2 pb-2 overflow-x-auto scrollbar-none">
+                      {CARD_POOLS[currentBanner].map((group, idx) => (
+                        <button
+                          key={group.category}
+                          onClick={() => setCardPoolSection(idx)}
+                          className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all duration-150 border ${
+                            cardPoolSection === idx
+                              ? "bg-white/15 border-white/25 text-white"
+                              : "bg-white/[0.03] border-white/[0.06] text-slate-500 hover:text-slate-300 hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <span>{group.emoji}</span>
+                          <span className="whitespace-nowrap">{group.category.split(" ")[0]}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* Scrollable card grid */}
-                  <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
-                    {CARD_POOLS[currentBanner].map((group) => (
-                      <div key={group.category}>
-                        {/* Category header */}
-                        <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
-                          <span className="text-sm">{group.emoji}</span>
-                          <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">{group.category}</span>
-                          <span className="text-[10px] text-slate-700 ml-auto">({group.cards.length})</span>
+                  {/* Cards grid for active section */}
+                  {(() => {
+                    const group = CARD_POOLS[currentBanner][cardPoolSection]
+                    if (!group) return null
+                    return (
+                      <div className="overflow-y-auto p-2">
+                        <div className="text-[10px] font-black text-slate-500 tracking-wider uppercase mb-2 px-0.5">
+                          {group.emoji} {group.category} ({group.cards.length})
                         </div>
-                        {/* Card grid */}
                         <div className="grid grid-cols-4 gap-1.5">
                           {group.cards.map((poolCard, idx) => {
                             const img = findCardImage(poolCard.name, poolCard.rarity)
@@ -809,28 +828,17 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 onClick={() => setZoomedPoolCard({ image: img, name: poolCard.name, rarity: displayRarity })}
                                 className="flex flex-col items-center gap-1 group/card"
                               >
-                                {/* Card art */}
                                 <div
-                                  className="relative w-full rounded-lg overflow-hidden border transition-all duration-200 group-hover/card:scale-110 group-hover/card:z-10"
-                                  style={{
-                                    aspectRatio: "3/4",
-                                    borderColor: displayRarity === "LR" ? "rgba(239,68,68,0.6)" :
-                                      displayRarity === "UR" ? "rgba(251,191,36,0.5)" :
-                                      displayRarity === "SR" ? "rgba(168,85,247,0.4)" :
-                                      "rgba(100,116,139,0.3)",
-                                    boxShadow: displayRarity === "LR" ? "0 0 8px rgba(239,68,68,0.4)" :
-                                      displayRarity === "UR" ? "0 0 6px rgba(251,191,36,0.35)" :
-                                      displayRarity === "SR" ? "0 0 5px rgba(168,85,247,0.3)" : "none"
-                                  }}
+                                  className={`relative w-full rounded-lg overflow-hidden border transition-all duration-200 group-hover/card:scale-110 group-hover/card:z-10 ${
+                                    displayRarity === "LR" ? "rarity-lr" :
+                                    displayRarity === "UR" ? "rarity-ur" :
+                                    displayRarity === "SR" ? "rarity-sr" : "rarity-r"
+                                  }`}
+                                  style={{aspectRatio:"3/4"}}
                                 >
                                   <Image src={img} alt={poolCard.name} fill sizes="60px" className="object-cover" />
-                                  {/* LR rainbow border */}
-                                  {displayRarity === "LR" && (
-                                    <div className="absolute inset-0 pointer-events-none" style={{background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",backgroundSize:"200% 100%",animation:"rainbowShift 2s linear infinite",padding:"2px",WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",WebkitMaskComposite:"xor",maskComposite:"exclude"}} />
-                                  )}
                                 </div>
-                                {/* Rarity badge */}
-                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-full text-center ${getRarityBadgeStyle(displayRarity)}`}>
+                                <span className={`text-[9px] font-black px-1 py-0.5 rounded w-full text-center ${getRarityBadgeStyle(displayRarity)}`}>
                                   {displayRarity}
                                 </span>
                               </button>
@@ -838,8 +846,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           })}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -895,45 +903,43 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         )}
       </div>
 
-      {/* ── CARD POOL ZOOM MODAL ── */}
+      {/* ── CARD POOL ZOOM — igual à coleção ── */}
       {zoomedPoolCard && (
         <div
-          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-6"
+          className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[70] p-4"
           onClick={() => setZoomedPoolCard(null)}
         >
-          <div className="relative" style={{animation:"cardPopIn 0.3s ease-out forwards"}}>
-            {/* Glow aura */}
-            <div className="absolute inset-0 blur-3xl rounded-2xl scale-110" style={{
-              background: zoomedPoolCard.rarity === "LR" ? "rgba(239,68,68,0.5)" :
-                zoomedPoolCard.rarity === "UR" ? "rgba(251,191,36,0.45)" :
-                zoomedPoolCard.rarity === "SR" ? "rgba(168,85,247,0.4)" : "rgba(100,116,139,0.3)"
-            }} />
-            {/* Card image */}
-            <div className="relative w-56 rounded-2xl overflow-hidden shadow-2xl" style={{
-              aspectRatio:"3/4",
-              boxShadow: zoomedPoolCard.rarity === "LR" ? "0 0 40px rgba(239,68,68,0.7), 0 0 80px rgba(251,191,36,0.4)" :
-                zoomedPoolCard.rarity === "UR" ? "0 0 35px rgba(251,191,36,0.7)" :
-                zoomedPoolCard.rarity === "SR" ? "0 0 30px rgba(168,85,247,0.6)" : "none"
-            }}>
-              <Image src={zoomedPoolCard.image} alt={zoomedPoolCard.name} fill sizes="224px" className="object-cover" />
-              {/* LR rainbow */}
-              {zoomedPoolCard.rarity === "LR" && (
-                <div className="absolute inset-0 pointer-events-none" style={{background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",backgroundSize:"200% 100%",animation:"rainbowShift 2s linear infinite",padding:"3px",WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",WebkitMaskComposite:"xor",maskComposite:"exclude"}} />
-              )}
-              {/* UR border */}
-              {zoomedPoolCard.rarity === "UR" && (
-                <div className="absolute inset-0 pointer-events-none border-2 border-amber-400/80" style={{animation:"pulseGlow 1.5s ease-in-out infinite"}} />
-              )}
-            </div>
+          <div className="relative w-full max-w-sm aspect-[3/4] animate-float">
+            <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
+            <Image
+              src={zoomedPoolCard.image || "/placeholder.svg"}
+              alt={zoomedPoolCard.name}
+              fill
+              sizes="(max-width: 768px) 90vw, 384px"
+              className={`object-contain rounded-2xl ${
+                zoomedPoolCard.rarity === "LR" ? "rarity-lr" :
+                zoomedPoolCard.rarity === "UR" ? "rarity-ur" :
+                zoomedPoolCard.rarity === "SR" ? "rarity-sr" : "rarity-r"
+              }`}
+            />
           </div>
-          {/* Name + rarity */}
-          <div className="mt-4 text-center" style={{animation:"fadeIn 0.4s ease-out 0.15s both"}}>
-            <p className="text-white font-black text-xl drop-shadow-lg">{zoomedPoolCard.name}</p>
-            <span className={`inline-block mt-2 px-4 py-1 rounded-full text-sm font-black ${getRarityBadgeStyle(zoomedPoolCard.rarity)}`}>
+          {/* Card info */}
+          <div className="absolute bottom-8 left-0 right-0 text-center">
+            <h3 className="text-2xl font-bold text-white mb-2">{zoomedPoolCard.name}</h3>
+            <span className={`px-4 py-1 rounded-full text-sm font-bold ${
+              zoomedPoolCard.rarity === "LR" ? "bg-gradient-to-r from-red-500 to-amber-500 text-white" :
+              zoomedPoolCard.rarity === "UR" ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black" :
+              zoomedPoolCard.rarity === "SR" ? "bg-purple-500 text-white" : "bg-slate-500 text-white"
+            }`}>
               {zoomedPoolCard.rarity}
             </span>
           </div>
-          <p className="mt-4 text-slate-600 text-xs">Toque para fechar</p>
+          <button
+            onClick={() => setZoomedPoolCard(null)}
+            className="absolute top-4 right-4 p-2 glass rounded-full hover:bg-white/20 transition-colors"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
         </div>
       )}
 
