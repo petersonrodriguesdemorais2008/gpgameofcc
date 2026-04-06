@@ -1361,28 +1361,36 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           {/* ── FINAL RESULTS ── */}
           {packPhase === "done" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-4" style={{animation:"fadeIn 0.5s ease-out forwards"}}>
-              <h2 className="text-3xl font-black text-white mb-2 tracking-wider" style={{textShadow:"0 0 20px rgba(255,255,255,0.3)"}}>
+              <h2 className="text-3xl font-black text-white mb-1 tracking-wider" style={{textShadow:"0 0 20px rgba(255,255,255,0.3)"}}>
                 {pullCount === 1 ? "Cartas Obtidas!" : `${pullCount} Packs Abertos!`}
               </h2>
-              <p className="text-slate-500 text-xs mb-5 tracking-widest uppercase">{openedCards.length} cartas na coleção</p>
+              <p className="text-slate-500 text-xs mb-4 tracking-widest uppercase">{openedCards.length} cartas · toque para ampliar</p>
 
-              <div className="max-h-[62vh] overflow-y-auto w-full max-w-5xl px-4">
+              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl px-3">
                 {packs.map((pack, packIdx) => (
-                  <div key={pack.id} className="mb-6">
+                  <div key={pack.id} className="mb-5">
                     {packs.length > 1 && <p className="text-slate-600 text-xs mb-2 pl-1 uppercase tracking-widest">Pack {packIdx + 1}</p>}
-                    <div className="flex gap-3 justify-center flex-wrap">
+                    <div className="flex gap-2.5 justify-center flex-wrap">
                       {pack.cards.map((card, cardIdx) => {
                         const cardGlow =
-                          card.rarity==="LR" ? "0 0 20px rgba(239,68,68,0.8),0 0 40px rgba(251,191,36,0.4)" :
-                          card.rarity==="UR" ? "0 0 18px rgba(56,189,248,0.8),0 0 35px rgba(99,179,237,0.3)" :
-                          card.rarity==="SR" ? "0 0 15px rgba(168,85,247,0.7)" : "none"
+                          card.rarity==="LR" ? "0 0 24px rgba(239,68,68,0.85), 0 0 48px rgba(251,191,36,0.45)" :
+                          card.rarity==="UR" ? "0 0 20px rgba(56,189,248,0.85), 0 0 40px rgba(99,179,237,0.35)" :
+                          card.rarity==="SR" ? "0 0 18px rgba(168,85,247,0.75), 0 0 36px rgba(192,132,252,0.25)" : "none"
                         return (
-                          <div key={`${card.id}-final-${cardIdx}`} className="flex flex-col items-center gap-1.5"
+                          <div
+                            key={`${card.id}-final-${cardIdx}`}
+                            className="flex flex-col items-center gap-1.5 cursor-pointer group"
                             style={{animation:"cardPopIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                              animationDelay:`${(packIdx*4+cardIdx)*0.06}s`, opacity:0}}>
-                            <div className="relative w-[72px] h-[100px] md:w-[88px] md:h-[124px] overflow-hidden rounded-lg transition-transform hover:scale-110 hover:z-10 cursor-pointer"
-                              style={{boxShadow:cardGlow}}>
+                              animationDelay:`${(packIdx*4+cardIdx)*0.06}s`, opacity:0}}
+                            onClick={() => setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
+                          >
+                            {/* Card art — no rounded corners, bigger */}
+                            <div
+                              className="relative overflow-hidden transition-transform duration-200 group-hover:scale-110 group-hover:z-10"
+                              style={{width:"86px", height:"122px", boxShadow:cardGlow}}
+                            >
                               <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="96px" className="object-cover" />
+                              {/* LR rainbow */}
                               {card.rarity==="LR" && (
                                 <div className="absolute inset-0 pointer-events-none" style={{
                                   background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
@@ -1390,16 +1398,24 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                   padding:"2px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                                   WebkitMaskComposite:"xor", maskComposite:"exclude"}} />
                               )}
+                              {/* UR diamond border */}
                               {card.rarity==="UR" && (
-                                <div className="absolute inset-0 pointer-events-none rounded-lg" style={{
-                                  border:"2px solid rgba(56,189,248,0.8)", animation:"urDiamondPulse 1.8s ease-in-out infinite"}} />
+                                <div className="absolute inset-0 pointer-events-none" style={{
+                                  border:"2px solid rgba(56,189,248,0.85)",
+                                  boxShadow:"inset 0 0 10px rgba(56,189,248,0.25)",
+                                  animation:"urDiamondPulse 1.8s ease-in-out infinite"}} />
                               )}
+                              {/* SR purple border */}
                               {card.rarity==="SR" && (
-                                <div className="absolute inset-0 pointer-events-none rounded-lg" style={{
-                                  border:"1.5px solid rgba(168,85,247,0.7)", animation:"srGoldPulse 2s ease-in-out infinite"}} />
+                                <div className="absolute inset-0 pointer-events-none" style={{
+                                  border:"1.5px solid rgba(168,85,247,0.75)",
+                                  animation:"srGoldPulse 2s ease-in-out infinite"}} />
                               )}
+                              {/* Hover shimmer */}
+                              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/8 transition-colors duration-150" />
                             </div>
-                            <div className={`px-2 py-0.5 text-center text-[10px] font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded`}>
+                            {/* Rarity badge — no rounded */}
+                            <div className={`px-2 py-0.5 text-center text-[10px] font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}>
                               {card.rarity}
                             </div>
                           </div>
@@ -1411,7 +1427,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
               </div>
 
               <button onClick={closeResults}
-                className="mt-5 px-10 py-3.5 text-lg font-black rounded-2xl border-2 border-emerald-400/50 transition-all hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30"
+                className="mt-4 px-10 py-3.5 text-lg font-black rounded-2xl border-2 border-emerald-400/50 transition-all hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30"
                 style={{background:"linear-gradient(135deg,#059669,#10b981,#34d399)",animation:"scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards",opacity:0}}>
                 CONFIRMAR
               </button>
