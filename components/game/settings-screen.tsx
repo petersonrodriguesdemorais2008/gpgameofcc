@@ -269,579 +269,987 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{background:"linear-gradient(160deg,#050810 0%,#0a0d1a 40%,#060d18 100%)"}}>
-
-      {/* Background depth layers */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 90% 50% at 50% -10%, rgba(6,182,212,0.10) 0%, transparent 60%)"}} />
-        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 60% 40% at 95% 80%, rgba(251,191,36,0.06) 0%, transparent 50%)"}} />
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px, transparent 1px)",backgroundSize:"48px 48px"}} />
-      </div>
-
-      {/* Floating particles */}
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 via-cyan-900/10 to-black">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(16)].map((_, i) => (
-          <div key={i} className="absolute rounded-full animate-float"
-            style={{width:`${1+i%2}px`,height:`${1+i%2}px`,
-              left:`${(i*6.3)%100}%`,top:`${(i*8.7)%100}%`,
-              background:i%3===0?"rgba(6,182,212,0.4)":i%3===1?"rgba(251,191,36,0.3)":"rgba(168,85,247,0.3)",
-              animationDuration:`${5+i%5}s`,animationDelay:`${i*0.4}s`}} />
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-cyan-400/20 rounded-full animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${3 + Math.random() * 4}s`,
+            }}
+          />
         ))}
       </div>
 
-      {/* ── HEADER ── */}
-      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b border-white/[0.07] backdrop-blur-md"
-        style={{background:"rgba(5,8,16,0.85)"}}>
-        <button onClick={() => onBack()}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10">
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">{t("back")}</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-            <Settings className="w-3.5 h-3.5 text-white" />
-          </div>
-          <h1 className="text-lg font-black tracking-widest bg-gradient-to-r from-cyan-300 via-white to-cyan-400 bg-clip-text text-transparent uppercase">
-            {t("settings")}
-          </h1>
-        </div>
-
+      {/* Header */}
+      <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-r from-black/80 via-cyan-900/30 to-black/80 border-b border-cyan-500/30 backdrop-blur-sm">
+        <Button onClick={() => onBack()} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+          <ArrowLeft className="mr-2 h-5 w-5" />
+          {t("back")}
+        </Button>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2">
+          <Settings className="w-6 h-6 text-cyan-400" />
+          {t("settings")}
+        </h1>
         <div className="w-20" />
       </div>
 
-      {/* ── TABS ── */}
-      <div className="relative z-10 flex gap-1 px-3 py-3 border-b border-white/[0.06]"
-        style={{background:"rgba(5,8,16,0.6)", backdropFilter:"blur(12px)"}}>
-        {([
-          { id:"language", label:t("language"), icon:<Globe className="w-3.5 h-3.5" />, color:"from-cyan-500 to-blue-500", active:"text-cyan-400 border-cyan-500/50 bg-cyan-500/10" },
-          { id:"account",  label:"Conta",       icon:<User className="w-3.5 h-3.5" />,  color:"from-amber-500 to-orange-500", active:"text-amber-400 border-amber-500/50 bg-amber-500/10" },
-          { id:"codes",    label:"Códigos",     icon:<Gift className="w-3.5 h-3.5" />,  color:"from-emerald-500 to-teal-500", active:"text-emerald-400 border-emerald-500/50 bg-emerald-500/10" },
-          { id:"display",  label:"Display",     icon:<Monitor className="w-3.5 h-3.5" />, color:"from-sky-500 to-indigo-500", active:"text-sky-400 border-sky-500/50 bg-sky-500/10" },
-        ] as const).map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as TabType)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[11px] font-bold transition-all duration-200 border ${
-              activeTab === tab.id ? tab.active : "text-slate-500 border-transparent hover:text-slate-300 hover:bg-white/[0.04]"
-            }`}>
-            {tab.icon}
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="relative z-10 flex border-b border-slate-700/50">
+        <button
+          onClick={() => setActiveTab("language")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "language"
+              ? "text-cyan-400 border-b-2 border-cyan-400 bg-cyan-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Globe className="w-4 h-4 inline mr-2" />
+          {t("language")}
+        </button>
+        <button
+          onClick={() => setActiveTab("account")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "account"
+              ? "text-amber-400 border-b-2 border-amber-400 bg-amber-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <User className="w-4 h-4 inline mr-2" />
+          Conta
+        </button>
+        <button
+          onClick={() => setActiveTab("codes")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "codes"
+              ? "text-emerald-400 border-b-2 border-emerald-400 bg-emerald-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Gift className="w-4 h-4 inline mr-2" />
+          Codigos
+        </button>
+        <button
+          onClick={() => setActiveTab("display")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "display"
+              ? "text-sky-400 border-b-2 border-sky-400 bg-sky-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Monitor className="w-4 h-4 inline mr-2" />
+          Display
+        </button>
       </div>
 
-      {/* ── CONTENT ── */}
-      <div className="relative z-10 flex-1 overflow-y-auto">
-        <div className="max-w-md mx-auto px-4 py-5 space-y-4">
-
-          {/* ═══ LANGUAGE TAB ═══ */}
+      {/* Settings content */}
+      <div className="relative z-10 flex-1 p-4 overflow-y-auto">
+        <div className="max-w-md mx-auto space-y-4">
           {activeTab === "language" && (
-            <div>
-              <SectionHeader icon={<Globe className="w-4 h-4" />} title={t("language")} color="cyan" />
-              <div className="space-y-2 mt-4">
+            <div className="bg-gradient-to-r from-slate-800/80 to-cyan-900/30 rounded-2xl p-6 border border-cyan-500/30 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  <Globe className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">{t("language")}</h2>
+              </div>
+
+              <div className="grid gap-3">
                 {[
-                  { code:"pt", flag:"🇧🇷", label:t("portuguese") },
-                  { code:"en", flag:"🇺🇸", label:t("english") },
-                  { code:"ja", flag:"🇯🇵", label:t("japanese") },
-                ].map(lang => (
-                  <button key={lang.code} onClick={() => setLanguage(lang.code as "pt"|"en"|"ja")}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-200 ${
+                  { code: "pt", flag: "🇧🇷", label: t("portuguese") },
+                  { code: "en", flag: "🇺🇸", label: t("english") },
+                  { code: "ja", flag: "🇯🇵", label: t("japanese") },
+                ].map((lang) => (
+                  <Button
+                    key={lang.code}
+                    onClick={() => setLanguage(lang.code as "pt" | "en" | "ja")}
+                    className={`w-full justify-start py-4 text-lg ${
                       language === lang.code
-                        ? "bg-gradient-to-r from-cyan-600/30 to-blue-600/20 border-cyan-500/50 shadow-lg shadow-cyan-500/10"
-                        : "bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06] hover:border-white/15"
-                    }`}>
-                    <span className="text-2xl">{lang.flag}</span>
-                    <span className={`flex-1 text-left font-semibold ${language===lang.code?"text-white":"text-slate-400"}`}>{lang.label}</span>
-                    {language === lang.code && (
-                      <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center">
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
-                    )}
-                  </button>
+                        ? "bg-gradient-to-r from-cyan-600 to-blue-600 border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/30"
+                        : "bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50"
+                    }`}
+                  >
+                    <span className="text-2xl mr-3">{lang.flag}</span>
+                    {lang.label}
+                    {language === lang.code && <Check className="w-5 h-5 ml-auto" />}
+                  </Button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ═══ ACCOUNT TAB ═══ */}
           {activeTab === "account" && (
             <>
-              {/* Profile card */}
-              <div>
-                <SectionHeader icon={<User className="w-4 h-4" />} title="Perfil" color="amber" />
-                <div className="mt-4 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:"rgba(255,255,255,0.03)"}}>
-                  {/* Avatar + name row */}
-                  <div className="flex items-center gap-4 p-4 border-b border-white/[0.06]">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-400/30 shadow-lg shadow-amber-500/10">
-                        {playerProfile.avatarUrl ? (
-                          <Image src={playerProfile.avatarUrl} alt="Avatar" width={64} height={64} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-amber-500/30 to-orange-600/30 flex items-center justify-center">
-                            <User className="w-7 h-7 text-amber-400/60" />
-                          </div>
-                        )}
-                      </div>
-                      {!isEditing && (
-                        <button onClick={() => setIsEditing(true)}
-                          className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-amber-500 hover:bg-amber-400 rounded-lg flex items-center justify-center shadow-lg transition-colors">
-                          <Edit2 className="w-3 h-3 text-white" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <Input value={editName} onChange={e => setEditName(e.target.value)}
-                            placeholder="Nome" className="h-8 text-sm bg-black/40 border-amber-500/30 text-white" />
-                          <Input value={editTitle} onChange={e => setEditTitle(e.target.value)}
-                            placeholder="Título" className="h-8 text-sm bg-black/40 border-amber-500/30 text-white" />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-white font-bold text-base truncate">{playerProfile.name}</p>
-                          <p className="text-amber-400/70 text-xs truncate">{playerProfile.title}</p>
-                        </>
-                      )}
-                    </div>
+              {/* Cloud Save Section */}
+              <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-2xl p-6 border border-emerald-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
+                      accountAuth.isLoggedIn
+                        ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                        : "bg-gradient-to-br from-slate-600 to-slate-700"
+                    }`}
+                  >
+                    {accountAuth.isLoggedIn ? (
+                      <Cloud className="w-5 h-5 text-white" />
+                    ) : (
+                      <CloudOff className="w-5 h-5 text-white" />
+                    )}
                   </div>
-
-                  {/* Icon picker */}
-                  {isEditing && (
-                    <div className="p-4 border-b border-white/[0.06]">
-                      <button onClick={() => setShowIconPicker(!showIconPicker)}
-                        className="w-full text-xs text-slate-400 hover:text-white flex items-center gap-2 mb-3 transition-colors">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        {showIconPicker ? "Fechar seleção de ícone" : "Escolher ícone de perfil"}
-                      </button>
-                      {showIconPicker && (
-                        <div className="grid grid-cols-5 gap-2">
-                          {PROFILE_ICONS.map(icon => (
-                            <button key={icon.id} onClick={() => setEditAvatarUrl(icon.url)}
-                              className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                                editAvatarUrl===icon.url ? "border-amber-400 scale-110 shadow-lg shadow-amber-400/30" : "border-transparent hover:border-white/30"
-                              }`}>
-                              <Image src={icon.url} alt={icon.name} width={48} height={48} className="w-full h-full object-cover" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {/* Custom URL */}
-                      <Input value={editAvatarUrl} onChange={e => setEditAvatarUrl(e.target.value)}
-                        placeholder="URL do avatar..." className="mt-3 h-8 text-xs bg-black/40 border-slate-600 text-white" />
-                    </div>
-                  )}
-
-                  {/* Player ID */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2">
-                      <Hash className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="text-slate-500 text-xs">ID do Jogador</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="text-slate-300 text-xs font-mono">{playerId.slice(0,8)}...</code>
-                      <button onClick={handleCopyId}
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-all ${
-                          copied ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
-                        }`}>
-                        {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                        {copied ? "Copiado" : "Copiar"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Save / cancel edit */}
-                  {isEditing && (
-                    <div className="flex gap-2 p-4">
-                      <button onClick={() => { setIsEditing(false); setShowIconPicker(false); setEditName(playerProfile.name); setEditTitle(playerProfile.title); setEditAvatarUrl(playerProfile.avatarUrl||"") }}
-                        className="flex-1 py-2 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm transition-colors hover:bg-white/5">
-                        Cancelar
-                      </button>
-                      <button onClick={handleSaveProfile}
-                        className="flex-1 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm flex items-center justify-center gap-1.5 hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-amber-500/20">
-                        <Save className="w-3.5 h-3.5" />
-                        Salvar
-                      </button>
-                    </div>
-                  )}
+                  <h2 className="text-xl font-bold text-white">
+                    {accountAuth.isLoggedIn ? "Conta Conectada" : "Conectar Conta"}
+                  </h2>
                 </div>
-              </div>
 
-              {/* Cloud Save */}
-              <div>
-                <SectionHeader icon={accountAuth.isLoggedIn ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
-                  title={accountAuth.isLoggedIn ? "Conta Conectada" : "Salvar na Nuvem"} color="emerald" />
-                <div className="mt-4 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:"rgba(255,255,255,0.03)"}}>
-                  {accountAuth.isLoggedIn ? (
-                    <div className="p-4 space-y-3">
-                      {/* Status badge */}
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 shadow shadow-emerald-400/50" />
-                        <span className="text-emerald-400 text-xs font-bold">Conta sincronizada</span>
-                      </div>
-
-                      {accountAuth.email && (
-                        <InfoRow icon={<Mail className="w-3.5 h-3.5 text-emerald-400" />} label="Email" value={accountAuth.email} />
-                      )}
-                      {accountAuth.uniqueCode && (
-                        <InfoRow icon={<Key className="w-3.5 h-3.5 text-emerald-400" />} label="Código Único"
-                          value={<code className="text-emerald-300 font-mono text-sm tracking-wider">{formatCode(accountAuth.uniqueCode)}</code>} />
-                      )}
-                      <InfoRow icon={<Cloud className="w-3.5 h-3.5 text-slate-400" />} label="Último save"
-                        value={<><span className="text-white">{formatLastSaved(accountAuth.lastSaved)}</span><span className="text-slate-600 text-[10px] ml-1">· auto a cada 30s</span></>} />
-
-                      {saveMessage && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400 text-xs">{saveMessage}</span>
+                {accountAuth.isLoggedIn ? (
+                  <div className="space-y-4">
+                    {accountAuth.email && (
+                      <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Mail className="w-4 h-4 text-emerald-400" />
+                          <span className="text-slate-400 text-sm">Email:</span>
                         </div>
-                      )}
-
-                      <div className="flex gap-2 pt-1">
-                        <button onClick={handleManualSave}
-                          className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold text-sm flex items-center justify-center gap-1.5 hover:from-emerald-500 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/15">
-                          <Save className="w-3.5 h-3.5" />Salvar Agora
-                        </button>
-                        <button onClick={logoutAccount}
-                          className="flex-1 py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm flex items-center justify-center gap-1.5 transition-all">
-                          <LogOut className="w-3.5 h-3.5" />Sair
-                        </button>
+                        <p className="text-white font-medium">{accountAuth.email}</p>
                       </div>
-                    </div>
-                  ) : generatedCode ? (
-                    <div className="p-4 space-y-4">
-                      <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
+                    )}
+
+                    {accountAuth.uniqueCode && (
+                      <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
                         <div className="flex items-center gap-2 mb-2">
                           <Key className="w-4 h-4 text-emerald-400" />
-                          <span className="text-emerald-400 font-bold text-sm">Conta criada com sucesso!</span>
+                          <span className="text-slate-400 text-sm">Codigo Unico:</span>
                         </div>
-                        <p className="text-slate-400 text-xs mb-4">Guarde este código — você precisará dele para acessar sua conta.</p>
-                        <div className="bg-black/50 rounded-xl p-4 border border-emerald-500/20 text-center">
-                          <p className="text-slate-500 text-[10px] mb-1">Seu Código Único</p>
-                          <code className="text-2xl font-mono text-emerald-300 tracking-widest">{formatCode(generatedCode)}</code>
-                        </div>
-                        <button onClick={handleCopyCode}
-                          className={`w-full mt-3 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                            codeCopied ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                          }`}>
-                          {codeCopied ? <><Check className="w-4 h-4" />Copiado!</> : <><Copy className="w-4 h-4" />Copiar Código</>}
-                        </button>
+                        <code className="text-emerald-300 font-mono text-lg tracking-wider">
+                          {formatCode(accountAuth.uniqueCode)}
+                        </code>
                       </div>
-                      <button onClick={() => setGeneratedCode(null)}
-                        className="w-full py-2 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm transition-colors">
-                        Fechar
-                      </button>
+                    )}
+
+                    <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Cloud className="w-4 h-4 text-emerald-400" />
+                        <span className="text-slate-400 text-sm">Ultimo salvamento:</span>
+                      </div>
+                      <p className="text-white font-medium">{formatLastSaved(accountAuth.lastSaved)}</p>
+                      <p className="text-xs text-slate-500 mt-1">Salvamento automatico a cada 30 segundos</p>
                     </div>
-                  ) : (
-                    <div className="p-4 space-y-3">
-                      <p className="text-slate-500 text-xs">Conecte sua conta para salvar seu progresso na nuvem.</p>
 
-                      {/* Auth type toggle */}
-                      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-black/30 border border-white/[0.07]">
-                        {[{v:"email",icon:<Mail className="w-3.5 h-3.5" />,label:"Email"},{v:"code",icon:<Key className="w-3.5 h-3.5" />,label:"Código"}].map(t => (
-                          <button key={t.v} onClick={() => { setAuthType(t.v as "email"|"code"); setAuthError("") }}
-                            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                              authType===t.v ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow" : "text-slate-500 hover:text-slate-300"
-                            }`}>
-                            {t.icon}{t.label}
-                          </button>
-                        ))}
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={handleManualSave}
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border border-emerald-400/50"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Salvar Agora
+                      </Button>
+                      <Button
+                        onClick={logoutAccount}
+                        variant="outline"
+                        className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sair
+                      </Button>
+                    </div>
+
+                    {saveMessage && (
+  <p className="text-emerald-400 text-center text-sm animate-pulse bg-emerald-500/20 py-2 rounded-lg">
+  {saveMessage}
+  </p>
+  )}
+  
+  </div>
+  ) : generatedCode ? (
+                  /* Show generated code after registration */
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-xl p-6 border border-emerald-400/50">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Key className="w-5 h-5 text-emerald-400" />
+                        <span className="text-emerald-400 font-bold">Conta Criada com Sucesso!</span>
                       </div>
-
-                      {/* Auth mode toggle */}
-                      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-black/30 border border-white/[0.07]">
-                        {[{v:"login",label:"Entrar"},{v:"register",label:"Registrar"}].map(m => (
-                          <button key={m.v} onClick={() => { setAuthMode(m.v as "login"|"register"); setAuthError("") }}
-                            className={`py-2 rounded-lg text-xs font-bold transition-all ${
-                              authMode===m.v ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow" : "text-slate-500 hover:text-slate-300"
-                            }`}>
-                            {m.label}
-                          </button>
-                        ))}
+                      <p className="text-slate-300 text-sm mb-4">
+                        Guarde este codigo em um lugar seguro. Voce precisara dele junto com sua senha para acessar sua conta.
+                      </p>
+                      <div className="bg-black/50 rounded-xl p-4 border border-emerald-500/30">
+                        <p className="text-slate-400 text-xs mb-2">Seu Codigo Unico:</p>
+                        <code className="text-2xl font-mono text-emerald-300 tracking-widest block text-center">
+                          {formatCode(generatedCode)}
+                        </code>
                       </div>
+                      <Button
+                        onClick={handleCopyCode}
+                        className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50"
+                      >
+                        {codeCopied ? (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copiar Codigo
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => setGeneratedCode(null)}
+                      variant="outline"
+                      className="w-full border-slate-600 text-slate-300 hover:bg-slate-800 bg-transparent"
+                    >
+                      Fechar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-slate-400 text-sm">
+                      Conecte sua conta para salvar seu progresso permanentemente.
+                    </p>
 
-                      {/* Forms */}
-                      {authType === "email" ? (
-                        <div className="space-y-2">
-                          <AuthInput icon={<Mail className="w-3.5 h-3.5" />} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" />
-                          <AuthInput icon={<Lock className="w-3.5 h-3.5" />} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Senha" />
-                          {authMode==="register" && <AuthInput icon={<Lock className="w-3.5 h-3.5" />} type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Confirmar senha" />}
-                        </div>
-                      ) : authMode==="login" ? (
-                        <div className="space-y-2">
-                          <AuthInput icon={<Key className="w-3.5 h-3.5" />} value={uniqueCode} onChange={e=>setUniqueCode(formatCode(e.target.value))} placeholder="XXXX-XXXX-XXXX" />
-                          <AuthInput icon={<Lock className="w-3.5 h-3.5" />} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Senha" />
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <AuthInput icon={<Lock className="w-3.5 h-3.5" />} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Crie uma senha" />
-                          <AuthInput icon={<Lock className="w-3.5 h-3.5" />} type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Confirmar senha" />
-                        </div>
-                      )}
-
-                      {authError && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
-                          <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                          <span className="text-red-400 text-xs">{authError}</span>
-                        </div>
-                      )}
-
+                    {/* Auth Type Toggle (Email or Code) */}
+                    <div className="flex rounded-xl overflow-hidden border border-slate-600">
                       <button
-                        onClick={authType==="email" ? (authMode==="login"?handleLogin:handleRegister) : (authMode==="login"?handleLoginWithCode:handleRegisterWithCode)}
-                        disabled={authLoading}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/15">
-                        {authLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <LogIn className="w-4 h-4" />}
-                        {authMode==="login" ? "Entrar" : "Criar Conta"}
+                        onClick={() => { setAuthType("email"); setAuthError(""); }}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                          authType === "email"
+                            ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Mail className="w-4 h-4" />
+                        Email
+                      </button>
+                      <button
+                        onClick={() => { setAuthType("code"); setAuthError(""); }}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                          authType === "code"
+                            ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Key className="w-4 h-4" />
+                        Codigo Unico
                       </button>
                     </div>
-                  )}
-                </div>
+
+                    {/* Auth Mode Toggle */}
+                    <div className="flex rounded-xl overflow-hidden border border-slate-600">
+                      <button
+                        onClick={() => { setAuthMode("login"); setAuthError(""); }}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                          authMode === "login"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Entrar
+                      </button>
+                      <button
+                        onClick={() => { setAuthMode("register"); setAuthError(""); }}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                          authMode === "register"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Registrar
+                      </button>
+                    </div>
+
+                    {/* Email Auth Form */}
+                    {authType === "email" && (
+                      <>
+                        <div>
+                          <label className="text-sm text-slate-400 block mb-2">Email</label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="seu@email.com"
+                              className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-sm text-slate-400 block mb-2">Senha</label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="******"
+                              className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                            />
+                          </div>
+                        </div>
+
+                        {authMode === "register" && (
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Confirmar Senha</label>
+                            <div className="relative">
+                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                              <Input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="******"
+                                className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Code Auth Form */}
+                    {authType === "code" && (
+                      <>
+                        {authMode === "login" && (
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Codigo Unico</label>
+                            <div className="relative">
+                              <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                              <Input
+                                type="text"
+                                value={uniqueCode}
+                                onChange={(e) => setUniqueCode(e.target.value.toUpperCase())}
+                                placeholder="XXXX-XXXX-XXXX"
+                                className="pl-12 bg-slate-900/80 border-amber-500/30 text-white py-3 font-mono tracking-wider"
+                                maxLength={14}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {authMode === "register" && (
+                          <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
+                            <p className="text-amber-300 text-sm">
+                              Um codigo unico de 12 caracteres sera gerado automaticamente para voce. Guarde-o em um lugar seguro!
+                            </p>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="text-sm text-slate-400 block mb-2">Senha</label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="******"
+                              className="pl-12 bg-slate-900/80 border-amber-500/30 text-white py-3"
+                            />
+                          </div>
+                        </div>
+
+                        {authMode === "register" && (
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Confirmar Senha</label>
+                            <div className="relative">
+                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                              <Input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="******"
+                                className="pl-12 bg-slate-900/80 border-amber-500/30 text-white py-3"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Error Message */}
+                    {authError && (
+                      <p className="text-red-400 text-sm text-center bg-red-500/20 py-2 rounded-lg">{authError}</p>
+                    )}
+
+                    {/* Submit Button */}
+                    <Button
+                      onClick={
+                        authType === "email"
+                          ? authMode === "login"
+                            ? handleLogin
+                            : handleRegister
+                          : authMode === "login"
+                            ? handleLoginWithCode
+                            : handleRegisterWithCode
+                      }
+                      disabled={authLoading}
+                      className={`w-full py-3 border ${
+                        authType === "email"
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border-emerald-400/50"
+                          : "bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-500 hover:to-orange-400 border-amber-400/50"
+                      }`}
+                    >
+                      {authLoading ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          {authType === "email" ? <LogIn className="w-4 h-4 mr-2" /> : <Key className="w-4 h-4 mr-2" />}
+                          {authMode === "login" ? "Entrar" : authType === "code" ? "Gerar Codigo e Criar Conta" : "Criar Conta"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {/* Delete account */}
-              {accountAuth.isLoggedIn && (
-                <div>
-                  <SectionHeader icon={<Trash2 className="w-4 h-4" />} title="Zona de Perigo" color="red" />
-                  <div className="mt-4 rounded-2xl border border-red-500/20 overflow-hidden" style={{background:"rgba(239,68,68,0.04)"}}>
-                    <div className="p-4">
-                      <p className="text-slate-500 text-xs mb-3">Esta ação é permanente e não pode ser desfeita.</p>
-                      <button onClick={() => setShowDeleteConfirm(true)}
-                        className="w-full py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm font-bold flex items-center justify-center gap-2 transition-all">
-                        <Trash2 className="w-4 h-4" />Deletar Dados da Conta
-                      </button>
-                    </div>
+              {/* Delete Data Section - always visible */}
+              <div className="bg-gradient-to-r from-red-950/60 to-rose-950/60 rounded-2xl p-6 border border-red-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center shadow-lg shadow-red-900/40">
+                    <Trash2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Delete Data</h2>
+                    <p className="text-red-300/70 text-xs">Apaga todos os dados do jogo</p>
                   </div>
                 </div>
-              )}
 
-              {/* Delete confirm modal */}
-              {showDeleteConfirm && (
-                <ConfirmModal
-                  icon={<Trash2 className="w-6 h-6 text-white" />}
-                  iconBg="from-red-600 to-red-700"
-                  title="Deletar Dados"
-                  subtitle="Esta ação é irreversível"
-                  body="Todos os dados da conta serão permanentemente deletados. Cartas, moedas e progresso serão perdidos."
-                  confirmLabel={deleteLoading ? "Deletando..." : "Deletar"}
-                  confirmClass="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border-red-400/30"
-                  onCancel={() => setShowDeleteConfirm(false)}
-                  onConfirm={handleDeleteAccount}
-                />
-              )}
-            </>
-          )}
-
-          {/* ═══ CODES TAB ═══ */}
-          {activeTab === "codes" && (
-            <div>
-              <SectionHeader icon={<Gift className="w-4 h-4" />} title="Resgatar Código" color="emerald" />
-              <div className="mt-4 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:"rgba(255,255,255,0.03)"}}>
-                <div className="p-4 space-y-3">
-                  <p className="text-slate-500 text-xs">Insira um código promocional para receber recompensas.</p>
-                  <div className="relative">
-                    <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input value={codeInput} onChange={e=>setCodeInput(e.target.value.toUpperCase())}
-                      onKeyDown={e=>e.key==="Enter"&&handleRedeemCode()}
-                      placeholder="GEAR-XXXX-XXXX"
-                      className="pl-10 bg-black/40 border-emerald-500/20 text-white font-mono tracking-widest placeholder:font-sans placeholder:tracking-normal" />
-                  </div>
-
-                  {codeMessage && (
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${
-                      codeMessage.type==="success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"
-                    }`}>
-                      {codeMessage.type==="success" ? <Check className="w-3.5 h-3.5 flex-shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />}
-                      {codeMessage.text}
-                    </div>
-                  )}
-
-                  <button onClick={handleRedeemCode} disabled={codeLoading||!codeInput.trim()}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-sm disabled:opacity-40 flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/15">
-                    {codeLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    Resgatar
-                  </button>
+                <div className="bg-black/30 rounded-xl p-4 border border-red-500/15 mb-4">
+                  <p className="text-slate-300 text-sm leading-relaxed">
+                    Apaga permanentemente todos os seus dados de jogo — cartas, decks, moedas, histórico e progresso — mas mantém sua conta logada pelo email/código.
+                  </p>
                 </div>
 
-                {/* Redeemed codes */}
-                {redeemedCodes && redeemedCodes.length > 0 && (
-                  <div className="border-t border-white/[0.06] p-4">
-                    <p className="text-slate-600 text-[10px] uppercase tracking-widest mb-2">Códigos resgatados</p>
-                    <div className="space-y-1">
-                      {redeemedCodes.map((code, i) => (
-                        <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.02]">
-                          <Check className="w-3 h-3 text-emerald-500/60 flex-shrink-0" />
-                          <code className="text-slate-600 text-xs font-mono">{code}</code>
-                        </div>
-                      ))}
+                {!showDeleteConfirm ? (
+                  <Button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full py-4 bg-gradient-to-r from-red-700 to-rose-700 hover:from-red-600 hover:to-rose-600 border border-red-500/50 text-white font-bold text-base shadow-lg shadow-red-900/30 transition-all"
+                  >
+                    <Trash2 className="w-5 h-5 mr-2" />
+                    Deletar Todos os Dados
+                  </Button>
+                ) : (
+                  <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/40 space-y-3 animate-fadeIn">
+                    <div className="flex items-center gap-2 text-red-400">
+                      <AlertTriangle className="w-5 h-5" />
+                      <span className="font-bold text-base">Confirmar Exclusão</span>
+                    </div>
+                    <p className="text-slate-300 text-sm">
+                      Esta ação <span className="text-red-400 font-semibold">não pode ser desfeita</span>. Serão apagados:
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5 text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Todas as cartas</span>
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Todos os decks</span>
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Histórico de partidas</span>
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Moedas e progresso</span>
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Códigos resgatados</span>
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Playmats obtidos</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-amber-500/10 rounded-lg px-3 py-2 border border-amber-500/20">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <p className="text-amber-300 text-xs">
+                        Sua conta permanecerá logada com o email/código atual.
+                      </p>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        variant="outline"
+                        className="flex-1 border-slate-600/80 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={handleDeleteAccount}
+                        disabled={deleteLoading}
+                        className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border border-red-400/50 font-bold"
+                      >
+                        {deleteLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Deletando...
+                          </div>
+                        ) : "Sim, Deletar Tudo"}
+                      </Button>
                     </div>
                   </div>
                 )}
               </div>
-            </div>
-          )}
 
-          {/* ═══ DISPLAY TAB ═══ */}
-          {activeTab === "display" && (
-            <>
-              <div>
-                <SectionHeader icon={<Monitor className="w-4 h-4" />} title="Modo de Exibição" color="sky" />
-                <div className="mt-4 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:"rgba(255,255,255,0.03)"}}>
-                  <div className="p-4 space-y-4">
-                    <p className="text-slate-500 text-xs">Ajuste o layout do jogo para o seu dispositivo.</p>
-
-                    {/* Status indicator */}
-                    <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/[0.08] bg-white/[0.02]">
-                      <div className="flex items-center gap-3">
-                        {mobileMode ? <Smartphone className="w-5 h-5 text-sky-400" /> : <Monitor className="w-5 h-5 text-slate-400" />}
-                        <div>
-                          <p className="text-white text-sm font-semibold">{mobileMode ? "Modo Mobile Ativo" : "Modo Desktop"}</p>
-                          <p className="text-slate-500 text-xs">{mobileMode ? "Otimizado para celulares" : "Layout padrão para PC"}</p>
-                        </div>
-                      </div>
-                      <div className={`w-2.5 h-2.5 rounded-full transition-all ${mobileMode ? "bg-sky-400 shadow shadow-sky-400/50" : "bg-slate-600"}`} />
-                    </div>
-
-                    <button onClick={handleMobileModeToggle}
-                      className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all border ${
-                        mobileMode
-                          ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
-                          : "bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 border-sky-400/30 text-white shadow-lg shadow-sky-500/15"
-                      }`}>
-                      {mobileMode ? <><Monitor className="w-4 h-4" />Desativar Modo Mobile</> : <><Smartphone className="w-4 h-4" />Ativar Modo Mobile</>}
-                    </button>
+              {/* Player ID Section */}
+              <div className="bg-gradient-to-r from-amber-900/40 to-yellow-900/40 rounded-2xl p-6 border border-amber-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg">
+                    <User className="w-5 h-5 text-white" />
                   </div>
+                  <h2 className="text-xl font-bold text-white">ID do Jogador</h2>
+                </div>
+                <p className="text-slate-400 text-sm mb-4">
+                  Use este ID para que outros jogadores possam te adicionar como amigo.
+                </p>
+                <div className="flex items-center gap-3">
+                  <code className="flex-1 bg-black/50 px-5 py-4 rounded-xl text-xl font-mono text-amber-300 tracking-wider border border-amber-500/30">
+                    {playerId}
+                  </code>
+                  <Button
+                    onClick={handleCopyId}
+                    variant="outline"
+                    className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20 bg-transparent px-4 py-4"
+                  >
+                    {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  </Button>
                 </div>
               </div>
 
+              {/* Profile Section */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-cyan-900/30 rounded-2xl p-6 border border-cyan-500/30 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">Perfil</h2>
+                  </div>
+                  {!isEditing ? (
+                    <Button
+                      onClick={() => {
+                        setIsEditing(true)
+                        setEditName(playerProfile.name)
+                        setEditTitle(playerProfile.title)
+                        setEditAvatarUrl(playerProfile.avatarUrl || "")
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
+                    >
+                      <Edit2 className="w-4 h-4 mr-1" />
+                      Editar
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSaveProfile}
+                      size="sm"
+                      className="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400"
+                    >
+                      <Save className="w-4 h-4 mr-1" />
+                      Salvar
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {/* Avatar Section */}
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Foto de Perfil</label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-full overflow-hidden border-[3px] border-cyan-400/50 shadow-lg">
+                          {(isEditing ? editAvatarUrl : playerProfile.avatarUrl) ? (
+                            <Image
+                              src={isEditing ? editAvatarUrl : playerProfile.avatarUrl || "/placeholder.svg"}
+                              alt="Avatar"
+                              width={80}
+                              height={80}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                              <User className="w-8 h-8 text-slate-400" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {isEditing && (
+                        <Button
+                          onClick={() => setShowIconPicker(!showIconPicker)}
+                          variant="outline"
+                          size="sm"
+                          className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20 bg-transparent"
+                        >
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Trocar
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Icon Picker */}
+                    {isEditing && showIconPicker && (
+                      <div className="mt-4 p-4 bg-black/30 rounded-xl border border-cyan-500/20">
+                        <p className="text-slate-400 text-sm mb-3">Selecione um avatar:</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {PROFILE_ICONS.map((icon) => (
+                            <button
+                              key={icon.id}
+                              onClick={() => {
+                                setEditAvatarUrl(icon.image)
+                                setShowIconPicker(false)
+                              }}
+                              className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                                editAvatarUrl === icon.image
+                                  ? "border-cyan-400 scale-105 shadow-lg shadow-cyan-500/40"
+                                  : "border-slate-600 hover:border-slate-400"
+                              }`}
+                            >
+                              <Image
+                                src={icon.image || "/placeholder.svg"}
+                                alt={icon.name}
+                                fill
+                                sizes="80px"
+                                className="object-cover"
+                              />
+                              {editAvatarUrl === icon.image && (
+                                <div className="absolute inset-0 bg-cyan-400/20 flex items-center justify-center">
+                                  <Check className="w-6 h-6 text-white" />
+                                </div>
+                              )}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                                <p className="text-white text-[10px] font-medium text-center truncate">{icon.name}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Nome</label>
+                    {isEditing ? (
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="bg-slate-900/80 border-cyan-500/30 text-white"
+                        maxLength={20}
+                      />
+                    ) : (
+                      <p className="text-white font-medium text-lg">{playerProfile.name}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Titulo</label>
+                    {isEditing ? (
+                      <Input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="bg-slate-900/80 border-cyan-500/30 text-white"
+                        maxLength={30}
+                      />
+                    ) : (
+                      <p className="text-cyan-400 font-medium">{playerProfile.title}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Level</label>
+                    <p className="text-white font-medium text-lg">{playerProfile.level}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === "codes" && (
+            <div className="space-y-4">
+              {/* Code Redemption Section */}
+              <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-2xl p-6 border border-emerald-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                    <Gift className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Resgatar Codigo</h2>
+                </div>
+                
+                <p className="text-slate-400 text-sm mb-4">
+                  Digite um codigo promocional para receber recompensas especiais.
+                </p>
+                
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <Input
+                      type="text"
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                      placeholder="DIGITE O CODIGO"
+                      className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3 uppercase tracking-widest font-mono"
+                      maxLength={20}
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={handleRedeemCode}
+                    disabled={codeLoading || !codeInput.trim()}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border border-emerald-400/50"
+                  >
+                    {codeLoading ? "Verificando..." : "Resgatar Codigo"}
+                  </Button>
+                  
+                  {codeMessage && (
+                    <div className={`p-3 rounded-lg text-center text-sm ${
+                      codeMessage.type === "success" 
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                        : "bg-red-500/20 text-red-400 border border-red-500/30"
+                    }`}>
+                      {codeMessage.text}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Redeemed Codes History */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-2xl p-6 border border-slate-600/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Codigos Resgatados</h3>
+                </div>
+                
+                {redeemedCodes.length > 0 ? (
+                  <div className="space-y-2">
+                    {redeemedCodes.map((code) => (
+                      <div 
+                        key={code}
+                        className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-4 py-2 border border-emerald-500/20"
+                      >
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <code className="text-emerald-300 font-mono tracking-wider">{code}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm text-center py-4">
+                    Nenhum codigo resgatado ainda.
+                  </p>
+                )}
+              </div>
+              
+              {/* Available Codes Hint */}
+              <div className="bg-gradient-to-r from-amber-900/20 to-orange-900/20 rounded-xl p-4 border border-amber-500/30">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="text-amber-400 font-medium text-sm">Dica</p>
+                    <p className="text-slate-400 text-xs mt-1">
+                      Fique atento as redes sociais oficiais do Gear Perks para novos codigos promocionais!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "display" && (
+            <div className="space-y-4">
+              {/* Mobile Mode Card */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-sky-900/30 rounded-2xl p-6 border border-sky-500/30 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                    <Smartphone className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Modo Mobile</h2>
+                    <p className="text-slate-400 text-xs">Otimiza a resolucao para celulares</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-black/30 rounded-xl p-4 border border-sky-500/15">
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      Ao ativar o Modo Mobile, todos os elementos do jogo, incluindo botoes, cartas e areas de duelo, serao redimensionados e reorganizados para proporcionar a melhor experiencia possivel em dispositivos moveis.
+                    </p>
+                  </div>
+
+                  {/* Current status */}
+                  <div className="flex items-center justify-between bg-black/20 rounded-xl px-4 py-3 border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                      {mobileMode ? (
+                        <Smartphone className="w-5 h-5 text-emerald-400" />
+                      ) : (
+                        <Monitor className="w-5 h-5 text-slate-400" />
+                      )}
+                      <div>
+                        <p className="text-white text-sm font-medium">
+                          {mobileMode ? "Modo Mobile Ativo" : "Modo Desktop"}
+                        </p>
+                        <p className="text-slate-500 text-xs">
+                          {mobileMode ? "Resolucao otimizada para celulares" : "Resolucao padrao para PC"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${mobileMode ? "bg-emerald-400 shadow-lg shadow-emerald-400/50" : "bg-slate-600"}`} />
+                  </div>
+
+                  {/* Toggle Button */}
+                  <Button
+                    onClick={handleMobileModeToggle}
+                    className={`w-full py-4 text-lg font-bold rounded-xl transition-all ${
+                      mobileMode
+                        ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border border-red-400/50"
+                        : "bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 border border-sky-400/50 shadow-lg shadow-sky-500/20"
+                    }`}
+                  >
+                    {mobileMode ? (
+                      <>
+                        <Monitor className="w-5 h-5 mr-2" />
+                        Desativar Modo Mobile
+                      </>
+                    ) : (
+                      <>
+                        <Smartphone className="w-5 h-5 mr-2" />
+                        Ativar Modo Mobile
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Return to Title Screen Section */}
               {onReturnToTitle && (
-                <div>
-                  <SectionHeader icon={<Home className="w-4 h-4" />} title="Menu Inicial" color="indigo" />
-                  <div className="mt-4 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:"rgba(255,255,255,0.03)"}}>
-                    <div className="p-4 space-y-3">
-                      <p className="text-slate-500 text-xs">Exibe a tela de introdução com o botão "Toque Para Começar" e a música de abertura.</p>
-                      <button onClick={() => setShowReturnToTitleConfirm(true)}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm flex items-center justify-center gap-2 border border-indigo-400/30 transition-all shadow-lg shadow-indigo-500/15">
-                        <Home className="w-4 h-4" />Voltar ao Menu Inicial
-                      </button>
+                <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 rounded-2xl p-6 border border-indigo-500/40 backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Home className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">Menu Inicial</h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="bg-black/30 rounded-xl p-4 border border-indigo-500/15">
+                      <p className="text-slate-300 text-sm leading-relaxed">
+                        Voltar ao Menu Inicial exibira novamente a tela de introducao com o botao "Toque Para Comecar" e a musica de abertura.
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={() => setShowReturnToTitleConfirm(true)}
+                      className="w-full py-4 text-lg font-bold rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border border-indigo-400/50 shadow-lg shadow-indigo-500/20"
+                    >
+                      <Home className="w-5 h-5 mr-2" />
+                      Voltar ao Menu Inicial
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Return to Title Confirmation Dialog */}
+              {showReturnToTitleConfirm && onReturnToTitle && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-6 border border-indigo-500/40 max-w-sm w-full shadow-2xl shadow-indigo-500/10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                        <Home className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">Voltar ao Menu Inicial</h3>
+                        <p className="text-indigo-400 text-xs font-medium">Retornar a tela de introducao</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                      <div className="bg-indigo-500/10 rounded-xl p-4 border border-indigo-500/30">
+                        <p className="text-indigo-300 text-sm leading-relaxed">
+                          Voce sera levado de volta ao Menu Inicial, onde a introducao com a musica e a tela "Toque Para Comecar" sera exibida novamente.
+                        </p>
+                      </div>
+
+                      <div className="bg-black/30 rounded-xl p-3 border border-slate-700/50">
+                        <p className="text-slate-400 text-xs leading-relaxed">
+                          Seu progresso esta salvo automaticamente. Nenhum dado sera perdido.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => setShowReturnToTitleConfirm(false)}
+                        variant="outline"
+                        className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowReturnToTitleConfirm(false)
+                          onReturnToTitle()
+                        }}
+                        className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border border-indigo-400/50 shadow-lg shadow-indigo-500/20"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Confirmar
+                      </Button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Return to title confirm */}
-              {showReturnToTitleConfirm && onReturnToTitle && (
-                <ConfirmModal
-                  icon={<Home className="w-6 h-6 text-white" />}
-                  iconBg="from-indigo-500 to-purple-600"
-                  title="Voltar ao Menu Inicial"
-                  subtitle="Retornar à tela de introdução"
-                  body="Você será levado de volta ao Menu Inicial. Nenhum dado será perdido — seu progresso está salvo automaticamente."
-                  confirmLabel="Confirmar"
-                  confirmClass="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-indigo-400/30"
-                  onCancel={() => setShowReturnToTitleConfirm(false)}
-                  onConfirm={() => { setShowReturnToTitleConfirm(false); onReturnToTitle() }}
-                />
-              )}
-
-              {/* Mobile mode confirm */}
+              {/* Mobile Mode Confirmation Dialog */}
               {showMobileConfirm && (
-                <ConfirmModal
-                  icon={<Smartphone className="w-6 h-6 text-white" />}
-                  iconBg="from-sky-500 to-cyan-600"
-                  title="Ativar Modo Mobile"
-                  subtitle={detectedDevice==="mobile" ? "Dispositivo móvel detectado" : "Dispositivo PC detectado"}
-                  body={detectedDevice==="mobile"
-                    ? "Ative o Modo Mobile para otimizar a resolução e a experiência de jogo no seu celular."
-                    : "O Modo Mobile é projetado para celulares, mas pode ser ativado para testes. Deseja continuar?"}
-                  confirmLabel="Confirmar"
-                  confirmClass="bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 border-sky-400/30"
-                  onCancel={() => setShowMobileConfirm(false)}
-                  onConfirm={confirmMobileMode}
-                />
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-6 border border-sky-500/40 max-w-sm w-full shadow-2xl shadow-sky-500/10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                        <Smartphone className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">Ativar Modo Mobile</h3>
+                        <p className="text-sky-400 text-xs font-medium">
+                          {detectedDevice === "mobile" ? "Dispositivo movel detectado" : "Dispositivo PC detectado"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                      {detectedDevice === "mobile" ? (
+                        <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/30">
+                          <p className="text-emerald-300 text-sm leading-relaxed">
+                            Detectamos que voce esta usando um dispositivo movel. Deseja ativar o Modo Mobile para otimizar a resolucao e a experiencia de jogo?
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
+                          <p className="text-amber-300 text-sm leading-relaxed">
+                            Detectamos que voce esta usando um PC. O Modo Mobile e projetado para celulares, mas pode ser ativado para testes ou preferencia pessoal. Deseja continuar?
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="bg-black/30 rounded-xl p-3 border border-slate-700/50">
+                        <p className="text-slate-400 text-xs leading-relaxed">
+                          O jogo sera ajustado com botoes maiores, fontes adaptadas e layout otimizado para telas menores. Voce pode desativar a qualquer momento nas configuracoes.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => setShowMobileConfirm(false)}
+                        variant="outline"
+                        className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={confirmMobileMode}
+                        className="flex-1 bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 border border-sky-400/50 shadow-lg shadow-sky-500/20"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Confirmar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               )}
-            </>
+            </div>
           )}
 
           {/* Credits */}
-          <div className="pt-4 pb-8 text-center">
-            <p className="text-slate-700 text-[11px] font-medium">2025 Gear Perks Oficial Card Game</p>
-            <p className="text-slate-800 text-[11px]">Made in BRAZIL</p>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Helper sub-components ───────────────────────────────────────────────────
-
-function SectionHeader({ icon, title, color }: { icon: React.ReactNode; title: string; color: string }) {
-  const colors: Record<string, string> = {
-    cyan:    "from-cyan-500 to-blue-600 shadow-cyan-500/25",
-    amber:   "from-amber-500 to-orange-500 shadow-amber-500/25",
-    emerald: "from-emerald-500 to-teal-500 shadow-emerald-500/25",
-    sky:     "from-sky-500 to-indigo-500 shadow-sky-500/25",
-    indigo:  "from-indigo-500 to-purple-600 shadow-indigo-500/25",
-    red:     "from-red-600 to-rose-600 shadow-red-500/25",
-  }
-  return (
-    <div className="flex items-center gap-3">
-      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${colors[color]||colors.cyan} flex items-center justify-center shadow-lg text-white flex-shrink-0`}>
-        {icon}
-      </div>
-      <h2 className="text-base font-black text-white tracking-wide">{title}</h2>
-      <div className="flex-1 h-px bg-white/[0.06]" />
-    </div>
-  )
-}
-
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-black/20 border border-white/[0.05]">
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-slate-500 text-xs">{label}</span>
-      </div>
-      <div className="text-right text-sm">{value}</div>
-    </div>
-  )
-}
-
-function AuthInput({ icon, ...props }: { icon: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div className="relative">
-      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">{icon}</div>
-      <input {...props}
-        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/40 transition-colors" />
-    </div>
-  )
-}
-
-function ConfirmModal({ icon, iconBg, title, subtitle, body, confirmLabel, confirmClass, onCancel, onConfirm }: {
-  icon: React.ReactNode; iconBg: string; title: string; subtitle: string; body: string
-  confirmLabel: string; confirmClass: string; onCancel: () => void; onConfirm: () => void
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-white/[0.10] overflow-hidden shadow-2xl" style={{background:"linear-gradient(160deg,#0d1117,#0a0e1a)"}}>
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${iconBg} flex items-center justify-center shadow-lg flex-shrink-0`}>{icon}</div>
-            <div>
-              <h3 className="text-white font-black text-base">{title}</h3>
-              <p className="text-slate-500 text-xs">{subtitle}</p>
-            </div>
-          </div>
-          <p className="text-slate-400 text-sm leading-relaxed mb-5 px-1">{body}</p>
-          <div className="flex gap-2">
-            <button onClick={onCancel}
-              className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-all">
-              Cancelar
-            </button>
-            <button onClick={onConfirm}
-              className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-1.5 border transition-all ${confirmClass}`}>
-              <Check className="w-4 h-4" />{confirmLabel}
-            </button>
+          <div className="mt-8 text-center text-slate-500 text-sm py-4">
+            <p className="font-medium">2025 Gear Perks Oficial Card Game</p>
+            <p>Made in BRAZIL</p>
           </div>
         </div>
       </div>
