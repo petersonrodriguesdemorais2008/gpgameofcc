@@ -423,12 +423,18 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }
   }, [packPhase, cardRevealIndex, currentPackIndex, packs.length])
 
-  // Pack phase progression — entering → floating (wait swipe) → shaking → opening → revealing
+  // Pack phase progression — entering → floating (wait swipe on first pack only) → shaking → opening → revealing
   useEffect(() => {
     if (!isOpening || packs.length === 0) return
     if (packPhase === "entering") {
-      const t = setTimeout(() => { setPackPhase("floating"); setSwipeProgress(0); setSwipeComplete(false) }, 800)
-      return () => clearTimeout(t)
+      // Only first pack requires swipe; subsequent packs auto-open
+      if (currentPackIndex === 0) {
+        const t = setTimeout(() => { setPackPhase("floating"); setSwipeProgress(0); setSwipeComplete(false) }, 800)
+        return () => clearTimeout(t)
+      } else {
+        const t = setTimeout(() => { setPackPhase("shaking") }, 600)
+        return () => clearTimeout(t)
+      }
     }
     if (packPhase === "shaking") {
       setScreenShake(true)
@@ -826,20 +832,34 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                     </div>
                     {/* Section selector — horizontal scroll */}
                     <div className="flex gap-1 px-2 pb-2 overflow-x-auto scrollbar-none">
-                      {CARD_POOLS[currentBanner].map((group, idx) => (
-                        <button
-                          key={group.category}
-                          onClick={() => setCardPoolSection(idx)}
-                          className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all duration-150 border ${
-                            cardPoolSection === idx
-                              ? "bg-white/15 border-white/25 text-white"
-                              : "bg-white/[0.03] border-white/[0.06] text-slate-500 hover:text-slate-300 hover:bg-white/[0.06]"
-                          }`}
-                        >
-                          <span>{group.emoji}</span>
-                          <span className="whitespace-nowrap">{group.category.split(" ")[0]}</span>
-                        </button>
-                      ))}
+                      {CARD_POOLS[currentBanner].map((group, idx) => {
+                        // Short display label for each tab (no emoji)
+                        const tabLabel =
+                          group.category === "Unit Card" ? "Unidades" :
+                          group.category === "Tropas" ? "Tropas" :
+                          group.category === "Action Funcion Card" ? "Action" :
+                          group.category === "Magic Funcion Card" ? "Magic" :
+                          group.category === "Item Funcion Card" ? "Item" :
+                          group.category === "Trap Funcion Card" ? "Trap" :
+                          group.category === "Brotherhood Function Card" ? "Brotherhood" :
+                          group.category === "Ultimate Gear Card" ? "Ultimate Gear" :
+                          group.category === "Ultimate Guardian Card" ? "Ultimate Guardian" :
+                          group.category === "Scenario Card" ? "Cenário" :
+                          group.category.split(" ")[0]
+                        return (
+                          <button
+                            key={group.category}
+                            onClick={() => setCardPoolSection(idx)}
+                            className={`flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold transition-all duration-150 border whitespace-nowrap ${
+                              cardPoolSection === idx
+                                ? "bg-white/15 border-white/25 text-white"
+                                : "bg-white/[0.03] border-white/[0.06] text-slate-500 hover:text-slate-300 hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            {tabLabel}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
@@ -850,7 +870,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                     return (
                       <div className="overflow-y-auto p-2">
                         <div className="text-[10px] font-black text-slate-500 tracking-wider uppercase mb-2 px-0.5">
-                          {group.emoji} {group.category} ({group.cards.length})
+                          {group.category} ({group.cards.length})
                         </div>
                         <div className="grid grid-cols-4 gap-1.5">
                           {group.cards.map((poolCard, idx) => {
