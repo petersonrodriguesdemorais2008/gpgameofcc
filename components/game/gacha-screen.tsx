@@ -1162,7 +1162,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           {packPhase === "floating" && (
                             <div
                               className="absolute left-0 right-0 z-30 cursor-grab active:cursor-grabbing"
-                              style={{top:"28%", height:"44px", touchAction:"none"}}
+                              style={{top:"9%", height:"44px", touchAction:"none"}}
                               onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); handleSwipeStart(e.clientX) }}
                               onPointerMove={e => handleSwipeMove(e.clientX)}
                               onPointerUp={handleSwipeEnd}
@@ -1278,6 +1278,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                     }} />
                                   )}
                                   {/* 3D flip — larger, square corners */}
+                                  <div style={{perspective:"900px", width:"108px", height:"155px"}}>
                                   <div
                                     className={isRevealed ? "cursor-pointer" : ""}
                                     style={{
@@ -1289,10 +1290,18 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                     }}
                                     onClick={() => isRevealed && setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
                                   >
-                                    {/* FRONT — no border radius */}
+                                    {/* FRONT — hidden until card turns */}
                                     <div className="absolute inset-0 overflow-hidden"
-                                      style={{backfaceVisibility:"hidden", boxShadow: isRevealed ? cardGlowStyle : "none", transition:"box-shadow 0.4s ease"}}>
-                                      <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="115px" className="object-cover" />
+                                      style={{
+                                        backfaceVisibility:"hidden",
+                                        WebkitBackfaceVisibility:"hidden",
+                                        boxShadow: isRevealed ? cardGlowStyle : "none",
+                                        transition:"box-shadow 0.4s ease",
+                                      }}>
+                                      {/* Only render image when card is being revealed or already revealed */}
+                                      {(isRevealed || isRevealing) && (
+                                        <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="115px" className="object-cover" />
+                                      )}
                                       {isRevealing && (
                                         <div className="absolute inset-0 z-20 pointer-events-none" style={{
                                           background:"linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.75) 50%,transparent 65%)",
@@ -1321,9 +1330,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                       )}
                                       {isRevealed && <div className="absolute inset-0 bg-white/0 hover:bg-white/8 transition-colors duration-150" />}
                                     </div>
-                                    {/* BACK — no border radius */}
+                                    {/* BACK */}
                                     <div className="absolute inset-0 overflow-hidden"
-                                      style={{backfaceVisibility:"hidden", transform:"rotateY(180deg)"}}>
+                                      style={{
+                                        backfaceVisibility:"hidden",
+                                        WebkitBackfaceVisibility:"hidden",
+                                        transform:"rotateY(180deg)",
+                                      }}>
                                       <Image src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="Card Back" fill sizes="115px" className="object-cover" />
                                       {!isRevealed && idx <= cardRevealIndex && (
                                         <div className="absolute inset-0 pointer-events-none" style={{
@@ -1333,6 +1346,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                           animation:"backGlowPulse 0.8s ease-in-out infinite alternate"}} />
                                       )}
                                     </div>
+                                  </div>
                                   </div>
                                 </div>
                                 {/* Rarity badge — no rounded */}
