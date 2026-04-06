@@ -85,6 +85,27 @@ function getTimeUntilMidnight(): string {
 const CARD_POOLS: Record<string, { category: string; emoji: string; cards: { name: string; rarity?: string; dp?: string; note?: string }[] }[]> = {
   fsg: [
     {
+      category: "Unit Card", emoji: "👑",
+      cards: [
+        { name: "Rei Arthur", rarity: "SR", dp: "2 DP" }, { name: "Rei Arthur", rarity: "UR", dp: "3 DP" }, { name: "Rei Arthur", rarity: "LR", dp: "4 DP" },
+        { name: "Fehnon Hoskie", rarity: "SR", dp: "2 DP" }, { name: "Fehnon Hoskie", rarity: "UR", dp: "3 DP" }, { name: "Fehnon Hoskie", rarity: "LR", dp: "4 DP" },
+        { name: "Calem Hidenori", rarity: "SR", dp: "2 DP" }, { name: "Calem Hidenori", rarity: "UR", dp: "3 DP" }, { name: "Calem Hidenori", rarity: "LR", dp: "4 DP" },
+        { name: "Morgana Pendragon", rarity: "SR", dp: "2 DP" }, { name: "Morgana Pendragon", rarity: "UR", dp: "3 DP" }, { name: "Morgana Pendragon", rarity: "LR", dp: "4 DP" },
+      ],
+    },
+    {
+      category: "Tropas", emoji: "⚔️",
+      cards: [
+        { name: "Santo Graal: Galahad", rarity: "SR" }, { name: "Santo Graal: Galahad", rarity: "R" },
+        { name: "Balin: O Sentinela das Ruínas", rarity: "SR" }, { name: "Balin: O Sentinela das Ruínas", rarity: "R" },
+        { name: "Merlin: O Mago do Destino", rarity: "SR" }, { name: "Merlin: O Mago do Destino", rarity: "R" },
+        { name: "Mordred: O Usurpador", rarity: "SR" }, { name: "Mordred: O Usurpador", rarity: "R" },
+        { name: "Vivian: A Dama do Lago", rarity: "SR" }, { name: "Vivian: A Dama do Lago", rarity: "R" },
+        { name: "Oswin: O Comerciante", rarity: "SR" }, { name: "Oswin: O Comerciante", rarity: "R" },
+        { name: "O Lorde Penguim Mr. P", rarity: "SR" }, { name: "O Lorde Penguim Mr. P", rarity: "R" },
+      ],
+    },
+    {
       category: "Action Funcion Card", emoji: "⚡",
       cards: [
         { name: "Estratégia Real" }, { name: "Investida Coordenada" }, { name: "Laços da Ordem" },
@@ -92,16 +113,9 @@ const CARD_POOLS: Record<string, { category: string; emoji: string; cards: { nam
       ],
     },
     {
-      category: "Brotherhood Function Card", emoji: "🛡️",
-      cards: [{ name: "Alvorada de Albion" }, { name: "A Grande Ordem" }],
-    },
-    {
-      category: "Unit Card", emoji: "👑",
+      category: "Magic Funcion Card", emoji: "✨",
       cards: [
-        { name: "Rei Arthur", rarity: "SR", dp: "2 DP" }, { name: "Rei Arthur", rarity: "UR", dp: "3 DP" }, { name: "Rei Arthur", rarity: "LR", dp: "4 DP" },
-        { name: "Fehnon Hoskie", rarity: "SR", dp: "2 DP" }, { name: "Fehnon Hoskie", rarity: "UR", dp: "3 DP" }, { name: "Fehnon Hoskie", rarity: "LR", dp: "4 DP" },
-        { name: "Calem Hidenori", rarity: "SR", dp: "2 DP" }, { name: "Calem Hidenori", rarity: "UR", dp: "3 DP" }, { name: "Calem Hidenori", rarity: "LR", dp: "4 DP" },
-        { name: "Morgana Pendragon", rarity: "SR", dp: "2 DP" }, { name: "Morgana Pendragon", rarity: "UR", dp: "3 DP" }, { name: "Morgana Pendragon", rarity: "LR", dp: "4 DP" },
+        { name: "Ordem de Laceração" }, { name: "Sinfonia Relâmpago" }, { name: "Veredito do Rei Tirano" }, { name: "Julgamento do Vazio Eterno" },
       ],
     },
     {
@@ -112,32 +126,28 @@ const CARD_POOLS: Record<string, { category: string; emoji: string; cards: { nam
       ],
     },
     {
-      category: "Magic Funcion Card", emoji: "✨",
-      cards: [
-        { name: "Ordem de Laceração" }, { name: "Sinfonia Relâmpago" }, { name: "Veredito do Rei Tirano" }, { name: "Julgamento do Vazio Eterno" },
-      ],
-    },
-    {
       category: "Trap Funcion Card", emoji: "🪤",
       cards: [
         { name: "Contra-Ataque Surpresa" }, { name: "Escudo de Mana" }, { name: "Portão da Fortaleza" }, { name: "Brincadeira de Mau Gosto" },
       ],
     },
     {
+      category: "Brotherhood Function Card", emoji: "🛡️",
+      cards: [{ name: "Alvorada de Albion" }, { name: "A Grande Ordem" }],
+    },
+    {
       category: "Ultimate Gear Card", emoji: "⚙️",
-      cards: [{ name: "Protonix Sword", note: "Fehnon" }, { name: "Oden Sword", note: "Fehnon" }, { name: "Twiligh Avalon", note: "Morgana" }],
+      cards: [
+        { name: "Ultimate Gear: Protonix Sword", note: "Fehnon" },
+        { name: "Ultimate Gear: Oden Sword", note: "Fehnon" },
+        { name: "Ultimate Gear: Twiligh Avalon", note: "Morgana" },
+      ],
     },
     {
       category: "Ultimate Guardian Card", emoji: "🪽",
-      cards: [{ name: "Miguel Arcanjo", note: "Calem" }, { name: "Mefisto Fóles", note: "Arthur" }],
-    },
-    {
-      category: "Tropas", emoji: "⚔️",
       cards: [
-        { name: "Santo Graal: Galahad", rarity: "R/SR", note: "Lightness" }, { name: "Lancelot, O Herdeiro Sagrado", rarity: "R/SR", note: "Void" },
-        { name: "Balin, O Sentinela das Ruínas", rarity: "R/SR", note: "Void" }, { name: "Merlin: O Mago do Destino", rarity: "R/SR", note: "Darkness" },
-        { name: "Mordred: O Usurpador", rarity: "R/SR", note: "Lightness" }, { name: "Vivian: A Dama do Lago", rarity: "R/SR", note: "Aquos" },
-        { name: "Oswin: O Comerciante", rarity: "R/SR", note: "Darkness" }, { name: "O Lorde Penguim Mr. P", rarity: "R/SR", note: "Aquos" },
+        { name: "Ultimate Guardian: Miguel Arcanjo", note: "Calem" },
+        { name: "Ultimate Guardian: Mefisto Fóles", note: "Arthur" },
       ],
     },
     {
@@ -145,7 +155,7 @@ const CARD_POOLS: Record<string, { category: string; emoji: string; cards: { nam
       cards: [{ name: "Ruínas Abandonadas" }, { name: "Reino de Camelot" }],
     },
   ],
-  anl: [], // future
+  anl: [],
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -182,6 +192,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
   const [swipeProgress, setSwipeProgress] = useState(0)
   const [swipeComplete, setSwipeComplete] = useState(false)
+  // Zoom on revealed cards
+  const [revealZoomedCard, setRevealZoomedCard] = useState<{ image: string; name: string; rarity: string } | null>(null)
 
   const COST_SINGLE = 1
   const COST_MULTI = 10
@@ -925,6 +937,43 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         )}
       </div>
 
+      {/* ── REVEAL CARD ZOOM — igual à coleção ── */}
+      {revealZoomedCard && (
+        <div
+          className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[80] p-4"
+          onClick={() => setRevealZoomedCard(null)}
+        >
+          <div className="relative w-full max-w-sm aspect-[3/4] animate-float">
+            <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
+            <Image
+              src={revealZoomedCard.image || "/placeholder.svg"}
+              alt={revealZoomedCard.name}
+              fill
+              sizes="(max-width: 768px) 90vw, 384px"
+              className={`object-contain ${
+                revealZoomedCard.rarity === "LR" ? "rarity-lr" :
+                revealZoomedCard.rarity === "UR" ? "rarity-ur" :
+                revealZoomedCard.rarity === "SR" ? "rarity-sr" : "rarity-r"
+              }`}
+            />
+          </div>
+          <div className="absolute bottom-8 left-0 right-0 text-center">
+            <h3 className="text-2xl font-bold text-white mb-2">{revealZoomedCard.name}</h3>
+            <span className={`px-4 py-1 rounded-full text-sm font-bold ${
+              revealZoomedCard.rarity === "LR" ? "bg-gradient-to-r from-red-500 to-amber-500 text-white" :
+              revealZoomedCard.rarity === "UR" ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black" :
+              revealZoomedCard.rarity === "SR" ? "bg-purple-500 text-white" : "bg-slate-500 text-white"
+            }`}>
+              {revealZoomedCard.rarity}
+            </span>
+          </div>
+          <button onClick={() => setRevealZoomedCard(null)}
+            className="absolute top-4 right-4 p-2 glass rounded-full hover:bg-white/20 transition-colors">
+            <X className="w-6 h-6 text-white" />
+          </button>
+        </div>
+      )}
+
       {/* ── CARD POOL ZOOM — igual à coleção ── */}
       {zoomedPoolCard && (
         <div
@@ -1186,133 +1235,101 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
                     {/* ── CARD REVEAL ── */}
                     {packPhase === "revealing" && (
-                      <div className="flex flex-col items-center gap-6 w-full" style={{animation:"revealContainerIn 0.4s ease-out forwards"}}>
-                        <div className="flex gap-4 justify-center px-4">
+                      <div className="flex flex-col items-center gap-5 w-full" style={{animation:"revealContainerIn 0.4s ease-out forwards"}}>
+                        <div className="flex gap-3 justify-center px-2">
                           {pack.cards.map((card, idx) => {
                             const isRevealed = idx < cardRevealIndex
                             const isRevealing = idx === cardRevealIndex - 1
                             const isPending = idx >= cardRevealIndex
-
-                            // Per-card rarity glow while revealed
                             const cardGlowStyle =
-                              card.rarity==="LR" ? "0 0 25px rgba(239,68,68,0.9), 0 0 50px rgba(251,191,36,0.5)" :
-                              card.rarity==="UR" ? "0 0 20px rgba(56,189,248,0.85), 0 0 40px rgba(99,179,237,0.4)" :
-                              card.rarity==="SR" ? "0 0 18px rgba(168,85,247,0.8), 0 0 35px rgba(192,132,252,0.3)" :
-                              "0 0 10px rgba(148,163,184,0.4)"
-
+                              card.rarity==="LR" ? "0 0 30px rgba(239,68,68,0.9), 0 0 60px rgba(251,191,36,0.5)" :
+                              card.rarity==="UR" ? "0 0 25px rgba(56,189,248,0.85), 0 0 50px rgba(99,179,237,0.4)" :
+                              card.rarity==="SR" ? "0 0 22px rgba(168,85,247,0.8), 0 0 40px rgba(192,132,252,0.3)" :
+                              "0 0 12px rgba(148,163,184,0.4)"
                             return (
                               <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2">
-                                {/* Rarity pre-glow (lights up before card turns) */}
                                 <div className="relative" style={{perspective:"900px"}}>
-                                  {/* Pre-reveal anticipation glow */}
                                   {isPending && idx === cardRevealIndex && (
-                                    <div className="absolute inset-0 rounded-xl pointer-events-none z-10" style={{
-                                      background: card.rarity==="LR"
-                                        ? "radial-gradient(ellipse, rgba(239,68,68,0.6) 0%, transparent 70%)"
-                                        : card.rarity==="UR"
-                                        ? "radial-gradient(ellipse, rgba(56,189,248,0.5) 0%, transparent 70%)"
-                                        : card.rarity==="SR"
-                                        ? "radial-gradient(ellipse, rgba(168,85,247,0.4) 0%, transparent 70%)"
-                                        : "none",
-                                      filter:"blur(8px)",
-                                      animation:"anticipateGlow 0.6s ease-in-out infinite alternate",
+                                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                                      background: card.rarity==="LR" ? "radial-gradient(ellipse, rgba(239,68,68,0.6) 0%, transparent 70%)" :
+                                        card.rarity==="UR" ? "radial-gradient(ellipse, rgba(56,189,248,0.5) 0%, transparent 70%)" :
+                                        card.rarity==="SR" ? "radial-gradient(ellipse, rgba(168,85,247,0.4) 0%, transparent 70%)" : "none",
+                                      filter:"blur(10px)", animation:"anticipateGlow 0.6s ease-in-out infinite alternate",
                                     }} />
                                   )}
-
-                                  {/* 3D flip container */}
+                                  {/* 3D flip — larger, square corners */}
                                   <div
-                                    className="relative w-24 h-36 md:w-28 md:h-40"
+                                    className={isRevealed ? "cursor-pointer" : ""}
                                     style={{
+                                      width:"108px", height:"155px", position:"relative",
                                       transformStyle:"preserve-3d",
                                       transform: isRevealed ? "rotateY(0deg)" : "rotateY(-180deg)",
-                                      transition: isRevealing
-                                        ? `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)`
-                                        : "none",
-                                      opacity: isPending && idx > cardRevealIndex ? 0.15 : 1,
+                                      transition: isRevealing ? `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)` : "none",
+                                      opacity: isPending && idx > cardRevealIndex ? 0.10 : 1,
                                     }}
+                                    onClick={() => isRevealed && setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
                                   >
-                                    {/* ── CARD FRONT ── */}
-                                    <div className="absolute inset-0 overflow-hidden rounded-xl"
-                                      style={{ backfaceVisibility:"hidden", boxShadow: isRevealed ? cardGlowStyle : "none" }}>
-                                      <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="128px" className="object-cover" />
-
-                                      {/* Shine sweep on reveal */}
+                                    {/* FRONT — no border radius */}
+                                    <div className="absolute inset-0 overflow-hidden"
+                                      style={{backfaceVisibility:"hidden", boxShadow: isRevealed ? cardGlowStyle : "none", transition:"box-shadow 0.4s ease"}}>
+                                      <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="115px" className="object-cover" />
                                       {isRevealing && (
-                                        <div className="absolute inset-0 z-20 pointer-events-none"
-                                          style={{background:"linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.7) 50%, transparent 60%)",
-                                            animation:"shineSweep 0.6s ease-out 0.3s forwards", transform:"translateX(-100%)"}} />
+                                        <div className="absolute inset-0 z-20 pointer-events-none" style={{
+                                          background:"linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.75) 50%,transparent 65%)",
+                                          animation:"shineSweep 0.65s ease-out 0.2s forwards", transform:"translateX(-100%)"}} />
                                       )}
-
-                                      {/* LR holographic rainbow border */}
                                       {card.rarity==="LR" && isRevealed && (
-                                        <div className="absolute inset-0 pointer-events-none rounded-xl" style={{
+                                        <div className="absolute inset-0 pointer-events-none" style={{
                                           background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
                                           backgroundSize:"300% 100%", animation:"rainbowShift 1.5s linear infinite",
                                           padding:"3px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                                          WebkitMaskComposite:"xor", maskComposite:"exclude",
-                                        }} />
+                                          WebkitMaskComposite:"xor", maskComposite:"exclude"}} />
                                       )}
-                                      {/* LR overlay shimmer */}
                                       {card.rarity==="LR" && isRevealed && (
                                         <div className="absolute inset-0 pointer-events-none" style={{
                                           background:"linear-gradient(135deg,transparent 30%,rgba(255,255,255,0.08) 50%,transparent 70%)",
-                                          backgroundSize:"200% 200%", animation:"lrHoloShimmer 3s ease-in-out infinite",
-                                        }} />
+                                          backgroundSize:"200% 200%", animation:"lrHoloShimmer 3s ease-in-out infinite"}} />
                                       )}
-                                      {/* UR diamond border + sparkles */}
                                       {card.rarity==="UR" && isRevealed && (
-                                        <div className="absolute inset-0 pointer-events-none rounded-xl" style={{
-                                          border:"2px solid rgba(56,189,248,0.9)",
-                                          boxShadow:"inset 0 0 12px rgba(56,189,248,0.3)",
-                                          animation:"urDiamondPulse 1.8s ease-in-out infinite",
-                                        }} />
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          border:"2px solid rgba(56,189,248,0.9)", boxShadow:"inset 0 0 14px rgba(56,189,248,0.35)",
+                                          animation:"urDiamondPulse 1.8s ease-in-out infinite"}} />
                                       )}
-                                      {/* SR gold glow */}
                                       {card.rarity==="SR" && isRevealed && (
-                                        <div className="absolute inset-0 pointer-events-none rounded-xl" style={{
-                                          border:"2px solid rgba(168,85,247,0.8)",
-                                          animation:"srGoldPulse 2s ease-in-out infinite",
-                                        }} />
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          border:"2px solid rgba(168,85,247,0.8)", animation:"srGoldPulse 2s ease-in-out infinite"}} />
                                       )}
+                                      {isRevealed && <div className="absolute inset-0 bg-white/0 hover:bg-white/8 transition-colors duration-150" />}
                                     </div>
-
-                                    {/* ── CARD BACK ── */}
-                                    <div className="absolute inset-0 rounded-xl overflow-hidden"
-                                      style={{ backfaceVisibility:"hidden", transform:"rotateY(180deg)" }}>
-                                      <Image src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="Card Back" fill sizes="128px" className="object-cover" />
-                                      {/* Rarity glow aura on back while pending reveal */}
+                                    {/* BACK — no border radius */}
+                                    <div className="absolute inset-0 overflow-hidden"
+                                      style={{backfaceVisibility:"hidden", transform:"rotateY(180deg)"}}>
+                                      <Image src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="Card Back" fill sizes="115px" className="object-cover" />
                                       {!isRevealed && idx <= cardRevealIndex && (
                                         <div className="absolute inset-0 pointer-events-none" style={{
-                                          background: card.rarity==="LR"
-                                            ? "linear-gradient(135deg,rgba(239,68,68,0.3),rgba(251,191,36,0.3))"
-                                            : card.rarity==="UR"
-                                            ? "rgba(56,189,248,0.25)"
-                                            : card.rarity==="SR"
-                                            ? "rgba(168,85,247,0.2)"
-                                            : "transparent",
-                                          animation:"backGlowPulse 0.8s ease-in-out infinite alternate",
-                                        }} />
+                                          background: card.rarity==="LR" ? "linear-gradient(135deg,rgba(239,68,68,0.3),rgba(251,191,36,0.3))" :
+                                            card.rarity==="UR" ? "rgba(56,189,248,0.25)" :
+                                            card.rarity==="SR" ? "rgba(168,85,247,0.2)" : "transparent",
+                                          animation:"backGlowPulse 0.8s ease-in-out infinite alternate"}} />
                                       )}
                                     </div>
                                   </div>
                                 </div>
-
-                                {/* Rarity badge */}
-                                <div
-                                  className={`px-3 py-0.5 text-center text-xs font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded-md`}
-                                  style={{
-                                    opacity: isRevealed ? 1 : 0,
-                                    transform: isRevealed ? "translateY(0) scale(1)" : "translateY(-6px) scale(0.8)",
-                                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.35s",
-                                    boxShadow: isRevealed ? cardGlowStyle.split(",")[0] : "none",
-                                  }}
-                                >
+                                {/* Rarity badge — no rounded */}
+                                <div className={`px-2.5 py-0.5 text-center text-xs font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}
+                                  style={{opacity:isRevealed?1:0, transform:isRevealed?"translateY(0) scale(1)":"translateY(-6px) scale(0.8)",
+                                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.35s"}}>
                                   {card.rarity}
                                 </div>
                               </div>
                             )
                           })}
                         </div>
+                        {cardRevealIndex >= CARDS_PER_PACK && (
+                          <p className="text-white/25 text-[10px] tracking-widest" style={{animation:"fadeIn 0.5s ease-out forwards"}}>
+                            toque em uma carta para ampliar
+                          </p>
+                        )}
                       </div>
                     )}
                   </>
