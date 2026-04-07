@@ -154,46 +154,50 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ── TOP BAR ── */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex items-start justify-between px-4 pt-4 pb-2" style={{background:"linear-gradient(to bottom,rgba(5,9,17,0.80) 0%,transparent 100%)"}}>
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-3 pb-3"
+        style={{background:"linear-gradient(to bottom,rgba(3,6,14,0.92) 0%,rgba(3,6,14,0.70) 70%,transparent 100%)",backdropFilter:"blur(8px)"}}>
 
         {/* Left: Player profile */}
         <button onClick={() => onNavigate("profile")}
-          className="flex items-center gap-2.5 group transition-all hover:scale-[1.02]">
+          className="flex items-center gap-2.5 group transition-all duration-200 hover:scale-[1.03]">
           <div className="relative">
-            <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-cyan-400/40 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400/70 transition-colors">
+            {/* Avatar ring glow */}
+            <div className="absolute inset-0 rounded-2xl bg-cyan-400/20 blur-md group-hover:bg-cyan-400/35 transition-all" style={{transform:"scale(1.15)"}} />
+            <div className="relative w-11 h-11 rounded-2xl overflow-hidden border border-cyan-400/50 shadow-lg shadow-cyan-500/25 group-hover:border-cyan-300/70 transition-all">
               {playerProfile.avatarUrl ? (
-                <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={48} height={48} className="w-full h-full object-cover" />
+                <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={44} height={44} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center">
-                  <span className="text-white text-lg font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
+                  <span className="text-white text-base font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
                 </div>
               )}
             </div>
-            {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border border-black shadow" />}
+            {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-black/80 shadow" />}
           </div>
           <div className="text-left">
-            <p className="text-white font-black text-sm leading-tight">{playerProfile.name}</p>
-            <p className="text-cyan-400/70 text-[10px] font-medium tracking-wide">{playerProfile.title || "Jogador"}</p>
+            <p className="text-white font-black text-sm leading-tight tracking-wide">{playerProfile.name}</p>
+            <p className="text-cyan-400/60 text-[10px] font-medium tracking-wider">{playerProfile.title || "Jogador"}</p>
           </div>
         </button>
 
         {/* Right: Resources */}
         <div className="flex items-center gap-2">
           {/* Coins */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border border-amber-400/20" style={{background:"rgba(15,12,5,0.75)"}}>
-            <div className="w-6 h-6 relative">
-              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={24} height={24} className="w-full h-full object-contain drop-shadow-lg" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-400/20 shadow-inner"
+            style={{background:"linear-gradient(135deg,rgba(20,14,3,0.90),rgba(30,20,5,0.85))"}}>
+            <div className="w-5 h-5 relative">
+              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={20} height={20} className="w-full h-full object-contain drop-shadow-lg" />
             </div>
-            <span className="text-amber-300 font-black text-sm">{coins.toLocaleString()}</span>
+            <span className="text-amber-300 font-black text-sm tabular-nums">{coins.toLocaleString()}</span>
           </div>
 
           {/* Gift box */}
           <button onClick={() => setShowGiftBox(true)}
-            className="relative flex items-center justify-center w-10 h-10 rounded-2xl border border-white/10 transition-all hover:border-amber-400/40"
-            style={{background:"rgba(15,12,5,0.75)"}}>
-            <Gift className="w-5 h-5 text-amber-300" />
+            className="relative flex items-center justify-center w-9 h-9 rounded-xl border border-amber-500/20 transition-all hover:border-amber-400/50 hover:scale-105"
+            style={{background:"linear-gradient(135deg,rgba(20,14,3,0.90),rgba(30,20,5,0.85))"}}>
+            <Gift className="w-4 h-4 text-amber-300" />
             {unclaimedGifts.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border border-black">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-lg border border-black/50">
                 {unclaimedGifts.length}
               </span>
             )}
@@ -203,7 +207,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── LOGO ── */}
       <div className="fixed top-16 left-4 z-30 pointer-events-none">
-        <p className="text-[10px] text-cyan-400/50 font-mono tracking-widest uppercase mb-0.5">Card Game</p>
         <Image src="/images/gp-cg-logo.png" alt="Gear Perks" width={180} height={60} className="w-36 h-auto aura-logo opacity-90" priority />
       </div>
 
@@ -220,53 +223,34 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ── SIDE FLOATING BUTTONS (right) ── */}
-      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-3">
+      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2.5">
         <button onClick={() => onNavigate("deck-builder")}
-          className="flex flex-col items-center gap-1 w-14 h-14 rounded-2xl border border-emerald-500/30 text-white transition-all hover:scale-105 hover:border-emerald-400/60 shadow-lg"
-          style={{background:"linear-gradient(145deg,rgba(5,60,40,0.9),rgba(4,47,32,0.95))"}}>
+          className="flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{background:"linear-gradient(145deg,rgba(4,50,33,0.95),rgba(3,38,25,0.98))",borderColor:"rgba(52,211,153,0.25)",boxShadow:"0 4px 20px rgba(16,185,129,0.12)"}}>
           <Hammer className="w-5 h-5 text-emerald-400" />
-          <span className="text-[9px] text-emerald-300/80 font-bold tracking-wide">DECK</span>
+          <span className="text-[9px] text-emerald-300/70 font-bold tracking-widest">DECK</span>
         </button>
 
         <button onClick={() => onNavigate("history")}
-          className="flex flex-col items-center gap-1 w-14 h-14 rounded-2xl border border-slate-600/40 text-white transition-all hover:scale-105 hover:border-slate-400/60 shadow-lg"
-          style={{background:"rgba(15,20,35,0.90)"}}>
+          className="flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{background:"rgba(12,16,28,0.95)",borderColor:"rgba(148,163,184,0.18)",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
           <History className="w-5 h-5 text-slate-300" />
-          <span className="text-[9px] text-slate-400 font-bold tracking-wide">HIST.</span>
+          <span className="text-[9px] text-slate-500 font-bold tracking-widest">HIST.</span>
         </button>
 
         <button onClick={() => onNavigate("settings")}
-          className="relative flex flex-col items-center gap-1 w-14 h-14 rounded-2xl border border-sky-500/30 text-white transition-all hover:scale-105 hover:border-sky-400/60 shadow-lg"
-          style={{background:"rgba(5,18,40,0.90)"}}>
+          className="flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{background:"linear-gradient(145deg,rgba(4,18,40,0.95),rgba(3,12,28,0.98))",borderColor:"rgba(56,189,248,0.22)",boxShadow:"0 4px 20px rgba(56,189,248,0.08)"}}>
           <Settings className="w-5 h-5 text-sky-400" />
-          <span className="text-[9px] text-sky-300/80 font-bold tracking-wide">CONFIG</span>
+          <span className="text-[9px] text-sky-400/70 font-bold tracking-widest">CONFIG</span>
         </button>
       </div>
 
-      {/* ── BOTTOM CHARACTER INFO (when not in play menu) ── */}
-      {!showPlayMenu && (
-        <div className="fixed bottom-28 left-3 z-30 max-w-[200px]">
-          <div className="rounded-2xl border border-white/[0.08] px-4 py-3 backdrop-blur-md" style={{background:"rgba(5,9,17,0.78)"}}>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-black text-sm leading-tight">Gear Perks</p>
-                <p className="text-cyan-400/70 text-[10px]">Card Game v1.5</p>
-              </div>
-            </div>
-            <p className="text-slate-400 text-[10px] leading-relaxed">
-              2025 Gear Perks Oficial Card Game, Made in BRAZIL
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* ── BOTTOM NAV ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40" style={{background:"linear-gradient(to top,rgba(4,7,15,0.97) 0%,rgba(4,7,15,0.90) 80%,transparent 100%)"}}>
+      <div className="fixed bottom-0 left-0 right-0 z-40"
+        style={{background:"linear-gradient(to top,rgba(3,6,14,0.97) 0%,rgba(3,6,14,0.88) 75%,transparent 100%)",backdropFilter:"blur(12px)"}}>
         {!showPlayMenu ? (
-          <div className="flex items-end justify-around px-4 pb-4 pt-2 max-w-lg mx-auto">
+          <div className="flex items-end justify-around px-3 pb-5 pt-2 max-w-lg mx-auto">
 
             {/* Coleção */}
             <NavBtn icon={<BookOpen className="w-5 h-5" />} label={t("collection")} onClick={() => onNavigate("collection")} color="cyan" />
@@ -274,39 +258,39 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             {/* Gacha */}
             <NavBtn icon={<Sparkles className="w-5 h-5" />} label={t("gacha")} onClick={() => onNavigate("gacha")} color="purple" />
 
-            {/* PLAY — center big */}
-            <button
-              onClick={() => setShowPlayMenu(true)}
-              className="relative flex flex-col items-center -mt-6"
-              style={{filter:"drop-shadow(0 0 16px rgba(239,68,68,0.5))"}}>
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-red-600 flex items-center justify-center shadow-2xl shadow-red-500/40 border-2 border-red-400/50 transition-all hover:scale-105 hover:shadow-red-500/60">
+            {/* PLAY — center elevated */}
+            <button onClick={() => setShowPlayMenu(true)} className="relative flex flex-col items-center -mt-8">
+              {/* Outer glow ring */}
+              <div className="absolute inset-0 rounded-2xl blur-xl" style={{background:"rgba(239,68,68,0.35)",transform:"scale(1.3)"}} />
+              <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center border-2 border-red-400/60 transition-all hover:scale-105 hover:border-red-300/80 shadow-2xl shadow-red-600/30"
+                style={{background:"linear-gradient(145deg,#dc2626,#ef4444,#c2410c)"}}>
                 <Swords className="w-7 h-7 text-white drop-shadow-lg" />
               </div>
-              <span className="text-white text-[10px] font-black tracking-widest mt-1 uppercase">{t("play")}</span>
+              <span className="text-white text-[10px] font-black tracking-widest mt-1.5 uppercase">{t("play")}</span>
             </button>
 
-            {/* Amigos */}
-            <NavBtn icon={<Users className="w-5 h-5" />} label="Amigos" onClick={() => onNavigate("friends")} color="pink" />
+            {/* Social */}
+            <NavBtn icon={<Users className="w-5 h-5" />} label="Social" onClick={() => onNavigate("friends")} color="pink" />
 
-            {/* Loja */}
-            <NavBtn icon={<ShoppingCart className="w-5 h-5" />} label="Loja" onClick={() => onNavigate("shop")} color="amber" />
+            {/* Missões */}
+            <NavBtn icon={<Target className="w-5 h-5" />} label="Missões" onClick={() => onNavigate("missions")} color="amber" />
           </div>
         ) : (
           /* Play sub-menu */
-          <div className="px-4 pb-5 pt-3 max-w-lg mx-auto space-y-2.5">
-            <p className="text-slate-500 text-xs text-center tracking-widest uppercase mb-3">Escolha o modo de jogo</p>
+          <div className="px-4 pb-6 pt-4 max-w-lg mx-auto space-y-2.5">
+            <p className="text-slate-500 text-[11px] text-center tracking-widest uppercase font-semibold mb-3">Modo de jogo</p>
             <button onClick={() => onNavigate("duel-bot")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 border border-blue-400/30 transition-all hover:scale-[1.02] shadow-xl shadow-blue-500/20"
-              style={{background:"linear-gradient(135deg,#1e40af,#3b82f6,#1d4ed8)"}}>
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#1d4ed8,#3b82f6,#2563eb)",boxShadow:"0 8px 24px rgba(59,130,246,0.25)"}}>
               <Bot className="h-6 w-6" />{t("vsBot")}
             </button>
             <button onClick={() => onNavigate("duel-player")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 border border-orange-400/30 transition-all hover:scale-[1.02] shadow-xl shadow-orange-500/20"
-              style={{background:"linear-gradient(135deg,#c2410c,#f97316,#ea580c)"}}>
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#c2410c,#f97316,#ea580c)",boxShadow:"0 8px 24px rgba(249,115,22,0.25)"}}>
               <Users className="h-6 w-6" />{t("vsPlayer")}
             </button>
             <button onClick={() => setShowPlayMenu(false)}
-              className="w-full h-10 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm font-medium transition-colors hover:bg-white/5">
+              className="w-full h-10 rounded-xl border border-white/[0.08] text-slate-500 hover:text-slate-300 text-sm font-semibold transition-colors hover:bg-white/[0.04]">
               {t("back")}
             </button>
           </div>
