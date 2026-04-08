@@ -40,6 +40,7 @@ export function GameWrapper() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [menuMessage, setMenuMessage] = useState<string | null>(null)
   const [showTitle, setShowTitle] = useState(true)
+  const [appReady, setAppReady] = useState(false)
 
   // Toggle mobile-mode class on html element
   useEffect(() => {
@@ -99,6 +100,8 @@ export function GameWrapper() {
       </div>
     )
   }
+
+  if (!appReady) return <LoadingScreen onComplete={() => setAppReady(true)} />
 
   // Show setup screen for first-time players
   if (showSetup) {
