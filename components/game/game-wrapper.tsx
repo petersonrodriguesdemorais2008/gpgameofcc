@@ -101,8 +101,6 @@ export function GameWrapper() {
     )
   }
 
-  if (!appReady) return <LoadingScreen onComplete={() => setAppReady(true)} />
-
   // Show setup screen for first-time players
   if (showSetup) {
     return <PlayerSetupScreen onComplete={handleSetupComplete} />
