@@ -97,7 +97,7 @@ const CARD_IMAGES = [
   "/images/cards/Chamado_da_Távola.png",
   "/images/cards/dados-do-cataclismo.png",
   // UI / icons
-  "/images/gp-cg-logo.png",
+  "/images/GP_CG_logo.png",
   "/images/icons/gacha-coin.png",
   "/images/cards/card-back.png",
   "/images/icons/fehnon-icon.png",
@@ -235,7 +235,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         <div className="absolute inset-0 pointer-events-none rounded-full blur-3xl"
           style={{background:"radial-gradient(ellipse,rgba(6,182,212,0.15) 0%,transparent 70%)",transform:"scale(2)",animation:"pulse 3s ease-in-out infinite"}} />
         <Image
-          src="/images/gp-cg-logo.png"
+          src="/images/GP_CG_logo.png"
           alt="Gear Perks Card Game"
           width={320}
           height={180}
