@@ -97,6 +97,7 @@ const CARD_POOLS: Record<string, { category: string; emoji: string; cards: { nam
       category: "Tropas", emoji: "⚔️",
       cards: [
         { name: "Santo Graal: Galahad", rarity: "SR" }, { name: "Santo Graal: Galahad", rarity: "R" },
+        { name: "Lancelot: O Herdeiro Sagrado", rarity: "SR" }, { name: "Lancelot: O Herdeiro Sagrado", rarity: "R" },
         { name: "Balin: O Sentinela das Ruínas", rarity: "SR" }, { name: "Balin: O Sentinela das Ruínas", rarity: "R" },
         { name: "Merlin: O Mago do Destino", rarity: "SR" }, { name: "Merlin: O Mago do Destino", rarity: "R" },
         { name: "Mordred: O Usurpador", rarity: "SR" }, { name: "Mordred: O Usurpador", rarity: "R" },
