@@ -206,7 +206,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ── LOGO ── */}
-      <div className="fixed top-1/2 -translate-y-1/2 left-6 z-30 pointer-events-none">
+      <div className="fixed top-[18%] left-6 z-30 pointer-events-none">
         <Image src="/images/GP_CG_logo.png" alt="Gear Perks" width={260} height={100} className="w-52 h-auto aura-logo opacity-95" priority />
       </div>
 
