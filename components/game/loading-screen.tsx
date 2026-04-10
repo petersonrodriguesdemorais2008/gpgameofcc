@@ -19,6 +19,8 @@ const CARD_IMAGES = [
   "/images/bandagens-duplas.png",
   "/images/cards/Balin_R.png",
   "/images/cards/Balin_SR.png",
+  "/images/cards/Lancelot_R.png",
+  "/images/cards/Lancelot_SR.png",
   "/images/cards/Flecha_de_Balista.png",
   "/images/cards/Pedra_de_Afiar.png",
   "/images/cards/a-grande-ordem.jpg",
