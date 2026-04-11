@@ -50,6 +50,10 @@ interface OnlineChatMsg {
 interface DuelScreenProps {
   mode: "bot" | "player"
   onBack: () => void
+  /** Optional: pre-built draft deck that bypasses deck selection */
+  draftDeck?: { id: string; name: string; cards: any[]; tapCards?: any[] }
+  /** Optional: difficulty to use when draftDeck is provided */
+  draftDifficulty?: "easy" | "medium" | "hard"
 }
 
 interface RoomData {
@@ -681,114 +685,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }))
 
       return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
-    },
-  },
-
-  "veredito-do-rei-tirano": {
-    id: "veredito-do-rei-tirano",
-    name: "Veredito do Rei Tirano",
-    requiresTargets: true,
-    requiresChoice: true,
-    choiceOptions: [
-      { id: "unit", label: "Atacar Unidade", description: "Causa 5 de dano a uma unidade inimiga" },
-      { id: "lp", label: "Atacar LP", description: "Causa 5 de dano direto ao LP do oponente" },
-    ],
-    canActivate: (context) => {
-      const hasReiArthur = context.playerField.unitZone.some((u) =>
-        u !== null && u.name === "Rei Arthur"
-      )
-      if (!hasReiArthur) {
-        return { canActivate: false, reason: "Voce precisa ter Rei Arthur no campo" }
-      }
-      return { canActivate: true }
-    },
-    resolve: (context, targets) => {
-      const chosenOption = targets?.chosenOption
-      if (chosenOption === "lp") {
-        const damage = 5
-        const currentEnemyLife = context.enemyField.life
-        const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-        context.setEnemyField((prev) => ({ ...prev, life: newEnemyLife }))
-        return { success: true, message: `Veredito do Rei Tirano! 5 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
-      } else if (chosenOption === "unit") {
-        if (!targets?.enemyUnitIndices?.length) {
-          return { success: false, message: "Selecione uma unidade inimiga" }
-        }
-        const enemyIndex = targets.enemyUnitIndices[0]
-        const enemyUnit = context.enemyField.unitZone[enemyIndex]
-        if (!enemyUnit) return { success: false, message: "Unidade inimiga nao encontrada" }
-        const currentDp = enemyUnit.currentDp || enemyUnit.dp
-        const newDp = Math.max(0, currentDp - 5)
-        const isDestroyed = newDp <= 0
-        context.setEnemyField((prev) => {
-          const newUnitZone = [...prev.unitZone]
-          const newGraveyard = [...prev.graveyard]
-          if (isDestroyed) {
-            if (newUnitZone[enemyIndex]) newGraveyard.push(newUnitZone[enemyIndex]!)
-            newUnitZone[enemyIndex] = null
-          } else {
-            if (newUnitZone[enemyIndex]) newUnitZone[enemyIndex] = { ...newUnitZone[enemyIndex]!, currentDp: newDp }
-          }
-          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
-        })
-        if (isDestroyed) return { success: true, message: `Veredito do Rei Tirano! ${enemyUnit.name} foi destruido!` }
-        return { success: true, message: `Veredito do Rei Tirano! ${enemyUnit.name} recebeu 5 de dano! (${currentDp} -> ${newDp})` }
-      }
-      return { success: false, message: "Escolha uma opcao" }
-    },
-  },
-
-  "julgamento-do-vazio-eterno": {
-    id: "julgamento-do-vazio-eterno",
-    name: "Julgamento do Vazio Eterno",
-    requiresTargets: true,
-    requiresChoice: true,
-    choiceOptions: [
-      { id: "unit", label: "Atacar Unidade", description: "Causa 5 de dano a uma unidade inimiga" },
-      { id: "lp", label: "Atacar LP", description: "Causa 5 de dano direto ao LP do oponente" },
-    ],
-    canActivate: (context) => {
-      const hasCalem = context.playerField.unitZone.some((u) =>
-        u !== null && u.name === "Calem Hidenori"
-      )
-      if (!hasCalem) {
-        return { canActivate: false, reason: "Voce precisa ter Calem Hidenori no campo" }
-      }
-      return { canActivate: true }
-    },
-    resolve: (context, targets) => {
-      const chosenOption = targets?.chosenOption
-      if (chosenOption === "lp") {
-        const damage = 5
-        const currentEnemyLife = context.enemyField.life
-        const newEnemyLife = Math.max(0, currentEnemyLife - damage)
-        context.setEnemyField((prev) => ({ ...prev, life: newEnemyLife }))
-        return { success: true, message: `Julgamento do Vazio Eterno! 5 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
-      } else if (chosenOption === "unit") {
-        if (!targets?.enemyUnitIndices?.length) {
-          return { success: false, message: "Selecione uma unidade inimiga" }
-        }
-        const enemyIndex = targets.enemyUnitIndices[0]
-        const enemyUnit = context.enemyField.unitZone[enemyIndex]
-        if (!enemyUnit) return { success: false, message: "Unidade inimiga nao encontrada" }
-        const currentDp = enemyUnit.currentDp || enemyUnit.dp
-        const newDp = Math.max(0, currentDp - 5)
-        const isDestroyed = newDp <= 0
-        context.setEnemyField((prev) => {
-          const newUnitZone = [...prev.unitZone]
-          const newGraveyard = [...prev.graveyard]
-          if (isDestroyed) {
-            if (newUnitZone[enemyIndex]) newGraveyard.push(newUnitZone[enemyIndex]!)
-            newUnitZone[enemyIndex] = null
-          } else {
-            if (newUnitZone[enemyIndex]) newUnitZone[enemyIndex] = { ...newUnitZone[enemyIndex]!, currentDp: newDp }
-          }
-          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
-        })
-        if (isDestroyed) return { success: true, message: `Julgamento do Vazio Eterno! ${enemyUnit.name} foi destruido!` }
-        return { success: true, message: `Julgamento do Vazio Eterno! ${enemyUnit.name} recebeu 5 de dano! (${currentDp} -> ${newDp})` }
-      }
-      return { success: false, message: "Escolha uma opcao" }
     },
   },
 
@@ -1701,42 +1597,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  "calice-de-vinho-sagrado": {
-    id: "calice-de-vinho-sagrado",
-    name: "Cálice de Vinho Sagrado",
-    requiresTargets: true,
-    targetConfig: { allyUnits: 1 },
-    canActivate: (context) => {
-      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
-      if (!hasAllyUnits) return { canActivate: false, reason: "Você precisa ter uma Unidade em campo" }
-      const currentLife = context.playerField.life
-      const maxLife = 20
-      if (currentLife >= maxLife && !hasAllyUnits) return { canActivate: false, reason: "Sem efeito possível" }
-      return { canActivate: true }
-    },
-    resolve: (context, targets) => {
-      if (!targets?.allyUnitIndices?.length) return { success: false, message: "Selecione uma Unidade sua" }
-      const allyIndex = targets.allyUnitIndices[0]
-      const allyUnit = context.playerField.unitZone[allyIndex]
-      if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
-
-      const currentLife = context.playerField.life
-      const newLife = currentLife + 1
-      const currentDp = allyUnit.currentDp || allyUnit.dp
-      const newDp = currentDp + 1
-
-      context.setPlayerField((prev) => {
-        const newUnitZone = [...prev.unitZone]
-        if (newUnitZone[allyIndex]) {
-          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
-        }
-        return { ...prev, life: newLife, unitZone: newUnitZone }
-      })
-
-      return { success: true, message: `Cálice de Vinho Sagrado! +1 LP (${currentLife} -> ${newLife}) | ${allyUnit.name} +1DP (${currentDp} -> ${newDp})` }
-    },
-  },
-
   "dados-da-calamidade": {
     id: "dados-da-calamidade",
     name: "Dados da Calamidade",
@@ -1772,10 +1632,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
       if (diceResult <= 4) return { success: true, message: `Dado: ${diceResult}! Nada acontece.` }
       const newDp = currentDp + 8
-      const currentTurn = (context.playerField as any).turnNumber ?? 0
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
-        if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: currentTurn + 2 } as any
+        if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2 } as any
         return { ...prev, unitZone: newUnitZone as any }
       })
       return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +8DP! (−5DP em 2 turnos)` }
@@ -3026,7 +2885,7 @@ class OnlineDuelErrorBoundary extends Component<
   }
 }
 
-export function DuelScreen({ mode, onBack }: DuelScreenProps) {
+export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
   const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
@@ -3302,8 +3161,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   } | null>(null)
   const [lacerationAnimation, setLacerationAnimation] = useState(false)
   const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
-  const [vereiditoAnimation, setVereiditoAnimation] = useState(false)
-  const [julgamentoVazioEternoAnimation, setJulgamentoVazioEternoAnimation] = useState(false)
   const [draggedHandCard, setDraggedHandCard] = useState<{ index: number; card: GameCard; currentY?: number } | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [droppingCard, setDroppingCard] = useState<{ card: GameCard; targetX: number; targetY: number } | null>(null)
@@ -3339,6 +3196,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [pendingPlayerDeck, setPendingPlayerDeck] = useState<DeckWithImages | null>(null)
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
+
+  // ── Auto-start for Draft mode ──
+  useEffect(() => {
+    if (draftDeck && !gameStarted) {
+      const deck = draftDeck as DeckWithImages
+      if (draftDifficulty) setDifficulty(draftDifficulty)
+      startGame(deck, undefined, draftDifficulty ?? 'medium')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftDeck])
 
 
   // ── Multiplayer state ──
@@ -4429,11 +4296,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
       const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
-      const isVeredito = cardToPlace.name === "Veredito do Rei Tirano"
-      const isJulgamentoVazioEterno = cardToPlace.name === "Julgamento do Vazio Eterno"
-      const isCaliceDeVinhoSagrado = cardToPlace.name === "Cálice de Vinho Sagrado"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazioEterno || isCaliceDeVinhoSagrado) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -4461,9 +4325,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
           else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
           else if (isChamadoDaTavola) effectToUse = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
-          else if (isVeredito) effectToUse = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
-          else if (isJulgamentoVazioEterno) effectToUse = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
-          else if (isCaliceDeVinhoSagrado) effectToUse = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
         }
 
         if (!effectToUse) return // Safety check
@@ -4647,14 +4508,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           if (cardToPlace.name === "Sinfonia Relâmpago") {
             setSinfoniaAnimation(true)
             setTimeout(() => setSinfoniaAnimation(false), 1500)
-          }
-          if (cardToPlace.name === "Veredito do Rei Tirano") {
-            setVereiditoAnimation(true)
-            setTimeout(() => setVereiditoAnimation(false), 1500)
-          }
-          if (cardToPlace.name === "Julgamento do Vazio Eterno") {
-            setJulgamentoVazioEternoAnimation(true)
-            setTimeout(() => setJulgamentoVazioEternoAnimation(false), 1500)
           }
 
           // Special handling for Cristal Recuperador - draw a card and check if Function type
@@ -8322,13 +8175,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
 
     // Check if this is a dice card (they don't need selectedEnemyIndex)
     const cardId = getBaseCardId(itemSelectionMode.itemCard.id || "")
-    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
+    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
 
     // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda" || itemSelectionMode.itemCard?.name === "Cálice de Vinho Sagrado" || itemSelectionMode.itemCard?.name === "Dados da Calamidade"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
@@ -8374,9 +8227,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isPedraDeAfiar2 = itemSelectionMode.itemCard.name === "Pedra de Afiar"
       const isDadosCalamidade2 = itemSelectionMode.itemCard.name === "Dados da Calamidade"
       const isChamadoDaTavola2 = itemSelectionMode.itemCard.name === "Chamado da Távola"
-      const isVeredito2 = itemSelectionMode.itemCard.name === "Veredito do Rei Tirano"
-      const isJulgamentoVazioEterno2 = itemSelectionMode.itemCard.name === "Julgamento do Vazio Eterno"
-      const isCaliceDeVinhoSagrado2 = itemSelectionMode.itemCard.name === "Cálice de Vinho Sagrado"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -8404,14 +8254,11 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
       else if (isChamadoDaTavola2) effect = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
-      else if (isVeredito2) effect = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
-      else if (isJulgamentoVazioEterno2) effect = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
-      else if (isCaliceDeVinhoSagrado2) effect = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
     }
 
     if (effect) {
       const effectContext: EffectContext = {
-        playerField: { ...playerField, turnNumber: turn } as any,
+        playerField,
         enemyField,
         setPlayerField,
         setEnemyField,
@@ -10291,73 +10138,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {/* ── VEREDITO DO REI TIRANO animation ── */}
-      {vereiditoAnimation && (
-        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
-          {/* Dark purple/gold tint */}
-          <div className="absolute inset-0 vrd-bg" />
-          {/* Crown + dark energy burst */}
-          <svg className="absolute inset-0 w-full h-full vrd-bolt" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <radialGradient id="vrdRG" cx="50%" cy="40%" r="55%">
-                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.7"/>
-                <stop offset="60%" stopColor="#7c3aed" stopOpacity="0.4"/>
-                <stop offset="100%" stopColor="#000" stopOpacity="0"/>
-              </radialGradient>
-            </defs>
-            <ellipse cx="50" cy="40" rx="52" ry="38" fill="url(#vrdRG)" />
-            {/* Dark lightning bolts */}
-            <polyline points="20,5 28,18 22,18 32,38" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" style={{filter:"drop-shadow(0 0 6px #a855f7)"}}/>
-            <polyline points="50,2 55,16 48,16 56,35" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" style={{filter:"drop-shadow(0 0 6px #a855f7)"}}/>
-            <polyline points="80,5 72,18 78,18 68,38" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" style={{filter:"drop-shadow(0 0 6px #a855f7)"}}/>
-          </svg>
-          {/* Crown symbols */}
-          <div className="absolute vrd-note" style={{ left:"20%", top:"6%", fontSize:"38px", color:"#fbbf24", textShadow:"0 0 14px #7c3aed", animationDelay:"0s" }}>♛</div>
-          <div className="absolute vrd-note" style={{ left:"72%", top:"4%", fontSize:"32px", color:"#c084fc", textShadow:"0 0 14px #fbbf24", animationDelay:"0.07s" }}>♚</div>
-          {/* Glow flash on enemy field */}
-          <div className="absolute vrd-flash" style={{ left:0, right:0, top:0, height:"50%", background:"radial-gradient(ellipse 100% 80% at 50% 0%, rgba(251,191,36,0.3) 0%, rgba(124,58,237,0.2) 50%, transparent 80%)" }} />
-          {/* Title */}
-          <div className="absolute vrd-title" style={{ left:"50%", top:"36%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
-            <span style={{ fontSize:"19px", fontWeight:900, color:"#fbbf24", letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 12px #7c3aed, 0 0 24px #fbbf24, 0 2px 6px rgba(0,0,0,0.9)" }}>♛ Veredito do Rei Tirano ♛</span>
-          </div>
-        </div>
-      )}
-
-      {/* ── JULGAMENTO DO VAZIO ETERNO animation ── */}
-      {julgamentoVazioEternoAnimation && (
-        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
-          {/* Golden/white divine tint */}
-          <div className="absolute inset-0 jve-bg" />
-          {/* Wing/divine burst */}
-          <svg className="absolute inset-0 w-full h-full jve-bolt" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <radialGradient id="jveRG" cx="50%" cy="35%" r="60%">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9"/>
-                <stop offset="40%" stopColor="#fbbf24" stopOpacity="0.5"/>
-                <stop offset="100%" stopColor="#ea580c" stopOpacity="0"/>
-              </radialGradient>
-            </defs>
-            <ellipse cx="50" cy="35" rx="55" ry="40" fill="url(#jveRG)" />
-            {/* Divine rays */}
-            <line x1="50" y1="0" x2="30" y2="50" stroke="#fbbf24" strokeWidth="1.2" strokeOpacity="0.8" style={{filter:"drop-shadow(0 0 4px #fff)"}}/>
-            <line x1="50" y1="0" x2="50" y2="55" stroke="#fff" strokeWidth="1.8" strokeOpacity="0.9" style={{filter:"drop-shadow(0 0 6px #fbbf24)"}}/>
-            <line x1="50" y1="0" x2="70" y2="50" stroke="#fbbf24" strokeWidth="1.2" strokeOpacity="0.8" style={{filter:"drop-shadow(0 0 4px #fff)"}}/>
-            <line x1="50" y1="0" x2="15" y2="40" stroke="#fbbf24" strokeWidth="0.8" strokeOpacity="0.6"/>
-            <line x1="50" y1="0" x2="85" y2="40" stroke="#fbbf24" strokeWidth="0.8" strokeOpacity="0.6"/>
-          </svg>
-          {/* Wing/star symbols */}
-          <div className="absolute jve-note" style={{ left:"15%", top:"5%", fontSize:"36px", color:"#fbbf24", textShadow:"0 0 16px #fff", animationDelay:"0s" }}>✦</div>
-          <div className="absolute jve-note" style={{ left:"76%", top:"4%", fontSize:"30px", color:"#fff", textShadow:"0 0 14px #fbbf24", animationDelay:"0.06s" }}>✦</div>
-          <div className="absolute jve-note" style={{ left:"46%", top:"2%", fontSize:"28px", color:"#fbbf24", textShadow:"0 0 12px #fff", animationDelay:"0.03s" }}>★</div>
-          {/* Glow flash */}
-          <div className="absolute jve-flash" style={{ left:0, right:0, top:0, height:"50%", background:"radial-gradient(ellipse 100% 80% at 50% 0%, rgba(255,255,255,0.45) 0%, rgba(251,191,36,0.2) 50%, transparent 80%)" }} />
-          {/* Title */}
-          <div className="absolute jve-title" style={{ left:"50%", top:"36%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
-            <span style={{ fontSize:"18px", fontWeight:900, color:"#fff", letterSpacing:"2px", textTransform:"uppercase", textShadow:"0 0 12px #fbbf24, 0 0 28px #ea580c, 0 2px 6px rgba(0,0,0,0.9)" }}>✦ Julgamento do Vazio Eterno ✦</span>
-          </div>
-        </div>
-      )}
-
       {/* Card Destruction Animation */}      {/* Card Destruction Animation */}      {/* Card Destruction Animation */}
       {destructionAnimation && (
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
@@ -10608,7 +10388,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
             {(() => {
               const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
-              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
+              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
 
               if (isDiceCard) {
                 return (
@@ -10904,30 +10684,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         .sin-note  { animation: sinNote  1.5s ease-out forwards; }
         .sin-flash { animation: sinFlash 1.5s ease-out forwards; }
         .sin-title { animation: sinTitle 1.5s ease-out forwards; }
-
-        /* ── VEREDITO DO REI TIRANO CSS ── */
-        @keyframes vrdBg    { 0%{opacity:.5} 50%{opacity:.2} 100%{opacity:0} }
-        @keyframes vrdBolt  { 0%{opacity:1}  40%{opacity:.7} 70%{opacity:.3} 90%,100%{opacity:0} }
-        @keyframes vrdNote  { 0%{opacity:1;transform:scale(.5) translateY(8px)} 25%{opacity:1;transform:scale(1.3) translateY(-6px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-20px)} 100%{opacity:0;transform:scale(.7) translateY(-38px)} }
-        @keyframes vrdFlash { 0%{opacity:.85} 30%{opacity:.4} 60%,100%{opacity:0} }
-        @keyframes vrdTitle { 0%{opacity:1;transform:translateX(-50%) scale(.7)} 20%{opacity:1;transform:translateX(-50%) scale(1.08)} 45%{transform:translateX(-50%) scale(1)} 75%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(-10px)} }
-        .vrd-bg    { animation: vrdBg    1.5s ease-out forwards; background:rgba(60,10,100,0.85); }
-        .vrd-bolt  { animation: vrdBolt  1.5s ease-out forwards; }
-        .vrd-note  { animation: vrdNote  1.5s ease-out forwards; }
-        .vrd-flash { animation: vrdFlash 1.5s ease-out forwards; }
-        .vrd-title { animation: vrdTitle 1.5s ease-out forwards; }
-
-        /* ── JULGAMENTO DO VAZIO ETERNO CSS ── */
-        @keyframes jveBg    { 0%{opacity:.55} 50%{opacity:.2} 100%{opacity:0} }
-        @keyframes jveBolt  { 0%{opacity:1}   40%{opacity:.8} 70%{opacity:.3} 90%,100%{opacity:0} }
-        @keyframes jveNote  { 0%{opacity:1;transform:scale(.5) translateY(8px)} 25%{opacity:1;transform:scale(1.3) translateY(-6px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.3;transform:scale(1) translateY(-22px)} 100%{opacity:0;transform:scale(.6) translateY(-40px)} }
-        @keyframes jveFlash { 0%{opacity:.95} 25%{opacity:.45} 55%,100%{opacity:0} }
-        @keyframes jveTitle { 0%{opacity:1;transform:translateX(-50%) scale(.7)} 18%{opacity:1;transform:translateX(-50%) scale(1.1)} 45%{transform:translateX(-50%) scale(1)} 75%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(-10px)} }
-        .jve-bg    { animation: jveBg    1.5s ease-out forwards; background:rgba(120,60,10,0.7); }
-        .jve-bolt  { animation: jveBolt  1.5s ease-out forwards; }
-        .jve-note  { animation: jveNote  1.5s ease-out forwards; }
-        .jve-flash { animation: jveFlash 1.5s ease-out forwards; }
-        .jve-title { animation: jveTitle 1.5s ease-out forwards; }
 
 
         @keyframes lacerationDmgNumber {
