@@ -21,6 +21,7 @@ import {
   User,
   Target,
   Shuffle,
+  Skull,
 } from "lucide-react"
 import Image from "next/image"
 
@@ -294,6 +295,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
               style={{background:"linear-gradient(135deg,#6b21a8,#9333ea,#7e22ce)",boxShadow:"0 8px 24px rgba(147,51,234,0.30)"}}>
               <Shuffle className="h-6 w-6" />Draft VS BOT
+            </button>
+            <button onClick={() => onNavigate("duel-roguelike")}
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)",boxShadow:"0 8px 24px rgba(220,38,38,0.30)"}}>
+              <Skull className="h-6 w-6" />Roguelike
             </button>
             <button onClick={() => setShowPlayMenu(false)}
               className="w-full h-10 rounded-xl border border-white/[0.08] text-slate-500 hover:text-slate-300 text-sm font-semibold transition-colors hover:bg-white/[0.04]">
