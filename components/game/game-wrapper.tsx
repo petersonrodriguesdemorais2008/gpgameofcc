@@ -16,6 +16,7 @@ import ShopScreen from "./shop-screen"
 import ProfileScreen from "./profile-screen"
 import MissionsScreen from "./missions-screen"
 import LoadingScreen from "./loading-screen"
+import DraftDuelScreen from "./draft-duel-screen"
 
 export type GameScreen =
   | "menu"
@@ -24,6 +25,7 @@ export type GameScreen =
   | "deck-builder"
   | "duel-bot"
   | "duel-player"
+  | "duel-draft"
   | "history"
   | "settings"
   | "create-room"
@@ -73,6 +75,8 @@ export function GameWrapper() {
     } else if (screen === "duel-player") {
       setDuelMode("player")
       setCurrentScreen("duel-player")
+    } else if (screen === "duel-draft") {
+      setCurrentScreen("duel-draft")
     } else {
       setCurrentScreen(screen)
     }
@@ -122,6 +126,9 @@ export function GameWrapper() {
       {currentScreen === "deck-builder" && <DeckBuilderScreen onBack={() => navigateTo("menu")} />}
       {(currentScreen === "duel-bot" || currentScreen === "duel-player") && (
         <DuelScreen mode={duelMode} onBack={() => navigateTo("menu")} />
+      )}
+      {currentScreen === "duel-draft" && (
+        <DraftDuelScreen onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "history" && <HistoryScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "settings" && <SettingsScreen
