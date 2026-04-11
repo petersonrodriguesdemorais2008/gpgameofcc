@@ -50,6 +50,8 @@ interface OnlineChatMsg {
 interface DuelScreenProps {
   mode: "bot" | "player"
   onBack: () => void
+  /** Called when player wins — used by roguelike/draft to intercept the result */
+  onWin?: () => void
   /** Optional: pre-built draft deck that bypasses deck selection */
   draftDeck?: { id: string; name: string; cards: any[]; tapCards?: any[] }
   /** Optional: difficulty to use when draftDeck is provided */
@@ -2892,7 +2894,7 @@ class OnlineDuelErrorBoundary extends Component<
   }
 }
 
-export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty, roguelikeConfig }: DuelScreenProps) {
+export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, roguelikeConfig }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
   const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
@@ -3204,11 +3206,16 @@ export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty, roguelike
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
+  // Keep roguelikeConfig in a ref so startGame always reads the latest values
+  const roguelikeConfigRef = useRef(roguelikeConfig)
+  useEffect(() => { roguelikeConfigRef.current = roguelikeConfig })
+
   // ── Auto-start for Draft mode and Roguelike mode ──
   useEffect(() => {
     if (draftDeck && !gameStarted) {
       const deck = draftDeck as DeckWithImages
-      const diff = roguelikeConfig?.difficulty ?? draftDifficulty ?? 'medium'
+      const cfg  = roguelikeConfigRef.current
+      const diff = cfg?.difficulty ?? draftDifficulty ?? 'medium'
       if (diff) setDifficulty(diff)
       startGame(deck, undefined, diff)
     }
@@ -3854,8 +3861,8 @@ export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty, roguelike
     const playerFirst = Math.random() > 0.5
     setPlayerWentFirst(playerFirst)
 
-    const startingLP   = roguelikeConfig?.startingLP   ?? 50
-    const startingHand = roguelikeConfig?.startingHandSize ?? 5
+    const startingLP   = roguelikeConfigRef.current?.startingLP   ?? roguelikeConfig?.startingLP   ?? 50
+    const startingHand = roguelikeConfigRef.current?.startingHandSize ?? roguelikeConfig?.startingHandSize ?? 5
 
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
     const hand = shuffledDeck.slice(0, startingHand)
@@ -8497,6 +8504,11 @@ export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty, roguelike
   }
 
   if (gameResult) {
+    // If roguelike/draft provided an onWin callback, call it on victory
+    if (gameResult === "won" && onWin) {
+      onWin()
+      return null
+    }
     return <GameResultScreen result={gameResult} onBack={onBack} />
   }
 
