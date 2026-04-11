@@ -54,6 +54,13 @@ interface DuelScreenProps {
   draftDeck?: { id: string; name: string; cards: any[]; tapCards?: any[] }
   /** Optional: difficulty to use when draftDeck is provided */
   draftDifficulty?: "easy" | "medium" | "hard"
+  /** Optional: roguelike run config (overrides LP, hand size, etc.) */
+  roguelikeConfig?: {
+    startingLP: number
+    startingHandSize: number
+    difficulty: "easy" | "medium" | "hard"
+    phaseLabel: string
+  }
 }
 
 interface RoomData {
@@ -2885,7 +2892,7 @@ class OnlineDuelErrorBoundary extends Component<
   }
 }
 
-export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty }: DuelScreenProps) {
+export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty, roguelikeConfig }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
   const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
@@ -3197,12 +3204,13 @@ export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty }: DuelScr
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
 
-  // ── Auto-start for Draft mode ──
+  // ── Auto-start for Draft mode and Roguelike mode ──
   useEffect(() => {
     if (draftDeck && !gameStarted) {
       const deck = draftDeck as DeckWithImages
-      if (draftDifficulty) setDifficulty(draftDifficulty)
-      startGame(deck, undefined, draftDifficulty ?? 'medium')
+      const diff = roguelikeConfig?.difficulty ?? draftDifficulty ?? 'medium'
+      if (diff) setDifficulty(diff)
+      startGame(deck, undefined, diff)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftDeck])
@@ -3846,16 +3854,19 @@ export function DuelScreen({ mode, onBack, draftDeck, draftDifficulty }: DuelScr
     const playerFirst = Math.random() > 0.5
     setPlayerWentFirst(playerFirst)
 
+    const startingLP   = roguelikeConfig?.startingLP   ?? 50
+    const startingHand = roguelikeConfig?.startingHandSize ?? 5
+
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
-    const hand = shuffledDeck.slice(0, 5)
-    const remainingDeck = shuffledDeck.slice(5)
+    const hand = shuffledDeck.slice(0, startingHand)
+    const remainingDeck = shuffledDeck.slice(startingHand)
 
     setPlayerField((prev) => ({
       ...prev,
       hand,
       deck: remainingDeck,
       tap: playerDeck.tapCards ? [...playerDeck.tapCards] : [],
-      life: 50,
+      life: startingLP,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
