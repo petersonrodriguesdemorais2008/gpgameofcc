@@ -356,9 +356,11 @@ export default function RoguelikeScreen({ onBack }: RoguelikeScreenProps) {
 
   // ── Build roguelike deck for DuelScreen ───────────────────────────────────
   const roguelikeDeck = useMemo(() => ({
-    id: "roguelike-deck", name: "Roguelike Deck",
-    cards: deck, tapCards,
-  }), [deck, tapCards])
+    id: `roguelike-deck-phase-${currentPhaseIdx}-${wins}`,
+    name: `Roguelike Deck — ${phaseConfig.label}`,
+    cards: deck,
+    tapCards,
+  }), [deck, tapCards, currentPhaseIdx, wins, phaseConfig.label])
 
   const startingLP   = 50 + effects.bonusLP
   const startingHand = effects.startWithFullHand ? 7 : Math.min(5 + effects.bonusHandSize, 10)
@@ -374,9 +376,11 @@ export default function RoguelikeScreen({ onBack }: RoguelikeScreenProps) {
   if (runPhase === "duel") {
     return (
       <DuelScreen
+        key={`roguelike-phase-${currentPhaseIdx}-${wins}`}
         mode="bot"
         draftDeck={roguelikeDeck}
         roguelikeConfig={roguelikeConfig}
+        onWin={handleWin}
         onBack={handleDuelBack}
       />
     )
