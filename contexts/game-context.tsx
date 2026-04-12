@@ -734,7 +734,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "calem-lr",
     name: "Calem Hidenori",
-    image: "/images/cards/calem-lr.png",
+    image: "/images/cards/Calem_LR.png",
     rarity: "LR",
     type: "unit",
     element: "Void",
@@ -1395,7 +1395,7 @@ const ALL_CARDS: Card[] = [
   {
     id: "julgamento-do-vazio-eterno",
     name: "Julgamento do Vazio Eterno",
-    image: "/images/cards/julgamento-do-vazio-eterno.png",
+    image: "/images/cards/Julgamento_do_Vazio_Eterno.png",
     rarity: "UR",
     type: "magic",
     element: "Haos",
