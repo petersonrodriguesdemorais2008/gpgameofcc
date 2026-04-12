@@ -1859,13 +1859,15 @@ type SoundKey = keyof typeof SOUNDS
 
 // No preload needed — audio is embedded as base64
 
+let _sfxVolumeRef = 0.7   // 0-1, updated from component state
+
 function playSound(key: SoundKey, volume = 0.7) {
   if (typeof window === "undefined") return
   const src = SOUND_DATA[key]
   if (!src) return
   try {
     const audio = new Audio(src)
-    audio.volume = Math.max(0, Math.min(1, volume))
+    audio.volume = Math.max(0, Math.min(1, volume * _sfxVolumeRef))
     audio.play().catch((e) => {
       if (e?.name !== "NotAllowedError") console.warn("[Sound]", key, e?.message)
     })
@@ -3267,6 +3269,44 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
 
   // ── Unit ability confirmation modal ──
   const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null>(null)
+
+  // ── Pause menu / HUD settings ──
+  const [showPauseMenu, setShowPauseMenu]   = useState(false)
+  const [showAudioSettings, setShowAudioSettings] = useState(false)
+  const [musicVolume, setMusicVolume]       = useState(35)   // 0-100
+  const [sfxVolume, setSfxVolume]           = useState(70)   // 0-100
+  const [showVisualFX, setShowVisualFX]     = useState(true) // explosions, flashes
+  const [autoPlay, setAutoPlay]             = useState(false) // player actions automated
+  const [gameSpeed, setGameSpeed]           = useState(1)    // 1 | 2 | 4
+  const speedRef = useRef(1)                                 // always-fresh ref for closures
+
+  // Keep speedRef in sync with gameSpeed state
+  useEffect(() => { speedRef.current = gameSpeed }, [gameSpeed])
+
+  // Sync sfx volume to module-level ref used by playSound
+  useEffect(() => { _sfxVolumeRef = sfxVolume / 100 }, [sfxVolume])
+
+  // Apply music volume to OST in real-time
+  useEffect(() => {
+    if (_duelOstAudio) _duelOstAudio.volume = musicVolume / 100 * 0.35
+  }, [musicVolume])
+
+  // Scaled setTimeout — uses speedRef so all delays respect current speed
+  const ST = useCallback((fn: () => void, ms: number) => {
+    return setTimeout(fn, ms / speedRef.current)
+  }, [])
+
+  // Auto-play: when it's player's turn, auto-end-turn after a short pause
+  const autoPlayRef = useRef(false)
+  useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
+  useEffect(() => {
+    if (!autoPlay || !gameStarted || !isPlayerTurn || gameResult) return
+    const t = setTimeout(() => {
+      if (autoPlayRef.current && isPlayerTurn) endTurn()
+    }, 900 / speedRef.current)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, isPlayerTurn, gameStarted, gameResult])
 
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
@@ -8554,7 +8594,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       ))}
 
       {/* Impact Flash Overlay - Epic cinematic effect */}
-      {impactFlash.active && (
+      {showVisualFX && impactFlash.active && (
         <div
           className="absolute inset-0 z-50 pointer-events-none"
           style={{
@@ -8584,11 +8624,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         }}
       />
 
-      <canvas
-        ref={explosionCanvasRef}
-        className="fixed inset-0 pointer-events-none z-[60]"
-        style={{ width: "100vw", height: "100vh" }}
-      />
+      {showVisualFX && (
+        <canvas
+          ref={explosionCanvasRef}
+          className="fixed inset-0 pointer-events-none z-[60]"
+          style={{ width: "100vw", height: "100vh" }}
+        />
+      )}
 
       {attackState.isAttacking && (
         <svg className="fixed inset-0 pointer-events-none z-50" style={{ width: "100vw", height: "100vh" }}>
@@ -8706,6 +8748,32 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           <ArrowLeft className="w-4 h-4 mr-1" />
           {t("surrender")}
         </Button>
+
+        {/* ── Speed & Auto indicators + Pause button ── */}
+        <div className="flex items-center gap-1.5 ml-2">
+          {/* Speed badge */}
+          {gameSpeed > 1 && (
+            <div className="px-2 py-0.5 rounded text-[9px] font-black text-amber-300 border border-amber-500/40 bg-amber-900/40">
+              {gameSpeed}x
+            </div>
+          )}
+          {/* Auto badge */}
+          {autoPlay && (
+            <div className="px-2 py-0.5 rounded text-[9px] font-black text-cyan-300 border border-cyan-500/40 bg-cyan-900/40 animate-pulse">
+              AUTO
+            </div>
+          )}
+          {/* Pause / Menu button */}
+          <button
+            onClick={() => { setShowPauseMenu(true); setShowAudioSettings(false) }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 hover:border-white/25 hover:bg-white/10 transition-all"
+            style={{background:"rgba(0,0,0,0.5)"}}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" className="text-slate-300">
+              <rect x="1" y="2" width="4" height="10" rx="1"/>
+              <rect x="9" y="2" width="4" height="10" rx="1"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Enemy hand (card backs) */}
@@ -10561,6 +10629,158 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           </div>
         </div>
       )}
+      {/* ─────────────────────────────────────────────────────────────────────
+           ── PAUSE MENU ──
+      ───────────────────────────────────────────────────────────────────── */}
+      {showPauseMenu && !showAudioSettings && (
+        <div className="fixed inset-0 z-[9000] flex items-center justify-center"
+          style={{background:"rgba(0,0,0,0.85)",backdropFilter:"blur(8px)"}}>
+          <div className="w-full max-w-xs mx-4 rounded-2xl border border-white/[0.10] overflow-hidden shadow-2xl"
+            style={{background:"linear-gradient(160deg,#0d1117,#0a0e1a)"}}>
+
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">
+              <h2 className="text-white font-black text-lg tracking-wide">Menu</h2>
+              <div className="flex items-center gap-2">
+                {/* Speed selector */}
+                <div className="flex gap-1">
+                  {([1,2,4] as const).map(s => (
+                    <button key={s} onClick={() => { setGameSpeed(s); speedRef.current = s }}
+                      className={`w-8 h-7 rounded text-[11px] font-black transition-all border ${
+                        gameSpeed===s ? "bg-amber-500 border-amber-400 text-white" : "bg-white/[0.05] border-white/[0.08] text-slate-400 hover:text-white"
+                      }`}>
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setShowPauseMenu(false)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.08] text-slate-500 hover:text-white hover:bg-white/10 transition-all">
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Menu items */}
+            <div className="p-3 space-y-2">
+
+              {/* Resume */}
+              <button onClick={() => setShowPauseMenu(false)}
+                className="w-full py-3 rounded-xl border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-bold text-sm flex items-center gap-3 px-4 transition-all">
+                <span className="text-xl">▶</span>Voltar à Partida
+              </button>
+
+              {/* Auto play toggle */}
+              <button onClick={() => setAutoPlay(p => !p)}
+                className={`w-full py-3 rounded-xl border font-bold text-sm flex items-center gap-3 px-4 transition-all ${
+                  autoPlay ? "border-cyan-500/40 text-cyan-300 bg-cyan-900/20" : "border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.05]"
+                }`}>
+                <span className="text-xl">🤖</span>
+                <span className="flex-1 text-left">Duelo Automático</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${autoPlay ? "bg-cyan-500 text-white" : "bg-slate-700 text-slate-400"}`}>
+                  {autoPlay ? "ON" : "OFF"}
+                </span>
+              </button>
+
+              {/* Speed */}
+              <div className="w-full py-3 rounded-xl border border-white/[0.08] px-4"
+                style={{background:"rgba(255,255,255,0.03)"}}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">⚡</span>
+                  <span className="text-slate-300 font-bold text-sm flex-1">Velocidade do Duelo</span>
+                  <span className="text-amber-300 text-sm font-black">{gameSpeed}x</span>
+                </div>
+                <div className="flex gap-2">
+                  {([1,2,4] as const).map(s => (
+                    <button key={s}
+                      onClick={() => { setGameSpeed(s); speedRef.current = s }}
+                      className={`flex-1 py-1.5 rounded-lg text-sm font-black border transition-all ${
+                        gameSpeed===s ? "bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20" : "bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-white"
+                      }`}>
+                      {s === 1 ? "Normal" : `${s}×`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Audio settings */}
+              <button onClick={() => setShowAudioSettings(true)}
+                className="w-full py-3 rounded-xl border border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.05] font-bold text-sm flex items-center gap-3 px-4 transition-all">
+                <span className="text-xl">🔊</span>Configurações de Áudio
+              </button>
+
+              {/* Surrender */}
+              <button onClick={() => { setShowPauseMenu(false); surrender() }}
+                className="w-full py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold text-sm flex items-center gap-3 px-4 transition-all">
+                <span className="text-xl">🏳️</span>Desistir do Duelo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── AUDIO / VISUAL SETTINGS ───────────────────────────────────────── */}
+      {showPauseMenu && showAudioSettings && (
+        <div className="fixed inset-0 z-[9001] flex items-center justify-center"
+          style={{background:"rgba(0,0,0,0.85)",backdropFilter:"blur(8px)"}}>
+          <div className="w-full max-w-xs mx-4 rounded-2xl border border-white/[0.10] overflow-hidden shadow-2xl"
+            style={{background:"linear-gradient(160deg,#0d1117,#0a0e1a)"}}>
+
+            <div className="px-5 py-4 border-b border-white/[0.07] flex items-center gap-3">
+              <button onClick={() => setShowAudioSettings(false)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.08] text-slate-400 hover:text-white transition-all text-xs">
+                ←
+              </button>
+              <h2 className="text-white font-black text-lg flex-1">Configurações</h2>
+            </div>
+
+            <div className="p-4 space-y-5">
+              {/* Music volume */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-300 text-sm font-semibold flex items-center gap-2">
+                    🎵 Música
+                  </span>
+                  <span className="text-amber-300 text-sm font-black">{musicVolume}%</span>
+                </div>
+                <input type="range" min={0} max={100} value={musicVolume}
+                  onChange={e => setMusicVolume(Number(e.target.value))}
+                  className="w-full accent-amber-400 cursor-pointer" />
+              </div>
+
+              {/* SFX volume */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-300 text-sm font-semibold flex items-center gap-2">
+                    💥 Efeitos Sonoros
+                  </span>
+                  <span className="text-cyan-300 text-sm font-black">{sfxVolume}%</span>
+                </div>
+                <input type="range" min={0} max={100} value={sfxVolume}
+                  onChange={e => setSfxVolume(Number(e.target.value))}
+                  className="w-full accent-cyan-400 cursor-pointer" />
+              </div>
+
+              {/* Visual FX toggle */}
+              <button onClick={() => setShowVisualFX(p => !p)}
+                className={`w-full py-3 rounded-xl border font-bold text-sm flex items-center gap-3 px-4 transition-all ${
+                  showVisualFX ? "border-purple-500/40 text-purple-300 bg-purple-900/20" : "border-white/[0.08] text-slate-500 hover:text-slate-300"
+                }`}>
+                <span className="text-xl">✨</span>
+                <span className="flex-1 text-left">Efeitos Visuais</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${showVisualFX ? "bg-purple-500 text-white" : "bg-slate-700 text-slate-400"}`}>
+                  {showVisualFX ? "ON" : "OFF"}
+                </span>
+              </button>
+
+              <button onClick={() => { setShowAudioSettings(false); setShowPauseMenu(false) }}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-all">
+                Salvar e Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Card Inspection Overlay */}
       <style jsx global>{`
         @keyframes shake {
