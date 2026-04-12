@@ -63,6 +63,8 @@ interface DuelScreenProps {
     difficulty: "easy" | "medium" | "hard"
     phaseLabel: string
   }
+  /** Enable catastrophe mode — random destructive events every few turns */
+  catastropheMode?: boolean
 }
 
 interface RoomData {
@@ -2896,7 +2898,7 @@ class OnlineDuelErrorBoundary extends Component<
   }
 }
 
-export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, roguelikeConfig }: DuelScreenProps) {
+export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, roguelikeConfig, catastropheMode }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
   const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
@@ -3307,6 +3309,128 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, isPlayerTurn, gameStarted, gameResult])
+
+  // ── Catastrophe Mode ──────────────────────────────────────────────────────
+  const [catastropheEvent, setCatastropheEvent] = useState<{
+    title: string; emoji: string; description: string; color: string
+  } | null>(null)
+  const [catBlackout, setCatBlackout]           = useState(false)
+  const [catNextEventTurn, setCatNextEventTurn] = useState(3)
+  const CAT_MIN = 2; const CAT_MAX = 4
+
+  const catEvents = [
+    { title:"Chuva de Meteoros",        emoji:"☄️", color:"rgba(239,68,68,0.9)",
+      desc:"Meteoros caem! Uma unidade aleatória de cada lado é destruída!",
+      run:()=>{
+        const destroyRandom = (prev: any) => {
+          const idxs = prev.unitZone.map((u:any,i:number)=>u?i:-1).filter((i:number)=>i!==-1)
+          if(!idxs.length) return prev
+          const ri = idxs[Math.floor(Math.random()*idxs.length)]
+          const dead = prev.unitZone[ri]; const z=[...prev.unitZone]; z[ri]=null
+          return {...prev,unitZone:z,graveyard:dead?[...prev.graveyard,dead]:prev.graveyard}
+        }
+        setPlayerField(destroyRandom); setEnemyField(destroyRandom)
+      }},
+    { title:"Tempestade Elétrica",      emoji:"⚡", color:"rgba(251,191,36,0.9)",
+      desc:"Raios devastam o campo! Ambos perdem 5 LP!",
+      run:()=>{
+        setPlayerField(p=>({...p,life:Math.max(0,p.life-5)}))
+        setEnemyField(p=>({...p,life:Math.max(0,p.life-5)}))
+      }},
+    { title:"Apagão Dimensional",       emoji:"🌑", color:"rgba(20,5,40,0.97)",
+      desc:"Trevas cobrem o campo inimigo por 6 segundos!",
+      run:()=>{ setCatBlackout(true); setTimeout(()=>setCatBlackout(false),6000/speedRef.current) }},
+    { title:"Tsunami Arcano",           emoji:"🌊", color:"rgba(6,182,212,0.9)",
+      desc:"Uma onda arcana varre o campo! Todas as Functions retornam ao deck!",
+      run:()=>{
+        const flush=(prev:any)=>{const funcs=prev.functionZone.filter((c:any)=>c!==null);return{...prev,functionZone:[null,null,null,null],deck:[...prev.deck,...funcs].sort(()=>Math.random()-0.5)}}
+        setPlayerField(flush); setEnemyField(flush)
+      }},
+    { title:"Inverno Eterno",           emoji:"❄️", color:"rgba(56,189,248,0.9)",
+      desc:"O frio paralisa o campo! Todas as unidades perdem 1 DP!",
+      run:()=>{
+        const freeze=(prev:any)=>({...prev,unitZone:prev.unitZone.map((u:any)=>u?{...u,currentDp:Math.max(0,(u.currentDp??u.dp)-1)}:null)})
+        setPlayerField(freeze); setEnemyField(freeze)
+      }},
+    { title:"Terremoto do Vazio",       emoji:"💥", color:"rgba(168,85,247,0.9)",
+      desc:"O Vazio treme! O primeiro slot de ambos os lados é destruído!",
+      run:()=>{
+        const quake=(prev:any)=>{const z=[...prev.unitZone];const dead=z[0];z[0]=null;return{...prev,unitZone:z,graveyard:dead?[...prev.graveyard,dead]:prev.graveyard}}
+        setPlayerField(quake); setEnemyField(quake)
+      }},
+    { title:"Drenagem Vital",           emoji:"🩸", color:"rgba(185,28,28,0.95)",
+      desc:"Energia vital é sugada! Ambos perdem 3 LP por unidade em campo!",
+      run:()=>{
+        setPlayerField(p=>{const c=p.unitZone.filter(Boolean).length;return{...p,life:Math.max(0,p.life-c*3)}})
+        setEnemyField(p=>{const c=p.unitZone.filter(Boolean).length;return{...p,life:Math.max(0,p.life-c*3)}})
+      }},
+    { title:"Tempestade Gravitacional", emoji:"🌀", color:"rgba(99,102,241,0.9)",
+      desc:"A gravidade enlouquece! Ambos descartam 2 cartas aleatórias da mão!",
+      run:()=>{
+        const discard2=(prev:any)=>{const h=[...prev.hand];const g=[...prev.graveyard];for(let i=0;i<2&&h.length>0;i++){const ri=Math.floor(Math.random()*h.length);g.push(...h.splice(ri,1))}return{...prev,hand:h,graveyard:g}}
+        setPlayerField(discard2); setEnemyField(discard2)
+      }},
+    { title:"Chuva Curativa",           emoji:"🌿", color:"rgba(34,197,94,0.9)",
+      desc:"Uma chuva mágica! Ambos recuperam 8 LP!",
+      run:()=>{
+        setPlayerField(p=>({...p,life:p.life+8})); setEnemyField(p=>({...p,life:p.life+8}))
+      }},
+    { title:"Chuva de Cartas",          emoji:"🃏", color:"rgba(251,191,36,0.9)",
+      desc:"O destino favorece! Ambos compram 2 cartas extras!",
+      run:()=>{
+        setPlayerField(p=>{const d=p.deck.slice(0,2);return{...p,hand:[...p.hand,...d],deck:p.deck.slice(2)}})
+        setEnemyField(p=>{const d=p.deck.slice(0,2);return{...p,hand:[...p.hand,...d],deck:p.deck.slice(2)}})
+      }},
+    { title:"Explosão Solar",           emoji:"☀️", color:"rgba(234,88,12,0.9)",
+      desc:"O sol explode! O jogador da vez perde 10 LP!",
+      run:()=>{
+        if(isPlayerTurn) setPlayerField(p=>({...p,life:Math.max(0,p.life-10)}))
+        else setEnemyField(p=>({...p,life:Math.max(0,p.life-10)}))
+      }},
+    { title:"Praga Necrótica",          emoji:"☠️", color:"rgba(50,10,10,0.97)",
+      desc:"Uma praga devasta! A unidade com menor DP de cada lado é destruída!",
+      run:()=>{
+        const killWeakest=(prev:any)=>{
+          const alive=prev.unitZone.map((u:any,i:number)=>({u,i})).filter((x:any)=>x.u)
+          if(!alive.length) return prev
+          const w=alive.reduce((a:any,b:any)=>((a.u.currentDp??a.u.dp)<=(b.u.currentDp??b.u.dp)?a:b))
+          const z=[...prev.unitZone];z[w.i]=null
+          return{...prev,unitZone:z,graveyard:[...prev.graveyard,w.u]}
+        }
+        setPlayerField(killWeakest); setEnemyField(killWeakest)
+      }},
+    { title:"Vórtice Sombrio",          emoji:"🕳️", color:"rgba(15,5,30,0.97)",
+      desc:"Um vórtice suga o campo! Ambos retornam 1 unidade aleatória à mão!",
+      run:()=>{
+        const suck=(prev:any)=>{
+          const idxs=prev.unitZone.map((u:any,i:number)=>u?i:-1).filter((i:number)=>i!==-1)
+          if(!idxs.length)return prev
+          const ri=idxs[Math.floor(Math.random()*idxs.length)]
+          const u=prev.unitZone[ri];const z=[...prev.unitZone];z[ri]=null
+          return{...prev,unitZone:z,hand:u?[...prev.hand,u]:prev.hand}
+        }
+        setPlayerField(suck); setEnemyField(suck)
+      }},
+    { title:"Armagedon Menor",          emoji:"🌋", color:"rgba(185,28,28,0.97)",
+      desc:"Uma força catastrófica! Ambos perdem 15 LP!",
+      run:()=>{
+        setPlayerField(p=>({...p,life:Math.max(0,p.life-15)}))
+        setEnemyField(p=>({...p,life:Math.max(0,p.life-15)}))
+      }},
+  ]
+
+  useEffect(() => {
+    if (!catastropheMode || !gameStarted || gameResult || turn < catNextEventTurn) return
+    const ev = catEvents[Math.floor(Math.random() * catEvents.length)]
+    setCatastropheEvent({ title:ev.title, emoji:ev.emoji, description:ev.desc, color:ev.color })
+    const t1 = setTimeout(() => ev.run(), 2000 / speedRef.current)
+    const t2 = setTimeout(() => {
+      setCatastropheEvent(null)
+      setCatNextEventTurn(turn + CAT_MIN + Math.floor(Math.random()*(CAT_MAX-CAT_MIN+1)))
+    }, 4000 / speedRef.current)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn, catastropheMode, gameStarted, gameResult])
 
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
@@ -8726,6 +8850,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
               {difficulty === 'easy' ? '🟢 Fácil' : difficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
             </div>
           )}
+          {catastropheMode && (
+            <div className="px-2 py-1 rounded text-[9px] font-bold border border-red-500/50 bg-red-900/40 text-red-300 animate-pulse">
+              ☄️ Catástrofe
+            </div>
+          )}
           <div
             className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${isPlayerTurn
               ? "bg-green-600/20 border-green-500 text-green-400"
@@ -10629,6 +10758,45 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           </div>
         </div>
       )}
+      {/* ─── CATASTROPHE EVENT ANNOUNCEMENT ─────────────────────────────── */}
+      {catastropheEvent && (
+        <div className="fixed inset-0 z-[8500] flex items-center justify-center pointer-events-none"
+          style={{animation:"catEventIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
+          {/* Background flash */}
+          <div className="absolute inset-0" style={{background:catastropheEvent.color,opacity:0.18,animation:"catFlash 0.6s ease-out forwards"}} />
+          {/* Event card */}
+          <div className="relative flex flex-col items-center gap-3 px-8 py-6 rounded-3xl border-2 shadow-2xl max-w-xs mx-4"
+            style={{background:"rgba(5,5,10,0.95)",borderColor:catastropheEvent.color,boxShadow:`0 0 60px ${catastropheEvent.color},0 0 120px ${catastropheEvent.color}60`}}>
+            <div className="text-6xl" style={{filter:"drop-shadow(0 0 20px rgba(255,255,255,0.5))",animation:"catEmojiPop 0.5s ease-out 0.1s both"}}>
+              {catastropheEvent.emoji}
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{color:catastropheEvent.color}}>
+                ⚠ EVENTO CATÁSTROFE ⚠
+              </p>
+              <h3 className="text-white font-black text-xl leading-tight mb-2">{catastropheEvent.title}</h3>
+              <p className="text-slate-300 text-xs leading-relaxed">{catastropheEvent.description}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── CATASTROPHE BLACKOUT (Apagão Dimensional) ──────────────────── */}
+      {catBlackout && (
+        <div className="absolute z-[1000] pointer-events-none"
+          style={{
+            top:0, left:0, right:0, height:"48%",
+            background:"linear-gradient(to bottom, rgba(0,0,0,0.96) 60%, transparent 100%)",
+            animation:"catBlackoutIn 0.5s ease-out forwards",
+          }}>
+          <div className="w-full h-full flex items-center justify-center">
+            <p className="text-slate-600 text-xs font-bold tracking-widest uppercase animate-pulse">Campo Oculto — Apagão Dimensional</p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── CATASTROPHE BADGE in HUD ────────────────────────────────────── */}
+
       {/* ─────────────────────────────────────────────────────────────────────
            ── PAUSE MENU ──
       ───────────────────────────────────────────────────────────────────── */}
@@ -10798,6 +10966,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         }
         .animate-shake {
           animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* ── Catastrophe animations ── */
+        @keyframes catEventIn {
+          from { opacity:0; transform:scale(0.8) translateY(20px); }
+          to   { opacity:1; transform:scale(1)   translateY(0); }
+        }
+        @keyframes catFlash {
+          0%   { opacity:0; }
+          20%  { opacity:0.18; }
+          100% { opacity:0; }
+        }
+        @keyframes catEmojiPop {
+          from { opacity:0; transform:scale(0.5) rotate(-15deg); }
+          to   { opacity:1; transform:scale(1)   rotate(0deg); }
+        }
+        @keyframes catBlackoutIn {
+          from { opacity:0; }
+          to   { opacity:1; }
         }
 
         /* ── ORDEM DE LACERAÇÃO — sword slash animation ── */
