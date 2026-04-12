@@ -18,6 +18,7 @@ import MissionsScreen from "./missions-screen"
 import LoadingScreen from "./loading-screen"
 import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
+import CatastropheScreen from "./catastrophe-screen"
 
 export type GameScreen =
   | "menu"
@@ -28,6 +29,7 @@ export type GameScreen =
   | "duel-player"
   | "duel-draft"
   | "duel-roguelike"
+  | "duel-catastrophe"
   | "history"
   | "settings"
   | "create-room"
@@ -81,6 +83,8 @@ export function GameWrapper() {
       setCurrentScreen("duel-draft")
     } else if (screen === "duel-roguelike") {
       setCurrentScreen("duel-roguelike")
+    } else if (screen === "duel-catastrophe") {
+      setCurrentScreen("duel-catastrophe")
     } else {
       setCurrentScreen(screen)
     }
@@ -136,6 +140,9 @@ export function GameWrapper() {
       )}
       {currentScreen === "duel-roguelike" && (
         <RoguelikeScreen onBack={() => navigateTo("menu")} />
+      )}
+      {currentScreen === "duel-catastrophe" && (
+        <CatastropheScreen onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "history" && <HistoryScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "settings" && <SettingsScreen
