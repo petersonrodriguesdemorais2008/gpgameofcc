@@ -301,6 +301,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               style={{background:"linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)",boxShadow:"0 8px 24px rgba(220,38,38,0.30)"}}>
               <Skull className="h-6 w-6" />Roguelike
             </button>
+            <button onClick={() => onNavigate("duel-catastrophe")}
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#78350f,#d97706,#b45309)",boxShadow:"0 8px 24px rgba(217,119,6,0.30)"}}>
+              <span className="text-2xl">☄️</span>Modo Catástrofe
+            </button>
             <button onClick={() => setShowPlayMenu(false)}
               className="w-full h-10 rounded-xl border border-white/[0.08] text-slate-500 hover:text-slate-300 text-sm font-semibold transition-colors hover:bg-white/[0.04]">
               {t("back")}
