@@ -3432,7 +3432,48 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turn, catastropheMode, gameStarted, gameResult])
 
-  // ── Mr. P / Vivian effect states ──
+  // ── Duel Log ─────────────────────────────────────────────────────────────
+  interface DuelLogEntry {
+    id: number
+    turn: number
+    isPlayerTurn: boolean
+    type: "draw"|"play"|"attack"|"effect"|"lp"|"turn"|"info"
+    message: string
+    cardImage?: string
+    cardName?: string
+  }
+  const [duelLog, setDuelLog] = useState<DuelLogEntry[]>([])
+  const [showDuelLog, setShowDuelLog] = useState(false)
+  const [logCardDetail, setLogCardDetail] = useState<{image:string;name:string;ability?:string;abilityDesc?:string;dp?:number;element?:string;attack?:string;type?:string} | null>(null)
+  const logIdRef = useRef(0)
+  const duelLogRef = useRef<HTMLDivElement>(null)
+
+  const logEvent = useCallback((
+    type: DuelLogEntry["type"],
+    message: string,
+    card?: { image?: string; name?: string }
+  ) => {
+    const entry: DuelLogEntry = {
+      id: ++logIdRef.current,
+      turn: turn,
+      isPlayerTurn: isPlayerTurn,
+      type,
+      message,
+      cardImage: card?.image,
+      cardName: card?.name,
+    }
+    setDuelLog(prev => {
+      const next = [...prev, entry]
+      // Keep last 80 entries
+      return next.length > 80 ? next.slice(next.length - 80) : next
+    })
+    // Auto-scroll log
+    setTimeout(() => {
+      if (duelLogRef.current) {
+        duelLogRef.current.scrollTop = duelLogRef.current.scrollHeight
+      }
+    }, 50)
+  }, [turn, isPlayerTurn])
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
   const [mrpTargetMode, setMrpTargetMode] = useState(false)  // true while player is picking enemy unit
   const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
@@ -4162,6 +4203,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       hand: [...prev.hand, drawnCard],
       deck: prev.deck.slice(1),
     }))
+    logEvent("draw", `Você comprou uma carta`)
     mpBroadcast("draw", { handSize: playerField.hand.length + 1, deckSize: playerField.deck.length - 1 })
   }
 
@@ -4209,6 +4251,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       })
       playSound("cardSummon")
       setNormalSummonUsed(true)
+      logEvent("play", `Você jogou ${cardToPlace.name} na Zona de Unidades`, { image: cardToPlace.image, name: cardToPlace.name })
       // Broadcast unit placement in online mode
       if (mode === "player" && onlineRoomData) {
         const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
@@ -4414,6 +4457,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           }
         })
         playSound("cardSummon", 0.55)
+        logEvent("play", `Você posicionou uma carta virada para baixo`, { name: cardToPlace.name })
         mpBroadcast("place_card", { zone: "function", index: slotIndex, card: cardToPlace, isTrap: true, source: "hand" })
         setSelectedHandCard(null)
         setDraggedHandCard(null)
@@ -4909,6 +4953,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     })
 
     playSound("cardSummon", 0.5)
+    logEvent("play", `Você jogou o Cenário ${cardToPlace.name}`, { image: cardToPlace.image, name: cardToPlace.name })
     mpBroadcast("place_card", { zone: "scenario", card: cardToPlace, source: "hand" })
     setSelectedHandCard(null)
     setDraggedHandCard(null)
@@ -7092,6 +7137,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           if (card && card.type === "scenario" && !newScenarioZone) {
             newScenarioZone = card
             newHand.splice(i, 1)
+            logEvent("play", `Oponente jogou o Cenário ${card.name}`, { image: card.image, name: card.name })
 
             // Bot scenario effects
             if (card.ability === "RUÍNAS ABANDONADAS" || card.ability === "ARENA ESCANDINAVA") {
@@ -7176,6 +7222,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
               }
               newHand.splice(i, 1)
               botNormalSummonUsed = true
+              logEvent("play", `Oponente invocou ${card.name}`, { image: card.image, name: card.name })
             }
           }
         }
@@ -7201,19 +7248,19 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           const isTrap = card.type === "trap"
 
           if (isContinuous) {
-            // Place continuous function in zone — it buffs units passively
             const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newFunctionZone[emptySlot] = { ...card, isFaceDown: false }
               newHand = newHand.filter((_, idx) => idx !== i)
+              logEvent("play", `Oponente jogou ${card.name}`, { image: card.image, name: card.name })
               setTimeout(() => showEffectFeedback(`Bot jogou: ${card.name}!`, "warning"), 300)
             }
           } else if (isTrap) {
-            // Traps are placed face-down only
             const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newFunctionZone[emptySlot] = { ...card, isFaceDown: true }
               newHand = newHand.filter((_, idx) => idx !== i)
+              logEvent("play", `Oponente posicionou uma carta virada para baixo`, { name: card.name })
             }
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
@@ -7684,6 +7731,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       setTurn(nextTurn)
       setIsPlayerTurn(false)
       setPhase("draw")
+      logEvent("turn", `— Turno ${nextTurn} — Vez do Oponente —`)
 
       setEnemyField((prev) => ({
         ...prev,
@@ -8231,6 +8279,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       setIsPlayerTurn(true)
       setPhase("draw")
       setJulgamentoDivinoUsedThisTurn(false)
+      logEvent("turn", `— Turno ${nextTurn} — Sua Vez —`)
 
       setPlayerField((prev) => ({
         ...prev,
@@ -8892,6 +8941,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
               AUTO
             </div>
           )}
+          {/* Log button (mobile only) */}
+          <button onClick={() => setShowDuelLog(p => !p)}
+            className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center border border-amber-500/20 hover:border-amber-400/50 hover:bg-amber-900/20 transition-all"
+            style={{background:"rgba(0,0,0,0.5)"}}>
+            <span className="text-amber-300 text-[10px] font-black">LOG</span>
+          </button>
           {/* Pause / Menu button */}
           <button
             onClick={() => { setShowPauseMenu(true); setShowAudioSettings(false) }}
@@ -8922,6 +8977,56 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
 
       {/* Main Battle Area — centered arena */}
       <div className="flex-1 flex items-center justify-center px-2 py-1">
+
+        {/* ── LEFT PANEL: Card Detail ── */}
+        <div className="hidden lg:flex flex-col w-52 xl:w-60 h-full max-h-[calc(100vh-220px)] mr-2 flex-shrink-0 gap-2">
+          <div className="rounded-xl border border-cyan-500/20 overflow-hidden flex flex-col h-full"
+            style={{background:"rgba(4,3,13,0.92)", backdropFilter:"blur(8px)"}}>
+            <div className="px-3 py-2 border-b border-white/[0.07] flex-shrink-0">
+              <p className="text-cyan-400 text-[10px] font-black tracking-widest uppercase">Detalhe da Carta</p>
+            </div>
+            {(inspectedCard || logCardDetail) ? (() => {
+              const card = inspectedCard || logCardDetail
+              return (
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  <div className="relative w-full aspect-[3/4] overflow-hidden rounded-lg border border-white/10">
+                    <Image src={(card as any).image || "/placeholder.svg"} alt={(card as any).name || ""}
+                      fill sizes="200px" className="object-cover" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-white font-black text-sm leading-tight">{(card as any).name}</p>
+                    {(card as any).dp > 0 && (
+                      <p className={(inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > (inspectedCard as any).dp) ? "text-green-400 font-bold text-xs" :
+                        (inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < (inspectedCard as any).dp) ? "text-red-400 font-bold text-xs" :
+                        "text-amber-300 font-bold text-xs"}>
+                        {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : (card as any).dp} DP
+                        {(card as any).element && <span className="text-slate-400 font-normal ml-1">· {(card as any).element}</span>}
+                      </p>
+                    )}
+                    {(card as any).type && (
+                      <p className="text-slate-500 text-[10px]">{(card as any).category || (card as any).type}</p>
+                    )}
+                    {(card as any).ability && (
+                      <div className="bg-white/[0.04] rounded-lg p-2 border border-white/[0.06]">
+                        <p className="text-cyan-400 text-[10px] font-bold mb-1">{(card as any).ability}</p>
+                        <p className="text-slate-300 text-[10px] leading-relaxed">{(card as any).abilityDescription}</p>
+                      </div>
+                    )}
+                    {(card as any).attack && (
+                      <p className="text-amber-400 text-[10px] font-semibold">⚔ {(card as any).attack}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })() : (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4 opacity-30">
+                <div className="w-12 h-16 rounded-lg border-2 border-dashed border-slate-600" />
+                <p className="text-slate-500 text-[10px] text-center">Toque em uma carta para ver os detalhes</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div
           className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
           style={{
@@ -9719,9 +9824,63 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
             })}
           </div>
         </div>
-      </div>
 
-      {/* Dragged hand card ghost - GPU accelerated */}
+        {/* ── RIGHT PANEL: Duel Log ── */}
+        <div className="hidden lg:flex flex-col w-52 xl:w-60 h-full max-h-[calc(100vh-220px)] ml-2 flex-shrink-0">
+          <div className="rounded-xl border border-amber-500/20 overflow-hidden flex flex-col h-full"
+            style={{background:"rgba(4,3,13,0.92)", backdropFilter:"blur(8px)"}}>
+            {/* Header */}
+            <div className="px-3 py-2 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0">
+              <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase">Duel Log</p>
+              <div className={`px-2 py-0.5 rounded text-[9px] font-black ${isPlayerTurn ? "bg-blue-600/30 text-blue-300 border border-blue-500/30" : "bg-red-700/30 text-red-300 border border-red-500/30"}`}>
+                T{turn} · {isPlayerTurn ? "Seu Turno" : "Oponente"}
+              </div>
+            </div>
+            {/* Log entries */}
+            <div ref={duelLogRef} className="flex-1 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin scrollbar-thumb-white/10">
+              {duelLog.length === 0 ? (
+                <p className="text-slate-700 text-[10px] text-center mt-4">O log do duelo aparecerá aqui.</p>
+              ) : duelLog.map(entry => (
+                <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-2 py-1.5 ${
+                  entry.type === "turn"
+                    ? entry.isPlayerTurn
+                      ? "bg-blue-900/30 border border-blue-500/20"
+                      : "bg-red-900/25 border border-red-500/20"
+                    : "hover:bg-white/[0.03]"
+                }`}>
+                  {/* Card art thumbnail */}
+                  {entry.cardImage && (
+                    <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 cursor-pointer"
+                      onClick={() => entry.cardName && setLogCardDetail({ image: entry.cardImage!, name: entry.cardName })}>
+                      <img src={entry.cardImage} alt={entry.cardName || ""} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    {entry.type === "turn" ? (
+                      <p className={`text-[10px] font-black tracking-wide ${entry.isPlayerTurn ? "text-blue-400" : "text-red-400"}`}>
+                        {entry.message}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-[9px] text-slate-600 font-medium">T{entry.turn}</p>
+                        <p className={`text-[10px] leading-tight ${
+                          entry.type==="draw"   ? "text-slate-300"   :
+                          entry.type==="play"   ? (entry.isPlayerTurn ? "text-cyan-300" : "text-red-300")   :
+                          entry.type==="attack" ? "text-amber-300"   :
+                          entry.type==="lp"     ? "text-red-400"     :
+                          "text-slate-400"
+                        }`}>{entry.message}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+      </div>
       {draggedHandCard && (
         <div
           ref={draggedCardRef}
@@ -10758,6 +10917,49 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           </div>
         </div>
       )}
+      {/* ─── MOBILE DUEL LOG OVERLAY ─────────────────────────────────────── */}
+      {showDuelLog && (
+        <div className="lg:hidden fixed inset-0 z-[8400] flex flex-col"
+          style={{background:"rgba(0,0,0,0.92)",backdropFilter:"blur(6px)"}}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
+            <h2 className="text-amber-400 font-black text-base tracking-widest">DUEL LOG</h2>
+            <div className={`px-3 py-1 rounded text-xs font-black ${isPlayerTurn ? "bg-blue-600/30 text-blue-300" : "bg-red-700/30 text-red-300"}`}>
+              Turno {turn} — {isPlayerTurn ? "Seu Turno" : "Vez do Oponente"}
+            </div>
+            <button onClick={() => setShowDuelLog(false)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 text-slate-400 hover:text-white transition-all">
+              ✕
+            </button>
+          </div>
+          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-3 space-y-1">
+            {duelLog.map(entry => (
+              <div key={entry.id} className={`flex items-start gap-2 rounded-xl px-3 py-2 ${
+                entry.type==="turn"
+                  ? entry.isPlayerTurn ? "bg-blue-900/40 border border-blue-500/30" : "bg-red-900/30 border border-red-500/30"
+                  : "bg-white/[0.04] border border-white/[0.06]"
+              }`}>
+                {entry.cardImage && (
+                  <img src={entry.cardImage} alt={entry.cardName||""} className="w-8 h-11 object-cover rounded flex-shrink-0 border border-white/10" />
+                )}
+                <div className="flex-1">
+                  {entry.type==="turn" ? (
+                    <p className={`font-black text-sm ${entry.isPlayerTurn ? "text-blue-400" : "text-red-400"}`}>{entry.message}</p>
+                  ) : (
+                    <>
+                      <p className="text-slate-600 text-[10px]">Turno {entry.turn}</p>
+                      <p className={`text-sm leading-snug ${
+                        entry.type==="play" ? (entry.isPlayerTurn?"text-cyan-300":"text-red-300") :
+                        entry.type==="lp"   ? "text-red-400" : "text-slate-300"
+                      }`}>{entry.message}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ─── CATASTROPHE EVENT ANNOUNCEMENT ─────────────────────────────── */}
       {catastropheEvent && (
         <div className="fixed inset-0 z-[8500] flex items-center justify-center pointer-events-none"
