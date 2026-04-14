@@ -8977,69 +8977,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       {/* Main Battle Area — centered arena */}
       <div className="flex-1 flex items-center justify-center px-2 py-1">
 
-        {/* ── LEFT PANEL: Duel Log ── */}
-        <div className="hidden lg:flex flex-col w-56 xl:w-64 h-full max-h-[calc(100vh-220px)] mr-2 flex-shrink-0">
-          <div className="rounded-xl border border-amber-500/20 overflow-hidden flex flex-col h-full"
-            style={{background:"rgba(4,3,13,0.93)", backdropFilter:"blur(10px)", boxShadow:"0 0 24px rgba(0,0,0,0.6)"}}>
-            {/* Header */}
-            <div className="px-3 py-2.5 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0"
-              style={{background:"rgba(255,255,255,0.03)"}}>
-              <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase">📋 Duel Log</p>
-              <div className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all ${
-                isPlayerTurn
-                  ? "bg-blue-600/40 text-blue-200 border border-blue-400/40"
-                  : "bg-red-700/40 text-red-200 border border-red-500/40"
-              }`}>
-                T{turn} · {isPlayerTurn ? "Seu Turno" : "Oponente"}
-              </div>
-            </div>
-            {/* Log entries */}
-            <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
-              style={{scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
-              {duelLog.length === 0 ? (
-                <p className="text-slate-700 text-[10px] text-center mt-6 leading-relaxed">
-                  As ações do duelo<br/>aparecerão aqui.
-                </p>
-              ) : duelLog.map(entry => (
-                <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${
-                  entry.type === "turn"
-                    ? entry.isPlayerTurn
-                      ? "bg-blue-900/35 border border-blue-500/25 my-1"
-                      : "bg-red-900/30 border border-red-500/25 my-1"
-                    : "hover:bg-white/[0.03]"
-                }`}>
-                  {/* Card art thumbnail */}
-                  {entry.cardImage && (
-                    <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 shadow-lg">
-                      <img src={entry.cardImage} alt={entry.cardName || ""} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    {entry.type === "turn" ? (
-                      <p className={`text-[10px] font-black tracking-wide ${entry.isPlayerTurn ? "text-blue-300" : "text-red-300"}`}>
-                        {entry.message}
-                      </p>
-                    ) : (
-                      <>
-                        <p className="text-[8px] text-slate-700 font-semibold">Turno {entry.turn}</p>
-                        <p className={`text-[10px] leading-tight ${
-                          entry.type==="draw"   ? "text-slate-400"   :
-                          entry.type==="play"   ? (entry.isPlayerTurn ? "text-cyan-300" : "text-red-300") :
-                          entry.type==="attack" ? "text-amber-300"   :
-                          entry.type==="lp"     ? "text-red-400"     :
-                          entry.type==="effect" ? "text-purple-300"  :
-                          "text-slate-500"
-                        }`}>{entry.message}</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         <div
           className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
           style={{
@@ -9835,6 +9772,67 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
                 </div>
               )
             })}
+          </div>
+        </div>
+
+        {/* ── RIGHT PANEL: Duel Log ── */}
+        <div className="hidden lg:flex flex-col w-56 xl:w-64 h-full max-h-[calc(100vh-220px)] ml-3 flex-shrink-0">
+          <div className="rounded-xl border border-amber-500/20 overflow-hidden flex flex-col h-full"
+            style={{background:"rgba(4,3,13,0.93)", backdropFilter:"blur(10px)", boxShadow:"0 0 24px rgba(0,0,0,0.6)"}}>
+            {/* Header */}
+            <div className="px-3 py-2.5 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0"
+              style={{background:"rgba(255,255,255,0.03)"}}>
+              <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase">📋 Duel Log</p>
+              <div className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all ${
+                isPlayerTurn
+                  ? "bg-blue-600/40 text-blue-200 border border-blue-400/40"
+                  : "bg-red-700/40 text-red-200 border border-red-500/40"
+              }`}>
+                T{turn} · {isPlayerTurn ? "Seu Turno" : "Oponente"}
+              </div>
+            </div>
+            {/* Log entries */}
+            <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
+              style={{scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+              {duelLog.length === 0 ? (
+                <p className="text-slate-700 text-[10px] text-center mt-6 leading-relaxed">
+                  As ações do duelo<br/>aparecerão aqui.
+                </p>
+              ) : duelLog.map(entry => (
+                <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${
+                  entry.type === "turn"
+                    ? entry.isPlayerTurn
+                      ? "bg-blue-900/35 border border-blue-500/25 my-1"
+                      : "bg-red-900/30 border border-red-500/25 my-1"
+                    : "hover:bg-white/[0.03]"
+                }`}>
+                  {entry.cardImage && (
+                    <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 shadow-lg">
+                      <img src={entry.cardImage} alt={entry.cardName || ""} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    {entry.type === "turn" ? (
+                      <p className={`text-[10px] font-black tracking-wide ${entry.isPlayerTurn ? "text-blue-300" : "text-red-300"}`}>
+                        {entry.message}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-[8px] text-slate-700 font-semibold">Turno {entry.turn}</p>
+                        <p className={`text-[10px] leading-tight ${
+                          entry.type==="draw"   ? "text-slate-400"   :
+                          entry.type==="play"   ? (entry.isPlayerTurn ? "text-cyan-300" : "text-red-300") :
+                          entry.type==="attack" ? "text-amber-300"   :
+                          entry.type==="lp"     ? "text-red-400"     :
+                          entry.type==="effect" ? "text-purple-300"  :
+                          "text-slate-500"
+                        }`}>{entry.message}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
