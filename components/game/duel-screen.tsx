@@ -47,6 +47,16 @@ interface OnlineChatMsg {
   created_at: string
 }
 
+interface DuelLogEntry {
+  id: number
+  turn: number
+  isPlayerTurn: boolean
+  type: "draw" | "play" | "attack" | "effect" | "lp" | "turn" | "info"
+  message: string
+  cardImage?: string
+  cardName?: string
+}
+
 interface DuelScreenProps {
   mode: "bot" | "player"
   onBack: () => void
@@ -3433,19 +3443,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
   }, [turn, catastropheMode, gameStarted, gameResult])
 
   // ── Duel Log ─────────────────────────────────────────────────────────────
-  interface DuelLogEntry {
-    id: number
-    turn: number
-    isPlayerTurn: boolean
-    type: "draw"|"play"|"attack"|"effect"|"lp"|"turn"|"info"
-    message: string
-    cardImage?: string
-    cardName?: string
-  }
   const [duelLog, setDuelLog] = useState<DuelLogEntry[]>([])
   const [showDuelLog, setShowDuelLog] = useState(false)
+  const [logCardDetail, setLogCardDetail] = useState<{image:string;name:string;ability?:string;abilityDescription?:string;dp?:number;element?:string;attack?:string;category?:string}|null>(null)
   const logIdRef = useRef(0)
   const duelLogRef = useRef<HTMLDivElement>(null)
+  const turnRef = useRef(turn)
+  const isPlayerTurnRef = useRef(isPlayerTurn)
+  useEffect(() => { turnRef.current = turn }, [turn])
+  useEffect(() => { isPlayerTurnRef.current = isPlayerTurn }, [isPlayerTurn])
 
   const logEvent = useCallback((
     type: DuelLogEntry["type"],
@@ -3454,8 +3460,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
   ) => {
     const entry: DuelLogEntry = {
       id: ++logIdRef.current,
-      turn: turn,
-      isPlayerTurn: isPlayerTurn,
+      turn: turnRef.current,
+      isPlayerTurn: isPlayerTurnRef.current,
       type,
       message,
       cardImage: card?.image,
@@ -3463,16 +3469,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     }
     setDuelLog(prev => {
       const next = [...prev, entry]
-      // Keep last 80 entries
       return next.length > 80 ? next.slice(next.length - 80) : next
     })
-    // Auto-scroll log
     setTimeout(() => {
       if (duelLogRef.current) {
         duelLogRef.current.scrollTop = duelLogRef.current.scrollHeight
       }
     }, 50)
-  }, [turn, isPlayerTurn])
+  }, [])
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
   const [mrpTargetMode, setMrpTargetMode] = useState(false)  // true while player is picking enemy unit
   const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
@@ -9022,7 +9026,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           style={{
             aspectRatio: "9/16",
             maxHeight: "calc(100vh - 220px)",
-            maxWidth: "calc(100vh - 220px) * 9 / 16",
             boxShadow: "0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3)",
           }}
         >
