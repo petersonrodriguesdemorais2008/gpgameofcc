@@ -7050,6 +7050,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     }
     cardPressTimer.current = setTimeout(() => {
       setInspectedCard(card)
+      setLogCardDetail({
+        image: card.image || "",
+        name: card.name,
+        ability: (card as any).ability,
+        abilityDescription: (card as any).abilityDescription,
+        dp: card.dp,
+        element: (card as any).element,
+        attack: (card as any).attack,
+        category: (card as any).category,
+      })
     }, 300) // 300ms hold to inspect
   }
 
@@ -9952,50 +9962,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         </div>
       )}
 
-      {/* Card Inspection Overlay - Press and hold to view */}
-      {inspectedCard && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85"
-          onClick={() => setInspectedCard(null)}
-          onTouchEnd={() => setInspectedCard(null)}
-        >
-          <div
-            className="relative flex flex-col items-center gap-4"
-            style={{ animation: 'cardInspectIn 250ms ease-out forwards' }}
-          >
-            {/* Subtle ambient glow */}
-            <div className="absolute -inset-16 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 blur-3xl rounded-full pointer-events-none" />
-
-            {/* Card — single image, no overlay duplicate */}
-            <div className="relative rounded-2xl border-2 border-white/30 shadow-2xl overflow-hidden"
-              style={{ width: '280px', height: '392px' }}>
-              <img
-                src={inspectedCard.image || "/placeholder.svg"}
-                alt={inspectedCard.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            {/* DP badge — unit cards only */}
-            {isUnitCard(inspectedCard) && (
-              <div className={`px-5 py-1.5 rounded-full font-bold text-lg border ${
-                (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp
-                  ? "bg-green-900/60 border-green-400/60 text-green-300"
-                  : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
-                    ? "bg-red-900/60 border-red-400/60 text-red-300"
-                    : "bg-cyan-900/60 border-cyan-400/60 text-cyan-300"
-              }`}>
-                {(inspectedCard as FieldCard).currentDp !== undefined
-                  ? (inspectedCard as FieldCard).currentDp
-                  : inspectedCard.dp} DP
-              </div>
-            )}
-
-            {/* Close hint */}
-            <div className="text-white/40 text-xs">Toque para fechar</div>
-          </div>
-        </div>
-      )}
+      {/* Card Inspection — now handled by left side panel (no fullscreen overlay) */}
 
       {/* Graveyard View Modal */}
       {graveyardView && (
@@ -10022,6 +9989,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
                       style={{ height: '88px' }}
                       onClick={() => {
                         setInspectedCard(card)
+                        setLogCardDetail({
+                          image: card.image || "",
+                          name: card.name,
+                          ability: (card as any).ability,
+                          abilityDescription: (card as any).abilityDescription,
+                          dp: card.dp,
+                          element: (card as any).element,
+                          attack: (card as any).attack,
+                          category: (card as any).category,
+                        })
                       }}
                     >
                       <img
@@ -11151,7 +11128,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         </div>
       )}
 
-      {/* Card Inspection Overlay */}
+      {/* Global Styles */}
       <style jsx global>{`
         @keyframes shake {
           0% { transform: translate(1px, 1px) rotate(0deg); }
