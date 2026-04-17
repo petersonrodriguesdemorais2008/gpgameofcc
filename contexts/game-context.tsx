@@ -9,7 +9,7 @@ export interface Card {
   image: string
   rarity: "R" | "SR" | "UR" | "LR"
   type: "unit" | "troops" | "magic" | "trap" | "action" | "ultimateGear" | "ultimateGuardian" | "ultimateElemental" | "item" | "scenario"
-  element: "Aquos" | "Ventus" | "Pyrus" | "Terra" | "Darkus" | "Haos" | "Void"
+  element: "Aquos" | "Ventus" | "Pyrus" | "Fire" | "Terra" | "Darkus" | "Haos" | "Void"
   dp: number
   ability: string
   abilityDescription: string
@@ -430,7 +430,7 @@ const ALL_CARDS: Card[] = [
     image: "/images/logi-20ur.png",
     rarity: "UR",
     type: "unit",
-    element: "Pyrus",
+    element: "Fire",
     dp: 3,
     ability: "Cinzas do Mundo",
     abilityDescription:
@@ -530,7 +530,7 @@ const ALL_CARDS: Card[] = [
     image: "/images/logi-20sr.png",
     rarity: "SR",
     type: "unit",
-    element: "Pyrus",
+    element: "Fire",
     dp: 2,
     ability: "Incêndio Vivo",
     abilityDescription:
@@ -609,7 +609,7 @@ const ALL_CARDS: Card[] = [
     image: "/images/jaden-20lr.png",
     rarity: "LR",
     type: "ultimateGuardian",
-    element: "Pyrus",
+    element: "Fire",
     dp: 4,
     ability: "Magma Primordial",
     abilityDescription:
@@ -626,7 +626,7 @@ const ALL_CARDS: Card[] = [
     image: "/images/jaden-20ur.png",
     rarity: "UR",
     type: "ultimateElemental",
-    element: "Pyrus",
+    element: "Fire",
     dp: 3,
     ability: "Neo Núcleo",
     abilityDescription:
@@ -642,7 +642,7 @@ const ALL_CARDS: Card[] = [
     image: "/images/jaden-20sr.png",
     rarity: "SR",
     type: "unit",
-    element: "Pyrus",
+    element: "Fire",
     dp: 2,
     ability: "Núcleo Ardente",
     abilityDescription:
