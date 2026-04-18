@@ -9760,35 +9760,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
             </div>
           </div>
 
-          {/* Phase buttons */}
+          {/* Phase buttons — large fixed button bottom-right of arena */}
           <div className="flex gap-2 min-h-[40px]">
-            {isPlayerTurn && phase === "draw" && (
-              <Button
-                onClick={advancePhase}
-                size="default"
-                className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold px-6 shadow-lg shadow-green-500/30"
-              >
-                {t("drawCard")}
-              </Button>
-            )}
-            {isPlayerTurn && phase === "main" && (
-              <Button
-                onClick={advancePhase}
-                size="default"
-                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold px-6 shadow-lg shadow-blue-500/30"
-              >
-                {t("toBattle")}
-              </Button>
-            )}
-            {isPlayerTurn && phase === "battle" && (
-              <Button
-                onClick={endTurn}
-                size="default"
-                className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold px-6 shadow-lg shadow-amber-500/30"
-              >
-                {t("endTurn")}
-              </Button>
-            )}
+            {/* Invisible placeholder to keep layout — real button is fixed below */}
           </div>
         </div>
 
@@ -9875,6 +9849,61 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           </div>
         </div>
       </div>
+
+      {/* ── PHASE ACTION BUTTON — fixed, always visible, centered in arena ── */}
+      {isPlayerTurn && gameStarted && !gameResult && (
+        <div
+          className="fixed z-40 flex items-center justify-center"
+          style={{
+            bottom: "130px",
+            left: `clamp(130px,16vw,210px)`,
+            right: `clamp(140px,17vw,230px)`,
+          }}
+        >
+          {phase === "draw" && (
+            <button
+              onClick={advancePhase}
+              className="font-black text-base text-white rounded-2xl border-2 border-green-400/70 transition-all active:scale-95 hover:brightness-110"
+              style={{
+                background: "linear-gradient(135deg,#15803d,#22c55e,#16a34a)",
+                boxShadow: "0 0 28px rgba(34,197,94,0.55), 0 8px 24px rgba(0,0,0,0.7)",
+                padding: "14px 40px",
+                minWidth: "190px",
+              }}
+            >
+              🃏 {t("drawCard")}
+            </button>
+          )}
+          {phase === "main" && (
+            <button
+              onClick={advancePhase}
+              className="font-black text-base text-white rounded-2xl border-2 border-blue-400/70 transition-all active:scale-95 hover:brightness-110"
+              style={{
+                background: "linear-gradient(135deg,#1e40af,#3b82f6,#1d4ed8)",
+                boxShadow: "0 0 28px rgba(59,130,246,0.55), 0 8px 24px rgba(0,0,0,0.7)",
+                padding: "14px 40px",
+                minWidth: "190px",
+              }}
+            >
+              ⚔️ {t("toBattle")}
+            </button>
+          )}
+          {phase === "battle" && (
+            <button
+              onClick={endTurn}
+              className="font-black text-base text-white rounded-2xl border-2 border-amber-400/70 transition-all active:scale-95 hover:brightness-110"
+              style={{
+                background: "linear-gradient(135deg,#b45309,#f59e0b,#d97706)",
+                boxShadow: "0 0 28px rgba(245,158,11,0.55), 0 8px 24px rgba(0,0,0,0.7)",
+                padding: "14px 40px",
+                minWidth: "190px",
+              }}
+            >
+              ✅ {t("endTurn")}
+            </button>
+          )}
+        </div>
+      )}
 
       {draggedHandCard && (
         <div
