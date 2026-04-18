@@ -8982,12 +8982,19 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         </div>
       </div>
 
-      {/* Main Battle Area — centered arena */}
-      <div className="flex-1 flex items-center justify-center px-2 py-1">
+      {/* Main Battle Area — 3-column grid: Detail | Arena | Log */}
+      <div
+        className="flex-1 grid min-h-0"
+        style={{
+          gridTemplateColumns: "clamp(130px,16vw,210px) 1fr clamp(140px,17vw,230px)",
+          gap: "6px",
+          padding: "4px 6px",
+        }}
+      >
 
         {/* ── LEFT PANEL: Card Detail ── */}
-        <div className="flex flex-col w-36 sm:w-44 lg:w-52 xl:w-60 h-full max-h-[calc(100vh-220px)] mr-1 sm:mr-2 flex-shrink-0">
-          <div className="rounded-xl border border-cyan-500/20 overflow-hidden flex flex-col h-full"
+        <div className="flex flex-col min-h-0 overflow-hidden">
+          <div className="rounded-xl border border-cyan-500/20 overflow-hidden flex flex-col h-full min-h-0"
             style={{background:"rgba(4,3,13,0.92)",backdropFilter:"blur(8px)"}}>
             <div className="px-2 py-1.5 border-b border-white/[0.07] flex-shrink-0">
               <p className="text-cyan-400 text-[9px] font-black tracking-widest uppercase">Detalhe</p>
@@ -9031,11 +9038,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
           </div>
         </div>
 
+        {/* ── CENTER: Arena ── */}
         <div
-          className="relative flex-1 min-w-0 mx-auto rounded-xl overflow-hidden"
+          className="relative min-h-0 rounded-xl overflow-hidden"
           style={{
-            aspectRatio: "9/16",
-            maxHeight: "calc(100vh - 220px)",
             boxShadow: "0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3)",
           }}
         >
@@ -9830,7 +9836,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         </div>
 
         {/* ── RIGHT PANEL: Duel Log ── */}
-        <div className="flex flex-col w-36 sm:w-44 lg:w-56 xl:w-64 h-full max-h-[calc(100vh-220px)] ml-1 sm:ml-3 flex-shrink-0">
+        <div className="flex flex-col min-h-0 overflow-hidden">
           <div className="rounded-xl border border-amber-500/20 overflow-hidden flex flex-col h-full"
             style={{background:"rgba(4,3,13,0.93)", backdropFilter:"blur(10px)", boxShadow:"0 0 24px rgba(0,0,0,0.6)"}}>
             {/* Header */}
