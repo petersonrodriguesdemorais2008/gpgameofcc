@@ -8982,66 +8982,106 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         </div>
       </div>
 
-      {/* Main Battle Area — 3-column grid: Detail | Arena | Log */}
-      <div
-        className="flex-1 grid min-h-0"
-        style={{
-          gridTemplateColumns: "clamp(130px,16vw,210px) 1fr clamp(140px,17vw,230px)",
-          gap: "6px",
-          padding: "4px 6px",
-        }}
-      >
-
-        {/* ── LEFT PANEL: Card Detail ── */}
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          <div className="rounded-xl border border-cyan-500/20 overflow-hidden flex flex-col h-full min-h-0"
-            style={{background:"rgba(4,3,13,0.92)",backdropFilter:"blur(8px)"}}>
-            <div className="px-2 py-1.5 border-b border-white/[0.07] flex-shrink-0">
-              <p className="text-cyan-400 text-[9px] font-black tracking-widest uppercase">Detalhe</p>
-            </div>
-            {(inspectedCard || logCardDetail) ? (() => {
-              const card: any = inspectedCard || logCardDetail
-              return (
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  <div className="relative w-full aspect-[3/4] overflow-hidden rounded-lg border border-white/10">
-                    <Image src={card.image||"/placeholder.svg"} alt={card.name||""} fill sizes="200px" className="object-cover" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-white font-black text-sm leading-tight">{card.name}</p>
-                    {card.dp > 0 && (
-                      <p className={`font-bold text-xs ${
-                        inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "text-green-400" :
-                        inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "text-red-400" :
-                        "text-amber-300"
-                      }`}>
-                        {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
-                        {card.element && <span className="text-slate-400 font-normal ml-1">· {card.element}</span>}
-                      </p>
-                    )}
-                    {card.category && <p className="text-slate-500 text-[10px]">{card.category}</p>}
-                    {card.ability && (
-                      <div className="bg-white/[0.04] rounded-lg p-2 border border-white/[0.06]">
-                        <p className="text-cyan-400 text-[10px] font-bold mb-1">{card.ability}</p>
-                        <p className="text-slate-300 text-[10px] leading-relaxed">{card.abilityDescription}</p>
-                      </div>
-                    )}
-                    {card.attack && <p className="text-amber-400 text-[10px] font-semibold">⚔ {card.attack}</p>}
-                  </div>
-                </div>
-              )
-            })() : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4 opacity-30">
-                <div className="w-12 h-16 rounded-lg border-2 border-dashed border-slate-600" />
-                <p className="text-slate-500 text-[10px] text-center">Toque em uma carta para ver os detalhes</p>
+      {/* ── FIXED LEFT PANEL: Card Detail ── */}
+      <div className="fixed left-0 z-30 flex flex-col"
+        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"rgba(4,3,13,0.96)",borderRight:"1px solid rgba(6,182,212,0.18)",backdropFilter:"blur(12px)"}}>
+        <div className="px-2 py-2 border-b border-white/[0.07] flex-shrink-0"
+          style={{background:"rgba(6,182,212,0.06)"}}>
+          <p className="text-cyan-400 text-[10px] font-black tracking-widest uppercase">🃏 Detalhe</p>
+        </div>
+        {(inspectedCard || logCardDetail) ? (() => {
+          const card: any = inspectedCard || logCardDetail
+          return (
+            <div className="flex-1 overflow-y-auto p-2 space-y-2" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+              <div className="relative w-full overflow-hidden rounded-lg border border-white/10" style={{aspectRatio:"3/4"}}>
+                <Image src={card.image||"/placeholder.svg"} alt={card.name||""} fill sizes="210px" className="object-cover" />
               </div>
-            )}
+              <div className="space-y-1.5 px-0.5">
+                <p className="text-white font-black text-xs leading-tight">{card.name}</p>
+                {card.dp > 0 && (
+                  <p className={`font-bold text-xs ${
+                    inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "text-green-400" :
+                    inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "text-red-400" :
+                    "text-amber-300"
+                  }`}>
+                    {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
+                    {card.element && <span className="text-slate-500 font-normal ml-1">· {card.element}</span>}
+                  </p>
+                )}
+                {card.category && <p className="text-slate-600 text-[9px]">{card.category}</p>}
+                {card.ability && (
+                  <div className="bg-white/[0.03] rounded-lg p-1.5 border border-white/[0.05]">
+                    <p className="text-cyan-400 text-[9px] font-bold mb-0.5">{card.ability}</p>
+                    <p className="text-slate-400 text-[9px] leading-relaxed">{card.abilityDescription}</p>
+                  </div>
+                )}
+                {card.attack && <p className="text-amber-400 text-[9px] font-semibold">⚔ {card.attack}</p>}
+              </div>
+            </div>
+          )
+        })() : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2 p-3 opacity-25">
+            <div className="w-10 h-14 rounded border-2 border-dashed border-slate-700" />
+            <p className="text-slate-600 text-[9px] text-center leading-relaxed">Toque e segure<br/>uma carta</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── FIXED RIGHT PANEL: Duel Log ── */}
+      <div className="fixed right-0 z-30 flex flex-col"
+        style={{top:"56px",bottom:"0",width:"clamp(140px,17vw,230px)",background:"rgba(4,3,13,0.96)",borderLeft:"1px solid rgba(251,191,36,0.15)",backdropFilter:"blur(12px)"}}>
+        <div className="px-2 py-2 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0"
+          style={{background:"rgba(251,191,36,0.05)"}}>
+          <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase">📋 Log</p>
+          <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${isPlayerTurn?"bg-blue-600/40 text-blue-200 border border-blue-400/40":"bg-red-700/40 text-red-200 border border-red-500/40"}`}>
+            T{turn}·{isPlayerTurn?"Você":"Bot"}
           </div>
         </div>
+        <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
+          style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+          {duelLog.length === 0 ? (
+            <p className="text-slate-700 text-[9px] text-center mt-6 leading-relaxed">As ações<br/>aparecerão aqui.</p>
+          ) : duelLog.map(entry => (
+            <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 ${
+              entry.type==="turn"
+                ? (entry.isPlayerTurn ? "bg-blue-900/35 border border-blue-500/25 my-0.5" : "bg-red-900/30 border border-red-500/25 my-0.5")
+                : "hover:bg-white/[0.03]"
+            }`}>
+              {entry.cardImage && (
+                <button className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => setLogCardDetail({image:entry.cardImage!,name:entry.cardName||""})}>
+                  <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-cover" />
+                </button>
+              )}
+              <div className="flex-1 min-w-0">
+                {entry.type==="turn" ? (
+                  <p className={`text-[10px] font-black tracking-wide ${entry.isPlayerTurn?"text-blue-300":"text-red-300"}`}>{entry.message}</p>
+                ) : (
+                  <>
+                    <p className="text-[8px] text-slate-700">T{entry.turn}</p>
+                    <p className={`text-[10px] leading-tight ${
+                      entry.type==="draw"?"text-slate-400":
+                      entry.type==="play"?(entry.isPlayerTurn?"text-cyan-300":"text-red-300"):
+                      entry.type==="attack"?"text-amber-300":
+                      entry.type==="lp"?"text-red-400":
+                      entry.type==="effect"?"text-purple-300":"text-slate-500"
+                    }`}>{entry.message}</p>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {/* ── CENTER: Arena ── */}
+      {/* Main Battle Area — arena centered between side panels */}
+      <div className="flex-1 flex items-center justify-center px-2 py-1"
+        style={{marginLeft:"clamp(130px,16vw,210px)",marginRight:"clamp(140px,17vw,230px)"}}>
         <div
-          className="relative min-h-0 rounded-xl overflow-hidden"
+          className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
           style={{
+            aspectRatio: "9/16",
+            maxHeight: "calc(100vh - 220px)",
             boxShadow: "0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3)",
           }}
         >
@@ -9834,69 +9874,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
             })}
           </div>
         </div>
-
-        {/* ── RIGHT PANEL: Duel Log ── */}
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          <div className="rounded-xl border border-amber-500/20 overflow-hidden flex flex-col h-full"
-            style={{background:"rgba(4,3,13,0.93)", backdropFilter:"blur(10px)", boxShadow:"0 0 24px rgba(0,0,0,0.6)"}}>
-            {/* Header */}
-            <div className="px-3 py-2.5 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0"
-              style={{background:"rgba(255,255,255,0.03)"}}>
-              <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase">📋 Duel Log</p>
-              <div className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all ${
-                isPlayerTurn
-                  ? "bg-blue-600/40 text-blue-200 border border-blue-400/40"
-                  : "bg-red-700/40 text-red-200 border border-red-500/40"
-              }`}>
-                T{turn} · {isPlayerTurn ? "Seu Turno" : "Oponente"}
-              </div>
-            </div>
-            {/* Log entries */}
-            <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
-              style={{scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
-              {duelLog.length === 0 ? (
-                <p className="text-slate-700 text-[10px] text-center mt-6 leading-relaxed">
-                  As ações do duelo<br/>aparecerão aqui.
-                </p>
-              ) : duelLog.map(entry => (
-                <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${
-                  entry.type === "turn"
-                    ? entry.isPlayerTurn
-                      ? "bg-blue-900/35 border border-blue-500/25 my-1"
-                      : "bg-red-900/30 border border-red-500/25 my-1"
-                    : "hover:bg-white/[0.03]"
-                }`}>
-                  {entry.cardImage && (
-                    <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 shadow-lg">
-                      <img src={entry.cardImage} alt={entry.cardName || ""} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    {entry.type === "turn" ? (
-                      <p className={`text-[10px] font-black tracking-wide ${entry.isPlayerTurn ? "text-blue-300" : "text-red-300"}`}>
-                        {entry.message}
-                      </p>
-                    ) : (
-                      <>
-                        <p className="text-[8px] text-slate-700 font-semibold">Turno {entry.turn}</p>
-                        <p className={`text-[10px] leading-tight ${
-                          entry.type==="draw"   ? "text-slate-400"   :
-                          entry.type==="play"   ? (entry.isPlayerTurn ? "text-cyan-300" : "text-red-300") :
-                          entry.type==="attack" ? "text-amber-300"   :
-                          entry.type==="lp"     ? "text-red-400"     :
-                          entry.type==="effect" ? "text-purple-300"  :
-                          "text-slate-500"
-                        }`}>{entry.message}</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
       </div>
+
       {draggedHandCard && (
         <div
           ref={draggedCardRef}
