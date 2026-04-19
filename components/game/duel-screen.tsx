@@ -270,7 +270,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     requiresTargets: false,
     canActivate: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20 // Max LP
+      const maxLife = 50 // Max LP
 
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
@@ -279,7 +279,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
+      const maxLife = 50
       const healAmount = Math.min(2, maxLife - currentLife) // Heal up to 2, but don't exceed max
 
       if (healAmount <= 0) {
@@ -331,7 +331,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     requiresTargets: false,
     canActivate: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20 // Max LP
+      const maxLife = 50 // Max LP
 
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
@@ -340,7 +340,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
+      const maxLife = 50
       const healAmount = Math.min(4, maxLife - currentLife) // Heal up to 4, but don't exceed max
 
       if (healAmount <= 0) {
@@ -367,7 +367,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     needsDrawAfterResolve: true,
     canActivate: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
+      const maxLife = 50
 
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
@@ -376,7 +376,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
+      const maxLife = 50
       const healAmount = Math.min(3, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
@@ -409,7 +409,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const maxLife = 20
+      const maxLife = 50
       const currentLife = context.playerField.life
       const healAmount = Math.min(2, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
@@ -585,29 +585,21 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     requiresTargets: false,
     needsDrawAfterResolve: true,
     canActivate: (context) => {
-      const currentLife = context.playerField.life
-      const maxLife = 20
-
-      if (currentLife >= maxLife) {
-        return { canActivate: false, reason: "LP ja esta no maximo" }
-      }
       return { canActivate: true }
     },
     resolve: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
-      const healAmount = Math.min(2, maxLife - currentLife)
-      const newLife = Math.min(currentLife + healAmount, maxLife)
+      const healAmount = 2
+      const newLife = currentLife + healAmount
 
       context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
 
-      // Return special flag to indicate we need to draw and check for Unit type
       return {
         success: true,
-        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        message: `+${healAmount} LP restaurado! (Kit Médico)`,
         needsDrawAndCheckUnit: true,
         currentLife: newLife,
       }
@@ -621,7 +613,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     needsDrawAfterResolve: true,
     canActivate: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
+      const maxLife = 50
 
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
@@ -630,7 +622,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 20
+      const maxLife = 50
       const healAmount = Math.min(3, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
@@ -3480,6 +3472,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
   const [mrpTargetMode, setMrpTargetMode] = useState(false)  // true while player is picking enemy unit
   const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
+  const [ugAbilityUsed, setUgAbilityUsed] = useState(false)         // Ultimate Guardian one-time ability used    // Abraço das Profundezas — on summon
 
   // ── Merlin / Oswin effect states ──
   const [merlinUsed, setMerlinUsed] = useState(false)   // Visão Além do Agora — once per duel
@@ -3919,8 +3912,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
            name.includes("vivian") || 
            name.includes("merlin") || 
            name.includes("mordred") || 
+           name.includes("lancelot") || 
+           name.includes("balin") || 
+           name.includes("oswin") || 
+           name.includes("penguim") || 
+           name.includes("calem") || 
            name.includes("cavaleiro verde") || 
-           name.includes("caveiro afogado") // Sic: handle typo in card name
+           name.includes("cavaleiro afogado") || 
+           name.includes("caveiro afogado") // typo fallback
   }
 
   const isGreatOrderUnit = (card: GameCard) => {
@@ -3996,17 +3995,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         }
       } else if (ability === "REINO DE CAMELOT") {
         let applied = false
-        if (isAvalonUnit(card)) {
+        // Buffs apply only to the scenario OWNER's matching units
+        if (isCardOwner && isAvalonUnit(card)) {
           dp += 3
           applied = true
         }
-        if (!applied && card.element === "Darkus") {
+        if (isCardOwner && !applied && card.element === "Darkus") {
           dp += 2
           applied = true
         }
-        // Debuff: Only if this scenario belongs to the OPPONENT of this card
-        if (!applied && !isCardOwner) {
-          // Check if the scenario owner has Alvorada de Albion
+        // Debuff: applies to OPPONENT's cards that don't match
+        if (!isCardOwner && !applied) {
           const scenarioOwnerHasAlvorada = scenarioField.functionZone.some(f => f && !f.isFaceDown && f.name === "Alvorada de Albion");
           dp -= (scenarioOwnerHasAlvorada ? 4 : 2);
         }
@@ -4110,6 +4109,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     setTurn(1)
     setPhase("draw")
     setIsPlayerTurn(playerFirst)
+    // Reset per-game state flags
+    setVivianAbracoUsed(false)
+    setUgAbilityUsed(false)
+    setJulgamentoDivinoUsedThisTurn(false)
+    setCatNextEventTurn(3)
+    setDuelLog([])
+    logIdRef.current = 0
     testAudioFiles()
     startDuelOst() // start background music
 
@@ -4468,6 +4474,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       }
 
       // Special handling for Brotherhood Functions - they stay on field
+      // Brotherhood cards always go face-up (never face-down)
       if (cardToPlace.name === "Alvorada de Albion" || cardToPlace.name === "A Grande Ordem") {
         setPlayerField((prev) => {
           const newFunctionZone = [...prev.functionZone]
@@ -4761,7 +4768,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
                 let finalLife = result.currentLife || prev.life
 
                 if (isFunctionCard) {
-                  const maxLife = 20
+                  const maxLife = 50
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
                   if (bonusHeal > 0) {
@@ -4808,7 +4815,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
                 let finalLife = result.currentLife || prev.life
 
                 if (isUnitCard) {
-                  const maxLife = 20
+                  const maxLife = 50
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
                   if (bonusHeal > 0) {
@@ -4986,7 +4993,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
 
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace || !isUltimateCard(cardToPlace)) return
-    if (playerField.ultimateZone !== null) return
+    // Allow stacking ultimates: new ultimate replaces old one (old goes to graveyard)
+    if (playerField.ultimateZone !== null) {
+      // Send current ultimate to graveyard before placing new one
+      const oldUg = playerField.ultimateZone
+      setPlayerField(prev => ({ ...prev, graveyard: [...prev.graveyard, oldUg] }))
+    }
 
     const fieldCard: FieldCard = {
       ...cardToPlace,
@@ -5865,7 +5877,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         }
 
         // ── REI ARTHUR UR 3DP: Veredito do Rei Tirano — antes de atacar, descarte 1 carta → destrua 1 unidade inimiga (a cada 2 turnos) ──
-        if (attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 3) {
+        if (attacker.name.toLowerCase().includes("rei arthur") && (attacker.dp === 3 || (attacker.currentDp ?? attacker.dp) === 3)) {
           if (arthurUrVeredito === null || turn - arthurUrVeredito >= 2) {
             const hasHandCards = playerField.hand.length > 0
             const hasEnemyTargets = enemyField.unitZone.some(u => u !== null)
@@ -8735,7 +8747,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       onWin()
       return null
     }
-    return <GameResultScreen result={gameResult} onBack={onBack} />
+    return <GameResultScreen result={gameResult} onBack={() => {
+      if (mode === "player") {
+        // In VS PLAYER mode: go back to online lobby, not main menu
+        setOnlinePhase(null)
+        setGameResult(null)
+        setGameStarted(false)
+      } else {
+        onBack()
+      }
+    }} />
   }
 
   return (
