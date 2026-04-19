@@ -224,7 +224,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         {activeWallpaper?.image ? (
           <>
             <div className="absolute inset-0">
-              <img src={activeWallpaper.image} alt="" className="w-full h-full object-cover" style={{opacity:0.85}} />
+              <Image src={activeWallpaper.image} alt="" fill sizes="100vw" className="object-cover" style={{opacity:0.85}} priority unoptimized />
             </div>
             <div className="absolute inset-0" style={{background:"linear-gradient(180deg,rgba(5,9,17,0.45) 0%,rgba(5,9,17,0.20) 50%,rgba(5,9,17,0.70) 100%)"}} />
           </>
@@ -534,7 +534,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-400/20"
                 style={{background:"rgba(20,14,3,0.85)"}}>
-                <img src="/images/icons/gacha-coin.png" alt="" className="w-4 h-4 object-contain" />
+                <Image src="/images/icons/gacha-coin.png" alt="" width={16} height={16} className="object-contain" />
                 <span className="text-amber-300 font-black text-sm">{coins.toLocaleString()}</span>
               </div>
               <button onClick={() => setShowWallpaperModal(false)}
@@ -564,9 +564,9 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                     }}>
 
                     {/* Thumbnail */}
-                    <div className="relative aspect-video w-full overflow-hidden">
+                    <div className="relative aspect-video w-full overflow-hidden" style={{position:"relative"}}>
                       {wp.image ? (
-                        <img src={wp.image} alt={wp.name} className="w-full h-full object-cover" />
+                        <Image src={wp.image} alt={wp.name} fill sizes="300px" className="object-cover" unoptimized />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center gap-1"
                           style={{background:"linear-gradient(145deg,#050911,#081220,#0a1828)"}}>
@@ -582,7 +582,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                           <span className="text-3xl">🔒</span>
                           <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-amber-400/40"
                             style={{background:"rgba(20,14,3,0.90)"}}>
-                            <img src="/images/icons/gacha-coin.png" alt="" className="w-3.5 h-3.5 object-contain" />
+                            <Image src="/images/icons/gacha-coin.png" alt="" width={14} height={14} className="object-contain" />
                             <span className="text-amber-300 font-black text-xs">{wp.cost}</span>
                           </div>
                         </div>
@@ -626,7 +626,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                             style={canAfford ? {background:"linear-gradient(135deg,#d97706,#f59e0b)"} : {background:"rgba(30,30,30,0.8)"}}>
                             {canAfford ? (
                               <>
-                                <img src="/images/icons/gacha-coin.png" alt="" className="w-3.5 h-3.5 object-contain" />
+                                <Image src="/images/icons/gacha-coin.png" alt="" width={14} height={14} className="object-contain" />
                                 {wp.cost} — Desbloquear
                               </>
                             ) : (
