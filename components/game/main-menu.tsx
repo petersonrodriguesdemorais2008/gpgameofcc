@@ -223,9 +223,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         {/* Wallpaper or deep space base */}
         {activeWallpaper?.image ? (
           <>
-            <div className="absolute inset-0">
-              <Image src={activeWallpaper.image} alt="" fill sizes="100vw" className="object-cover" style={{opacity:0.85}} priority unoptimized />
-            </div>
+            <div className="absolute inset-0" style={{
+              backgroundImage: `url(${activeWallpaper.image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              opacity: 0.85,
+            }} />
             <div className="absolute inset-0" style={{background:"linear-gradient(180deg,rgba(5,9,17,0.45) 0%,rgba(5,9,17,0.20) 50%,rgba(5,9,17,0.70) 100%)"}} />
           </>
         ) : (
@@ -566,7 +570,12 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                     {/* Thumbnail */}
                     <div className="relative aspect-video w-full overflow-hidden" style={{position:"relative"}}>
                       {wp.image ? (
-                        <Image src={wp.image} alt={wp.name} fill sizes="300px" className="object-cover" unoptimized />
+                        <div className="absolute inset-0" style={{
+                          backgroundImage: `url(${wp.image})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
+                        }} />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center gap-1"
                           style={{background:"linear-gradient(145deg,#050911,#081220,#0a1828)"}}>
