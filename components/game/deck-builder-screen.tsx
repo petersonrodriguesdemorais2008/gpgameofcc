@@ -93,8 +93,6 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const filteredCards = availableCards.filter((card) => {
     const matchesSearch = card.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRarity = filterRarity === "all" || card.rarity === filterRarity
-              <SelectItem value="trap">Trap</SelectItem>
-              <SelectItem value="action">Action</SelectItem>
     // Filter by card type - "troops" is for Unidades de Tropas, "brotherhood" for Brotherhood Function Cards
     const matchesType = filterType === "all" ||
       (filterType === "brotherhood" ? card.category === "Brotherhood Function Card" : card.type === filterType)
@@ -496,6 +494,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                 <SelectItem value="action">{t("action")}</SelectItem>
                 <SelectItem value="ultimateGear">{t("ultimateGear")}</SelectItem>
                 <SelectItem value="ultimateGuardian">Ult. Guardian</SelectItem>
+                <SelectItem value="trap">Trap</SelectItem>
                 <SelectItem value="item">{t("item")}</SelectItem>
                 <SelectItem value="scenario">Cenario</SelectItem>
                 <SelectItem value="brotherhood">Irmandade</SelectItem>
