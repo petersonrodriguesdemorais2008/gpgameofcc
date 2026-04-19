@@ -254,6 +254,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               </div>
             )
           })}
+        </div>
         )}
 
         {/* Atmospheric glows */}
