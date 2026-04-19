@@ -20,8 +20,6 @@ import {
   ShoppingCart,
   User,
   Target,
-  Shuffle,
-  Skull,
 } from "lucide-react"
 import Image from "next/image"
 
@@ -33,7 +31,8 @@ interface MainMenuProps {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode } = useGame()
+  const { coins, setCoins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode } = useGame()
+  const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
   const [showPlayMenu, setShowPlayMenu] = useState(false)
   const [showGiftBox, setShowGiftBox] = useState(false)
   const [claimedCard, setClaimedCard] = useState<ReturnType<typeof claimGift>>(null)
@@ -41,7 +40,107 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const [isOpening, setIsOpening] = useState(false)
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
-  
+  const [showWallpaperModal, setShowWallpaperModal] = useState(false)
+
+  // ── Wallpaper system ──────────────────────────────────────────────────────
+  const WALLPAPERS = [
+    {
+      id: "default",
+      name: "Padrão",
+      description: "Fundo padrão do menu com cartas caindo",
+      image: null,
+      cost: 0,
+      free: true,
+    },
+    {
+      id: "fehnon_wallpaper",
+      name: "Fehnon Wallpaper",
+      description: "Arte do Fehnon Hoskie",
+      image: "/images/wallpapers/fehnon_wallpaper.png",
+      cost: 0,
+      free: true,
+    },
+    {
+      id: "arthur_wallpaper",
+      name: "Arthur Wallpaper",
+      description: "Arte do Arthur com o Vazio",
+      image: "/images/wallpapers/arthur_wallpaper.png",
+      cost: 500,
+      free: false,
+    },
+    {
+      id: "fsg_wallpaper",
+      name: "FSG Wallpaper",
+      description: "Arte dos Fundadores da Santa Guerra",
+      image: "/images/wallpapers/fsg_wallpaper.png",
+      cost: 500,
+      free: false,
+    },
+    {
+      id: "fsg_wallpaper_2",
+      name: "FSG Wallpaper 2",
+      description: "Arte especial dos personagens",
+      image: "/images/wallpapers/fsg_wallpaper_2.png",
+      cost: 500,
+      free: false,
+    },
+    {
+      id: "fsg_wallpaper_3",
+      name: "FSG Wallpaper 3",
+      description: "Arte do Fehnon e Morgana",
+      image: "/images/wallpapers/fsg_wallpaper_3.png",
+      cost: 500,
+      free: false,
+    },
+    {
+      id: "fsg_wallpaper_4",
+      name: "FSG Wallpaper 4",
+      description: "Arte do grupo FSG",
+      image: "/images/wallpapers/fsg_wallpaper_4.png",
+      cost: 500,
+      free: false,
+    },
+  ]
+
+  const WALLPAPER_LS_KEY = "gpgame_selected_wallpaper"
+  const UNLOCKED_LS_KEY = "gpgame_unlocked_wallpapers"
+
+  const [selectedWallpaper, setSelectedWallpaper] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(WALLPAPER_LS_KEY) ?? "fehnon_wallpaper"
+    }
+    return "fehnon_wallpaper"
+  })
+
+  const [unlockedWallpapers, setUnlockedWallpapers] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(UNLOCKED_LS_KEY)
+        const parsed = saved ? JSON.parse(saved) : []
+        // Always include free ones
+        const base = ["default", "fehnon_wallpaper"]
+        return [...new Set([...base, ...parsed])]
+      } catch { return ["default", "fehnon_wallpaper"] }
+    }
+    return ["default", "fehnon_wallpaper"]
+  })
+
+  const activeWallpaper = WALLPAPERS.find(w => w.id === selectedWallpaper)
+
+  const handleSelectWallpaper = (id: string) => {
+    setSelectedWallpaper(id)
+    if (typeof window !== "undefined") localStorage.setItem(WALLPAPER_LS_KEY, id)
+  }
+
+  const handleUnlockWallpaper = (wallpaper: typeof WALLPAPERS[0]) => {
+    if (coins < wallpaper.cost) return
+    spendCoins(wallpaper.cost)
+    const next = [...new Set([...unlockedWallpapers, wallpaper.id])]
+    setUnlockedWallpapers(next)
+    if (typeof window !== "undefined") localStorage.setItem(UNLOCKED_LS_KEY, JSON.stringify(next))
+    handleSelectWallpaper(wallpaper.id)
+  }
+
   // Auto-clear status message after 4 seconds
   useEffect(() => {
     if (statusMessage && onClearMessage) {
@@ -121,10 +220,20 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── FULL-SCREEN BACKGROUND ── */}
       <div className="fixed inset-0 z-0">
-        {/* Deep space base */}
-        <div className="absolute inset-0" style={{background:"linear-gradient(180deg,#050911 0%,#081220 35%,#0a1828 60%,#060c18 100%)"}} />
+        {/* Wallpaper or deep space base */}
+        {activeWallpaper?.image ? (
+          <>
+            <div className="absolute inset-0">
+              <img src={activeWallpaper.image} alt="" className="w-full h-full object-cover" style={{opacity:0.85}} />
+            </div>
+            <div className="absolute inset-0" style={{background:"linear-gradient(180deg,rgba(5,9,17,0.45) 0%,rgba(5,9,17,0.20) 50%,rgba(5,9,17,0.70) 100%)"}} />
+          </>
+        ) : (
+          <div className="absolute inset-0" style={{background:"linear-gradient(180deg,#050911 0%,#081220 35%,#0a1828 60%,#060c18 100%)"}} />
+        )}
 
-        {/* Falling cards layer */}
+        {/* Falling cards layer — hidden when wallpaper is active */}
+        {!activeWallpaper?.image && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {fallingCards.map((card) => {
             const theme = CARD_THEMES[card.themeIndex]
@@ -145,7 +254,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               </div>
             )
           })}
-        </div>
+        )}
 
         {/* Atmospheric glows */}
         <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 100% 55% at 50% 0%, rgba(6,182,212,0.10) 0%,transparent 55%)"}} />
@@ -208,8 +317,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ── LOGO ── */}
-      <div className="fixed top-[18%] -left-4 z-30 pointer-events-none">
-        <Image src="/images/GP_CG_logo.png" alt="Gear Perks" width={260} height={100} className="w-52 h-auto aura-logo opacity-95" priority />
+      <div className="fixed top-16 left-4 z-30 pointer-events-none">
+        <Image src="/images/gp-cg-logo.png" alt="Gear Perks" width={180} height={60} className="w-36 h-auto aura-logo opacity-90" priority />
       </div>
 
       {/* ── STATUS MESSAGE ── */}
@@ -245,6 +354,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           style={{background:"linear-gradient(145deg,rgba(4,18,40,0.95),rgba(3,12,28,0.98))",borderColor:"rgba(56,189,248,0.22)",boxShadow:"0 4px 20px rgba(56,189,248,0.08)"}}>
           <Settings className="w-5 h-5 text-sky-400" />
           <span className="text-[9px] text-sky-400/70 font-bold tracking-widest">CONFIG</span>
+        </button>
+
+        <button onClick={() => setShowWallpaperModal(true)}
+          className="flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{background:"linear-gradient(145deg,rgba(30,10,60,0.95),rgba(50,20,80,0.98))",borderColor:"rgba(168,85,247,0.30)",boxShadow:"0 4px 20px rgba(168,85,247,0.12)"}}>
+          <span className="text-lg leading-none">🖼️</span>
+          <span className="text-[9px] text-purple-400/80 font-bold tracking-widest">TEMA</span>
         </button>
       </div>
 
@@ -290,21 +406,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
               style={{background:"linear-gradient(135deg,#c2410c,#f97316,#ea580c)",boxShadow:"0 8px 24px rgba(249,115,22,0.25)"}}>
               <Users className="h-6 w-6" />{t("vsPlayer")}
-            </button>
-            <button onClick={() => onNavigate("duel-draft")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
-              style={{background:"linear-gradient(135deg,#6b21a8,#9333ea,#7e22ce)",boxShadow:"0 8px 24px rgba(147,51,234,0.30)"}}>
-              <Shuffle className="h-6 w-6" />Draft VS BOT
-            </button>
-            <button onClick={() => onNavigate("duel-roguelike")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
-              style={{background:"linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)",boxShadow:"0 8px 24px rgba(220,38,38,0.30)"}}>
-              <Skull className="h-6 w-6" />Roguelike
-            </button>
-            <button onClick={() => onNavigate("duel-catastrophe")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
-              style={{background:"linear-gradient(135deg,#78350f,#d97706,#b45309)",boxShadow:"0 8px 24px rgba(217,119,6,0.30)"}}>
-              <span className="text-2xl">☄️</span>Modo Catástrofe
             </button>
             <button onClick={() => setShowPlayMenu(false)}
               className="w-full h-10 rounded-xl border border-white/[0.08] text-slate-500 hover:text-slate-300 text-sm font-semibold transition-colors hover:bg-white/[0.04]">
@@ -419,6 +520,129 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </div>
         </div>
       )}
+      {/* ── WALLPAPER MODAL ── */}
+      {showWallpaperModal && (
+        <div className="fixed inset-0 z-[9500] flex flex-col" style={{background:"rgba(0,0,0,0.92)",backdropFilter:"blur(8px)"}}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]"
+            style={{background:"rgba(30,10,60,0.90)"}}>
+            <div>
+              <h2 className="text-white font-black text-xl flex items-center gap-2">🖼️ Tema do Menu</h2>
+              <p className="text-slate-400 text-xs mt-0.5">Escolha o wallpaper do menu principal</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-400/20"
+                style={{background:"rgba(20,14,3,0.85)"}}>
+                <img src="/images/icons/gacha-coin.png" alt="" className="w-4 h-4 object-contain" />
+                <span className="text-amber-300 font-black text-sm">{coins.toLocaleString()}</span>
+              </div>
+              <button onClick={() => setShowWallpaperModal(false)}
+                className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all text-lg">
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Grid */}
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+              {WALLPAPERS.map(wp => {
+                const isSelected = selectedWallpaper === wp.id
+                const isUnlocked = unlockedWallpapers.includes(wp.id)
+                const canAfford = coins >= wp.cost
+
+                return (
+                  <div key={wp.id}
+                    className={`relative rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                      isSelected ? "border-purple-400 shadow-2xl shadow-purple-500/30 scale-[1.02]" :
+                      isUnlocked ? "border-white/20 hover:border-white/40 hover:scale-[1.01]" :
+                      "border-white/[0.08] opacity-80"
+                    }`}
+                    onClick={() => {
+                      if (isUnlocked) handleSelectWallpaper(wp.id)
+                    }}>
+
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video w-full overflow-hidden">
+                      {wp.image ? (
+                        <img src={wp.image} alt={wp.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1"
+                          style={{background:"linear-gradient(145deg,#050911,#081220,#0a1828)"}}>
+                          <span className="text-2xl">✨</span>
+                          <span className="text-slate-500 text-[10px]">Padrão</span>
+                        </div>
+                      )}
+
+                      {/* Lock overlay */}
+                      {!isUnlocked && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+                          style={{background:"rgba(0,0,0,0.70)"}}>
+                          <span className="text-3xl">🔒</span>
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-amber-400/40"
+                            style={{background:"rgba(20,14,3,0.90)"}}>
+                            <img src="/images/icons/gacha-coin.png" alt="" className="w-3.5 h-3.5 object-contain" />
+                            <span className="text-amber-300 font-black text-xs">{wp.cost}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Selected badge */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center shadow-lg">
+                          <span className="text-white text-xs font-black">✓</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="px-3 py-2.5" style={{background:"rgba(10,5,20,0.92)"}}>
+                      <p className="text-white font-bold text-sm truncate">{wp.name}</p>
+                      <p className="text-slate-500 text-[10px] truncate">{wp.description}</p>
+
+                      {/* Action button */}
+                      <div className="mt-2">
+                        {isSelected ? (
+                          <div className="w-full py-1.5 rounded-lg text-center text-[11px] font-black text-purple-300 border border-purple-500/30"
+                            style={{background:"rgba(88,28,135,0.25)"}}>
+                            ✓ Ativo
+                          </div>
+                        ) : isUnlocked ? (
+                          <button onClick={(e) => { e.stopPropagation(); handleSelectWallpaper(wp.id) }}
+                            className="w-full py-1.5 rounded-lg text-center text-[11px] font-bold text-white transition-all hover:brightness-110"
+                            style={{background:"linear-gradient(135deg,#7e22ce,#9333ea)"}}>
+                            Selecionar
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (canAfford) handleUnlockWallpaper(wp) }}
+                            disabled={!canAfford}
+                            className={`w-full py-1.5 rounded-lg text-center text-[11px] font-black flex items-center justify-center gap-1 transition-all ${
+                              canAfford
+                                ? "text-black hover:brightness-110"
+                                : "opacity-50 text-slate-400 border border-slate-700"
+                            }`}
+                            style={canAfford ? {background:"linear-gradient(135deg,#d97706,#f59e0b)"} : {background:"rgba(30,30,30,0.8)"}}>
+                            {canAfford ? (
+                              <>
+                                <img src="/images/icons/gacha-coin.png" alt="" className="w-3.5 h-3.5 object-contain" />
+                                {wp.cost} — Desbloquear
+                              </>
+                            ) : (
+                              <>🔒 Coins insuficientes</>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
