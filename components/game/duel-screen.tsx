@@ -8750,7 +8750,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     return <GameResultScreen result={gameResult} onBack={() => {
       if (mode === "player") {
         // In VS PLAYER mode: go back to online lobby, not main menu
-        setOnlinePhase(null)
+        setOnlinePhase("lobby")
         setGameResult(null)
         setGameStarted(false)
       } else {
