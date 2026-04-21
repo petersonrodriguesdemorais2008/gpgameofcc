@@ -229,7 +229,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               backgroundPosition: "center center",
               backgroundRepeat: "no-repeat",
             }} />
-            <div className="absolute inset-0" style={{background:"linear-gradient(180deg,rgba(5,9,17,0.45) 0%,rgba(5,9,17,0.20) 50%,rgba(5,9,17,0.70) 100%)"}} />
+            {/* No dark overlay — wallpaper at full visibility */}
           </>
         ) : (
           <div className="absolute inset-0" style={{background:"linear-gradient(180deg,#050911 0%,#081220 35%,#0a1828 60%,#060c18 100%)"}} />
@@ -265,12 +265,12 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 70% 45% at 15% 80%, rgba(168,85,247,0.07) 0%,transparent 50%)"}} />
         <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 60% 40% at 85% 85%, rgba(251,191,36,0.05) 0%,transparent 45%)"}} />
         {/* Bottom fade for navbar legibility */}
-        <div className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none" style={{background:"linear-gradient(to top, rgba(5,9,17,0.95) 0%, transparent 100%)"}} />
+        {/* Bottom fade removed for full wallpaper visibility */}
       </div>
 
       {/* ── TOP BAR ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-3 pb-3"
-        style={{background:"linear-gradient(to bottom,rgba(3,6,14,0.92) 0%,rgba(3,6,14,0.70) 70%,transparent 100%)",backdropFilter:"blur(8px)"}}>
+        style={{background:"linear-gradient(to bottom,rgba(3,6,14,0.55) 0%,rgba(3,6,14,0.20) 70%,transparent 100%)",backdropFilter:"blur(4px)"}}>
 
         {/* Left: Player profile */}
         <button onClick={() => onNavigate("profile")}
@@ -370,7 +370,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── BOTTOM NAV ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40"
-        style={{background:"linear-gradient(to top,rgba(3,6,14,0.97) 0%,rgba(3,6,14,0.88) 75%,transparent 100%)",backdropFilter:"blur(12px)"}}>
+        style={{background:"linear-gradient(to top,rgba(3,6,14,0.60) 0%,rgba(3,6,14,0.25) 75%,transparent 100%)",backdropFilter:"blur(6px)"}}>
         {!showPlayMenu ? (
           <div className="flex items-end justify-around px-3 pb-5 pt-2 max-w-lg mx-auto">
 
