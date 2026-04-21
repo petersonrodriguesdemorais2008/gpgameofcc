@@ -225,10 +225,9 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <>
             <div className="absolute inset-0" style={{
               backgroundImage: `url(${activeWallpaper.image})`,
-              backgroundSize: "contain",
-              backgroundPosition: "center",
+              backgroundSize: "100% 100%",
+              backgroundPosition: "center center",
               backgroundRepeat: "no-repeat",
-              backgroundColor: "#050911",
             }} />
             <div className="absolute inset-0" style={{background:"linear-gradient(180deg,rgba(5,9,17,0.45) 0%,rgba(5,9,17,0.20) 50%,rgba(5,9,17,0.70) 100%)"}} />
           </>
