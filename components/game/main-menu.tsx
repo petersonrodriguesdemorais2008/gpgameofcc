@@ -270,7 +270,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── TOP BAR ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-3 pb-3"
-        style={{background:"linear-gradient(to bottom,rgba(3,6,14,0.55) 0%,rgba(3,6,14,0.20) 70%,transparent 100%)",backdropFilter:"blur(4px)"}}>
+        style={{background:"transparent"}}>
 
         {/* Left: Player profile */}
         <button onClick={() => onNavigate("profile")}
@@ -370,7 +370,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── BOTTOM NAV ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40"
-        style={{background:"linear-gradient(to top,rgba(3,6,14,0.60) 0%,rgba(3,6,14,0.25) 75%,transparent 100%)",backdropFilter:"blur(6px)"}}>
+        style={{background:"transparent"}}>
         {!showPlayMenu ? (
           <div className="flex items-end justify-around px-3 pb-5 pt-2 max-w-lg mx-auto">
 
