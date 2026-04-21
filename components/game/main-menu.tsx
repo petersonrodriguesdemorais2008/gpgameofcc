@@ -216,7 +216,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const unclaimedGifts = giftBoxes.filter((g) => !g.claimed)
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{background:"#050911"}}>
+    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{background:"transparent"}}>
 
       {/* ── FULL-SCREEN BACKGROUND ── */}
       <div className="fixed inset-0 z-0">
@@ -225,7 +225,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <>
             <div className="absolute inset-0" style={{
               backgroundImage: `url(${activeWallpaper.image})`,
-              backgroundSize: "100% 100%",
+              backgroundSize: "cover",
               backgroundPosition: "center center",
               backgroundRepeat: "no-repeat",
             }} />
