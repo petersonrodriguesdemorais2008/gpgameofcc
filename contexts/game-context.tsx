@@ -2660,6 +2660,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks_owned_playmats")
       localStorage.removeItem("gearperks_global_playmat")
       localStorage.removeItem("gearperks-redeemed-codes")
+      localStorage.removeItem("gpgame_selected_wallpaper")
+      localStorage.removeItem("gpgame_unlocked_wallpapers")
 
       // If logged in with Supabase, also clear cloud data
       if (accountAuth.isLoggedIn && accountAuth.uniqueCode) {
