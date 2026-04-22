@@ -41,6 +41,25 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
   const [showWallpaperModal, setShowWallpaperModal] = useState(false)
+  const [showDailyBonus, setShowDailyBonus] = useState(false)
+  const [dailyBonusClaimed, setDailyBonusClaimed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    const lastClaim = localStorage.getItem("gpgame_daily_bonus_date")
+    if (!lastClaim) return false
+    const last = new Date(lastClaim)
+    const now = new Date()
+    return last.toDateString() === now.toDateString()
+  })
+  const [dailyBonusJustClaimed, setDailyBonusJustClaimed] = useState(false)
+
+  const handleClaimDailyBonus = () => {
+    if (dailyBonusClaimed) return
+    setCoins((prev: number) => prev + 50)
+    const now = new Date().toISOString()
+    localStorage.setItem("gpgame_daily_bonus_date", now)
+    setDailyBonusClaimed(true)
+    setDailyBonusJustClaimed(true)
+  }
 
   // ── Wallpaper system ──────────────────────────────────────────────────────
   const WALLPAPERS = [
@@ -370,6 +389,22 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <span className="text-[9px] text-sky-400/70 font-bold tracking-widest">CONFIG</span>
         </button>
 
+        <button onClick={() => { setShowDailyBonus(true); setDailyBonusJustClaimed(false) }}
+          className="relative flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{
+            background: dailyBonusClaimed
+              ? "linear-gradient(145deg,rgba(15,20,15,0.95),rgba(10,15,10,0.98))"
+              : "linear-gradient(145deg,rgba(20,40,10,0.95),rgba(15,50,10,0.98))",
+            borderColor: dailyBonusClaimed ? "rgba(100,100,100,0.20)" : "rgba(34,197,94,0.40)",
+            boxShadow: dailyBonusClaimed ? "none" : "0 4px 20px rgba(34,197,94,0.20)",
+          }}>
+          <span className="text-lg leading-none">{dailyBonusClaimed ? "✅" : "🎁"}</span>
+          <span className={`text-[9px] font-bold tracking-widest ${dailyBonusClaimed ? "text-slate-600" : "text-emerald-400/80"}`}>DAILY</span>
+          {!dailyBonusClaimed && (
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
+          )}
+        </button>
+
         <button onClick={() => setShowWallpaperModal(true)}
           className="flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
           style={{background:"linear-gradient(145deg,rgba(30,10,60,0.95),rgba(50,20,80,0.98))",borderColor:"rgba(168,85,247,0.30)",boxShadow:"0 4px 20px rgba(168,85,247,0.12)"}}>
@@ -534,6 +569,86 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </div>
         </div>
       )}
+      {/* ── DAILY BONUS MODAL ── */}
+      {showDailyBonus && (
+        <div className="fixed inset-0 z-[9400] flex items-center justify-center p-4"
+          style={{background:"rgba(0,0,0,0.85)",backdropFilter:"blur(8px)"}}>
+          <div className="w-full max-w-sm rounded-3xl border overflow-hidden shadow-2xl"
+            style={{
+              background:"linear-gradient(160deg,#0a1a0a,#0d200d)",
+              borderColor: dailyBonusClaimed ? "rgba(100,100,100,0.20)" : "rgba(34,197,94,0.35)",
+              boxShadow: dailyBonusClaimed ? "none" : "0 0 60px rgba(34,197,94,0.20)",
+            }}>
+
+            {/* Header */}
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="text-6xl mb-3" style={{animation: dailyBonusClaimed ? "none" : "pulse 2s infinite"}}>
+                {dailyBonusClaimed ? "✅" : "🎁"}
+              </div>
+              <h2 className="text-white font-black text-2xl mb-1">Bônus Diário</h2>
+              <p className="text-slate-400 text-sm">
+                {dailyBonusClaimed
+                  ? "Você já coletou o bônus de hoje. Volte amanhã!"
+                  : "Colete suas recompensas diárias gratuitas!"}
+              </p>
+            </div>
+
+            {/* Reward display */}
+            <div className="px-6 py-5">
+              <div className="rounded-2xl border p-5 flex items-center justify-center gap-4"
+                style={{
+                  background: dailyBonusClaimed ? "rgba(255,255,255,0.03)" : "rgba(34,197,94,0.08)",
+                  borderColor: dailyBonusClaimed ? "rgba(100,100,100,0.15)" : "rgba(34,197,94,0.25)",
+                }}>
+                <div className="relative">
+                  <Image src="/images/icons/gacha-coin.png" alt="Gacha Coin" width={56} height={56} className="drop-shadow-lg" />
+                  {!dailyBonusClaimed && (
+                    <div className="absolute inset-0 rounded-full blur-xl"
+                      style={{background:"rgba(251,191,36,0.4)",transform:"scale(1.5)"}} />
+                  )}
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest mb-0.5">Recompensa</p>
+                  <p className={`text-4xl font-black ${dailyBonusClaimed ? "text-slate-500" : "text-amber-300"}`}>
+                    +50
+                  </p>
+                  <p className="text-slate-500 text-xs">Gacha Coins</p>
+                </div>
+              </div>
+
+              {dailyBonusJustClaimed && (
+                <div className="mt-3 text-center py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+                  <p className="text-emerald-400 font-black text-sm">🎉 +50 Coins coletados!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action */}
+            <div className="px-6 pb-6 space-y-2.5">
+              {!dailyBonusClaimed ? (
+                <button onClick={handleClaimDailyBonus}
+                  className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all hover:scale-[1.02] hover:brightness-110 shadow-2xl"
+                  style={{
+                    background:"linear-gradient(135deg,#15803d,#22c55e,#16a34a)",
+                    boxShadow:"0 8px 32px rgba(34,197,94,0.35)",
+                  }}>
+                  🎁 Coletar Agora!
+                </button>
+              ) : (
+                <div className="w-full py-4 rounded-2xl text-center font-bold text-slate-600 border border-slate-800"
+                  style={{background:"rgba(255,255,255,0.03)"}}>
+                  Coletado hoje · Volte amanhã
+                </div>
+              )}
+              <button onClick={() => setShowDailyBonus(false)}
+                className="w-full py-2.5 rounded-xl border border-white/[0.08] text-slate-500 hover:text-slate-300 text-sm font-semibold transition-colors hover:bg-white/[0.04]">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── WALLPAPER MODAL ── */}
       {showWallpaperModal && (
         <div className="fixed inset-0 z-[9500] flex flex-col" style={{background:"rgba(0,0,0,0.92)",backdropFilter:"blur(8px)"}}>
