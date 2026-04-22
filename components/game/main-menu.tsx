@@ -117,13 +117,23 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       try {
         const saved = localStorage.getItem(UNLOCKED_LS_KEY)
         const parsed = saved ? JSON.parse(saved) : []
-        // Always include free ones
         const base = ["default", "fehnon_wallpaper"]
         return [...new Set([...base, ...parsed])]
       } catch { return ["default", "fehnon_wallpaper"] }
     }
     return ["default", "fehnon_wallpaper"]
   })
+
+  // Reset wallpaper to default when account is deleted (coins reset to 0 and unlocked key gone)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const hasUnlocked = localStorage.getItem(UNLOCKED_LS_KEY)
+    const hasSelected = localStorage.getItem(WALLPAPER_LS_KEY)
+    if (!hasUnlocked && !hasSelected) {
+      setSelectedWallpaper("fehnon_wallpaper")
+      setUnlockedWallpapers(["default", "fehnon_wallpaper"])
+    }
+  }, [coins])
 
   const activeWallpaper = WALLPAPERS.find(w => w.id === selectedWallpaper)
 
