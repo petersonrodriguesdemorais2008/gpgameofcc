@@ -6,6 +6,7 @@ import { useGame, type Card, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Heart, Sparkles, Star, Gift, Clock, Zap, Crown, BookOpen, X } from "lucide-react"
 import Image from "next/image"
+import { trackGachaPull, trackDailyLogin } from "@/lib/mission-tracker"
 
 interface GachaScreenProps {
   onBack: () => void
@@ -518,6 +519,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     setPacks(newPacks)
     setOpenedCards(allPulledCards)
     addToCollection(allPulledCards)
+    // ── Rastrear missões ──
+    trackGachaPull(numPacks, allPulledCards)
   }
 
   const pullDailyGacha = () => {
@@ -564,6 +567,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     setPacks([{ id: 0, cards: packCards, isOpened: false, isRevealing: false, highestRarity }])
     setOpenedCards(packCards)
     addToCollection(packCards)
+    // ── Rastrear missões ──
+    trackGachaPull(1, packCards)
   }
 
   const pullFriendshipGacha = () => {
