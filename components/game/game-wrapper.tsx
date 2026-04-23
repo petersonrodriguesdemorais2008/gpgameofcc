@@ -15,6 +15,7 @@ import TitleScreen from "./title-screen"
 import ShopScreen from "./shop-screen"
 import ProfileScreen from "./profile-screen"
 import MissionsScreen from "./missions-screen"
+import GearPassScreen from "./gear-pass-screen"
 import LoadingScreen from "./loading-screen"
 import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
@@ -38,6 +39,7 @@ export type GameScreen =
   | "shop"
   | "profile"
   | "missions"
+  | "gear-pass"
 
 export function GameWrapper() {
   const { playerProfile, mobileMode } = useGame()
@@ -159,6 +161,7 @@ export function GameWrapper() {
       {currentScreen === "shop" && <ShopScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "profile" && <ProfileScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "missions" && <MissionsScreen onBack={() => navigateTo("menu")} />}
+      {currentScreen === "gear-pass" && <GearPassScreen onBack={() => navigateTo("menu")} />}
     </>
   )
 }
