@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import { trackDuelResult } from "@/lib/mission-tracker"
 import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
@@ -8323,6 +8324,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     stopDuelOst()
     mpBroadcast("surrender", {})
     setGameResult("lost")
+    trackDuelResult(false)
     addMatchRecord({
       id: `match-${Date.now()}`,
       date: new Date().toISOString(),
@@ -8569,6 +8571,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       gameResultRecordedRef.current = true
       stopDuelOst()
       setGameResult("lost")
+      trackDuelResult(false)
       addMatchRecord({
         id: `match-${Date.now()}`,
         date: new Date().toISOString(),
@@ -8581,6 +8584,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       gameResultRecordedRef.current = true
       stopDuelOst()
       setGameResult("won")
+      trackDuelResult(true)
       addMatchRecord({
         id: `match-${Date.now()}`,
         date: new Date().toISOString(),
