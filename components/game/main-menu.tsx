@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   User,
   Target,
+  Shield,
 } from "lucide-react"
 import Image from "next/image"
 
@@ -410,6 +411,18 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           style={{background:"linear-gradient(145deg,rgba(30,10,60,0.95),rgba(50,20,80,0.98))",borderColor:"rgba(168,85,247,0.30)",boxShadow:"0 4px 20px rgba(168,85,247,0.12)"}}>
           <span className="text-lg leading-none">🖼️</span>
           <span className="text-[9px] text-purple-400/80 font-bold tracking-widest">TEMA</span>
+        </button>
+
+        <button onClick={() => onNavigate("gear-pass")}
+          className="relative flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{
+            background:"linear-gradient(145deg,rgba(20,8,50,0.95),rgba(40,15,80,0.98))",
+            borderColor:"rgba(251,191,36,0.40)",
+            boxShadow:"0 4px 20px rgba(251,191,36,0.16)",
+          }}>
+          <Shield className="w-5 h-5 text-amber-400" />
+          <span className="text-[9px] text-amber-400/80 font-bold tracking-widest">PASSE</span>
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
         </button>
       </div>
 
