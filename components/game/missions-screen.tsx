@@ -7,6 +7,10 @@ import {
   ArrowLeft, Target, Calendar, Star, Gift, Check,
   Sparkles, Flame, Swords, BookOpen, Users, Lock, Trophy, Crown,
 } from "lucide-react"
+import {
+  getMissionProgress,
+  trackDailyLogin,
+} from "@/lib/mission-tracker"
 
 // ─── Coin Icon com fallback SVG ───────────────────────────────────────────────
 function CoinIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
@@ -277,15 +281,119 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const totalCards   = collection?.length || 0
   const wins         = matchHistory?.filter(m => m.result === "won").length || 0
 
-  const allMissions: Mission[] = useMemo(() => [
-    { id: "daily-1",   name: "Abertura Diária",     description: "Abra 3 packs no gacha hoje",              type: "daily",   category: "gacha",      icon: <Sparkles className="w-5 h-5" />, progress: 0,                    maxProgress: 3,  reward: { coins: 100 },            completed: false,          claimed: false },
-    { id: "daily-2",   name: "Duelista Nato",        description: "Vença 2 partidas no modo Batalha",        type: "daily",   category: "battle",     icon: <Swords className="w-5 h-5" />,   progress: Math.min(wins, 2),    maxProgress: 2,  reward: { coins: 150, fp: 20 },    completed: wins >= 2,      claimed: false },
-    { id: "daily-3",   name: "Presença Diária",      description: "Faça login no jogo",                      type: "daily",   category: "general",    icon: <Calendar className="w-5 h-5" />, progress: 1,                    maxProgress: 1,  reward: { coins: 50 },             completed: true,           claimed: false },
-    { id: "daily-4",   name: "Colecionador Ativo",   description: "Adicione 5 cartas à coleção",             type: "daily",   category: "collection", icon: <BookOpen className="w-5 h-5" />, progress: Math.min(totalCards, 5), maxProgress: 5, reward: { coins: 100, fp: 10 },   completed: totalCards >= 5, claimed: false },
-    { id: "weekly-1",  name: "Mestre Gacha",         description: "Abra 30 packs esta semana",               type: "weekly",  category: "gacha",      icon: <Sparkles className="w-5 h-5" />, progress: Math.min(totalCards, 30), maxProgress: 30, reward: { coins: 500, fp: 100 }, completed: totalCards >= 30, claimed: false },
-    { id: "weekly-2",  name: "Guerreiro da Semana",  description: "Vença 10 partidas esta semana",           type: "weekly",  category: "battle",     icon: <Swords className="w-5 h-5" />,   progress: Math.min(wins, 10),   maxProgress: 10, reward: { coins: 700, fp: 150 },   completed: wins >= 10,     claimed: false },
-    { id: "special-1", name: "Lançamento Especial",  description: "Comemore o lançamento coletando 50 cartas!", type: "special", category: "collection", icon: <Flame className="w-5 h-5" />, progress: Math.min(totalCards, 50), maxProgress: 50, reward: { coins: 1000, fp: 500 }, completed: totalCards >= 50, claimed: false },
-  ], [totalCards, wins])
+  // ── Lê progresso real do tracker ────────────────────────────────────────────
+  const [trackedProgress, setTrackedProgress] = useState({
+    gachaToday:  0,
+    gachaWeek:   0,
+    winsToday:   0,
+    winsWeek:    0,
+    duelsToday:  0,
+    duelsWeek:   0,
+    srTotal:     0,
+    loginToday:  false,
+    deckEditWeek: false,
+  })
+
+  // Atualiza progresso quando a tela abre e a cada 3s
+  useEffect(() => {
+    // Marca login ao abrir missões
+    trackDailyLogin()
+
+    const refresh = () => setTrackedProgress({
+      gachaToday:   getMissionProgress.gachaToday(),
+      gachaWeek:    getMissionProgress.gachaWeek(),
+      winsToday:    getMissionProgress.winsToday(),
+      winsWeek:     getMissionProgress.winsWeek(),
+      duelsToday:   getMissionProgress.duelsToday(),
+      duelsWeek:    getMissionProgress.duelsWeek(),
+      srTotal:      getMissionProgress.srTotal(),
+      loginToday:   getMissionProgress.loginToday(),
+      deckEditWeek: getMissionProgress.deckEditWeek(),
+    })
+    refresh()
+    const interval = setInterval(refresh, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const allMissions: Mission[] = useMemo(() => {
+    const g  = trackedProgress
+
+    return [
+      // ── Diárias ──
+      {
+        id: "daily-1",
+        name: "Abertura Diária",
+        description: "Abra 3 packs no gacha hoje",
+        type: "daily", category: "gacha",
+        icon: <Sparkles className="w-5 h-5" />,
+        progress: Math.min(g.gachaToday, 3), maxProgress: 3,
+        reward: { coins: 100 },
+        completed: g.gachaToday >= 3, claimed: false,
+      },
+      {
+        id: "daily-2",
+        name: "Duelista Nato",
+        description: "Vença 2 partidas no modo Batalha",
+        type: "daily", category: "battle",
+        icon: <Swords className="w-5 h-5" />,
+        progress: Math.min(g.winsToday, 2), maxProgress: 2,
+        reward: { coins: 150, fp: 20 },
+        completed: g.winsToday >= 2, claimed: false,
+      },
+      {
+        id: "daily-3",
+        name: "Presença Diária",
+        description: "Faça login no jogo",
+        type: "daily", category: "general",
+        icon: <Calendar className="w-5 h-5" />,
+        progress: g.loginToday ? 1 : 0, maxProgress: 1,
+        reward: { coins: 50 },
+        completed: g.loginToday, claimed: false,
+      },
+      {
+        id: "daily-4",
+        name: "Colecionador Ativo",
+        description: "Adicione 5 cartas à coleção",
+        type: "daily", category: "collection",
+        icon: <BookOpen className="w-5 h-5" />,
+        progress: Math.min(totalCards, 5), maxProgress: 5,
+        reward: { coins: 100, fp: 10 },
+        completed: totalCards >= 5, claimed: false,
+      },
+      // ── Semanais ──
+      {
+        id: "weekly-1",
+        name: "Mestre Gacha",
+        description: "Abra 30 packs esta semana",
+        type: "weekly", category: "gacha",
+        icon: <Sparkles className="w-5 h-5" />,
+        progress: Math.min(g.gachaWeek, 30), maxProgress: 30,
+        reward: { coins: 500, fp: 100 },
+        completed: g.gachaWeek >= 30, claimed: false,
+      },
+      {
+        id: "weekly-2",
+        name: "Guerreiro da Semana",
+        description: "Vença 10 partidas esta semana",
+        type: "weekly", category: "battle",
+        icon: <Swords className="w-5 h-5" />,
+        progress: Math.min(g.winsWeek, 10), maxProgress: 10,
+        reward: { coins: 700, fp: 150 },
+        completed: g.winsWeek >= 10, claimed: false,
+      },
+      // ── Especiais ──
+      {
+        id: "special-1",
+        name: "Lançamento Especial",
+        description: "Comemore o lançamento coletando 50 cartas!",
+        type: "special", category: "collection",
+        icon: <Flame className="w-5 h-5" />,
+        progress: Math.min(totalCards, 50), maxProgress: 50,
+        reward: { coins: 1000, fp: 500 },
+        completed: totalCards >= 50, claimed: false,
+      },
+    ]
+  }, [trackedProgress, totalCards])
 
   const handleClaimReward = useCallback((id: string) => {
     if (claimingId !== null) return
