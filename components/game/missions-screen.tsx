@@ -402,11 +402,30 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     if (!mission?.completed) return
     setClaimingId(id)
     setTimeout(() => {
-      if (mission.reward.coins && setCoins) setCoins((prev: number) => prev + mission.reward.coins!)
+      if (mission.reward.coins && setCoins) setCoins(coins + mission.reward.coins)
       setClaimedMissions(prev => new Set([...prev, id]))
       setClaimingId(null)
     }, 800)
-  }, [allMissions, claimedMissions, claimingId, setCoins])
+  }, [allMissions, claimedMissions, claimingId, setCoins, coins])
+
+  // ── Bônus de Conclusão ───────────────────────────────────────────────────────
+  const [bonusClaimed, setBonusClaimed] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set()
+    try {
+      const raw = localStorage.getItem("claimed_bonus")
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
+    } catch { return new Set() }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem("claimed_bonus", JSON.stringify([...bonusClaimed])) } catch {}
+  }, [bonusClaimed])
+
+  const handleClaimBonus = useCallback(() => {
+    if (bonusClaimed.has(activeTab)) return
+    setCoins(coins + bonusCoins)
+    setBonusClaimed(prev => new Set([...prev, activeTab]))
+  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])
 
   const filteredMissions = allMissions.filter(m => m.type === activeTab)
 
@@ -434,7 +453,8 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
 
   const activeColors = tabColors[activeTabData.color]
 
-  const allComplete = filteredMissions.every(m => claimedMissions.has(m.id))
+  const allComplete = filteredMissions.length > 0 && filteredMissions.every(m => claimedMissions.has(m.id))
+  const bonusAlreadyClaimed = bonusClaimed.has(activeTab)
   const bonusCoins  = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
 
   return (
@@ -589,9 +609,20 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {allComplete ? (
-                    <button className="flex items-center gap-2 bg-gradient-to-b from-amber-400 to-amber-600 border border-amber-300/30 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:shadow-[0_0_28px_rgba(245,158,11,0.6)] transition-all">
-                      <CoinIcon size={16} />
-                      +{bonusCoins.toLocaleString()}
+                    <button
+                      onClick={!bonusAlreadyClaimed ? handleClaimBonus : undefined}
+                      disabled={bonusAlreadyClaimed}
+                      className={`flex items-center gap-2 border font-bold text-sm px-4 py-2 rounded-xl transition-all ${
+                        bonusAlreadyClaimed
+                          ? "bg-slate-800/60 border-white/5 text-slate-500 cursor-default"
+                          : "bg-gradient-to-b from-amber-400 to-amber-600 border-amber-300/30 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:shadow-[0_0_28px_rgba(245,158,11,0.6)] cursor-pointer"
+                      }`}
+                    >
+                      {bonusAlreadyClaimed ? (
+                        <><Check className="w-4 h-4 text-emerald-400" /> Coletado</>
+                      ) : (
+                        <><CoinIcon size={16} /> +{bonusCoins.toLocaleString()}</>
+                      )}
                     </button>
                   ) : (
                     <div className="flex items-center gap-1.5 opacity-40">
