@@ -47,6 +47,7 @@ const MAX_LEVELS = 100
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
 const STRIPE_PAYMENT_URL = "https://buy.stripe.com/test_fZudRbc9c0oWcWZ2rj3oA00"
+const STRIPE_SUCCESS_URL = "/gear-pass/success"
 
 const LS_PASS_KEY = "gpgame_gear_pass"
 const LS_MISSIONS_KEY = "gpgame_pass_missions"
@@ -411,7 +412,28 @@ function MissionCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GearPassScreen({ onBack }: GearPassScreenProps) {
-  const { coins, setCoins } = useGame()
+  const { coins, setCoins, playerId } = useGame()
+
+  // ── Verificar premium no servidor ao abrir a tela ─────────────────────────
+  useEffect(() => {
+    if (!playerId) return
+    const checkServerPremium = async () => {
+      try {
+        const res = await fetch(`/api/stripe/check-premium?player_id=${playerId}`)
+        const data = await res.json()
+        if (data.hasPremium) {
+          setPassData(pd => ({ ...pd, hasPremium: true }))
+          // Espelha no localStorage para acesso offline imediato
+          const stored = JSON.parse(localStorage.getItem(LS_PASS_KEY) || "{}")
+          localStorage.setItem(LS_PASS_KEY, JSON.stringify({ ...stored, hasPremium: true }))
+        }
+      } catch {
+        // Se offline, confia no localStorage
+      }
+    }
+    checkServerPremium()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerId])
 
   // ── Persistent state ─────────────────────────────────────────────────────
   const [passData, setPassData] = useState<{
@@ -559,7 +581,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   }
 
   const openStripeCheckout = () => {
-    window.open(STRIPE_PAYMENT_URL, "_blank")
+    // Passa o playerId como client_reference_id para o webhook identificar o jogador
+    const pid = playerId || localStorage.getItem("gear-perks-player-id") || localStorage.getItem("gearperks-playerid") || ""
+    const stripeUrl = pid
+      ? `${STRIPE_PAYMENT_URL}?client_reference_id=${encodeURIComponent(pid)}`
+      : STRIPE_PAYMENT_URL
+    window.open(stripeUrl, "_blank")
     setShowPremiumModal(false)
   }
 
