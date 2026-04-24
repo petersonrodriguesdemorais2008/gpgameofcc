@@ -17,6 +17,7 @@ import ProfileScreen from "./profile-screen"
 import MissionsScreen from "./missions-screen"
 import GearPassScreen from "./gear-pass-screen"
 import LoadingScreen from "./loading-screen"
+import { trackDailyLogin } from "@/lib/mission-tracker"
 import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
 import CatastropheScreen from "./catastrophe-screen"
@@ -70,6 +71,8 @@ export function GameWrapper() {
       if (!playerProfile.hasCompletedSetup) {
         setShowSetup(true)
       }
+      // Registra login diário para missões
+      trackDailyLogin()
     }, 100)
     return () => clearTimeout(timer)
   }, [playerProfile.hasCompletedSetup])
