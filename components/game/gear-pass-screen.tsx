@@ -7,6 +7,10 @@ import {
   Calendar, RefreshCw, Flame, ChevronRight, ChevronLeft,
   Sparkles, Shield, Target, Trophy,
 } from "lucide-react"
+import {
+  getMissionProgress,
+  trackDailyLogin,
+} from "@/lib/mission-tracker"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -128,18 +132,35 @@ function buildRewards(): PassReward[] {
 
 const ALL_REWARDS = buildRewards()
 
+// ─── Build missions from live tracker data ────────────────────────────────────
+
 function buildMissions(): PassMission[] {
+  const g = {
+    gachaToday:   getMissionProgress.gachaToday(),
+    gachaWeek:    getMissionProgress.gachaWeek(),
+    gachaTotal:   getMissionProgress.gachaTotal(),
+    winsToday:    getMissionProgress.winsToday(),
+    winsWeek:     getMissionProgress.winsWeek(),
+    winsTotal:    getMissionProgress.winsTotal(),
+    duelsToday:   getMissionProgress.duelsToday(),
+    duelsWeek:    getMissionProgress.duelsWeek(),
+    duelsTotal:   getMissionProgress.duelsTotal(),
+    srTotal:      getMissionProgress.srTotal(),
+    loginToday:   getMissionProgress.loginToday(),
+    deckEditWeek: getMissionProgress.deckEditWeek(),
+  }
+
   return [
-    // Daily
+    // ── Diárias ──
     {
       id: "daily_duel_1",
       title: "Duelista Diário",
       description: "Vença 1 duelo no modo Bot",
       type: "daily",
       points: 50,
-      progress: 0,
+      progress: Math.min(g.winsToday, 1),
       goal: 1,
-      completed: false,
+      completed: g.winsToday >= 1,
       claimed: false,
     },
     {
@@ -148,9 +169,9 @@ function buildMissions(): PassMission[] {
       description: "Dispute 3 duelos (vitória ou derrota)",
       type: "daily",
       points: 50,
-      progress: 0,
+      progress: Math.min(g.duelsToday, 3),
       goal: 3,
-      completed: false,
+      completed: g.duelsToday >= 3,
       claimed: false,
     },
     {
@@ -159,9 +180,9 @@ function buildMissions(): PassMission[] {
       description: "Faça 1 pull no Gacha",
       type: "daily",
       points: 50,
-      progress: 0,
+      progress: Math.min(g.gachaToday, 1),
       goal: 1,
-      completed: false,
+      completed: g.gachaToday >= 1,
       claimed: false,
     },
     {
@@ -170,21 +191,21 @@ function buildMissions(): PassMission[] {
       description: "Colete o Bônus Diário",
       type: "daily",
       points: 30,
-      progress: 0,
+      progress: g.loginToday ? 1 : 0,
       goal: 1,
-      completed: false,
+      completed: g.loginToday,
       claimed: false,
     },
-    // Weekly
+    // ── Semanais ──
     {
       id: "weekly_wins_5",
       title: "Semana de Vitórias",
       description: "Vença 5 duelos nesta semana",
       type: "weekly",
       points: 150,
-      progress: 0,
+      progress: Math.min(g.winsWeek, 5),
       goal: 5,
-      completed: false,
+      completed: g.winsWeek >= 5,
       claimed: false,
     },
     {
@@ -193,9 +214,9 @@ function buildMissions(): PassMission[] {
       description: "Faça 5 pulls no Gacha esta semana",
       type: "weekly",
       points: 150,
-      progress: 0,
+      progress: Math.min(g.gachaWeek, 5),
       goal: 5,
-      completed: false,
+      completed: g.gachaWeek >= 5,
       claimed: false,
     },
     {
@@ -204,9 +225,9 @@ function buildMissions(): PassMission[] {
       description: "Edite ou crie um deck esta semana",
       type: "weekly",
       points: 100,
-      progress: 0,
+      progress: g.deckEditWeek ? 1 : 0,
       goal: 1,
-      completed: false,
+      completed: g.deckEditWeek,
       claimed: false,
     },
     {
@@ -215,21 +236,21 @@ function buildMissions(): PassMission[] {
       description: "Dispute 10 duelos esta semana",
       type: "weekly",
       points: 200,
-      progress: 0,
+      progress: Math.min(g.duelsWeek, 10),
       goal: 10,
-      completed: false,
+      completed: g.duelsWeek >= 10,
       claimed: false,
     },
-    // Limited
+    // ── Limitadas ──
     {
       id: "limited_wins_20",
       title: "Desafio do Passe",
       description: "Vença 20 duelos durante este Passe",
       type: "limited",
       points: 300,
-      progress: 0,
+      progress: Math.min(g.winsTotal, 20),
       goal: 20,
-      completed: false,
+      completed: g.winsTotal >= 20,
       claimed: false,
       expiresIn: "29d",
     },
@@ -239,9 +260,9 @@ function buildMissions(): PassMission[] {
       description: "Faça 20 pulls no Gacha durante este Passe",
       type: "limited",
       points: 300,
-      progress: 0,
+      progress: Math.min(g.gachaTotal, 20),
       goal: 20,
-      completed: false,
+      completed: g.gachaTotal >= 20,
       claimed: false,
       expiresIn: "29d",
     },
@@ -251,9 +272,9 @@ function buildMissions(): PassMission[] {
       description: "Obtenha 1 carta SR ou superior",
       type: "limited",
       points: 200,
-      progress: 0,
+      progress: Math.min(g.srTotal, 1),
       goal: 1,
-      completed: false,
+      completed: g.srTotal >= 1,
       claimed: false,
       expiresIn: "29d",
     },
@@ -410,14 +431,41 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     return { currentPoints: 0, currentLevel: 0, hasPremium: false, claimedCommon: [], claimedPremium: [] }
   })
 
-  const [missions, setMissions] = useState<PassMission[]>(() => {
-    if (typeof window === "undefined") return buildMissions()
+  // Claimed missions (apenas IDs) persistidos no localStorage
+  const [claimedMissionIds, setClaimedMissionIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
     try {
       const saved = localStorage.getItem(LS_MISSIONS_KEY)
       if (saved) return JSON.parse(saved)
     } catch {}
-    return buildMissions()
+    return []
   })
+
+  // Missões lidas ao vivo do tracker + status de claimed
+  const [missions, setMissions] = useState<PassMission[]>(() =>
+    buildMissions().map(m => ({
+      ...m,
+      claimed: false,
+    }))
+  )
+
+  // Recarrega progresso das missões a cada 3s (para refletir ações do jogo)
+  useEffect(() => {
+    trackDailyLogin()
+    const refresh = () => {
+      const fresh = buildMissions()
+      setMissions(fresh.map(m => ({
+        ...m,
+        claimed: claimedMissionIds.includes(m.id),
+        // Se já foi claimed, mantém completed = true e progress = goal
+        ...(claimedMissionIds.includes(m.id) ? { completed: true, progress: m.goal } : {}),
+      })))
+    }
+    refresh()
+    const interval = setInterval(refresh, 3000)
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claimedMissionIds])
 
   const [activeTab, setActiveTab] = useState<"pass" | "missions">("pass")
   const [missionFilter, setMissionFilter] = useState<"all" | "daily" | "weekly" | "limited">("all")
@@ -427,14 +475,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
   const passRowRef = useRef<HTMLDivElement>(null)
 
-  // Persist
+  // Persist passData
   useEffect(() => {
     localStorage.setItem(LS_PASS_KEY, JSON.stringify(passData))
   }, [passData])
 
+  // Persist claimed mission IDs
   useEffect(() => {
-    localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(missions))
-  }, [missions])
+    localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(claimedMissionIds))
+  }, [claimedMissionIds])
 
   // Scroll to current level
   useEffect(() => {
@@ -459,29 +508,21 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleClaimMission = (missionId: string) => {
-    setMissions(prev => prev.map(m => {
-      if (m.id !== missionId || !m.completed || m.claimed) return m
-      // Add points
-      const newPoints = passData.currentPoints + m.points
-      const newLevel = Math.min(MAX_LEVELS, Math.floor(newPoints / POINTS_PER_LEVEL))
-      setPassData(pd => ({
-        ...pd,
-        currentPoints: newPoints,
-        currentLevel: newLevel,
-      }))
-      setClaimFeedback(`+${m.points} pontos do Passe!`)
-      setTimeout(() => setClaimFeedback(null), 2000)
-      return { ...m, claimed: true }
-    }))
-  }
+    const mission = missions.find(m => m.id === missionId)
+    if (!mission || !mission.completed || mission.claimed) return
+    if (claimedMissionIds.includes(missionId)) return
 
-  // Demo: manually complete a mission for testing
-  const handleSimulateProgress = (missionId: string) => {
-    setMissions(prev => prev.map(m => {
-      if (m.id !== missionId || m.claimed) return m
-      const newProgress = Math.min(m.goal, m.progress + 1)
-      return { ...m, progress: newProgress, completed: newProgress >= m.goal }
+    // Add points to pass
+    const newPoints = passData.currentPoints + mission.points
+    const newLevel = Math.min(MAX_LEVELS, Math.floor(newPoints / POINTS_PER_LEVEL))
+    setPassData(pd => ({
+      ...pd,
+      currentPoints: newPoints,
+      currentLevel: newLevel,
     }))
+    setClaimedMissionIds(prev => [...prev, missionId])
+    setClaimFeedback(`+${mission.points} pontos do Passe!`)
+    setTimeout(() => setClaimFeedback(null), 2000)
   }
 
   const handleClaimPassReward = (level: number, isPremium: boolean) => {
@@ -972,21 +1013,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               {/* Mission list */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {filteredMissions.map(mission => (
-                  <div key={mission.id}>
-                    <MissionCard mission={mission} onClaim={handleClaimMission} />
-                    {/* Dev simulate button - remove in production */}
-                    {!mission.claimed && !mission.completed && (
-                      <button
-                        onClick={() => handleSimulateProgress(mission.id)}
-                        style={{
-                          marginTop: 4, width: "100%", background: "transparent",
-                          border: "none", color: "#334155", fontSize: 10,
-                          cursor: "pointer", padding: "4px 0",
-                        }}>
-                        [Simular progresso +1]
-                      </button>
-                    )}
-                  </div>
+                  <MissionCard key={mission.id} mission={mission} onClaim={handleClaimMission} />
                 ))}
               </div>
 
