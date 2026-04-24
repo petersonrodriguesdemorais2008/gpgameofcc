@@ -46,6 +46,7 @@ const POINTS_PER_LEVEL = 500
 const MAX_LEVELS = 100
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
+const STRIPE_PAYMENT_URL = "https://buy.stripe.com/test_fZudRbc9c0oWcWZ2rj3oA00"
 
 const LS_PASS_KEY = "gpgame_gear_pass"
 const LS_MISSIONS_KEY = "gpgame_pass_missions"
@@ -470,7 +471,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [activeTab, setActiveTab] = useState<"pass" | "missions">("pass")
   const [missionFilter, setMissionFilter] = useState<"all" | "daily" | "weekly" | "limited">("all")
   const [showPremiumModal, setShowPremiumModal] = useState(false)
-  const [showPurchaseConfirm, setShowPurchaseConfirm] = useState(false)
   const [claimFeedback, setClaimFeedback] = useState<string | null>(null)
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
   const passRowRef = useRef<HTMLDivElement>(null)
@@ -558,14 +558,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     setFocusedLevel(null)
   }
 
-  const handleBuyPremium = () => {
-    // In a real scenario this would go to payment flow
-    // For now, simulate purchase
-    setPassData(pd => ({ ...pd, hasPremium: true }))
-    setShowPurchaseConfirm(false)
+  const openStripeCheckout = () => {
+    window.open(STRIPE_PAYMENT_URL, "_blank")
     setShowPremiumModal(false)
-    setClaimFeedback("✨ Gear Pass Premium ativado!")
-    setTimeout(() => setClaimFeedback(null), 3000)
   }
 
   // ── Level reward data ─────────────────────────────────────────────────────
@@ -1103,7 +1098,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               </div>
             </div>
 
-            <button onClick={() => setShowPurchaseConfirm(true)} style={{
+            <button onClick={openStripeCheckout} style={{
               width: "100%", padding: "16px 0", borderRadius: 16,
               background: "linear-gradient(135deg,#92400e,#b45309,#d97706,#f59e0b)",
               border: "none", cursor: "pointer",
@@ -1117,52 +1112,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             <p style={{ textAlign: "center", fontSize: 10, color: "#334155", marginTop: 12 }}>
               As missões do Passe Comum também contribuem pontos ao Passe Premium.
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── PURCHASE CONFIRM MODAL ── */}
-      {showPurchaseConfirm && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9100,
-          background: "rgba(0,0,0,0.90)", backdropFilter: "blur(16px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          padding: 20,
-        }}>
-          <div style={{
-            background: "linear-gradient(160deg,#0a0616,#0d0b20)",
-            border: "1px solid rgba(217,119,6,0.35)",
-            borderRadius: 24, padding: "28px 24px", maxWidth: 340, width: "100%",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>👑</div>
-            <h3 style={{ fontWeight: 900, fontSize: 18, marginBottom: 8 }}>
-              Confirmar Compra
-            </h3>
-            <p style={{ color: "#64748b", fontSize: 13, marginBottom: 20 }}>
-              Você está prestes a adquirir o <strong style={{ color: "#f59e0b" }}>Gear Pass Premium</strong> por{" "}
-              <strong style={{ color: "#f59e0b" }}>{PREMIUM_PRICE}</strong>.
-            </p>
-            <p style={{ color: "#475569", fontSize: 11, marginBottom: 24,
-              background: "rgba(255,165,0,0.07)", borderRadius: 10, padding: "10px 14px",
-              border: "1px solid rgba(255,165,0,0.15)",
-            }}>
-              ⚠️ Integração de pagamento real (ex: Stripe/Pix) deve ser conectada pelo desenvolvedor.
-              Este botão simula a compra para fins de demonstração.
-            </p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowPurchaseConfirm(false)} style={{
-                flex: 1, padding: "12px 0", borderRadius: 12,
-                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
-                color: "#64748b", fontWeight: 800, fontSize: 13, cursor: "pointer",
-              }}>Cancelar</button>
-              <button onClick={handleBuyPremium} style={{
-                flex: 1, padding: "12px 0", borderRadius: 12,
-                background: "linear-gradient(135deg,#b45309,#d97706)",
-                border: "none", color: "#fff", fontWeight: 900, fontSize: 13, cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(217,119,6,0.30)",
-              }}>✓ Confirmar</button>
-            </div>
           </div>
         </div>
       )}
