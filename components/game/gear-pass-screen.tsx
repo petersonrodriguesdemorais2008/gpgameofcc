@@ -46,7 +46,7 @@ const POINTS_PER_LEVEL = 500
 const MAX_LEVELS = 100
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
-const STRIPE_PAYMENT_URL = "https://buy.stripe.com/4gMdRb7Ka6GU9BF7Xs4gg00"
+const STRIPE_PAYMENT_URL = "https://buy.stripe.com/aFafZj1lMfdqdRV5Pk4gg01"
 const STRIPE_SUCCESS_URL = "/gear-pass/success"
 
 const LS_PASS_KEY = "gpgame_gear_pass"
