@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, Trash2, Plus, Search, X, Sparkles, Layers, ImageIcon, Check } from "lucide-react"
 import Image from "next/image"
+import { trackDeckEdit } from "@/lib/mission-tracker"
 
 interface DeckBuilderScreenProps {
   onBack: () => void
@@ -158,6 +159,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
       useGlobalPlaymat: useGlobalPlaymat,
     }
     saveDeck(deck)
+    trackDeckEdit()
     setIsCreating(false)
     setSelectedDeck(null)
     setDeckName("")
