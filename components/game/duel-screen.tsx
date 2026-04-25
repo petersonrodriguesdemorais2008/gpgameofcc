@@ -3940,7 +3940,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     return card.type === "troops"
   }
 
-  const calculateCardDP = (card: GameCard, ownerField: FieldState, isEnemy: boolean): number => {
+  const calculateCardDP = (
+    card: GameCard,
+    ownerField: FieldState,
+    isEnemy: boolean,
+    overridePlayerScenario?: GameCard | null,
+    overrideEnemyScenario?: GameCard | null
+  ): number => {
     let dp = card.dp
     
     // Use the ownerField properly to check what continuous functions they have
@@ -3973,10 +3979,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       if (hasVoidUnit) dp += 2
     }
 
-    // Check scenarios (both can be active at the same time in some games, but here we check both fields)
+    // Use override scenarios when provided (fixes stale closure bug on scenario placement)
+    const playerScenario = overridePlayerScenario !== undefined ? overridePlayerScenario : playerField.scenarioZone
+    const enemyScenario  = overrideEnemyScenario  !== undefined ? overrideEnemyScenario  : enemyField.scenarioZone
+
     const scenarios = [
-      { card: playerField.scenarioZone, isPlayer: true, field: playerField },
-      { card: enemyField.scenarioZone, isPlayer: false, field: enemyField }
+      { card: playerScenario, isPlayer: true,  field: playerField },
+      { card: enemyScenario,  isPlayer: false, field: enemyField  }
     ]
 
     scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer, field: scenarioField }) => {
@@ -4936,9 +4945,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       }
 
       // Prepare updated zones with scenario buffs
+      // Pass finalScenarioZone as override so calculateCardDP uses the NEW scenario,
+      // not the stale one from the React closure (fixes Arena Escandinava +3 DP bug)
       const updatedPlayerUnitZone = prev.unitZone.map(u => {
         if (!u) return null
-        return { ...u, currentDp: calculateCardDP(u, prev, false) }
+        return { ...u, currentDp: calculateCardDP(u, prev, false, finalScenarioZone, undefined) }
       })
 
       // Also update enemy units if scenario provides debuffs/buffs
@@ -4946,7 +4957,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
         ...enemyPrev,
         unitZone: enemyPrev.unitZone.map(u => {
           if (!u) return null
-          return { ...u, currentDp: calculateCardDP(u, enemyPrev, true) }
+          return { ...u, currentDp: calculateCardDP(u, enemyPrev, true, finalScenarioZone, undefined) }
         })
       }))
 
@@ -7241,7 +7252,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
             if (emptySlot !== -1) {
               newUnitZone[emptySlot] = {
                 ...card,
-                currentDp: calculateCardDP(card, prev, true),
+                currentDp: calculateCardDP(card, prev, true, undefined, newScenarioZone),
                 canAttack: false,
                 hasAttacked: false,
                 canAttackTurn: turn,
