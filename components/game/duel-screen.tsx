@@ -271,7 +271,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     requiresTargets: false,
     canActivate: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 50 // Max LP
+      const maxLife = 50
 
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
@@ -279,22 +279,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const currentLife = context.playerField.life
       const maxLife = 50
-      const healAmount = Math.min(2, maxLife - currentLife) // Heal up to 2, but don't exceed max
-
-      if (healAmount <= 0) {
-        return { success: false, message: "Nao ha dano para curar" }
-      }
-
-      const newLife = Math.min(currentLife + healAmount, maxLife)
+      const healAmount = 2
 
       context.setPlayerField((prev) => ({
         ...prev,
-        life: newLife,
+        life: Math.min(prev.life + healAmount, maxLife),
       }))
 
-      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
+      return { success: true, message: `+${healAmount} LP restaurado! (Bandagem Restauradora)` }
     },
   },
 
@@ -332,7 +325,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     requiresTargets: false,
     canActivate: (context) => {
       const currentLife = context.playerField.life
-      const maxLife = 50 // Max LP
+      const maxLife = 50
 
       if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
@@ -340,22 +333,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const currentLife = context.playerField.life
       const maxLife = 50
-      const healAmount = Math.min(4, maxLife - currentLife) // Heal up to 4, but don't exceed max
-
-      if (healAmount <= 0) {
-        return { success: false, message: "Nao ha dano para curar" }
-      }
-
-      const newLife = Math.min(currentLife + healAmount, maxLife)
+      const healAmount = 4
 
       context.setPlayerField((prev) => ({
         ...prev,
-        life: newLife,
+        life: Math.min(prev.life + healAmount, maxLife),
       }))
 
-      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
+      return { success: true, message: `+${healAmount} LP restaurado! (Bandagens Duplas)` }
     },
   },
 
@@ -363,8 +349,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     id: "cristal-recuperador",
     name: "Cristal Recuperador",
     requiresTargets: false,
-    // This effect needs special handling because it draws a card
-    // We'll mark it as needing post-resolution draw
     needsDrawAfterResolve: true,
     canActivate: (context) => {
       const currentLife = context.playerField.life
@@ -376,22 +360,19 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const currentLife = context.playerField.life
       const maxLife = 50
-      const healAmount = Math.min(3, maxLife - currentLife)
-      const newLife = Math.min(currentLife + healAmount, maxLife)
+      const healAmount = 3
 
       context.setPlayerField((prev) => ({
         ...prev,
-        life: newLife,
+        life: Math.min(prev.life + healAmount, maxLife),
       }))
 
-      // Return special flag to indicate we need to draw and potentially heal more
       return {
         success: true,
-        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        message: `+${healAmount} LP restaurado! (Cristal Recuperador)`,
         needsDrawAndCheck: true,
-        currentLife: newLife,
+        healAmount,
       }
     },
   },
@@ -401,7 +382,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     name: "Cauda de Dragão Assada",
     requiresTargets: false,
     canActivate: (context) => {
-      // Count player units on the field
       const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
 
       if (playerUnitCount < 2) {
@@ -411,26 +391,19 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
     resolve: (context) => {
       const maxLife = 50
-      const currentLife = context.playerField.life
-      const healAmount = Math.min(2, maxLife - currentLife)
-      const newLife = Math.min(currentLife + healAmount, maxLife)
+      const healAmount = 2
+      const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
 
-      // Buff all player units with +1 DP
       context.setPlayerField((prev) => ({
         ...prev,
-        life: newLife,
+        life: Math.min(prev.life + healAmount, maxLife),
         unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
-          return {
-            ...unit,
-            currentDp: (unit.currentDp || unit.dp) + 1,
-          }
+          return { ...unit, currentDp: (unit.currentDp || unit.dp) + 1 }
         }),
       }))
 
-      const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
-      const healMsg = healAmount > 0 ? ` +${healAmount} LP (${currentLife} -> ${newLife})` : ""
-      return { success: true, message: `+1 DP para ${unitCount} unidades!${healMsg}` }
+      return { success: true, message: `+1 DP para ${unitCount} unidades! +${healAmount} LP` }
     },
   },
 
@@ -589,20 +562,19 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const currentLife = context.playerField.life
+      const maxLife = 50
       const healAmount = 2
-      const newLife = currentLife + healAmount
 
       context.setPlayerField((prev) => ({
         ...prev,
-        life: newLife,
+        life: Math.min(prev.life + healAmount, maxLife),
       }))
 
       return {
         success: true,
         message: `+${healAmount} LP restaurado! (Kit Médico)`,
         needsDrawAndCheckUnit: true,
-        currentLife: newLife,
+        healAmount,
       }
     },
   },
@@ -622,22 +594,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const currentLife = context.playerField.life
       const maxLife = 50
-      const healAmount = Math.min(3, maxLife - currentLife)
-      const newLife = Math.min(currentLife + healAmount, maxLife)
+      const healAmount = 3
 
       context.setPlayerField((prev) => ({
         ...prev,
-        life: newLife,
+        life: Math.min(prev.life + healAmount, maxLife),
       }))
 
-      // Return special flag to indicate we need to draw (no bonus check)
       return {
         success: true,
-        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        message: `+${healAmount} LP restaurado! (Soro Recuperador)`,
         needsDrawOnly: true,
-        currentLife: newLife,
       }
     },
   },
@@ -4775,14 +4743,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
 
                 // Check if drawn card is a Function type (item)
                 const isFunctionCard = drawnCard.type === "item"
-                let finalLife = result.currentLife || prev.life
+                const maxLife = 50
+                // Use prev.life (current state) — resolve setter already applied the base heal
+                let finalLife = prev.life
 
                 if (isFunctionCard) {
-                  const maxLife = 50
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
                   if (bonusHeal > 0) {
-                    showEffectFeedback(`Carta Function comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
+                    showEffectFeedback(`Carta Function comprada! +1 LP bonus!`, "success")
                   }
                 } else {
                   showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
@@ -4796,7 +4765,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
                   life: finalLife,
                 }
               })
-            }, 500) // Small delay for visual feedback
+            }, 500)
 
             setSelectedHandCard(null)
             setDraggedHandCard(null)
@@ -4822,14 +4791,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
 
                 // Check if drawn card is a Unit type
                 const isUnitCard = drawnCard.type === "unit"
-                let finalLife = result.currentLife || prev.life
+                const maxLife = 50
+                // Use prev.life (current state) — resolve setter already applied the base heal
+                let finalLife = prev.life
 
                 if (isUnitCard) {
-                  const maxLife = 50
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
                   if (bonusHeal > 0) {
-                    showEffectFeedback(`Carta Unidade comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
+                    showEffectFeedback(`Carta Unidade comprada! +1 LP bonus!`, "success")
                   }
                 } else {
                   showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
@@ -4945,19 +4915,32 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       }
 
       // Prepare updated zones with scenario buffs
-      // Pass finalScenarioZone as override so calculateCardDP uses the NEW scenario,
-      // not the stale one from the React closure (fixes Arena Escandinava +3 DP bug)
+      // IMPORTANT: We apply only the DELTA bonus from the new scenario on top of
+      // currentDp to preserve previous item/function buffs (e.g. +1 from Cauda de Dragão).
+      // calculateCardDP starts from base card.dp, so we compute:
+      //   scenarioBonus = calculateCardDP(base) - card.dp
+      // then add that delta to currentDp.
+      const getScenarioDelta = (u: FieldCard, isEnemy: boolean, pScenario: GameCard | null, eScenario: GameCard | null): number => {
+        const withScenario    = calculateCardDP(u, prev, isEnemy, pScenario, eScenario)
+        const withoutScenario = calculateCardDP(u, prev, isEnemy, null, null)
+        return withScenario - withoutScenario
+      }
+
       const updatedPlayerUnitZone = prev.unitZone.map(u => {
         if (!u) return null
-        return { ...u, currentDp: calculateCardDP(u, prev, false, finalScenarioZone, undefined) }
+        const delta = getScenarioDelta(u, false, finalScenarioZone, enemyField.scenarioZone)
+        return { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + delta) }
       })
 
-      // Also update enemy units if scenario provides debuffs/buffs
+      // Also update enemy units
       setEnemyField(enemyPrev => ({
         ...enemyPrev,
         unitZone: enemyPrev.unitZone.map(u => {
           if (!u) return null
-          return { ...u, currentDp: calculateCardDP(u, enemyPrev, true, finalScenarioZone, undefined) }
+          const withScenario    = calculateCardDP(u, enemyPrev, true, finalScenarioZone, enemyPrev.scenarioZone)
+          const withoutScenario = calculateCardDP(u, enemyPrev, true, null, null)
+          const delta = withScenario - withoutScenario
+          return { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + delta) }
         })
       }))
 
