@@ -140,7 +140,17 @@ export function GameWrapper() {
       {currentScreen === "collection" && <CollectionScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "deck-builder" && <DeckBuilderScreen onBack={() => navigateTo("menu")} />}
       {(currentScreen === "duel-bot" || currentScreen === "duel-player") && (
-        <DuelScreen mode={duelMode} onBack={() => navigateTo("menu")} />
+        <DuelScreen mode={duelMode} onBack={() => {
+          // If returning from a story battle, go back to story screen
+          const storyBattle = (() => {
+            try { const r = localStorage.getItem("gpgame_story_battle_pending"); return r ? JSON.parse(r) : null } catch { return null }
+          })()
+          if (storyBattle) {
+            navigateTo("story")
+          } else {
+            navigateTo("menu")
+          }
+        }} />
       )}
       {currentScreen === "duel-draft" && (
         <DraftDuelScreen onBack={() => navigateTo("menu")} />
@@ -170,7 +180,9 @@ export function GameWrapper() {
       {currentScreen === "story" && (
         <StoryModeScreen
           onBack={() => navigateTo("menu")}
-          onStartBattle={(mode) => {
+          onStartBattle={(mode, stageId) => {
+            // Save the pending battle so story mode can handle the result
+            localStorage.setItem("gpgame_story_battle_pending", JSON.stringify({ stageId, won: false }))
             setDuelMode("bot")
             navigateTo("duel-bot")
           }}
