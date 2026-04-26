@@ -67,6 +67,8 @@ interface DuelScreenProps {
   draftDeck?: { id: string; name: string; cards: any[]; tapCards?: any[] }
   /** Optional: difficulty to use when draftDeck is provided */
   draftDifficulty?: "easy" | "medium" | "hard"
+  /** Optional: override starting LP (used by Story Mode) */
+  startingLP?: number
   /** Optional: roguelike run config (overrides LP, hand size, etc.) */
   roguelikeConfig?: {
     startingLP: number
@@ -2869,7 +2871,7 @@ class OnlineDuelErrorBoundary extends Component<
   }
 }
 
-export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, roguelikeConfig, catastropheMode }: DuelScreenProps) {
+export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, startingLP: propStartingLP, roguelikeConfig, catastropheMode }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
   const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
@@ -4046,7 +4048,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
     const playerFirst = Math.random() > 0.5
     setPlayerWentFirst(playerFirst)
 
-    const startingLP   = roguelikeConfigRef.current?.startingLP   ?? roguelikeConfig?.startingLP   ?? 50
+    const startingLP   = roguelikeConfigRef.current?.startingLP ?? roguelikeConfig?.startingLP ?? propStartingLP ?? 50
     const startingHand = roguelikeConfigRef.current?.startingHandSize ?? roguelikeConfig?.startingHandSize ?? 5
 
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
