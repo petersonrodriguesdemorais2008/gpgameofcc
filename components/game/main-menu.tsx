@@ -424,6 +424,17 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <span className="text-[9px] text-amber-400/80 font-bold tracking-widest">PASSE</span>
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
         </button>
+
+        <button onClick={() => onNavigate("story")}
+          className="relative flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{
+            background:"linear-gradient(145deg,rgba(30,8,80,0.95),rgba(60,20,120,0.98))",
+            borderColor:"rgba(139,92,246,0.40)",
+            boxShadow:"0 4px 20px rgba(139,92,246,0.16)",
+          }}>
+          <BookOpen className="w-5 h-5 text-violet-400" />
+          <span className="text-[9px] text-violet-400/80 font-bold tracking-widest">STORY</span>
+        </button>
       </div>
 
       {/* ── BOTTOM NAV ── */}
@@ -468,6 +479,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
               style={{background:"linear-gradient(135deg,#c2410c,#f97316,#ea580c)",boxShadow:"0 8px 24px rgba(249,115,22,0.25)"}}>
               <Users className="h-6 w-6" />{t("vsPlayer")}
+            </button>
+            <button onClick={() => { setShowPlayMenu(false); onNavigate("story") }}
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#5b21b6,#7c3aed,#4c1d95)",boxShadow:"0 8px 24px rgba(124,58,237,0.30)"}}>
+              <BookOpen className="h-6 w-6" />Campanha
             </button>
             <button onClick={() => setShowPlayMenu(false)}
               className="w-full h-10 rounded-xl border border-white/[0.08] text-slate-500 hover:text-slate-300 text-sm font-semibold transition-colors hover:bg-white/[0.04]">
