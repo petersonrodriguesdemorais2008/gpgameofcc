@@ -8745,12 +8745,30 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, ro
       onWin()
       return null
     }
+
+    // ── Story Mode: save result and redirect back ─────────────────────────────
+    const storyBattle = (() => {
+      if (typeof window === "undefined") return null
+      try {
+        const raw = localStorage.getItem("gpgame_story_battle_pending")
+        return raw ? JSON.parse(raw) : null
+      } catch { return null }
+    })()
+
+    if (storyBattle) {
+      // Update the result in localStorage so story mode can read it
+      localStorage.setItem("gpgame_story_battle_pending",
+        JSON.stringify({ ...storyBattle, won: gameResult === "won" }))
+    }
+
     return <GameResultScreen result={gameResult} onBack={() => {
       if (mode === "player") {
-        // In VS PLAYER mode: go back to online lobby, not main menu
         setOnlinePhase("lobby")
         setGameResult(null)
         setGameStarted(false)
+      } else if (storyBattle) {
+        // Return to story mode — it will read the result from localStorage
+        onBack()
       } else {
         onBack()
       }
