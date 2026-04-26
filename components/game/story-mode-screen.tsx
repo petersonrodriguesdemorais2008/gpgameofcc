@@ -273,49 +273,71 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       )}
 
-      {/* Characters — fixed bottom, tall, no overflow clip */}
+      {/* Characters — anchored to bottom, above dialogue box, never clipped */}
       <div style={{
-        position:"absolute", left:0, right:0,
-        bottom: 130, // above dialogue box
-        height:"70vh",
-        display:"flex", alignItems:"flex-end", justifyContent:"space-between",
+        position:"absolute",
+        left:0, right:0,
+        bottom: 125, // sits just above dialogue box (≈125px tall)
+        top: 48,     // leaves room for top HUD
+        display:"flex",
+        alignItems:"flex-end",
+        justifyContent:"space-between",
         pointerEvents:"none",
+        overflow:"visible",
         opacity: fading ? 0 : 1,
         transition:"opacity 0.14s ease",
-        padding:"0 2% 0",
+        padding:"0 1%",
       }}>
-        {/* Left character — faces RIGHT (scaleX(-1) flips them to face inward) */}
+        {/* Left character — scaleX(-1) so they face RIGHT (toward center) */}
         <div style={{
-          height:"100%", display:"flex", alignItems:"flex-end",
+          flex:"0 0 auto",
+          height:"100%",
+          display:"flex",
+          alignItems:"flex-end",
           filter: charFilter(isLeftSpeaking),
           transition:"filter 0.15s",
         }}>
           {left && (
-            <img src={charImg(left.id, left.emotion)} alt={left.name}
+            <img
+              src={charImg(left.id, left.emotion)}
+              alt={left.name}
               style={{
-                height:"100%", width:"auto",
-                objectFit:"contain", objectPosition:"bottom center",
-                transform:"scaleX(-1)", // always face right (inward toward center)
+                height:"100%",
+                maxHeight:"100%",
+                width:"auto",
+                objectFit:"contain",
+                objectPosition:"bottom",
+                transform:"scaleX(-1)", // face right (inward)
                 display:"block",
+                flexShrink:0,
               }}
               onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
             />
           )}
         </div>
 
-        {/* Right character — faces LEFT (default, no flip needed) */}
+        {/* Right character — default, faces LEFT (toward center) */}
         <div style={{
-          height:"100%", display:"flex", alignItems:"flex-end",
+          flex:"0 0 auto",
+          height:"100%",
+          display:"flex",
+          alignItems:"flex-end",
           filter: charFilter(isRightSpeaking),
           transition:"filter 0.15s",
         }}>
           {right && (
-            <img src={charImg(right.id, right.emotion)} alt={right.name}
+            <img
+              src={charImg(right.id, right.emotion)}
+              alt={right.name}
               style={{
-                height:"100%", width:"auto",
-                objectFit:"contain", objectPosition:"bottom center",
-                // No transform — characters naturally face left in the assets
+                height:"100%",
+                maxHeight:"100%",
+                width:"auto",
+                objectFit:"contain",
+                objectPosition:"bottom",
+                // No scaleX — asset already faces left (inward)
                 display:"block",
+                flexShrink:0,
               }}
               onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
             />
@@ -573,8 +595,8 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   const handleBattleStart = () => {
     if (!battleStage) return
     const isBoss = battleStage.type === "boss"
-    // Save pending battle info so we can handle result when returning
-    localStorage.setItem(LS_BATTLE_KEY, JSON.stringify({ stageId: battleStage.id, won: false }))
+    const lp = isBoss ? 30 : 20
+    localStorage.setItem(LS_BATTLE_KEY, JSON.stringify({ stageId: battleStage.id, won: false, lp }))
     setBattleStage(null)
     setPendingId(null)
     onStartBattle(isBoss ? "story-boss" : "story-normal", battleStage.id)
