@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { ArrowLeft, BookOpen, Lock, ChevronRight, SkipForward } from "lucide-react"
 
 type Emotion = "normal" | "happy" | "rage"
@@ -11,7 +11,6 @@ interface Character {
   name: string
   emotion: Emotion
   side: "left" | "right"
-  flipped?: boolean
 }
 
 interface Panel {
@@ -22,8 +21,6 @@ interface Panel {
   speakerName?: string
   text: string
   textType?: "speech" | "thought" | "narrator"
-  actionWord?: string
-  actionColor?: string
   overlayCaption?: string
 }
 
@@ -44,7 +41,7 @@ interface Stage {
 
 interface StoryModeScreenProps {
   onBack: () => void
-  onStartBattle: (mode: "story-normal" | "story-boss") => void
+  onStartBattle: (mode: "story-normal" | "story-boss", stageId: string) => void
 }
 
 const BG = {
@@ -56,8 +53,27 @@ const BG = {
   camelot:     "/images/camelot_scene.png",
 }
 
+// Left character always faces RIGHT (scaleX(-1) to flip so they face inward)
+// Right character always faces LEFT (default, already facing left since they're mirrored)
+// Rule: left char → scaleX(-1), right char → default (no flip)
 function charImg(id: CharacterId, emotion: Emotion) {
   return `/images/${id}_${emotion}_scene.png`
+}
+
+// Collect all unique images from all scenes for preloading
+function getAllSceneImages(stages: Stage[]): string[] {
+  const imgs = new Set<string>()
+  stages.forEach(s => {
+    if (s.sceneData) {
+      s.sceneData.panels.forEach(p => {
+        imgs.add(p.bg)
+        p.characters.forEach(c => {
+          imgs.add(charImg(c.id, c.emotion))
+        })
+      })
+    }
+  })
+  return Array.from(imgs)
 }
 
 const CHAPTER1_STAGES: Stage[] = [
@@ -65,8 +81,8 @@ const CHAPTER1_STAGES: Stage[] = [
     id: "c1s1", number: 1, title: "O Encontro", subtitle: "Cena 1", type: "scene",
     sceneData: { id: "c1s1", title: "O Encontro", panels: [
       { id:"p1", bg: BG.house_ext, characters:[{id:"calem",name:"Calem",emotion:"normal",side:"left"}], speaker:"calem", speakerName:"Calem", text:"Que dia monótono... como sempre.", textType:"thought", overlayCaption:"Casa no topo de uma colina — fora do reino" },
-      { id:"p2", bg: BG.house_ext, characters:[{id:"guard1",name:"Guarda",emotion:"normal",side:"left"},{id:"guard2",name:"Guarda",emotion:"normal",side:"right",flipped:true}], speaker:"guard1", speakerName:"Guarda do Reino", text:"Parem esse garoto! Ele é procurado pelo Reino de Camelot!", textType:"speech" },
-      { id:"p3", bg: BG.house_ext, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Eu não fiz nada! Me soltem!", textType:"speech", actionWord:"DASH!!", actionColor:"#3b82f6" },
+      { id:"p2", bg: BG.house_ext, characters:[{id:"guard1",name:"Guarda",emotion:"normal",side:"left"},{id:"guard2",name:"Guarda",emotion:"normal",side:"right"}], speaker:"guard1", speakerName:"Guarda do Reino", text:"Parem esse garoto! Ele é procurado pelo Reino de Camelot!", textType:"speech" },
+      { id:"p3", bg: BG.house_ext, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Eu não fiz nada! Me soltem!", textType:"speech" },
       { id:"p4", bg: BG.house_int, characters:[{id:"calem",name:"Calem",emotion:"happy",side:"right"}], speaker:"calem", speakerName:"Calem", text:"Hm? Que barulho é esse lá fora?", textType:"speech" },
       { id:"p5", bg: BG.house_int, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Desculpa invadir sua casa! Preciso me esconder rápido!", textType:"speech" },
     ]},
@@ -74,7 +90,7 @@ const CHAPTER1_STAGES: Stage[] = [
   {
     id: "c1s2", number: 2, title: "A Fuga", subtitle: "Cena 2", type: "scene",
     sceneData: { id: "c1s2", title: "A Fuga", panels: [
-      { id:"p1", bg: BG.house_ext, characters:[{id:"guard1",name:"Guarda",emotion:"normal",side:"left"},{id:"guard2",name:"Guarda",emotion:"normal",side:"right",flipped:true}], speaker:"guard1", speakerName:"Guarda do Reino", text:"Ele entrou nessa casa! Cerquem o local!", textType:"speech" },
+      { id:"p1", bg: BG.house_ext, characters:[{id:"guard1",name:"Guarda",emotion:"normal",side:"left"},{id:"guard2",name:"Guarda",emotion:"normal",side:"right"}], speaker:"guard1", speakerName:"Guarda do Reino", text:"Ele entrou nessa casa! Cerquem o local!", textType:"speech" },
       { id:"p2", bg: BG.house_ext, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Desculpa por isso. Preciso ir agora.", textType:"speech" },
       { id:"p3", bg: BG.bosque, characters:[{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"Espera! Eu vou com você!", textType:"speech" },
       { id:"p4", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"calem",name:"Calem",emotion:"normal",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Por que você foi atrás de mim?! Isso é problema meu!", textType:"speech" },
@@ -97,10 +113,10 @@ const CHAPTER1_STAGES: Stage[] = [
     id: "c1s4", number: 4, title: "A Rachadura", subtitle: "Cena 4", type: "scene",
     sceneData: { id: "c1s4", title: "A Rachadura Roxa", panels: [
       { id:"p1", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"calem",name:"Calem",emotion:"happy",side:"right"}], speaker:"narrator", speakerName:"", text:"No dia seguinte, eles partiram sem saber para onde ir...", textType:"narrator", overlayCaption:"No dia seguinte — estrada fora das ruínas" },
-      { id:"p2", bg: BG.bosque, characters:[{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"O quê?! Uma rachadura roxa explodindo no céu?!", textType:"speech", actionWord:"CRACK!!", actionColor:"#8b5cf6" },
-      { id:"p3", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"CALEM!! NÃO!!", textType:"speech", actionWord:"BOOM!!", actionColor:"#a855f7" },
+      { id:"p2", bg: BG.bosque, characters:[{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"O quê?! Uma rachadura roxa explodindo no céu?!", textType:"speech" },
+      { id:"p3", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"CALEM!! NÃO!!", textType:"speech" },
       { id:"p4", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"narrator", speakerName:"", text:"Uma voz ecoa... 'Venha ao Reino de Camelot até o meio-dia. Ou seu amigo morrerá.'", textType:"narrator" },
-      { id:"p5", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"CAMELOT...! Eu vou te salvar, Calem!", textType:"speech", actionWord:"CORRIDA!!", actionColor:"#3b82f6" },
+      { id:"p5", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"CAMELOT...! Eu vou te salvar, Calem!", textType:"speech" },
     ]},
   },
   { id:"c1b1", number:5, title:"Portões de Camelot", subtitle:"Batalha", type:"battle" },
@@ -118,9 +134,9 @@ const CHAPTER1_STAGES: Stage[] = [
     id: "c1s6", number: 7, title: "Recusa e Confronto", subtitle: "Cena 6", type: "scene",
     sceneData: { id: "c1s6", title: "Recusa e Confronto", panels: [
       { id:"p1", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Não vou te contar nada!", textType:"speech" },
-      { id:"p2", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"ARTHUR!!!", textType:"speech", actionWord:"IMPACTO!!", actionColor:"#7c3aed" },
-      { id:"p3", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Imprudente...!", textType:"speech", actionWord:"EXPLOSÃO!!", actionColor:"#dc2626" },
-      { id:"p4", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"A sala está desabando!!", textType:"speech", actionWord:"CRASH!!", actionColor:"#f59e0b" },
+      { id:"p2", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"ARTHUR!!!", textType:"speech" },
+      { id:"p3", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Imprudente...!", textType:"speech" },
+      { id:"p4", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"A sala está desabando!!", textType:"speech" },
       { id:"p5", bg: BG.bosque, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Segura em mim, Calem!", textType:"speech", overlayCaption:"Telhados do Reino de Camelot" },
     ]},
   },
@@ -128,18 +144,18 @@ const CHAPTER1_STAGES: Stage[] = [
     id: "c1s7", number: 8, title: "Nos Telhados", subtitle: "Cena 7", type: "scene",
     sceneData: { id: "c1s7", title: "Nos Telhados", panels: [
       { id:"p1", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Você está bem, Calem?", textType:"speech", overlayCaption:"Telhados do Reino de Camelot" },
-      { id:"p2", bg: BG.camelot, characters:[{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"Raios roxos estão caindo do céu!!", textType:"speech", actionWord:"KRA-KOW!!", actionColor:"#8b5cf6" },
+      { id:"p2", bg: BG.camelot, characters:[{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"calem", speakerName:"Calem", text:"Raios roxos estão caindo do céu!!", textType:"speech" },
       { id:"p3", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Sua escolha foi péssima, Fehnon. Vocês dois serão executados.", textType:"speech" },
-      { id:"p4", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Surja, Mefisto! MEU ULTIMATE GUARDIAN!!", textType:"speech", actionWord:"INVOKE!!", actionColor:"#dc2626" },
+      { id:"p4", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Surja, Mefisto! MEU ULTIMATE GUARDIAN!!", textType:"speech" },
       { id:"p5", bg: BG.camelot, characters:[{id:"calem",name:"Calem",emotion:"rage",side:"right"},{id:"fehnon",name:"Fehnon",emotion:"happy",side:"left"}], speaker:"calem", speakerName:"Calem", text:"Fe-Fehnon?! Como você pode estar sorrindo agora?!", textType:"speech" },
-      { id:"p6", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"happy",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Relaxa. Eu dou um jeito nesse cara. Porque eu também tenho minha Ultimate Gear... a Protonix Sword!!", textType:"speech", actionWord:"PROTONIX SWORD!!", actionColor:"#3b82f6" },
+      { id:"p6", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"happy",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Relaxa. Eu dou um jeito nesse cara. Porque eu também tenho minha Ultimate Gear... a Protonix Sword!!", textType:"speech" },
     ]},
   },
   { id:"c1boss", number:9, title:"Mefisto — O Guardião", subtitle:"Boss Battle", type:"boss" },
   {
     id: "c1s8", number: 10, title: "A Revelação", subtitle: "Cena Final", type: "scene",
     sceneData: { id: "c1s8", title: "A Revelação", panels: [
-      { id:"p1", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Desapareça, Mefisto!", textType:"speech", actionWord:"SLASH!!", actionColor:"#3b82f6" },
+      { id:"p1", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Desapareça, Mefisto!", textType:"speech" },
       { id:"p2", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Como... meu Mefisto está sendo machucado?!", textType:"speech" },
       { id:"p3", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"calem",name:"Calem",emotion:"happy",side:"right"}], speaker:"calem", speakerName:"Calem", text:"Conseguimos! Fehnon, você é incrível!", textType:"speech" },
       { id:"p4", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Heh... Vocês acham que ganharam? Eu ainda tenho... uma carta na manga.", textType:"speech" },
@@ -149,18 +165,38 @@ const CHAPTER1_STAGES: Stage[] = [
   },
 ]
 
+// ─── Preloader ────────────────────────────────────────────────────────────────
+
+function usePreloadImages(urls: string[]) {
+  const loaded = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    urls.forEach(url => {
+      if (loaded.current.has(url)) return
+      const img = new Image()
+      img.src = url
+      img.onload = () => loaded.current.add(url)
+    })
+  }, []) // eslint-disable-line
+}
+
+// ─── Scene Viewer ─────────────────────────────────────────────────────────────
+
 function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => void }) {
   const [idx, setIdx] = useState(0)
   const [fading, setFading] = useState(false)
   const panel = scene.panels[idx]
   const isLast = idx >= scene.panels.length - 1
   const isNarrator = panel.speaker === "narrator" || panel.textType === "narrator"
+  const left  = panel.characters.find(c => c.side === "left")
+  const right = panel.characters.find(c => c.side === "right")
+  const isLeftSpeaking  = !!left  && panel.speaker === left.id
+  const isRightSpeaking = !!right && panel.speaker === right.id
 
   const advance = useCallback(() => {
     if (fading) return
     if (isLast) { onComplete(); return }
     setFading(true)
-    setTimeout(() => { setIdx(i => i + 1); setFading(false) }, 160)
+    setTimeout(() => { setIdx(i => i + 1); setFading(false) }, 140)
   }, [fading, isLast, onComplete])
 
   useEffect(() => {
@@ -169,15 +205,16 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
     return () => window.removeEventListener("keydown", h)
   }, [advance])
 
-  const left  = panel.characters.find(c => c.side === "left")
-  const right = panel.characters.find(c => c.side === "right")
-  const isLeftSpeaking  = left  && panel.speaker === left.id
-  const isRightSpeaking = right && panel.speaker === right.id
-
   const nameBg = (id?: CharacterId | "narrator") => {
-    if (id === "arthur") return "linear-gradient(135deg,#7f1d1d,#dc2626)"
-    if (id === "fehnon") return "linear-gradient(135deg,#1e3a8a,#3b82f6)"
+    if (id === "arthur") return "linear-gradient(135deg,#7f1d1d,#991b1b)"
+    if (id === "fehnon") return "linear-gradient(135deg,#1e3a8a,#2563eb)"
     return "linear-gradient(135deg,#1f2937,#374151)"
+  }
+
+  // Character filter: speaker = normal, non-speaker = dimmed, no drop-shadow on speaker
+  const charFilter = (isSpeaking: boolean) => {
+    if (isNarrator) return "none"
+    return isSpeaking ? "none" : "brightness(0.40) saturate(0.3)"
   }
 
   return (
@@ -187,47 +224,42 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         position:"fixed", inset:0, zIndex:200,
         background:"#000", userSelect:"none", cursor:"pointer",
         fontFamily:"'Segoe UI',system-ui,sans-serif",
-        display:"flex", flexDirection:"column",
+        overflow:"hidden",
       }}
     >
-      {/* BG */}
+      {/* BG — no transition, instant swap */}
       <div style={{
         position:"absolute", inset:0,
         backgroundImage:`url(${panel.bg})`,
         backgroundSize:"cover", backgroundPosition:"center",
-        filter:"brightness(0.72)",
-        transition:"background-image 0.25s ease",
+        filter:"brightness(0.70)",
       }}/>
       <div style={{
         position:"absolute", inset:0,
-        background:"linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.05) 45%, rgba(0,0,0,0.12) 100%)",
+        background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.0) 42%, rgba(0,0,0,0.10) 100%)",
       }}/>
 
       {/* Top HUD */}
-      <div style={{ position:"relative", zIndex:30, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 20px" }}>
+      <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:30,
+        display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 20px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:7 }}>
           <BookOpen size={14} color="rgba(255,255,255,0.55)"/>
-          <span style={{ color:"rgba(255,255,255,0.65)", fontSize:13, fontWeight:700 }}>{scene.title}</span>
+          <span style={{ color:"rgba(255,255,255,0.70)", fontSize:13, fontWeight:700 }}>{scene.title}</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ display:"flex", gap:4 }}>
             {scene.panels.map((_,i) => (
               <div key={i} style={{
                 width: i===idx ? 16 : 5, height:4, borderRadius:99,
-                background: i===idx ? "#8b5cf6" : i<idx ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.18)",
-                transition:"all 0.3s",
+                background: i===idx ? "#8b5cf6" : i<idx ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.18)",
+                transition:"width 0.3s",
               }}/>
             ))}
           </div>
-          <button
-            onClick={e=>{ e.stopPropagation(); onComplete() }}
-            style={{
-              background:"rgba(0,0,0,0.5)", border:"1px solid rgba(255,255,255,0.15)",
-              borderRadius:7, padding:"5px 12px", color:"rgba(255,255,255,0.65)",
-              fontSize:11, fontWeight:700, cursor:"pointer",
-              display:"flex", alignItems:"center", gap:4,
-            }}
-          >
+          <button onClick={e=>{ e.stopPropagation(); onComplete() }}
+            style={{ background:"rgba(0,0,0,0.55)", border:"1px solid rgba(255,255,255,0.18)",
+              borderRadius:7, padding:"5px 12px", color:"rgba(255,255,255,0.70)",
+              fontSize:11, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
             <SkipForward size={11}/> Pular
           </button>
         </div>
@@ -235,67 +267,57 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
 
       {/* Location caption */}
       {panel.overlayCaption && (
-        <div style={{
-          position:"absolute", top:54, left:20, zIndex:30,
-          background:"rgba(0,0,0,0.68)", borderLeft:"3px solid #8b5cf6",
-          padding:"5px 14px",
-          opacity: fading ? 0 : 1, transition:"opacity 0.2s",
-        }}>
+        <div style={{ position:"absolute", top:52, left:20, zIndex:30,
+          background:"rgba(0,0,0,0.72)", borderLeft:"3px solid #8b5cf6", padding:"5px 14px" }}>
           <span style={{ color:"#e2e8f0", fontSize:11, fontStyle:"italic" }}>{panel.overlayCaption}</span>
         </div>
       )}
 
-      {/* Action word */}
-      {panel.actionWord && (
-        <div style={{
-          position:"absolute", top:"36%", left:"50%",
-          transform:"translate(-50%,-50%) rotate(-4deg)",
-          zIndex:25, pointerEvents:"none", textAlign:"center",
-          opacity: fading ? 0 : 1, transition:"opacity 0.15s",
-        }}>
-          <span style={{
-            fontSize:"clamp(30px,5.5vw,52px)", fontWeight:900,
-            color: panel.actionColor || "#fbbf24",
-            fontFamily:"'Arial Black',sans-serif",
-            textShadow:`4px 4px 0 #000,-3px -3px 0 #000,3px -3px 0 #000,-3px 3px 0 #000,
-              0 0 18px ${panel.actionColor||"#fbbf24"}`,
-            lineHeight:1, letterSpacing:"0.04em",
-          }}>{panel.actionWord}</span>
-        </div>
-      )}
-
-      {/* Characters */}
+      {/* Characters — fixed bottom, tall, no overflow clip */}
       <div style={{
-        position:"absolute", inset:0, bottom:185,
+        position:"absolute", left:0, right:0,
+        bottom: 130, // above dialogue box
+        height:"70vh",
         display:"flex", alignItems:"flex-end", justifyContent:"space-between",
-        paddingBottom:0, pointerEvents:"none",
-        opacity: fading ? 0 : 1, transition:"opacity 0.16s ease",
+        pointerEvents:"none",
+        opacity: fading ? 0 : 1,
+        transition:"opacity 0.14s ease",
+        padding:"0 2% 0",
       }}>
-        {/* Left */}
+        {/* Left character — faces RIGHT (scaleX(-1) flips them to face inward) */}
         <div style={{
-          height:"78%", display:"flex", alignItems:"flex-end", paddingLeft:"3%",
-          filter: left ? (isLeftSpeaking || isNarrator ? "drop-shadow(6px 0 18px rgba(0,0,0,0.95))" : "brightness(0.45) saturate(0.4)") : undefined,
-          transition:"filter 0.2s",
+          height:"100%", display:"flex", alignItems:"flex-end",
+          filter: charFilter(isLeftSpeaking),
+          transition:"filter 0.15s",
         }}>
           {left && (
             <img src={charImg(left.id, left.emotion)} alt={left.name}
-              style={{ height:"100%", width:"auto", objectFit:"contain", objectPosition:"bottom",
-                transform: left.flipped ? "scaleX(-1)" : undefined }}
-              onError={e => { (e.target as HTMLImageElement).style.opacity="0" }}
+              style={{
+                height:"100%", width:"auto",
+                objectFit:"contain", objectPosition:"bottom center",
+                transform:"scaleX(-1)", // always face right (inward toward center)
+                display:"block",
+              }}
+              onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
             />
           )}
         </div>
-        {/* Right */}
+
+        {/* Right character — faces LEFT (default, no flip needed) */}
         <div style={{
-          height:"78%", display:"flex", alignItems:"flex-end", paddingRight:"3%",
-          filter: right ? (isRightSpeaking || isNarrator ? "drop-shadow(-6px 0 18px rgba(0,0,0,0.95))" : "brightness(0.45) saturate(0.4)") : undefined,
-          transition:"filter 0.2s",
+          height:"100%", display:"flex", alignItems:"flex-end",
+          filter: charFilter(isRightSpeaking),
+          transition:"filter 0.15s",
         }}>
           {right && (
             <img src={charImg(right.id, right.emotion)} alt={right.name}
-              style={{ height:"100%", width:"auto", objectFit:"contain", objectPosition:"bottom",
-                transform: right.flipped ? "scaleX(-1)" : undefined }}
-              onError={e => { (e.target as HTMLImageElement).style.opacity="0" }}
+              style={{
+                height:"100%", width:"auto",
+                objectFit:"contain", objectPosition:"bottom center",
+                // No transform — characters naturally face left in the assets
+                display:"block",
+              }}
+              onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
             />
           )}
         </div>
@@ -304,50 +326,48 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
       {/* Dialogue box */}
       <div style={{
         position:"absolute", bottom:0, left:0, right:0, zIndex:40,
-        opacity: fading ? 0 : 1, transition:"opacity 0.16s ease",
+        opacity: fading ? 0 : 1, transition:"opacity 0.14s ease",
       }}>
         {isNarrator ? (
           <div style={{
-            margin:"0 16px 20px",
-            background:"rgba(0,0,0,0.80)",
-            border:"1px solid rgba(139,92,246,0.35)",
-            borderLeft:"4px solid #8b5cf6",
-            borderRadius:10, padding:"14px 20px",
+            margin:"0 14px 18px",
+            background:"rgba(0,0,0,0.82)", border:"1px solid rgba(139,92,246,0.35)",
+            borderLeft:"4px solid #8b5cf6", borderRadius:10, padding:"14px 18px",
             backdropFilter:"blur(10px)",
           }}>
-            <p style={{ color:"#d1d5db", fontSize:14, fontStyle:"italic", lineHeight:1.75, margin:0,
-              textShadow:"0 1px 4px rgba(0,0,0,0.8)" }}>{panel.text}</p>
+            <p style={{ color:"#d1d5db", fontSize:14, fontStyle:"italic", lineHeight:1.75, margin:0 }}>
+              {panel.text}
+            </p>
           </div>
         ) : (
           <div style={{
-            background:"rgba(4,8,18,0.90)",
-            borderTop:"1px solid rgba(255,255,255,0.14)",
-            borderRadius:"14px 14px 0 0",
-            backdropFilter:"blur(14px)",
+            background:"rgba(4,8,18,0.92)", borderTop:"1px solid rgba(255,255,255,0.12)",
+            borderRadius:"14px 14px 0 0", backdropFilter:"blur(14px)",
+            minHeight:120,
           }}>
             {panel.speakerName && (
               <div style={{
-                display:"inline-block", marginLeft:22, marginTop:-1,
+                display:"inline-block", marginLeft:20, marginTop:-1,
                 background: nameBg(panel.speaker),
                 padding:"5px 18px 6px", borderRadius:"0 0 9px 9px",
-                borderBottom:"2px solid rgba(255,255,255,0.10)",
               }}>
-                <span style={{ color:"#fff", fontWeight:900, fontSize:13, letterSpacing:"0.04em",
-                  textShadow:"0 1px 5px rgba(0,0,0,0.8)" }}>{panel.speakerName}</span>
+                <span style={{ color:"#fff", fontWeight:900, fontSize:13, letterSpacing:"0.04em" }}>
+                  {panel.speakerName}
+                </span>
               </div>
             )}
             <div style={{ padding:"10px 22px 0" }}>
               <p style={{
-                color:"#f1f5f9", fontSize:15, lineHeight:1.75, margin:0,
+                color:"#f1f5f9", fontSize:15, lineHeight:1.8, margin:0,
                 fontStyle: panel.textType==="thought" ? "italic" : undefined,
-                textShadow:"0 1px 4px rgba(0,0,0,0.9)", letterSpacing:"0.01em",
+                letterSpacing:"0.01em",
               }}>
                 {panel.textType==="thought" && <span style={{color:"#93c5fd"}}>‟ </span>}
                 {panel.text}
                 {panel.textType==="thought" && <span style={{color:"#93c5fd"}}> „</span>}
               </p>
             </div>
-            <div style={{ textAlign:"right", paddingRight:22, paddingTop:8, paddingBottom:20 }}>
+            <div style={{ textAlign:"right", paddingRight:22, paddingTop:6, paddingBottom:18 }}>
               <span style={{ color:"rgba(255,255,255,0.28)", fontSize:11, letterSpacing:"0.1em",
                 animation:"blink 1.2s ease-in-out infinite" }}>
                 {isLast ? "▶ Continuar" : "▶ Avançar"}
@@ -357,43 +377,39 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         )}
       </div>
 
-      <style>{`@keyframes blink { 0%,100%{opacity:.25} 50%{opacity:1} }`}</style>
+      <style>{`@keyframes blink { 0%,100%{opacity:.22} 50%{opacity:0.9} }`}</style>
     </div>
   )
 }
 
-function BattleIntroScreen({ stage, onStart, onBack }: { stage: Stage; onStart:()=>void; onBack:()=>void }) {
+// ─── Battle Intro ─────────────────────────────────────────────────────────────
+
+function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()=>void; onBack:()=>void }) {
   const isBoss = stage.type === "boss"
   const lp = isBoss ? 30 : 20
   return (
-    <div style={{
-      position:"fixed", inset:0, zIndex:200,
+    <div style={{ position:"fixed", inset:0, zIndex:200,
       background:"linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9",
-    }}>
-      <div style={{
-        position:"absolute", inset:0, pointerEvents:"none",
+      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9" }}>
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none",
         background: isBoss
           ? "radial-gradient(ellipse 60% 40% at 50% 50%,rgba(220,38,38,0.18) 0%,transparent 70%)"
-          : "radial-gradient(ellipse 60% 40% at 50% 50%,rgba(37,99,235,0.15) 0%,transparent 70%)",
-      }}/>
+          : "radial-gradient(ellipse 60% 40% at 50% 50%,rgba(37,99,235,0.15) 0%,transparent 70%)" }}/>
       <div style={{ textAlign:"center", position:"relative", zIndex:1, padding:"0 24px" }}>
         <div style={{ fontSize:52, marginBottom:14 }}>{isBoss ? "💀" : "⚔️"}</div>
-        <div style={{
-          fontSize:10, fontWeight:800, letterSpacing:"0.15em",
-          color: isBoss ? "#f87171" : "#60a5fa", textTransform:"uppercase",
-          background: isBoss ? "rgba(220,38,38,0.12)" : "rgba(37,99,235,0.12)",
-          padding:"4px 14px", borderRadius:8, display:"inline-block", marginBottom:8,
-        }}>{isBoss ? "Boss Battle" : "Batalha"}</div>
+        <div style={{ fontSize:10, fontWeight:800, letterSpacing:"0.15em",
+          color: isBoss?"#f87171":"#60a5fa", textTransform:"uppercase",
+          background: isBoss?"rgba(220,38,38,0.12)":"rgba(37,99,235,0.12)",
+          padding:"4px 14px", borderRadius:8, display:"inline-block", marginBottom:8 }}>
+          {isBoss ? "Boss Battle" : "Batalha"}
+        </div>
         <h1 style={{ fontWeight:900, fontSize:22, margin:"8px 0 16px" }}>{stage.title}</h1>
-        <div style={{
-          background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
-          borderRadius:14, padding:"14px 20px", marginBottom:24, maxWidth:300,
-        }}>
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
+          borderRadius:14, padding:"14px 20px", marginBottom:24, maxWidth:300 }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
             <span style={{ color:"#64748b", fontSize:12 }}>LP de partida</span>
-            <span style={{ color: isBoss?"#f87171":"#60a5fa", fontWeight:900, fontSize:14 }}>{lp} LP</span>
+            <span style={{ color:isBoss?"#f87171":"#60a5fa", fontWeight:900, fontSize:14 }}>{lp} LP</span>
           </div>
           <div style={{ display:"flex", justifyContent:"space-between" }}>
             <span style={{ color:"#64748b", fontSize:12 }}>Oponente</span>
@@ -403,17 +419,13 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage: Stage; onStart:(
           </div>
         </div>
         <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={onBack} style={{
-            padding:"11px 22px", borderRadius:11,
+          <button onClick={onBack} style={{ padding:"11px 22px", borderRadius:11,
             background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)",
-            color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer",
-          }}>Voltar</button>
-          <button onClick={onStart} style={{
-            padding:"11px 28px", borderRadius:11, border:"none",
-            background: isBoss ? "linear-gradient(135deg,#7f1d1d,#dc2626)" : "linear-gradient(135deg,#1e3a8a,#3b82f6)",
+            color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Voltar</button>
+          <button onClick={onStart} style={{ padding:"11px 28px", borderRadius:11, border:"none",
+            background: isBoss?"linear-gradient(135deg,#7f1d1d,#dc2626)":"linear-gradient(135deg,#1e3a8a,#3b82f6)",
             color:"#fff", fontWeight:900, fontSize:14, cursor:"pointer",
-            boxShadow: isBoss ? "0 6px 20px rgba(220,38,38,0.35)" : "0 6px 20px rgba(59,130,246,0.35)",
-          }}>
+            boxShadow: isBoss?"0 6px 20px rgba(220,38,38,0.35)":"0 6px 20px rgba(59,130,246,0.35)" }}>
             {isBoss ? "⚔️ Batalha Final!" : "⚔️ Iniciar Batalha!"}
           </button>
         </div>
@@ -422,30 +434,79 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage: Stage; onStart:(
   )
 }
 
+// ─── Post-Battle Result Screen ────────────────────────────────────────────────
+
+function PostBattleScreen({
+  won,
+  onReturnStory,
+  onContinue,
+}: {
+  won: boolean
+  onReturnStory: () => void
+  onContinue: () => void
+}) {
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:200,
+      background:"rgba(0,0,0,0.92)", backdropFilter:"blur(16px)",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9" }}>
+      <div style={{ textAlign:"center", padding:"0 24px" }}>
+        <div style={{ fontSize:56, marginBottom:16 }}>{won ? "🏆" : "💀"}</div>
+        <h2 style={{ fontWeight:900, fontSize:24, margin:"0 0 8px" }}>
+          {won ? "Vitória!" : "Derrota..."}
+        </h2>
+        <p style={{ color:"#64748b", fontSize:14, margin:"0 0 32px" }}>
+          {won ? "Batalha concluída com sucesso." : "Você foi derrotado. Tente novamente."}
+        </p>
+        <div style={{ display:"flex", flexDirection:"column", gap:12, alignItems:"center" }}>
+          {won && (
+            <button onClick={onContinue} style={{
+              width:260, padding:"15px 0", borderRadius:14, border:"none",
+              background:"linear-gradient(135deg,#4c1d95,#7c3aed)",
+              color:"#fff", fontWeight:900, fontSize:15, cursor:"pointer",
+              boxShadow:"0 6px 24px rgba(124,58,237,0.40)",
+            }}>
+              ▶ Continuar História
+            </button>
+          )}
+          <button onClick={onReturnStory} style={{
+            width:260, padding:"13px 0", borderRadius:14,
+            background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+            color:"#94a3b8", fontWeight:800, fontSize:14, cursor:"pointer",
+          }}>
+            ← Voltar ao Story Mode
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Stage Card ───────────────────────────────────────────────────────────────
+
 function StageCard({ stage, onPress, completedIds }: { stage:Stage; onPress:()=>void; completedIds:Set<string> }) {
   const isCompleted = completedIds.has(stage.id)
   const prevIdx = CHAPTER1_STAGES.findIndex(s=>s.id===stage.id) - 1
   const prevStage = prevIdx >= 0 ? CHAPTER1_STAGES[prevIdx] : null
   const isLocked = prevStage !== null && !completedIds.has(prevStage.id)
   const accent = stage.type==="boss" ? "#f87171" : stage.type==="battle" ? "#60a5fa" : "#a78bfa"
-  const bg = stage.type==="boss" ? "linear-gradient(135deg,rgba(220,38,38,0.14),rgba(127,29,29,0.07))" : stage.type==="battle" ? "linear-gradient(135deg,rgba(37,99,235,0.14),rgba(29,78,216,0.07))" : "linear-gradient(135deg,rgba(91,33,182,0.11),rgba(55,48,163,0.05))"
+  const bg = stage.type==="boss" ? "linear-gradient(135deg,rgba(220,38,38,0.14),rgba(127,29,29,0.07))"
+    : stage.type==="battle" ? "linear-gradient(135deg,rgba(37,99,235,0.14),rgba(29,78,216,0.07))"
+    : "linear-gradient(135deg,rgba(91,33,182,0.11),rgba(55,48,163,0.05))"
   const icon = stage.type==="boss" ? "💀" : stage.type==="battle" ? "⚔️" : "📖"
   return (
     <button onClick={isLocked?undefined:onPress} disabled={isLocked} style={{
-      width:"100%", background: isLocked?"rgba(255,255,255,0.02)":bg,
+      width:"100%", background:isLocked?"rgba(255,255,255,0.02)":bg,
       border:`1px solid ${isLocked?"rgba(255,255,255,0.05)":isCompleted?accent+"50":accent+"28"}`,
       borderRadius:14, padding:"13px 14px",
       display:"flex", alignItems:"center", gap:12,
-      cursor: isLocked?"not-allowed":"pointer",
-      opacity: isLocked?0.45:1, transition:"all 0.2s", textAlign:"left",
+      cursor:isLocked?"not-allowed":"pointer",
+      opacity:isLocked?0.45:1, transition:"all 0.2s", textAlign:"left",
     }}>
-      <div style={{
-        width:44, height:44, borderRadius:11, flexShrink:0,
-        background: isCompleted?"rgba(34,197,94,0.15)":isLocked?"rgba(255,255,255,0.04)":stage.type==="boss"?"rgba(220,38,38,0.18)":stage.type==="battle"?"rgba(37,99,235,0.18)":"rgba(91,33,182,0.18)",
+      <div style={{ width:44, height:44, borderRadius:11, flexShrink:0,
+        background:isCompleted?"rgba(34,197,94,0.15)":isLocked?"rgba(255,255,255,0.04)":stage.type==="boss"?"rgba(220,38,38,0.18)":stage.type==="battle"?"rgba(37,99,235,0.18)":"rgba(91,33,182,0.18)",
         display:"flex", alignItems:"center", justifyContent:"center",
-        border:`1px solid ${isCompleted?"rgba(34,197,94,0.3)":"rgba(255,255,255,0.07)"}`,
-        fontSize:20,
-      }}>
+        border:`1px solid ${isCompleted?"rgba(34,197,94,0.3)":"rgba(255,255,255,0.07)"}`, fontSize:20 }}>
         {isLocked ? <Lock size={15} color="#334155"/> : isCompleted ? <span style={{color:"#22c55e",fontSize:17}}>✓</span> : icon}
       </div>
       <div style={{ flex:1 }}>
@@ -460,7 +521,10 @@ function StageCard({ stage, onPress, completedIds }: { stage:Stage; onPress:()=>
   )
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 const LS_KEY = "gpgame_story_progress"
+const LS_BATTLE_KEY = "gpgame_story_battle_pending"
 
 export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScreenProps) {
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
@@ -470,14 +534,63 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   const [activeScene, setActiveScene] = useState<Scene|null>(null)
   const [battleStage, setBattleStage] = useState<Stage|null>(null)
   const [pendingId, setPendingId] = useState<string|null>(null)
+  const [postBattle, setPostBattle] = useState<{ won: boolean; stageId: string } | null>(null)
 
-  useEffect(() => { try { localStorage.setItem(LS_KEY, JSON.stringify([...completedIds])) } catch {} }, [completedIds])
+  // Preload all images on mount
+  usePreloadImages(getAllSceneImages(CHAPTER1_STAGES))
+
+  // Check if we returned from a battle
+  useEffect(() => {
+    const pending = localStorage.getItem(LS_BATTLE_KEY)
+    if (pending) {
+      localStorage.removeItem(LS_BATTLE_KEY)
+      try {
+        const { stageId, won } = JSON.parse(pending)
+        if (won) {
+          setCompletedIds(prev => new Set([...prev, stageId]))
+        }
+        setPostBattle({ won, stageId })
+      } catch {}
+    }
+  }, [])
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify([...completedIds])) } catch {}
+  }, [completedIds])
 
   const mark = (id: string) => setCompletedIds(p => new Set([...p, id]))
 
   const handlePress = (stage: Stage) => {
-    if (stage.type === "scene" && stage.sceneData) { setPendingId(stage.id); setActiveScene(stage.sceneData) }
-    else if (stage.type === "battle" || stage.type === "boss") { setPendingId(stage.id); setBattleStage(stage) }
+    if (stage.type === "scene" && stage.sceneData) {
+      setPendingId(stage.id)
+      setActiveScene(stage.sceneData)
+    } else if (stage.type === "battle" || stage.type === "boss") {
+      setPendingId(stage.id)
+      setBattleStage(stage)
+    }
+  }
+
+  const handleBattleStart = () => {
+    if (!battleStage) return
+    const isBoss = battleStage.type === "boss"
+    // Save pending battle info so we can handle result when returning
+    localStorage.setItem(LS_BATTLE_KEY, JSON.stringify({ stageId: battleStage.id, won: false }))
+    setBattleStage(null)
+    setPendingId(null)
+    onStartBattle(isBoss ? "story-boss" : "story-normal", battleStage.id)
+  }
+
+  // Get next stage after a completed one
+  const getNextStage = (stageId: string): Stage | null => {
+    const idx = CHAPTER1_STAGES.findIndex(s => s.id === stageId)
+    return idx >= 0 && idx + 1 < CHAPTER1_STAGES.length ? CHAPTER1_STAGES[idx + 1] : null
+  }
+
+  const handlePostBattleContinue = () => {
+    if (!postBattle) return
+    const next = getNextStage(postBattle.stageId)
+    setPostBattle(null)
+    if (next) handlePress(next)
   }
 
   const total = CHAPTER1_STAGES.length
@@ -487,16 +600,40 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
 
   return (
     <>
-      {activeScene && <SceneViewer scene={activeScene} onComplete={()=>{ if(pendingId) mark(pendingId); setPendingId(null); setActiveScene(null) }}/>}
-      {battleStage && <BattleIntroScreen stage={battleStage} onBack={()=>{ setBattleStage(null); setPendingId(null) }} onStart={()=>{ const isBoss=battleStage.type==="boss"; if(pendingId) mark(pendingId); setBattleStage(null); setPendingId(null); onStartBattle(isBoss?"story-boss":"story-normal") }}/>}
+      {activeScene && (
+        <SceneViewer scene={activeScene} onComplete={() => {
+          if (pendingId) mark(pendingId)
+          setPendingId(null)
+          setActiveScene(null)
+        }}/>
+      )}
+      {battleStage && (
+        <BattleIntroScreen stage={battleStage}
+          onBack={() => { setBattleStage(null); setPendingId(null) }}
+          onStart={handleBattleStart}
+        />
+      )}
+      {postBattle && (
+        <PostBattleScreen
+          won={postBattle.won}
+          onReturnStory={() => setPostBattle(null)}
+          onContinue={handlePostBattleContinue}
+        />
+      )}
 
-      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)", color:"#f1f5f9", fontFamily:"'Segoe UI',system-ui,sans-serif", display:"flex", flexDirection:"column", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0, background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(91,33,182,0.12) 0%,transparent 60%)" }}/>
+      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
+        color:"#f1f5f9", fontFamily:"'Segoe UI',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
+        <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0,
+          background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(91,33,182,0.12) 0%,transparent 60%)" }}/>
 
         {/* Header */}
-        <div style={{ position:"sticky", top:0, zIndex:50, background:"rgba(2,6,16,0.92)", backdropFilter:"blur(16px)", borderBottom:"1px solid rgba(255,255,255,0.07)", padding:"14px 16px" }}>
+        <div style={{ position:"sticky", top:0, zIndex:50,
+          background:"rgba(2,6,16,0.92)", backdropFilter:"blur(16px)",
+          borderBottom:"1px solid rgba(255,255,255,0.07)", padding:"14px 16px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12, maxWidth:600, margin:"0 auto" }}>
-            <button onClick={onBack} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:12, padding:"8px 10px", cursor:"pointer", color:"#94a3b8", display:"flex", alignItems:"center" }}>
+            <button onClick={onBack} style={{ background:"rgba(255,255,255,0.06)",
+              border:"1px solid rgba(255,255,255,0.10)", borderRadius:12, padding:"8px 10px",
+              cursor:"pointer", color:"#94a3b8", display:"flex", alignItems:"center" }}>
               <ArrowLeft size={18}/>
             </button>
             <div style={{ flex:1 }}>
@@ -514,13 +651,23 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
           <div style={{ maxWidth:600, margin:"0 auto", padding:"16px 16px 100px" }}>
 
             {/* Chapter card */}
-            <div style={{ background:"linear-gradient(135deg,rgba(91,33,182,0.20),rgba(55,48,163,0.12))", border:"1px solid rgba(91,33,182,0.30)", borderRadius:20, padding:"20px", marginBottom:20 }}>
+            <div style={{ background:"linear-gradient(135deg,rgba(91,33,182,0.20),rgba(55,48,163,0.12))",
+              border:"1px solid rgba(91,33,182,0.30)", borderRadius:20, padding:"20px", marginBottom:20 }}>
               <div style={{ display:"flex", alignItems:"flex-start", gap:14 }}>
-                <div style={{ width:54, height:54, borderRadius:14, flexShrink:0, background:"linear-gradient(145deg,#4c1d95,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(124,58,237,0.35)", fontSize:24 }}>⭐</div>
+                <div style={{ width:54, height:54, borderRadius:14, flexShrink:0,
+                  background:"linear-gradient(145deg,#4c1d95,#7c3aed)", display:"flex",
+                  alignItems:"center", justifyContent:"center",
+                  boxShadow:"0 8px 24px rgba(124,58,237,0.35)", fontSize:24 }}>⭐</div>
                 <div style={{ flex:1 }}>
-                  <span style={{ fontSize:9, fontWeight:800, color:"#a78bfa", background:"rgba(91,33,182,0.2)", padding:"2px 8px", borderRadius:6, letterSpacing:"0.08em", textTransform:"uppercase", display:"inline-block", marginBottom:6 }}>Capítulo 1</span>
+                  <span style={{ fontSize:9, fontWeight:800, color:"#a78bfa",
+                    background:"rgba(91,33,182,0.2)", padding:"2px 8px", borderRadius:6,
+                    letterSpacing:"0.08em", textTransform:"uppercase", display:"inline-block", marginBottom:6 }}>
+                    Capítulo 1
+                  </span>
                   <h2 style={{ fontWeight:900, fontSize:17, margin:"0 0 4px", color:"#e2e8f0" }}>A Lenda da Estrela</h2>
-                  <p style={{ color:"#64748b", fontSize:12, margin:0, lineHeight:1.5 }}>Um encontro inesperado, um reino em alerta e um segredo que mudará dois mundos.</p>
+                  <p style={{ color:"#64748b", fontSize:12, margin:0, lineHeight:1.5 }}>
+                    Um encontro inesperado, um reino em alerta e um segredo que mudará dois mundos.
+                  </p>
                 </div>
               </div>
               <div style={{ marginTop:16 }}>
@@ -529,12 +676,16 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
                   <span style={{ fontSize:11, color:"#a78bfa", fontWeight:800 }}>{done}/{total} · {pct}%</span>
                 </div>
                 <div style={{ height:6, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
-                  <div style={{ height:"100%", borderRadius:99, width:`${pct}%`, background:"linear-gradient(90deg,#7c3aed,#a855f7)", boxShadow:"0 0 12px rgba(168,85,247,0.5)", transition:"width 0.6s" }}/>
+                  <div style={{ height:"100%", borderRadius:99, width:`${pct}%`,
+                    background:"linear-gradient(90deg,#7c3aed,#a855f7)",
+                    boxShadow:"0 0 12px rgba(168,85,247,0.5)", transition:"width 0.6s" }}/>
                 </div>
               </div>
             </div>
 
-            <p style={{ color:"#334155", fontSize:11, textAlign:"center", marginBottom:14, fontStyle:"italic" }}>↑ As fases avançam de baixo para cima ↑</p>
+            <p style={{ color:"#334155", fontSize:11, textAlign:"center", marginBottom:14, fontStyle:"italic" }}>
+              ↑ As fases avançam de baixo para cima ↑
+            </p>
 
             <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
               {reversed.map(stage => (
@@ -543,7 +694,8 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
             </div>
 
             {pct === 100 && (
-              <div style={{ marginTop:24, background:"rgba(234,179,8,0.10)", border:"1px solid rgba(234,179,8,0.25)", borderRadius:16, padding:"20px", textAlign:"center" }}>
+              <div style={{ marginTop:24, background:"rgba(234,179,8,0.10)",
+                border:"1px solid rgba(234,179,8,0.25)", borderRadius:16, padding:"20px", textAlign:"center" }}>
                 <div style={{ fontSize:36, marginBottom:8 }}>🏆</div>
                 <p style={{ fontWeight:900, fontSize:15, color:"#fbbf24", margin:"0 0 4px" }}>Capítulo 1 Concluído!</p>
                 <p style={{ color:"#78716c", fontSize:12, margin:0 }}>Capítulo 2 em breve...</p>
