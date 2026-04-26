@@ -273,77 +273,75 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       )}
 
-      {/* Characters — anchored to bottom, above dialogue box, never clipped */}
-      <div style={{
-        position:"absolute",
-        left:0, right:0,
-        bottom: 125, // sits just above dialogue box (≈125px tall)
-        top: 48,     // leaves room for top HUD
-        display:"flex",
-        alignItems:"flex-end",
-        justifyContent:"space-between",
-        pointerEvents:"none",
-        overflow:"visible",
-        opacity: fading ? 0 : 1,
-        transition:"opacity 0.14s ease",
-        padding:"0 1%",
-      }}>
-        {/* Left character — scaleX(-1) so they face RIGHT (toward center) */}
+      {/* LEFT character — absolutely positioned, anchored bottom-left, flipped to face RIGHT */}
+      {left && (
         <div style={{
-          flex:"0 0 auto",
-          height:"100%",
+          position:"absolute",
+          left:0,
+          bottom: 126,
+          top: 48,
+          width:"50%",
           display:"flex",
           alignItems:"flex-end",
+          justifyContent:"flex-start",
+          pointerEvents:"none",
+          opacity: fading ? 0 : 1,
+          transition:"opacity 0.14s ease",
           filter: charFilter(isLeftSpeaking),
-          transition:"filter 0.15s",
+          overflow:"visible",
         }}>
-          {left && (
-            <img
-              src={charImg(left.id, left.emotion)}
-              alt={left.name}
-              style={{
-                height:"100%",
-                maxHeight:"100%",
-                width:"auto",
-                objectFit:"contain",
-                objectPosition:"bottom",
-                transform:"scaleX(-1)", // face right (inward)
-                display:"block",
-                flexShrink:0,
-              }}
-              onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
-            />
-          )}
+          <img
+            src={charImg(left.id, left.emotion)}
+            alt={left.name}
+            style={{
+              height:"100%",
+              width:"auto",
+              maxWidth:"100%",
+              objectFit:"contain",
+              objectPosition:"bottom left",
+              transform:"scaleX(-1)", // flip to face RIGHT (inward toward center)
+              display:"block",
+              transformOrigin:"left bottom",
+            }}
+            onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
+          />
         </div>
+      )}
 
-        {/* Right character — default, faces LEFT (toward center) */}
+      {/* RIGHT character — absolutely positioned, anchored bottom-right, flipped to face LEFT */}
+      {right && (
         <div style={{
-          flex:"0 0 auto",
-          height:"100%",
+          position:"absolute",
+          right:0,
+          bottom: 126,
+          top: 48,
+          width:"50%",
           display:"flex",
           alignItems:"flex-end",
+          justifyContent:"flex-end",
+          pointerEvents:"none",
+          opacity: fading ? 0 : 1,
+          transition:"opacity 0.14s ease",
           filter: charFilter(isRightSpeaking),
-          transition:"filter 0.15s",
+          overflow:"visible",
         }}>
-          {right && (
-            <img
-              src={charImg(right.id, right.emotion)}
-              alt={right.name}
-              style={{
-                height:"100%",
-                maxHeight:"100%",
-                width:"auto",
-                objectFit:"contain",
-                objectPosition:"bottom",
-                // No scaleX — asset already faces left (inward)
-                display:"block",
-                flexShrink:0,
-              }}
-              onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
-            />
-          )}
+          <img
+            src={charImg(right.id, right.emotion)}
+            alt={right.name}
+            style={{
+              height:"100%",
+              width:"auto",
+              maxWidth:"100%",
+              objectFit:"contain",
+              objectPosition:"bottom right",
+              transform:"scaleX(-1)", // flip to face LEFT (inward toward center)
+              display:"block",
+              transformOrigin:"right bottom",
+            }}
+            onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
+          />
         </div>
-      </div>
+      )}
 
       {/* Dialogue box */}
       <div style={{
