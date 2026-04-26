@@ -150,7 +150,16 @@ export function GameWrapper() {
           } else {
             navigateTo("menu")
           }
-        }} />
+        }}
+        startingLP={(() => {
+          try {
+            const r = localStorage.getItem("gpgame_story_battle_pending")
+            if (!r) return undefined
+            const { lp } = JSON.parse(r)
+            return lp ?? undefined
+          } catch { return undefined }
+        })()}
+        />
       )}
       {currentScreen === "duel-draft" && (
         <DraftDuelScreen onBack={() => navigateTo("menu")} />
