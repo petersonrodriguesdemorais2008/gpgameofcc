@@ -273,74 +273,54 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       )}
 
-      {/* LEFT character — absolutely positioned, anchored bottom-left, flipped to face RIGHT */}
+      {/* LEFT character */}
       {left && (
-        <div style={{
-          position:"absolute",
-          left:0,
-          bottom: 126,
-          top: 48,
-          width:"50%",
-          display:"flex",
-          alignItems:"flex-end",
-          justifyContent:"flex-start",
-          pointerEvents:"none",
-          opacity: fading ? 0 : 1,
-          transition:"opacity 0.14s ease",
-          filter: charFilter(isLeftSpeaking),
-          overflow:"visible",
-        }}>
-          <img
-            src={charImg(left.id, left.emotion)}
-            alt={left.name}
-            style={{
-              height:"100%",
-              width:"auto",
-              maxWidth:"100%",
-              objectFit:"contain",
-              objectPosition:"bottom left",
-              transform:"scaleX(-1)", // flip to face RIGHT (inward toward center)
-              display:"block",
-              transformOrigin:"left bottom",
-            }}
-            onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
-          />
-        </div>
+        <img
+          src={charImg(left.id, left.emotion)}
+          alt={left.name}
+          style={{
+            position: "absolute",
+            bottom: 126,
+            left: 0,
+            height: "calc(100vh - 174px)", // full available height between HUD and dialogue
+            width: "auto",
+            objectFit: "contain",
+            objectPosition: "bottom left",
+            transform: "scaleX(-1)", // face RIGHT (inward)
+            transformOrigin: "left bottom",
+            pointerEvents: "none",
+            opacity: fading ? 0 : 1,
+            transition: "opacity 0.14s ease",
+            filter: charFilter(isLeftSpeaking),
+            zIndex: 10,
+          }}
+          onError={e => { (e.target as HTMLImageElement).style.display="none" }}
+        />
       )}
 
-      {/* RIGHT character — absolutely positioned, anchored bottom-right, flipped to face LEFT */}
+      {/* RIGHT character */}
       {right && (
-        <div style={{
-          position:"absolute",
-          right:0,
-          bottom: 126,
-          top: 48,
-          width:"50%",
-          display:"flex",
-          alignItems:"flex-end",
-          justifyContent:"flex-end",
-          pointerEvents:"none",
-          opacity: fading ? 0 : 1,
-          transition:"opacity 0.14s ease",
-          filter: charFilter(isRightSpeaking),
-          overflow:"visible",
-        }}>
-          <img
-            src={charImg(right.id, right.emotion)}
-            alt={right.name}
-            style={{
-              height:"100%",
-              width:"auto",
-              maxWidth:"100%",
-              objectFit:"contain",
-              objectPosition:"bottom right",
-              transform:"scaleX(-1)", // flip to face LEFT (inward toward center)
-              display:"block",
-              transformOrigin:"right bottom",
-            }}
-            onError={e => { (e.target as HTMLImageElement).style.visibility="hidden" }}
-          />
-        </div>
+        <img
+          src={charImg(right.id, right.emotion)}
+          alt={right.name}
+          style={{
+            position: "absolute",
+            bottom: 126,
+            right: 0,
+            height: "calc(100vh - 174px)", // full available height
+            width: "auto",
+            objectFit: "contain",
+            objectPosition: "bottom right",
+            transform: "scaleX(-1)", // face LEFT (inward)
+            transformOrigin: "right bottom",
+            pointerEvents: "none",
+            opacity: fading ? 0 : 1,
+            transition: "opacity 0.14s ease",
+            filter: charFilter(isRightSpeaking),
+            zIndex: 10,
+          }}
+          onError={e => { (e.target as HTMLImageElement).style.display="none" }}
+        />
       )}
 
       {/* Dialogue box */}
