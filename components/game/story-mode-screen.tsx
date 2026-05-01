@@ -273,7 +273,7 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       )}
 
-      {/* LEFT character */}
+      {/* LEFT character — bottom-left, flipped to face right (inward) */}
       {left && (
         <img
           src={charImg(left.id, left.emotion)}
@@ -282,23 +282,24 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
             position: "absolute",
             bottom: 126,
             left: 0,
-            height: "calc(100vh - 174px)", // full available height between HUD and dialogue
+            height: "calc(100vh - 174px)",
             width: "auto",
+            maxWidth: "48%",
             objectFit: "contain",
-            objectPosition: "bottom left",
-            transform: "scaleX(-1)", // face RIGHT (inward)
-            transformOrigin: "left bottom",
+            objectPosition: "bottom",
+            transform: "scaleX(-1)",
+            transformOrigin: "center bottom",
             pointerEvents: "none",
             opacity: fading ? 0 : 1,
             transition: "opacity 0.14s ease",
             filter: charFilter(isLeftSpeaking),
             zIndex: 10,
+            display: "block",
           }}
-          onError={e => { (e.target as HTMLImageElement).style.display="none" }}
         />
       )}
 
-      {/* RIGHT character */}
+      {/* RIGHT character — bottom-right, flipped to face left (inward) */}
       {right && (
         <img
           src={charImg(right.id, right.emotion)}
@@ -307,19 +308,20 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
             position: "absolute",
             bottom: 126,
             right: 0,
-            height: "calc(100vh - 174px)", // full available height
+            height: "calc(100vh - 174px)",
             width: "auto",
+            maxWidth: "48%",
             objectFit: "contain",
-            objectPosition: "bottom right",
-            transform: "scaleX(-1)", // face LEFT (inward)
-            transformOrigin: "right bottom",
+            objectPosition: "bottom",
+            transform: "scaleX(-1)",
+            transformOrigin: "center bottom",
             pointerEvents: "none",
             opacity: fading ? 0 : 1,
             transition: "opacity 0.14s ease",
             filter: charFilter(isRightSpeaking),
             zIndex: 10,
+            display: "block",
           }}
-          onError={e => { (e.target as HTMLImageElement).style.display="none" }}
         />
       )}
 
