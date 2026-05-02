@@ -273,7 +273,7 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       )}
 
-      {/* LEFT character — bottom-left, flipped to face right (inward) */}
+      {/* LEFT character — asset naturally faces RIGHT, so NO flip needed */}
       {left && (
         <img
           src={charImg(left.id, left.emotion)}
@@ -287,8 +287,6 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
             maxWidth: "48%",
             objectFit: "contain",
             objectPosition: "bottom",
-            transform: "scaleX(-1)",
-            transformOrigin: "center bottom",
             pointerEvents: "none",
             opacity: fading ? 0 : 1,
             transition: "opacity 0.14s ease",
@@ -299,7 +297,7 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         />
       )}
 
-      {/* RIGHT character — bottom-right, flipped to face left (inward) */}
+      {/* RIGHT character — asset faces RIGHT, flip to face LEFT (inward) */}
       {right && (
         <img
           src={charImg(right.id, right.emotion)}
@@ -314,7 +312,6 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
             objectFit: "contain",
             objectPosition: "bottom",
             transform: "scaleX(-1)",
-            transformOrigin: "center bottom",
             pointerEvents: "none",
             opacity: fading ? 0 : 1,
             transition: "opacity 0.14s ease",
