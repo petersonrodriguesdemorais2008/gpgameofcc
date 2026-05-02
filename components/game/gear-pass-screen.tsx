@@ -454,15 +454,51 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     return { currentPoints: 0, currentLevel: 0, hasPremium: false, claimedCommon: [], claimedPremium: [] }
   })
 
-  // Claimed missions (apenas IDs) persistidos no localStorage
-  const [claimedMissionIds, setClaimedMissionIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return []
+  // ── Helpers para reset de missões ───────────────────────────────────────────
+  const getDayKey  = () => new Date().toISOString().slice(0, 10)          // "YYYY-MM-DD"
+  const getWeekKey = () => {
+    const d = new Date()
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+    const mon = new Date(d); mon.setDate(diff)
+    return mon.toISOString().slice(0, 10)                                   // Monday of current week
+  }
+
+  // Claimed missions stored as { id: { claimedAt, dayKey, weekKey } }
+  const [claimedMissionIds, setClaimedMissionIds] = useState<Record<string, { dayKey: string; weekKey: string }>>(() => {
+    if (typeof window === "undefined") return {}
     try {
       const saved = localStorage.getItem(LS_MISSIONS_KEY)
-      if (saved) return JSON.parse(saved)
+      if (!saved) return {}
+      const parsed = JSON.parse(saved)
+      // Migrate old format (array) to new format (object)
+      if (Array.isArray(parsed)) {
+        const obj: Record<string, { dayKey: string; weekKey: string }> = {}
+        parsed.forEach((id: string) => {
+          obj[id] = { dayKey: getDayKey(), weekKey: getWeekKey() }
+        })
+        return obj
+      }
+      return parsed
     } catch {}
-    return []
+    return {}
   })
+
+  // Check if a mission is still validly claimed (not expired by reset)
+  const isMissionClaimed = (id: string, type: "daily" | "weekly" | "limited"): boolean => {
+    const entry = claimedMissionIds[id]
+    if (!entry) return false
+    if (type === "daily")   return entry.dayKey  === getDayKey()
+    if (type === "weekly")  return entry.weekKey === getWeekKey()
+    return true  // limited never resets
+  }
+
+  const claimMission = (id: string, type: "daily" | "weekly" | "limited") => {
+    setClaimedMissionIds(prev => ({
+      ...prev,
+      [id]: { dayKey: getDayKey(), weekKey: getWeekKey() },
+    }))
+  }
 
   // Missões lidas ao vivo do tracker + status de claimed
   const [missions, setMissions] = useState<PassMission[]>(() =>
@@ -477,12 +513,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     trackDailyLogin()
     const refresh = () => {
       const fresh = buildMissions()
-      setMissions(fresh.map(m => ({
-        ...m,
-        claimed: claimedMissionIds.includes(m.id),
-        // Se já foi claimed, mantém completed = true e progress = goal
-        ...(claimedMissionIds.includes(m.id) ? { completed: true, progress: m.goal } : {}),
-      })))
+      setMissions(fresh.map(m => {
+        const claimed = isMissionClaimed(m.id, m.type)
+        return {
+          ...m,
+          claimed,
+          ...(claimed ? { completed: true, progress: m.goal } : {}),
+        }
+      }))
     }
     refresh()
     const interval = setInterval(refresh, 3000)
@@ -502,7 +540,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     localStorage.setItem(LS_PASS_KEY, JSON.stringify(passData))
   }, [passData])
 
-  // Persist claimed mission IDs
+  // Persist claimed mission IDs with timestamps
   useEffect(() => {
     localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(claimedMissionIds))
   }, [claimedMissionIds])
@@ -532,17 +570,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const handleClaimMission = (missionId: string) => {
     const mission = missions.find(m => m.id === missionId)
     if (!mission || !mission.completed || mission.claimed) return
-    if (claimedMissionIds.includes(missionId)) return
+    if (isMissionClaimed(missionId, mission.type)) return
 
-    // Add points to pass
     const newPoints = passData.currentPoints + mission.points
     const newLevel = Math.min(MAX_LEVELS, Math.floor(newPoints / POINTS_PER_LEVEL))
-    setPassData(pd => ({
-      ...pd,
-      currentPoints: newPoints,
-      currentLevel: newLevel,
-    }))
-    setClaimedMissionIds(prev => [...prev, missionId])
+    setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
+    claimMission(missionId, mission.type)
     setClaimFeedback(`+${mission.points} pontos do Passe!`)
     setTimeout(() => setClaimFeedback(null), 2000)
   }
