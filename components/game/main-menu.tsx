@@ -32,7 +32,7 @@ interface MainMenuProps {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode, stamina, maxStamina } = useGame()
+  const { coins, setCoins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
   const [showPlayMenu, setShowPlayMenu] = useState(false)
   const [showGiftBox, setShowGiftBox] = useState(false)
@@ -335,6 +335,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               <span className="text-emerald-300 font-black text-sm tabular-nums">
                 {stamina}<span className="text-emerald-600 font-semibold text-xs">/{maxStamina}</span>
               </span>
+              {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+                <span className="text-[9px] font-bold tabular-nums" style={{color:"rgba(52,211,153,0.55)"}}>
+                  {String(Math.floor(staminaNextTickSeconds / 60)).padStart(1,"0")}:{String(staminaNextTickSeconds % 60).padStart(2,"0")}
+                </span>
+              )}
             </div>
             <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.07)"}}>
               <div
