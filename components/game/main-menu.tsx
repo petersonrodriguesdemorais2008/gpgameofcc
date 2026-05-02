@@ -32,7 +32,7 @@ interface MainMenuProps {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode } = useGame()
+  const { coins, setCoins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode, stamina, maxStamina } = useGame()
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
   const [showPlayMenu, setShowPlayMenu] = useState(false)
   const [showGiftBox, setShowGiftBox] = useState(false)
@@ -327,6 +327,31 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
         {/* Right: Resources */}
         <div className="flex items-center gap-2">
+          {/* Stamina bar */}
+          <div className="flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl border border-emerald-500/25 shadow-inner"
+            style={{background:"linear-gradient(135deg,rgba(3,20,10,0.90),rgba(5,30,15,0.85))"}}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-black text-emerald-400 tracking-widest uppercase">Stamina</span>
+              <span className="text-emerald-300 font-black text-sm tabular-nums">
+                {stamina}<span className="text-emerald-600 font-semibold text-xs">/{maxStamina}</span>
+              </span>
+            </div>
+            <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.07)"}}>
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, (stamina / maxStamina) * 100)}%`,
+                  background: stamina === maxStamina
+                    ? "linear-gradient(90deg,#10b981,#34d399)"
+                    : stamina < maxStamina * 0.3
+                    ? "linear-gradient(90deg,#ef4444,#f87171)"
+                    : "linear-gradient(90deg,#059669,#10b981)",
+                  boxShadow: "0 0 6px rgba(16,185,129,0.5)",
+                }}
+              />
+            </div>
+          </div>
+
           {/* Coins */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-400/20 shadow-inner"
             style={{background:"linear-gradient(135deg,rgba(20,14,3,0.90),rgba(30,20,5,0.85))"}}>
