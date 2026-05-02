@@ -385,7 +385,7 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
 // ─── Battle Intro ─────────────────────────────────────────────────────────────
 
 function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()=>void; onBack:()=>void }) {
-  const { stamina, maxStamina, spendStamina } = useGame()
+  const { stamina, maxStamina, spendStamina, staminaNextTickSeconds } = useGame()
   const isBoss = stage.type === "boss"
   const lp = isBoss ? 30 : 20
   const staminaCost = isBoss ? 10 : 5
@@ -477,7 +477,10 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
               background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)",
             }}>
               <p style={{ color:"#fca5a5", fontSize:11, margin:0, fontWeight:700 }}>
-                ⚡ Stamina insuficiente! Aguarde a recuperação (1 a cada 5 min).
+                ⚡ Stamina insuficiente!{" "}
+                {staminaNextTickSeconds > 0
+                  ? `Próximo ponto em ${String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:${String(staminaNextTickSeconds%60).padStart(2,"0")}`
+                  : "Aguarde a recuperação."}
               </p>
             </div>
           )}
@@ -611,7 +614,7 @@ const LS_KEY = "gpgame_story_progress"
 const LS_BATTLE_KEY = "gpgame_story_battle_pending"
 
 export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScreenProps) {
-  const { stamina, maxStamina } = useGame()
+  const { stamina, maxStamina, staminaNextTickSeconds } = useGame()
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try { const s = localStorage.getItem(LS_KEY); return s ? new Set(JSON.parse(s)) : new Set() } catch { return new Set() }
@@ -739,6 +742,11 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
                 <span style={{ fontWeight:900, fontSize:13, color:"#6ee7b7" }}>
                   {stamina}<span style={{ color:"#065f46", fontWeight:600, fontSize:11 }}>/{maxStamina}</span>
                 </span>
+                {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+                  <span style={{ fontSize:9, fontWeight:700, color:"rgba(52,211,153,0.55)", fontVariantNumeric:"tabular-nums" }}>
+                    {String(Math.floor(staminaNextTickSeconds / 60)).padStart(1,"0")}:{String(staminaNextTickSeconds % 60).padStart(2,"0")}
+                  </span>
+                )}
               </div>
               <div style={{ width:90, height:5, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
                 <div style={{
