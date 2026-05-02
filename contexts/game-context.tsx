@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import { createContext, useContext, useState, useRef, type ReactNode, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 
 export interface Card {
@@ -161,6 +161,11 @@ interface GameContextType {
   deleteAccountData: () => Promise<{ success: boolean; error?: string }>
   mobileMode: boolean
   setMobileMode: (enabled: boolean) => void
+  // Stamina
+  stamina: number
+  maxStamina: number
+  spendStamina: (amount: number) => boolean
+  refillStamina: () => void
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined)
@@ -1664,6 +1669,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   const [mobileMode, setMobileModeState] = useState(false)
 
+  // ── STAMINA ────────────────────────────────────────────────────────────────
+  const getMaxStamina = (level: number) => 19 + level  // lv1=20, lv2=21...
+
+  const [stamina, setStamina] = useState<number>(() => {
+    if (typeof window === "undefined") return 20
+    try {
+      const saved = localStorage.getItem("gpgame_stamina")
+      if (!saved) return 20
+      const { value, lastTick, level } = JSON.parse(saved)
+      const max = 19 + (level ?? 1)
+      const minutesPassed = Math.floor((Date.now() - lastTick) / 60000)
+      const recovered = Math.floor(minutesPassed / 5)  // 1 stamina per 5 min
+      return Math.min(max, (value ?? 20) + recovered)
+    } catch { return 20 }
+  })
+
   // Helper to get localStorage with fallback keys (old format vs new format)
   const getLS = (key: string): string | null => {
     // Try new format first (gear-perks-*), then old format (gearperks-*)
@@ -1876,6 +1897,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("spendablefp", spendableFP.toString())
   }, [spendableFP])
+
+  // Persist stamina on change
+  useEffect(() => {
+    try {
+      localStorage.setItem("gpgame_stamina", JSON.stringify({
+        value: stamina,
+        lastTick: Date.now(),
+        level: playerProfile.level,
+      }))
+    } catch {}
+  }, [stamina, playerProfile.level])
+
+  // Auto-recover 1 stamina every 5 minutes
+  useEffect(() => {
+    const max = getMaxStamina(playerProfile.level)
+    const interval = setInterval(() => {
+      setStamina(prev => prev < max ? prev + 1 : prev)
+    }, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [playerProfile.level])
+
+  // Fill stamina when leveling up
+  const prevLevelRef = useRef(playerProfile.level)
+  useEffect(() => {
+    if (playerProfile.level > prevLevelRef.current) {
+      setStamina(getMaxStamina(playerProfile.level))
+    }
+    prevLevelRef.current = playerProfile.level
+  }, [playerProfile.level])
+
+  const spendStamina = (amount: number): boolean => {
+    if (stamina < amount) return false
+    setStamina(prev => prev - amount)
+    return true
+  }
+
+  const refillStamina = () => setStamina(getMaxStamina(playerProfile.level))
 
   // useEffect(() => {
   //   localStorage.setItem("gearperks-accountAuth", JSON.stringify(accountAuth)) // Replaced by gear-perks-auth
@@ -2759,6 +2817,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
             localStorage.setItem("gear-perks-mobile-mode", enabled ? "true" : "false")
           }
         },
+        stamina,
+        maxStamina: getMaxStamina(playerProfile.level),
+        spendStamina,
+        refillStamina,
       }}
     >
       {children}
