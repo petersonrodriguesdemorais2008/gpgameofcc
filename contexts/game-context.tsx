@@ -166,6 +166,7 @@ interface GameContextType {
   maxStamina: number
   spendStamina: (amount: number) => boolean
   refillStamina: () => void
+  staminaNextTickSeconds: number  // seconds until next +1 stamina (0 when full)
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined)
@@ -1670,20 +1671,88 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [mobileMode, setMobileModeState] = useState(false)
 
   // ── STAMINA ────────────────────────────────────────────────────────────────
-  const getMaxStamina = (level: number) => 19 + level  // lv1=20, lv2=21...
+  const STAMINA_REGEN_SECS = 5 * 60  // 300 seconds per stamina point
+  const getMaxStamina = (level: number) => 19 + level
 
+  // Load stamina from localStorage on init, accounting for offline time
   const [stamina, setStamina] = useState<number>(() => {
     if (typeof window === "undefined") return 20
     try {
-      const saved = localStorage.getItem("gpgame_stamina")
+      const saved = localStorage.getItem("gpgame_stamina_v2")
       if (!saved) return 20
-      const { value, lastTick, level } = JSON.parse(saved)
+      const { value, lastSave, level } = JSON.parse(saved)
       const max = 19 + (level ?? 1)
-      const minutesPassed = Math.floor((Date.now() - lastTick) / 60000)
-      const recovered = Math.floor(minutesPassed / 5)  // 1 stamina per 5 min
+      const secsPassed = Math.floor((Date.now() - lastSave) / 1000)
+      const recovered = Math.floor(secsPassed / STAMINA_REGEN_SECS)
       return Math.min(max, (value ?? 20) + recovered)
     } catch { return 20 }
   })
+
+  // Seconds elapsed in the current regen cycle (0..299)
+  const [staminaCycleElapsed, setStaminaCycleElapsed] = useState<number>(() => {
+    if (typeof window === "undefined") return 0
+    try {
+      const saved = localStorage.getItem("gpgame_stamina_v2")
+      if (!saved) return 0
+      const { lastSave } = JSON.parse(saved)
+      const secsPassed = Math.floor((Date.now() - lastSave) / 1000)
+      return secsPassed % STAMINA_REGEN_SECS
+    } catch { return 0 }
+  })
+
+  // Derived: seconds until next +1 (0 = full stamina, no countdown needed)
+  const staminaNextTickSeconds = stamina >= getMaxStamina(playerProfile.level)
+    ? 0
+    : Math.max(0, STAMINA_REGEN_SECS - staminaCycleElapsed)
+
+  // Tick every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const max = getMaxStamina(playerProfile.level)
+      setStaminaCycleElapsed(prev => {
+        const next = prev + 1
+        if (next >= STAMINA_REGEN_SECS) {
+          // Add 1 stamina
+          setStamina(s => Math.min(max, s + 1))
+          return 0
+        }
+        return next
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [playerProfile.level])
+
+  // Persist stamina every time it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem("gpgame_stamina_v2", JSON.stringify({
+        value: stamina,
+        lastSave: Date.now(),
+        level: playerProfile.level,
+      }))
+    } catch {}
+  }, [stamina, playerProfile.level])
+
+  // Fill stamina on level up
+  const prevLevelRef = useRef(playerProfile.level)
+  useEffect(() => {
+    if (playerProfile.level > prevLevelRef.current) {
+      setStamina(getMaxStamina(playerProfile.level))
+      setStaminaCycleElapsed(0)
+    }
+    prevLevelRef.current = playerProfile.level
+  }, [playerProfile.level])
+
+  const spendStamina = (amount: number): boolean => {
+    if (stamina < amount) return false
+    setStamina(prev => prev - amount)
+    return true
+  }
+
+  const refillStamina = () => {
+    setStamina(getMaxStamina(playerProfile.level))
+    setStaminaCycleElapsed(0)
+  }
 
   // Helper to get localStorage with fallback keys (old format vs new format)
   const getLS = (key: string): string | null => {
@@ -1897,43 +1966,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("spendablefp", spendableFP.toString())
   }, [spendableFP])
-
-  // Persist stamina on change
-  useEffect(() => {
-    try {
-      localStorage.setItem("gpgame_stamina", JSON.stringify({
-        value: stamina,
-        lastTick: Date.now(),
-        level: playerProfile.level,
-      }))
-    } catch {}
-  }, [stamina, playerProfile.level])
-
-  // Auto-recover 1 stamina every 5 minutes
-  useEffect(() => {
-    const max = getMaxStamina(playerProfile.level)
-    const interval = setInterval(() => {
-      setStamina(prev => prev < max ? prev + 1 : prev)
-    }, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [playerProfile.level])
-
-  // Fill stamina when leveling up
-  const prevLevelRef = useRef(playerProfile.level)
-  useEffect(() => {
-    if (playerProfile.level > prevLevelRef.current) {
-      setStamina(getMaxStamina(playerProfile.level))
-    }
-    prevLevelRef.current = playerProfile.level
-  }, [playerProfile.level])
-
-  const spendStamina = (amount: number): boolean => {
-    if (stamina < amount) return false
-    setStamina(prev => prev - amount)
-    return true
-  }
-
-  const refillStamina = () => setStamina(getMaxStamina(playerProfile.level))
 
   // useEffect(() => {
   //   localStorage.setItem("gearperks-accountAuth", JSON.stringify(accountAuth)) // Replaced by gear-perks-auth
@@ -2821,6 +2853,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         maxStamina: getMaxStamina(playerProfile.level),
         spendStamina,
         refillStamina,
+        staminaNextTickSeconds,
       }}
     >
       {children}
