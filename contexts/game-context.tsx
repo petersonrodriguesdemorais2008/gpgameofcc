@@ -1671,10 +1671,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [mobileMode, setMobileModeState] = useState(false)
 
   // ── STAMINA ────────────────────────────────────────────────────────────────
-  const STAMINA_REGEN_SECS = 5 * 60  // 300 seconds per stamina point
+  const STAMINA_REGEN_SECS = 5 * 60
   const getMaxStamina = (level: number) => 19 + level
 
-  // Load stamina from localStorage on init, accounting for offline time
   const [stamina, setStamina] = useState<number>(() => {
     if (typeof window === "undefined") return 20
     try {
@@ -1688,7 +1687,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } catch { return 20 }
   })
 
-  // Seconds elapsed in the current regen cycle (0..299)
   const [staminaCycleElapsed, setStaminaCycleElapsed] = useState<number>(() => {
     if (typeof window === "undefined") return 0
     try {
@@ -1700,19 +1698,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } catch { return 0 }
   })
 
-  // Derived: seconds until next +1 (0 = full stamina, no countdown needed)
-  const staminaNextTickSeconds = stamina >= getMaxStamina(playerProfile.level)
-    ? 0
-    : Math.max(0, STAMINA_REGEN_SECS - staminaCycleElapsed)
+  // prevLevelRef MUST be declared before any useEffect (rules of hooks)
+  const prevLevelRef = useRef(playerProfile.level)
 
-  // Tick every second
+  // Tick every second for stamina regen
   useEffect(() => {
     const interval = setInterval(() => {
       const max = getMaxStamina(playerProfile.level)
       setStaminaCycleElapsed(prev => {
         const next = prev + 1
         if (next >= STAMINA_REGEN_SECS) {
-          // Add 1 stamina
           setStamina(s => Math.min(max, s + 1))
           return 0
         }
@@ -1722,7 +1717,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval)
   }, [playerProfile.level])
 
-  // Persist stamina every time it changes
+  // Persist stamina
   useEffect(() => {
     try {
       localStorage.setItem("gpgame_stamina_v2", JSON.stringify({
@@ -1734,7 +1729,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [stamina, playerProfile.level])
 
   // Fill stamina on level up
-  const prevLevelRef = useRef(playerProfile.level)
   useEffect(() => {
     if (playerProfile.level > prevLevelRef.current) {
       setStamina(getMaxStamina(playerProfile.level))
@@ -1753,6 +1747,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setStamina(getMaxStamina(playerProfile.level))
     setStaminaCycleElapsed(0)
   }
+
+  // Derived: seconds until next +1 stamina
+  const staminaNextTickSeconds = stamina >= getMaxStamina(playerProfile.level)
+    ? 0
+    : Math.max(0, STAMINA_REGEN_SECS - staminaCycleElapsed)
 
   // Helper to get localStorage with fallback keys (old format vs new format)
   const getLS = (key: string): string | null => {
