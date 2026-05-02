@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { ArrowLeft, BookOpen, Lock, ChevronRight, SkipForward } from "lucide-react"
+import { useGame } from "@/contexts/game-context"
 
 type Emotion = "normal" | "happy" | "rage"
 type CharacterId = "fehnon" | "calem" | "arthur" | "guard1" | "guard2"
@@ -526,6 +527,7 @@ const LS_KEY = "gpgame_story_progress"
 const LS_BATTLE_KEY = "gpgame_story_battle_pending"
 
 export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScreenProps) {
+  const { stamina, maxStamina } = useGame()
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try { const s = localStorage.getItem(LS_KEY); return s ? new Set(JSON.parse(s)) : new Set() } catch { return new Set() }
@@ -641,6 +643,32 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
                 <h1 style={{ fontWeight:900, fontSize:18, margin:0 }}>Campanha</h1>
               </div>
               <p style={{ color:"#475569", fontSize:11, margin:0 }}>Gear Perks — A Lenda da Estrela</p>
+            </div>
+            {/* Stamina */}
+            <div style={{
+              display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3,
+              background:"rgba(3,20,10,0.80)", border:"1px solid rgba(16,185,129,0.25)",
+              borderRadius:10, padding:"6px 12px",
+            }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ fontSize:9, fontWeight:800, color:"#34d399", letterSpacing:"0.08em", textTransform:"uppercase" }}>Stamina</span>
+                <span style={{ fontWeight:900, fontSize:13, color:"#6ee7b7" }}>
+                  {stamina}<span style={{ color:"#065f46", fontWeight:600, fontSize:11 }}>/{maxStamina}</span>
+                </span>
+              </div>
+              <div style={{ width:90, height:5, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
+                <div style={{
+                  height:"100%", borderRadius:99,
+                  width:`${Math.min(100,(stamina/maxStamina)*100)}%`,
+                  background: stamina === maxStamina
+                    ? "linear-gradient(90deg,#10b981,#34d399)"
+                    : stamina < maxStamina * 0.3
+                    ? "linear-gradient(90deg,#ef4444,#f87171)"
+                    : "linear-gradient(90deg,#059669,#10b981)",
+                  boxShadow:"0 0 6px rgba(16,185,129,0.5)",
+                  transition:"width 0.5s",
+                }}/>
+              </div>
             </div>
           </div>
         </div>
