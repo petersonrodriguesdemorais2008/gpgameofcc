@@ -385,8 +385,19 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
 // ─── Battle Intro ─────────────────────────────────────────────────────────────
 
 function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()=>void; onBack:()=>void }) {
+  const { stamina, maxStamina, spendStamina } = useGame()
   const isBoss = stage.type === "boss"
   const lp = isBoss ? 30 : 20
+  const staminaCost = isBoss ? 10 : 5
+  const hasEnoughStamina = stamina >= staminaCost
+  const staminaPct = Math.min(100, (stamina / maxStamina) * 100)
+
+  const handleStart = () => {
+    if (!hasEnoughStamina) return
+    spendStamina(staminaCost)
+    onStart()
+  }
+
   return (
     <div style={{ position:"fixed", inset:0, zIndex:200,
       background:"linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
@@ -405,8 +416,10 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
           {isBoss ? "Boss Battle" : "Batalha"}
         </div>
         <h1 style={{ fontWeight:900, fontSize:22, margin:"8px 0 16px" }}>{stage.title}</h1>
+
+        {/* Battle info */}
         <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
-          borderRadius:14, padding:"14px 20px", marginBottom:24, maxWidth:300 }}>
+          borderRadius:14, padding:"14px 20px", marginBottom:16, maxWidth:300 }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
             <span style={{ color:"#64748b", fontSize:12 }}>LP de partida</span>
             <span style={{ color:isBoss?"#f87171":"#60a5fa", fontWeight:900, fontSize:14 }}>{lp} LP</span>
@@ -418,15 +431,86 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
             </span>
           </div>
         </div>
+
+        {/* Stamina cost box */}
+        <div style={{
+          background: hasEnoughStamina ? "rgba(3,20,10,0.80)" : "rgba(40,0,0,0.60)",
+          border: `1px solid ${hasEnoughStamina ? "rgba(16,185,129,0.30)" : "rgba(239,68,68,0.40)"}`,
+          borderRadius:14, padding:"14px 20px", marginBottom:24, maxWidth:300,
+        }}>
+          {/* Stamina cost */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <span style={{ color:"#64748b", fontSize:12 }}>Custo de Stamina</span>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{
+                color: hasEnoughStamina ? "#34d399" : "#f87171",
+                fontWeight:900, fontSize:16,
+              }}>-{staminaCost}</span>
+              <span style={{ color:"#475569", fontSize:11 }}>STAMINA</span>
+            </div>
+          </div>
+
+          {/* Current stamina bar */}
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+            <span style={{ color:"#64748b", fontSize:11 }}>Sua Stamina</span>
+            <span style={{
+              color: hasEnoughStamina ? "#6ee7b7" : "#f87171",
+              fontWeight:700, fontSize:12,
+            }}>{stamina}/{maxStamina}</span>
+          </div>
+          <div style={{ height:6, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
+            <div style={{
+              height:"100%", borderRadius:99,
+              width:`${staminaPct}%`,
+              background: hasEnoughStamina
+                ? "linear-gradient(90deg,#059669,#10b981)"
+                : "linear-gradient(90deg,#dc2626,#ef4444)",
+              boxShadow: hasEnoughStamina ? "0 0 6px rgba(16,185,129,0.5)" : "0 0 6px rgba(239,68,68,0.5)",
+              transition:"width 0.5s",
+            }}/>
+          </div>
+
+          {/* Not enough stamina warning */}
+          {!hasEnoughStamina && (
+            <div style={{
+              marginTop:10, padding:"8px 12px", borderRadius:8,
+              background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)",
+            }}>
+              <p style={{ color:"#fca5a5", fontSize:11, margin:0, fontWeight:700 }}>
+                ⚡ Stamina insuficiente! Aguarde a recuperação (1 a cada 5 min).
+              </p>
+            </div>
+          )}
+        </div>
+
         <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
           <button onClick={onBack} style={{ padding:"11px 22px", borderRadius:11,
             background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)",
             color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Voltar</button>
-          <button onClick={onStart} style={{ padding:"11px 28px", borderRadius:11, border:"none",
-            background: isBoss?"linear-gradient(135deg,#7f1d1d,#dc2626)":"linear-gradient(135deg,#1e3a8a,#3b82f6)",
-            color:"#fff", fontWeight:900, fontSize:14, cursor:"pointer",
-            boxShadow: isBoss?"0 6px 20px rgba(220,38,38,0.35)":"0 6px 20px rgba(59,130,246,0.35)" }}>
-            {isBoss ? "⚔️ Batalha Final!" : "⚔️ Iniciar Batalha!"}
+          <button
+            onClick={handleStart}
+            disabled={!hasEnoughStamina}
+            style={{ padding:"11px 28px", borderRadius:11, border:"none",
+              background: !hasEnoughStamina
+                ? "rgba(255,255,255,0.06)"
+                : isBoss
+                ? "linear-gradient(135deg,#7f1d1d,#dc2626)"
+                : "linear-gradient(135deg,#1e3a8a,#3b82f6)",
+              color: hasEnoughStamina ? "#fff" : "#475569",
+              fontWeight:900, fontSize:14,
+              cursor: hasEnoughStamina ? "pointer" : "not-allowed",
+              boxShadow: !hasEnoughStamina
+                ? "none"
+                : isBoss
+                ? "0 6px 20px rgba(220,38,38,0.35)"
+                : "0 6px 20px rgba(59,130,246,0.35)",
+              transition:"all 0.2s",
+            }}>
+            {!hasEnoughStamina
+              ? "⚡ Sem Stamina"
+              : isBoss
+              ? "⚔️ Batalha Final!"
+              : "⚔️ Iniciar Batalha!"}
           </button>
         </div>
       </div>
