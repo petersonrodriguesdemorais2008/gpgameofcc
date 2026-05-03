@@ -565,6 +565,23 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     ? missions
     : missions.filter(m => m.type === missionFilter)
 
+  const claimableCount = filteredMissions.filter(m => m.completed && !m.claimed).length
+
+  const handleClaimAll = () => {
+    const claimable = filteredMissions.filter(m => m.completed && !m.claimed)
+    if (claimable.length === 0) return
+    let totalPoints = 0
+    claimable.forEach(m => {
+      claimMission(m.id, m.type)
+      totalPoints += m.points
+    })
+    const newPoints = passData.currentPoints + totalPoints
+    const newLevel = Math.min(MAX_LEVELS, Math.floor(newPoints / POINTS_PER_LEVEL))
+    setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
+    setClaimFeedback(`+${totalPoints} pontos do Passe!`)
+    setTimeout(() => setClaimFeedback(null), 2500)
+  }
+
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleClaimMission = (missionId: string) => {
@@ -1030,8 +1047,8 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {/* ── MISSIONS TAB ── */}
           {activeTab === "missions" && (
             <div style={{ padding: "16px 16px 0" }}>
-              {/* Filter pills */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto" }}>
+              {/* Filter pills + Coletar Tudo */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", alignItems: "center" }}>
                 {(["all", "daily", "weekly", "limited"] as const).map(f => (
                   <button key={f} onClick={() => setMissionFilter(f)} style={{
                     padding: "6px 14px", borderRadius: 20, border: "none",
@@ -1046,6 +1063,26 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     {f === "all" ? "Todas" : f === "daily" ? "Diárias" : f === "weekly" ? "Semanais" : "Limitadas"}
                   </button>
                 ))}
+                {/* Spacer */}
+                <div style={{ flex: 1 }} />
+                {/* Coletar Tudo */}
+                <button
+                  onClick={handleClaimAll}
+                  disabled={claimableCount === 0}
+                  style={{
+                    padding: "6px 14px", borderRadius: 20, border: "none",
+                    cursor: claimableCount > 0 ? "pointer" : "not-allowed",
+                    fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                    background: claimableCount > 0
+                      ? "linear-gradient(135deg,#16a34a,#22c55e)"
+                      : "rgba(255,255,255,0.04)",
+                    color: claimableCount > 0 ? "#fff" : "#334155",
+                    boxShadow: claimableCount > 0 ? "0 2px 12px rgba(34,197,94,0.35)" : "none",
+                    opacity: claimableCount > 0 ? 1 : 0.5,
+                  }}>
+                  ✓ Coletar Tudo{claimableCount > 0 ? ` (${claimableCount})` : ""}
+                </button>
               </div>
 
               {/* Info banner */}
