@@ -423,6 +423,20 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
 
   const filteredMissions = allMissions.filter(m => m.type === activeTab)
 
+  const claimableAll = filteredMissions.filter(m => m.completed && !claimedMissions.has(m.id))
+
+  const handleClaimAll = useCallback(() => {
+    if (claimableAll.length === 0) return
+    let totalCoins = 0
+    const newClaimed = new Set(claimedMissions)
+    claimableAll.forEach(m => {
+      newClaimed.add(m.id)
+      if (m.reward.coins) totalCoins += m.reward.coins
+    })
+    setClaimedMissions(newClaimed)
+    if (totalCoins > 0 && setCoins) setCoins(coins + totalCoins)
+  }, [claimableAll, claimedMissions, coins, setCoins])
+
   const stats = useMemo(() => {
     const count = (type: string) => ({
       total:     allMissions.filter(m => m.type === type).length,
@@ -562,10 +576,29 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
               })}
             </div>
 
-            {/* ── Timer Banner ── */}
-            <div className="flex items-center justify-between bg-slate-900/50 border border-white/[0.07] rounded-xl px-4 py-2.5">
-              <p className="text-slate-500 text-[11px] font-medium hidden sm:block">Tempo restante</p>
-              <CountdownTimer targetMs={activeTabData.target} label={activeTabData.timerLabel} color={activeTabData.color} />
+            {/* ── Timer Banner + Coletar Tudo ── */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between bg-slate-900/50 border border-white/[0.07] rounded-xl px-4 py-2.5 flex-1">
+                <p className="text-slate-500 text-[11px] font-medium hidden sm:block">Tempo restante</p>
+                <CountdownTimer targetMs={activeTabData.target} label={activeTabData.timerLabel} color={activeTabData.color} />
+              </div>
+              <button
+                onClick={handleClaimAll}
+                disabled={claimableAll.length === 0}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all whitespace-nowrap"
+                style={{
+                  background: claimableAll.length > 0
+                    ? "linear-gradient(135deg,#16a34a,#22c55e)"
+                    : "rgba(255,255,255,0.04)",
+                  color: claimableAll.length > 0 ? "#fff" : "#334155",
+                  boxShadow: claimableAll.length > 0 ? "0 2px 12px rgba(34,197,94,0.30)" : "none",
+                  border: "none",
+                  cursor: claimableAll.length > 0 ? "pointer" : "not-allowed",
+                  opacity: claimableAll.length > 0 ? 1 : 0.5,
+                }}
+              >
+                ✓ Coletar Tudo{claimableAll.length > 0 ? ` (${claimableAll.length})` : ""}
+              </button>
             </div>
 
             {/* ── Mission List ── */}
