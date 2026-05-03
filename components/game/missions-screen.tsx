@@ -395,20 +395,7 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     ]
   }, [trackedProgress, totalCards])
 
-  const handleClaimReward = useCallback((id: string) => {
-    if (claimingId !== null) return
-    if (claimedMissions.has(id)) return
-    const mission = allMissions.find(m => m.id === id)
-    if (!mission?.completed) return
-    setClaimingId(id)
-    setTimeout(() => {
-      if (mission.reward.coins && setCoins) setCoins(coins + mission.reward.coins)
-      setClaimedMissions(prev => new Set([...prev, id]))
-      setClaimingId(null)
-    }, 800)
-  }, [allMissions, claimedMissions, claimingId, setCoins, coins])
-
-  // ── Bônus de Conclusão ───────────────────────────────────────────────────────
+  // ── Bônus de Conclusão — must be declared BEFORE any useCallback ─────────────
   const [bonusClaimed, setBonusClaimed] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try {
@@ -421,11 +408,18 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     try { localStorage.setItem("claimed_bonus", JSON.stringify([...bonusClaimed])) } catch {}
   }, [bonusClaimed])
 
-  const handleClaimBonus = useCallback(() => {
-    if (bonusClaimed.has(activeTab)) return
-    setCoins(coins + bonusCoins)
-    setBonusClaimed(prev => new Set([...prev, activeTab]))
-  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])
+  const handleClaimReward = useCallback((id: string) => {
+    if (claimingId !== null) return
+    if (claimedMissions.has(id)) return
+    const mission = allMissions.find(m => m.id === id)
+    if (!mission?.completed) return
+    setClaimingId(id)
+    setTimeout(() => {
+      if (mission.reward.coins && setCoins) setCoins(coins + mission.reward.coins)
+      setClaimedMissions(prev => new Set([...prev, id]))
+      setClaimingId(null)
+    }, 800)
+  }, [allMissions, claimedMissions, claimingId, setCoins, coins])
 
   const filteredMissions = allMissions.filter(m => m.type === activeTab)
 
@@ -454,8 +448,14 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const activeColors = tabColors[activeTabData.color]
 
   const allComplete = filteredMissions.length > 0 && filteredMissions.every(m => claimedMissions.has(m.id))
-  const bonusAlreadyClaimed = bonusClaimed.has(activeTab)
   const bonusCoins  = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
+  const bonusAlreadyClaimed = bonusClaimed.has(activeTab)
+
+  const handleClaimBonus = useCallback(() => {
+    if (bonusClaimed.has(activeTab)) return
+    setCoins(coins + bonusCoins)
+    setBonusClaimed(prev => new Set([...prev, activeTab]))
+  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#070C18] text-slate-200">
