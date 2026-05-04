@@ -495,6 +495,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
             {/* Missões */}
             <NavBtn icon={<Target className="w-5 h-5" />} label="Missões" onClick={() => onNavigate("missions")} color="amber" />
+          <NavBtn icon={<Users className="w-5 h-5" />} label="Guilda" onClick={() => onNavigate("guild")} color="violet" />
           </div>
         ) : (
           /* Play sub-menu */
