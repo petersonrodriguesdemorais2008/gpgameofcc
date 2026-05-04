@@ -17,6 +17,7 @@ import ProfileScreen from "./profile-screen"
 import MissionsScreen from "./missions-screen"
 import GearPassScreen from "./gear-pass-screen"
 import StoryModeScreen from "./story-mode-screen"
+import GuildScreen from "./guild-screen"
 import LoadingScreen from "./loading-screen"
 import { trackDailyLogin } from "@/lib/mission-tracker"
 import DraftDuelScreen from "./draft-duel-screen"
@@ -43,6 +44,7 @@ export type GameScreen =
   | "missions"
   | "gear-pass"
   | "story"
+  | "guild"
 
 export function GameWrapper() {
   const { playerProfile, mobileMode } = useGame()
@@ -186,6 +188,7 @@ export function GameWrapper() {
       {currentScreen === "profile" && <ProfileScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "missions" && <MissionsScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "gear-pass" && <GearPassScreen onBack={() => navigateTo("menu")} />}
+      {currentScreen === "guild" && <GuildScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "story" && (
         <StoryModeScreen
           onBack={() => navigateTo("menu")}
