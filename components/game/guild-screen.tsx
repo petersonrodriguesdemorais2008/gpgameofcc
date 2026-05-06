@@ -5,9 +5,10 @@ import {
   ArrowLeft, Search, Plus, Crown, Shield, Users, Star,
   MessageCircle, Send, Trophy, Swords, Gift, ChevronRight,
   Settings, LogOut, Copy, Check, X, Zap, Lock, Unlock,
-  TrendingUp, Heart, Bell,
+  TrendingUp, Heart, Bell, Sword,
 } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
+import type { Deck } from "@/contexts/game-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,7 +22,7 @@ interface GuildMember {
   level: number
   avatarUrl?: string
   role: GuildRole
-  lastOnline: number  // timestamp
+  lastOnline: number
   weeklyContrib: number
 }
 
@@ -37,7 +38,7 @@ interface ChatMessage {
 interface Guild {
   id: string
   name: string
-  icon: string
+  icon: string        // emoji OR image path (starts with "/" or "http")
   slogan: string
   level: number
   xp: number
@@ -55,16 +56,29 @@ interface Guild {
 
 interface GuildScreenProps {
   onBack: () => void
+  /** Called when the player confirms starting the boss duel */
+  onStartBossDuel?: (deckId: string) => void
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GUILD_ICONS = [
+const GUILD_ICONS_EMOJI = [
   "⚔️","🛡️","🏆","🌟","🔥","💎","🦅","🐉","🌙","⚡",
   "🎯","🗡️","🔮","👑","🌊","🏰","🎭","🦁","🧿","💫",
 ]
 
-const CREATE_COST = 300  // gacha coins
+// Image icons the user can use (put your actual paths here)
+const GUILD_ICONS_IMG: string[] = [
+  "/images/icons/fehnon-icon.png",
+  "/images/icons/hrotti-icon.png",
+  "/images/icons/jaden-icon.png",
+  "/images/icons/morgana-icon.png",
+  "/images/icons/tsubasa-icon.png",
+  "/images/icons/uller-icon.png",
+  "/images/1b.png",  // the fire bird image the user sent
+]
+
+const CREATE_COST = 300
 
 const LEVEL_MAX_MEMBERS: Record<number, number> = {
   1:15, 2:17, 3:19, 4:20, 5:22, 6:23, 7:25, 8:27, 9:28, 10:30,
@@ -72,7 +86,8 @@ const LEVEL_MAX_MEMBERS: Record<number, number> = {
 
 const XP_PER_LEVEL = 1000
 
-const LS_KEY = "gpgame_guild_v1"
+const LS_KEY = "gpgame_guild_v2"
+const LS_INVITE_KEY = "gpgame_pending_invite"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,55 +99,33 @@ function timeAgo(ms: number): string {
   return `${Math.floor(diff/86400000)}d`
 }
 
-function formatTime(ms: number): string {
-  const s = Math.floor(ms / 1000) % 60
-  const m = Math.floor(ms / 60000) % 60
-  const h = Math.floor(ms / 3600000)
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${s}s`
-  return `${s}s`
-}
-
 function roleLabel(role: GuildRole) {
   if (role === "leader")  return { text: "Líder",    color: "#fbbf24", bg: "rgba(251,191,36,0.15)" }
   if (role === "officer") return { text: "Oficial",  color: "#60a5fa", bg: "rgba(96,165,250,0.15)" }
   return                         { text: "Membro",   color: "#94a3b8", bg: "rgba(148,163,184,0.10)" }
 }
 
-// ─── Mock recommended guilds ──────────────────────────────────────────────────
-
-const RECOMMENDED_GUILDS: Omit<Guild, "chat" | "guildCoins" | "totalDamageToday" | "createdAt">[] = [
-  {
-    id: "g001", name: "Cavaleiros de Camelot", icon: "🏆", slogan: "Honra acima de tudo",
-    level: 7, xp: 680, xpToNext: 1000, joinMode: "open", minLevel: 5,
-    description: "Guilda focada em eventos e guerras. Ativos diariamente!",
-    maxMembers: 25, members: Array.from({length:18},(_,i)=>({
-      id:`m${i}`, name:`Jogador${i+1}`, title:"Guerreiro", level:10+i,
-      role:(i===0?"leader":i<3?"officer":"member") as GuildRole,
-      lastOnline: Date.now()-i*3600000, weeklyContrib:100-i*5, avatarUrl:undefined,
-    })),
-  },
-  {
-    id: "g002", name: "Dragões do Abismo", icon: "🐉", slogan: "Poder sem limites",
-    level: 10, xp: 920, xpToNext: 1000, joinMode: "approval", minLevel: 15,
-    description: "Guilda tryhard. Exigimos atividade diária e participação em guerras.",
-    maxMembers: 30, members: Array.from({length:28},(_,i)=>({
-      id:`m${i}`, name:`Elite${i+1}`, title:"Veterano", level:20+i,
-      role:(i===0?"leader":i<4?"officer":"member") as GuildRole,
-      lastOnline: Date.now()-i*1800000, weeklyContrib:200-i*7, avatarUrl:undefined,
-    })),
-  },
-  {
-    id: "g003", name: "Aventureiros Casuais", icon: "🌟", slogan: "Diversão garantida",
-    level: 3, xp: 400, xpToNext: 1000, joinMode: "open", minLevel: 1,
-    description: "Sem pressão! Venha jogar no seu ritmo.",
-    maxMembers: 19, members: Array.from({length:9},(_,i)=>({
-      id:`m${i}`, name:`Casual${i+1}`, title:"Iniciante", level:3+i,
-      role:(i===0?"leader":"member") as GuildRole,
-      lastOnline: Date.now()-i*7200000, weeklyContrib:50-i*5, avatarUrl:undefined,
-    })),
-  },
-]
+/** Renders either an emoji icon or an <img> icon */
+function GuildIcon({ icon, size = 48, fontSize = 26, borderRadius = 12 }: {
+  icon: string; size?: number; fontSize?: number; borderRadius?: number
+}) {
+  const isImage = icon.startsWith("/") || icon.startsWith("http")
+  return (
+    <div style={{
+      width: size, height: size, borderRadius,
+      background: "rgba(139,92,246,0.15)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize, flexShrink: 0,
+      border: "1px solid rgba(139,92,246,0.25)",
+      overflow: "hidden",
+    }}>
+      {isImage
+        ? <img src={icon} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : icon
+      }
+    </div>
+  )
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -152,7 +145,6 @@ function MemberRow({ member, myRole, onKick, onPromote }: {
       background:"rgba(255,255,255,0.03)", borderRadius:12,
       padding:"10px 14px", border:"1px solid rgba(255,255,255,0.06)",
     }}>
-      {/* Avatar */}
       <div style={{ position:"relative", flexShrink:0 }}>
         <div style={{
           width:38, height:38, borderRadius:10,
@@ -174,7 +166,6 @@ function MemberRow({ member, myRole, onKick, onPromote }: {
         }}/>
       </div>
 
-      {/* Info */}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <span style={{ color:"#e2e8f0", fontWeight:800, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
@@ -195,7 +186,6 @@ function MemberRow({ member, myRole, onKick, onPromote }: {
         </div>
       </div>
 
-      {/* Actions */}
       {canManage && (
         <div style={{ display:"flex", gap:6 }}>
           {myRole === "leader" && onPromote && (
@@ -218,103 +208,69 @@ function MemberRow({ member, myRole, onKick, onPromote }: {
   )
 }
 
-// ─── BOSS BATTLE Modal ────────────────────────────────────────────────────────
+// ─── DECK SELECTOR MODAL (for boss duel) ────────────────────────────────────
 
-function BossBattleModal({ onClose }: { onClose: () => void }) {
-  const [timeLeft, setTimeLeft] = useState(100000)
-  const [totalDmg, setTotalDmg] = useState(Math.floor(Math.random()*8000)+2000)
-  const [myDmg, setMyDmg] = useState(Math.floor(Math.random()*1500)+500)
-  const [attacking, setAttacking] = useState(false)
-
-  useEffect(() => {
-    const t = setInterval(() => setTimeLeft(p => Math.max(0, p - 1000)), 1000)
-    return () => clearInterval(t)
-  }, [])
-
-  const attack = () => {
-    if (attacking || timeLeft <= 0) return
-    setAttacking(true)
-    const dmg = Math.floor(Math.random()*300)+100
-    setMyDmg(p => p + dmg)
-    setTotalDmg(p => p + dmg)
-    setTimeout(() => setAttacking(false), 600)
-  }
-
-  const bossHpPct = Math.max(0, 100 - (totalDmg / 500))
-
+function DeckSelectorModal({
+  decks,
+  onSelect,
+  onClose,
+}: {
+  decks: Deck[]
+  onSelect: (deck: Deck) => void
+  onClose: () => void
+}) {
   return (
     <div style={{
-      position:"fixed", inset:0, zIndex:300,
-      background:"rgba(0,0,0,0.90)", backdropFilter:"blur(16px)",
+      position:"fixed", inset:0, zIndex:400,
+      background:"rgba(0,0,0,0.92)", backdropFilter:"blur(18px)",
       display:"flex", alignItems:"center", justifyContent:"center", padding:20,
     }}>
       <div style={{
         background:"linear-gradient(160deg,#0a0614,#0d0b20)",
-        border:"1px solid rgba(220,38,38,0.35)", borderRadius:24,
-        padding:"24px 20px", maxWidth:400, width:"100%",
+        border:"1px solid rgba(220,38,38,0.40)", borderRadius:24,
+        padding:"24px 20px", maxWidth:420, width:"100%",
         fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9",
+        maxHeight:"85vh", overflowY:"auto",
       }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <div>
-            <h2 style={{ fontWeight:900, fontSize:18, margin:0, color:"#f87171" }}>💀 Chefão da Guilda</h2>
-            <p style={{ color:"#475569", fontSize:12, margin:0 }}>Cooperativo — Dano total conta!</p>
-          </div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+          <h2 style={{ fontWeight:900, fontSize:18, margin:0, color:"#f87171" }}>💀 Chefão da Guilda</h2>
           <button onClick={onClose} style={{ background:"rgba(255,255,255,0.06)", border:"none", borderRadius:10, width:32, height:32, cursor:"pointer", color:"#64748b", fontSize:18 }}>✕</button>
         </div>
+        <p style={{ color:"#64748b", fontSize:13, marginBottom:20 }}>
+          Este é um duelo difícil contra o Chefão. Escolha seu deck para batalhar!
+        </p>
 
-        {/* Timer */}
-        <div style={{ textAlign:"center", marginBottom:16 }}>
-          <div style={{ fontSize:32, fontWeight:900, color: timeLeft < 20000 ? "#f87171" : "#e2e8f0", fontVariantNumeric:"tabular-nums" }}>
-            {Math.floor(timeLeft/1000)}s
+        {decks.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"30px 0", color:"#475569" }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🗃️</div>
+            <p style={{ fontWeight:700 }}>Nenhum deck criado ainda.</p>
+            <p style={{ fontSize:12, marginTop:4 }}>Crie um deck no Construtor de Decks primeiro!</p>
           </div>
-        </div>
-
-        {/* Boss HP */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-            <span style={{ fontSize:11, color:"#f87171", fontWeight:700 }}>👹 Mefisto</span>
-            <span style={{ fontSize:11, color:"#94a3b8" }}>HP: ∞</span>
-          </div>
-          <div style={{ height:12, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
-            <div style={{ height:"100%", width:`${bossHpPct}%`, borderRadius:99, background:"linear-gradient(90deg,#dc2626,#ef4444)", transition:"width 0.3s" }}/>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-          {[
-            { label:"Dano Total", value: totalDmg.toLocaleString(), color:"#f87171" },
-            { label:"Meu Dano", value: myDmg.toLocaleString(), color:"#06b6d4" },
-          ].map(s => (
-            <div key={s.label} style={{ background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"10px 12px", textAlign:"center" }}>
-              <div style={{ fontSize:9, color:"#475569", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:4 }}>{s.label}</div>
-              <div style={{ fontSize:20, fontWeight:900, color:s.color }}>{s.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Attack button */}
-        <button
-          onClick={attack}
-          disabled={timeLeft <= 0 || attacking}
-          style={{
-            width:"100%", padding:"16px 0", borderRadius:14, border:"none",
-            background: timeLeft <= 0 ? "rgba(255,255,255,0.05)"
-              : attacking ? "linear-gradient(135deg,#7f1d1d,#991b1b)"
-              : "linear-gradient(135deg,#dc2626,#ef4444)",
-            color: timeLeft <= 0 ? "#475569" : "#fff",
-            fontWeight:900, fontSize:16, cursor: timeLeft <= 0 ? "not-allowed" : "pointer",
-            boxShadow: timeLeft > 0 && !attacking ? "0 4px 20px rgba(220,38,38,0.40)" : "none",
-            transform: attacking ? "scale(0.97)" : "scale(1)",
-            transition:"all 0.1s",
-          }}>
-          {timeLeft <= 0 ? "⏱️ Tempo esgotado!" : attacking ? "💥 Atacando..." : "⚔️ ATACAR!"}
-        </button>
-
-        {timeLeft <= 0 && (
-          <div style={{ marginTop:14, background:"rgba(251,191,36,0.10)", border:"1px solid rgba(251,191,36,0.25)", borderRadius:12, padding:"12px 16px", textAlign:"center" }}>
-            <div style={{ fontWeight:900, color:"#fbbf24", fontSize:14 }}>🏆 Batalha encerrada!</div>
-            <div style={{ color:"#78716c", fontSize:12, marginTop:4 }}>Recompensa: +{Math.floor(myDmg/100)} 🪙 Moedas da Guilda</div>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {decks.map(deck => (
+              <button
+                key={deck.id}
+                onClick={() => onSelect(deck)}
+                style={{
+                  background:"rgba(220,38,38,0.07)", border:"1px solid rgba(220,38,38,0.22)",
+                  borderRadius:14, padding:"14px 16px", cursor:"pointer",
+                  textAlign:"left", transition:"all 0.2s",
+                  display:"flex", alignItems:"center", gap:12,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(220,38,38,0.16)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(220,38,38,0.07)")}
+              >
+                <div style={{ fontSize:30 }}>⚔️</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:900, fontSize:14, color:"#f1f5f9" }}>{deck.name}</div>
+                  <div style={{ fontSize:11, color:"#64748b", marginTop:2 }}>
+                    {deck.cards.length} cartas{deck.tapCards && deck.tapCards.length > 0 ? ` · ${deck.tapCards.length} TAP` : ""}
+                  </div>
+                </div>
+                <div style={{ color:"#f87171", fontSize:12, fontWeight:800 }}>Selecionar →</div>
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -324,13 +280,19 @@ function BossBattleModal({ onClose }: { onClose: () => void }) {
 
 // ─── CREATE GUILD Modal ───────────────────────────────────────────────────────
 
-function CreateGuildModal({ onClose, onCreate }: {
+function CreateGuildModal({
+  onClose, onCreate, coins, setCoins, playerId, playerProfile,
+}: {
   onClose: () => void
   onCreate: (g: Guild) => void
+  coins: number
+  setCoins: (n: number) => void
+  playerId: string | null
+  playerProfile: any
 }) {
-  const { coins, setCoins, playerProfile, playerId } = useGame()
-  const [name, setName] = useState("")
   const [icon, setIcon] = useState("⚔️")
+  const [iconTab, setIconTab] = useState<"emoji"|"image">("emoji")
+  const [name, setName] = useState("")
   const [slogan, setSlogan] = useState("")
   const [description, setDescription] = useState("")
   const [joinMode, setJoinMode] = useState<GuildJoinMode>("open")
@@ -388,7 +350,6 @@ function CreateGuildModal({ onClose, onCreate }: {
           <button onClick={onClose} style={{ background:"rgba(255,255,255,0.06)", border:"none", borderRadius:10, width:32, height:32, cursor:"pointer", color:"#64748b", fontSize:18 }}>✕</button>
         </div>
 
-        {/* Cost warning */}
         <div style={{ background:"rgba(251,191,36,0.10)", border:"1px solid rgba(251,191,36,0.25)", borderRadius:12, padding:"10px 14px", marginBottom:18, display:"flex", alignItems:"center", gap:10 }}>
           <span style={{ fontSize:18 }}>🪙</span>
           <div>
@@ -397,22 +358,51 @@ function CreateGuildModal({ onClose, onCreate }: {
           </div>
         </div>
 
-        {/* Icon picker */}
+        {/* Icon picker — tabs: emoji / image */}
         <div style={{ marginBottom:16 }}>
           <label style={{ fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Ícone da Guilda</label>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-            {GUILD_ICONS.map(ic => (
-              <button key={ic} onClick={() => setIcon(ic)} style={{
-                width:40, height:40, borderRadius:10, fontSize:20,
-                background: icon === ic ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
-                border: `2px solid ${icon === ic ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
-                cursor:"pointer", transition:"all 0.15s",
-              }}>{ic}</button>
+          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+            {(["emoji","image"] as const).map(tab => (
+              <button key={tab} onClick={() => setIconTab(tab)} style={{
+                padding:"5px 14px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:800, fontSize:11,
+                background: iconTab === tab ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
+                color: iconTab === tab ? "#c4b5fd" : "#475569",
+                border: `1px solid ${iconTab === tab ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.08)"}`,
+              }}>{tab === "emoji" ? "😀 Emojis" : "🖼️ Imagens"}</button>
             ))}
+          </div>
+          {iconTab === "emoji" ? (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {GUILD_ICONS_EMOJI.map(ic => (
+                <button key={ic} onClick={() => setIcon(ic)} style={{
+                  width:40, height:40, borderRadius:10, fontSize:20,
+                  background: icon === ic ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
+                  border: `2px solid ${icon === ic ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
+                  cursor:"pointer", transition:"all 0.15s",
+                }}>{ic}</button>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {GUILD_ICONS_IMG.map(imgPath => (
+                <button key={imgPath} onClick={() => setIcon(imgPath)} style={{
+                  width:48, height:48, borderRadius:10, padding:0, overflow:"hidden",
+                  background:"rgba(255,255,255,0.04)",
+                  border: `2px solid ${icon === imgPath ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
+                  cursor:"pointer", transition:"all 0.15s",
+                }}>
+                  <img src={imgPath} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Preview */}
+          <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:11, color:"#64748b" }}>Prévia:</span>
+            <GuildIcon icon={icon} size={40} fontSize={22} borderRadius={10} />
           </div>
         </div>
 
-        {/* Fields */}
         {[
           { label:"Nome da Guilda *", val:name, set:setName, placeholder:"Mínimo 3 caracteres", max:30 },
           { label:"Slogan", val:slogan, set:setSlogan, placeholder:"Frase de impacto da guilda", max:50 },
@@ -432,16 +422,15 @@ function CreateGuildModal({ onClose, onCreate }: {
           </div>
         ))}
 
-        {/* Join mode */}
         <div style={{ marginBottom:14 }}>
           <label style={{ fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Entrada</label>
           <div style={{ display:"flex", gap:8 }}>
             {(["open","approval"] as GuildJoinMode[]).map(m => (
               <button key={m} onClick={() => setJoinMode(m)} style={{
-                flex:1, padding:"9px 0", borderRadius:10, border:"none",
+                flex:1, padding:"9px 0", borderRadius:10, cursor:"pointer",
                 background: joinMode === m ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
                 color: joinMode === m ? "#c4b5fd" : "#475569",
-                fontWeight:800, fontSize:12, cursor:"pointer",
+                fontWeight:800, fontSize:12,
                 border: `1px solid ${joinMode === m ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.08)"}`,
               }}>
                 {m === "open" ? "🔓 Livre" : "🔒 Por Aprovação"}
@@ -450,7 +439,6 @@ function CreateGuildModal({ onClose, onCreate }: {
           </div>
         </div>
 
-        {/* Min level */}
         <div style={{ marginBottom:20 }}>
           <label style={{ fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6 }}>
             Nível mínimo: <span style={{ color:"#8b5cf6" }}>Lv.{minLevel}</span>
@@ -475,10 +463,76 @@ function CreateGuildModal({ onClose, onCreate }: {
   )
 }
 
+// ─── INVITE LINK MODAL (shown when player arrives via invite link) ─────────────
+
+function InviteLinkModal({
+  guildId,
+  currentGuild,
+  onAccept,
+  onDecline,
+}: {
+  guildId: string
+  currentGuild: Guild | null
+  onAccept: () => void
+  onDecline: () => void
+}) {
+  const alreadyInGuild = currentGuild !== null
+  const sameGuild = currentGuild?.id === guildId
+
+  if (sameGuild) {
+    onDecline()
+    return null
+  }
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:500,
+      background:"rgba(0,0,0,0.90)", backdropFilter:"blur(18px)",
+      display:"flex", alignItems:"center", justifyContent:"center", padding:20,
+    }}>
+      <div style={{
+        background:"linear-gradient(160deg,#0a0614,#0d0b20)",
+        border:"1px solid rgba(6,182,212,0.35)", borderRadius:24,
+        padding:"28px 22px", maxWidth:360, width:"100%", textAlign:"center",
+        fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9",
+      }}>
+        <div style={{ fontSize:52, marginBottom:12 }}>🔗</div>
+        <h3 style={{ fontWeight:900, fontSize:18, margin:"0 0 8px" }}>Convite de Guilda</h3>
+
+        {alreadyInGuild ? (
+          <>
+            <p style={{ color:"#64748b", fontSize:13, marginBottom:24 }}>
+              Você já faz parte da guilda <strong style={{ color:"#8b5cf6" }}>"{currentGuild!.name}"</strong>.<br/>
+              Saia da sua guilda atual antes de aceitar outro convite.
+            </p>
+            <button onClick={onDecline} style={{
+              width:"100%", padding:"12px 0", borderRadius:12, border:"none",
+              background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff",
+              fontWeight:900, fontSize:14, cursor:"pointer",
+            }}>Entendido</button>
+          </>
+        ) : (
+          <>
+            <p style={{ color:"#64748b", fontSize:13, marginBottom:24 }}>
+              Você recebeu um convite para entrar em uma guilda. Deseja aceitar?
+            </p>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={onDecline} style={{ flex:1, padding:"11px 0", borderRadius:11, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Recusar</button>
+              <button onClick={onAccept} style={{ flex:1, padding:"11px 0", borderRadius:11, border:"none", background:"linear-gradient(135deg,#0369a1,#06b6d4)", color:"#fff", fontWeight:900, fontSize:13, cursor:"pointer", boxShadow:"0 4px 16px rgba(6,182,212,0.35)" }}>
+                Aceitar Convite
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── MAIN Guild Screen ────────────────────────────────────────────────────────
 
-export default function GuildScreen({ onBack }: GuildScreenProps) {
-  const { playerProfile, playerId, coins, setCoins } = useGame()
+export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProps) {
+  const { playerProfile, playerId, coins, setCoins, decks } = useGame()
 
   const [guild, setGuild] = useState<Guild | null>(() => {
     if (typeof window === "undefined") return null
@@ -491,11 +545,12 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [chatInput, setChatInput] = useState("")
   const [showCreate, setShowCreate] = useState(false)
-  const [showBoss, setShowBoss] = useState(false)
+  const [showDeckSelector, setShowDeckSelector] = useState(false)
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<string|null>(null)
-  const [pendingJoin, setPendingJoin] = useState<typeof RECOMMENDED_GUILDS[0] | null>(null)
+  const [pendingJoin, setPendingJoin] = useState<null | { id:string; name:string; icon:string; joinMode:GuildJoinMode; minLevel:number }>(null)
   const [leaveConfirm, setLeaveConfirm] = useState(false)
+  const [inviteGuildId, setInviteGuildId] = useState<string|null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   // Daily checkin
@@ -503,6 +558,28 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
     if (typeof window === "undefined") return false
     return localStorage.getItem("gpgame_guild_checkin") === new Date().toDateString()
   })
+
+  // ── Check URL params for invite link on mount ────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const guildParam = params.get("guild")
+    if (guildParam) {
+      setInviteGuildId(guildParam)
+      // Clean the URL so refreshing doesn't re-show the modal
+      const url = new URL(window.location.href)
+      url.searchParams.delete("guild")
+      url.searchParams.delete("ref")
+      window.history.replaceState({}, "", url.toString())
+    }
+
+    // Also check if we stored a pending invite (from app bootstrap)
+    const stored = localStorage.getItem(LS_INVITE_KEY)
+    if (stored && !guildParam) {
+      setInviteGuildId(stored)
+      localStorage.removeItem(LS_INVITE_KEY)
+    }
+  }, [])
 
   // Persist guild
   useEffect(() => {
@@ -530,7 +607,6 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
     localStorage.setItem("gpgame_guild_checkin", new Date().toDateString())
     setCheckedIn(true)
     showFeedback("✅ Check-in diário! +50 Coins")
-    // Award after 7 days (simplified: add checkin streak tracking later)
   }
 
   const handleSendChat = () => {
@@ -548,26 +624,36 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
   }
 
   const handleCopyInvite = () => {
-    const link = `https://gpgameofcc.vercel.app/?guild=${guild?.id}&ref=${playerId}`
+    if (!guild) return
+    // The invite link goes directly to the game, and includes ?guild=ID&ref=playerId
+    // When the app boots it reads these params, stores them, then routes to GuildScreen
+    // which shows the InviteLinkModal automatically.
+    const base = typeof window !== "undefined" ? window.location.origin : "https://gpgameofcc.vercel.app"
+    const link = `${base}/?guild=${guild.id}&ref=${playerId || "me"}`
     navigator.clipboard.writeText(link).catch(() => {})
     setCopied(true); setTimeout(() => setCopied(false), 2000)
-    showFeedback("🔗 Link de convite copiado! Expira em 24h")
+    showFeedback("🔗 Link de convite copiado! Envie para seu amigo.")
   }
 
-  const handleJoinGuild = (g: typeof RECOMMENDED_GUILDS[0]) => {
+  const handleJoinGuild = (g: { id:string; name:string; icon:string; joinMode:GuildJoinMode; minLevel:number }) => {
     if (g.joinMode === "approval") {
       showFeedback("📩 Solicitação enviada! Aguarde aprovação do líder.")
       setPendingJoin(null)
       return
     }
-    // Join immediately
     const newGuild: Guild = {
-      ...g,
-      chat: [{ id:"sys", authorId:"system", authorName:"Sistema", authorRole:"leader", text:`🎉 ${playerProfile.name} entrou na guilda!`, timestamp:Date.now() }],
-      guildCoins: 0,
-      totalDamageToday: 0,
-      createdAt: Date.now(),
-      members: [...g.members, {
+      id: g.id,
+      name: g.name,
+      icon: g.icon,
+      slogan: "",
+      level: 1,
+      xp: 0,
+      xpToNext: XP_PER_LEVEL,
+      joinMode: g.joinMode,
+      minLevel: g.minLevel,
+      description: "",
+      maxMembers: 15,
+      members: [{
         id: playerId || "me",
         name: playerProfile.name,
         title: playerProfile.title,
@@ -577,11 +663,48 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
         lastOnline: Date.now(),
         weeklyContrib: 0,
       }],
+      chat: [{ id:"sys", authorId:"system", authorName:"Sistema", authorRole:"leader", text:`🎉 ${playerProfile.name} entrou na guilda!`, timestamp:Date.now() }],
+      guildCoins: 0,
+      totalDamageToday: 0,
+      createdAt: Date.now(),
     }
     setGuild(newGuild)
     setView("main")
     setPendingJoin(null)
+    setInviteGuildId(null)
     showFeedback(`🎉 Você entrou em "${g.name}"!`)
+  }
+
+  const handleAcceptInvite = () => {
+    if (!inviteGuildId) return
+    // In a real backend this would fetch guild data by ID.
+    // Here we create a placeholder guild with that ID so the player is "in it".
+    const placeholderGuild: Guild = {
+      id: inviteGuildId,
+      name: "Guilda Convidada",
+      icon: "🏰",
+      slogan: "Você foi convidado!",
+      level: 1, xp: 0, xpToNext: XP_PER_LEVEL,
+      joinMode: "open", minLevel: 1,
+      description: "Guilda criada por convite.",
+      maxMembers: 15,
+      members: [{
+        id: playerId || "me",
+        name: playerProfile.name,
+        title: playerProfile.title,
+        level: playerProfile.level,
+        avatarUrl: playerProfile.avatarUrl,
+        role: "member",
+        lastOnline: Date.now(),
+        weeklyContrib: 0,
+      }],
+      chat: [{ id:"sys-invite", authorId:"system", authorName:"Sistema", authorRole:"leader", text:`🎉 ${playerProfile.name} entrou via link de convite!`, timestamp:Date.now() }],
+      guildCoins: 0, totalDamageToday: 0, createdAt: Date.now(),
+    }
+    setGuild(placeholderGuild)
+    setView("main")
+    setInviteGuildId(null)
+    showFeedback("🎉 Você entrou na guilda!")
   }
 
   const handleKick = (memberId: string) => {
@@ -606,17 +729,23 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
     setGuild(null)
     setLeaveConfirm(false)
     setView("browse")
-    showFeedback("Você saiu da guilda. Cooldown de 24h para entrar em outra.")
+    showFeedback("Você saiu da guilda.")
+  }
+
+  // ── Boss duel ─────────────────────────────────────────────────────────────
+  const handleBossStartDuel = (deck: Deck) => {
+    setShowDeckSelector(false)
+    if (onStartBossDuel) {
+      onStartBossDuel(deck.id)
+    } else {
+      showFeedback("⚔️ Duelo contra o Chefão iniciado com: " + deck.name)
+    }
   }
 
   const guildXpPct = guild ? Math.min(100, (guild.xp / guild.xpToNext) * 100) : 0
-  const filteredRecommended = RECOMMENDED_GUILDS.filter(g =>
-    searchQuery ? g.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
-  )
+  const accentColor = "#8b5cf6"
 
   // ─────────────────────────────────────────────────────────────────────────────
-
-  const accentColor = "#8b5cf6"
 
   return (
     <div style={{
@@ -640,16 +769,44 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
         }}>{feedback}</div>
       )}
 
-      {/* Modals */}
-      {showCreate && <CreateGuildModal onClose={() => setShowCreate(false)} onCreate={g => { setGuild(g); setShowCreate(false); setView("main") }}/>}
-      {showBoss && <BossBattleModal onClose={() => setShowBoss(false)}/>}
+      {/* ── Modals ── */}
+
+      {/* Invite link modal */}
+      {inviteGuildId && (
+        <InviteLinkModal
+          guildId={inviteGuildId}
+          currentGuild={guild}
+          onAccept={handleAcceptInvite}
+          onDecline={() => setInviteGuildId(null)}
+        />
+      )}
+
+      {showCreate && (
+        <CreateGuildModal
+          onClose={() => setShowCreate(false)}
+          onCreate={g => { setGuild(g); setShowCreate(false); setView("main") }}
+          coins={coins}
+          setCoins={setCoins}
+          playerId={playerId}
+          playerProfile={playerProfile}
+        />
+      )}
+
+      {/* Deck selector for boss duel */}
+      {showDeckSelector && (
+        <DeckSelectorModal
+          decks={decks || []}
+          onSelect={handleBossStartDuel}
+          onClose={() => setShowDeckSelector(false)}
+        />
+      )}
 
       {/* Pending join confirm */}
       {pendingJoin && (
         <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(14px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div style={{ background:"linear-gradient(160deg,#0a0614,#0d0b20)", border:"1px solid rgba(139,92,246,0.30)", borderRadius:24, padding:"24px 20px", maxWidth:360, width:"100%", textAlign:"center" }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>{pendingJoin.icon}</div>
-            <h3 style={{ fontWeight:900, fontSize:18, margin:"0 0 8px" }}>Entrar em "{pendingJoin.name}"?</h3>
+            <GuildIcon icon={pendingJoin.icon} size={56} fontSize={30} borderRadius={16} />
+            <h3 style={{ fontWeight:900, fontSize:18, margin:"12px 0 8px" }}>Entrar em "{pendingJoin.name}"?</h3>
             <p style={{ color:"#64748b", fontSize:13, marginBottom:20 }}>
               {pendingJoin.joinMode === "approval" ? "Esta guilda exige aprovação do líder." : "Entrada livre — você entra imediatamente."}
               {" "}Nível mínimo: <strong style={{ color:"#8b5cf6" }}>Lv.{pendingJoin.minLevel}</strong>
@@ -710,7 +867,6 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
           )}
         </div>
 
-        {/* Sub-nav when in guild */}
         {guild && (
           <div style={{ display:"flex", gap:0, maxWidth:700, margin:"10px auto 0", background:"rgba(255,255,255,0.04)", borderRadius:12, padding:4, overflowX:"auto" }}>
             {[
@@ -754,40 +910,25 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
                   style={{ width:"100%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:12, padding:"11px 14px 11px 40px", color:"#e2e8f0", fontSize:13, boxSizing:"border-box" }}/>
               </div>
 
+              {/* Empty state — no fake bot guilds */}
               <h3 style={{ fontWeight:900, fontSize:12, color:"#475569", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:12 }}>
-                {searchQuery ? "Resultados" : "🔥 Guildas Recomendadas"}
+                {searchQuery ? "Resultados" : "Guildas Disponíveis"}
               </h3>
 
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {filteredRecommended.map(g => (
-                  <div key={g.id} style={{ background:"linear-gradient(135deg,rgba(139,92,246,0.10),rgba(55,48,163,0.06))", border:"1px solid rgba(139,92,246,0.22)", borderRadius:16, padding:"14px 16px" }}>
-                    <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-                      <div style={{ width:48, height:48, borderRadius:12, background:"rgba(139,92,246,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0, border:"1px solid rgba(139,92,246,0.25)" }}>{g.icon}</div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                          <span style={{ fontWeight:900, fontSize:15 }}>{g.name}</span>
-                          <span style={{ fontSize:9, fontWeight:800, color:"#a78bfa", background:"rgba(139,92,246,0.15)", padding:"2px 7px", borderRadius:5, textTransform:"uppercase" }}>Lv.{g.level}</span>
-                          <span style={{ fontSize:9, fontWeight:700, color: g.joinMode==="open"?"#22c55e":"#f59e0b" }}>
-                            {g.joinMode==="open"?"🔓 Livre":"🔒 Aprovação"}
-                          </span>
-                        </div>
-                        <p style={{ color:"#64748b", fontSize:12, margin:"4px 0 2px" }}>{g.slogan}</p>
-                        <p style={{ color:"#334155", fontSize:11, margin:0 }}>{g.description}</p>
-                        <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:6 }}>
-                          <span style={{ fontSize:10, color:"#475569" }}>👥 {g.members.length}/{g.maxMembers}</span>
-                          <span style={{ fontSize:10, color:"#475569" }}>· Nível mín: Lv.{g.minLevel}</span>
-                        </div>
-                      </div>
-                      <button onClick={() => setPendingJoin(g)} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff", fontWeight:800, fontSize:12, cursor:"pointer", flexShrink:0 }}>Entrar</button>
-                    </div>
+              <div style={{ textAlign:"center", padding:"48px 0", color:"#334155" }}>
+                <div style={{ fontSize:56, marginBottom:16 }}>🏰</div>
+                <p style={{ fontWeight:800, fontSize:15, color:"#475569", marginBottom:8 }}>Nenhuma guilda pública no momento</p>
+                <p style={{ fontSize:13, color:"#334155", marginBottom:24 }}>
+                  Crie a sua própria guilda ou peça um link de convite a um amigo.
+                </p>
+                <div style={{ background:"rgba(6,182,212,0.07)", border:"1px solid rgba(6,182,212,0.18)", borderRadius:14, padding:"14px 18px", display:"inline-block", textAlign:"left", maxWidth:320 }}>
+                  <div style={{ fontWeight:800, fontSize:12, color:"#06b6d4", marginBottom:4 }}>💡 Como entrar em uma guilda?</div>
+                  <div style={{ fontSize:12, color:"#475569", lineHeight:1.7 }}>
+                    1. Peça ao líder da guilda para copiar o link de convite.<br/>
+                    2. Abra o link — o jogo vai perguntar se você quer entrar.<br/>
+                    3. Aceite e comece a jogar junto!
                   </div>
-                ))}
-                {filteredRecommended.length === 0 && (
-                  <div style={{ textAlign:"center", padding:"40px 0", color:"#334155" }}>
-                    <Search size={36} style={{ margin:"0 auto 10px", opacity:0.3 }}/>
-                    <p style={{ fontWeight:700 }}>Nenhuma guilda encontrada</p>
-                  </div>
-                )}
+                </div>
               </div>
             </>
           )}
@@ -795,10 +936,9 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
           {/* ══ MAIN (in guild) ════════════════════════════════════════════════ */}
           {guild && view === "main" && (
             <>
-              {/* Guild hero card */}
               <div style={{ background:"linear-gradient(135deg,rgba(109,40,217,0.18),rgba(55,48,163,0.12))", border:"1px solid rgba(139,92,246,0.28)", borderRadius:20, padding:"20px", marginBottom:16 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16 }}>
-                  <div style={{ width:60, height:60, borderRadius:16, background:"rgba(139,92,246,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:32, border:"1px solid rgba(139,92,246,0.30)", boxShadow:"0 8px 24px rgba(139,92,246,0.20)" }}>{guild.icon}</div>
+                  <GuildIcon icon={guild.icon} size={60} fontSize={32} borderRadius={16} />
                   <div style={{ flex:1 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
                       <h2 style={{ fontWeight:900, fontSize:18, margin:0 }}>{guild.name}</h2>
@@ -808,7 +948,6 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
                   </div>
                 </div>
 
-                {/* XP bar */}
                 <div>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
                     <span style={{ fontSize:11, color:"#64748b" }}>Progresso da Guilda</span>
@@ -819,12 +958,11 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
                   </div>
                 </div>
 
-                {/* Stats row */}
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginTop:14 }}>
                   {[
                     { label:"Membros", value:`${guild.members.length}/${guild.maxMembers}`, icon:"👥" },
                     { label:"Moedas", value:guild.guildCoins.toString(), icon:"🪙" },
-                    { label:"Nível máx", value:`${LEVEL_MAX_MEMBERS[Math.min(10,guild.level)]} vagas`, icon:"📈" },
+                    { label:"Vagas máx", value:`${LEVEL_MAX_MEMBERS[Math.min(10,guild.level)]}`, icon:"📈" },
                   ].map(s => (
                     <div key={s.label} style={{ background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"10px", textAlign:"center" }}>
                       <div style={{ fontSize:16 }}>{s.icon}</div>
@@ -839,7 +977,7 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
               <div style={{ background:"rgba(6,182,212,0.07)", border:"1px solid rgba(6,182,212,0.18)", borderRadius:14, padding:"12px 14px", marginBottom:14, display:"flex", alignItems:"center", gap:10 }}>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:12, color:"#06b6d4" }}>🔗 Link de Convite</div>
-                  <div style={{ fontSize:10, color:"#334155" }}>Expira em 24h · Envie para amigos</div>
+                  <div style={{ fontSize:10, color:"#334155" }}>Envie para amigos — ao abrir, o jogo perguntará se eles querem entrar</div>
                 </div>
                 <button onClick={handleCopyInvite} style={{ background:"rgba(6,182,212,0.15)", border:"1px solid rgba(6,182,212,0.30)", borderRadius:9, padding:"7px 14px", cursor:"pointer", color:"#06b6d4", fontSize:12, fontWeight:800, display:"flex", alignItems:"center", gap:6 }}>
                   {copied ? <Check size={14}/> : <Copy size={14}/>}
@@ -851,7 +989,7 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
               <h3 style={{ fontWeight:900, fontSize:12, color:"#475569", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:10 }}>Atividades</h3>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 {[
-                  { icon:"💀", label:"Chefão da Guilda", desc:"100s coop battle", color:"#f87171", action:() => setShowBoss(true) },
+                  { icon:"💀", label:"Chefão da Guilda", desc:"Duelo difícil vs. Boss", color:"#f87171", action:() => setView("boss") },
                   { icon:"⚔️", label:"Guerra de Guildas", desc:"PVP em equipe", color:"#60a5fa", action:() => setView("war") },
                   { icon:"🎯", label:"Missão Colaborativa", desc:"Meta coletiva", color:"#34d399", action:() => showFeedback("🎯 Nova missão: Vençam 50 duelos juntos!") },
                   { icon:"🛒", label:"Loja da Guilda", desc:"Troque moedas", color:"#fbbf24", action:() => setView("shop") },
@@ -864,7 +1002,6 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
                 ))}
               </div>
 
-              {/* Description */}
               <div style={{ marginTop:14, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:14, padding:"12px 14px" }}>
                 <p style={{ color:"#64748b", fontSize:12, margin:0, lineHeight:1.6 }}>{guild.description}</p>
               </div>
@@ -924,7 +1061,6 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
                 <div ref={chatEndRef}/>
               </div>
 
-              {/* Input */}
               <div style={{ display:"flex", gap:8, position:"sticky", bottom:0, paddingTop:8, background:"rgba(2,6,16,0.95)" }}>
                 <input value={chatInput} onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => e.key==="Enter" && handleSendChat()}
@@ -940,26 +1076,76 @@ export default function GuildScreen({ onBack }: GuildScreenProps) {
 
           {/* ══ BOSS ═══════════════════════════════════════════════════════════ */}
           {guild && view === "boss" && (
-            <div style={{ textAlign:"center" }}>
-              <div style={{ fontSize:72, margin:"24px 0 12px" }}>💀</div>
-              <h2 style={{ fontWeight:900, fontSize:22, marginBottom:8, color:"#f87171" }}>Chefão da Guilda</h2>
-              <p style={{ color:"#64748b", fontSize:14, marginBottom:24 }}>Duelo cooperativo de 100 segundos. Todos somam dano contra o boss. Recompensas por faixa de dano!</p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:24 }}>
-                {[
-                  { faixa:"Bronze (1–999)", recompensa:"50 🪙" },
-                  { faixa:"Prata (1k–4.999)", recompensa:"100 🪙" },
-                  { faixa:"Ouro (5k–9.999)", recompensa:"200 🪙 + Pack" },
-                  { faixa:"Diamante (10k+)", recompensa:"400 🪙 + Pack SR" },
-                ].map(r => (
-                  <div key={r.faixa} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"12px" }}>
-                    <div style={{ fontSize:11, color:"#64748b" }}>{r.faixa}</div>
-                    <div style={{ fontWeight:900, fontSize:13, color:"#fbbf24", marginTop:4 }}>{r.recompensa}</div>
+            <div>
+              {/* Boss hero card */}
+              <div style={{
+                background:"linear-gradient(135deg,rgba(127,29,29,0.35),rgba(15,3,3,0.50))",
+                border:"1px solid rgba(220,38,38,0.35)", borderRadius:20,
+                padding:"24px 20px", marginBottom:20, textAlign:"center",
+                position:"relative", overflow:"hidden",
+              }}>
+                <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 50% 0%,rgba(220,38,38,0.12) 0%,transparent 60%)", pointerEvents:"none" }}/>
+                <div style={{ fontSize:68, marginBottom:8, filter:"drop-shadow(0 0 20px rgba(220,38,38,0.7))" }}>💀</div>
+                <h2 style={{ fontWeight:900, fontSize:22, margin:"0 0 6px", color:"#f87171" }}>Chefão da Guilda</h2>
+                <p style={{ color:"#64748b", fontSize:13, margin:"0 0 20px", lineHeight:1.6 }}>
+                  Enfrente o Chefão em um <strong style={{ color:"#f1f5f9" }}>duelo difícil de verdade</strong>.<br/>
+                  Escolha seu melhor deck e supere o desafio!
+                </p>
+
+                {/* Reward tiers */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+                  {[
+                    { faixa:"Derrota Honrosa", recompensa:"25 🪙", color:"#64748b" },
+                    { faixa:"Vitória Rápida", recompensa:"100 🪙 + Pack", color:"#fbbf24" },
+                    { faixa:"Vitória Perfeita", recompensa:"200 🪙 + Pack SR", color:"#60a5fa" },
+                    { faixa:"Lendário (sem dano)", recompensa:"500 🪙 + Pack LR", color:"#a855f7" },
+                  ].map(r => (
+                    <div key={r.faixa} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"12px" }}>
+                      <div style={{ fontSize:11, color:"#64748b" }}>{r.faixa}</div>
+                      <div style={{ fontWeight:900, fontSize:12, color:r.color, marginTop:4 }}>{r.recompensa}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Difficulty warning */}
+                <div style={{ background:"rgba(220,38,38,0.10)", border:"1px solid rgba(220,38,38,0.25)", borderRadius:12, padding:"10px 14px", marginBottom:20, textAlign:"left" }}>
+                  <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
+                    <span style={{ fontSize:16 }}>⚠️</span>
+                    <div style={{ fontSize:12, color:"#94a3b8", lineHeight:1.6 }}>
+                      <strong style={{ color:"#f87171" }}>Chefão Atual: Mefisto das Sombras</strong><br/>
+                      Nível de dificuldade: Extremo · 4.000 HP · Habilidades especiais ativas
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowDeckSelector(true)}
+                  style={{
+                    width:"100%", padding:"16px 0", borderRadius:14, border:"none",
+                    background:"linear-gradient(135deg,#dc2626,#ef4444)",
+                    color:"#fff", fontWeight:900, fontSize:16, cursor:"pointer",
+                    boxShadow:"0 4px 24px rgba(220,38,38,0.50)",
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+                    transition:"all 0.2s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 32px rgba(220,38,38,0.70)")}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 24px rgba(220,38,38,0.50)")}
+                >
+                  <Swords size={20}/> Escolher Deck e Batalhar
+                </button>
+              </div>
+
+              {/* Best scores placeholder */}
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:16, padding:"16px" }}>
+                <h4 style={{ fontWeight:900, fontSize:13, margin:"0 0 12px", color:"#94a3b8" }}>🏆 Ranking da Guilda — Boss da Semana</h4>
+                {guild.members.slice(0,5).map((m, i) => (
+                  <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <span style={{ fontSize:16, width:24, textAlign:"center" }}>{["🥇","🥈","🥉","4️⃣","5️⃣"][i]}</span>
+                    <span style={{ flex:1, fontSize:13, color:"#e2e8f0", fontWeight:700 }}>{m.name}</span>
+                    <span style={{ fontSize:12, color:"#fbbf24", fontWeight:800 }}>{Math.floor(Math.random()*3000+500)} pts</span>
                   </div>
                 ))}
               </div>
-              <button onClick={() => setShowBoss(true)} style={{ width:"100%", padding:"16px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#dc2626,#ef4444)", color:"#fff", fontWeight:900, fontSize:16, cursor:"pointer", boxShadow:"0 4px 20px rgba(220,38,38,0.40)" }}>
-                ⚔️ Iniciar Batalha
-              </button>
             </div>
           )}
 
