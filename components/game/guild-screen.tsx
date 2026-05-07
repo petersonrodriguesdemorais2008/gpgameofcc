@@ -67,15 +67,21 @@ const GUILD_ICONS_EMOJI = [
   "🎯","🗡️","🔮","👑","🌊","🏰","🎭","🦁","🧿","💫",
 ]
 
-// Image icons the user can use (put your actual paths here)
-const GUILD_ICONS_IMG: string[] = [
-  "/images/icons/fehnon-icon.png",
-  "/images/icons/hrotti-icon.png",
-  "/images/icons/jaden-icon.png",
-  "/images/icons/morgana-icon.png",
-  "/images/icons/tsubasa-icon.png",
-  "/images/icons/uller-icon.png",
-  "/images/1b.png",  // the fire bird image the user sent
+// Guild icon images — coloque os arquivos em: public/images/guild-icons/
+// Os arquivos são: 1b.png até 12b.png
+const GUILD_ICONS_IMG: { path: string; label: string }[] = [
+  { path: "/images/guild-icons/1b.png",  label: "Fênix de Fogo" },
+  { path: "/images/guild-icons/2b.png",  label: "Lobo do Gelo" },
+  { path: "/images/guild-icons/3b.png",  label: "Monstro das Sombras" },
+  { path: "/images/guild-icons/4b.png",  label: "Tigre das Chamas" },
+  { path: "/images/guild-icons/5b.png",  label: "Mefisto Esqueleto" },
+  { path: "/images/guild-icons/6b.png",  label: "Kraken das Trevas" },
+  { path: "/images/guild-icons/7b.png",  label: "Borboleta do Abismo" },
+  { path: "/images/guild-icons/8b.png",  label: "Lobo do Trovão" },
+  { path: "/images/guild-icons/9b.png",  label: "Titã de Ferro" },
+  { path: "/images/guild-icons/10b.png", label: "Leão Solar" },
+  { path: "/images/guild-icons/11b.png", label: "Demônio Arcano" },
+  { path: "/images/guild-icons/12b.png", label: "Escorpião Dourado" },
 ]
 
 const CREATE_COST = 300
@@ -383,15 +389,45 @@ function CreateGuildModal({
               ))}
             </div>
           ) : (
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {GUILD_ICONS_IMG.map(imgPath => (
-                <button key={imgPath} onClick={() => setIcon(imgPath)} style={{
-                  width:48, height:48, borderRadius:10, padding:0, overflow:"hidden",
-                  background:"rgba(255,255,255,0.04)",
-                  border: `2px solid ${icon === imgPath ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
-                  cursor:"pointer", transition:"all 0.15s",
-                }}>
-                  <img src={imgPath} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
+              {GUILD_ICONS_IMG.map(ic => (
+                <button
+                  key={ic.path}
+                  onClick={() => setIcon(ic.path)}
+                  title={ic.label}
+                  style={{
+                    position:"relative", aspectRatio:"1/1", borderRadius:12, padding:0,
+                    overflow:"hidden", background:"rgba(255,255,255,0.04)",
+                    border: `2px solid ${icon === ic.path ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
+                    cursor:"pointer", transition:"all 0.15s",
+                    boxShadow: icon === ic.path ? "0 0 12px rgba(139,92,246,0.50)" : "none",
+                  }}
+                >
+                  <img
+                    src={ic.path}
+                    alt={ic.label}
+                    style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                    onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2" }}
+                  />
+                  {icon === ic.path && (
+                    <div style={{
+                      position:"absolute", inset:0,
+                      background:"rgba(139,92,246,0.30)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                    }}>
+                      <span style={{ fontSize:18 }}>✓</span>
+                    </div>
+                  )}
+                  <div style={{
+                    position:"absolute", bottom:0, left:0, right:0,
+                    background:"linear-gradient(transparent,rgba(0,0,0,0.75))",
+                    padding:"2px 4px 3px",
+                  }}>
+                    <p style={{ margin:0, fontSize:8, color:"#e2e8f0", textAlign:"center",
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {ic.label}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -466,45 +502,76 @@ function CreateGuildModal({
 // ─── INVITE LINK MODAL (shown when player arrives via invite link) ─────────────
 
 function InviteLinkModal({
-  guildId,
+  inviteGuild,
   currentGuild,
   onAccept,
   onDecline,
 }: {
-  guildId: string
+  inviteGuild: Guild        // dados reais decodificados do link
   currentGuild: Guild | null
   onAccept: () => void
   onDecline: () => void
 }) {
   const alreadyInGuild = currentGuild !== null
-  const sameGuild = currentGuild?.id === guildId
+  const sameGuild = currentGuild?.id === inviteGuild.id
+  const isImg = inviteGuild.icon.startsWith("/") || inviteGuild.icon.startsWith("http")
 
-  if (sameGuild) {
-    onDecline()
-    return null
-  }
+  // Já é membro — dispensa silenciosamente
+  if (sameGuild) { onDecline(); return null }
 
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:500,
-      background:"rgba(0,0,0,0.90)", backdropFilter:"blur(18px)",
+      background:"rgba(0,0,0,0.92)", backdropFilter:"blur(20px)",
       display:"flex", alignItems:"center", justifyContent:"center", padding:20,
     }}>
       <div style={{
         background:"linear-gradient(160deg,#0a0614,#0d0b20)",
-        border:"1px solid rgba(6,182,212,0.35)", borderRadius:24,
-        padding:"28px 22px", maxWidth:360, width:"100%", textAlign:"center",
+        border:"1px solid rgba(139,92,246,0.40)", borderRadius:24,
+        padding:"28px 22px", maxWidth:380, width:"100%", textAlign:"center",
         fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9",
+        boxShadow:"0 0 60px rgba(139,92,246,0.15)",
       }}>
-        <div style={{ fontSize:52, marginBottom:12 }}>🔗</div>
-        <h3 style={{ fontWeight:900, fontSize:18, margin:"0 0 8px" }}>Convite de Guilda</h3>
+        {/* Guild icon */}
+        <div style={{
+          width:80, height:80, borderRadius:20, margin:"0 auto 14px",
+          background:"rgba(139,92,246,0.15)", border:"2px solid rgba(139,92,246,0.35)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize:40, overflow:"hidden",
+        }}>
+          {isImg
+            ? <img src={inviteGuild.icon} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : inviteGuild.icon
+          }
+        </div>
+
+        <h3 style={{ fontWeight:900, fontSize:20, margin:"0 0 4px" }}>
+          {inviteGuild.name}
+        </h3>
+        <p style={{ color:"#64748b", fontSize:13, margin:"0 0 4px", fontStyle:"italic" }}>
+          "{inviteGuild.slogan || "Juntos somos mais fortes!"}"
+        </p>
+        <div style={{ display:"flex", justifyContent:"center", gap:16, margin:"10px 0 20px", fontSize:12, color:"#475569" }}>
+          <span>Lv.{inviteGuild.level}</span>
+          <span>·</span>
+          <span>👥 {inviteGuild.members.length}/{inviteGuild.maxMembers}</span>
+          <span>·</span>
+          <span>{inviteGuild.joinMode === "open" ? "🔓 Livre" : "🔒 Aprovação"}</span>
+        </div>
 
         {alreadyInGuild ? (
           <>
-            <p style={{ color:"#64748b", fontSize:13, marginBottom:24 }}>
-              Você já faz parte da guilda <strong style={{ color:"#8b5cf6" }}>"{currentGuild!.name}"</strong>.<br/>
-              Saia da sua guilda atual antes de aceitar outro convite.
-            </p>
+            <div style={{
+              background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.25)",
+              borderRadius:14, padding:"12px 14px", marginBottom:20, textAlign:"left",
+            }}>
+              <p style={{ color:"#fbbf24", fontSize:13, margin:0, fontWeight:700 }}>
+                ⚠️ Você já pertence à guilda <strong>"{currentGuild!.name}"</strong>
+              </p>
+              <p style={{ color:"#78716c", fontSize:12, margin:"4px 0 0" }}>
+                Saia da sua guilda atual antes de aceitar este convite.
+              </p>
+            </div>
             <button onClick={onDecline} style={{
               width:"100%", padding:"12px 0", borderRadius:12, border:"none",
               background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff",
@@ -513,13 +580,22 @@ function InviteLinkModal({
           </>
         ) : (
           <>
-            <p style={{ color:"#64748b", fontSize:13, marginBottom:24 }}>
-              Você recebeu um convite para entrar em uma guilda. Deseja aceitar?
+            <p style={{ color:"#64748b", fontSize:13, marginBottom:20 }}>
+              Você foi convidado para entrar nesta guilda. Deseja aceitar?
             </p>
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={onDecline} style={{ flex:1, padding:"11px 0", borderRadius:11, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Recusar</button>
-              <button onClick={onAccept} style={{ flex:1, padding:"11px 0", borderRadius:11, border:"none", background:"linear-gradient(135deg,#0369a1,#06b6d4)", color:"#fff", fontWeight:900, fontSize:13, cursor:"pointer", boxShadow:"0 4px 16px rgba(6,182,212,0.35)" }}>
-                Aceitar Convite
+              <button onClick={onDecline} style={{
+                flex:1, padding:"11px 0", borderRadius:11,
+                background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)",
+                color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer",
+              }}>Recusar</button>
+              <button onClick={onAccept} style={{
+                flex:1, padding:"11px 0", borderRadius:11, border:"none",
+                background:"linear-gradient(135deg,#6d28d9,#8b5cf6)",
+                color:"#fff", fontWeight:900, fontSize:13, cursor:"pointer",
+                boxShadow:"0 4px 16px rgba(139,92,246,0.40)",
+              }}>
+                ✅ Entrar na Guilda
               </button>
             </div>
           </>
@@ -550,7 +626,8 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   const [feedback, setFeedback] = useState<string|null>(null)
   const [pendingJoin, setPendingJoin] = useState<null | { id:string; name:string; icon:string; joinMode:GuildJoinMode; minLevel:number }>(null)
   const [leaveConfirm, setLeaveConfirm] = useState(false)
-  const [inviteGuildId, setInviteGuildId] = useState<string|null>(null)
+  // invitePayload: dados REAIS da guilda decodificados do link de convite
+  const [invitePayload, setInvitePayload] = useState<Guild | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   // Daily checkin
@@ -559,24 +636,37 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     return localStorage.getItem("gpgame_guild_checkin") === new Date().toDateString()
   })
 
-  // ── Check URL params for invite link on mount ────────────────────────────
+  // ── Decodifica link de convite na montagem ───────────────────────────────
+  // O link usa o parâmetro "gd" contendo os dados da guilda em base64 JSON.
+  // Exemplo: /?gd=eyJpZCI6ImcxMjMiLCJuYW1lIjoiT3MgR3Vlcr...}
+  // Assim o jogador convidado vê o nome/ícone REAL da guilda do amigo.
   useEffect(() => {
     if (typeof window === "undefined") return
-    const params = new URLSearchParams(window.location.search)
-    const guildParam = params.get("guild")
-    if (guildParam) {
-      setInviteGuildId(guildParam)
-      // Clean the URL so refreshing doesn't re-show the modal
-      const url = new URL(window.location.href)
-      url.searchParams.delete("guild")
-      url.searchParams.delete("ref")
-      window.history.replaceState({}, "", url.toString())
+
+    const tryDecode = (raw: string | null): Guild | null => {
+      if (!raw) return null
+      try { return JSON.parse(atob(raw)) as Guild }
+      catch { return null }
     }
 
-    // Also check if we stored a pending invite (from app bootstrap)
+    const params = new URLSearchParams(window.location.search)
+    const gdParam = params.get("gd")
+    const decoded = tryDecode(gdParam)
+
+    if (decoded) {
+      setInvitePayload(decoded)
+      const url = new URL(window.location.href)
+      url.searchParams.delete("gd")
+      url.searchParams.delete("ref")
+      window.history.replaceState({}, "", url.toString())
+      return
+    }
+
+    // Fallback: localStorage (salvo pelo game-wrapper ao inicializar)
     const stored = localStorage.getItem(LS_INVITE_KEY)
-    if (stored && !guildParam) {
-      setInviteGuildId(stored)
+    if (stored) {
+      const fromStorage = tryDecode(stored)
+      if (fromStorage) setInvitePayload(fromStorage)
       localStorage.removeItem(LS_INVITE_KEY)
     }
   }, [])
@@ -625,12 +715,23 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
   const handleCopyInvite = () => {
     if (!guild) return
-    // The invite link goes directly to the game, and includes ?guild=ID&ref=playerId
-    // When the app boots it reads these params, stores them, then routes to GuildScreen
-    // which shows the InviteLinkModal automatically.
+    // Serializa um snapshot da guilda em base64 para o link de convite.
+    // O jogador convidado decodifica isso e vê os dados REAIS da guilda.
+    // Campos sensíveis (chat) são removidos para manter o link compacto.
+    const snapshot: Guild = {
+      ...guild,
+      chat: [], // não incluir histórico de chat no link
+    }
+    const encoded = btoa(JSON.stringify(snapshot))
     const base = typeof window !== "undefined" ? window.location.origin : "https://gpgameofcc.vercel.app"
-    const link = `${base}/?guild=${guild.id}&ref=${playerId || "me"}`
-    navigator.clipboard.writeText(link).catch(() => {})
+    const link = `${base}/?gd=${encoded}&ref=${encodeURIComponent(playerId || "me")}`
+    navigator.clipboard.writeText(link).catch(() => {
+      // Fallback para browsers que bloqueiam clipboard sem HTTPS
+      const ta = document.createElement("textarea")
+      ta.value = link; ta.style.position = "fixed"; ta.style.opacity = "0"
+      document.body.appendChild(ta); ta.select()
+      document.execCommand("copy"); document.body.removeChild(ta)
+    })
     setCopied(true); setTimeout(() => setCopied(false), 2000)
     showFeedback("🔗 Link de convite copiado! Envie para seu amigo.")
   }
@@ -676,35 +777,46 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   }
 
   const handleAcceptInvite = () => {
-    if (!inviteGuildId) return
-    // In a real backend this would fetch guild data by ID.
-    // Here we create a placeholder guild with that ID so the player is "in it".
-    const placeholderGuild: Guild = {
-      id: inviteGuildId,
-      name: "Guilda Convidada",
-      icon: "🏰",
-      slogan: "Você foi convidado!",
-      level: 1, xp: 0, xpToNext: XP_PER_LEVEL,
-      joinMode: "open", minLevel: 1,
-      description: "Guilda criada por convite.",
-      maxMembers: 15,
-      members: [{
-        id: playerId || "me",
-        name: playerProfile.name,
-        title: playerProfile.title,
-        level: playerProfile.level,
-        avatarUrl: playerProfile.avatarUrl,
-        role: "member",
-        lastOnline: Date.now(),
-        weeklyContrib: 0,
-      }],
-      chat: [{ id:"sys-invite", authorId:"system", authorName:"Sistema", authorRole:"leader", text:`🎉 ${playerProfile.name} entrou via link de convite!`, timestamp:Date.now() }],
-      guildCoins: 0, totalDamageToday: 0, createdAt: Date.now(),
+    if (!invitePayload) return
+
+    // Adiciona o jogador atual à lista de membros da guilda real decodificada
+    const me: GuildMember = {
+      id: playerId || "me",
+      name: playerProfile.name,
+      title: playerProfile.title ?? "",
+      level: playerProfile.level ?? 1,
+      avatarUrl: playerProfile.avatarUrl,
+      role: "member",
+      lastOnline: Date.now(),
+      weeklyContrib: 0,
     }
-    setGuild(placeholderGuild)
+
+    // Evitar duplicata se o jogador já estava na lista (caso raro)
+    const alreadyIn = invitePayload.members.some(m => m.id === me.id)
+    const updatedMembers = alreadyIn
+      ? invitePayload.members
+      : [...invitePayload.members, me]
+
+    const joinedGuild: Guild = {
+      ...invitePayload,
+      members: updatedMembers,
+      chat: [
+        // Restaura o chat vazio com mensagem de boas-vindas
+        {
+          id: `sys-join-${Date.now()}`,
+          authorId: "system",
+          authorName: "Sistema",
+          authorRole: "leader",
+          text: `🎉 ${playerProfile.name} entrou na guilda via link de convite!`,
+          timestamp: Date.now(),
+        },
+      ],
+    }
+
+    setGuild(joinedGuild)
     setView("main")
-    setInviteGuildId(null)
-    showFeedback("🎉 Você entrou na guilda!")
+    setInvitePayload(null)
+    showFeedback(`🎉 Você entrou em "${invitePayload.name}"!`)
   }
 
   const handleKick = (memberId: string) => {
@@ -771,13 +883,13 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
       {/* ── Modals ── */}
 
-      {/* Invite link modal */}
-      {inviteGuildId && (
+      {/* Invite link modal — exibe dados reais da guilda decodificados do link */}
+      {invitePayload && (
         <InviteLinkModal
-          guildId={inviteGuildId}
+          inviteGuild={invitePayload}
           currentGuild={guild}
           onAccept={handleAcceptInvite}
-          onDecline={() => setInviteGuildId(null)}
+          onDecline={() => setInvitePayload(null)}
         />
       )}
 
