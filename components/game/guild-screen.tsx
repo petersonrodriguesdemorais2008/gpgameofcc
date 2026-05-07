@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import {
-  ArrowLeft, Plus, Users, Send,
+  ArrowLeft, Plus, Users, Send, Smile, X as XIcon,
   Swords, Settings, LogOut, Copy, Check,
 } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
@@ -84,7 +84,60 @@ const LEVEL_MAX_MEMBERS: Record<number, number> = {
 // localStorage keys
 const LS_GUILD_ID  = "gpgame_guild_id_v3"
 const LS_INVITE    = "gpgame_pending_invite"
-const LS_CHECKIN   = "gpgame_guild_checkin"
+const LS_CHECKIN    = "gpgame_guild_checkin"
+const LS_KICKED     = "gpgame_guild_kicked"
+const LS_ALL_GUILDS = "gpgame_all_guilds"
+
+// Emotes — mesmos do lobby multiplayer
+const GAME_EMOTES = [
+  { id: "emote-1", name: "Chorando de Alegria", image: "/images/emotes/emote-1.png" },
+  { id: "emote-2", name: "Confiante",            image: "/images/emotes/emote-2.png" },
+  { id: "emote-3", name: "Raiva",                image: "/images/emotes/emote-3.png" },
+  { id: "emote-4", name: "Feliz",                image: "/images/emotes/emote-4.png" },
+  { id: "emote-5", name: "Surpreso",             image: "/images/emotes/emote-5.png" },
+  { id: "emote-6", name: "Fogo",                 image: "/images/emotes/emote-6.png" },
+]
+
+// ─── Filtro de palavrões ─────────────────────────────────────────────────────
+// Lista de termos proibidos (português + inglês). A checagem ignora acentos e
+// leetspeak básico, e usa regex de palavra inteira para evitar falsos positivos.
+const BANNED_WORDS = [
+  // Português
+  "porra","caralho","merda","puta","putaria","viado","viadinho",
+  "cuzão","cuzao","cu","buceta","bucetinha","arrombado","arrombada",
+  "fdp","filho da puta","filha da puta","desgraça","desgraca",
+  "vagabundo","vagabunda","lazaro","lixo","idiota","imbecil",
+  "retardado","retardada","mongoloid","mongoloide","corno","cornudo",
+  "babaca","bosta","bostinha","otario","otário","piranha","prostituta",
+  "puta merda","vai se foder","vsf","vtnc","vai tomar no","inferno",
+  "maldito","maldita","safado","safada","canalha","escroto","escrotão",
+  // Inglês
+  "fuck","shit","asshole","bitch","bastard","damn","crap","dick",
+  "cock","pussy","whore","slut","motherfucker","nigger","faggot",
+  "retard","idiot","moron","cunt","ass","prick",
+]
+
+// Normaliza texto: remove acentos, lowercase, remove espaços duplos
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // remove acentos
+    .replace(/[4@]/g, "a").replace(/3/g, "e")           // leetspeak básico
+    .replace(/1/g, "i").replace(/0/g, "o").replace(/5/g, "s")
+    .replace(/\s+/g, " ").trim()
+}
+
+function containsBannedWord(text: string): string | null {
+  const norm = normalize(text)
+  for (const word of BANNED_WORDS) {
+    // Match palavra inteira ou como parte de palavra (mais seguro)
+    const escaped = word.replace(/[.*+?^${}()|[\]\]/g, "\\$&")
+    if (new RegExp(`(^|[\s\b])${escaped}([\s\b]|$)`).test(norm)) {
+      return word
+    }
+  }
+  return null
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -521,7 +574,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   const [members,       setMembers]       = useState<GuildMember[]>([])
   const [chat,          setChat]          = useState<ChatMessage[]>([])
   const [loading,       setLoading]       = useState(true)
-  const [view,          setView]          = useState<"main"|"members"|"chat"|"boss"|"war"|"shop"|"settings"|"browse">("browse")
+  const [view,          setView]          = useState<"main"|"members"|"chat"|"boss"|"war"|"shop"|"settings"|"browse"|"guilds">("browse")
   const [showCreate,    setShowCreate]    = useState(false)
   const [showDeckSel,   setShowDeckSel]   = useState(false)
   const [copied,        setCopied]        = useState(false)
@@ -530,6 +583,10 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   const [chatInput,     setChatInput]     = useState("")
   const [invitePayload, setInvitePayload] = useState<Guild | null>(null)
   const [checkedIn,     setCheckedIn]     = useState(false)
+  const [showEmotes,    setShowEmotes]    = useState(false)
+  const [chatError,     setChatError]     = useState<string|null>(null)
+  const [allGuilds,     setAllGuilds]     = useState<Guild[]>([])
+  const [kicked,        setKicked]        = useState(false)   // true if kicked from a guild
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const myMember   = members.find(m => m.id === myId)
@@ -543,13 +600,43 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
   // ── 1. Load guild on mount ─────────────────────────────────────────────────
   useEffect(() => {
-    const savedId = localStorage.getItem(LS_GUILD_ID)
-    if (!savedId || !supabase) { setLoading(false); return }
+    const savedId    = localStorage.getItem(LS_GUILD_ID)
+    const kickedFrom = localStorage.getItem(LS_KICKED)
+
+    // If kicked, show kicked state immediately
+    if (kickedFrom && kickedFrom === savedId) {
+      setKicked(true)
+      setLoading(false)
+      return
+    }
+
+    if (!supabase) { setLoading(false); return }
+
+    // Always fetch all guilds for the "Guildas" tab
+    const loadAllGuilds = async () => {
+      const { data } = await supabase.from("guilds").select("*").order("level", { ascending: false })
+      if (data) setAllGuilds(data as Guild[])
+    }
+    loadAllGuilds()
+
+    if (!savedId) { setLoading(false); return }
 
     ;(async () => {
       const { data: gData } = await supabase
         .from("guilds").select("*").eq("id", savedId).single()
       if (!gData) { localStorage.removeItem(LS_GUILD_ID); setLoading(false); return }
+
+      // Verify I'm still a member (might have been kicked while offline)
+      const { data: meData } = await supabase
+        .from("guild_members").select("id").eq("id", myId).eq("guild_id", savedId).single()
+      if (!meData) {
+        // Kicked while offline
+        localStorage.setItem(LS_KICKED, savedId)
+        localStorage.removeItem(LS_GUILD_ID)
+        setKicked(true)
+        setLoading(false)
+        return
+      }
 
       const { data: mData } = await supabase
         .from("guild_members").select("*").eq("guild_id", savedId)
@@ -599,7 +686,16 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
         }
 
         if (eventType === "DELETE") {
-          setMembers(prev => prev.filter(x => x.id !== (old as GuildMember).id))
+          const deletedId = (old as GuildMember).id
+          // If I was the one deleted — I was kicked
+          if (deletedId === myId) {
+            localStorage.setItem(LS_KICKED, gid)
+            localStorage.removeItem(LS_GUILD_ID)
+            setGuild(null); setMembers([]); setChat([])
+            setKicked(true); setView("browse")
+          } else {
+            setMembers(prev => prev.filter(x => x.id !== deletedId))
+          }
         }
       })
       .subscribe()
@@ -631,10 +727,23 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       })
       .subscribe()
 
+    // ── all guilds list: real-time updates ──────────────────────────────────
+    const allGuildsCh = supabase
+      .channel("all-guilds")
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "guilds",
+      }, async () => {
+        // Re-fetch full list on any change
+        const { data } = await supabase.from("guilds").select("*").order("level", { ascending: false })
+        if (data) setAllGuilds(data as Guild[])
+      })
+      .subscribe()
+
     return () => {
       supabase.removeChannel(membersCh)
       supabase.removeChannel(chatCh)
       supabase.removeChannel(guildCh)
+      supabase.removeChannel(allGuildsCh)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guild?.id])
@@ -733,19 +842,30 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   }
 
   const handleSendChat = async () => {
-    if (!chatInput.trim() || !guild || !myMember) return
+    const text = chatInput.trim()
+    if (!text || !guild || !myMember) return
+
+    // ── Filtro de palavrões ────────────────────────────────────────────────
+    const banned = containsBannedWord(text)
+    if (banned) {
+      setChatError("🚫 Mensagem bloqueada — o chat da guilda deve ser respeitoso com todos os membros.")
+      setTimeout(() => setChatError(null), 3500)
+      return   // NÃO envia e NÃO limpa o input para o usuário poder corrigir
+    }
+
     const msg: ChatMessage = {
-      id: `m-${myId}-${Date.now()}`,
-      guild_id: guild.id,
-      author_id: myId,
+      id:          `m-${myId}-${Date.now()}`,
+      guild_id:    guild.id,
+      author_id:   myId,
       author_name: myMember.name,
       author_role: myRole,
-      text: chatInput.trim(),
-      timestamp: Date.now(),
+      text,
+      timestamp:   Date.now(),
     }
     // Optimistic: add immediately for sender
     setChat(prev => [...prev.slice(-49), msg])
     setChatInput("")
+    setChatError(null)
 
     if (supabase) {
       await supabase.from("guild_chat").insert({
@@ -753,7 +873,6 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
         author_id: msg.author_id, author_name: msg.author_name,
         author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
       })
-      // Realtime INSERT will deliver msg to all OTHER members automatically
     }
   }
 
@@ -789,7 +908,8 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   const handleKick = async (memberId: string) => {
     if (!guild || !supabase) return
     await supabase.from("guild_members").delete().eq("id", memberId)
-    // Realtime DELETE event will update everyone's member list
+    // Realtime DELETE will update everyone's list in real time.
+    // The kicked player's subscription will also fire and redirect them.
     toast("✅ Membro expulso.")
   }
 
@@ -817,6 +937,29 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     toast("Você saiu da guilda.")
   }
 
+  const handleSendEmote = async (emote: typeof GAME_EMOTES[0]) => {
+    if (!guild || !myMember) return
+    setShowEmotes(false)
+    const msg: ChatMessage = {
+      id:          `emote-${myId}-${Date.now()}`,
+      guild_id:    guild.id,
+      author_id:   myId,
+      author_name: myMember.name,
+      author_role: myRole,
+      text:        `__emote__${emote.id}__${emote.image}__${emote.name}`,
+      timestamp:   Date.now(),
+    }
+    // Optimistic
+    setChat(prev => [...prev.slice(-49), msg])
+    if (supabase) {
+      await supabase.from("guild_chat").insert({
+        id: msg.id, guild_id: msg.guild_id,
+        author_id: msg.author_id, author_name: msg.author_name,
+        author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
+      })
+    }
+  }
+
   const handleBossDuel = (deck: Deck) => {
     setShowDeckSel(false)
     if (onStartBossDuel) onStartBossDuel(deck.id)
@@ -824,6 +967,35 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // ── KICKED screen ────────────────────────────────────────────────────────
+  if (kicked) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,#020610,#050d1a)", fontFamily:"'Segoe UI',sans-serif", padding:24 }}>
+        <div style={{ textAlign:"center", maxWidth:380 }}>
+          <div style={{ fontSize:72, marginBottom:16 }}>🚫</div>
+          <h2 style={{ fontWeight:900, fontSize:22, color:"#f87171", margin:"0 0 10px" }}>Você foi expulso da guilda</h2>
+          <p style={{ color:"#64748b", fontSize:14, marginBottom:28, lineHeight:1.7 }}>
+            O líder removeu você desta guilda.<br/>
+            Você pode entrar em outra guilda usando um novo link de convite ou criar a sua própria.
+          </p>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <button onClick={() => {
+              localStorage.removeItem(LS_KICKED)
+              setKicked(false)
+              setView("browse")
+            }} style={{ padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff", fontWeight:900, fontSize:14, cursor:"pointer", boxShadow:"0 4px 20px rgba(139,92,246,0.35)" }}>
+              🏰 Ver Guildas Disponíveis
+            </button>
+            <button onClick={onBack} style={{ padding:"12px 0", borderRadius:14, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+              ← Voltar ao Menu
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg,#020610,#050d1a)", fontFamily: "'Segoe UI',sans-serif" }}>
@@ -937,6 +1109,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
               { id: "boss",    label: "💀 Chefão"  },
               { id: "war",     label: "⚔️ Guerra"  },
               { id: "shop",    label: "🛒 Loja"    },
+              { id: "guilds",  label: "🌐 Guildas" },
             ] as const).map(tab => (
               <button key={tab.id} onClick={() => setView(tab.id)} style={{
                 flex: 1, padding: "7px 4px", borderRadius: 9, border: "none",
@@ -956,16 +1129,26 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
           {/* ══ BROWSE ══ */}
           {(!guild || view === "browse") && (
             <>
-              <button onClick={() => setShowCreate(true)} style={{
-                width: "100%", padding: "14px 0", borderRadius: 14, border: "none",
-                background: "linear-gradient(135deg,#6d28d9,#8b5cf6)", color: "#fff",
-                fontWeight: 900, fontSize: 14, cursor: "pointer",
-                boxShadow: "0 4px 20px rgba(139,92,246,0.35)",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20,
-              }}>
-                <Plus size={18} /> Criar Guilda
-                <span style={{ fontSize: 11, opacity: 0.7 }}>({CREATE_COST}🪙)</span>
-              </button>
+              <div style={{ display:"flex", gap:10, marginBottom:20 }}>
+                <button onClick={() => setShowCreate(true)} style={{
+                  flex:1, padding:"14px 0", borderRadius:14, border:"none",
+                  background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff",
+                  fontWeight:900, fontSize:14, cursor:"pointer",
+                  boxShadow:"0 4px 20px rgba(139,92,246,0.35)",
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                }}>
+                  <Plus size={18}/> Criar Guilda
+                  <span style={{ fontSize:11, opacity:0.7 }}>({CREATE_COST}🪙)</span>
+                </button>
+                <button onClick={() => setView("guilds")} style={{
+                  padding:"14px 16px", borderRadius:14,
+                  background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.12)",
+                  color:"#c4b5fd", fontWeight:800, fontSize:13, cursor:"pointer",
+                  display:"flex", alignItems:"center", gap:6, flexShrink:0,
+                }}>
+                  🌐 Ver Guildas
+                </button>
+              </div>
               <div style={{ textAlign: "center", padding: "48px 0", color: "#334155" }}>
                 <div style={{ fontSize: 56, marginBottom: 16 }}>🏰</div>
                 <p style={{ fontWeight: 800, fontSize: 15, color: "#475569", marginBottom: 8 }}>Você ainda não tem uma guilda</p>
@@ -1109,33 +1292,102 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                           {rl && <span style={{ fontSize: 8, fontWeight: 800, color: rl.color, background: rl.bg, padding: "1px 5px", borderRadius: 4, textTransform: "uppercase" }}>{rl.text}</span>}
                         </div>
                       )}
-                      <div style={{
-                        maxWidth: "75%", padding: "9px 13px",
-                        borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                        background: isSystem ? "rgba(139,92,246,0.12)" : isMe ? "linear-gradient(135deg,#6d28d9,#8b5cf6)" : "rgba(255,255,255,0.07)",
-                        border: isSystem ? "1px solid rgba(139,92,246,0.25)" : "none",
-                      }}>
-                        <p style={{ margin: 0, fontSize: 13, color: isSystem ? "#a78bfa" : "#f1f5f9", fontStyle: isSystem ? "italic" : undefined, lineHeight: 1.5 }}>{msg.text}</p>
-                        <p style={{ margin: "4px 0 0", fontSize: 9, color: "rgba(255,255,255,0.35)", textAlign: "right" }}>{timeAgo(msg.timestamp)}</p>
-                      </div>
+                      {(() => {
+                        const isEmote = msg.text.startsWith("__emote__")
+                        if (isEmote) {
+                          const parts = msg.text.split("__").filter(Boolean)
+                          // parts: ["emote", "emote-1", "/images/emotes/emote-1.png", "Chorando de Alegria"]
+                          const emoteSrc  = parts[2] ?? ""
+                          const emoteName = parts[3] ?? ""
+                          return (
+                            <div title={emoteName} style={{ display:"flex", flexDirection:"column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+                              <img src={emoteSrc} alt={emoteName}
+                                style={{ width:64, height:64, objectFit:"contain", filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.5))", animation:"emotePop 0.25s ease" }}
+                                onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
+                              <p style={{ margin:"2px 0 0", fontSize:9, color:"rgba(255,255,255,0.30)" }}>{timeAgo(msg.timestamp)}</p>
+                            </div>
+                          )
+                        }
+                        return (
+                          <div style={{
+                            maxWidth:"75%", padding:"9px 13px",
+                            borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                            background: isSystem ? "rgba(139,92,246,0.12)" : isMe ? "linear-gradient(135deg,#6d28d9,#8b5cf6)" : "rgba(255,255,255,0.07)",
+                            border: isSystem ? "1px solid rgba(139,92,246,0.25)" : "none",
+                          }}>
+                            <p style={{ margin:0, fontSize:13, color: isSystem ? "#a78bfa" : "#f1f5f9", fontStyle: isSystem ? "italic" : undefined, lineHeight:1.5 }}>{msg.text}</p>
+                            <p style={{ margin:"4px 0 0", fontSize:9, color:"rgba(255,255,255,0.35)", textAlign:"right" }}>{timeAgo(msg.timestamp)}</p>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })}
                 <div ref={chatEndRef} />
               </div>
 
+              {/* Chat error (banned word) */}
+              {chatError && (
+                <div style={{
+                  background:"rgba(220,38,38,0.12)", border:"1px solid rgba(220,38,38,0.35)",
+                  borderRadius:10, padding:"9px 14px", marginBottom:6,
+                  display:"flex", alignItems:"center", gap:8, animation:"fadeDown 0.2s ease",
+                }}>
+                  <span style={{ fontSize:16, flexShrink:0 }}>🚫</span>
+                  <p style={{ margin:0, fontSize:12, color:"#fca5a5", fontWeight:700, lineHeight:1.4 }}>
+                    {chatError}
+                  </p>
+                </div>
+              )}
+
+              {/* Emote Picker */}
+              {showEmotes && (
+                <div style={{
+                  background:"rgba(10,6,20,0.97)", border:"1px solid rgba(139,92,246,0.35)",
+                  borderRadius:16, padding:"12px", marginBottom:8,
+                  backdropFilter:"blur(16px)",
+                }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                    <span style={{ fontSize:11, fontWeight:800, color:"#a78bfa", letterSpacing:"0.06em", textTransform:"uppercase" }}>Emotes</span>
+                    <button onClick={() => setShowEmotes(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"#475569", display:"flex", alignItems:"center" }}>
+                      <XIcon size={14}/>
+                    </button>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:8 }}>
+                    {GAME_EMOTES.map(emote => (
+                      <button key={emote.id} onClick={() => handleSendEmote(emote)}
+                        title={emote.name}
+                        style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:4, cursor:"pointer", transition:"all 0.15s", aspectRatio:"1/1", display:"flex", alignItems:"center", justifyContent:"center" }}
+                        onMouseEnter={e => { e.currentTarget.style.background="rgba(139,92,246,0.20)"; e.currentTarget.style.borderColor="rgba(139,92,246,0.50)"; e.currentTarget.style.transform="scale(1.12)" }}
+                        onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.08)"; e.currentTarget.style.transform="scale(1)" }}
+                      >
+                        <img src={emote.image} alt={emote.name} style={{ width:38, height:38, objectFit:"contain" }}
+                          onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Input */}
-              <div style={{ display: "flex", gap: 8, paddingTop: 8, background: "rgba(2,6,16,0.95)" }}>
+              <div style={{ display:"flex", gap:8, paddingTop:8, background:"rgba(2,6,16,0.95)" }}>
                 <input
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleSendChat()}
                   placeholder="Mensagem para a guilda..."
                   maxLength={200}
-                  style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "11px 14px", color: "#e2e8f0", fontSize: 13 }}
+                  style={{ flex:1, background:"rgba(255,255,255,0.06)", border:`1px solid ${chatError ? "rgba(220,38,38,0.60)" : "rgba(255,255,255,0.12)"}`, borderRadius:12, padding:"11px 14px", color:"#e2e8f0", fontSize:13, transition:"border-color 0.2s" }}
                 />
-                <button onClick={handleSendChat} style={{ background: "linear-gradient(135deg,#6d28d9,#8b5cf6)", border: "none", borderRadius: 12, padding: "0 16px", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                  <Send size={18} color="#fff" />
+                <button onClick={() => setShowEmotes(v => !v)} style={{
+                  background: showEmotes ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.06)",
+                  border: `1px solid ${showEmotes ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.10)"}`,
+                  borderRadius:12, padding:"0 12px", cursor:"pointer", display:"flex", alignItems:"center", flexShrink:0,
+                }}>
+                  <Smile size={18} color={showEmotes ? "#a78bfa" : "#64748b"}/>
+                </button>
+                <button onClick={handleSendChat} style={{ background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", border:"none", borderRadius:12, padding:"0 16px", cursor:"pointer", display:"flex", alignItems:"center", flexShrink:0 }}>
+                  <Send size={18} color="#fff"/>
                 </button>
               </div>
             </div>
@@ -1211,6 +1463,67 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
             </>
           )}
 
+          {/* ══ GUILDS LIST ══ */}
+          {view === "guilds" && (
+            <>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                <h3 style={{ fontWeight:900, fontSize:16, margin:0, color:"#c4b5fd" }}>🌐 Todas as Guildas</h3>
+                <span style={{ fontSize:11, color:"#22c55e", fontWeight:600 }}>● Tempo real</span>
+              </div>
+              {allGuilds.length === 0 ? (
+                <div style={{ textAlign:"center", padding:"40px 0", color:"#334155" }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>🏰</div>
+                  <p style={{ fontSize:13, color:"#475569" }}>Nenhuma guilda criada ainda.<br/>Seja o primeiro!</p>
+                </div>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {allGuilds.map(g => {
+                    const isMyGuild = guild?.id === g.id
+                    return (
+                      <div key={g.id} style={{
+                        display:"flex", alignItems:"center", gap:12,
+                        background: isMyGuild ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isMyGuild ? "rgba(139,92,246,0.35)" : "rgba(255,255,255,0.07)"}`,
+                        borderRadius:14, padding:"12px 14px",
+                      }}>
+                        <GuildIcon icon={g.icon} size={48} borderRadius={12} />
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                            <span style={{ fontWeight:900, fontSize:14, color:"#e2e8f0",
+                              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{g.name}</span>
+                            {isMyGuild && (
+                              <span style={{ fontSize:9, fontWeight:800, color:"#a78bfa",
+                                background:"rgba(139,92,246,0.20)", padding:"1px 6px",
+                                borderRadius:5, flexShrink:0 }}>SUA GUILDA</span>
+                            )}
+                            <span style={{ fontSize:9, fontWeight:800, color:"#475569", flexShrink:0 }}>
+                              Lv.{g.level}
+                            </span>
+                          </div>
+                          <div style={{ fontSize:12, color:"#64748b", fontStyle:"italic",
+                            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                            {g.slogan}
+                          </div>
+                          <div style={{ display:"flex", gap:10, marginTop:3, fontSize:11, color:"#334155" }}>
+                            <span>👥 {g.max_members} vagas</span>
+                            <span>{g.join_mode === "open" ? "🔓 Livre" : "🔒 Aprovação"}</span>
+                          </div>
+                        </div>
+                        {isMyGuild && (
+                          <button onClick={() => setView("main")} style={{
+                            padding:"6px 12px", borderRadius:9, border:"none",
+                            background:"linear-gradient(135deg,#6d28d9,#8b5cf6)",
+                            color:"#fff", fontWeight:800, fontSize:11, cursor:"pointer", flexShrink:0,
+                          }}>Ver →</button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
           {/* ══ SHOP ══ */}
           {guild && view === "shop" && (
             <>
@@ -1276,6 +1589,11 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
           to   { opacity:1; transform:translateX(-50%) translateY(0); }
         }
         @keyframes spin { to { transform:rotate(360deg) } }
+        @keyframes emotePop {
+          0%   { transform:scale(0.5); opacity:0; }
+          70%  { transform:scale(1.15); opacity:1; }
+          100% { transform:scale(1); }
+        }
       `}</style>
     </div>
   )
