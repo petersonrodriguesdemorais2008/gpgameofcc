@@ -57,6 +57,23 @@ export function GameWrapper() {
   // Assets loading gate — shown before everything else
   const [assetsReady, setAssetsReady] = useState(false)
 
+  // ── Detecta link de convite de guilda na URL ao iniciar o jogo ────────────
+  // O parâmetro "gd" contém os dados da guilda em base64.
+  // Armazenamos no localStorage para que GuildScreen exiba o modal de convite.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const gd = params.get("gd")
+    if (gd) {
+      localStorage.setItem("gpgame_pending_invite", gd)
+      // Limpa URL para não re-disparar no refresh
+      const url = new URL(window.location.href)
+      url.searchParams.delete("gd")
+      url.searchParams.delete("ref")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [])
+
   // Toggle mobile-mode class on html element
   useEffect(() => {
     const html = document.documentElement
