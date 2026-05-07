@@ -38,7 +38,7 @@ interface ChatMessage {
 interface Guild {
   id: string
   name: string
-  icon: string        // emoji OR image path (starts with "/" or "http")
+  icon: string        // caminho da imagem em /images/guild-icons/
   slogan: string
   level: number
   xp: number
@@ -61,11 +61,6 @@ interface GuildScreenProps {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const GUILD_ICONS_EMOJI = [
-  "⚔️","🛡️","🏆","🌟","🔥","💎","🦅","🐉","🌙","⚡",
-  "🎯","🗡️","🔮","👑","🌊","🏰","🎭","🦁","🧿","💫",
-]
 
 // Guild icon images — coloque os arquivos em: public/images/guild-icons/
 // Os arquivos são: 1b.png até 12b.png
@@ -111,7 +106,7 @@ function roleLabel(role: GuildRole) {
   return                         { text: "Membro",   color: "#94a3b8", bg: "rgba(148,163,184,0.10)" }
 }
 
-/** Renders either an emoji icon or an <img> icon */
+/** Renderiza o ícone da guilda (imagem de /images/guild-icons/) */
 function GuildIcon({ icon, size = 48, fontSize = 26, borderRadius = 12 }: {
   icon: string; size?: number; fontSize?: number; borderRadius?: number
 }) {
@@ -296,8 +291,7 @@ function CreateGuildModal({
   playerId: string | null
   playerProfile: any
 }) {
-  const [icon, setIcon] = useState("⚔️")
-  const [iconTab, setIconTab] = useState<"emoji"|"image">("emoji")
+  const [icon, setIcon] = useState(GUILD_ICONS_IMG[0].path)
   const [name, setName] = useState("")
   const [slogan, setSlogan] = useState("")
   const [description, setDescription] = useState("")
@@ -364,78 +358,70 @@ function CreateGuildModal({
           </div>
         </div>
 
-        {/* Icon picker — tabs: emoji / image */}
+        {/* Seleção de ícone da guilda */}
         <div style={{ marginBottom:16 }}>
-          <label style={{ fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:8 }}>Ícone da Guilda</label>
-          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-            {(["emoji","image"] as const).map(tab => (
-              <button key={tab} onClick={() => setIconTab(tab)} style={{
-                padding:"5px 14px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:800, fontSize:11,
-                background: iconTab === tab ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
-                color: iconTab === tab ? "#c4b5fd" : "#475569",
-                border: `1px solid ${iconTab === tab ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.08)"}`,
-              }}>{tab === "emoji" ? "😀 Emojis" : "🖼️ Imagens"}</button>
+          <label style={{ fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:10 }}>
+            Selecione o Ícone da Guilda
+          </label>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
+            {GUILD_ICONS_IMG.map(ic => (
+              <button
+                key={ic.path}
+                onClick={() => setIcon(ic.path)}
+                title={ic.label}
+                style={{
+                  position:"relative", aspectRatio:"1/1", borderRadius:12, padding:0,
+                  overflow:"hidden", background:"rgba(255,255,255,0.04)",
+                  border: `2px solid ${icon === ic.path ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
+                  cursor:"pointer", transition:"all 0.2s",
+                  boxShadow: icon === ic.path ? "0 0 14px rgba(139,92,246,0.55)" : "none",
+                  transform: icon === ic.path ? "scale(1.06)" : "scale(1)",
+                }}
+              >
+                <img
+                  src={ic.path}
+                  alt={ic.label}
+                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                  onError={e => { (e.target as HTMLImageElement).style.opacity = "0.15" }}
+                />
+                {icon === ic.path && (
+                  <div style={{
+                    position:"absolute", inset:0,
+                    background:"rgba(139,92,246,0.28)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                  }}>
+                    <div style={{
+                      width:26, height:26, borderRadius:"50%",
+                      background:"#8b5cf6", display:"flex", alignItems:"center", justifyContent:"center",
+                      boxShadow:"0 0 10px rgba(139,92,246,0.8)",
+                    }}>
+                      <span style={{ fontSize:14, color:"#fff" }}>✓</span>
+                    </div>
+                  </div>
+                )}
+                <div style={{
+                  position:"absolute", bottom:0, left:0, right:0,
+                  background:"linear-gradient(transparent,rgba(0,0,0,0.80))",
+                  padding:"3px 4px 4px",
+                }}>
+                  <p style={{
+                    margin:0, fontSize:8, color:"#e2e8f0", textAlign:"center",
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                    fontWeight: icon === ic.path ? 800 : 400,
+                  }}>
+                    {ic.label}
+                  </p>
+                </div>
+              </button>
             ))}
           </div>
-          {iconTab === "emoji" ? (
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-              {GUILD_ICONS_EMOJI.map(ic => (
-                <button key={ic} onClick={() => setIcon(ic)} style={{
-                  width:40, height:40, borderRadius:10, fontSize:20,
-                  background: icon === ic ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
-                  border: `2px solid ${icon === ic ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
-                  cursor:"pointer", transition:"all 0.15s",
-                }}>{ic}</button>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-              {GUILD_ICONS_IMG.map(ic => (
-                <button
-                  key={ic.path}
-                  onClick={() => setIcon(ic.path)}
-                  title={ic.label}
-                  style={{
-                    position:"relative", aspectRatio:"1/1", borderRadius:12, padding:0,
-                    overflow:"hidden", background:"rgba(255,255,255,0.04)",
-                    border: `2px solid ${icon === ic.path ? "#8b5cf6" : "rgba(255,255,255,0.08)"}`,
-                    cursor:"pointer", transition:"all 0.15s",
-                    boxShadow: icon === ic.path ? "0 0 12px rgba(139,92,246,0.50)" : "none",
-                  }}
-                >
-                  <img
-                    src={ic.path}
-                    alt={ic.label}
-                    style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-                    onError={e => { (e.target as HTMLImageElement).style.opacity = "0.2" }}
-                  />
-                  {icon === ic.path && (
-                    <div style={{
-                      position:"absolute", inset:0,
-                      background:"rgba(139,92,246,0.30)",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                    }}>
-                      <span style={{ fontSize:18 }}>✓</span>
-                    </div>
-                  )}
-                  <div style={{
-                    position:"absolute", bottom:0, left:0, right:0,
-                    background:"linear-gradient(transparent,rgba(0,0,0,0.75))",
-                    padding:"2px 4px 3px",
-                  }}>
-                    <p style={{ margin:0, fontSize:8, color:"#e2e8f0", textAlign:"center",
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                      {ic.label}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Preview */}
-          <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ fontSize:11, color:"#64748b" }}>Prévia:</span>
-            <GuildIcon icon={icon} size={40} fontSize={22} borderRadius={10} />
+          {/* Prévia do ícone selecionado */}
+          <div style={{ marginTop:12, display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:11, color:"#64748b" }}>Selecionado:</span>
+            <GuildIcon icon={icon} size={44} fontSize={24} borderRadius={11} />
+            <span style={{ fontSize:12, color:"#a78bfa", fontWeight:700 }}>
+              {GUILD_ICONS_IMG.find(ic => ic.path === icon)?.label ?? ""}
+            </span>
           </div>
         </div>
 
