@@ -121,7 +121,7 @@ const BANNED_WORDS = [
 function normalize(text: string): string {
   return text
     .toLowerCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // remove acentos
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")   // remove acentos
     .replace(/[4@]/g, "a").replace(/3/g, "e")           // leetspeak básico
     .replace(/1/g, "i").replace(/0/g, "o").replace(/5/g, "s")
     .replace(/\s+/g, " ").trim()
@@ -129,10 +129,14 @@ function normalize(text: string): string {
 
 function containsBannedWord(text: string): string | null {
   const norm = normalize(text)
+  const padded = " " + norm + " "
   for (const word of BANNED_WORDS) {
-    // Match palavra inteira ou como parte de palavra (mais seguro)
-    const escaped = word.replace(/[.*+?^${}()|[\]\]/g, "\\$&")
-    if (new RegExp(`(^|[\s\b])${escaped}([\s\b]|$)`).test(norm)) {
+    if (
+      padded.includes(" " + word + " ") ||
+      norm === word ||
+      norm.startsWith(word + " ") ||
+      norm.endsWith(" " + word)
+    ) {
       return word
     }
   }
@@ -456,7 +460,7 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
           { label: "Nome da Guilda *", val: name,        set: setName,        placeholder: "Mínimo 3 caracteres",      max: 30,  multi: false },
           { label: "Slogan",           val: slogan,      set: setSlogan,      placeholder: "Frase de impacto",          max: 50,  multi: false },
           { label: "Descrição",        val: description, set: setDescription, placeholder: "Descreva sua guilda...",    max: 120, multi: true  },
-        ] as const).map(f => (
+        ].map(f => (
           <div key={f.label} style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>{f.label}</label>
             {f.multi
@@ -1110,7 +1114,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
               { id: "war",     label: "⚔️ Guerra"  },
               { id: "shop",    label: "🛒 Loja"    },
               { id: "guilds",  label: "🌐 Guildas" },
-            ] as const).map(tab => (
+            ].map(tab => (
               <button key={tab.id} onClick={() => setView(tab.id)} style={{
                 flex: 1, padding: "7px 4px", borderRadius: 9, border: "none",
                 cursor: "pointer", fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
@@ -1227,7 +1231,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                   { icon: "⚔️", label: "Guerra de Guildas", desc: "PVP em equipe",            color: "#60a5fa", action: () => setView("war")  },
                   { icon: "🎯", label: "Missão Coletiva",   desc: "Meta colaborativa",        color: "#34d399", action: () => toast("🎯 Meta: vençam 50 duelos juntos!") },
                   { icon: "🛒", label: "Loja da Guilda",    desc: "Troque moedas",            color: "#fbbf24", action: () => setView("shop") },
-                ] as const).map(a => (
+                ].map(a => (
                   <button key={a.label} onClick={a.action} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
                     <div style={{ fontSize: 24, marginBottom: 6 }}>{a.icon}</div>
                     <div style={{ fontWeight: 900, fontSize: 13, color: a.color }}>{a.label}</div>
