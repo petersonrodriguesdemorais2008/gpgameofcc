@@ -455,24 +455,27 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
           </div>
         </div>
 
-        {/* Text fields */}
-        {([
-          { label: "Nome da Guilda *", val: name,        set: setName,        placeholder: "Mínimo 3 caracteres",      max: 30,  multi: false },
-          { label: "Slogan",           val: slogan,      set: setSlogan,      placeholder: "Frase de impacto",          max: 50,  multi: false },
-          { label: "Descrição",        val: description, set: setDescription, placeholder: "Descreva sua guilda...",    max: 120, multi: true  },
-        ].map(f => (
-          <div key={f.label} style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>{f.label}</label>
-            {f.multi
-              ? <textarea value={f.val} onChange={e => f.set(e.target.value)} maxLength={f.max}
-                  placeholder={f.placeholder} rows={2}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 12px", color: "#e2e8f0", fontSize: 13, resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
-              : <input value={f.val} onChange={e => f.set(e.target.value)} maxLength={f.max}
-                  placeholder={f.placeholder}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 12px", color: "#e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
-            }
-          </div>
-        ))}
+        {/* Text fields — written out explicitly to avoid Turbopack inference issues */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Nome da Guilda *</label>
+          <input value={name} onChange={e => setName(e.target.value)} maxLength={30}
+            placeholder="Mínimo 3 caracteres"
+            style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 12px", color: "#e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Slogan</label>
+          <input value={slogan} onChange={e => setSlogan(e.target.value)} maxLength={50}
+            placeholder="Frase de impacto"
+            style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 12px", color: "#e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Descrição</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} maxLength={120}
+            placeholder="Descreva sua guilda..." rows={2}
+            style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 12px", color: "#e2e8f0", fontSize: 13, resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+        </div>
 
         {/* Join mode */}
         <div style={{ marginBottom: 14 }}>
@@ -1106,14 +1109,15 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
         {guild && (
           <div style={{ display: "flex", gap: 0, maxWidth: 700, margin: "10px auto 0", background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, overflowX: "auto" }}>
-            {([
-              { id: "main",    label: "🏠 Início"  },
-              { id: "members", label: "👥 Membros" },
-              { id: "chat",    label: "💬 Chat"    },
-              { id: "boss",    label: "💀 Chefão"  },
-              { id: "war",     label: "⚔️ Guerra"  },
-              { id: "shop",    label: "🛒 Loja"    },
-              { id: "guilds",  label: "🌐 Guildas" },
+            {/* Navigation tabs — written explicitly to satisfy Turbopack */}
+            {[
+              { id: "main"    as const, label: "🏠 Início"  },
+              { id: "members" as const, label: "👥 Membros" },
+              { id: "chat"    as const, label: "💬 Chat"    },
+              { id: "boss"    as const, label: "💀 Chefão"  },
+              { id: "war"     as const, label: "⚔️ Guerra"  },
+              { id: "shop"    as const, label: "🛒 Loja"    },
+              { id: "guilds"  as const, label: "🌐 Guildas" },
             ].map(tab => (
               <button key={tab.id} onClick={() => setView(tab.id)} style={{
                 flex: 1, padding: "7px 4px", borderRadius: 9, border: "none",
@@ -1197,17 +1201,21 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                 </div>
                 {/* Stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-                  {[
-                    { label: "Membros", value: `${members.length}/${guild.max_members}`, icon: "👥" },
-                    { label: "Moedas",  value: guild.guild_coins.toString(),              icon: "🪙" },
-                    { label: "Vagas",   value: `${LEVEL_MAX_MEMBERS[Math.min(10, guild.level)]}`, icon: "📈" },
-                  ].map(s => (
-                    <div key={s.label} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: 16 }}>{s.icon}</div>
-                      <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{s.value}</div>
-                      <div style={{ fontSize: 10, color: "#475569" }}>{s.label}</div>
-                    </div>
-                  ))}
+                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 16 }}>👥</div>
+                    <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{members.length}/{guild.max_members}</div>
+                    <div style={{ fontSize: 10, color: "#475569" }}>Membros</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 16 }}>🪙</div>
+                    <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{guild.guild_coins}</div>
+                    <div style={{ fontSize: 10, color: "#475569" }}>Moedas</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 16 }}>📈</div>
+                    <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{LEVEL_MAX_MEMBERS[Math.min(10, guild.level)]}</div>
+                    <div style={{ fontSize: 10, color: "#475569" }}>Vagas</div>
+                  </div>
                 </div>
               </div>
 
@@ -1226,18 +1234,26 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
               {/* Activities */}
               <h3 style={{ fontWeight: 900, fontSize: 12, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Atividades</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {([
-                  { icon: "💀", label: "Chefão da Guilda",  desc: "Duelo difícil vs. Boss",  color: "#f87171", action: () => setView("boss") },
-                  { icon: "⚔️", label: "Guerra de Guildas", desc: "PVP em equipe",            color: "#60a5fa", action: () => setView("war")  },
-                  { icon: "🎯", label: "Missão Coletiva",   desc: "Meta colaborativa",        color: "#34d399", action: () => toast("🎯 Meta: vençam 50 duelos juntos!") },
-                  { icon: "🛒", label: "Loja da Guilda",    desc: "Troque moedas",            color: "#fbbf24", action: () => setView("shop") },
-                ].map(a => (
-                  <button key={a.label} onClick={a.action} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                    <div style={{ fontSize: 24, marginBottom: 6 }}>{a.icon}</div>
-                    <div style={{ fontWeight: 900, fontSize: 13, color: a.color }}>{a.label}</div>
-                    <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>{a.desc}</div>
-                  </button>
-                ))}
+                <button onClick={() => setView("boss")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>💀</div>
+                  <div style={{ fontWeight: 900, fontSize: 13, color: "#f87171" }}>Chefão da Guilda</div>
+                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>Duelo difícil vs. Boss</div>
+                </button>
+                <button onClick={() => setView("war")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>⚔️</div>
+                  <div style={{ fontWeight: 900, fontSize: 13, color: "#60a5fa" }}>Guerra de Guildas</div>
+                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>PVP em equipe</div>
+                </button>
+                <button onClick={() => toast("🎯 Meta: vençam 50 duelos juntos!")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>🎯</div>
+                  <div style={{ fontWeight: 900, fontSize: 13, color: "#34d399" }}>Missão Coletiva</div>
+                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>Meta colaborativa</div>
+                </button>
+                <button onClick={() => setView("shop")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>🛒</div>
+                  <div style={{ fontWeight: 900, fontSize: 13, color: "#fbbf24" }}>Loja da Guilda</div>
+                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>Troque moedas</div>
+                </button>
               </div>
 
               <div style={{ marginTop: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "12px 14px" }}>
@@ -1409,17 +1425,22 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                   Escolha seu melhor deck e supere o desafio!
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-                  {[
-                    { faixa: "Derrota Honrosa",    recompensa: "25 🪙",           color: "#64748b" },
-                    { faixa: "Vitória Rápida",      recompensa: "100 🪙 + Pack",   color: "#fbbf24" },
-                    { faixa: "Vitória Perfeita",    recompensa: "200 🪙 + Pack SR", color: "#60a5fa" },
-                    { faixa: "Lendário (sem dano)", recompensa: "500 🪙 + Pack LR", color: "#a855f7" },
-                  ].map(r => (
-                    <div key={r.faixa} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
-                      <div style={{ fontSize: 11, color: "#64748b" }}>{r.faixa}</div>
-                      <div style={{ fontWeight: 900, fontSize: 12, color: r.color, marginTop: 4 }}>{r.recompensa}</div>
-                    </div>
-                  ))}
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Derrota Honrosa</div>
+                    <div style={{ fontWeight: 900, fontSize: 12, color: "#64748b", marginTop: 4 }}>25 🪙</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Vitória Rápida</div>
+                    <div style={{ fontWeight: 900, fontSize: 12, color: "#fbbf24", marginTop: 4 }}>100 🪙 + Pack</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Vitória Perfeita</div>
+                    <div style={{ fontWeight: 900, fontSize: 12, color: "#60a5fa", marginTop: 4 }}>200 🪙 + Pack SR</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Lendário (sem dano)</div>
+                    <div style={{ fontWeight: 900, fontSize: 12, color: "#a855f7", marginTop: 4 }}>500 🪙 + Pack LR</div>
+                  </div>
                 </div>
                 <div style={{ background: "rgba(220,38,38,0.10)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 12, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -1537,24 +1558,27 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
-                  { name: "Pack de Gacha Comum", cost: 50,  icon: "📦", desc: "1 pack comum"         },
-                  { name: "100 Gacha Coins",      cost: 80,  icon: "🪙", desc: "Moedas do jogo"       },
-                  { name: "Pack SR Garantido",    cost: 200, icon: "💎", desc: "Garante SR ou acima"  },
-                  { name: "Título Exclusivo",     cost: 500, icon: "🏷️", desc: "Título de guilda"    },
-                ].map(item => (
-                  <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px" }}>
-                    <div style={{ fontSize: 28, width: 44, height: 44, background: "rgba(251,191,36,0.10)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{item.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 900, fontSize: 13 }}>{item.name}</div>
-                      <div style={{ fontSize: 11, color: "#475569" }}>{item.desc}</div>
+                  { name: "Pack de Gacha Comum", cost: 50,  icon: "📦", desc: "1 pack comum"        },
+                  { name: "100 Gacha Coins",      cost: 80,  icon: "🪙", desc: "Moedas do jogo"      },
+                  { name: "Pack SR Garantido",    cost: 200, icon: "💎", desc: "Garante SR ou acima" },
+                  { name: "Título Exclusivo",     cost: 500, icon: "🏷️", desc: "Título de guilda"   },
+                ].map(item => {
+                  const canBuy = (guild?.guild_coins ?? 0) >= item.cost
+                  return (
+                    <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px" }}>
+                      <div style={{ fontSize: 28, width: 44, height: 44, background: "rgba(251,191,36,0.10)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{item.icon}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 900, fontSize: 13 }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: "#475569" }}>{item.desc}</div>
+                      </div>
+                      <button
+                        onClick={() => canBuy ? toast("✅ " + item.name + " comprado!") : toast("❌ Moedas insuficientes!")}
+                        style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#92400e,#d97706)", color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                        🪙 {item.cost}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => guild.guild_coins >= item.cost ? toast(`✅ ${item.name} comprado!`) : toast("❌ Moedas insuficientes!")}
-                      style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#92400e,#d97706)", color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
-                      🪙 {item.cost}
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </>
           )}
