@@ -340,7 +340,15 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
     setError(""); setSaving(true)
 
     const supabase = createClient()
-    const guildId  = `guild-${Date.now()}`
+
+    // If supabase is null, env vars are missing
+    if (!supabase) {
+      setError("Supabase não configurado. Verifique as variáveis de ambiente na Vercel (NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY).")
+      setSaving(false)
+      return
+    }
+
+    const guildId = `guild-${Date.now()}`
 
     const newGuild: Guild = {
       id: guildId,
@@ -361,7 +369,7 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
       role: "leader", last_online: Date.now(), weekly_contrib: 0,
     }
 
-    if (supabase) {
+    try {
       const { error: gErr } = await supabase.from("guilds").insert({
         id: newGuild.id, name: newGuild.name, icon: newGuild.icon,
         slogan: newGuild.slogan, description: newGuild.description,
@@ -370,7 +378,10 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
         max_members: 15, guild_coins: 0,
         total_damage_today: 0, created_at: newGuild.created_at,
       })
-      if (gErr) { setError("Erro ao criar: " + gErr.message); setSaving(false); return }
+      if (gErr) {
+        setError("Erro ao salvar guilda: " + gErr.message + " (code: " + gErr.code + ")")
+        setSaving(false); return
+      }
 
       const { error: mErr } = await supabase.from("guild_members").insert({
         id: newMember.id, guild_id: guildId,
@@ -378,7 +389,10 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
         level: newMember.level, avatar_url: newMember.avatar_url,
         role: "leader", last_online: newMember.last_online, weekly_contrib: 0,
       })
-      if (mErr) { setError("Erro ao entrar: " + mErr.message); setSaving(false); return }
+      if (mErr) {
+        setError("Erro ao salvar membro: " + mErr.message + " (code: " + mErr.code + ")")
+        setSaving(false); return
+      }
 
       await supabase.from("guild_chat").insert({
         id: `sys-${Date.now()}`, guild_id: guildId,
@@ -386,6 +400,10 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
         text: `🎉 Guilda "${newGuild.name}" foi criada! Bem-vindos!`,
         timestamp: Date.now(),
       })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError("Erro inesperado: " + msg)
+      setSaving(false); return
     }
 
     setCoins(coins - CREATE_COST)
@@ -573,6 +591,8 @@ function InviteLinkModal({ inviteGuild, currentGuildId, onAccept, onDecline }: {
 
 export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProps) {
   const { playerProfile, playerId, coins, setCoins, decks } = useGame()
+  // createClient() is safe to call at component level — it's cached internally
+  // and returns null gracefully if env vars aren't set.
   const supabase = createClient()
   const myId = playerId || `anon-${Date.now()}`
 
