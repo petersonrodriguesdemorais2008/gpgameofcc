@@ -9,6 +9,97 @@ import { useGame } from "@/contexts/game-context"
 import type { Deck } from "@/contexts/game-context"
 import { createClient } from "@/lib/supabase/client"
 
+// ─── Direct REST helper (bypasses @supabase/ssr client issues) ──────────────
+// Uses fetch() directly against Supabase REST API — more reliable in browser.
+const SUPA_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "")
+const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+
+async function sbInsert(table: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "apikey":        SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Prefer":        "return=minimal",
+      },
+      body: JSON.stringify(row),
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      return { error: `HTTP ${res.status}: ${body}` }
+    }
+    return { error: null }
+  } catch (e: unknown) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function sbSelect<T>(table: string, filter?: string): Promise<{ data: T[] | null; error: string | null }> {
+  try {
+    const url = `${SUPA_URL}/rest/v1/${table}${filter ? "?" + filter : ""}`
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "apikey":        SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Accept":        "application/json",
+      },
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      return { data: null, error: `HTTP ${res.status}: ${body}` }
+    }
+    const data = await res.json()
+    return { data: Array.isArray(data) ? data : [data], error: null }
+  } catch (e: unknown) {
+    return { data: null, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function sbDelete(table: string, filter: string): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`, {
+      method: "DELETE",
+      headers: {
+        "apikey":        SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Prefer":        "return=minimal",
+      },
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      return { error: `HTTP ${res.status}: ${body}` }
+    }
+    return { error: null }
+  } catch (e: unknown) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function sbUpdate(table: string, filter: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type":  "application/json",
+        "apikey":        SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Prefer":        "return=minimal",
+      },
+      body: JSON.stringify(row),
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      return { error: `HTTP ${res.status}: ${body}` }
+    }
+    return { error: null }
+  } catch (e: unknown) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type GuildRole     = "leader" | "officer" | "member"
@@ -369,42 +460,37 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
       role: "leader", last_online: Date.now(), weekly_contrib: 0,
     }
 
-    try {
-      const { error: gErr } = await supabase.from("guilds").insert({
-        id: newGuild.id, name: newGuild.name, icon: newGuild.icon,
-        slogan: newGuild.slogan, description: newGuild.description,
-        level: 1, xp: 0, xp_to_next: XP_PER_LEVEL,
-        join_mode: newGuild.join_mode, min_level: newGuild.min_level,
-        max_members: 15, guild_coins: 0,
-        total_damage_today: 0, created_at: newGuild.created_at,
-      })
-      if (gErr) {
-        setError("Erro ao salvar guilda: " + gErr.message + " (code: " + gErr.code + ")")
-        setSaving(false); return
-      }
-
-      const { error: mErr } = await supabase.from("guild_members").insert({
-        id: newMember.id, guild_id: guildId,
-        name: newMember.name, title: newMember.title,
-        level: newMember.level, avatar_url: newMember.avatar_url,
-        role: "leader", last_online: newMember.last_online, weekly_contrib: 0,
-      })
-      if (mErr) {
-        setError("Erro ao salvar membro: " + mErr.message + " (code: " + mErr.code + ")")
-        setSaving(false); return
-      }
-
-      await supabase.from("guild_chat").insert({
-        id: `sys-${Date.now()}`, guild_id: guildId,
-        author_id: "system", author_name: "Sistema", author_role: "leader",
-        text: `🎉 Guilda "${newGuild.name}" foi criada! Bem-vindos!`,
-        timestamp: Date.now(),
-      })
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setError("Erro inesperado: " + msg)
+    // Use direct REST API — more reliable than @supabase/ssr in browser
+    const { error: gErr } = await sbInsert("guilds", {
+      id: newGuild.id, name: newGuild.name, icon: newGuild.icon,
+      slogan: newGuild.slogan, description: newGuild.description,
+      level: 1, xp: 0, xp_to_next: XP_PER_LEVEL,
+      join_mode: newGuild.join_mode, min_level: newGuild.min_level,
+      max_members: 15, guild_coins: 0,
+      total_damage_today: 0, created_at: newGuild.created_at,
+    })
+    if (gErr) {
+      setError("Erro ao salvar guilda: " + gErr)
       setSaving(false); return
     }
+
+    const { error: mErr } = await sbInsert("guild_members", {
+      id: newMember.id, guild_id: guildId,
+      name: newMember.name, title: newMember.title,
+      level: newMember.level, avatar_url: newMember.avatar_url,
+      role: "leader", last_online: newMember.last_online, weekly_contrib: 0,
+    })
+    if (mErr) {
+      setError("Erro ao salvar membro: " + mErr)
+      setSaving(false); return
+    }
+
+    await sbInsert("guild_chat", {
+      id: "sys-" + Date.now(), guild_id: guildId,
+      author_id: "system", author_name: "Sistema", author_role: "leader",
+      text: "🎉 Guilda "" + newGuild.name + "" foi criada! Bem-vindos!",
+      timestamp: Date.now(),
+    })
 
     setCoins(coins - CREATE_COST)
     localStorage.setItem(LS_GUILD_ID, guildId)
@@ -653,35 +739,28 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
     // Always fetch all guilds for the "Guildas" tab
     const loadAllGuilds = async () => {
-      const { data } = await supabase.from("guilds").select("*").order("level", { ascending: false })
-      if (data) setAllGuilds(data as Guild[])
+      const { data } = await sbSelect<Guild>("guilds", "order=level.desc")
+      if (data) setAllGuilds(data)
     }
     loadAllGuilds()
 
     if (!savedId) { setLoading(false); return }
 
     ;(async () => {
-      const { data: gData } = await supabase
-        .from("guilds").select("*").eq("id", savedId).single()
+      const { data: gArr } = await sbSelect<Guild>("guilds", `id=eq.${savedId}&limit=1`)
+      const gData = gArr?.[0] ?? null
       if (!gData) { localStorage.removeItem(LS_GUILD_ID); setLoading(false); return }
 
       // Verify I'm still a member (might have been kicked while offline)
-      const { data: meData } = await supabase
-        .from("guild_members").select("id").eq("id", myId).eq("guild_id", savedId).single()
-      if (!meData) {
-        // Kicked while offline
+      const { data: meArr } = await sbSelect<{id:string}>("guild_members", `id=eq.${myId}&guild_id=eq.${savedId}&select=id&limit=1`)
+      if (!meArr || meArr.length === 0) {
         localStorage.setItem(LS_KICKED, savedId)
         localStorage.removeItem(LS_GUILD_ID)
-        setKicked(true)
-        setLoading(false)
-        return
+        setKicked(true); setLoading(false); return
       }
 
-      const { data: mData } = await supabase
-        .from("guild_members").select("*").eq("guild_id", savedId)
-      const { data: cData } = await supabase
-        .from("guild_chat").select("*")
-        .eq("guild_id", savedId).order("timestamp", { ascending: true }).limit(50)
+      const { data: mData } = await sbSelect<GuildMember>("guild_members", `guild_id=eq.${savedId}`)
+      const { data: cData } = await sbSelect<ChatMessage>("guild_chat", `guild_id=eq.${savedId}&order=timestamp.asc&limit=50`)
 
       setGuild(gData as Guild)
       setMembers((mData ?? []) as GuildMember[])
@@ -691,8 +770,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       setLoading(false)
 
       // Update my last_online ping
-      await supabase.from("guild_members")
-        .update({ last_online: Date.now() }).eq("id", myId)
+      await sbUpdate("guild_members", `id=eq.${myId}`, { last_online: Date.now() })
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -773,8 +851,8 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
         event: "*", schema: "public", table: "guilds",
       }, async () => {
         // Re-fetch full list on any change
-        const { data } = await supabase.from("guilds").select("*").order("level", { ascending: false })
-        if (data) setAllGuilds(data as Guild[])
+        const { data } = await sbSelect<Guild>("guilds", "order=level.desc")
+        if (data) setAllGuilds(data)
       })
       .subscribe()
 
@@ -827,52 +905,45 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     if (!invitePayload) return
     const gid = invitePayload.id
 
-    if (supabase) {
-      // Ensure guild row exists
-      const { data: existing } = await supabase
-        .from("guilds").select("id").eq("id", gid).single()
-      if (!existing) {
-        await supabase.from("guilds").insert({
-          id: gid, name: invitePayload.name, icon: invitePayload.icon,
-          slogan: invitePayload.slogan, description: invitePayload.description,
-          level: invitePayload.level, xp: invitePayload.xp,
-          xp_to_next: invitePayload.xp_to_next,
-          join_mode: invitePayload.join_mode, min_level: invitePayload.min_level,
-          max_members: invitePayload.max_members, guild_coins: invitePayload.guild_coins,
-          total_damage_today: 0, created_at: invitePayload.created_at,
-        })
-      }
-
-      // Check if already a member
-      const { data: already } = await supabase
-        .from("guild_members").select("id").eq("id", myId).single()
-      if (!already) {
-        // Insert new member — Realtime will notify the leader automatically
-        await supabase.from("guild_members").insert({
-          id: myId, guild_id: gid,
-          name: playerProfile.name, title: playerProfile.title ?? "",
-          level: playerProfile.level ?? 1, avatar_url: playerProfile.avatarUrl,
-          role: "member", last_online: Date.now(), weekly_contrib: 0,
-        })
-        // Welcome message — Realtime will deliver to everyone
-        await supabase.from("guild_chat").insert({
-          id: `sys-join-${Date.now()}`, guild_id: gid,
-          author_id: "system", author_name: "Sistema", author_role: "leader",
-          text: `🎉 ${playerProfile.name} entrou na guilda via convite!`,
-          timestamp: Date.now(),
-        })
-      }
-
-      // Fetch everything fresh
-      const { data: gData } = await supabase.from("guilds").select("*").eq("id", gid).single()
-      const { data: mData } = await supabase.from("guild_members").select("*").eq("guild_id", gid)
-      const { data: cData } = await supabase.from("guild_chat").select("*")
-        .eq("guild_id", gid).order("timestamp", { ascending: true }).limit(50)
-
-      setGuild(gData as Guild)
-      setMembers((mData ?? []) as GuildMember[])
-      setChat((cData ?? []) as ChatMessage[])
+    // Ensure guild row exists
+    const { data: existArr } = await sbSelect<{id:string}>("guilds", `id=eq.${gid}&select=id&limit=1`)
+    if (!existArr || existArr.length === 0) {
+      await sbInsert("guilds", {
+        id: gid, name: invitePayload.name, icon: invitePayload.icon,
+        slogan: invitePayload.slogan, description: invitePayload.description,
+        level: invitePayload.level, xp: invitePayload.xp,
+        xp_to_next: invitePayload.xp_to_next,
+        join_mode: invitePayload.join_mode, min_level: invitePayload.min_level,
+        max_members: invitePayload.max_members, guild_coins: invitePayload.guild_coins,
+        total_damage_today: 0, created_at: invitePayload.created_at,
+      })
     }
+
+    // Check if already a member
+    const { data: alreadyArr } = await sbSelect<{id:string}>("guild_members", `id=eq.${myId}&select=id&limit=1`)
+    if (!alreadyArr || alreadyArr.length === 0) {
+      await sbInsert("guild_members", {
+        id: myId, guild_id: gid,
+        name: playerProfile.name, title: playerProfile.title ?? "",
+        level: playerProfile.level ?? 1, avatar_url: playerProfile.avatarUrl,
+        role: "member", last_online: Date.now(), weekly_contrib: 0,
+      })
+      await sbInsert("guild_chat", {
+        id: "sys-join-" + Date.now(), guild_id: gid,
+        author_id: "system", author_name: "Sistema", author_role: "leader",
+        text: "🎉 " + playerProfile.name + " entrou na guilda via convite!",
+        timestamp: Date.now(),
+      })
+    }
+
+    // Fetch everything fresh
+    const { data: gArr2 } = await sbSelect<Guild>("guilds", `id=eq.${gid}&limit=1`)
+    const { data: mData  } = await sbSelect<GuildMember>("guild_members", `guild_id=eq.${gid}`)
+    const { data: cData  } = await sbSelect<ChatMessage>("guild_chat", `guild_id=eq.${gid}&order=timestamp.asc&limit=50`)
+
+    setGuild(gArr2?.[0] ?? null)
+    setMembers(mData ?? [])
+    setChat(cData ?? [])
 
     localStorage.setItem(LS_GUILD_ID, gid)
     setInvitePayload(null)
@@ -906,13 +977,11 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     setChatInput("")
     setChatError(null)
 
-    if (supabase) {
-      await supabase.from("guild_chat").insert({
-        id: msg.id, guild_id: msg.guild_id,
-        author_id: msg.author_id, author_name: msg.author_name,
-        author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
-      })
-    }
+    await sbInsert("guild_chat", {
+      id: msg.id, guild_id: msg.guild_id,
+      author_id: msg.author_id, author_name: msg.author_name,
+      author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
+    })
   }
 
   const handleCopyInvite = () => {
@@ -937,16 +1006,14 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     setCheckedIn(true)
     setCoins(coins + 50)
     toast("✅ Check-in diário! +50 Coins")
-    if (supabase) {
-      await supabase.from("guild_members")
-        .update({ weekly_contrib: (myMember?.weekly_contrib ?? 0) + 10 })
-        .eq("id", myId)
-    }
+    await sbUpdate("guild_members", `id=eq.${myId}`, {
+      weekly_contrib: (myMember?.weekly_contrib ?? 0) + 10,
+    })
   }
 
   const handleKick = async (memberId: string) => {
     if (!guild || !supabase) return
-    await supabase.from("guild_members").delete().eq("id", memberId)
+    await sbDelete("guild_members", `id=eq.${memberId}`)
     // Realtime DELETE will update everyone's list in real time.
     // The kicked player's subscription will also fire and redirect them.
     toast("✅ Membro expulso.")
@@ -954,7 +1021,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
   const handlePromote = async (memberId: string) => {
     if (!guild || !supabase) return
-    await supabase.from("guild_members").update({ role: "officer" }).eq("id", memberId)
+    await sbUpdate("guild_members", `id=eq.${memberId}`, { role: "officer" })
     toast("⬆️ Membro promovido a Oficial!")
   }
 
@@ -965,9 +1032,9 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       setLeaveConfirm(false); return
     }
     if (supabase) {
-      await supabase.from("guild_members").delete().eq("id", myId)
+      await sbDelete("guild_members", `id=eq.${myId}`)
       if (members.length <= 1) {
-        await supabase.from("guilds").delete().eq("id", guild.id)
+        await sbDelete("guilds", `id=eq.${guild.id}`)
       }
     }
     localStorage.removeItem(LS_GUILD_ID)
@@ -990,13 +1057,11 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     }
     // Optimistic
     setChat(prev => [...prev.slice(-49), msg])
-    if (supabase) {
-      await supabase.from("guild_chat").insert({
-        id: msg.id, guild_id: msg.guild_id,
-        author_id: msg.author_id, author_name: msg.author_name,
-        author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
-      })
-    }
+    await sbInsert("guild_chat", {
+      id: msg.id, guild_id: msg.guild_id,
+      author_id: msg.author_id, author_name: msg.author_name,
+      author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
+    })
   }
 
   const handleBossDuel = (deck: Deck) => {
@@ -1684,7 +1749,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                     <button onClick={async () => {
                       const newMode: GuildJoinMode = guild.join_mode === "open" ? "approval" : "open"
                       setGuild(g => g ? { ...g, join_mode: newMode } : g)
-                      if (supabase) await supabase.from("guilds").update({ join_mode: newMode }).eq("id", guild.id)
+                      await sbUpdate("guilds", `id=eq.${guild.id}`, { join_mode: newMode })
                     }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "#e2e8f0", fontSize: 12, fontWeight: 700 }}>
                       {guild.join_mode === "open" ? "🔓 Livre" : "🔒 Aprovação"}
                     </button>
