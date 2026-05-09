@@ -488,7 +488,7 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
     await sbInsert("guild_chat", {
       id: "sys-" + Date.now(), guild_id: guildId,
       author_id: "system", author_name: "Sistema", author_role: "leader",
-      text: "🎉 Guilda "" + newGuild.name + "" foi criada! Bem-vindos!",
+      text: "🎉 Guilda [" + newGuild.name + "] foi criada! Bem-vindos!",
       timestamp: Date.now(),
     })
 
@@ -931,7 +931,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       await sbInsert("guild_chat", {
         id: "sys-join-" + Date.now(), guild_id: gid,
         author_id: "system", author_name: "Sistema", author_role: "leader",
-        text: "🎉 " + playerProfile.name + " entrou na guilda via convite!",
+        text: "🎉 " + String(playerProfile.name) + " entrou na guilda via convite!",
         timestamp: Date.now(),
       })
     }
