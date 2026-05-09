@@ -114,6 +114,30 @@ async function sbUpdate(table: string, filter: string, row: Record<string, unkno
   }
 }
 
+async function sbUpsert(table: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { base, key } = getSupaConfig()
+  if (!base || !key) return { error: "Supabase não configurado" }
+  try {
+    const res = await fetch(base + "/rest/v1/" + table, {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "apikey":        key,
+        "Authorization": "Bearer " + key,
+        "Prefer":        "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(row),
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      return { error: "HTTP " + res.status + ": " + body }
+    }
+    return { error: null }
+  } catch (e: unknown) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type GuildRole     = "leader" | "officer" | "member"
@@ -493,7 +517,7 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
     }
 
     // Use direct REST API — more reliable than @supabase/ssr in browser
-    const { error: gErr } = await sbInsert("guilds", {
+    const { error: gErr } = await sbUpsert("guilds", {
       id: newGuild.id, name: newGuild.name, icon: newGuild.icon,
       slogan: newGuild.slogan, description: newGuild.description,
       level: 1, xp: 0, xp_to_next: XP_PER_LEVEL,
@@ -506,7 +530,7 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
       setSaving(false); return
     }
 
-    const { error: mErr } = await sbInsert("guild_members", {
+    const { error: mErr } = await sbUpsert("guild_members", {
       id: newMember.id, guild_id: guildId,
       name: newMember.name, title: newMember.title,
       level: newMember.level, avatar_url: newMember.avatar_url,
