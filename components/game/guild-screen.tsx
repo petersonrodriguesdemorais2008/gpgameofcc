@@ -369,6 +369,19 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
       role: "leader", last_online: Date.now(), weekly_contrib: 0,
     }
 
+    // ── Diagnostic ping before insert ───────────────────────────────────────
+    try {
+      const { error: pingErr } = await supabase.from("guilds").select("id").limit(1)
+      if (pingErr) {
+        setError("Conexão com banco falhou: " + pingErr.message + " | code: " + pingErr.code + " | hint: " + (pingErr.hint ?? "nenhum"))
+        setSaving(false); return
+      }
+    } catch (pingEx: unknown) {
+      const msg = pingEx instanceof Error ? pingEx.message : String(pingEx)
+      setError("Sem conexão com Supabase. Verifique as variáveis de ambiente na Vercel: NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY. Erro: " + msg)
+      setSaving(false); return
+    }
+
     try {
       const { error: gErr } = await supabase.from("guilds").insert({
         id: newGuild.id, name: newGuild.name, icon: newGuild.icon,
@@ -614,6 +627,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   const [chatError,     setChatError]     = useState<string|null>(null)
   const [allGuilds,     setAllGuilds]     = useState<Guild[]>([])
   const [kicked,        setKicked]        = useState(false)   // true if kicked from a guild
+  const [supabaseOk,    setSupabaseOk]    = useState<boolean | null>(null) // null = checking
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const myMember   = members.find(m => m.id === myId)
@@ -624,6 +638,31 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     setFeedback(msg)
     setTimeout(() => setFeedback(null), 2800)
   }
+
+  // ── 0. Check Supabase connection on mount ────────────────────────────────────
+  useEffect(() => {
+    const sb = createClient()
+    if (!sb) {
+      setSupabaseOk(false)
+      setLoading(false)
+      return
+    }
+    // Try a lightweight ping
+    sb.from("guilds").select("id").limit(1)
+      .then(({ error }) => {
+        setSupabaseOk(!error)
+        if (error) {
+          console.error("[Guild] Supabase ping failed:", error.message, error.code)
+          setLoading(false)
+        }
+      })
+      .catch(err => {
+        console.error("[Guild] Supabase fetch error:", err)
+        setSupabaseOk(false)
+        setLoading(false)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── 1. Load guild on mount ─────────────────────────────────────────────────
   useEffect(() => {
@@ -994,6 +1033,63 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // ── SUPABASE NOT CONFIGURED screen ───────────────────────────────────────
+  if (supabaseOk === false) {
+    const url  = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SUPABASE_URL  ?? "❌ não definida") : "..."
+    const key  = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ definida" : "❌ não definida") : "..."
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,#020610,#050d1a)", fontFamily:"'Segoe UI',sans-serif", padding:24 }}>
+        <div style={{ maxWidth:460, width:"100%" }}>
+          <div style={{ fontSize:56, textAlign:"center", marginBottom:16 }}>⚙️</div>
+          <h2 style={{ fontWeight:900, fontSize:20, color:"#f87171", textAlign:"center", margin:"0 0 12px" }}>
+            Supabase não conectado
+          </h2>
+          <p style={{ color:"#64748b", fontSize:13, textAlign:"center", marginBottom:20, lineHeight:1.7 }}>
+            O jogo não consegue se conectar ao banco de dados.<br/>
+            Verifique as variáveis de ambiente no painel da Vercel.
+          </p>
+
+          <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:14, padding:"16px 18px", marginBottom:20 }}>
+            <div style={{ fontWeight:800, fontSize:12, color:"#94a3b8", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Status das variáveis</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13 }}>
+                <span style={{ color:"#64748b", fontFamily:"monospace" }}>NEXT_PUBLIC_SUPABASE_URL</span>
+                <span style={{ color: url.startsWith("❌") ? "#f87171" : "#22c55e", fontWeight:700, fontSize:11 }}>{url.startsWith("❌") ? "❌ Não definida" : "✅ Definida"}</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13 }}>
+                <span style={{ color:"#64748b", fontFamily:"monospace" }}>NEXT_PUBLIC_SUPABASE_ANON_KEY</span>
+                <span style={{ color: key.startsWith("❌") ? "#f87171" : "#22c55e", fontWeight:700, fontSize:11 }}>{key}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background:"rgba(6,182,212,0.07)", border:"1px solid rgba(6,182,212,0.18)", borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
+            <div style={{ fontWeight:800, fontSize:12, color:"#06b6d4", marginBottom:8 }}>📋 Como corrigir no Vercel</div>
+            <div style={{ fontSize:12, color:"#475569", lineHeight:1.8 }}>
+              1. Acesse <strong style={{color:"#e2e8f0"}}>vercel.com</strong> → seu projeto<br/>
+              2. Vá em <strong style={{color:"#e2e8f0"}}>Settings → Environment Variables</strong><br/>
+              3. Adicione <strong style={{color:"#e2e8f0"}}>NEXT_PUBLIC_SUPABASE_URL</strong><br/>
+              4. Adicione <strong style={{color:"#e2e8f0"}}>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong><br/>
+              5. Clique em <strong style={{color:"#e2e8f0"}}>Save</strong> e faça um novo deploy
+            </div>
+          </div>
+
+          <div style={{ background:"rgba(139,92,246,0.07)", border:"1px solid rgba(139,92,246,0.18)", borderRadius:14, padding:"12px 16px", marginBottom:20 }}>
+            <div style={{ fontWeight:800, fontSize:12, color:"#a78bfa", marginBottom:6 }}>🔑 Onde encontrar os valores</div>
+            <div style={{ fontSize:12, color:"#475569", lineHeight:1.7 }}>
+              No painel do Supabase → seu projeto →<br/>
+              <strong style={{color:"#e2e8f0"}}>Settings → API</strong> → copie a <strong style={{color:"#e2e8f0"}}>Project URL</strong> e a <strong style={{color:"#e2e8f0"}}>anon public key</strong>
+            </div>
+          </div>
+
+          <button onClick={onBack} style={{ width:"100%", padding:"13px 0", borderRadius:14, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+            ← Voltar ao Menu
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ── KICKED screen ────────────────────────────────────────────────────────
   if (kicked) {
