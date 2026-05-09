@@ -18,6 +18,7 @@ async function sbInsert(table: string, row: Record<string, unknown>): Promise<{ 
   try {
     const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
       method: "POST",
+      mode: "cors",
       headers: {
         "Content-Type":  "application/json",
         "apikey":        SUPA_KEY,
@@ -41,6 +42,7 @@ async function sbSelect<T>(table: string, filter?: string): Promise<{ data: T[] 
     const url = `${SUPA_URL}/rest/v1/${table}${filter ? "?" + filter : ""}`
     const res = await fetch(url, {
       method: "GET",
+      mode: "cors",
       headers: {
         "apikey":        SUPA_KEY,
         "Authorization": `Bearer ${SUPA_KEY}`,
@@ -62,6 +64,7 @@ async function sbDelete(table: string, filter: string): Promise<{ error: string 
   try {
     const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`, {
       method: "DELETE",
+      mode: "cors",
       headers: {
         "apikey":        SUPA_KEY,
         "Authorization": `Bearer ${SUPA_KEY}`,
@@ -82,6 +85,7 @@ async function sbUpdate(table: string, filter: string, row: Record<string, unkno
   try {
     const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`, {
       method: "PATCH",
+      mode: "cors",
       headers: {
         "Content-Type":  "application/json",
         "apikey":        SUPA_KEY,
