@@ -9,27 +9,34 @@ import { useGame } from "@/contexts/game-context"
 import type { Deck } from "@/contexts/game-context"
 import { createClient } from "@/lib/supabase/client"
 
-// ─── Direct REST helper (bypasses @supabase/ssr client issues) ──────────────
-// Uses fetch() directly against Supabase REST API — more reliable in browser.
-const SUPA_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "")
-const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+// ─── Direct REST helpers for Supabase ────────────────────────────────────────
+// Reads env vars at call time (not module load time) to ensure they're available.
+// NEXT_PUBLIC_ vars are inlined by Next.js at build time — always available client-side.
+
+function getSupaConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+  const base = url.endsWith("/") ? url.slice(0, -1) : url
+  return { base, key }
+}
 
 async function sbInsert(table: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { base, key } = getSupaConfig()
+  if (!base || !key) return { error: "Supabase não configurado — verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY na Vercel" }
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+    const res = await fetch(`${base}/rest/v1/${table}`, {
       method: "POST",
-      mode: "cors",
       headers: {
         "Content-Type":  "application/json",
-        "apikey":        SUPA_KEY,
-        "Authorization": `Bearer ${SUPA_KEY}`,
+        "apikey":        key,
+        "Authorization": "Bearer " + key,
         "Prefer":        "return=minimal",
       },
       body: JSON.stringify(row),
     })
     if (!res.ok) {
       const body = await res.text()
-      return { error: `HTTP ${res.status}: ${body}` }
+      return { error: "HTTP " + res.status + ": " + body }
     }
     return { error: null }
   } catch (e: unknown) {
@@ -38,20 +45,21 @@ async function sbInsert(table: string, row: Record<string, unknown>): Promise<{ 
 }
 
 async function sbSelect<T>(table: string, filter?: string): Promise<{ data: T[] | null; error: string | null }> {
+  const { base, key } = getSupaConfig()
+  if (!base || !key) return { data: null, error: "Supabase não configurado" }
   try {
-    const url = `${SUPA_URL}/rest/v1/${table}${filter ? "?" + filter : ""}`
+    const url = base + "/rest/v1/" + table + (filter ? "?" + filter : "")
     const res = await fetch(url, {
       method: "GET",
-      mode: "cors",
       headers: {
-        "apikey":        SUPA_KEY,
-        "Authorization": `Bearer ${SUPA_KEY}`,
+        "apikey":        key,
+        "Authorization": "Bearer " + key,
         "Accept":        "application/json",
       },
     })
     if (!res.ok) {
       const body = await res.text()
-      return { data: null, error: `HTTP ${res.status}: ${body}` }
+      return { data: null, error: "HTTP " + res.status + ": " + body }
     }
     const data = await res.json()
     return { data: Array.isArray(data) ? data : [data], error: null }
@@ -61,19 +69,20 @@ async function sbSelect<T>(table: string, filter?: string): Promise<{ data: T[] 
 }
 
 async function sbDelete(table: string, filter: string): Promise<{ error: string | null }> {
+  const { base, key } = getSupaConfig()
+  if (!base || !key) return { error: "Supabase não configurado" }
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`, {
+    const res = await fetch(base + "/rest/v1/" + table + "?" + filter, {
       method: "DELETE",
-      mode: "cors",
       headers: {
-        "apikey":        SUPA_KEY,
-        "Authorization": `Bearer ${SUPA_KEY}`,
+        "apikey":        key,
+        "Authorization": "Bearer " + key,
         "Prefer":        "return=minimal",
       },
     })
     if (!res.ok) {
       const body = await res.text()
-      return { error: `HTTP ${res.status}: ${body}` }
+      return { error: "HTTP " + res.status + ": " + body }
     }
     return { error: null }
   } catch (e: unknown) {
@@ -82,21 +91,22 @@ async function sbDelete(table: string, filter: string): Promise<{ error: string 
 }
 
 async function sbUpdate(table: string, filter: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { base, key } = getSupaConfig()
+  if (!base || !key) return { error: "Supabase não configurado" }
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`, {
+    const res = await fetch(base + "/rest/v1/" + table + "?" + filter, {
       method: "PATCH",
-      mode: "cors",
       headers: {
         "Content-Type":  "application/json",
-        "apikey":        SUPA_KEY,
-        "Authorization": `Bearer ${SUPA_KEY}`,
+        "apikey":        key,
+        "Authorization": "Bearer " + key,
         "Prefer":        "return=minimal",
       },
       body: JSON.stringify(row),
     })
     if (!res.ok) {
       const body = await res.text()
-      return { error: `HTTP ${res.status}: ${body}` }
+      return { error: "HTTP " + res.status + ": " + body }
     }
     return { error: null }
   } catch (e: unknown) {
@@ -462,6 +472,24 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
       name: playerProfile.name, title: playerProfile.title ?? "",
       level: playerProfile.level ?? 1, avatar_url: playerProfile.avatarUrl,
       role: "leader", last_online: Date.now(), weekly_contrib: 0,
+    }
+
+    // Debug: log what URL and key are being used
+    const { base: debugBase, key: debugKey } = (() => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+      return { base: url, key }
+    })()
+    console.log("[Guild Create] SUPABASE_URL:", debugBase || "EMPTY!")
+    console.log("[Guild Create] ANON_KEY set:", debugKey ? "YES (" + debugKey.slice(0,20) + "...)" : "NO — EMPTY!")
+
+    if (!debugBase) {
+      setError("NEXT_PUBLIC_SUPABASE_URL está vazio. Verifique as variáveis de ambiente na Vercel e faça um novo deploy.")
+      setSaving(false); return
+    }
+    if (!debugKey) {
+      setError("NEXT_PUBLIC_SUPABASE_ANON_KEY está vazio. Verifique as variáveis de ambiente na Vercel e faça um novo deploy.")
+      setSaving(false); return
     }
 
     // Use direct REST API — more reliable than @supabase/ssr in browser
