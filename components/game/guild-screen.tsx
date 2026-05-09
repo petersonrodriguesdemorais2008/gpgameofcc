@@ -369,19 +369,6 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
       role: "leader", last_online: Date.now(), weekly_contrib: 0,
     }
 
-    // ── Diagnostic ping before insert ───────────────────────────────────────
-    try {
-      const { error: pingErr } = await supabase.from("guilds").select("id").limit(1)
-      if (pingErr) {
-        setError("Conexão com banco falhou: " + pingErr.message + " | code: " + pingErr.code + " | hint: " + (pingErr.hint ?? "nenhum"))
-        setSaving(false); return
-      }
-    } catch (pingEx: unknown) {
-      const msg = pingEx instanceof Error ? pingEx.message : String(pingEx)
-      setError("Sem conexão com Supabase. Verifique as variáveis de ambiente na Vercel: NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY. Erro: " + msg)
-      setSaving(false); return
-    }
-
     try {
       const { error: gErr } = await supabase.from("guilds").insert({
         id: newGuild.id, name: newGuild.name, icon: newGuild.icon,
@@ -604,8 +591,8 @@ function InviteLinkModal({ inviteGuild, currentGuildId, onAccept, onDecline }: {
 
 export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProps) {
   const { playerProfile, playerId, coins, setCoins, decks } = useGame()
-  // createClient() is safe to call at component level — it's cached internally
-  // and returns null gracefully if env vars aren't set.
+  // Always create a fresh client reference (singleton is handled inside createClient)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const supabase = createClient()
   const myId = playerId || `anon-${Date.now()}`
 
@@ -639,29 +626,10 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     setTimeout(() => setFeedback(null), 2800)
   }
 
-  // ── 0. Check Supabase connection on mount ────────────────────────────────────
+  // ── 0. Check Supabase client exists ──────────────────────────────────────────
   useEffect(() => {
     const sb = createClient()
-    if (!sb) {
-      setSupabaseOk(false)
-      setLoading(false)
-      return
-    }
-    // Try a lightweight ping
-    sb.from("guilds").select("id").limit(1)
-      .then(({ error }) => {
-        setSupabaseOk(!error)
-        if (error) {
-          console.error("[Guild] Supabase ping failed:", error.message, error.code)
-          setLoading(false)
-        }
-      })
-      .catch(err => {
-        console.error("[Guild] Supabase fetch error:", err)
-        setSupabaseOk(false)
-        setLoading(false)
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSupabaseOk(sb !== null)
   }, [])
 
   // ── 1. Load guild on mount ─────────────────────────────────────────────────
@@ -675,6 +643,11 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       setLoading(false)
       return
     }
+
+    // Debug: log connection status to browser console
+    console.log("[Guild] supabase client:", supabase ? "OK" : "NULL")
+    console.log("[Guild] SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ?? "undefined")
+    console.log("[Guild] ANON_KEY set:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
     if (!supabase) { setLoading(false); return }
 
@@ -1035,7 +1008,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   // ── Render ─────────────────────────────────────────────────────────────────
 
   // ── SUPABASE NOT CONFIGURED screen ───────────────────────────────────────
-  if (supabaseOk === false) {
+  if (supabaseOk === false && !createClient()) {
     const url  = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SUPABASE_URL  ?? "❌ não definida") : "..."
     const key  = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ definida" : "❌ não definida") : "..."
     return (
