@@ -1247,21 +1247,37 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
   const handleLeave = async () => {
     if (!guild) return
+
+    // If leader and there are other members → pass leadership to next member
     if (myRole === "leader" && members.length > 1) {
-      toast("⚠️ Passe o cargo de líder antes de sair!")
-      setLeaveConfirm(false); return
-    }
-    if (supabase) {
-      await sbDelete("guild_members", `id=eq.${myId}`)
-      if (members.length <= 1) {
-        await sbDelete("guilds", `id=eq.${guild.id}`)
+      // Pick the member who joined right after the leader (second in list by insertion order)
+      const others = members.filter(m => m.id !== myId)
+      // Sort by last_online ascending to get the oldest member (closest to leader)
+      const successor = others.sort((a, b) => a.last_online - b.last_online)[0]
+      if (successor) {
+        await sbUpdate("guild_members", "id=eq." + successor.id, { role: "leader" })
+        await sbInsert("guild_chat", {
+          id: "sys-leader-" + Date.now(), guild_id: guild.id,
+          author_id: "system", author_name: "Sistema", author_role: "leader",
+          text: "👑 " + successor.name + " é o novo líder da guilda!",
+          timestamp: Date.now(),
+        })
+        toast("👑 Liderança passada para " + successor.name)
       }
     }
+
+    // Remove self from guild
+    await sbDelete("guild_members", "id=eq." + myId)
+
+    // If was the last member — delete the guild too
+    if (members.length <= 1) {
+      await sbDelete("guilds", "id=eq." + guild.id)
+    }
+
     localStorage.removeItem(LS_GUILD_ID)
     setGuild(null); setMembers([]); setChat([])
     setLeaveConfirm(false); setView("browse")
     toast("Você saiu da guilda.")
-    // Cleanup any empty guilds
     setTimeout(() => cleanupEmptyGuilds(), 1000)
   }
 
@@ -1284,6 +1300,41 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       author_id: msg.author_id, author_name: msg.author_name,
       author_role: msg.author_role, text: msg.text, timestamp: msg.timestamp,
     })
+  }
+
+  const handleJoinPublicGuild = async (g: Guild) => {
+    if (guild) { toast("⚠️ Você já pertence a uma guilda. Saia primeiro."); return }
+    if (g.join_mode === "approval") {
+      toast("📩 Solicitação enviada! Aguarde aprovação do líder.")
+      return
+    }
+    // Join open guild directly
+    const { error } = await sbUpsert("guild_members", {
+      id: myId, guild_id: g.id,
+      name: playerProfile.name, title: playerProfile.title ?? "",
+      level: playerProfile.level ?? 1, avatar_url: playerProfile.avatarUrl,
+      role: "member", last_online: Date.now(), weekly_contrib: 0,
+    })
+    if (error) { toast("❌ Erro ao entrar: " + error); return }
+
+    await sbInsert("guild_chat", {
+      id: "sys-join-" + Date.now(), guild_id: g.id,
+      author_id: "system", author_name: "Sistema", author_role: "leader",
+      text: "🎉 " + playerProfile.name + " entrou na guilda!",
+      timestamp: Date.now(),
+    })
+
+    // Fetch fresh guild data
+    const { data: gArr } = await sbSelect<Guild>("guilds", "id=eq." + g.id + "&limit=1")
+    const { data: mData } = await sbSelect<GuildMember>("guild_members", "guild_id=eq." + g.id)
+    const { data: cData } = await sbSelect<ChatMessage>("guild_chat", "guild_id=eq." + g.id + "&order=timestamp.asc&limit=50")
+
+    localStorage.setItem(LS_GUILD_ID, g.id)
+    setGuild(gArr?.[0] ?? g)
+    setMembers(mData ?? [])
+    setChat(cData ?? [])
+    setView("main")
+    toast("🎉 Você entrou em " + g.name + "!")
   }
 
   const handleBossDuel = (deck: Deck) => {
@@ -1880,12 +1931,13 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                 <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                   {allGuilds.map(g => {
                     const isMyGuild = guild?.id === g.id
+                    const canJoin   = !guild && !isMyGuild
                     return (
                       <div key={g.id} style={{
                         display:"flex", alignItems:"center", gap:12,
                         background: isMyGuild ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
                         border: `1px solid ${isMyGuild ? "rgba(139,92,246,0.35)" : "rgba(255,255,255,0.07)"}`,
-                        borderRadius:14, padding:"12px 14px",
+                        borderRadius:14, padding:"12px 14px", transition:"all 0.2s",
                       }}>
                         <GuildIcon icon={g.icon} size={48} borderRadius={12} />
                         <div style={{ flex:1, minWidth:0 }}>
@@ -1916,6 +1968,20 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                             background:"linear-gradient(135deg,#6d28d9,#8b5cf6)",
                             color:"#fff", fontWeight:800, fontSize:11, cursor:"pointer", flexShrink:0,
                           }}>Ver →</button>
+                        )}
+                        {canJoin && (
+                          <button onClick={() => handleJoinPublicGuild(g)} style={{
+                            padding:"7px 14px", borderRadius:9, border:"none",
+                            background: g.join_mode === "open"
+                              ? "linear-gradient(135deg,#065f46,#059669)"
+                              : "linear-gradient(135deg,#92400e,#d97706)",
+                            color:"#fff", fontWeight:800, fontSize:11, cursor:"pointer", flexShrink:0,
+                            boxShadow: g.join_mode === "open"
+                              ? "0 2px 10px rgba(5,150,105,0.35)"
+                              : "0 2px 10px rgba(217,119,6,0.35)",
+                          }}>
+                            {g.join_mode === "open" ? "Entrar" : "Solicitar"}
+                          </button>
                         )}
                       </div>
                     )
