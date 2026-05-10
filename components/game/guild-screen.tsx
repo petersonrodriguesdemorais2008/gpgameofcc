@@ -138,6 +138,43 @@ async function sbUpsert(table: string, row: Record<string, unknown>): Promise<{ 
   }
 }
 
+// ─── Auto-cleanup: delete guilds with no members ─────────────────────────────
+async function cleanupEmptyGuilds(): Promise<void> {
+  const { base, key } = getSupaConfig()
+  if (!base || !key) return
+  try {
+    // Get all guild IDs
+    const guildsRes = await fetch(base + "/rest/v1/guilds?select=id", {
+      headers: { "apikey": key, "Authorization": "Bearer " + key, "Accept": "application/json" },
+    })
+    if (!guildsRes.ok) return
+    const guilds: { id: string }[] = await guildsRes.json()
+    if (!guilds.length) return
+
+    // For each guild, check if it has members
+    for (const g of guilds) {
+      const membersRes = await fetch(
+        base + "/rest/v1/guild_members?guild_id=eq." + g.id + "&select=id&limit=1",
+        { headers: { "apikey": key, "Authorization": "Bearer " + key, "Accept": "application/json" } }
+      )
+      if (!membersRes.ok) continue
+      const members: unknown[] = await membersRes.json()
+      if (members.length === 0) {
+        // No members — delete guild (cascade deletes chat too)
+        await fetch(base + "/rest/v1/guilds?id=eq." + g.id, {
+          method: "DELETE",
+          headers: {
+            "apikey": key, "Authorization": "Bearer " + key, "Prefer": "return=minimal",
+          },
+        })
+        console.log("[Guild Cleanup] Deleted empty guild:", g.id)
+      }
+    }
+  } catch (e) {
+    console.warn("[Guild Cleanup] Error:", e)
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type GuildRole     = "leader" | "officer" | "member"
@@ -231,19 +268,143 @@ const GAME_EMOTES = [
 // Lista de termos proibidos (português + inglês). A checagem ignora acentos e
 // leetspeak básico, e usa regex de palavra inteira para evitar falsos positivos.
 const BANNED_WORDS = [
-  // Português
-  "porra","caralho","merda","puta","putaria","viado","viadinho",
-  "cuzão","cuzao","cu","buceta","bucetinha","arrombado","arrombada",
-  "fdp","filho da puta","filha da puta","desgraça","desgraca",
-  "vagabundo","vagabunda","lazaro","lixo","idiota","imbecil",
-  "retardado","retardada","mongoloid","mongoloide","corno","cornudo",
-  "babaca","bosta","bostinha","otario","otário","piranha","prostituta",
-  "puta merda","vai se foder","vsf","vtnc","vai tomar no","inferno",
-  "maldito","maldita","safado","safada","canalha","escroto","escrotão",
-  // Inglês
-  "fuck","shit","asshole","bitch","bastard","damn","crap","dick",
-  "cock","pussy","whore","slut","motherfucker","nigger","faggot",
-  "retard","idiot","moron","cunt","ass","prick",
+  // ── Português ────────────────────────────────────────────────────────────
+  "porra","caralho","merda","puta","putaria","putinha","putas",
+  "viado","viadinho","viadao","viada","gay","gayzao",
+  "cu","cuzao","cuzinho","bunda","bundao","bundinha",
+  "buceta","bucetinha","xoxota","xota","piroca","pirocao","piroca",
+  "pau","pauzao","pinto","pintinho","rola","rolao",
+  "cacete","cacetao","caralho",
+  "arrombado","arrombada","arrombamento",
+  "fdp","f.d.p","filho da puta","filha da puta","filho de uma puta",
+  "filha de uma puta","filho da p","fdp",
+  "desgraca","desgraça","desgraçado","desgraçada",
+  "vagabundo","vagabunda","vagabunda",
+  "vadia","vadiagem","vadio",
+  "idiota","imbecil","babaca","bababca",
+  "retardado","retardada","retardo",
+  "mongoloide","mongoloid","mongol",
+  "corno","cornudo","corna",
+  "bosta","bostinha","bostas",
+  "otario","otária","otarios",
+  "piranha","prostituta","prostituicao",
+  "puta merda","vai se foder","vai tomar no cu","vai tomar","vsf","vtnc","vaf",
+  "maldito","maldita","maldição",
+  "safado","safada","safadeza",
+  "canalha","escroto","escrotão","escrotona",
+  "broxa","broxar","brocheur",
+  "punheta","punhetas","punheteiro",
+  "siririca","sirica",
+  "foder","fodase","foda-se","foda se","se foda",
+  "fuder","fudeu","fodeu",
+  "cacete","caralho","porra",
+  "lixo","lazaro","inutil",
+  // ── Inglês ────────────────────────────────────────────────────────────────
+  "fuck","fucking","fucked","fucker","fucks","wtf","stfu","gtfo",
+  "shit","shits","shitty","bullshit","horseshit",
+  "ass","asshole","asses","jackass","smartass","dumbass",
+  "bitch","bitches","bitchy","son of a bitch","son of bitch","soab",
+  "bastard","bastards",
+  "damn","dammit","goddamn","goddammit",
+  "crap","crappy",
+  "dick","dicks","dickhead","dickface",
+  "cock","cocks","cocksucker",
+  "pussy","pussies",
+  "whore","whores","whorish",
+  "slut","sluts","slutty",
+  "motherfucker","motherfucking","mofo","mf",
+  "nigger","nigga","niggas","nig",
+  "faggot","fag","fags",
+  "retard","retarded","retards",
+  "idiot","idiots","idiotic",
+  "moron","morons","moronic",
+  "cunt","cunts",
+  "prick","pricks",
+  "wanker","wankers","wank",
+  "twat","twats",
+  "arsehole","arse",
+  "bollocks","bollock",
+  "shag","shagging",
+  "tosser","tossers",
+  "piss","pissed","pisser",
+  "cum","cumshot",
+  "penis","vagina","anal","anus",
+  // ── Espanhol ──────────────────────────────────────────────────────────────
+  "puta","putas","putita","hijo de puta","hija de puta","hdp",
+  "coño","cono","conyo",
+  "mierda","mierdas",
+  "joder","jodido","jodida",
+  "cabron","cabrón","cabrona","cabronas",
+  "polla","pollas","pollón",
+  "culo","culos","culito",
+  "pendejo","pendeja","pendejos",
+  "chinga","chingada","chingado","chingar","hijo de la chingada",
+  "pinche","pinches",
+  "verga","vergon","vergón",
+  "mamón","mamon","mamona",
+  "idiota","imbecil","estupido","estupida",
+  "zorra","zorras","zorron",
+  "perico","maricon","maricón",
+  "culero","culera","culeros",
+  "carajo","carajos",
+  "hostia","hostias",
+  "gilipolla","gilipollas",
+  "leche","lechazo",
+  "follar","follando","follador",
+  // ── Alemão ────────────────────────────────────────────────────────────────
+  "scheiße","scheisse","scheißkerl","scheißkopf",
+  "arsch","arschloch","arschkopf",
+  "fick","ficken","gefickt","ficker",
+  "wichser","wichsen","wichse",
+  "hurensohn","hure","huren",
+  "fotze","fotzen",
+  "schwanz","schwanzlutscher",
+  "schlampe","schlampen",
+  "idiot","idioten","dummkopf","dumm",
+  "bastard","bastarde","dreckssau",
+  "verdammt","verdamme","verflucht",
+  "kacke","kacken","kacker",
+  "pisser","pissen","piss",
+  "nutte","nutten",
+  "missgeburt","blödmann","blödkopf",
+  // ── Francês ───────────────────────────────────────────────────────────────
+  "merde","merdes","merdique",
+  "putain","putains","pute","putes",
+  "connard","connards","connarde","con",
+  "salope","salopes","salopard",
+  "enculé","encule","enculer",
+  "foutre","foutaise","va te faire foutre",
+  "baiser","baiseur",
+  "bite","bites","couille","couilles",
+  "bordel","bordels",
+  "chier","chieur","chiasse",
+  "cul","culs","culot",
+  "nique","niquer","niqué",
+  "pd","pédé","pédés",
+  "bâtard","batard","batards",
+  "idiot","imbecile","cretin","crétine",
+  // ── Italiano ──────────────────────────────────────────────────────────────
+  "cazzo","cazzi","cazzata","cazzate",
+  "stronzo","stronza","stronzate","stronzi",
+  "vaffanculo","fanculo","fancul",
+  "minchia","minkia","minchiate",
+  "porco","porca","porcata","porcodio","porcamadonna",
+  "figlio di puttana","figlia di puttana","fdp",
+  "troia","troie","troiata",
+  "bastardo","bastarda","bastardi",
+  "idiota","idioti","imbecille","cretino","cretina",
+  "merda","merde","merdoso",
+  // ── Japonês (romaji) ─────────────────────────────────────────────────────
+  "kuso","kusotare","kusoyaro",
+  "chikusho","chikushome",
+  "baka","bakayaro","bakatare",
+  "aho","ahon","ahondara",
+  "shine","shineyo","shinjimae",
+  "kisama","temee","teme",
+  "yaro","yarō","kichiku",
+  "manko","chinko","chinpo","chinpoko",
+  "unko","unkokora",
+  "hentai","ecchi",
 ]
 
 // Normaliza texto: remove acentos, lowercase, remove espaços duplos
@@ -793,8 +954,9 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
     if (!supabase) { setLoading(false); return }
 
-    // Always fetch all guilds for the "Guildas" tab
+    // Cleanup empty guilds first, then fetch all
     const loadAllGuilds = async () => {
+      await cleanupEmptyGuilds()
       const { data } = await sbSelect<Guild>("guilds", "order=level.desc")
       if (data) setAllGuilds(data)
     }
@@ -1073,6 +1235,8 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     // Realtime DELETE will update everyone's list in real time.
     // The kicked player's subscription will also fire and redirect them.
     toast("✅ Membro expulso.")
+    // Cleanup if guild now empty
+    setTimeout(() => cleanupEmptyGuilds(), 1500)
   }
 
   const handlePromote = async (memberId: string) => {
@@ -1097,6 +1261,8 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
     setGuild(null); setMembers([]); setChat([])
     setLeaveConfirm(false); setView("browse")
     toast("Você saiu da guilda.")
+    // Cleanup any empty guilds
+    setTimeout(() => cleanupEmptyGuilds(), 1000)
   }
 
   const handleSendEmote = async (emote: typeof GAME_EMOTES[0]) => {
