@@ -1345,128 +1345,136 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // ── SUPABASE NOT CONFIGURED screen ───────────────────────────────────────
+  // ── SUPABASE NOT CONFIGURED ───────────────────────────────────────────────
   if (supabaseOk === false && !createClient()) {
-    const url  = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SUPABASE_URL  ?? "❌ não definida") : "..."
-    const key  = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ definida" : "❌ não definida") : "..."
     return (
-      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,#020610,#050d1a)", fontFamily:"'Segoe UI',sans-serif", padding:24 }}>
-        <div style={{ maxWidth:460, width:"100%" }}>
-          <div style={{ fontSize:56, textAlign:"center", marginBottom:16 }}>⚙️</div>
-          <h2 style={{ fontWeight:900, fontSize:20, color:"#f87171", textAlign:"center", margin:"0 0 12px" }}>
-            Supabase não conectado
-          </h2>
-          <p style={{ color:"#64748b", fontSize:13, textAlign:"center", marginBottom:20, lineHeight:1.7 }}>
-            O jogo não consegue se conectar ao banco de dados.<br/>
-            Verifique as variáveis de ambiente no painel da Vercel.
-          </p>
-
-          <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:14, padding:"16px 18px", marginBottom:20 }}>
-            <div style={{ fontWeight:800, fontSize:12, color:"#94a3b8", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Status das variáveis</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13 }}>
-                <span style={{ color:"#64748b", fontFamily:"monospace" }}>NEXT_PUBLIC_SUPABASE_URL</span>
-                <span style={{ color: url.startsWith("❌") ? "#f87171" : "#22c55e", fontWeight:700, fontSize:11 }}>{url.startsWith("❌") ? "❌ Não definida" : "✅ Definida"}</span>
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13 }}>
-                <span style={{ color:"#64748b", fontFamily:"monospace" }}>NEXT_PUBLIC_SUPABASE_ANON_KEY</span>
-                <span style={{ color: key.startsWith("❌") ? "#f87171" : "#22c55e", fontWeight:700, fontSize:11 }}>{key}</span>
-              </div>
+      <div className="guild-screen">
+        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+          background:"radial-gradient(ellipse at 30% 50%,#1a0533 0%,#050010 60%)",
+          fontFamily:"'Segoe UI',sans-serif", padding:24 }}>
+          <div style={{ maxWidth:480, width:"100%", textAlign:"center" }}>
+            <div style={{ fontSize:64, marginBottom:16, filter:"drop-shadow(0 0 30px #f8717150)" }}>⚙️</div>
+            <h2 style={{ fontWeight:900, fontSize:22, color:"#f87171", margin:"0 0 12px",
+              letterSpacing:"0.02em" }}>Supabase não conectado</h2>
+            <p style={{ color:"#64748b", fontSize:13, marginBottom:24, lineHeight:1.8 }}>
+              Configure as variáveis de ambiente na Vercel para ativar as funcionalidades online.
+            </p>
+            <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)",
+              borderRadius:16, padding:"18px 20px", marginBottom:16, textAlign:"left" }}>
+              {[
+                ["NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL],
+                ["NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0",
+                  borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ color:"#64748b", fontFamily:"monospace", fontSize:11 }}>{k}</span>
+                  <span style={{ fontWeight:800, fontSize:11, color: v ? "#22c55e" : "#f87171" }}>
+                    {v ? "✅ OK" : "❌ Faltando"}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
-
-          <div style={{ background:"rgba(6,182,212,0.07)", border:"1px solid rgba(6,182,212,0.18)", borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
-            <div style={{ fontWeight:800, fontSize:12, color:"#06b6d4", marginBottom:8 }}>📋 Como corrigir no Vercel</div>
-            <div style={{ fontSize:12, color:"#475569", lineHeight:1.8 }}>
-              1. Acesse <strong style={{color:"#e2e8f0"}}>vercel.com</strong> → seu projeto<br/>
-              2. Vá em <strong style={{color:"#e2e8f0"}}>Settings → Environment Variables</strong><br/>
-              3. Adicione <strong style={{color:"#e2e8f0"}}>NEXT_PUBLIC_SUPABASE_URL</strong><br/>
-              4. Adicione <strong style={{color:"#e2e8f0"}}>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong><br/>
-              5. Clique em <strong style={{color:"#e2e8f0"}}>Save</strong> e faça um novo deploy
-            </div>
-          </div>
-
-          <div style={{ background:"rgba(139,92,246,0.07)", border:"1px solid rgba(139,92,246,0.18)", borderRadius:14, padding:"12px 16px", marginBottom:20 }}>
-            <div style={{ fontWeight:800, fontSize:12, color:"#a78bfa", marginBottom:6 }}>🔑 Onde encontrar os valores</div>
-            <div style={{ fontSize:12, color:"#475569", lineHeight:1.7 }}>
-              No painel do Supabase → seu projeto →<br/>
-              <strong style={{color:"#e2e8f0"}}>Settings → API</strong> → copie a <strong style={{color:"#e2e8f0"}}>Project URL</strong> e a <strong style={{color:"#e2e8f0"}}>anon public key</strong>
-            </div>
-          </div>
-
-          <button onClick={onBack} style={{ width:"100%", padding:"13px 0", borderRadius:14, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>
-            ← Voltar ao Menu
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── KICKED screen ────────────────────────────────────────────────────────
-  if (kicked) {
-    return (
-      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,#020610,#050d1a)", fontFamily:"'Segoe UI',sans-serif", padding:24 }}>
-        <div style={{ textAlign:"center", maxWidth:380 }}>
-          <div style={{ fontSize:72, marginBottom:16 }}>🚫</div>
-          <h2 style={{ fontWeight:900, fontSize:22, color:"#f87171", margin:"0 0 10px" }}>Você foi expulso da guilda</h2>
-          <p style={{ color:"#64748b", fontSize:14, marginBottom:28, lineHeight:1.7 }}>
-            O líder removeu você desta guilda.<br/>
-            Você pode entrar em outra guilda usando um novo link de convite ou criar a sua própria.
-          </p>
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            <button onClick={() => {
-              localStorage.removeItem(LS_KICKED)
-              setKicked(false)
-              setView("browse")
-            }} style={{ padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff", fontWeight:900, fontSize:14, cursor:"pointer", boxShadow:"0 4px 20px rgba(139,92,246,0.35)" }}>
-              🏰 Ver Guildas Disponíveis
-            </button>
-            <button onClick={onBack} style={{ padding:"12px 0", borderRadius:14, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)", color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+            <button onClick={onBack} style={{ width:"100%", padding:"13px", borderRadius:12,
+              background:"rgba(139,92,246,0.15)", border:"1px solid rgba(139,92,246,0.35)",
+              color:"#c4b5fd", fontWeight:800, fontSize:13, cursor:"pointer" }}>
               ← Voltar ao Menu
             </button>
           </div>
         </div>
+        <GuildStyles/>
       </div>
     )
   }
 
+  // ── KICKED ────────────────────────────────────────────────────────────────
+  if (kicked) {
+    return (
+      <div className="guild-screen">
+        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+          background:"radial-gradient(ellipse at 50% 30%,#2d0a0a 0%,#050010 70%)",
+          fontFamily:"'Segoe UI',sans-serif", padding:24 }}>
+          <div style={{ textAlign:"center", maxWidth:400 }}>
+            <div style={{ fontSize:80, marginBottom:20, animation:"kickedPulse 2s ease-in-out infinite" }}>🚫</div>
+            <h2 style={{ fontWeight:900, fontSize:26, color:"#f87171", margin:"0 0 12px",
+              letterSpacing:"0.02em", textShadow:"0 0 30px rgba(248,113,113,0.5)" }}>
+              Você foi expulso
+            </h2>
+            <p style={{ color:"#64748b", fontSize:14, marginBottom:32, lineHeight:1.8 }}>
+              O líder removeu você desta guilda.<br/>
+              Entre em outra guilda ou crie a sua própria.
+            </p>
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              <button onClick={() => { localStorage.removeItem(LS_KICKED); setKicked(false); setView("browse") }}
+                style={{ padding:"15px", borderRadius:14, border:"none",
+                  background:"linear-gradient(135deg,#6d28d9,#8b5cf6,#6d28d9)",
+                  backgroundSize:"200% 100%", color:"#fff", fontWeight:900, fontSize:15,
+                  cursor:"pointer", boxShadow:"0 4px 24px rgba(139,92,246,0.50)",
+                  letterSpacing:"0.04em" }}>
+                🏰 Ver Guildas Disponíveis
+              </button>
+              <button onClick={onBack} style={{ padding:"13px", borderRadius:14,
+                background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.10)",
+                color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>
+                ← Voltar ao Menu
+              </button>
+            </div>
+          </div>
+        </div>
+        <GuildStyles/>
+      </div>
+    )
+  }
+
+  // ── LOADING ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg,#020610,#050d1a)", fontFamily: "'Segoe UI',sans-serif" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid rgba(139,92,246,0.2)", borderTop: "3px solid #8b5cf6", animation: "spin 0.9s linear infinite", margin: "0 auto 12px" }} />
-          <p style={{ color: "#475569", fontSize: 13 }}>Carregando guilda...</p>
+      <div className="guild-screen">
+        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+          background:"radial-gradient(ellipse at 50% 40%,#0d0020 0%,#020008 100%)" }}>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ position:"relative", width:64, height:64, margin:"0 auto 20px" }}>
+              <div style={{ position:"absolute", inset:0, borderRadius:"50%",
+                border:"3px solid rgba(139,92,246,0.15)", borderTop:"3px solid #8b5cf6",
+                animation:"spin 1s linear infinite" }}/>
+              <div style={{ position:"absolute", inset:6, borderRadius:"50%",
+                border:"2px solid rgba(251,191,36,0.10)", borderBottom:"2px solid #fbbf24",
+                animation:"spin 1.5s linear infinite reverse" }}/>
+              <div style={{ position:"absolute", inset:14, borderRadius:"50%",
+                border:"2px solid rgba(6,182,212,0.10)", borderLeft:"2px solid #06b6d4",
+                animation:"spin 0.8s linear infinite" }}/>
+            </div>
+            <p style={{ color:"#a78bfa", fontSize:13, fontWeight:700, letterSpacing:"0.15em",
+              textTransform:"uppercase" }}>Carregando Guilda...</p>
+          </div>
         </div>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <GuildStyles/>
       </div>
     )
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAIN RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
-      color: "#f1f5f9", fontFamily: "'Segoe UI',system-ui,sans-serif",
-      display: "flex", flexDirection: "column", position: "relative", overflow: "hidden",
-    }}>
-      {/* BG glows */}
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 40% at 50% 0%,rgba(139,92,246,0.10) 0%,transparent 60%)" }} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 50% 30% at 80% 80%,rgba(6,182,212,0.06) 0%,transparent 55%)" }} />
+    <div className="guild-screen">
+      <GuildStyles/>
+
+      {/* ── Global ambient background ── */}
+      <div className="guild-bg">
+        <div className="guild-bg-orb orb1"/>
+        <div className="guild-bg-orb orb2"/>
+        <div className="guild-bg-orb orb3"/>
+        <div className="guild-bg-grid"/>
       </div>
 
-      {/* Toast */}
+      {/* ── Toast ── */}
       {feedback && (
-        <div style={{
-          position: "fixed", top: 72, left: "50%", transform: "translateX(-50%)", zIndex: 9999,
-          background: "rgba(30,30,50,0.95)", border: "1px solid rgba(139,92,246,0.40)",
-          borderRadius: 14, padding: "10px 22px", color: "#e2e8f0", fontWeight: 800, fontSize: 13,
-          backdropFilter: "blur(12px)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-          animation: "fadeDown 0.25s ease", whiteSpace: "nowrap",
-        }}>{feedback}</div>
+        <div className="guild-toast">
+          <span>{feedback}</span>
+        </div>
       )}
 
-      {/* ── Modals ── */}
+      {/* ── MODALS ── */}
       {invitePayload && (
         <InviteLinkModal
           inviteGuild={invitePayload}
@@ -1491,580 +1499,888 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
         />
       )}
       {leaveConfirm && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "linear-gradient(160deg,#0a0614,#0d0b20)", border: "1px solid rgba(239,68,68,0.30)", borderRadius: 24, padding: "24px 20px", maxWidth: 340, width: "100%", textAlign: "center", fontFamily: "'Segoe UI',sans-serif", color: "#f1f5f9" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🚪</div>
-            <h3 style={{ fontWeight: 900, fontSize: 17, margin: "0 0 8px" }}>Sair da Guilda?</h3>
-            <p style={{ color: "#64748b", fontSize: 13, marginBottom: 20 }}>Você ficará sem guilda. Para voltar, precisará de um novo link de convite.</p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setLeaveConfirm(false)} style={{ flex: 1, padding: "11px 0", borderRadius: 11, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#64748b", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={handleLeave} style={{ flex: 1, padding: "11px 0", borderRadius: 11, border: "none", background: "linear-gradient(135deg,#7f1d1d,#dc2626)", color: "#fff", fontWeight: 900, fontSize: 13, cursor: "pointer" }}>Confirmar</button>
+        <div className="guild-modal-overlay">
+          <div className="guild-modal-box" style={{ maxWidth:360 }}>
+            <div style={{ fontSize:48, marginBottom:16, textAlign:"center" }}>🚪</div>
+            <h3 style={{ fontWeight:900, fontSize:18, margin:"0 0 8px", textAlign:"center" }}>Sair da Guilda?</h3>
+            <p style={{ color:"#64748b", fontSize:13, marginBottom:24, textAlign:"center", lineHeight:1.7 }}>
+              {myRole === "leader" && members.length > 1
+                ? "A liderança será passada automaticamente ao próximo membro."
+                : "Você ficará sem guilda."}
+            </p>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => setLeaveConfirm(false)} className="guild-btn-secondary" style={{ flex:1 }}>Cancelar</button>
+              <button onClick={handleLeave} className="guild-btn-danger" style={{ flex:1 }}>Confirmar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Header ── */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(2,6,16,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
-          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: "8px 10px", cursor: "pointer", color: "#94a3b8", display: "flex", alignItems: "center" }}>
-            <ArrowLeft size={18} />
+      {/* ══════════════════════════════════════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════════════════════════════════════ */}
+      <header className="guild-header">
+        <div className="guild-header-inner">
+          <button onClick={onBack} className="guild-back-btn">
+            <span style={{ fontSize:18 }}>←</span>
           </button>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Users size={18} color="#8b5cf6" />
-              <h1 style={{ fontWeight: 900, fontSize: 18, margin: 0 }}>Guilda</h1>
-              {guild && <span style={{ fontSize: 12, background: "rgba(139,92,246,0.15)", color: "#c4b5fd", padding: "2px 8px", borderRadius: 6, fontWeight: 700 }}>Lv.{guild.level}</span>}
-            </div>
-            <p style={{ color: "#475569", fontSize: 11, margin: 0 }}>{guild ? guild.name : "Sem guilda"}</p>
+
+          <div style={{ flex:1, display:"flex", alignItems:"center", gap:12 }}>
+            {guild ? (
+              <>
+                <GuildIcon icon={guild.icon} size={40} borderRadius={10}/>
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <h1 className="guild-header-name">{guild.name}</h1>
+                    <span className="guild-level-badge">Lv.{guild.level}</span>
+                    {guild.join_mode === "open"
+                      ? <span className="guild-badge-open">Livre</span>
+                      : <span className="guild-badge-lock">Aprovação</span>}
+                  </div>
+                  <p className="guild-header-sub">{members.length}/{guild.max_members} membros</p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <h1 className="guild-header-name">Guilda</h1>
+                <p className="guild-header-sub">Sem guilda</p>
+              </div>
+            )}
           </div>
+
           {guild && (
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleDailyCheckin} disabled={checkedIn} style={{
-                background: checkedIn ? "rgba(255,255,255,0.04)" : "rgba(34,197,94,0.15)",
-                border: `1px solid ${checkedIn ? "rgba(255,255,255,0.07)" : "rgba(34,197,94,0.35)"}`,
-                borderRadius: 10, padding: "6px 12px",
-                cursor: checkedIn ? "not-allowed" : "pointer",
-                color: checkedIn ? "#334155" : "#22c55e", fontSize: 11, fontWeight: 800,
-              }}>{checkedIn ? "✓ Check-in" : "🎁 Check-in"}</button>
-              <button onClick={() => setView("settings")} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "6px 10px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}>
-                <Settings size={16} />
+            <div style={{ display:"flex", gap:8 }}>
+              <button
+                onClick={handleDailyCheckin}
+                disabled={checkedIn}
+                className={checkedIn ? "guild-btn-checked" : "guild-btn-checkin"}
+              >
+                {checkedIn ? "✓ Check-in" : "🎁 Check-in"}
               </button>
+              <button onClick={() => setView("settings")} className="guild-btn-icon">⚙</button>
             </div>
           )}
         </div>
 
+        {/* Nav tabs */}
         {guild && (
-          <div style={{ display: "flex", gap: 0, maxWidth: 700, margin: "10px auto 0", background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, overflowX: "auto" }}>
-            {/* Navigation tabs — written explicitly to satisfy Turbopack */}
-            {[
-              { id: "main"    as const, label: "🏠 Início"  },
-              { id: "members" as const, label: "👥 Membros" },
-              { id: "chat"    as const, label: "💬 Chat"    },
-              { id: "boss"    as const, label: "💀 Chefão"  },
-              { id: "war"     as const, label: "⚔️ Guerra"  },
-              { id: "shop"    as const, label: "🛒 Loja"    },
-              { id: "guilds"  as const, label: "🌐 Guildas" },
-            ].map(tab => (
-              <button key={tab.id} onClick={() => setView(tab.id)} style={{
-                flex: 1, padding: "7px 4px", borderRadius: 9, border: "none",
-                cursor: "pointer", fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
-                background: view === tab.id ? "linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.15))" : "transparent",
-                color: view === tab.id ? "#e2e8f0" : "#475569", transition: "all 0.2s",
-              }}>{tab.label}</button>
+          <nav className="guild-nav">
+            {([
+              { id:"main",    icon:"🏠", label:"Início"  },
+              { id:"members", icon:"👥", label:"Membros" },
+              { id:"chat",    icon:"💬", label:"Chat"    },
+              { id:"boss",    icon:"💀", label:"Chefão"  },
+              { id:"war",     icon:"⚔️", label:"Guerra"  },
+              { id:"shop",    icon:"🛒", label:"Loja"    },
+              { id:"guilds",  icon:"🌐", label:"Guildas" },
+            ] as const).map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setView(tab.id)}
+                className={"guild-tab" + (view === tab.id ? " active" : "")}
+              >
+                <span className="guild-tab-icon">{tab.icon}</span>
+                <span className="guild-tab-label">{tab.label}</span>
+              </button>
             ))}
-          </div>
+          </nav>
         )}
-      </div>
+      </header>
 
-      {/* ── Content ── */}
-      <div style={{ flex: 1, overflowY: "auto", position: "relative", zIndex: 1 }}>
-        <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 16px 100px" }}>
+      {/* ══════════════════════════════════════════════════════════════════════
+          CONTENT
+      ══════════════════════════════════════════════════════════════════════ */}
+      <main className="guild-main">
 
-          {/* ══ BROWSE ══ */}
-          {(!guild || view === "browse") && (
-            <>
-              <div style={{ display:"flex", gap:10, marginBottom:20 }}>
-                <button onClick={() => setShowCreate(true)} style={{
-                  flex:1, padding:"14px 0", borderRadius:14, border:"none",
-                  background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", color:"#fff",
-                  fontWeight:900, fontSize:14, cursor:"pointer",
-                  boxShadow:"0 4px 20px rgba(139,92,246,0.35)",
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                }}>
-                  <Plus size={18}/> Criar Guilda
-                  <span style={{ fontSize:11, opacity:0.7 }}>({CREATE_COST}🪙)</span>
-                </button>
-                <button onClick={() => setView("guilds")} style={{
-                  padding:"14px 16px", borderRadius:14,
-                  background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.12)",
-                  color:"#c4b5fd", fontWeight:800, fontSize:13, cursor:"pointer",
-                  display:"flex", alignItems:"center", gap:6, flexShrink:0,
-                }}>
-                  🌐 Ver Guildas
-                </button>
-              </div>
-              <div style={{ textAlign: "center", padding: "48px 0", color: "#334155" }}>
-                <div style={{ fontSize: 56, marginBottom: 16 }}>🏰</div>
-                <p style={{ fontWeight: 800, fontSize: 15, color: "#475569", marginBottom: 8 }}>Você ainda não tem uma guilda</p>
-                <div style={{ background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.18)", borderRadius: 14, padding: "14px 18px", display: "inline-block", textAlign: "left", maxWidth: 320 }}>
-                  <div style={{ fontWeight: 800, fontSize: 12, color: "#06b6d4", marginBottom: 4 }}>💡 Como entrar em uma guilda?</div>
-                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.7 }}>
-                    1. Peça ao líder a link de convite.<br />
-                    2. Abra o link — o jogo perguntará se deseja entrar.<br />
-                    3. Aceite e comece a jogar junto!
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* ══ MAIN ══ */}
-          {guild && view === "main" && (
-            <>
-              {/* Guild card */}
-              <div style={{ background: "linear-gradient(135deg,rgba(109,40,217,0.18),rgba(55,48,163,0.12))", border: "1px solid rgba(139,92,246,0.28)", borderRadius: 20, padding: "20px", marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                  <GuildIcon icon={guild.icon} size={60} borderRadius={16} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <h2 style={{ fontWeight: 900, fontSize: 18, margin: 0 }}>{guild.name}</h2>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: guild.join_mode === "open" ? "#22c55e" : "#f59e0b" }}>
-                        {guild.join_mode === "open" ? "🔓" : "🔒"}
-                      </span>
-                    </div>
-                    <p style={{ color: "#64748b", fontSize: 12, margin: 0, fontStyle: "italic" }}>{guild.slogan}</p>
-                  </div>
-                </div>
-                {/* XP bar */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: "#64748b" }}>Progresso da Guilda</span>
-                    <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 800 }}>Lv.{guild.level} · {guild.xp}/{guild.xp_to_next} XP</span>
-                  </div>
-                  <div style={{ height: 7, borderRadius: 99, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 99, width: `${guildXpPct}%`, background: "linear-gradient(90deg,#7c3aed,#a855f7)", boxShadow: "0 0 10px rgba(168,85,247,0.5)", transition: "width 0.6s" }} />
-                  </div>
-                </div>
-                {/* Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 16 }}>👥</div>
-                    <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{members.length}/{guild.max_members}</div>
-                    <div style={{ fontSize: 10, color: "#475569" }}>Membros</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 16 }}>🪙</div>
-                    <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{guild.guild_coins}</div>
-                    <div style={{ fontSize: 10, color: "#475569" }}>Moedas</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 16 }}>📈</div>
-                    <div style={{ fontWeight: 900, fontSize: 14, color: "#e2e8f0", margin: "2px 0" }}>{LEVEL_MAX_MEMBERS[Math.min(10, guild.level)]}</div>
-                    <div style={{ fontSize: 10, color: "#475569" }}>Vagas</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Invite */}
-              <div style={{ background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.18)", borderRadius: 14, padding: "12px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: 12, color: "#06b6d4" }}>🔗 Link de Convite</div>
-                  <div style={{ fontSize: 10, color: "#334155" }}>Ao abrir, o jogo perguntará se o amigo quer entrar na sua guilda em tempo real</div>
-                </div>
-                <button onClick={handleCopyInvite} style={{ background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.30)", borderRadius: 9, padding: "7px 14px", cursor: "pointer", color: "#06b6d4", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                  {copied ? "Copiado!" : "Copiar"}
-                </button>
-              </div>
-
-              {/* Activities */}
-              <h3 style={{ fontWeight: 900, fontSize: 12, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Atividades</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <button onClick={() => setView("boss")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>💀</div>
-                  <div style={{ fontWeight: 900, fontSize: 13, color: "#f87171" }}>Chefão da Guilda</div>
-                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>Duelo difícil vs. Boss</div>
-                </button>
-                <button onClick={() => setView("war")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>⚔️</div>
-                  <div style={{ fontWeight: 900, fontSize: 13, color: "#60a5fa" }}>Guerra de Guildas</div>
-                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>PVP em equipe</div>
-                </button>
-                <button onClick={() => toast("🎯 Meta: vençam 50 duelos juntos!")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>🎯</div>
-                  <div style={{ fontWeight: 900, fontSize: 13, color: "#34d399" }}>Missão Coletiva</div>
-                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>Meta colaborativa</div>
-                </button>
-                <button onClick={() => setView("shop")} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>🛒</div>
-                  <div style={{ fontWeight: 900, fontSize: 13, color: "#fbbf24" }}>Loja da Guilda</div>
-                  <div style={{ fontSize: 10, color: "#334155", marginTop: 2 }}>Troque moedas</div>
-                </button>
-              </div>
-
-              <div style={{ marginTop: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "12px 14px" }}>
-                <p style={{ color: "#64748b", fontSize: 12, margin: 0, lineHeight: 1.6 }}>{guild.description}</p>
-              </div>
-            </>
-          )}
-
-          {/* ══ MEMBERS ══ */}
-          {guild && view === "members" && (
-            <>
-              <h3 style={{ fontWeight: 900, fontSize: 14, margin: "0 0 14px" }}>
-                👥 {members.length}/{guild.max_members} Membros
-                <span style={{ fontSize: 11, color: "#22c55e", marginLeft: 8, fontWeight: 600 }}>● Tempo real</span>
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[...members]
-                  .sort((a, b) => {
-                    const o: Record<GuildRole, number> = { leader: 0, officer: 1, member: 2 }
-                    return o[a.role] - o[b.role] || b.weekly_contrib - a.weekly_contrib
-                  })
-                  .map(m => (
-                    <MemberRow key={m.id} member={m} myRole={myRole}
-                      onKick={m.id !== myId && (myRole === "leader" || myRole === "officer") ? () => handleKick(m.id) : undefined}
-                      onPromote={m.id !== myId && myRole === "leader" && m.role === "member" ? () => handlePromote(m.id) : undefined}
-                    />
-                  ))}
-              </div>
-            </>
-          )}
-
-          {/* ══ CHAT ══ */}
-          {guild && view === "chat" && (
-            <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 195px)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <h3 style={{ fontWeight: 900, fontSize: 14, margin: 0 }}>💬 Chat da Guilda</h3>
-                <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Tempo real</span>
-              </div>
-
-              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingBottom: 12 }}>
-                {chat.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "#334155" }}>
-                    <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
-                    <p style={{ fontSize: 13 }}>Nenhuma mensagem ainda. Seja o primeiro!</p>
-                  </div>
-                )}
-                {chat.map(msg => {
-                  const isMe     = msg.author_id === myId
-                  const isSystem = msg.author_id === "system"
-                  const rl       = isSystem ? null : roleLabel(msg.author_role)
-                  return (
-                    <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-                      {!isMe && !isSystem && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, paddingLeft: 4 }}>
-                          <span style={{ fontWeight: 800, fontSize: 11, color: "#94a3b8" }}>{msg.author_name}</span>
-                          {rl && <span style={{ fontSize: 8, fontWeight: 800, color: rl.color, background: rl.bg, padding: "1px 5px", borderRadius: 4, textTransform: "uppercase" }}>{rl.text}</span>}
-                        </div>
-                      )}
-                      {(() => {
-                        const isEmote = msg.text.startsWith("__emote__")
-                        if (isEmote) {
-                          const parts = msg.text.split("__").filter(Boolean)
-                          // parts: ["emote", "emote-1", "/images/emotes/emote-1.png", "Chorando de Alegria"]
-                          const emoteSrc  = parts[2] ?? ""
-                          const emoteName = parts[3] ?? ""
-                          return (
-                            <div title={emoteName} style={{ display:"flex", flexDirection:"column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-                              <img src={emoteSrc} alt={emoteName}
-                                style={{ width:64, height:64, objectFit:"contain", filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.5))", animation:"emotePop 0.25s ease" }}
-                                onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
-                              <p style={{ margin:"2px 0 0", fontSize:9, color:"rgba(255,255,255,0.30)" }}>{timeAgo(msg.timestamp)}</p>
-                            </div>
-                          )
-                        }
-                        return (
-                          <div style={{
-                            maxWidth:"75%", padding:"9px 13px",
-                            borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                            background: isSystem ? "rgba(139,92,246,0.12)" : isMe ? "linear-gradient(135deg,#6d28d9,#8b5cf6)" : "rgba(255,255,255,0.07)",
-                            border: isSystem ? "1px solid rgba(139,92,246,0.25)" : "none",
-                          }}>
-                            <p style={{ margin:0, fontSize:13, color: isSystem ? "#a78bfa" : "#f1f5f9", fontStyle: isSystem ? "italic" : undefined, lineHeight:1.5 }}>{msg.text}</p>
-                            <p style={{ margin:"4px 0 0", fontSize:9, color:"rgba(255,255,255,0.35)", textAlign:"right" }}>{timeAgo(msg.timestamp)}</p>
-                          </div>
-                        )
-                      })()}
-                    </div>
-                  )
-                })}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Chat error (banned word) */}
-              {chatError && (
-                <div style={{
-                  background:"rgba(220,38,38,0.12)", border:"1px solid rgba(220,38,38,0.35)",
-                  borderRadius:10, padding:"9px 14px", marginBottom:6,
-                  display:"flex", alignItems:"center", gap:8, animation:"fadeDown 0.2s ease",
-                }}>
-                  <span style={{ fontSize:16, flexShrink:0 }}>🚫</span>
-                  <p style={{ margin:0, fontSize:12, color:"#fca5a5", fontWeight:700, lineHeight:1.4 }}>
-                    {chatError}
-                  </p>
-                </div>
-              )}
-
-              {/* Emote Picker */}
-              {showEmotes && (
-                <div style={{
-                  background:"rgba(10,6,20,0.97)", border:"1px solid rgba(139,92,246,0.35)",
-                  borderRadius:16, padding:"12px", marginBottom:8,
-                  backdropFilter:"blur(16px)",
-                }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                    <span style={{ fontSize:11, fontWeight:800, color:"#a78bfa", letterSpacing:"0.06em", textTransform:"uppercase" }}>Emotes</span>
-                    <button onClick={() => setShowEmotes(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"#475569", display:"flex", alignItems:"center" }}>
-                      <XIcon size={14}/>
-                    </button>
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:8 }}>
-                    {GAME_EMOTES.map(emote => (
-                      <button key={emote.id} onClick={() => handleSendEmote(emote)}
-                        title={emote.name}
-                        style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:4, cursor:"pointer", transition:"all 0.15s", aspectRatio:"1/1", display:"flex", alignItems:"center", justifyContent:"center" }}
-                        onMouseEnter={e => { e.currentTarget.style.background="rgba(139,92,246,0.20)"; e.currentTarget.style.borderColor="rgba(139,92,246,0.50)"; e.currentTarget.style.transform="scale(1.12)" }}
-                        onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.08)"; e.currentTarget.style.transform="scale(1)" }}
-                      >
-                        <img src={emote.image} alt={emote.name} style={{ width:38, height:38, objectFit:"contain" }}
-                          onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Input */}
-              <div style={{ display:"flex", gap:8, paddingTop:8, background:"rgba(2,6,16,0.95)" }}>
-                <input
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSendChat()}
-                  placeholder="Mensagem para a guilda..."
-                  maxLength={200}
-                  style={{ flex:1, background:"rgba(255,255,255,0.06)", border:`1px solid ${chatError ? "rgba(220,38,38,0.60)" : "rgba(255,255,255,0.12)"}`, borderRadius:12, padding:"11px 14px", color:"#e2e8f0", fontSize:13, transition:"border-color 0.2s" }}
-                />
-                <button onClick={() => setShowEmotes(v => !v)} style={{
-                  background: showEmotes ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.06)",
-                  border: `1px solid ${showEmotes ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.10)"}`,
-                  borderRadius:12, padding:"0 12px", cursor:"pointer", display:"flex", alignItems:"center", flexShrink:0,
-                }}>
-                  <Smile size={18} color={showEmotes ? "#a78bfa" : "#64748b"}/>
-                </button>
-                <button onClick={handleSendChat} style={{ background:"linear-gradient(135deg,#6d28d9,#8b5cf6)", border:"none", borderRadius:12, padding:"0 16px", cursor:"pointer", display:"flex", alignItems:"center", flexShrink:0 }}>
-                  <Send size={18} color="#fff"/>
-                </button>
+        {/* ═══ BROWSE / NO GUILD ═══════════════════════════════════════════ */}
+        {(!guild || view === "browse") && (
+          <div className="guild-browse">
+            {/* Hero section */}
+            <div className="guild-browse-hero">
+              <div className="guild-browse-runes"/>
+              <div className="guild-browse-hero-content">
+                <div style={{ fontSize:72, marginBottom:16, filter:"drop-shadow(0 0 40px rgba(139,92,246,0.8))",
+                  animation:"heroFloat 4s ease-in-out infinite" }}>🏰</div>
+                <h2 className="guild-browse-title">Junte-se a uma Guilda</h2>
+                <p className="guild-browse-sub">Lute ao lado de aliados. Conquiste juntos.</p>
               </div>
             </div>
-          )}
 
-          {/* ══ BOSS ══ */}
-          {guild && view === "boss" && (
-            <div>
-              <div style={{ background: "linear-gradient(135deg,rgba(127,29,29,0.35),rgba(15,3,3,0.50))", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 20, padding: "24px 20px", marginBottom: 20, textAlign: "center", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%,rgba(220,38,38,0.12) 0%,transparent 60%)", pointerEvents: "none" }} />
-                <div style={{ fontSize: 68, marginBottom: 8, filter: "drop-shadow(0 0 20px rgba(220,38,38,0.7))" }}>💀</div>
-                <h2 style={{ fontWeight: 900, fontSize: 22, margin: "0 0 6px", color: "#f87171" }}>Chefão da Guilda</h2>
-                <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 20px", lineHeight: 1.6 }}>
-                  Enfrente o Chefão em um <strong style={{ color: "#f1f5f9" }}>duelo difícil de verdade</strong>.<br />
-                  Escolha seu melhor deck e supere o desafio!
-                </p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Derrota Honrosa</div>
-                    <div style={{ fontWeight: 900, fontSize: 12, color: "#64748b", marginTop: 4 }}>25 🪙</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Vitória Rápida</div>
-                    <div style={{ fontWeight: 900, fontSize: 12, color: "#fbbf24", marginTop: 4 }}>100 🪙 + Pack</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Vitória Perfeita</div>
-                    <div style={{ fontWeight: 900, fontSize: 12, color: "#60a5fa", marginTop: 4 }}>200 🪙 + Pack SR</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px" }}>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Lendário (sem dano)</div>
-                    <div style={{ fontWeight: 900, fontSize: 12, color: "#a855f7", marginTop: 4 }}>500 🪙 + Pack LR</div>
-                  </div>
+            {/* Actions */}
+            <div className="guild-browse-actions">
+              <button onClick={() => setShowCreate(true)} className="guild-btn-create">
+                <span style={{ fontSize:20 }}>⚔</span>
+                <div>
+                  <div style={{ fontWeight:900, fontSize:16 }}>Criar Guilda</div>
+                  <div style={{ fontSize:12, opacity:0.75 }}>Custo: 300 🪙</div>
                 </div>
-                <div style={{ background: "rgba(220,38,38,0.10)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 12, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 16 }}>⚠️</span>
-                    <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
-                      <strong style={{ color: "#f87171" }}>Chefão Atual: Mefisto das Sombras</strong><br />
-                      Nível: Extremo · 4.000 HP · Habilidades especiais ativas
-                    </div>
-                  </div>
+              </button>
+              <button onClick={() => setView("guilds")} className="guild-btn-browse">
+                <span style={{ fontSize:20 }}>🌐</span>
+                <div>
+                  <div style={{ fontWeight:900, fontSize:16 }}>Ver Guildas</div>
+                  <div style={{ fontSize:12, opacity:0.75 }}>{allGuilds.length} ativa{allGuilds.length !== 1 ? "s" : ""}</div>
                 </div>
-                <button onClick={() => setShowDeckSel(true)} style={{
-                  width: "100%", padding: "16px 0", borderRadius: 14, border: "none",
-                  background: "linear-gradient(135deg,#dc2626,#ef4444)", color: "#fff",
-                  fontWeight: 900, fontSize: 16, cursor: "pointer",
-                  boxShadow: "0 4px 24px rgba(220,38,38,0.50)",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                }}>
-                  <Swords size={20} /> Escolher Deck e Batalhar
-                </button>
-              </div>
-              {/* Ranking */}
-              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "16px" }}>
-                <h4 style={{ fontWeight: 900, fontSize: 13, margin: "0 0 12px", color: "#94a3b8" }}>🏆 Ranking — Boss da Semana</h4>
-                {[...members].slice(0, 5).map((m, i) => (
-                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <span style={{ fontSize: 16, width: 24, textAlign: "center" }}>{["🥇","🥈","🥉","4️⃣","5️⃣"][i]}</span>
-                    <span style={{ flex: 1, fontSize: 13, color: "#e2e8f0", fontWeight: 700 }}>{m.name}</span>
-                    <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800 }}>{m.weekly_contrib * 50 + 500} pts</span>
+              </button>
+            </div>
+
+            {/* How to join steps */}
+            <div className="guild-steps">
+              <h3 className="guild-steps-title">Como entrar em uma guilda?</h3>
+              <div className="guild-steps-grid">
+                {[
+                  { n:"01", icon:"🔗", text:"Peça o link de convite ao líder" },
+                  { n:"02", icon:"🌐", text:"Abra o link — o jogo pergunta se quer entrar" },
+                  { n:"03", icon:"🎉", text:"Aceite e comece a jogar junto!" },
+                ].map(s => (
+                  <div key={s.n} className="guild-step-card">
+                    <div className="guild-step-num">{s.n}</div>
+                    <div style={{ fontSize:28, marginBottom:8 }}>{s.icon}</div>
+                    <p style={{ fontSize:13, color:"#94a3b8", lineHeight:1.6, margin:0 }}>{s.text}</p>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ══ WAR ══ */}
-          {guild && view === "war" && (
-            <>
-              <h3 style={{ fontWeight: 900, fontSize: 16, marginBottom: 16, color: "#60a5fa" }}>⚔️ Guerra de Guildas</h3>
-              <div style={{ background: "rgba(37,99,235,0.10)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 16, padding: "20px", textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>🏟️</div>
-                <p style={{ color: "#64748b", fontSize: 13 }}>Próxima Guerra começa em</p>
-                <p style={{ fontWeight: 900, fontSize: 24, color: "#60a5fa", margin: "4px 0" }}>18:32:07</p>
-                <p style={{ color: "#334155", fontSize: 11 }}>Enfrente outra guilda em duelos PVP. Ganha moedas ao vencer!</p>
-              </div>
-            </>
-          )}
+        {/* ═══ ALL GUILDS LIST ═════════════════════════════════════════════ */}
+        {view === "guilds" && (
+          <div className="guild-content-pad">
+            <div className="guild-section-header">
+              <h2 className="guild-section-title">🌐 Todas as Guildas</h2>
+              <span className="guild-realtime-dot">● Tempo real</span>
+            </div>
 
-          {/* ══ GUILDS LIST ══ */}
-          {view === "guilds" && (
-            <>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-                <h3 style={{ fontWeight:900, fontSize:16, margin:0, color:"#c4b5fd" }}>🌐 Todas as Guildas</h3>
-                <span style={{ fontSize:11, color:"#22c55e", fontWeight:600 }}>● Tempo real</span>
+            {allGuilds.length === 0 ? (
+              <div className="guild-empty">
+                <div style={{ fontSize:56, marginBottom:16 }}>🏰</div>
+                <p style={{ color:"#475569", fontSize:15, fontWeight:700 }}>Nenhuma guilda criada ainda</p>
+                <p style={{ color:"#334155", fontSize:13, marginTop:4 }}>Seja o primeiro a criar uma!</p>
               </div>
-              {allGuilds.length === 0 ? (
-                <div style={{ textAlign:"center", padding:"40px 0", color:"#334155" }}>
-                  <div style={{ fontSize:48, marginBottom:12 }}>🏰</div>
-                  <p style={{ fontSize:13, color:"#475569" }}>Nenhuma guilda criada ainda.<br/>Seja o primeiro!</p>
-                </div>
-              ) : (
-                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                  {allGuilds.map(g => {
-                    const isMyGuild = guild?.id === g.id
-                    const canJoin   = !guild && !isMyGuild
-                    return (
-                      <div key={g.id} style={{
-                        display:"flex", alignItems:"center", gap:12,
-                        background: isMyGuild ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
-                        border: `1px solid ${isMyGuild ? "rgba(139,92,246,0.35)" : "rgba(255,255,255,0.07)"}`,
-                        borderRadius:14, padding:"12px 14px", transition:"all 0.2s",
-                      }}>
-                        <GuildIcon icon={g.icon} size={48} borderRadius={12} />
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                            <span style={{ fontWeight:900, fontSize:14, color:"#e2e8f0",
-                              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{g.name}</span>
-                            {isMyGuild && (
-                              <span style={{ fontSize:9, fontWeight:800, color:"#a78bfa",
-                                background:"rgba(139,92,246,0.20)", padding:"1px 6px",
-                                borderRadius:5, flexShrink:0 }}>SUA GUILDA</span>
-                            )}
-                            <span style={{ fontSize:9, fontWeight:800, color:"#475569", flexShrink:0 }}>
-                              Lv.{g.level}
-                            </span>
-                          </div>
-                          <div style={{ fontSize:12, color:"#64748b", fontStyle:"italic",
-                            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                            {g.slogan}
-                          </div>
-                          <div style={{ display:"flex", gap:10, marginTop:3, fontSize:11, color:"#334155" }}>
-                            <span>👥 {g.max_members} vagas</span>
-                            <span>{g.join_mode === "open" ? "🔓 Livre" : "🔒 Aprovação"}</span>
-                          </div>
+            ) : (
+              <div className="guild-list">
+                {allGuilds.map(g => {
+                  const isMyGuild = guild?.id === g.id
+                  const canJoin   = !guild && !isMyGuild
+                  return (
+                    <div key={g.id} className={"guild-list-card" + (isMyGuild ? " my-guild" : "")}>
+                      <GuildIcon icon={g.icon} size={56} borderRadius={14}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                          <span className="guild-list-name">{g.name}</span>
+                          {isMyGuild && <span className="guild-badge-mine">Sua Guilda</span>}
+                          <span className="guild-list-level">Lv.{g.level}</span>
                         </div>
+                        <p className="guild-list-slogan">{g.slogan}</p>
+                        <div style={{ display:"flex", gap:12, marginTop:4 }}>
+                          <span className="guild-list-meta">👥 {g.max_members} vagas</span>
+                          <span className="guild-list-meta">
+                            {g.join_mode === "open" ? "🔓 Livre" : "🔒 Aprovação"}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ flexShrink:0 }}>
                         {isMyGuild && (
-                          <button onClick={() => setView("main")} style={{
-                            padding:"6px 12px", borderRadius:9, border:"none",
-                            background:"linear-gradient(135deg,#6d28d9,#8b5cf6)",
-                            color:"#fff", fontWeight:800, fontSize:11, cursor:"pointer", flexShrink:0,
-                          }}>Ver →</button>
+                          <button onClick={() => setView("main")} className="guild-btn-see">Ver →</button>
                         )}
                         {canJoin && (
-                          <button onClick={() => handleJoinPublicGuild(g)} style={{
-                            padding:"7px 14px", borderRadius:9, border:"none",
-                            background: g.join_mode === "open"
-                              ? "linear-gradient(135deg,#065f46,#059669)"
-                              : "linear-gradient(135deg,#92400e,#d97706)",
-                            color:"#fff", fontWeight:800, fontSize:11, cursor:"pointer", flexShrink:0,
-                            boxShadow: g.join_mode === "open"
-                              ? "0 2px 10px rgba(5,150,105,0.35)"
-                              : "0 2px 10px rgba(217,119,6,0.35)",
-                          }}>
-                            {g.join_mode === "open" ? "Entrar" : "Solicitar"}
+                          <button
+                            onClick={() => handleJoinPublicGuild(g)}
+                            className={g.join_mode === "open" ? "guild-btn-join" : "guild-btn-request"}
+                          >
+                            {g.join_mode === "open" ? "⚔ Entrar" : "📩 Solicitar"}
                           </button>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ══ SHOP ══ */}
-          {guild && view === "shop" && (
-            <>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontWeight: 900, fontSize: 16, margin: 0, color: "#fbbf24" }}>🛒 Loja da Guilda</h3>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#fbbf24" }}>🪙 {guild.guild_coins}</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { name: "Pack de Gacha Comum", cost: 50,  icon: "📦", desc: "1 pack comum"        },
-                  { name: "100 Gacha Coins",      cost: 80,  icon: "🪙", desc: "Moedas do jogo"      },
-                  { name: "Pack SR Garantido",    cost: 200, icon: "💎", desc: "Garante SR ou acima" },
-                  { name: "Título Exclusivo",     cost: 500, icon: "🏷️", desc: "Título de guilda"   },
-                ].map(item => {
-                  const canBuy = (guild?.guild_coins ?? 0) >= item.cost
-                  return (
-                    <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px" }}>
-                      <div style={{ fontSize: 28, width: 44, height: 44, background: "rgba(251,191,36,0.10)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{item.icon}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 900, fontSize: 13 }}>{item.name}</div>
-                        <div style={{ fontSize: 11, color: "#475569" }}>{item.desc}</div>
-                      </div>
-                      <button
-                        onClick={() => canBuy ? toast("✅ " + item.name + " comprado!") : toast("❌ Moedas insuficientes!")}
-                        style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#92400e,#d97706)", color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
-                        🪙 {item.cost}
-                      </button>
                     </div>
                   )
                 })}
               </div>
-            </>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* ══ SETTINGS ══ */}
-          {guild && view === "settings" && (
-            <>
-              <h3 style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>⚙️ Configurações da Guilda</h3>
-              {myRole === "leader" && (
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
-                  <h4 style={{ fontWeight: 900, fontSize: 13, margin: "0 0 12px", color: "#94a3b8" }}>👑 Opções do Líder</h4>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
-                    <span style={{ color: "#94a3b8", fontSize: 13 }}>Modo de entrada</span>
-                    <button onClick={async () => {
-                      const newMode: GuildJoinMode = guild.join_mode === "open" ? "approval" : "open"
-                      setGuild(g => g ? { ...g, join_mode: newMode } : g)
-                      await sbUpdate("guilds", `id=eq.${guild.id}`, { join_mode: newMode })
-                    }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "#e2e8f0", fontSize: 12, fontWeight: 700 }}>
+        {/* ═══ MAIN (in guild) ════════════════════════════════════════════ */}
+        {guild && view === "main" && (
+          <div className="guild-content-pad">
+            {/* Guild hero card */}
+            <div className="guild-hero-card">
+              <div className="guild-hero-glow"/>
+              <div style={{ display:"flex", alignItems:"center", gap:18, marginBottom:20, position:"relative" }}>
+                <div className="guild-hero-icon-wrap">
+                  <GuildIcon icon={guild.icon} size={72} borderRadius={18}/>
+                  <div className="guild-hero-icon-ring"/>
+                </div>
+                <div style={{ flex:1 }}>
+                  <h2 className="guild-hero-name">{guild.name}</h2>
+                  <p className="guild-hero-slogan">{guild.slogan}</p>
+                  <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                    <span className="guild-level-badge">Lv.{guild.level}</span>
+                    <span className={guild.join_mode === "open" ? "guild-badge-open" : "guild-badge-lock"}>
                       {guild.join_mode === "open" ? "🔓 Livre" : "🔒 Aprovação"}
-                    </button>
+                    </span>
                   </div>
                 </div>
-              )}
-              <button onClick={() => setLeaveConfirm(true)} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "1px solid rgba(239,68,68,0.30)", background: "rgba(239,68,68,0.08)", color: "#f87171", fontWeight: 900, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <LogOut size={16} /> Sair da Guilda
+              </div>
+
+              {/* XP bar */}
+              <div style={{ marginBottom:20 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                  <span style={{ fontSize:11, color:"#64748b", textTransform:"uppercase", letterSpacing:"0.08em" }}>XP da Guilda</span>
+                  <span style={{ fontSize:11, color:"#a78bfa", fontWeight:800 }}>{guild.xp} / {guild.xp_to_next}</span>
+                </div>
+                <div className="guild-xp-track">
+                  <div className="guild-xp-fill" style={{ width:`${Math.min(100,(guild.xp/guild.xp_to_next)*100)}%` }}/>
+                  <div className="guild-xp-shimmer"/>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="guild-stats-grid">
+                {[
+                  { icon:"👥", val:`${members.length}/${guild.max_members}`, lbl:"Membros" },
+                  { icon:"🪙", val:guild.guild_coins, lbl:"Moedas" },
+                  { icon:"⭐", val:guild.xp, lbl:"XP Total" },
+                ].map(s => (
+                  <div key={s.lbl} className="guild-stat-card">
+                    <span style={{ fontSize:22, display:"block", marginBottom:6 }}>{s.icon}</span>
+                    <span className="guild-stat-val">{s.val}</span>
+                    <span className="guild-stat-lbl">{s.lbl}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Invite link */}
+            <div className="guild-invite-bar">
+              <div>
+                <div style={{ fontWeight:800, fontSize:13, color:"#06b6d4", marginBottom:3 }}>🔗 Link de Convite</div>
+                <div style={{ fontSize:11, color:"#334155" }}>Compartilhe com amigos para crescer sua guilda</div>
+              </div>
+              <button onClick={handleCopyInvite} className={"guild-copy-btn" + (copied ? " copied" : "")}>
+                {copied ? "✓ Copiado!" : "Copiar"}
               </button>
-            </>
-          )}
+            </div>
 
-        </div>
-      </div>
+            {/* Activities grid */}
+            <h3 className="guild-section-title" style={{ marginBottom:14 }}>Atividades</h3>
+            <div className="guild-activities-grid">
+              <button onClick={() => setView("boss")} className="guild-activity-card boss">
+                <div className="guild-activity-bg"/>
+                <span className="guild-activity-icon">💀</span>
+                <div className="guild-activity-name">Chefão</div>
+                <div className="guild-activity-desc">Duelo difícil vs. Boss</div>
+                <div className="guild-activity-arrow">→</div>
+              </button>
+              <button onClick={() => setView("war")} className="guild-activity-card war">
+                <div className="guild-activity-bg"/>
+                <span className="guild-activity-icon">⚔️</span>
+                <div className="guild-activity-name">Guerra</div>
+                <div className="guild-activity-desc">PVP em equipe</div>
+                <div className="guild-activity-arrow">→</div>
+              </button>
+              <button onClick={() => toast("🎯 Meta: vençam 50 duelos juntos!")} className="guild-activity-card mission">
+                <div className="guild-activity-bg"/>
+                <span className="guild-activity-icon">🎯</span>
+                <div className="guild-activity-name">Missão</div>
+                <div className="guild-activity-desc">Meta colaborativa</div>
+                <div className="guild-activity-arrow">→</div>
+              </button>
+              <button onClick={() => setView("shop")} className="guild-activity-card shop">
+                <div className="guild-activity-bg"/>
+                <span className="guild-activity-icon">🛒</span>
+                <div className="guild-activity-name">Loja</div>
+                <div className="guild-activity-desc">Troque moedas</div>
+                <div className="guild-activity-arrow">→</div>
+              </button>
+            </div>
 
-      <style>{`
-        @keyframes fadeDown {
-          from { opacity:0; transform:translateX(-50%) translateY(-10px); }
-          to   { opacity:1; transform:translateX(-50%) translateY(0); }
-        }
-        @keyframes spin { to { transform:rotate(360deg) } }
-        @keyframes emotePop {
-          0%   { transform:scale(0.5); opacity:0; }
-          70%  { transform:scale(1.15); opacity:1; }
-          100% { transform:scale(1); }
-        }
-      `}</style>
+            {guild.description && (
+              <div className="guild-desc-card">{guild.description}</div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ MEMBERS ════════════════════════════════════════════════════ */}
+        {guild && view === "members" && (
+          <div className="guild-content-pad">
+            <div className="guild-section-header">
+              <h2 className="guild-section-title">👥 {members.length}/{guild.max_members} Membros</h2>
+              <span className="guild-realtime-dot">● Tempo real</span>
+            </div>
+            <div className="guild-members-list">
+              {[...members]
+                .sort((a,b) => {
+                  const o: Record<GuildRole,number> = {leader:0,officer:1,member:2}
+                  return o[a.role]-o[b.role] || b.weekly_contrib-a.weekly_contrib
+                })
+                .map(m => {
+                  const rl = roleLabel(m.role)
+                  const isOnline = Date.now() - m.last_online < 5*60000
+                  const canManage = (myRole==="leader"||myRole==="officer") && m.role==="member" && m.id!==myId
+                  return (
+                    <div key={m.id} className={"guild-member-card" + (m.id===myId ? " is-me" : "")}>
+                      <div style={{ position:"relative", flexShrink:0 }}>
+                        <div className="guild-member-avatar">
+                          {m.avatar_url
+                            ? <img src={m.avatar_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt=""/>
+                            : <span style={{ fontSize:20 }}>👤</span>}
+                        </div>
+                        <div className={"guild-online-dot" + (isOnline ? " online" : "")}/>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                          <span className="guild-member-name">{m.name}</span>
+                          <span style={{ fontSize:9, fontWeight:800, color:rl.color,
+                            background:rl.bg, padding:"2px 7px", borderRadius:5,
+                            textTransform:"uppercase", letterSpacing:"0.06em" }}>{rl.text}</span>
+                          {m.id === myId && <span style={{ fontSize:9, color:"#fbbf24" }}>Você</span>}
+                        </div>
+                        <div style={{ display:"flex", gap:10, fontSize:11, color:"#475569" }}>
+                          <span>Lv.{m.level}</span>
+                          <span>·</span>
+                          <span>{isOnline ? "🟢 Online" : timeAgo(m.last_online)}</span>
+                          <span>·</span>
+                          <span style={{ color:"#06b6d4" }}>⚡{m.weekly_contrib}</span>
+                        </div>
+                      </div>
+                      {canManage && (
+                        <div style={{ display:"flex", gap:6 }}>
+                          {myRole==="leader" && (
+                            <button onClick={() => handlePromote(m.id)} className="guild-btn-promote">↑ Oficial</button>
+                          )}
+                          <button onClick={() => handleKick(m.id)} className="guild-btn-kick">Expulsar</button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CHAT ══════════════════════════════════════════════════════ */}
+        {guild && view === "chat" && (
+          <div className="guild-chat-layout">
+            <div className="guild-section-header" style={{ padding:"0 0 12px" }}>
+              <h2 className="guild-section-title">💬 Chat da Guilda</h2>
+              <span className="guild-realtime-dot">● Tempo real</span>
+            </div>
+
+            <div className="guild-chat-messages" ref={chatEndRef as any}>
+              {chat.length === 0 && (
+                <div className="guild-empty" style={{ padding:"40px 0" }}>
+                  <div style={{ fontSize:40, marginBottom:10 }}>💬</div>
+                  <p style={{ color:"#475569", fontSize:13 }}>Nenhuma mensagem ainda. Seja o primeiro!</p>
+                </div>
+              )}
+              {chat.map(msg => {
+                const isMe     = msg.author_id === myId
+                const isSystem = msg.author_id === "system"
+                const isEmote  = msg.text.startsWith("__emote__")
+                const rl       = isSystem ? null : roleLabel(msg.author_role)
+                return (
+                  <div key={msg.id} className={"guild-msg-row" + (isMe ? " me" : "") + (isSystem ? " system" : "")}>
+                    {!isMe && !isSystem && (
+                      <div className="guild-msg-meta">
+                        <span className="guild-msg-author">{msg.author_name}</span>
+                        {rl && <span style={{ fontSize:8, fontWeight:800, color:rl.color,
+                          background:rl.bg, padding:"1px 5px", borderRadius:4,
+                          textTransform:"uppercase" }}>{rl.text}</span>}
+                      </div>
+                    )}
+                    {isEmote ? (() => {
+                      const parts = msg.text.split("__").filter(Boolean)
+                      return (
+                        <div style={{ textAlign: isMe ? "right" : "left" }}>
+                          <img src={parts[2]??""} alt={parts[3]??""} className="guild-emote-img"/>
+                          <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", marginTop:2 }}>{timeAgo(msg.timestamp)}</div>
+                        </div>
+                      )
+                    })() : (
+                      <div className={"guild-msg-bubble" + (isSystem ? " system" : isMe ? " me" : "")}>
+                        <p style={{ margin:0, fontSize:13, lineHeight:1.5 }}>{msg.text}</p>
+                        <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", marginTop:3, textAlign:"right" }}>
+                          {timeAgo(msg.timestamp)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <div ref={chatEndRef}/>
+            </div>
+
+            {/* Chat error */}
+            {chatError && (
+              <div className="guild-chat-error">
+                <span>🚫</span> {chatError}
+              </div>
+            )}
+
+            {/* Emote picker */}
+            {showEmotes && (
+              <div className="guild-emote-picker">
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:"#a78bfa",
+                    textTransform:"uppercase", letterSpacing:"0.08em" }}>Emotes</span>
+                  <button onClick={() => setShowEmotes(false)} style={{ background:"none", border:"none",
+                    cursor:"pointer", color:"#475569", fontSize:16 }}>✕</button>
+                </div>
+                <div className="guild-emote-grid">
+                  {GAME_EMOTES.map(emote => (
+                    <button key={emote.id} onClick={() => handleSendEmote(emote)}
+                      title={emote.name} className="guild-emote-btn">
+                      <img src={emote.image} alt={emote.name} style={{ width:44, height:44, objectFit:"contain" }}
+                        onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="guild-chat-input-row">
+              <input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key==="Enter" && handleSendChat()}
+                placeholder="Mensagem para a guilda..."
+                maxLength={200}
+                className={"guild-chat-input" + (chatError ? " error" : "")}
+              />
+              <button onClick={() => setShowEmotes(v => !v)}
+                className={"guild-emoji-btn" + (showEmotes ? " active" : "")}>😊</button>
+              <button onClick={handleSendChat} className="guild-send-btn">
+                <span style={{ fontSize:18 }}>➤</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ BOSS ═══════════════════════════════════════════════════════ */}
+        {guild && view === "boss" && (
+          <div className="guild-content-pad">
+            <div className="guild-boss-hero">
+              <div className="guild-boss-aura"/>
+              <div style={{ position:"relative", textAlign:"center", paddingTop:20 }}>
+                <div className="guild-boss-skull">💀</div>
+                <h2 className="guild-boss-title">Chefão da Guilda</h2>
+                <p className="guild-boss-sub">
+                  Enfrente o Chefão em um <strong style={{ color:"#f1f5f9" }}>duelo difícil de verdade</strong>.<br/>
+                  Escolha seu melhor deck e supere o desafio!
+                </p>
+              </div>
+
+              {/* Boss info */}
+              <div className="guild-boss-info">
+                <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6 }}>
+                  <span style={{ fontSize:16 }}>⚠️</span>
+                  <strong style={{ color:"#f87171", fontSize:14 }}>Mefisto das Sombras</strong>
+                </div>
+                <div style={{ fontSize:12, color:"#94a3b8" }}>
+                  Nível: Extremo · 4.000 HP · Habilidades especiais ativas
+                </div>
+              </div>
+
+              {/* Reward tiers */}
+              <div className="guild-rewards-grid">
+                {[
+                  { label:"Derrota Honrosa",    reward:"25 🪙",           color:"#64748b", icon:"🛡" },
+                  { label:"Vitória Rápida",      reward:"100 🪙 + Pack",   color:"#fbbf24", icon:"⚡" },
+                  { label:"Vitória Perfeita",    reward:"200 🪙 + Pack SR", color:"#60a5fa", icon:"💫" },
+                  { label:"Lendário (sem dano)", reward:"500 🪙 + Pack LR", color:"#a855f7", icon:"👑" },
+                ].map(r => (
+                  <div key={r.label} className="guild-reward-card">
+                    <div style={{ fontSize:20, marginBottom:6 }}>{r.icon}</div>
+                    <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>{r.label}</div>
+                    <div style={{ fontWeight:900, fontSize:13, color:r.color }}>{r.reward}</div>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => setShowDeckSel(true)} className="guild-boss-btn">
+                ⚔ Escolher Deck e Batalhar
+              </button>
+            </div>
+
+            {/* Ranking */}
+            <div className="guild-ranking-card">
+              <h4 className="guild-section-title" style={{ marginBottom:16 }}>🏆 Ranking — Boss da Semana</h4>
+              {[...members].slice(0,5).map((m,i) => (
+                <div key={m.id} className="guild-rank-row">
+                  <span className="guild-rank-medal">{["🥇","🥈","🥉","4️⃣","5️⃣"][i]}</span>
+                  <div className="guild-member-avatar" style={{ width:32, height:32 }}>
+                    {m.avatar_url
+                      ? <img src={m.avatar_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt=""/>
+                      : <span style={{ fontSize:14 }}>👤</span>}
+                  </div>
+                  <span style={{ flex:1, fontSize:13, color:"#e2e8f0", fontWeight:700 }}>{m.name}</span>
+                  <span style={{ fontSize:13, color:"#fbbf24", fontWeight:900 }}>{m.weekly_contrib*50+500} pts</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ WAR ════════════════════════════════════════════════════════ */}
+        {guild && view === "war" && (
+          <div className="guild-content-pad">
+            <div className="guild-war-hero">
+              <div className="guild-war-bg"/>
+              <div style={{ position:"relative", textAlign:"center", padding:"30px 20px" }}>
+                <h2 style={{ fontWeight:900, fontSize:22, color:"#60a5fa", margin:"0 0 8px",
+                  textShadow:"0 0 30px rgba(96,165,250,0.6)" }}>⚔️ Guerra de Guildas</h2>
+                <p style={{ color:"#64748b", fontSize:13, marginBottom:20 }}>Próxima guerra começa em</p>
+                <div className="guild-war-timer">18:32:07</div>
+                <p style={{ color:"#334155", fontSize:12, marginTop:12 }}>
+                  Enfrente outra guilda em duelos PVP.<br/>Ganha moedas ao vencer!
+                </p>
+              </div>
+              <div style={{ display:"flex", gap:10, padding:"0 20px 24px" }}>
+                <button className="guild-btn-secondary" style={{ flex:1 }}>🛡 Preparar Defesa</button>
+                <button className="guild-btn-war" style={{ flex:1 }}>⚔ Atacar</button>
+              </div>
+            </div>
+
+            <div className="guild-ranking-card" style={{ marginTop:16 }}>
+              <h4 className="guild-section-title" style={{ marginBottom:14 }}>📊 Últimas Guerras</h4>
+              {[
+                { oponente:"Dragões do Norte", resultado:"Vitória", pontos:"+120🪙" },
+                { oponente:"Clã da Tempestade", resultado:"Derrota", pontos:"+30🪙" },
+              ].map((w,i) => (
+                <div key={i} className="guild-rank-row">
+                  <span style={{ fontSize:16 }}>{w.resultado==="Vitória"?"🏆":"💔"}</span>
+                  <span style={{ flex:1, fontSize:13, color:"#94a3b8" }}>vs {w.oponente}</span>
+                  <span style={{ fontWeight:800, fontSize:12,
+                    color:w.resultado==="Vitória"?"#22c55e":"#f87171" }}>{w.resultado}</span>
+                  <span style={{ fontSize:12, color:"#fbbf24", marginLeft:8 }}>{w.pontos}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ SHOP ═══════════════════════════════════════════════════════ */}
+        {guild && view === "shop" && (
+          <div className="guild-content-pad">
+            <div className="guild-section-header">
+              <h2 className="guild-section-title">🛒 Loja da Guilda</h2>
+              <span style={{ fontSize:14, fontWeight:900, color:"#fbbf24" }}>🪙 {guild.guild_coins}</span>
+            </div>
+            <div className="guild-shop-grid">
+              {[
+                { name:"Pack de Gacha Comum", cost:50,  icon:"📦", desc:"1 pack comum",          hot:false },
+                { name:"100 Gacha Coins",      cost:80,  icon:"🪙", desc:"Moedas do jogo",        hot:false },
+                { name:"Pack SR Garantido",    cost:200, icon:"💎", desc:"Garante SR ou acima",   hot:true  },
+                { name:"Título Exclusivo",     cost:500, icon:"🏷️", desc:"Título de guilda",     hot:true  },
+              ].map(item => {
+                const canBuy = (guild?.guild_coins ?? 0) >= item.cost
+                return (
+                  <div key={item.name} className={"guild-shop-card" + (item.hot ? " hot" : "")}>
+                    {item.hot && <div className="guild-shop-hot-badge">⭐ Destaque</div>}
+                    <div className="guild-shop-icon">{item.icon}</div>
+                    <div className="guild-shop-name">{item.name}</div>
+                    <div className="guild-shop-desc">{item.desc}</div>
+                    <button
+                      onClick={() => canBuy
+                        ? toast("✅ " + item.name + " comprado!")
+                        : toast("❌ Moedas insuficientes!")}
+                      className={"guild-shop-btn" + (canBuy ? "" : " disabled")}
+                    >
+                      🪙 {item.cost}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ SETTINGS ════════════════════════════════════════════════════ */}
+        {guild && view === "settings" && (
+          <div className="guild-content-pad">
+            <h2 className="guild-section-title" style={{ marginBottom:20 }}>⚙️ Configurações da Guilda</h2>
+            {myRole === "leader" && (
+              <div className="guild-settings-card">
+                <h4 style={{ fontWeight:800, fontSize:12, color:"#94a3b8",
+                  textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 14px" }}>👑 Opções do Líder</h4>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0",
+                  borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ color:"#94a3b8", fontSize:14 }}>Modo de entrada</span>
+                  <button onClick={async () => {
+                    const newMode: GuildJoinMode = guild.join_mode === "open" ? "approval" : "open"
+                    setGuild(g => g ? { ...g, join_mode: newMode } : g)
+                    await sbUpdate("guilds", "id=eq." + guild.id, { join_mode: newMode })
+                  }} className="guild-btn-toggle">
+                    {guild.join_mode === "open" ? "🔓 Livre" : "🔒 Aprovação"}
+                  </button>
+                </div>
+              </div>
+            )}
+            <button onClick={() => setLeaveConfirm(true)} className="guild-btn-leave">
+              🚪 Sair da Guilda
+            </button>
+          </div>
+        )}
+
+      </main>
+
+      {/* ── CSS ── */}
+      <GuildStyles/>
     </div>
+  )
+}
+
+// ─── Styles Component ─────────────────────────────────────────────────────────
+function GuildStyles() {
+  return (
+    <style>{`
+      /* ── Reset & Base ── */
+      .guild-screen { min-height:100vh; font-family:'Segoe UI',system-ui,sans-serif; color:#f1f5f9; position:relative; overflow-x:hidden; background:#05000f; }
+
+      /* ── Background ── */
+      .guild-bg { position:fixed; inset:0; pointer-events:none; z-index:0; }
+      .guild-bg-orb { position:absolute; border-radius:50%; filter:blur(80px); }
+      .guild-bg-orb.orb1 { width:600px; height:600px; top:-200px; left:-100px; background:radial-gradient(circle,rgba(88,28,220,0.18) 0%,transparent 70%); animation:orbDrift1 12s ease-in-out infinite; }
+      .guild-bg-orb.orb2 { width:500px; height:500px; bottom:-100px; right:-100px; background:radial-gradient(circle,rgba(6,182,212,0.10) 0%,transparent 70%); animation:orbDrift2 15s ease-in-out infinite; }
+      .guild-bg-orb.orb3 { width:400px; height:400px; top:40%; left:50%; transform:translateX(-50%); background:radial-gradient(circle,rgba(251,191,36,0.06) 0%,transparent 70%); animation:orbDrift1 18s ease-in-out infinite reverse; }
+      .guild-bg-grid { position:absolute; inset:0; opacity:0.025; background-image:linear-gradient(rgba(139,92,246,0.4) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.4) 1px,transparent 1px); background-size:48px 48px; }
+
+      /* ── Toast ── */
+      .guild-toast { position:fixed; top:80px; left:50%; transform:translateX(-50%); z-index:9999; background:rgba(15,5,35,0.95); border:1px solid rgba(139,92,246,0.45); border-radius:14px; padding:11px 24px; color:#e2e8f0; font-weight:800; font-size:13px; backdrop-filter:blur(16px); box-shadow:0 4px 30px rgba(0,0,0,0.5); white-space:nowrap; animation:toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+
+      /* ── Header ── */
+      .guild-header { position:sticky; top:0; z-index:50; background:rgba(5,0,15,0.90); backdrop-filter:blur(20px); border-bottom:1px solid rgba(139,92,246,0.15); }
+      .guild-header-inner { display:flex; align-items:center; gap:12; padding:14px 18px; max-width:900px; margin:0 auto; }
+      .guild-back-btn { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); border-radius:12px; padding:8px 12px; cursor:pointer; color:#94a3b8; transition:all 0.2s; flex-shrink:0; }
+      .guild-back-btn:hover { background:rgba(255,255,255,0.10); color:#e2e8f0; }
+      .guild-header-name { font-weight:900; font-size:18px; margin:0; background:linear-gradient(135deg,#e2e8f0,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+      .guild-header-sub { color:#475569; font-size:11px; margin:2px 0 0; }
+      .guild-level-badge { background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(109,40,217,0.20)); color:#c4b5fd; font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid rgba(139,92,246,0.30); }
+      .guild-badge-open { background:rgba(34,197,94,0.12); color:#22c55e; font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; border:1px solid rgba(34,197,94,0.25); }
+      .guild-badge-lock { background:rgba(245,158,11,0.12); color:#f59e0b; font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; border:1px solid rgba(245,158,11,0.25); }
+      .guild-badge-mine { background:rgba(139,92,246,0.20); color:#a78bfa; font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; }
+      .guild-btn-checkin { background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.30); border-radius:10px; padding:7px 14px; cursor:pointer; color:#22c55e; font-size:11px; font-weight:800; transition:all 0.2s; white-space:nowrap; }
+      .guild-btn-checkin:hover { background:rgba(34,197,94,0.22); }
+      .guild-btn-checked { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:7px 14px; cursor:not-allowed; color:#334155; font-size:11px; font-weight:800; white-space:nowrap; }
+      .guild-btn-icon { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); border-radius:10px; padding:7px 10px; cursor:pointer; color:#64748b; font-size:16px; line-height:1; transition:all 0.2s; }
+      .guild-btn-icon:hover { background:rgba(255,255,255,0.10); color:#e2e8f0; }
+
+      /* ── Nav ── */
+      .guild-nav { display:flex; max-width:900px; margin:0 auto; padding:0 12px 8px; gap:2px; overflow-x:auto; }
+      .guild-tab { flex:1; min-width:70px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px; background:transparent; border:none; border-radius:10px; cursor:pointer; transition:all 0.2s; color:#475569; }
+      .guild-tab:hover { background:rgba(255,255,255,0.05); color:#94a3b8; }
+      .guild-tab.active { background:linear-gradient(135deg,rgba(139,92,246,0.20),rgba(6,182,212,0.10)); color:#e2e8f0; box-shadow:inset 0 -2px 0 #8b5cf6; }
+      .guild-tab-icon { font-size:16px; }
+      .guild-tab-label { font-size:10px; font-weight:700; }
+
+      /* ── Main content ── */
+      .guild-main { flex:1; position:relative; z-index:1; overflow-y:auto; }
+      .guild-content-pad { max-width:900px; margin:0 auto; padding:20px 18px 100px; }
+
+      /* ── Section header ── */
+      .guild-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+      .guild-section-title { font-weight:900; font-size:16px; margin:0; background:linear-gradient(135deg,#f1f5f9,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+      .guild-realtime-dot { font-size:11px; color:#22c55e; font-weight:700; }
+
+      /* ── Browse ── */
+      .guild-browse { padding-bottom:60px; }
+      .guild-browse-hero { position:relative; min-height:280px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+      .guild-browse-runes { position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(88,28,220,0.20) 0%,transparent 70%); }
+      .guild-browse-hero-content { position:relative; text-align:center; padding:40px 20px; }
+      .guild-browse-title { font-weight:900; font-size:32px; margin:0 0 8px; background:linear-gradient(135deg,#f1f5f9,#c4b5fd,#67e8f9); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:0.02em; }
+      .guild-browse-sub { color:#64748b; font-size:15px; margin:0; }
+      .guild-browse-actions { display:flex; gap:12px; padding:0 18px 24px; max-width:600px; margin:0 auto; }
+      .guild-btn-create { flex:1; display:flex; align-items:center; gap:14px; padding:18px 20px; background:linear-gradient(135deg,#6d28d9,#8b5cf6); border:none; border-radius:16px; cursor:pointer; color:#fff; text-align:left; box-shadow:0 4px 24px rgba(139,92,246,0.45); transition:all 0.2s; }
+      .guild-btn-create:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(139,92,246,0.60); }
+      .guild-btn-browse { flex:1; display:flex; align-items:center; gap:14px; padding:18px 20px; background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.30); border-radius:16px; cursor:pointer; color:#06b6d4; text-align:left; transition:all 0.2s; }
+      .guild-btn-browse:hover { background:rgba(6,182,212,0.15); transform:translateY(-2px); }
+      .guild-steps { max-width:600px; margin:0 auto; padding:0 18px; }
+      .guild-steps-title { font-weight:700; font-size:12px; color:#475569; text-transform:uppercase; letter-spacing:0.10em; margin:0 0 14px; }
+      .guild-steps-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+      .guild-step-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:20px 14px; text-align:center; }
+      .guild-step-num { font-size:10px; font-weight:900; color:#8b5cf6; letter-spacing:0.10em; margin-bottom:10px; }
+
+      /* ── Guild list ── */
+      .guild-list { display:flex; flex-direction:column; gap:10px; }
+      .guild-list-card { display:flex; align-items:center; gap:14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:14px 16px; transition:all 0.2s; }
+      .guild-list-card:hover { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.12); }
+      .guild-list-card.my-guild { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.30); }
+      .guild-list-name { font-weight:900; font-size:15px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .guild-list-level { font-size:9px; font-weight:800; color:#475569; }
+      .guild-list-slogan { font-size:12px; color:#64748b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:3px 0 0; }
+      .guild-list-meta { font-size:11px; color:#334155; }
+      .guild-btn-see { padding:8px 14px; border-radius:10px; border:none; background:linear-gradient(135deg,#6d28d9,#8b5cf6); color:#fff; font-weight:800; font-size:11px; cursor:pointer; }
+      .guild-btn-join { padding:8px 14px; border-radius:10px; border:none; background:linear-gradient(135deg,#065f46,#059669); color:#fff; font-weight:800; font-size:12px; cursor:pointer; box-shadow:0 2px 12px rgba(5,150,105,0.40); transition:all 0.2s; }
+      .guild-btn-join:hover { transform:scale(1.05); box-shadow:0 4px 18px rgba(5,150,105,0.55); }
+      .guild-btn-request { padding:8px 14px; border-radius:10px; border:none; background:linear-gradient(135deg,#92400e,#d97706); color:#fff; font-weight:800; font-size:12px; cursor:pointer; box-shadow:0 2px 12px rgba(217,119,6,0.40); transition:all 0.2s; }
+
+      /* ── Guild hero card ── */
+      .guild-hero-card { background:linear-gradient(135deg,rgba(88,28,220,0.15),rgba(55,48,163,0.10)); border:1px solid rgba(139,92,246,0.25); border-radius:20px; padding:22px; margin-bottom:16px; position:relative; overflow:hidden; }
+      .guild-hero-glow { position:absolute; inset:0; background:radial-gradient(ellipse 80% 50% at 20% 20%,rgba(139,92,246,0.08) 0%,transparent 60%); pointer-events:none; }
+      .guild-hero-icon-wrap { position:relative; }
+      .guild-hero-icon-ring { position:absolute; inset:-4px; border-radius:22px; border:2px solid rgba(139,92,246,0.40); animation:ringPulse 3s ease-in-out infinite; }
+      .guild-hero-name { font-weight:900; font-size:22px; margin:0 0 4px; background:linear-gradient(135deg,#f1f5f9,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+      .guild-hero-slogan { font-size:13px; color:#64748b; font-style:italic; margin:0; }
+      .guild-xp-track { height:8px; border-radius:99px; background:rgba(255,255,255,0.06); overflow:hidden; position:relative; }
+      .guild-xp-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#7c3aed,#a855f7,#c084fc); box-shadow:0 0 12px rgba(168,85,247,0.6); transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
+      .guild-xp-shimmer { position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent); animation:shimmer 2.5s ease-in-out infinite; }
+      .guild-stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+      .guild-stat-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:14px; text-align:center; }
+      .guild-stat-val { display:block; font-weight:900; font-size:18px; color:#e2e8f0; margin-bottom:2px; }
+      .guild-stat-lbl { font-size:11px; color:#475569; }
+
+      /* ── Invite bar ── */
+      .guild-invite-bar { background:rgba(6,182,212,0.06); border:1px solid rgba(6,182,212,0.18); border-radius:14px; padding:14px 16px; margin-bottom:20px; display:flex; align-items:center; gap:14px; }
+      .guild-copy-btn { padding:9px 18px; border-radius:10px; border:1px solid rgba(6,182,212,0.35); background:rgba(6,182,212,0.12); color:#06b6d4; font-weight:800; font-size:12px; cursor:pointer; flex-shrink:0; transition:all 0.2s; }
+      .guild-copy-btn:hover,.guild-copy-btn.copied { background:rgba(6,182,212,0.25); }
+      .guild-copy-btn.copied { color:#67e8f9; border-color:rgba(6,182,212,0.55); }
+
+      /* ── Activities ── */
+      .guild-activities-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+      .guild-activity-card { position:relative; border-radius:16px; padding:18px; cursor:pointer; text-align:left; border:1px solid rgba(255,255,255,0.08); overflow:hidden; transition:all 0.2s; }
+      .guild-activity-card:hover { transform:translateY(-2px); }
+      .guild-activity-bg { position:absolute; inset:0; opacity:0.6; }
+      .guild-activity-card.boss { background:rgba(127,29,29,0.25); border-color:rgba(220,38,38,0.20); }
+      .guild-activity-card.boss .guild-activity-bg { background:radial-gradient(ellipse at 100% 0%,rgba(220,38,38,0.15) 0%,transparent 60%); }
+      .guild-activity-card.boss:hover { border-color:rgba(220,38,38,0.40); }
+      .guild-activity-card.war { background:rgba(29,78,216,0.15); border-color:rgba(59,130,246,0.20); }
+      .guild-activity-card.war .guild-activity-bg { background:radial-gradient(ellipse at 100% 0%,rgba(59,130,246,0.15) 0%,transparent 60%); }
+      .guild-activity-card.mission { background:rgba(5,78,50,0.15); border-color:rgba(52,211,153,0.20); }
+      .guild-activity-card.mission .guild-activity-bg { background:radial-gradient(ellipse at 100% 0%,rgba(52,211,153,0.12) 0%,transparent 60%); }
+      .guild-activity-card.shop { background:rgba(92,64,3,0.20); border-color:rgba(251,191,36,0.20); }
+      .guild-activity-card.shop .guild-activity-bg { background:radial-gradient(ellipse at 100% 0%,rgba(251,191,36,0.12) 0%,transparent 60%); }
+      .guild-activity-icon { font-size:28px; display:block; margin-bottom:8px; position:relative; }
+      .guild-activity-name { font-weight:900; font-size:14px; color:#e2e8f0; position:relative; }
+      .guild-activity-desc { font-size:11px; color:#475569; margin-top:3px; position:relative; }
+      .guild-activity-arrow { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:18px; color:rgba(255,255,255,0.15); }
+      .guild-desc-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; color:#64748b; font-size:13px; line-height:1.7; }
+
+      /* ── Members ── */
+      .guild-members-list { display:flex; flex-direction:column; gap:8px; }
+      .guild-member-card { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:12px 14px; transition:all 0.15s; }
+      .guild-member-card.is-me { border-color:rgba(139,92,246,0.25); background:rgba(139,92,246,0.06); }
+      .guild-member-avatar { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#1e3a5f,#0f2744); border:1px solid rgba(255,255,255,0.10); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+      .guild-online-dot { position:absolute; bottom:-2px; right:-2px; width:10px; height:10px; border-radius:50%; background:#374151; border:2px solid #05000f; }
+      .guild-online-dot.online { background:#22c55e; }
+      .guild-member-name { font-weight:800; font-size:14px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .guild-btn-promote { background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.25); border-radius:8px; padding:5px 10px; cursor:pointer; color:#60a5fa; font-size:10px; font-weight:800; }
+      .guild-btn-kick { background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.20); border-radius:8px; padding:5px 10px; cursor:pointer; color:#f87171; font-size:10px; font-weight:800; }
+
+      /* ── Chat ── */
+      .guild-chat-layout { max-width:900px; margin:0 auto; padding:16px 18px; display:flex; flex-direction:column; height:calc(100vh - 130px); }
+      .guild-chat-messages { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-bottom:12px; }
+      .guild-msg-row { display:flex; flex-direction:column; }
+      .guild-msg-row.me { align-items:flex-end; }
+      .guild-msg-row.system { align-items:center; }
+      .guild-msg-meta { display:flex; align-items:center; gap:6px; margin-bottom:4px; padding-left:4px; }
+      .guild-msg-author { font-weight:800; font-size:11px; color:#94a3b8; }
+      .guild-msg-bubble { max-width:75%; padding:10px 14px; border-radius:16px; }
+      .guild-msg-bubble.me { background:linear-gradient(135deg,#6d28d9,#8b5cf6); border-radius:16px 16px 4px 16px; }
+      .guild-msg-bubble:not(.me):not(.system) { background:rgba(255,255,255,0.07); border-radius:16px 16px 16px 4px; }
+      .guild-msg-bubble.system { background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.22); border-radius:12px; color:#a78bfa; font-style:italic; font-size:12px; }
+      .guild-emote-img { width:64px; height:64px; object-fit:contain; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); animation:emotePop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+      .guild-chat-error { background:rgba(220,38,38,0.10); border:1px solid rgba(220,38,38,0.30); border-radius:10px; padding:9px 14px; margin-bottom:8px; font-size:12px; color:#fca5a5; font-weight:700; display:flex; gap:8px; align-items:center; }
+      .guild-emote-picker { background:rgba(10,3,25,0.97); border:1px solid rgba(139,92,246,0.30); border-radius:16px; padding:14px; margin-bottom:10px; }
+      .guild-emote-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+      .guild-emote-btn { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:6px; cursor:pointer; transition:all 0.15s; aspect-ratio:1; display:flex; align-items:center; justify-content:center; }
+      .guild-emote-btn:hover { background:rgba(139,92,246,0.20); border-color:rgba(139,92,246,0.45); transform:scale(1.12); }
+      .guild-chat-input-row { display:flex; gap:8px; padding-top:10px; }
+      .guild-chat-input { flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:12px 16px; color:#e2e8f0; font-size:13px; outline:none; transition:border-color 0.2s; }
+      .guild-chat-input:focus { border-color:rgba(139,92,246,0.50); }
+      .guild-chat-input.error { border-color:rgba(220,38,38,0.60); }
+      .guild-emoji-btn { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); border-radius:12px; padding:0 14px; cursor:pointer; font-size:20px; transition:all 0.15s; }
+      .guild-emoji-btn:hover,.guild-emoji-btn.active { background:rgba(139,92,246,0.20); border-color:rgba(139,92,246,0.45); }
+      .guild-send-btn { background:linear-gradient(135deg,#6d28d9,#8b5cf6); border:none; border-radius:12px; padding:0 18px; cursor:pointer; color:#fff; font-size:18px; transition:all 0.15s; }
+      .guild-send-btn:hover { transform:scale(1.05); box-shadow:0 4px 16px rgba(139,92,246,0.50); }
+
+      /* ── Boss ── */
+      .guild-boss-hero { background:linear-gradient(160deg,rgba(100,5,5,0.35),rgba(50,0,0,0.50)); border:1px solid rgba(220,38,38,0.25); border-radius:20px; overflow:hidden; position:relative; margin-bottom:16px; }
+      .guild-boss-aura { position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(220,38,38,0.15) 0%,transparent 60%); pointer-events:none; }
+      .guild-boss-skull { font-size:72px; display:block; filter:drop-shadow(0 0 30px rgba(220,38,38,0.8)); animation:bossFloat 3s ease-in-out infinite; margin-bottom:10px; }
+      .guild-boss-title { font-weight:900; font-size:26px; margin:0 0 8px; color:#f87171; text-shadow:0 0 30px rgba(248,113,113,0.5); letter-spacing:0.02em; }
+      .guild-boss-sub { font-size:13px; color:#64748b; line-height:1.7; margin:0 0 20px; }
+      .guild-boss-info { background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.20); border-radius:12px; padding:12px 16px; margin:0 20px 16px; }
+      .guild-rewards-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 20px 16px; }
+      .guild-reward-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:14px; text-align:center; }
+      .guild-boss-btn { width:calc(100% - 40px); margin:0 20px 24px; padding:18px; border-radius:14px; border:none; background:linear-gradient(135deg,#dc2626,#ef4444,#dc2626); background-size:200% 100%; color:#fff; font-weight:900; font-size:16px; cursor:pointer; box-shadow:0 4px 28px rgba(220,38,38,0.55); display:flex; align-items:center; justify-content:center; gap:10px; animation:bossGlow 2s ease-in-out infinite; letter-spacing:0.04em; }
+      .guild-boss-btn:hover { transform:scale(1.02); box-shadow:0 6px 36px rgba(220,38,38,0.70); }
+      .guild-ranking-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:18px 20px; }
+      .guild-rank-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+      .guild-rank-row:last-child { border-bottom:none; }
+      .guild-rank-medal { font-size:18px; width:28px; text-align:center; }
+
+      /* ── War ── */
+      .guild-war-hero { background:linear-gradient(135deg,rgba(15,40,120,0.30),rgba(5,15,60,0.50)); border:1px solid rgba(59,130,246,0.20); border-radius:20px; overflow:hidden; position:relative; }
+      .guild-war-bg { position:absolute; inset:0; background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(59,130,246,0.12) 0%,transparent 60%); pointer-events:none; }
+      .guild-war-timer { font-size:44px; font-weight:900; color:#60a5fa; text-shadow:0 0 30px rgba(96,165,250,0.6),0 0 60px rgba(96,165,250,0.3); letter-spacing:0.06em; font-variant-numeric:tabular-nums; }
+      .guild-btn-war { padding:13px; border-radius:12px; border:none; background:linear-gradient(135deg,#1e40af,#3b82f6); color:#fff; font-weight:900; font-size:14px; cursor:pointer; box-shadow:0 4px 20px rgba(59,130,246,0.40); transition:all 0.2s; }
+      .guild-btn-war:hover { transform:translateY(-1px); box-shadow:0 6px 28px rgba(59,130,246,0.55); }
+
+      /* ── Shop ── */
+      .guild-shop-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+      .guild-shop-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:18px; text-align:center; position:relative; transition:all 0.2s; overflow:hidden; }
+      .guild-shop-card:hover { transform:translateY(-2px); border-color:rgba(255,255,255,0.14); }
+      .guild-shop-card.hot { border-color:rgba(251,191,36,0.30); background:rgba(251,191,36,0.04); }
+      .guild-shop-card.hot:hover { border-color:rgba(251,191,36,0.50); }
+      .guild-shop-hot-badge { position:absolute; top:10px; right:10px; background:linear-gradient(135deg,#92400e,#d97706); color:#fff; font-size:9px; font-weight:900; padding:3px 8px; border-radius:6px; }
+      .guild-shop-icon { font-size:36px; margin-bottom:10px; }
+      .guild-shop-name { font-weight:900; font-size:14px; color:#e2e8f0; margin-bottom:6px; }
+      .guild-shop-desc { font-size:11px; color:#475569; margin-bottom:14px; min-height:32px; }
+      .guild-shop-btn { width:100%; padding:10px; border-radius:10px; border:none; background:linear-gradient(135deg,#92400e,#d97706); color:#fff; font-weight:800; font-size:13px; cursor:pointer; transition:all 0.2s; }
+      .guild-shop-btn:hover { transform:scale(1.02); box-shadow:0 4px 14px rgba(217,119,6,0.40); }
+      .guild-shop-btn.disabled { background:rgba(255,255,255,0.06); color:#334155; cursor:not-allowed; }
+
+      /* ── Settings ── */
+      .guild-settings-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+      .guild-btn-toggle { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:6px 14px; cursor:pointer; color:#e2e8f0; font-size:12px; font-weight:700; transition:all 0.2s; }
+      .guild-btn-toggle:hover { background:rgba(255,255,255,0.12); }
+      .guild-btn-leave { width:100%; padding:14px; border-radius:14px; border:1px solid rgba(239,68,68,0.30); background:rgba(239,68,68,0.07); color:#f87171; font-weight:900; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s; }
+      .guild-btn-leave:hover { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.50); }
+
+      /* ── Modal ── */
+      .guild-modal-overlay { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); display:flex; align-items:center; justify-content:center; padding:20px; }
+      .guild-modal-box { background:linear-gradient(160deg,#0a0320,#0d0a25); border:1px solid rgba(139,92,246,0.30); border-radius:24px; padding:28px 22px; width:100%; font-family:inherit; color:#f1f5f9; box-shadow:0 0 60px rgba(0,0,0,0.6); }
+      .guild-btn-secondary { padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); color:#64748b; font-weight:800; font-size:13px; cursor:pointer; }
+      .guild-btn-danger { padding:12px; border-radius:12px; border:none; background:linear-gradient(135deg,#7f1d1d,#dc2626); color:#fff; font-weight:900; font-size:13px; cursor:pointer; }
+
+      /* ── Keyframes ── */
+      @keyframes orbDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-20px) scale(1.05)} 66%{transform:translate(-20px,30px) scale(0.97)} }
+      @keyframes orbDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-40px,20px) scale(1.08)} }
+      @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(0.95)} to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)} }
+      @keyframes heroFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-12px) scale(1.03)} }
+      @keyframes ringPulse { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:0.9;transform:scale(1.04)} }
+      @keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
+      @keyframes bossFloat { 0%,100%{transform:translateY(0) rotate(-1deg)} 50%{transform:translateY(-8px) rotate(1deg)} }
+      @keyframes bossGlow { 0%,100%{box-shadow:0 4px 28px rgba(220,38,38,0.55)} 50%{box-shadow:0 6px 40px rgba(220,38,38,0.80),0 0 60px rgba(220,38,38,0.30)} }
+      @keyframes spin { to{transform:rotate(360deg)} }
+      @keyframes kickedPulse { 0%,100%{filter:drop-shadow(0 0 20px rgba(248,113,113,0.4))} 50%{filter:drop-shadow(0 0 40px rgba(248,113,113,0.8))} }
+      @keyframes emotePop { 0%{transform:scale(0.4);opacity:0} 70%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+
+      /* ── Mobile ── */
+      @media(max-width:600px){
+        .guild-header-inner{padding:10px 12px;}
+        .guild-header-name{font-size:16px;}
+        .guild-tab-label{display:none;}
+        .guild-tab{min-width:48px;}
+        .guild-browse-title{font-size:24px;}
+        .guild-browse-actions{flex-direction:column;}
+        .guild-activities-grid{grid-template-columns:1fr 1fr;}
+        .guild-steps-grid{grid-template-columns:1fr;}
+        .guild-stats-grid{grid-template-columns:repeat(3,1fr);}
+        .guild-shop-grid{grid-template-columns:1fr 1fr;}
+        .guild-rewards-grid{grid-template-columns:1fr 1fr;}
+        .guild-emote-grid{grid-template-columns:repeat(6,1fr);}
+        .guild-boss-btn{font-size:14px;}
+        .guild-war-timer{font-size:32px;}
+      }
+
+      /* ── Scrollbar ── */
+      .guild-chat-messages::-webkit-scrollbar,.guild-main::-webkit-scrollbar{width:4px;}
+      .guild-chat-messages::-webkit-scrollbar-track,.guild-main::-webkit-scrollbar-track{background:transparent;}
+      .guild-chat-messages::-webkit-scrollbar-thumb,.guild-main::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.30);border-radius:2px;}
+    `}</style>
   )
 }
