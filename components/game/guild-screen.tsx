@@ -1807,9 +1807,9 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                     )}
                     {isEmote?(()=>{const p=msg.text.split("__").filter(Boolean);return(
                       <div style={{textAlign:isMe?"right":"left"}}>
-                        <img src={p[2]??""} alt={p[3]??""} style={{width:52,height:52,objectFit:"contain",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.4))",animation:"emotePop .25s ease"}}
+                        <img src={p[2]??""} alt={p[3]??""} style={{width:260,height:260,objectFit:"contain",filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.5))",animation:"emotePop .3s cubic-bezier(0.34,1.56,0.64,1)"}}
                           onError={e=>{(e.target as HTMLImageElement).style.opacity="0.3"}}/>
-                        <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",marginTop:1}}>{timeAgo(msg.timestamp)}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,0.25)",marginTop:4}}>{timeAgo(msg.timestamp)}</div>
                       </div>
                     )})():(
                       <div style={{maxWidth:"72%",padding:"8px 12px",
