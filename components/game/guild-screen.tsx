@@ -915,6 +915,7 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
   const [checkedIn,     setCheckedIn]     = useState(false)
   const [showEmotes,    setShowEmotes]    = useState(false)
   const [chatError,     setChatError]     = useState<string|null>(null)
+  const [unreadChat,    setUnreadChat]    = useState(0)  // unread msg count when not on chat tab
   const [allGuilds,     setAllGuilds]     = useState<Guild[]>([])
   const [kicked,        setKicked]        = useState(false)   // true if kicked from a guild
   const [supabaseOk,    setSupabaseOk]    = useState<boolean | null>(null) // null = checking
@@ -1048,6 +1049,13 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
           if (prev.find(m => m.id === msg.id)) return prev
           return [...prev.slice(-49), msg]
         })
+        // Increment unread badge when user is NOT on chat tab and msg is from someone else
+        if (msg.author_id !== myId) {
+          setView(currentView => {
+            if (currentView !== "chat") setUnreadChat(n => n + 1)
+            return currentView
+          })
+        }
       })
       .subscribe()
 
@@ -1518,13 +1526,25 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
       {guild && (
         <GS.Tabs>
           {tabList.map(t=>(
-            <button key={t.id} onClick={()=>setView(t.id as any)}
+            <button key={t.id} onClick={()=>{ setView(t.id as any); if(t.id==="chat") setUnreadChat(0); }}
               style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"8px 2px",
                 background:view===t.id?"rgba(232,201,109,0.08)":"transparent",
                 border:"none",borderBottom:`2px solid ${view===t.id?"#e8c96d":"transparent"}`,
                 cursor:"pointer",color:view===t.id?"#e8c96d":"#4b5563",transition:"all .18s",minWidth:0}}>
               <span style={{fontSize:15}}>{t.icon}</span>
-              <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.04em"}}>{t.label}</span>
+              <span style={{display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,letterSpacing:"0.04em"}}>
+                {t.label}
+                {t.id==="chat" && unreadChat > 0 && (
+                  <span style={{
+                    display:"inline-flex",alignItems:"center",justifyContent:"center",
+                    minWidth:16,height:16,borderRadius:99,
+                    background:"#3b82f6",color:"#fff",
+                    fontSize:9,fontWeight:900,padding:"0 4px",lineHeight:1,
+                    boxShadow:"0 0 8px rgba(59,130,246,0.7)",
+                    animation:"badgePop .25s cubic-bezier(0.34,1.56,0.64,1)",
+                  }}>{unreadChat}</span>
+                )}
+              </span>
             </button>
           ))}
         </GS.Tabs>
@@ -1811,19 +1831,18 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
 
             {/* Emote picker */}
             {showEmotes&&(
-              <div style={{background:"rgba(10,8,6,0.97)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"10px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <span style={{fontSize:10,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.08em"}}>Emotes</span>
-                  <button onClick={()=>setShowEmotes(false)} style={{background:"none",border:"none",cursor:"pointer",color:"#4b5563",fontSize:14}}>✕</button>
+              <div style={{background:"rgba(10,8,6,0.97)",border:"1px solid rgba(232,201,109,0.14)",borderRadius:14,padding:"12px 14px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#e8c96d",textTransform:"uppercase",letterSpacing:"0.10em"}}>Emotes</span>
+                  <button onClick={()=>setShowEmotes(false)} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,cursor:"pointer",color:"#6b7280",fontSize:12,width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
                   {GAME_EMOTES.map(e=>(
                     <button key={e.id} onClick={()=>handleSendEmote(e)} title={e.name}
-                      style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:5,cursor:"pointer",transition:"all .12s",aspectRatio:"1",display:"flex",alignItems:"center",justifyContent:"center"}}
-                      onMouseEnter={ev=>{ev.currentTarget.style.background="rgba(232,201,109,0.12)";ev.currentTarget.style.borderColor="rgba(232,201,109,0.30)";ev.currentTarget.style.transform="scale(1.1)"}}
-                      onMouseLeave={ev=>{ev.currentTarget.style.background="rgba(255,255,255,0.03)";ev.currentTarget.style.borderColor="rgba(255,255,255,0.06)";ev.currentTarget.style.transform="scale(1)"}}>
-                      <img src={e.image} alt={e.name} style={{width:36,height:36,objectFit:"contain"}}
+                      style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 6px",cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                      <img src={e.image} alt={e.name} style={{width:56,height:56,objectFit:"contain"}}
                         onError={ev=>{(ev.target as HTMLImageElement).style.opacity="0.3"}}/>
+                      <span style={{fontSize:8,color:"#4b5563",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>{e.name}</span>
                     </button>
                   ))}
                 </div>
@@ -2063,6 +2082,7 @@ function GlobalStyle(){return(
     @keyframes bossFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
     @keyframes bossGlow{0%,100%{box-shadow:0 4px 20px rgba(220,38,38,0.45)}50%{box-shadow:0 6px 32px rgba(220,38,38,0.75),0 0 50px rgba(220,38,38,0.20)}}
     @keyframes emotePop{0%{transform:scale(0.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+    @keyframes badgePop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
     input,textarea,button{font-family:inherit;}
     ::-webkit-scrollbar{width:3px;height:3px}
     ::-webkit-scrollbar-track{background:transparent}
