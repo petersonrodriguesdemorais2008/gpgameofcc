@@ -1812,12 +1812,13 @@ export default function GuildScreen({ onBack, onStartBossDuel }: GuildScreenProp
                         <div style={{fontSize:9,color:"rgba(255,255,255,0.25)",marginTop:4}}>{timeAgo(msg.timestamp)}</div>
                       </div>
                     )})():(
-                      <div style={{maxWidth:"72%",padding:"8px 12px",
-                        borderRadius:isMe?"13px 13px 3px 13px":"13px 13px 13px 3px",
-                        background:isSys?"rgba(232,201,109,0.08)":isMe?"linear-gradient(135deg,#7a5c0f,#c9a84c)":"rgba(255,255,255,0.06)",
-                        border:isSys?"1px solid rgba(232,201,109,0.18)":"none"}}>
-                        <p style={{margin:0,fontSize:12,color:isSys?"#e8c96d":"#f1f0ee",fontStyle:isSys?"italic":undefined,lineHeight:1.5}}>{msg.text}</p>
-                        <p style={{margin:"3px 0 0",fontSize:8,color:"rgba(255,255,255,0.25)",textAlign:"right"}}>{timeAgo(msg.timestamp)}</p>
+                      <div style={{maxWidth:"80%",padding:"14px 18px",
+                        borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",
+                        background:isSys?"rgba(232,201,109,0.08)":isMe?"linear-gradient(135deg,#7a5c0f,#c9a84c)":"rgba(255,255,255,0.08)",
+                        border:isSys?"1px solid rgba(232,201,109,0.18)":"none",
+                        boxShadow:isMe?"0 2px 12px rgba(232,201,109,0.15)":"0 2px 8px rgba(0,0,0,0.3)"}}>
+                        <p style={{margin:0,fontSize:16,color:isSys?"#e8c96d":"#f1f0ee",fontStyle:isSys?"italic":undefined,lineHeight:1.6,fontWeight:isMe?600:400}}>{msg.text}</p>
+                        <p style={{margin:"6px 0 0",fontSize:11,color:"rgba(255,255,255,0.30)",textAlign:"right"}}>{timeAgo(msg.timestamp)}</p>
                       </div>
                     )}
                   </div>
