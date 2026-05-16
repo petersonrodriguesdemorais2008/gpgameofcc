@@ -23,6 +23,7 @@ import {
   Shield,
 } from "lucide-react"
 import Image from "next/image"
+import { MasterMenuCard } from "./master-screen"
 
 interface MainMenuProps {
   onNavigate: (screen: GameScreen) => void
@@ -302,7 +303,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-3 pb-3"
         style={{background:"transparent"}}>
 
-        {/* Left: Player profile */}
+        {/* Left: Player profile + Master card */}
+        <div className="flex flex-col gap-2">
         <button onClick={() => onNavigate("profile")}
           className="flex items-center gap-2.5 group transition-all duration-200 hover:scale-[1.03]">
           <div className="relative">
@@ -324,6 +326,9 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <p className="text-cyan-400/60 text-[10px] font-medium tracking-wider">{playerProfile.title || "Jogador"}</p>
           </div>
         </button>
+        {/* Master active card */}
+        <MasterMenuCard onOpen={() => onNavigate("masters")} />
+        </div>
 
         {/* Right: Resources */}
         <div className="flex items-center gap-2">
@@ -464,6 +469,17 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           }}>
           <BookOpen className="w-5 h-5 text-violet-400" />
           <span className="text-[9px] text-violet-400/80 font-bold tracking-widest">STORY</span>
+        </button>
+
+        <button onClick={() => onNavigate("masters")}
+          className="relative flex flex-col items-center justify-center gap-1 w-14 h-14 rounded-2xl border transition-all hover:scale-110 shadow-xl"
+          style={{
+            background:"linear-gradient(145deg,rgba(40,20,5,0.95),rgba(60,35,5,0.98))",
+            borderColor:"rgba(232,201,109,0.40)",
+            boxShadow:"0 4px 20px rgba(232,201,109,0.16)",
+          }}>
+          <span className="text-lg leading-none">⭐</span>
+          <span className="text-[9px] text-amber-300/80 font-bold tracking-widest">MESTRE</span>
         </button>
       </div>
 
