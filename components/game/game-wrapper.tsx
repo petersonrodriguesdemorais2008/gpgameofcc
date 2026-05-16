@@ -18,6 +18,7 @@ import MissionsScreen from "./missions-screen"
 import GearPassScreen from "./gear-pass-screen"
 import StoryModeScreen from "./story-mode-screen"
 import GuildScreen from "./guild-screen"
+import MasterScreen from "./master-screen"
 import LoadingScreen from "./loading-screen"
 import { trackDailyLogin } from "@/lib/mission-tracker"
 import DraftDuelScreen from "./draft-duel-screen"
@@ -45,6 +46,7 @@ export type GameScreen =
   | "gear-pass"
   | "story"
   | "guild"
+  | "masters"
 
 export function GameWrapper() {
   const { playerProfile, mobileMode } = useGame()
@@ -56,23 +58,6 @@ export function GameWrapper() {
   const [showTitle, setShowTitle] = useState(true)
   // Assets loading gate — shown before everything else
   const [assetsReady, setAssetsReady] = useState(false)
-
-  // ── Detecta link de convite de guilda na URL ao iniciar o jogo ────────────
-  // O parâmetro "gd" contém os dados da guilda em base64.
-  // Armazenamos no localStorage para que GuildScreen exiba o modal de convite.
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const params = new URLSearchParams(window.location.search)
-    const gd = params.get("gd")
-    if (gd) {
-      localStorage.setItem("gpgame_pending_invite", gd)
-      // Limpa URL para não re-disparar no refresh
-      const url = new URL(window.location.href)
-      url.searchParams.delete("gd")
-      url.searchParams.delete("ref")
-      window.history.replaceState({}, "", url.toString())
-    }
-  }, [])
 
   // Toggle mobile-mode class on html element
   useEffect(() => {
@@ -206,6 +191,7 @@ export function GameWrapper() {
       {currentScreen === "missions" && <MissionsScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "gear-pass" && <GearPassScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "guild" && <GuildScreen onBack={() => navigateTo("menu")} />}
+      {currentScreen === "masters" && <MasterScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "story" && (
         <StoryModeScreen
           onBack={() => navigateTo("menu")}
