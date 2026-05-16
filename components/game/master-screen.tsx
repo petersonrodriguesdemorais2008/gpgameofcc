@@ -10,7 +10,7 @@ import {
   xpRequiredForLevel,
   rewardIcon,
   calcMasterXP,
-} from "./masters-data"
+} from "@/lib/masters-data"
 
 interface MasterScreenProps {
   onBack: () => void
