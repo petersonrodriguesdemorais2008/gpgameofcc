@@ -14,6 +14,7 @@ import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { trackDuelResult } from "@/lib/mission-tracker"
+import { loadMastersFromStorage, saveMastersToStorage, calcMasterXP, xpRequiredForLevel } from "@/lib/masters-data"
 import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
@@ -8321,6 +8322,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     mpBroadcast("surrender", {})
     setGameResult("lost")
     trackDuelResult(false)
+    try {
+      const masters = loadMastersFromStorage()
+      const xpGain  = calcMasterXP({ won: false, opponentLevel: 1, duelMode: mode === "bot" ? "pve" : "pvp" })
+      const updated = masters.map(m => {
+        if (!m.isActive) return m
+        let xp = m.currentXP + xpGain
+        let level = m.currentLevel
+        while (level < m.maxLevel) {
+          const needed = xpRequiredForLevel(level)
+          if (xp >= needed) { xp -= needed; level++ } else break
+        }
+        return { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + xpGain, xpToNext: xpRequiredForLevel(level) }
+      })
+      saveMastersToStorage(updated)
+    } catch { /* ignore */ }
     addMatchRecord({
       id: `match-${Date.now()}`,
       date: new Date().toISOString(),
@@ -8563,11 +8579,31 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   useEffect(() => {
     if (!gameStarted || gameResultRecordedRef.current) return
 
+    const grantMasterXP = (won: boolean) => {
+      try {
+        const masters = loadMastersFromStorage()
+        const xpGain  = calcMasterXP({ won, opponentLevel: 1, duelMode: mode === "bot" ? "pve" : "pvp" })
+        const updated = masters.map(m => {
+          if (!m.isActive) return m
+          let xp    = m.currentXP + xpGain
+          let level = m.currentLevel
+          while (level < m.maxLevel) {
+            const needed = xpRequiredForLevel(level)
+            if (xp >= needed) { xp -= needed; level++ }
+            else break
+          }
+          return { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + xpGain, xpToNext: xpRequiredForLevel(level) }
+        })
+        saveMastersToStorage(updated)
+      } catch { /* ignore */ }
+    }
+
     if (playerField.life <= 0) {
       gameResultRecordedRef.current = true
       stopDuelOst()
       setGameResult("lost")
       trackDuelResult(false)
+      grantMasterXP(false)
       addMatchRecord({
         id: `match-${Date.now()}`,
         date: new Date().toISOString(),
@@ -8581,6 +8617,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       stopDuelOst()
       setGameResult("won")
       trackDuelResult(true)
+      grantMasterXP(true)
       addMatchRecord({
         id: `match-${Date.now()}`,
         date: new Date().toISOString(),
