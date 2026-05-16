@@ -2560,6 +2560,21 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
   const rafRef    = useRef<number>(0)
   const isWon     = result === "won"
 
+  // Master XP notification state
+  const [masterXPData, setMasterXPData] = useState<{
+    masterName: string; xpGain: number; newLevel: number; leveledUp: boolean
+  } | null>(null)
+
+  // Listen for master XP event dispatched by grantMasterXP
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      setMasterXPData(detail)
+    }
+    window.addEventListener("gpgame_master_xp", handler)
+    return () => window.removeEventListener("gpgame_master_xp", handler)
+  }, [])
+
   // Canvas particle system
   useEffect(() => {
     const canvas = canvasRef.current
@@ -2803,6 +2818,42 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
         }}>
           {isWon ? "O duelo terminou em sua glória" : "Você caiu em batalha"}
         </p>
+
+        {/* Master XP notification */}
+        {masterXPData && (
+          <div style={{
+            display:"flex", flexDirection:"column", alignItems:"center", gap:6,
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:"1px solid rgba(232,201,109,0.30)", borderRadius:14,
+            padding:"12px 24px", animation:"gr-up 500ms ease-out 900ms both",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:20 }}>⭐</span>
+              <span style={{ fontWeight:800, fontSize:15, color:"#f1f0ee" }}>
+                {masterXPData.masterName}
+              </span>
+              <span style={{
+                fontWeight:900, fontSize:16,
+                color:"#e8c96d",
+                textShadow:"0 0 12px rgba(232,201,109,0.6)",
+              }}>+{masterXPData.xpGain} XP</span>
+            </div>
+            {masterXPData.leveledUp && (
+              <div style={{
+                display:"flex", alignItems:"center", gap:8,
+                background:"linear-gradient(135deg,rgba(232,201,109,0.15),rgba(232,201,109,0.25))",
+                border:"1px solid rgba(232,201,109,0.40)", borderRadius:10,
+                padding:"6px 16px",
+              }}>
+                <span style={{ fontSize:16 }}>🎉</span>
+                <span style={{ fontWeight:900, fontSize:14, color:"#e8c96d" }}>
+                  NÍVEL {masterXPData.newLevel}!
+                </span>
+                <span style={{ fontSize:16 }}>🎉</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Back button */}
         <button
@@ -8581,9 +8632,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const grantMasterXP = (won: boolean) => {
       try {
-        const masters = loadMastersFromStorage()
-        const xpGain  = calcMasterXP({ won, opponentLevel: 1, duelMode: mode === "bot" ? "pve" : "pvp" })
-        const updated = masters.map(m => {
+        const masters  = loadMastersFromStorage()
+        const xpGain   = calcMasterXP({ won, opponentLevel: 1, duelMode: mode === "bot" ? "pve" : "pvp" })
+        const prevActive = masters.find(m => m.isActive)
+        const updated  = masters.map(m => {
           if (!m.isActive) return m
           let xp    = m.currentXP + xpGain
           let level = m.currentLevel
@@ -8595,6 +8647,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           return { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + xpGain, xpToNext: xpRequiredForLevel(level) }
         })
         saveMastersToStorage(updated)
+
+        // Dispatch XP event so duel result screen can show it
+        const active = updated.find(m => m.isActive)
+        const leveledUp = active && prevActive && active.currentLevel > prevActive.currentLevel
+        window.dispatchEvent(new CustomEvent("gpgame_master_xp", {
+          detail: {
+            masterName: active?.name ?? "",
+            xpGain,
+            newLevel: active?.currentLevel ?? 1,
+            leveledUp,
+          }
+        }))
       } catch { /* ignore */ }
     }
 
