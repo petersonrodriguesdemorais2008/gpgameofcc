@@ -19,9 +19,8 @@ interface MasterScreenProps {
 // ─── Reward type colors ───────────────────────────────────────────────────────
 function rewardColor(type: MasterReward["type"]): string {
   const map: Record<string, string> = {
-    coins:"#e8c96d", pack:"#60a5fa", gems:"#a78bfa",
-    title:"#f97316", frame:"#34d399", emote:"#f472b6",
-    skin:"#fb923c", passive:"#facc15",
+    coins:"#e8c96d", pack:"#60a5fa", gacha_coins:"#a78bfa",
+    title:"#f97316", card_skin:"#fb923c", passive:"#facc15",
   }
   return map[type] ?? "#94a3b8"
 }
@@ -29,14 +28,16 @@ function rewardColor(type: MasterReward["type"]): string {
 // ─── Element badge colors ─────────────────────────────────────────────────────
 function elementStyle(el: string): { color: string; bg: string } {
   const map: Record<string, { color: string; bg: string }> = {
-    "Vazio":   { color:"#38bdf8", bg:"rgba(56,189,248,0.12)" },
+    "Aquos":   { color:"#38bdf8", bg:"rgba(56,189,248,0.12)" },
+    "Darkus":  { color:"#a855f7", bg:"rgba(168,85,247,0.12)" },
+    "Ventus":  { color:"#4ade80", bg:"rgba(74,222,128,0.12)" },
+    "Pyrus":   { color:"#f87171", bg:"rgba(248,113,113,0.12)" },
+    "Haos":    { color:"#fde68a", bg:"rgba(253,230,138,0.12)" },
+    "Subterra":{ color:"#a16207", bg:"rgba(161,98,7,0.12)" },
+    "Vazio":   { color:"#22d3ee", bg:"rgba(34,211,238,0.12)" },
+    // legacy names
     "Sombra":  { color:"#a855f7", bg:"rgba(168,85,247,0.12)" },
     "Vento":   { color:"#4ade80", bg:"rgba(74,222,128,0.12)" },
-    "Fogo":    { color:"#f87171", bg:"rgba(248,113,113,0.12)" },
-    "Água":    { color:"#22d3ee", bg:"rgba(34,211,238,0.12)" },
-    "Trovão":  { color:"#facc15", bg:"rgba(250,204,21,0.12)" },
-    "Terra":   { color:"#a16207", bg:"rgba(161,98,7,0.12)" },
-    "Luz":     { color:"#fde68a", bg:"rgba(253,230,138,0.12)" },
   }
   return map[el] ?? { color:"#94a3b8", bg:"rgba(148,163,184,0.10)" }
 }
@@ -592,23 +593,85 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     setShowDetail(false)
   }
 
-  // Claim a reward
+  // Claim a reward — grants actual items to the player
   const handleClaimReward = (masterId: string, level: number) => {
+    const master = masters.find(m => m.id === masterId)
+    const reward = master?.rewards.find(r => r.level === level)
+    if (!reward || reward.claimed) return
+
+    // Mark as claimed in storage
     setMasters(prev => {
       const next = prev.map(m => {
         if (m.id !== masterId) return m
-        return {
-          ...m,
-          rewards: m.rewards.map(r =>
-            r.level === level ? { ...r, claimed: true } : r
-          ),
-        }
+        return { ...m, rewards: m.rewards.map(r => r.level === level ? { ...r, claimed: true } : r) }
       })
       saveMastersToStorage(next)
       return next
     })
-    const reward = masters.find(m => m.id === masterId)?.rewards.find(r => r.level === level)
-    if (reward) showToast(`🎁 ${reward.label} recebido!`)
+
+    // ── Actually grant the reward ──────────────────────────────────────────
+    if (reward.type === "coins" && reward.amount) {
+      // Add coins via localStorage (same key the game uses)
+      try {
+        const raw = localStorage.getItem("gpgame_coins") ?? "0"
+        const current = parseInt(raw, 10) || 0
+        localStorage.setItem("gpgame_coins", String(current + reward.amount))
+        // Dispatch event so the main menu updates immediately
+        window.dispatchEvent(new CustomEvent("gpgame_coins_update", { detail: { amount: current + reward.amount } }))
+      } catch {}
+      showToast(`🪙 +${reward.amount} Moedas adicionadas!`)
+
+    } else if (reward.type === "gacha_coins" && reward.amount) {
+      // Add gacha coins
+      try {
+        const raw = localStorage.getItem("gpgame_gacha_coins") ?? "0"
+        const current = parseInt(raw, 10) || 0
+        localStorage.setItem("gpgame_gacha_coins", String(current + reward.amount))
+        window.dispatchEvent(new CustomEvent("gpgame_gacha_coins_update", { detail: { amount: current + reward.amount } }))
+      } catch {}
+      showToast(`🎰 +${reward.amount} Gacha Coins adicionados!`)
+
+    } else if (reward.type === "pack" && reward.packId) {
+      // Add pack to the player's pending packs
+      try {
+        const raw = localStorage.getItem("gpgame_pending_packs") ?? "[]"
+        const packs: string[] = JSON.parse(raw)
+        packs.push(reward.packId)
+        localStorage.setItem("gpgame_pending_packs", JSON.stringify(packs))
+        window.dispatchEvent(new CustomEvent("gpgame_pack_received", { detail: { packId: reward.packId } }))
+      } catch {}
+      const packName = reward.packId === "lr_guaranteed" ? "Pack LR Garantido"
+        : reward.packId === "sr_guaranteed" ? "Pack SR Garantido" : "Pack Comum"
+      showToast(`📦 ${packName} adicionado ao Gacha!`)
+
+    } else if (reward.type === "title") {
+      // Unlock title
+      try {
+        const raw = localStorage.getItem("gpgame_titles") ?? "[]"
+        const titles: string[] = JSON.parse(raw)
+        if (!titles.includes("Lendário")) titles.push("Lendário")
+        localStorage.setItem("gpgame_titles", JSON.stringify(titles))
+        window.dispatchEvent(new CustomEvent("gpgame_title_unlocked", { detail: { title: "Lendário" } }))
+      } catch {}
+      showToast(`🏷️ Título "Lendário" desbloqueado!`)
+
+    } else if (reward.type === "card_skin") {
+      // Unlock card skin
+      try {
+        const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
+        const skins: string[] = JSON.parse(raw)
+        const skinId = `master_${masterId}_lv${level}`
+        if (!skins.includes(skinId)) skins.push(skinId)
+        localStorage.setItem("gpgame_card_skins", JSON.stringify(skins))
+        window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
+      } catch {}
+      showToast(`🃏 ${reward.label} desbloqueada!`)
+
+    } else if (reward.type === "passive") {
+      showToast(`⚡ Passiva "${master?.passive?.name}" ativada!`)
+    } else {
+      showToast(`🎁 ${reward.label} recebido!`)
+    }
   }
 
   const el  = selectedMaster ? elementStyle(selectedMaster.element) : null
@@ -767,7 +830,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
 
               {/* Dev: add XP button (remove in production) */}
               <button
-                onClick={() => handleAddXP(selectedMaster.id, 200)}
+                onClick={() => handleAddXP(selectedMaster.id, 2000)}
                 style={{
                   position:"absolute", bottom:14, right:16,
                   background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
