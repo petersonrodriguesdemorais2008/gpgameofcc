@@ -8637,6 +8637,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const prevActive = masters.find(m => m.isActive)
         const updated  = masters.map(m => {
           if (!m.isActive) return m
+          // Stop gaining XP at max level
+          if (m.currentLevel >= m.maxLevel) return m
           let xp    = m.currentXP + xpGain
           let level = m.currentLevel
           while (level < m.maxLevel) {
@@ -8644,6 +8646,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             if (xp >= needed) { xp -= needed; level++ }
             else break
           }
+          if (level >= m.maxLevel) { level = m.maxLevel; xp = 0 }
           return { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + xpGain, xpToNext: xpRequiredForLevel(level) }
         })
         saveMastersToStorage(updated)
