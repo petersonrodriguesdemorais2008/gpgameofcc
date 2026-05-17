@@ -10,6 +10,96 @@ import { ArrowLeft, Save, Trash2, Plus, Search, X, Sparkles, Layers, ImageIcon, 
 import Image from "next/image"
 import { trackDeckEdit } from "@/lib/mission-tracker"
 
+
+// ─── Card Skin System ──────────────────────────────────────────────────────────
+// cardId is the image filename (without path) of the original card art.
+// skins: list of skins available for that card.
+interface CardSkin {
+  id:         string   // unique skin id
+  label:      string   // display name
+  image:      string   // path to skin image
+  masterId:   string   // which master unlocks this skin
+  unlockLevel:number   // master level required
+}
+
+const CARD_SKINS: Record<string, CardSkin[]> = {
+  // Fehnon Hoskie — Aquos UR card
+  "fehnon-20ur.png": [
+    {
+      id:           "fehnon_skin_lv50",
+      label:        "Skin Lv.50 — Fehnon",
+      image:        "/uploads/fehnon_skin_lv50.jpg",
+      masterId:     "fehnon",
+      unlockLevel:  50,
+    },
+  ],
+  // Morgana Pendragon — Darkness SR card
+  "morgana-20sr.png": [
+    {
+      id:           "morgana_skin_lv50",
+      label:        "Skin Lv.50 — Morgana",
+      image:        "/uploads/morgana_skin_lv50.jpg",
+      masterId:     "morgana",
+      unlockLevel:  50,
+    },
+  ],
+  // Calem Hidenori — Void LR card
+  "Calem_LR.png": [
+    {
+      id:           "calem_skin_lv50",
+      label:        "Skin Lv.50 — Calem",
+      image:        "/uploads/calem_skin_lv50.jpg",
+      masterId:     "calem",
+      unlockLevel:  50,
+    },
+  ],
+}
+
+/** Returns the skins for a given card image filename (null if no skins exist) */
+function getSkinsForCard(imageUrl: string): CardSkin[] | null {
+  const filename = imageUrl.split("/").pop() ?? ""
+  return CARD_SKINS[filename] ?? null
+}
+
+/** Checks if the player owns a specific skin */
+function playerOwnsSkin(skinId: string): boolean {
+  try {
+    const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
+    const owned: string[] = JSON.parse(raw)
+    return owned.includes(skinId)
+  } catch { return false }
+}
+
+/** Gets the active skin for a card (returns original image if no skin selected) */
+function getActiveSkin(cardImageUrl: string): string {
+  try {
+    const filename = cardImageUrl.split("/").pop() ?? ""
+    const raw = localStorage.getItem("gpgame_active_skins") ?? "{}"
+    const active: Record<string,string> = JSON.parse(raw)
+    const skinId = active[filename]
+    if (!skinId) return cardImageUrl
+    // Find the skin image
+    const skins = CARD_SKINS[filename]
+    const skin = skins?.find(s => s.id === skinId)
+    return skin ? skin.image : cardImageUrl
+  } catch { return cardImageUrl }
+}
+
+/** Sets the active skin for a card */
+function setActiveSkin(cardImageUrl: string, skinId: string | null): void {
+  try {
+    const filename = cardImageUrl.split("/").pop() ?? ""
+    const raw = localStorage.getItem("gpgame_active_skins") ?? "{}"
+    const active: Record<string,string> = JSON.parse(raw)
+    if (skinId === null) {
+      delete active[filename]
+    } else {
+      active[filename] = skinId
+    }
+    localStorage.setItem("gpgame_active_skins", JSON.stringify(active))
+  } catch {}
+}
+
 interface DeckBuilderScreenProps {
   onBack: () => void
 }
@@ -27,7 +117,9 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const [selectedPlaymatId, setSelectedPlaymatId] = useState<string | null>(null)
   const [useGlobalPlaymat, setUseGlobalPlaymat] = useState(true)
   const [showPlaymatSelector, setShowPlaymatSelector] = useState(false)
-  const [zoomedCard, setZoomedCard] = useState<Card | null>(null)
+  const [zoomedCard,      setZoomedCard]      = useState<Card | null>(null)
+  const [showSkinPanel,   setShowSkinPanel]   = useState(false)
+  const [skinRefresh,     setSkinRefresh]     = useState(0)  // increment to force re-render
   const [draggedCard, setDraggedCard] = useState<Card | null>(null)
   const [isDeckDropZone, setIsDeckDropZone] = useState(false)
   
@@ -542,7 +634,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                       } ${targetArea === "tap" && canAdd ? "hover:ring-2 hover:ring-cyan-400" : ""}`}
                       title={!canAdd ? reason : `Clique para adicionar ao ${targetArea.toUpperCase()}, segure para zoom (${copiesInTarget}/${maxAllowed})`}
                     >
-                      <Image src={card.image || "/placeholder.svg"} alt={card.name} fill sizes="80px" className="object-cover pointer-events-none" />
+                      <Image src={getActiveSkin(card.image || "")} alt={card.name} fill sizes="80px" className="object-cover pointer-events-none" />
                       
                       {/* Target indicator */}
                       {targetArea === "tap" && (
@@ -827,60 +919,177 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   </div>
   </div>
   
-  {/* Card zoom modal */}
-  {zoomedCard && (
-    <div
-      className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={() => setZoomedCard(null)}
-    >
-      <div className="relative w-full max-w-sm aspect-[3/4] animate-float">
-        <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
-        <Image
-          src={zoomedCard.image || "/placeholder.svg"}
-          alt={zoomedCard.name}
-          fill
-          sizes="(max-width: 768px) 90vw, 384px"
-          className={`object-contain rounded-2xl ${
-            zoomedCard.rarity === "LR"
-              ? "rarity-lr"
-              : zoomedCard.rarity === "UR"
-                ? "rarity-ur"
-                : zoomedCard.rarity === "SR"
-                  ? "rarity-sr"
-                  : "rarity-r"
-          }`}
-        />
-      </div>
+  {/* Card zoom modal with skin system */}
+  {zoomedCard && (() => {
+    const cardSkins    = getSkinsForCard(zoomedCard.image || "")
+    const hasSkins     = cardSkins !== null && cardSkins.length > 0
+    const activeSkinId = (() => {
+      try {
+        const fn  = (zoomedCard.image || "").split("/").pop() ?? ""
+        const raw = localStorage.getItem("gpgame_active_skins") ?? "{}"
+        return (JSON.parse(raw) as Record<string,string>)[fn] ?? null
+      } catch { return null }
+    })()
+    const displayImg = getActiveSkin(zoomedCard.image || "")
 
-      {/* Card info */}
-      <div className="absolute bottom-8 left-0 right-0 text-center">
-        <h3 className="text-2xl font-bold text-white mb-2">{zoomedCard.name}</h3>
-        <span
-          className={`px-4 py-1 rounded-full text-sm font-bold ${
-            zoomedCard.rarity === "LR"
-              ? "bg-gradient-to-r from-red-500 to-amber-500 text-white"
-              : zoomedCard.rarity === "UR"
-                ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black"
-                : zoomedCard.rarity === "SR"
-                  ? "bg-purple-500 text-white"
-                  : "bg-slate-500 text-white"
-          }`}
-        >
-          {zoomedCard.rarity}
-        </span>
-        {zoomedCard.type === "unit" && zoomedCard.dp && (
-          <p className="text-cyan-400 font-bold mt-2">DP: {zoomedCard.dp}</p>
-        )}
-      </div>
-
-      <button
-        onClick={() => setZoomedCard(null)}
-        className="absolute top-4 right-4 p-2 glass rounded-full hover:bg-white/20 transition-colors"
+    return (
+      <div
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex z-50"
+        style={{ alignItems:"center", justifyContent:"center" }}
       >
-        <X className="w-6 h-6 text-white" />
-      </button>
-    </div>
-  )}
+        {/* Backdrop click closes */}
+        <div className="absolute inset-0" onClick={() => { setZoomedCard(null); setShowSkinPanel(false) }}/>
+
+        {/* Card + skin panel side by side */}
+        <div style={{ position:"relative", display:"flex", alignItems:"center", gap:16, padding:16, zIndex:1 }}>
+
+          {/* Card */}
+          <div className="relative animate-float" style={{ width:"min(85vw,320px)", aspectRatio:"3/4" }}>
+            <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
+            <Image
+              src={displayImg || "/placeholder.svg"}
+              alt={zoomedCard.name}
+              fill
+              sizes="320px"
+              className={`object-contain rounded-2xl ${
+                zoomedCard.rarity === "LR" ? "rarity-lr"
+                : zoomedCard.rarity === "UR" ? "rarity-ur"
+                : zoomedCard.rarity === "SR" ? "rarity-sr"
+                : "rarity-r"
+              }`}
+            />
+            {/* SKIN button — only if card has skins */}
+            {hasSkins && (
+              <button
+                onClick={e => { e.stopPropagation(); setShowSkinPanel(v => !v) }}
+                style={{
+                  position:"absolute", right:-52, top:"50%", transform:"translateY(-50%)",
+                  background: showSkinPanel
+                    ? "linear-gradient(135deg,#7a5c0f,#e8c96d)"
+                    : "rgba(232,201,109,0.12)",
+                  border:"2px solid rgba(232,201,109,0.60)",
+                  borderRadius:12, padding:"10px 8px", cursor:"pointer",
+                  writingMode:"vertical-rl", textOrientation:"mixed",
+                  color: showSkinPanel ? "#0c0a06" : "#e8c96d",
+                  fontWeight:900, fontSize:11, letterSpacing:"0.10em",
+                  boxShadow: showSkinPanel ? "0 4px 16px rgba(232,201,109,0.4)" : "none",
+                  transition:"all 0.2s",
+                }}>
+                SKIN
+              </button>
+            )}
+          </div>
+
+          {/* Skin panel */}
+          {hasSkins && showSkinPanel && (
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background:"rgba(10,8,6,0.97)", border:"1px solid rgba(232,201,109,0.25)",
+                borderRadius:16, padding:14, width:180,
+                display:"flex", flexDirection:"column", gap:10,
+                boxShadow:"0 8px 32px rgba(0,0,0,0.7)",
+              }}>
+              <div style={{ fontWeight:900, fontSize:12, color:"#e8c96d",
+                letterSpacing:"0.10em", textTransform:"uppercase", marginBottom:4 }}>
+                🃏 Skins
+              </div>
+
+              {/* Original art option */}
+              <button
+                onClick={() => { setActiveSkin(zoomedCard.image || "", null); setSkinRefresh(v=>v+1) }}
+                style={{
+                  display:"flex", flexDirection:"column", gap:6, padding:8,
+                  background: activeSkinId === null ? "rgba(232,201,109,0.10)" : "rgba(255,255,255,0.03)",
+                  border:`1px solid ${activeSkinId === null ? "rgba(232,201,109,0.40)" : "rgba(255,255,255,0.07)"}`,
+                  borderRadius:10, cursor:"pointer", textAlign:"left",
+                }}>
+                <div style={{ position:"relative", width:"100%", aspectRatio:"3/4", borderRadius:8, overflow:"hidden",
+                  border: activeSkinId === null ? "2px solid #e8c96d" : "2px solid transparent" }}>
+                  <Image src={zoomedCard.image || "/placeholder.svg"} alt="Original" fill
+                    style={{ objectFit:"contain" }}/>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:"#f1f0ee" }}>Arte Original</span>
+                  {activeSkinId === null && <span style={{ fontSize:10, color:"#e8c96d" }}>✓</span>}
+                </div>
+              </button>
+
+              {/* Each skin option */}
+              {cardSkins!.map(skin => {
+                const owned   = playerOwnsSkin(skin.id)
+                const active  = activeSkinId === skin.id
+                return (
+                  <button
+                    key={skin.id}
+                    onClick={() => {
+                      if (!owned) return
+                      setActiveSkin(zoomedCard.image || "", skin.id)
+                      setSkinRefresh(v => v+1)
+                    }}
+                    style={{
+                      display:"flex", flexDirection:"column", gap:6, padding:8,
+                      background: active ? "rgba(232,201,109,0.10)" : "rgba(255,255,255,0.03)",
+                      border:`1px solid ${active ? "rgba(232,201,109,0.40)" : "rgba(255,255,255,0.07)"}`,
+                      borderRadius:10, cursor: owned ? "pointer" : "not-allowed",
+                      textAlign:"left", opacity: owned ? 1 : 0.7,
+                    }}>
+                    <div style={{ position:"relative", width:"100%", aspectRatio:"3/4", borderRadius:8, overflow:"hidden",
+                      border: active ? "2px solid #e8c96d" : "2px solid transparent" }}>
+                      <Image src={skin.image} alt={skin.label} fill style={{ objectFit:"contain",
+                        filter: owned ? "none" : "brightness(0.35) saturate(0.3)" }}
+                        onError={e => { (e.target as HTMLImageElement).src = "/placeholder.svg" }}/>
+                      {!owned && (
+                        <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column",
+                          alignItems:"center", justifyContent:"center", gap:4 }}>
+                          <span style={{ fontSize:18 }}>🔒</span>
+                          <span style={{ fontSize:8, fontWeight:800, color:"#9ca3af",
+                            textAlign:"center", lineHeight:1.3, padding:"0 4px" }}>Skin Bloqueada</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <span style={{ fontSize:10, fontWeight:700,
+                        color: owned ? "#f1f0ee" : "#6b7280",
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                        maxWidth:110 }}>{skin.label}</span>
+                      {active && <span style={{ fontSize:10, color:"#e8c96d" }}>✓</span>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Card info */}
+        <div className="absolute bottom-6 left-0 right-0 text-center" style={{ zIndex:1 }}>
+          <h3 className="text-2xl font-bold text-white mb-2">{zoomedCard.name}</h3>
+          <span className={`px-4 py-1 rounded-full text-sm font-bold ${
+            zoomedCard.rarity === "LR" ? "bg-gradient-to-r from-red-500 to-amber-500 text-white"
+            : zoomedCard.rarity === "UR" ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black"
+            : zoomedCard.rarity === "SR" ? "bg-purple-500 text-white"
+            : "bg-slate-500 text-white"
+          }`}>{zoomedCard.rarity}</span>
+          {zoomedCard.type === "unit" && zoomedCard.dp && (
+            <p className="text-cyan-400 font-bold mt-2">DP: {zoomedCard.dp}</p>
+          )}
+          {hasSkins && (
+            <p className="text-amber-400/70 text-xs mt-2">
+              ← Arraste para SKIN para ver opções
+            </p>
+          )}
+        </div>
+
+        <button
+          onClick={() => { setZoomedCard(null); setShowSkinPanel(false) }}
+          className="absolute top-4 right-4 p-2 glass rounded-full hover:bg-white/20 transition-colors"
+          style={{ zIndex:1 }}>
+          <X className="w-6 h-6 text-white" />
+        </button>
+      </div>
+    )
+  })()}
   </div>
   )
 }
