@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { ArrowLeft } from "lucide-react"
+import { useGame } from "@/components/game/game-context"
 import {
   type Master,
   type MasterReward,
@@ -546,6 +547,9 @@ export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
 
 // ─── MAIN MasterScreen ────────────────────────────────────────────────────────
 export default function MasterScreen({ onBack }: MasterScreenProps) {
+  // Access game context for live coin/collection updates
+  const { coins, setCoins, addToCollection, allCards } = useGame()
+
   const [masters,      setMasters]      = useState<Master[]>([])
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [showDetail,   setShowDetail]   = useState(false)
@@ -626,59 +630,76 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
 
     // ── Actually grant the reward ──────────────────────────────────────────
     if (reward.type === "coins" && reward.amount) {
-      // Add coins via localStorage (same key the game uses)
-      try {
-        const raw = localStorage.getItem("gpgame_coins") ?? "0"
-        const current = parseInt(raw, 10) || 0
-        localStorage.setItem("gpgame_coins", String(current + reward.amount))
-        // Dispatch event so the main menu updates immediately
-        window.dispatchEvent(new CustomEvent("gpgame_coins_update", { detail: { amount: current + reward.amount } }))
-      } catch {}
+      // Update React state directly — live update in UI
+      const newTotal = coins + reward.amount!
+      setCoins(newTotal)
+      // Also persist to localStorage with correct key
+      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
       showToast(`🪙 +${reward.amount} Moedas adicionadas!`)
 
     } else if (reward.type === "gacha_coins" && reward.amount) {
-      // Add gacha coins — the game stores coins under "gearperks-coins"
-      try {
-        // Primary key used by game-context setLS("coins", ...)
-        const primaryKey = "gearperks-coins"
-        const raw = localStorage.getItem(primaryKey) ?? "0"
-        const current = parseInt(raw, 10) || 0
-        const newTotal = current + reward.amount!
-        localStorage.setItem(primaryKey, String(newTotal))
-        // Fallback: also update gear-perks-coins (alternate prefix)
-        const altRaw = localStorage.getItem("gear-perks-coins")
-        if (altRaw !== null) {
-          localStorage.setItem("gear-perks-coins", String((parseInt(altRaw,10)||0) + reward.amount!))
-        }
-        // Dispatch storage event so game-context React state updates live
-        window.dispatchEvent(new StorageEvent("storage", {
-          key: primaryKey, newValue: String(newTotal),
-          storageArea: localStorage,
-        }))
-      } catch {}
+      // Update React state directly — live update in UI
+      const newTotal = coins + reward.amount!
+      setCoins(newTotal)
+      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
       showToast(`🎰 +${reward.amount} Gacha Coins adicionados!`)
 
     } else if (reward.type === "pack" && reward.packId) {
-      // Add pack to the player's pending packs
+      // Open pack immediately — draw cards from allCards pool and add to collection
       try {
-        const raw = localStorage.getItem("gpgame_pending_packs") ?? "[]"
-        const packs: string[] = JSON.parse(raw)
-        packs.push(reward.packId)
-        localStorage.setItem("gpgame_pending_packs", JSON.stringify(packs))
-        window.dispatchEvent(new CustomEvent("gpgame_pack_received", { detail: { packId: reward.packId } }))
-      } catch {}
-      const packName = reward.packId === "lr_guaranteed" ? "Pack LR Garantido"
-        : reward.packId === "sr_guaranteed" ? "Pack SR Garantido" : "Pack Comum"
-      showToast(`📦 ${packName} adicionado ao Gacha!`)
+        const packName = reward.packId === "lr_guaranteed" ? "Pack LR Garantido"
+          : reward.packId === "sr_guaranteed" ? "Pack SR Garantido" : "Pack Comum"
+
+        // Filter cards by rarity for guaranteed packs
+        const pool = allCards.length > 0 ? allCards : []
+        const lrCards  = pool.filter(c => c.rarity === "LR")
+        const srCards  = pool.filter(c => c.rarity === "SR" || c.rarity === "LR")
+        const anyCards = pool.length > 0 ? pool : []
+
+        const pickRandom = (arr: typeof pool, count: number) => {
+          const result = []
+          for (let i = 0; i < count; i++) {
+            if (arr.length > 0) result.push(arr[Math.floor(Math.random() * arr.length)])
+          }
+          return result
+        }
+
+        let drawn: typeof pool = []
+        if (reward.packId === "lr_guaranteed" && lrCards.length > 0) {
+          drawn = [...pickRandom(lrCards, 1), ...pickRandom(anyCards, 4)]
+        } else if (reward.packId === "sr_guaranteed" && srCards.length > 0) {
+          drawn = [...pickRandom(srCards, 1), ...pickRandom(anyCards, 4)]
+        } else {
+          drawn = pickRandom(anyCards, 5)
+        }
+
+        if (drawn.length > 0) {
+          addToCollection(drawn)
+          showToast(`📦 ${packName} aberto! ${drawn.length} cartas adicionadas!`)
+        } else {
+          // Fallback — store as pending if no cards available
+          const raw = localStorage.getItem("gpgame_pending_packs") ?? "[]"
+          const packs: string[] = JSON.parse(raw)
+          packs.push(reward.packId!)
+          localStorage.setItem("gpgame_pending_packs", JSON.stringify(packs))
+          showToast(`📦 ${packName} adicionado ao Gacha!`)
+        }
+      } catch {
+        showToast(`📦 Pack adicionado!`)
+      }
 
     } else if (reward.type === "title") {
-      // Unlock title
+      // Persist title and notify UI via event
       try {
         const raw = localStorage.getItem("gpgame_titles") ?? "[]"
         const titles: string[] = JSON.parse(raw)
-        if (!titles.includes("Lendário")) titles.push("Lendário")
-        localStorage.setItem("gpgame_titles", JSON.stringify(titles))
-        window.dispatchEvent(new CustomEvent("gpgame_title_unlocked", { detail: { title: "Lendário" } }))
+        const titleName = "Lendário"
+        if (!titles.includes(titleName)) {
+          titles.push(titleName)
+          localStorage.setItem("gpgame_titles", JSON.stringify(titles))
+          // Dispatch so profile/settings screen can pick it up
+          window.dispatchEvent(new CustomEvent("gpgame_title_unlocked", { detail: { title: titleName } }))
+        }
       } catch {}
       showToast(`🏷️ Título "Lendário" desbloqueado!`)
 
