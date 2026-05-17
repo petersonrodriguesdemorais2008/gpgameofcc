@@ -1626,6 +1626,54 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  // ── Veredito do Rei Tirano — Magic Function Card ──────────────────────────
+  // Requires Rei Arthur on field. Deals 5DP to enemy unit OR directly to LP.
+  "veredito-do-rei-tirano": {
+    id: "veredito-do-rei-tirano",
+    name: "Veredito do Rei Tirano",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasArthur = context.playerField.unitZone.some(
+        u => u !== null && u.name.toLowerCase().includes("rei arthur")
+      )
+      if (!hasArthur) return { canActivate: false, reason: "Requer Rei Arthur em campo" }
+      const hasEnemyUnits = context.enemyField.unitZone.some(u => u !== null)
+      const hasTargets = hasEnemyUnits  // can also target LP directly
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const DAMAGE = 5
+      // If enemy unit selected — deal 5DP to it
+      if (targets?.enemyUnitIndices?.length) {
+        const idx = targets.enemyUnitIndices[0]
+        const target = context.enemyField.unitZone[idx]
+        if (!target) {
+          // No unit at index — deal directly to LP
+          context.setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - DAMAGE) }))
+          return { success: true, message: `Veredito! ${DAMAGE}DP causados diretamente ao LP inimigo!` }
+        }
+        const currentDp = (target as any).currentDp ?? target.dp
+        const newDp = Math.max(0, currentDp - DAMAGE)
+        const destroyed = newDp <= 0
+        context.setEnemyField(prev => {
+          const newZone = [...prev.unitZone] as typeof prev.unitZone
+          if (destroyed) {
+            newZone[idx] = null
+            return { ...prev, unitZone: newZone, graveyard: [...prev.graveyard, target] }
+          }
+          newZone[idx] = { ...target, currentDp: newDp } as any
+          return { ...prev, unitZone: newZone }
+        })
+        if (destroyed) return { success: true, message: `Veredito! ${target.name} destruída pelo Rei Tirano!` }
+        return { success: true, message: `Veredito! ${target.name} −${DAMAGE}DP (${currentDp}→${newDp})` }
+      }
+      // No enemy units on field — deal directly to LP
+      context.setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - DAMAGE) }))
+      return { success: true, message: `Veredito do Rei Tirano! ${DAMAGE}DP causados diretamente ao LP inimigo!` }
+    },
+  },
+
   "flecha-de-balista": {
     id: "flecha-de-balista",
     name: "Flecha de Balista",
@@ -4564,8 +4612,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const isPedraDeAfiar = cardToPlace.name === "Pedra de Afiar"
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
       const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
+      const isVeredito = cardToPlace.name === "Veredito do Rei Tirano"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -4593,6 +4642,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           else if (isPedraDeAfiar) effectToUse = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
           else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
           else if (isChamadoDaTavola) effectToUse = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
+          else if (isVeredito) effectToUse = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
         }
 
         if (!effectToUse) return // Safety check
@@ -8496,7 +8546,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // Check if this is a dice card (they don't need selectedEnemyIndex)
     const cardId = getBaseCardId(itemSelectionMode.itemCard.id || "")
-    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
 
     // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
@@ -8575,6 +8625,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       else if (isPedraDeAfiar2) effect = FUNCTION_CARD_EFFECTS["pedra-de-afiar"]
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
       else if (isChamadoDaTavola2) effect = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
+      else if (itemSelectionMode.itemCard.name === "Veredito do Rei Tirano") effect = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
     }
 
     if (effect) {
@@ -10901,7 +10952,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
             {(() => {
               const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
-              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+              const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
 
               if (isDiceCard) {
                 return (
