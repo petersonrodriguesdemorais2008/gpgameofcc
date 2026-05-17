@@ -374,12 +374,8 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
                     color: reached ? master.accentColor : "#374151",
                   }}>{reward.level}</div>
 
-                  {/* Icon */}
-                  {reward.type === "gacha_coins" ? (
-                    <img src="/images/icons/gacha-coin.png" alt="Gacha Coin"
-                      style={{ width:22, height:22, objectFit:"contain", flexShrink:0 }}
-                      onError={e => { (e.target as HTMLImageElement).src = "🎰" }} />
-                  ) : (
+                  {/* Icon — gacha_coins shows nothing here; amount shown in label */}
+                  {reward.type !== "gacha_coins" && (
                     <span style={{ fontSize:18, flexShrink:0 }}>{rewardIcon(reward.type)}</span>
                   )}
 
@@ -576,6 +572,10 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     setMasters(prev => {
       const next = prev.map(m => {
         if (m.id !== masterId) return m
+        // Stop gaining XP at max level
+        if (m.currentLevel >= m.maxLevel) {
+          return { ...m, currentXP: m.xpToNext, currentLevel: m.maxLevel }
+        }
         let xp    = m.currentXP + amount
         let level = m.currentLevel
         let leveled = false
@@ -584,6 +584,8 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           if (xp >= needed) { xp -= needed; level++; leveled = true }
           else break
         }
+        // At max level, cap XP display
+        if (level >= m.maxLevel) { level = m.maxLevel; xp = 0 }
         const updated: Master = { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + amount, xpToNext: xpRequiredForLevel(level) }
         if (leveled && level <= m.maxLevel) {
           setLevelUpData({ master: updated, newLevel: level })
@@ -635,35 +637,26 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       showToast(`🪙 +${reward.amount} Moedas adicionadas!`)
 
     } else if (reward.type === "gacha_coins" && reward.amount) {
-      // Add gacha coins — tries multiple storage keys the game might use
+      // Add gacha coins — the game stores coins under "gearperks-coins"
       try {
-        // Try all common key names used by game-context
-        const KEYS_TO_TRY = ["coins", "gpgame_coins", "gacha_coins", "gpgame_gacha_coins", "gachaCoin", "gachaCoins"]
-        let granted = false
-        for (const key of KEYS_TO_TRY) {
-          const raw = localStorage.getItem(key)
-          if (raw !== null) {
-            const current = parseInt(raw, 10) || 0
-            localStorage.setItem(key, String(current + reward.amount))
-            granted = true
-            break
-          }
+        // Primary key used by game-context setLS("coins", ...)
+        const primaryKey = "gearperks-coins"
+        const raw = localStorage.getItem(primaryKey) ?? "0"
+        const current = parseInt(raw, 10) || 0
+        const newTotal = current + reward.amount!
+        localStorage.setItem(primaryKey, String(newTotal))
+        // Fallback: also update gear-perks-coins (alternate prefix)
+        const altRaw = localStorage.getItem("gear-perks-coins")
+        if (altRaw !== null) {
+          localStorage.setItem("gear-perks-coins", String((parseInt(altRaw,10)||0) + reward.amount!))
         }
-        // Also try the game-context playerProfile storage
-        const profileRaw = localStorage.getItem("gpgame_profile")
-        if (profileRaw) {
-          const profile = JSON.parse(profileRaw)
-          if (typeof profile.coins === "number") {
-            profile.coins += reward.amount!
-            localStorage.setItem("gpgame_profile", JSON.stringify(profile))
-          }
-        }
-        // Dispatch events for any listener
-        window.dispatchEvent(new CustomEvent("gpgame_gacha_coins_update", { detail: { amount: reward.amount } }))
-        window.dispatchEvent(new CustomEvent("coins_update", { detail: { amount: reward.amount } }))
-        window.dispatchEvent(new StorageEvent("storage", { key: "coins" }))
+        // Dispatch storage event so game-context React state updates live
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: primaryKey, newValue: String(newTotal),
+          storageArea: localStorage,
+        }))
       } catch {}
-      showToast(`+${reward.amount} Gacha Coins adicionados!`  )
+      showToast(`🎰 +${reward.amount} Gacha Coins adicionados!`)
 
     } else if (reward.type === "pack" && reward.packId) {
       // Add pack to the player's pending packs
@@ -690,11 +683,17 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       showToast(`🏷️ Título "Lendário" desbloqueado!`)
 
     } else if (reward.type === "card_skin") {
-      // Unlock card skin
+      // Unlock card skin — use exact skinId that deck-builder expects
       try {
         const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
         const skins: string[] = JSON.parse(raw)
-        const skinId = `master_${masterId}_lv${level}`
+        // Map masterId+level to exact skin ID used in CARD_SKINS in deck-builder
+        const skinIdMap: Record<string, Record<number, string>> = {
+          fehnon:  { 40: "fehnon_skin_lv50",  50: "fehnon_skin_lv50"  },
+          morgana: { 40: "morgana_skin_lv50", 50: "morgana_skin_lv50" },
+          calem:   { 40: "calem_skin_lv50",   50: "calem_skin_lv50"   },
+        }
+        const skinId = skinIdMap[masterId]?.[level] ?? `master_${masterId}_lv${level}`
         if (!skins.includes(skinId)) skins.push(skinId)
         localStorage.setItem("gpgame_card_skins", JSON.stringify(skins))
         window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
