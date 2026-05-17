@@ -375,12 +375,25 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
                   }}>{reward.level}</div>
 
                   {/* Icon */}
-                  <span style={{ fontSize:18, flexShrink:0 }}>{rewardIcon(reward.type)}</span>
+                  {reward.type === "gacha_coins" ? (
+                    <img src="/images/icons/gacha-coin.png" alt="Gacha Coin"
+                      style={{ width:22, height:22, objectFit:"contain", flexShrink:0 }}
+                      onError={e => { (e.target as HTMLImageElement).src = "🎰" }} />
+                  ) : (
+                    <span style={{ fontSize:18, flexShrink:0 }}>{rewardIcon(reward.type)}</span>
+                  )}
 
                   {/* Label */}
                   <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color: reached ? "#f1f0ee" : "#6b7280" }}>
-                      {reward.label}
+                    <div style={{ fontWeight:700, fontSize:13, color: reached ? "#f1f0ee" : "#6b7280",
+                      display:"flex", alignItems:"center", gap:6 }}>
+                      {reward.type === "gacha_coins" ? (
+                        <>
+                          <img src="/images/icons/gacha-coin.png" alt="GC"
+                            style={{ width:16, height:16, objectFit:"contain" }}/>
+                          <span>{reward.amount}</span>
+                        </>
+                      ) : reward.label}
                     </div>
                     {isNext && (
                       <div style={{ fontSize:10, color: master.accentColor, marginTop:1 }}>
@@ -622,14 +635,35 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       showToast(`🪙 +${reward.amount} Moedas adicionadas!`)
 
     } else if (reward.type === "gacha_coins" && reward.amount) {
-      // Add gacha coins
+      // Add gacha coins — tries multiple storage keys the game might use
       try {
-        const raw = localStorage.getItem("gpgame_gacha_coins") ?? "0"
-        const current = parseInt(raw, 10) || 0
-        localStorage.setItem("gpgame_gacha_coins", String(current + reward.amount))
-        window.dispatchEvent(new CustomEvent("gpgame_gacha_coins_update", { detail: { amount: current + reward.amount } }))
+        // Try all common key names used by game-context
+        const KEYS_TO_TRY = ["coins", "gpgame_coins", "gacha_coins", "gpgame_gacha_coins", "gachaCoin", "gachaCoins"]
+        let granted = false
+        for (const key of KEYS_TO_TRY) {
+          const raw = localStorage.getItem(key)
+          if (raw !== null) {
+            const current = parseInt(raw, 10) || 0
+            localStorage.setItem(key, String(current + reward.amount))
+            granted = true
+            break
+          }
+        }
+        // Also try the game-context playerProfile storage
+        const profileRaw = localStorage.getItem("gpgame_profile")
+        if (profileRaw) {
+          const profile = JSON.parse(profileRaw)
+          if (typeof profile.coins === "number") {
+            profile.coins += reward.amount!
+            localStorage.setItem("gpgame_profile", JSON.stringify(profile))
+          }
+        }
+        // Dispatch events for any listener
+        window.dispatchEvent(new CustomEvent("gpgame_gacha_coins_update", { detail: { amount: reward.amount } }))
+        window.dispatchEvent(new CustomEvent("coins_update", { detail: { amount: reward.amount } }))
+        window.dispatchEvent(new StorageEvent("storage", { key: "coins" }))
       } catch {}
-      showToast(`🎰 +${reward.amount} Gacha Coins adicionados!`)
+      showToast(`+${reward.amount} Gacha Coins adicionados!`  )
 
     } else if (reward.type === "pack" && reward.packId) {
       // Add pack to the player's pending packs
