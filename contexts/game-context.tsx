@@ -2735,7 +2735,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         hasCompletedSetup: false,
       })
 
-      // Clear localStorage data
+      // Clear localStorage data — ALL keys including Masters, Story, Missions, Gear Pass
       localStorage.removeItem("gearperks-coins")
       localStorage.removeItem("gearperks-collection")
       localStorage.removeItem("gearperks-decks")
@@ -2751,6 +2751,48 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks-redeemed-codes")
       localStorage.removeItem("gpgame_selected_wallpaper")
       localStorage.removeItem("gpgame_unlocked_wallpapers")
+
+      // ── Masters system ─────────────────────────────────────────────────────
+      localStorage.removeItem("gpgame_masters_v1")
+
+      // ── Story Mode (Campanha) ──────────────────────────────────────────────
+      localStorage.removeItem("gpgame_story_progress")
+      localStorage.removeItem("gpgame_story_battle_pending")
+
+      // ── Gear Pass ─────────────────────────────────────────────────────────
+      localStorage.removeItem("gpgame_gear_pass")
+      localStorage.removeItem("gpgame_pass_missions")
+
+      // ── Missions (Missões diárias/eventos) ────────────────────────────────
+      localStorage.removeItem("claimed_missions")
+      localStorage.removeItem("claimed_bonus")
+      localStorage.removeItem("missions_event_end")
+
+      // ── Card skins & active skins ─────────────────────────────────────────
+      localStorage.removeItem("gpgame_card_skins")
+      localStorage.removeItem("gpgame_active_skins")
+
+      // ── Titles & pending packs ────────────────────────────────────────────
+      localStorage.removeItem("gpgame_titles")
+      localStorage.removeItem("gpgame_pending_packs")
+
+      // ── Gacha coins & coins ───────────────────────────────────────────────
+      localStorage.removeItem("gpgame_coins")
+      localStorage.removeItem("gpgame_gacha_coins")
+      localStorage.removeItem("gacha_coins")
+      localStorage.removeItem("coins")
+      localStorage.removeItem("gpgame_profile")
+
+      // ── Stamina ───────────────────────────────────────────────────────────
+      localStorage.removeItem("gpgame_stamina_v2")
+
+      // ── Guild (local state) ───────────────────────────────────────────────
+      localStorage.removeItem("gpgame_guild_id")
+      localStorage.removeItem("gpgame_kicked_from")
+
+      // ── Daily check-in & misc ─────────────────────────────────────────────
+      localStorage.removeItem("gpgame_checkin")
+      localStorage.removeItem("gpgame_last_checkin")
 
       // If logged in with Supabase, also clear cloud data
       if (accountAuth.isLoggedIn && accountAuth.uniqueCode) {
