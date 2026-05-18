@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { ArrowLeft } from "lucide-react"
-import { useGame } from "@/components/game/game-context"
+import { useGame } from "@/contexts/game-context"
 import {
   type Master,
   type MasterReward,
