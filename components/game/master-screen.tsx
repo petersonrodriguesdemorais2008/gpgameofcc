@@ -488,6 +488,236 @@ function LevelUpOverlay({ master, newLevel, onClose }: {
   )
 }
 
+
+// ─── Pack Opening Overlay (mirrors gacha animation) ───────────────────────────
+interface PackOpeningOverlayProps {
+  packId:   string          // "common" | "sr_guaranteed" | "lr_guaranteed"
+  onClose:  (cards: import("@/contexts/game-context").Card[]) => void
+}
+
+function PackOpeningOverlay({ packId, onClose }: PackOpeningOverlayProps) {
+  const { allCards, addToCollection } = useGame()
+  const [packPhase,       setPackPhase]       = useState<"entering"|"floating"|"shaking"|"opening"|"revealing"|"done">("entering")
+  const [drawnCards,      setDrawnCards]       = useState<import("@/contexts/game-context").Card[]>([])
+  const [revealedIdx,     setRevealedIdx]      = useState(-1)
+  const [swipeStartX,     setSwipeStartX]      = useState<number|null>(null)
+  const [swipeProgress,   setSwipeProgress]    = useState(0)
+  const [swipeComplete,   setSwipeComplete]    = useState(false)
+  const [zoomedCard,      setZoomedCard]       = useState<import("@/contexts/game-context").Card|null>(null)
+
+  const CARDS_PER_PACK = 4
+  const rarityOrder = ["R","SR","UR","LR"] as const
+
+  // Build cards on mount
+  useEffect(() => {
+    const pool = allCards.length > 0 ? allCards : []
+    const cards: import("@/contexts/game-context").Card[] = []
+    for (let i = 0; i < CARDS_PER_PACK; i++) {
+      const rand = Math.random() * 100
+      let rarity: "R"|"SR"|"UR"|"LR"
+      if (packId === "lr_guaranteed" && i === 0)      rarity = "LR"
+      else if (packId === "sr_guaranteed" && i === 0) rarity = "SR"
+      else if (rand < 0.5)  rarity = "LR"
+      else if (rand < 5)    rarity = "UR"
+      else if (rand < 30)   rarity = "SR"
+      else                   rarity = "R"
+      const filtered = pool.filter(c => c.rarity === rarity)
+      const src = filtered.length > 0 ? filtered : pool
+      if (src.length > 0) {
+        const base = src[Math.floor(Math.random() * src.length)]
+        cards.push({ ...base, id: `${base.id}-master-${Date.now()}-${i}` })
+      }
+    }
+    setDrawnCards(cards)
+    addToCollection(cards)
+    // Animate entering → floating
+    setTimeout(() => setPackPhase("floating"), 600)
+  }, [])
+
+  // Rarity color
+  const rarityColor = (r: string) => {
+    if (r === "LR") return "#ef4444"
+    if (r === "UR") return "#fbbf24"
+    if (r === "SR") return "#a855f7"
+    return "#94a3b8"
+  }
+
+  const packImage = packId === "lr_guaranteed"
+    ? "/images/gacha/pack-anl.png"
+    : "/images/gacha/pack-fsg.png"
+
+  const packName = packId === "lr_guaranteed" ? "Pack LR Garantido"
+    : packId === "sr_guaranteed" ? "Pack SR Garantido" : "Pack Comum"
+
+  const highestRarity = drawnCards.reduce<"R"|"SR"|"UR"|"LR">((best, c) => {
+    return rarityOrder.indexOf(c.rarity as any) > rarityOrder.indexOf(best) ? c.rarity as any : best
+  }, "R")
+  const glowColor = rarityColor(highestRarity)
+
+  // Swipe to open
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (packPhase !== "floating") return
+    setSwipeStartX(e.clientX)
+  }
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (swipeStartX === null || packPhase !== "floating") return
+    const delta = e.clientX - swipeStartX
+    setSwipeProgress(Math.min(1, Math.max(0, delta / 200)))
+    if (delta > 160 && !swipeComplete) {
+      setSwipeComplete(true)
+      setPackPhase("shaking")
+      setTimeout(() => setPackPhase("opening"), 700)
+      setTimeout(() => {
+        setPackPhase("revealing")
+        setRevealedIdx(0)
+      }, 1400)
+    }
+  }
+  const handlePointerUp = () => {
+    if (!swipeComplete) setSwipeProgress(0)
+    setSwipeStartX(null)
+  }
+
+  // Reveal cards one by one
+  useEffect(() => {
+    if (packPhase !== "revealing") return
+    if (revealedIdx < 0 || revealedIdx >= drawnCards.length - 1) return
+    const t = setTimeout(() => setRevealedIdx(v => v + 1), 350)
+    return () => clearTimeout(t)
+  }, [packPhase, revealedIdx, drawnCards.length])
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:400,
+      background:"#000", display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      fontFamily:"'Segoe UI',sans-serif",
+    }}>
+      {/* Skip */}
+      {packPhase !== "done" && packPhase !== "revealing" && (
+        <button onClick={() => { setPackPhase("revealing"); setRevealedIdx(0) }}
+          style={{ position:"absolute", top:16, right:16,
+            background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)",
+            borderRadius:8, padding:"6px 14px", color:"#94a3b8", fontSize:12,
+            fontWeight:700, cursor:"pointer" }}>Pular</button>
+      )}
+
+      {/* Pack animation phase */}
+      {(packPhase === "entering" || packPhase === "floating" || packPhase === "shaking" || packPhase === "opening") && (
+        <div style={{ textAlign:"center" }}>
+          {packPhase === "floating" && (
+            <h2 style={{ fontWeight:900, fontSize:32, color:"#fff", marginBottom:24,
+              letterSpacing:"0.04em" }}>Abra!</h2>
+          )}
+          <div
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            style={{
+              position:"relative", width:200, height:280, cursor:"grab",
+              animation: packPhase === "shaking"
+                ? "packShake 0.6s ease-in-out"
+                : packPhase === "floating"
+                ? "packFloat 2s ease-in-out infinite"
+                : packPhase === "entering"
+                ? "packEnter 0.5s ease-out"
+                : "packOpenEpic 0.8s ease forwards",
+              filter: `drop-shadow(0 0 30px ${glowColor}80)`,
+            }}>
+            <img src={packImage} alt={packName}
+              style={{ width:"100%", height:"100%", objectFit:"contain" }}
+              onError={e => { (e.target as HTMLImageElement).src = "/images/gacha/pack-fsg.png" }}/>
+            {/* Swipe line */}
+            {packPhase === "floating" && (
+              <div style={{
+                position:"absolute", top:"30%", left:0, right:0,
+                height:2, background:`rgba(255,255,255,${0.3 + swipeProgress * 0.7})`,
+                boxShadow:`0 0 12px rgba(255,255,255,${0.5 + swipeProgress * 0.5})`,
+                display:"flex", alignItems:"center", justifyContent:"flex-start",
+                paddingLeft:8,
+              }}>
+                <span style={{ fontSize:16, color:"rgba(255,255,255,0.6)" }}>✂</span>
+              </div>
+            )}
+          </div>
+          {packPhase === "floating" && (
+            <p style={{ color:"rgba(255,255,255,0.4)", fontSize:13,
+              marginTop:20, letterSpacing:"0.12em" }}>
+              arraste a linha para rasgar →
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Card reveal phase */}
+      {packPhase === "revealing" && (
+        <div style={{ textAlign:"center", padding:"0 16px" }}>
+          <h2 style={{ fontWeight:900, fontSize:24, color:"#fff", marginBottom:8 }}>
+            Cartas Obtidas!
+          </h2>
+          <p style={{ color:"rgba(255,255,255,0.4)", fontSize:12,
+            marginBottom:24, letterSpacing:"0.12em" }}>
+            {CARDS_PER_PACK} CARTAS · TOQUE PARA AMPLIAR
+          </p>
+          <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap", marginBottom:28 }}>
+            {drawnCards.map((card, i) => (
+              <div key={card.id} onClick={() => setZoomedCard(card)}
+                style={{
+                  width:90, cursor:"pointer",
+                  opacity: i <= revealedIdx ? 1 : 0,
+                  transform: i <= revealedIdx ? "translateY(0) scale(1)" : "translateY(40px) scale(0.8)",
+                  transition:`all 0.35s cubic-bezier(0.34,1.56,0.64,1) ${i*0.08}s`,
+                }}>
+                <div style={{ position:"relative", aspectRatio:"3/4", borderRadius:8, overflow:"hidden",
+                  boxShadow:`0 0 12px ${rarityColor(card.rarity)}60` }}>
+                  <img src={card.image} alt={card.name}
+                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                    onError={e => { (e.target as HTMLImageElement).src = "/placeholder.svg" }}/>
+                </div>
+                <div style={{ marginTop:4, textAlign:"center" }}>
+                  <span style={{
+                    display:"inline-block", padding:"1px 8px", borderRadius:4,
+                    background:`${rarityColor(card.rarity)}20`,
+                    border:`1px solid ${rarityColor(card.rarity)}50`,
+                    color: rarityColor(card.rarity), fontSize:10, fontWeight:800,
+                  }}>{card.rarity}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => onClose(drawnCards)} style={{
+            padding:"14px 48px", borderRadius:12, border:"none",
+            background:"linear-gradient(135deg,#065f46,#059669)",
+            color:"#fff", fontWeight:900, fontSize:16,
+            cursor:"pointer", letterSpacing:"0.06em",
+            boxShadow:"0 4px 20px rgba(5,150,105,0.5)",
+          }}>CONFIRMAR</button>
+        </div>
+      )}
+
+      {/* Zoomed card */}
+      {zoomedCard && (
+        <div onClick={() => setZoomedCard(null)}
+          style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.9)",
+            display:"flex", alignItems:"center", justifyContent:"center", zIndex:10 }}>
+          <div style={{ width:260, aspectRatio:"3/4", position:"relative" }}>
+            <img src={zoomedCard.image} alt={zoomedCard.name}
+              style={{ width:"100%", height:"100%", objectFit:"contain",
+                filter:`drop-shadow(0 0 30px ${rarityColor(zoomedCard.rarity)}80)` }}/>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes packEnter { from{transform:scale(0.3) translateY(60px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+        @keyframes packFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
+        @keyframes packShake { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-4deg)} 40%{transform:rotate(4deg)} 60%{transform:rotate(-3deg)} 80%{transform:rotate(3deg)} }
+        @keyframes packOpenEpic { 0%{transform:scale(1)} 50%{transform:scale(1.3) rotate(5deg);opacity:0.7} 100%{transform:scale(4) rotate(-10deg);opacity:0} }
+      `}</style>
+    </div>
+  )
+}
+
 // ─── Mini master card for menu bar ───────────────────────────────────────────
 export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
   const [masters, setMasters] = useState<Master[]>([])
@@ -545,16 +775,159 @@ export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
   )
 }
 
+
+// ─── Mini Pack Opener (same animation as Gacha, stays inside Master screen) ──
+interface MiniPackOpenerProps {
+  packId:    string           // "common" | "sr_guaranteed" | "lr_guaranteed"
+  cards:     any[]            // cards drawn
+  onConfirm: () => void       // returns to master rewards after confirming
+}
+
+function MiniPackOpener({ packId, cards, onConfirm }: MiniPackOpenerProps) {
+  const [phase, setPhase] = useState<"floating" | "opening" | "revealing">("floating")
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
+  const [revealIdx,   setRevealIdx]   = useState(-1)
+
+  const packImage = packId === "lr_guaranteed"
+    ? "/images/gacha/pack-fsg.png"
+    : packId === "sr_guaranteed"
+    ? "/images/gacha/pack-anl.png"
+    : "/images/gacha/pack-fsg.png"
+
+  // Auto-reveal cards one by one after opening
+  useEffect(() => {
+    if (phase !== "revealing") return
+    if (revealIdx < cards.length - 1) {
+      const t = setTimeout(() => setRevealIdx(i => i + 1), 180)
+      return () => clearTimeout(t)
+    }
+  }, [phase, revealIdx, cards.length])
+
+  const handleSwipe = (clientX: number) => {
+    if (phase !== "floating" || swipeStartX === null) return
+    if (Math.abs(clientX - swipeStartX) > 40) {
+      setPhase("opening")
+      setTimeout(() => { setPhase("revealing"); setRevealIdx(0) }, 900)
+    }
+  }
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:400,
+      background:"#000", display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+    }}>
+      <style>{`
+        @keyframes packFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+        @keyframes packOpenEpic {
+          0%   { transform:scale(1) rotate(0deg); opacity:1 }
+          40%  { transform:scale(1.3) rotate(-5deg); opacity:0.9 }
+          70%  { transform:scale(1.6) rotate(8deg); opacity:0.5 }
+          100% { transform:scale(2.2) rotate(-3deg); opacity:0 }
+        }
+        @keyframes cardReveal {
+          0%   { transform:translateY(30px) scale(0.8); opacity:0 }
+          100% { transform:translateY(0) scale(1); opacity:1 }
+        }
+      `}</style>
+
+      {phase !== "revealing" && (
+        <>
+          <div style={{ fontSize:28, fontWeight:900, color:"#fff", marginBottom:32, letterSpacing:"0.08em" }}>
+            Abra!
+          </div>
+          <div
+            onMouseDown={e => setSwipeStartX(e.clientX)}
+            onMouseMove={e => e.buttons === 1 && handleSwipe(e.clientX)}
+            onTouchStart={e => setSwipeStartX(e.touches[0].clientX)}
+            onTouchMove={e => handleSwipe(e.touches[0].clientX)}
+            style={{
+              position:"relative", width:200, height:280,
+              animation: phase === "opening"
+                ? "packOpenEpic 0.9s cubic-bezier(0.22,1,0.36,1) forwards"
+                : "packFloat 3s ease-in-out infinite",
+              cursor:"ew-resize",
+            }}>
+            {/* Glow */}
+            <div style={{
+              position:"absolute", inset:-30,
+              background:"radial-gradient(circle,rgba(99,102,241,0.35) 0%,transparent 70%)",
+              borderRadius:"50%", filter:"blur(20px)",
+            }}/>
+            {/* Scissor line */}
+            {phase === "floating" && (
+              <div style={{
+                position:"absolute", top:38, left:0, right:0,
+                display:"flex", alignItems:"center", gap:8,
+              }}>
+                <span style={{ fontSize:16, color:"rgba(255,255,255,0.5)" }}>✂</span>
+                <div style={{ flex:1, height:1, borderTop:"2px dashed rgba(255,255,255,0.25)" }}/>
+                <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>← rasgar</span>
+              </div>
+            )}
+            <img src={packImage} alt="Pack"
+              style={{ width:"100%", height:"100%", objectFit:"contain", position:"relative", zIndex:1 }}
+              onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
+          </div>
+          <p style={{ marginTop:28, fontSize:13, color:"rgba(255,255,255,0.35)", letterSpacing:"0.12em" }}>
+            arraste a linha para rasgar
+          </p>
+        </>
+      )}
+
+      {phase === "revealing" && (
+        <div style={{ textAlign:"center", padding:"0 24px" }}>
+          <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", marginBottom:4 }}>Cartas Obtidas!</h2>
+          <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", letterSpacing:"0.10em", marginBottom:32 }}>
+            {cards.length} CARTAS · TOQUE PARA AMPLIAR
+          </p>
+          <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginBottom:40 }}>
+            {cards.slice(0, revealIdx + 1).map((card, i) => (
+              <div key={i} style={{
+                width:100, display:"flex", flexDirection:"column", alignItems:"center", gap:6,
+                animation:"cardReveal 0.3s ease forwards",
+              }}>
+                <div style={{ width:100, height:140, borderRadius:10, overflow:"hidden",
+                  boxShadow:`0 0 20px rgba(99,102,241,0.4)`,
+                  border:"1px solid rgba(255,255,255,0.15)" }}>
+                  <img src={card.image || "/placeholder.svg"} alt={card.name}
+                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                    onError={e => { (e.target as HTMLImageElement).src = "/placeholder.svg" }}/>
+                </div>
+                <div style={{
+                  padding:"2px 8px", borderRadius:4, fontSize:10, fontWeight:800, color:"#fff",
+                  background: card.rarity==="LR" ? "linear-gradient(135deg,#dc2626,#f59e0b)"
+                    : card.rarity==="UR" ? "linear-gradient(135deg,#f59e0b,#eab308)"
+                    : card.rarity==="SR" ? "#7c3aed" : "#475569",
+                }}>{card.rarity}</div>
+              </div>
+            ))}
+          </div>
+          {revealIdx >= cards.length - 1 && (
+            <button onClick={onConfirm} style={{
+              padding:"14px 48px", borderRadius:14, border:"none",
+              background:"linear-gradient(135deg,#059669,#34d399)",
+              color:"#fff", fontWeight:900, fontSize:16, cursor:"pointer",
+              boxShadow:"0 4px 20px rgba(52,211,153,0.4)",
+            }}>CONFIRMAR</button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── MAIN MasterScreen ────────────────────────────────────────────────────────
 export default function MasterScreen({ onBack }: MasterScreenProps) {
   // Access game context for live coin/collection updates
-  const { coins, setCoins, addToCollection, allCards } = useGame()
+  const { coins, setCoins, addToCollection, allCards, updatePlayerProfile } = useGame()
 
   const [masters,      setMasters]      = useState<Master[]>([])
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [showDetail,   setShowDetail]   = useState(false)
   const [levelUpData,  setLevelUpData]  = useState<{ master: Master; newLevel: number } | null>(null)
   const [toast,        setToast]        = useState<string | null>(null)
+  const [packToOpen,   setPackToOpen]   = useState<string | null>(null)  // packId being animated
 
   // Load on mount
   useEffect(() => {
@@ -645,63 +1018,36 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       showToast(`🎰 +${reward.amount} Gacha Coins adicionados!`)
 
     } else if (reward.type === "pack" && reward.packId) {
-      // Open pack immediately — draw cards from allCards pool and add to collection
-      try {
-        const packName = reward.packId === "lr_guaranteed" ? "Pack LR Garantido"
-          : reward.packId === "sr_guaranteed" ? "Pack SR Garantido" : "Pack Comum"
-
-        // Filter cards by rarity for guaranteed packs
-        const pool = allCards.length > 0 ? allCards : []
-        const lrCards  = pool.filter(c => c.rarity === "LR")
-        const srCards  = pool.filter(c => c.rarity === "SR" || c.rarity === "LR")
-        const anyCards = pool.length > 0 ? pool : []
-
-        const pickRandom = (arr: typeof pool, count: number) => {
-          const result = []
-          for (let i = 0; i < count; i++) {
-            if (arr.length > 0) result.push(arr[Math.floor(Math.random() * arr.length)])
-          }
-          return result
-        }
-
-        let drawn: typeof pool = []
-        if (reward.packId === "lr_guaranteed" && lrCards.length > 0) {
-          drawn = [...pickRandom(lrCards, 1), ...pickRandom(anyCards, 4)]
-        } else if (reward.packId === "sr_guaranteed" && srCards.length > 0) {
-          drawn = [...pickRandom(srCards, 1), ...pickRandom(anyCards, 4)]
-        } else {
-          drawn = pickRandom(anyCards, 5)
-        }
-
-        if (drawn.length > 0) {
-          addToCollection(drawn)
-          showToast(`📦 ${packName} aberto! ${drawn.length} cartas adicionadas!`)
-        } else {
-          // Fallback — store as pending if no cards available
-          const raw = localStorage.getItem("gpgame_pending_packs") ?? "[]"
-          const packs: string[] = JSON.parse(raw)
-          packs.push(reward.packId!)
-          localStorage.setItem("gpgame_pending_packs", JSON.stringify(packs))
-          showToast(`📦 ${packName} adicionado ao Gacha!`)
-        }
-      } catch {
-        showToast(`📦 Pack adicionado!`)
-      }
+      // Show full pack opening animation — overlay handles drawing & collection
+      setPackToOpen(reward.packId!)
 
     } else if (reward.type === "title") {
-      // Persist title and notify UI via event
+      const titleName = "Lendário"
       try {
+        // Add to unlocked titles list
         const raw = localStorage.getItem("gpgame_titles") ?? "[]"
         const titles: string[] = JSON.parse(raw)
-        const titleName = "Lendário"
         if (!titles.includes(titleName)) {
           titles.push(titleName)
           localStorage.setItem("gpgame_titles", JSON.stringify(titles))
-          // Dispatch so profile/settings screen can pick it up
-          window.dispatchEvent(new CustomEvent("gpgame_title_unlocked", { detail: { title: titleName } }))
         }
+        // Apply title to player profile immediately via updatePlayerProfile
+        if (typeof updatePlayerProfile === "function") {
+          updatePlayerProfile({ title: titleName })
+        }
+        // Also write to profile storage so profile screen picks it up
+        try {
+          const profRaw = localStorage.getItem("gearperks-profile")
+          if (profRaw) {
+            const prof = JSON.parse(profRaw)
+            prof.title = titleName
+            localStorage.setItem("gearperks-profile", JSON.stringify(prof))
+          }
+        } catch {}
+        // Dispatch so profile screen reloads its title list immediately
+        window.dispatchEvent(new CustomEvent("gpgame_title_unlocked", { detail: { title: titleName } }))
       } catch {}
-      showToast(`🏷️ Título "Lendário" desbloqueado!`)
+      showToast(`🏷️ Título "${titleName}" desbloqueado! Veja no Perfil.`)
 
     } else if (reward.type === "card_skin") {
       // Unlock card skin — use exact skinId that deck-builder expects
@@ -755,6 +1101,19 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       )}
 
       {/* Level-up overlay */}
+      {/* Pack opening animation */}
+      {packToOpen && (
+        <PackOpeningOverlay
+          packId={packToOpen}
+          onClose={cards => {
+            setPackToOpen(null)
+            const packName = packToOpen === "lr_guaranteed" ? "Pack LR Garantido"
+              : packToOpen === "sr_guaranteed" ? "Pack SR Garantido" : "Pack Comum"
+            showToast(`📦 ${packName} aberto! ${cards.length} cartas adicionadas!`)
+          }}
+        />
+      )}
+
       {levelUpData && (
         <LevelUpOverlay
           master={levelUpData.master}
