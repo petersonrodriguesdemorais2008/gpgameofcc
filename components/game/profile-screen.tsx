@@ -39,7 +39,7 @@ interface Achievement {
   reward: string
 }
 
-const PLAYER_TITLES = [
+const BASE_PLAYER_TITLES = [
   "Iniciante",
   "Colecionador",
   "Estrategista",
@@ -49,6 +49,21 @@ const PLAYER_TITLES = [
   "Senhor do Gacha",
   "Lenda Viva",
 ]
+
+// Load base + any unlocked master titles from localStorage
+function getPlayerTitles(): string[] {
+  try {
+    const raw = localStorage.getItem("gpgame_titles") ?? "[]"
+    const unlocked: string[] = JSON.parse(raw)
+    const all = [...BASE_PLAYER_TITLES]
+    for (const t of unlocked) {
+      if (!all.includes(t)) all.push(t)
+    }
+    return all
+  } catch {
+    return BASE_PLAYER_TITLES
+  }
+}
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const { t } = useLanguage()
@@ -69,6 +84,14 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [showIconSelector, setShowIconSelector] = useState(false)
   const [activeTab, setActiveTab] = useState<"stats" | "achievements" | "showcase">("stats")
   const [copied, setCopied] = useState(false)
+  const [playerTitles, setPlayerTitles] = useState<string[]>(getPlayerTitles)
+
+  // Reload titles when a new one is unlocked
+  useEffect(() => {
+    const handler = () => setPlayerTitles(getPlayerTitles())
+    window.addEventListener("gpgame_title_unlocked", handler)
+    return () => window.removeEventListener("gpgame_title_unlocked", handler)
+  }, [])
 
   // Calculate stats
   const totalCards = collection.length
@@ -267,7 +290,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       onChange={(e) => setEditTitle(e.target.value)}
                       className="w-full bg-slate-800 border border-cyan-500/30 text-cyan-400 rounded-lg px-3 py-2 text-sm"
                     >
-                      {PLAYER_TITLES.map(title => (
+                      {playerTitles.map(title => (
                         <option key={title} value={title}>{title}</option>
                       ))}
                     </select>
