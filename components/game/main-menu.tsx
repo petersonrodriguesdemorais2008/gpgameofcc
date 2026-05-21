@@ -16,15 +16,10 @@ const MasterMenuCard = dynamic(
   { ssr: false, loading: () => null }
 )
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   CSS — sem scanlines no centro, anel girando em múltiplos elementos
-───────────────────────────────────────────────────────────────────────────── */
 const GP_CSS = `
-/* ── Reset base ── */
-* { box-sizing: border-box; }
-
-/* ── Anel conic girando (reutilizável) ── */
 @keyframes gp-conic-spin { to { transform: rotate(360deg); } }
+
+/* Anel girando – roxo/pink – para avatar e gift */
 .gp-conic-ring {
   position: absolute; border-radius: inherit;
   background: conic-gradient(
@@ -37,6 +32,7 @@ const GP_CSS = `
   animation: gp-conic-spin 4s linear infinite;
   z-index: 0;
 }
+/* Anel girando – dourado – para botão MESTRE */
 .gp-conic-ring-gold {
   position: absolute; border-radius: inherit;
   background: conic-gradient(
@@ -49,6 +45,7 @@ const GP_CSS = `
   animation: gp-conic-spin 3.5s linear infinite;
   z-index: 0;
 }
+/* Anel girando – lento roxo – para botões sidebar */
 .gp-conic-ring-slow {
   position: absolute; border-radius: inherit;
   background: conic-gradient(
@@ -62,33 +59,24 @@ const GP_CSS = `
   z-index: 0;
 }
 
-/* ── Grid hexagonal sutil ── */
-.gp-grid {
-  position: fixed; inset: 0; z-index: 1; pointer-events: none;
-  background-image:
-    linear-gradient(rgba(124,58,237,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124,58,237,0.035) 1px, transparent 1px);
-  background-size: 52px 52px;
-}
-
-/* ── Cantos HUD ── */
-.gp-corner { position: fixed; width: 22px; height: 22px; border-color: rgba(139,92,246,0.28); border-style: solid; z-index: 5; pointer-events: none; }
+/* Cantos decorativos HUD */
+.gp-corner { position: fixed; width: 20px; height: 20px; border-color: rgba(139,92,246,0.22); border-style: solid; z-index: 5; pointer-events: none; }
 .gp-corner-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
 .gp-corner-tr { top: 10px; right: 72px; border-width: 2px 2px 0 0; }
 .gp-corner-bl { bottom: 84px; left: 10px; border-width: 0 0 2px 2px; }
 .gp-corner-br { bottom: 84px; right: 72px; border-width: 0 2px 2px 0; }
 
-/* ── Separadores HUD ── */
+/* Linha separadora do HUD topo */
 .gp-hud-line {
   position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), rgba(167,139,250,0.55), rgba(139,92,246,0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), rgba(167,139,250,0.5), rgba(139,92,246,0.3), transparent);
 }
 
-/* ── Background pulsante ── */
-@keyframes gp-bgb { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.06);} }
+/* Background sutil */
+@keyframes gp-bgb { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.05);} }
 .gp-wbg { animation: gp-bgb 8s ease-in-out infinite; }
 
-/* ── Sidebar buttons ── */
+/* Sidebar buttons */
 .gp-sb {
   width: 58px; padding: 9px 0;
   background: rgba(5,2,18,0.88);
@@ -111,21 +99,20 @@ const GP_CSS = `
 .gp-sb:hover svg { color: rgba(196,165,250,1); filter: drop-shadow(0 0 5px rgba(167,139,250,0.5)); }
 .gp-sb-lbl { font-size: 7.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(109,40,217,0.75); transition: color .25s; font-family: inherit; }
 .gp-sb:hover .gp-sb-lbl { color: rgba(139,92,246,0.95); }
-
 .gp-sb.gp-gold { background: rgba(12,7,2,0.88); border-color: rgba(245,158,11,0.25); }
 .gp-sb.gp-gold::before { background: rgba(245,158,11,0.9); }
 .gp-sb.gp-gold:hover { border-color: rgba(245,158,11,0.55); box-shadow: 3px 0 18px rgba(245,158,11,0.2); }
 .gp-sb.gp-gold svg { color: rgba(252,211,77,0.9); }
 .gp-sb.gp-gold .gp-sb-lbl { color: rgba(245,158,11,0.8); }
 
-/* ── Bottom nav (barra inferior – mais escura) ── */
+/* Bottom nav – levemente escuro */
 .gp-nav-wrap {
-  background: linear-gradient(180deg, rgba(1,0,8,0) 0%, rgba(1,0,8,0.97) 40%);
-  backdrop-filter: blur(18px);
+  background: linear-gradient(180deg, rgba(1,0,8,0) 0%, rgba(2,1,12,0.88) 35%, rgba(2,1,12,0.96) 100%);
+  backdrop-filter: blur(14px);
 }
 .gp-nav-line {
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), rgba(167,139,250,0.5), rgba(139,92,246,0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.28), rgba(167,139,250,0.45), rgba(139,92,246,0.28), transparent);
 }
 .gp-ni {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -137,92 +124,73 @@ const GP_CSS = `
   background: rgba(139,92,246,0.9); transform: scaleX(0); transition: transform .25s; border-radius: 1px 1px 0 0;
 }
 .gp-ni:hover::after { transform: scaleX(1); }
-.gp-ni:hover { background: rgba(124,58,237,0.08); }
+.gp-ni:hover { background: rgba(124,58,237,0.07); }
 .gp-ni svg { color: rgba(109,40,217,0.65); transition: all .25s; }
 .gp-ni:hover svg { color: rgba(167,139,250,0.95); filter: drop-shadow(0 0 5px rgba(167,139,250,0.45)); }
 .gp-ni-lbl { font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: rgba(109,40,217,0.5); transition: color .25s; font-family: inherit; }
 .gp-ni:hover .gp-ni-lbl { color: rgba(139,92,246,0.9); }
 
-/* ── Botão JOGAR (destaque AZUL) ── */
+/* ── JOGAR (azul) ── */
 .gp-play-btn {
-  background: linear-gradient(135deg, rgba(29,78,216,0.22), rgba(59,130,246,0.18), rgba(37,99,235,0.22));
-  border: 2px solid rgba(59,130,246,0.65);
-  box-shadow: 0 0 28px rgba(59,130,246,0.22), inset 0 1px 0 rgba(147,197,253,0.12);
-  backdrop-filter: blur(12px);
+  background: rgba(15,30,80,0.72);
+  border: 2px solid rgba(59,130,246,0.72);
+  box-shadow: 0 0 32px rgba(59,130,246,0.28), inset 0 1px 0 rgba(147,197,253,0.12);
+  backdrop-filter: blur(10px);
   transition: all .28s ease;
-  position: relative; overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 88% 100%, 0 100%);
 }
 .gp-play-btn:hover {
-  background: linear-gradient(135deg, rgba(29,78,216,0.35), rgba(59,130,246,0.30), rgba(37,99,235,0.35));
-  border-color: rgba(96,165,250,0.9);
-  box-shadow: 0 0 42px rgba(59,130,246,0.38), 0 0 80px rgba(59,130,246,0.15), inset 0 1px 0 rgba(147,197,253,0.18);
-  transform: scale(1.03);
-}
-.gp-play-btn::before {
-  content: ''; position: absolute; top: 10%; left: 10%; right: 10%; height: 22%;
-  background: linear-gradient(180deg, rgba(147,197,253,0.15), transparent);
-  border-radius: 50%; filter: blur(6px); pointer-events: none;
-}
-@keyframes gp-play-shine {
-  0%   { transform: translateX(-120%) rotate(20deg); }
-  100% { transform: translateX(220%) rotate(20deg); }
-}
-.gp-play-btn:hover::after {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(147,197,253,0.18) 50%, transparent 100%);
-  animation: gp-play-shine 0.7s ease forwards;
+  background: rgba(20,45,110,0.82);
+  border-color: rgba(96,165,250,0.95);
+  box-shadow: 0 0 52px rgba(59,130,246,0.45), 0 0 100px rgba(59,130,246,0.15), inset 0 1px 0 rgba(147,197,253,0.18);
+  transform: scale(1.015);
 }
 
-/* ── Botão COLEÇÃO (destaque BRANCO) ── */
+/* ── COLEÇÃO (branco) ── */
 .gp-col-btn {
-  background: rgba(255,255,255,0.06);
-  border: 2px solid rgba(255,255,255,0.62);
-  box-shadow: 0 0 18px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.1);
-  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.07);
+  border: 2px solid rgba(255,255,255,0.68);
+  box-shadow: 0 0 16px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
   transition: all .28s ease;
 }
 .gp-col-btn:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.95);
-  box-shadow: 0 0 28px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
-  transform: scale(1.04);
+  background: rgba(255,255,255,0.13);
+  border-color: rgba(255,255,255,1);
+  box-shadow: 0 0 28px rgba(255,255,255,0.22);
+  transform: scale(1.03);
 }
 
-/* ── Botão GACHA (destaque ROSA) ── */
+/* ── GACHA (rosa) ── */
 .gp-gacha-btn {
-  background: linear-gradient(135deg, rgba(219,39,119,0.18), rgba(236,72,153,0.18), rgba(244,114,182,0.12));
-  border: 2px solid rgba(236,72,153,0.65);
-  box-shadow: 0 0 22px rgba(236,72,153,0.22), inset 0 1px 0 rgba(249,168,212,0.12);
-  backdrop-filter: blur(12px);
+  background: rgba(120,20,80,0.55);
+  border: 2px solid rgba(236,72,153,0.72);
+  box-shadow: 0 0 22px rgba(236,72,153,0.28), inset 0 1px 0 rgba(249,168,212,0.1);
+  backdrop-filter: blur(10px);
   transition: all .28s ease;
 }
 .gp-gacha-btn:hover {
-  background: linear-gradient(135deg, rgba(219,39,119,0.32), rgba(236,72,153,0.28), rgba(244,114,182,0.2));
-  border-color: rgba(244,114,182,0.95);
-  box-shadow: 0 0 36px rgba(236,72,153,0.38), 0 0 64px rgba(236,72,153,0.15), inset 0 1px 0 rgba(249,168,212,0.18);
-  transform: scale(1.04);
+  background: rgba(150,25,100,0.70);
+  border-color: rgba(244,114,182,1);
+  box-shadow: 0 0 40px rgba(236,72,153,0.45), 0 0 70px rgba(236,72,153,0.18);
+  transform: scale(1.03);
 }
 
-/* ── Pulsação anel JOGAR ── */
-@keyframes gp-jr { 0%{transform:scale(1);opacity:.7;} 100%{transform:scale(1.55);opacity:0;} }
-.gp-jr1 { animation: gp-jr 2s ease-out infinite; }
-.gp-jr2 { animation: gp-jr 2s ease-out infinite 0.7s; }
-
-/* ── Stamina bar ── */
-@keyframes gp-stam { 0%,100%{opacity:1;box-shadow:0 0 6px rgba(167,139,250,0.4);}50%{opacity:.8;box-shadow:0 0 11px rgba(232,121,249,0.6);} }
+/* Stamina pulse */
+@keyframes gp-stam { 0%,100%{opacity:1;} 50%{opacity:.82;} }
 .gp-stam-fill { animation: gp-stam 2.5s ease-in-out infinite; }
 
-/* ── Logo float ── */
-@keyframes gp-logo-f { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-2.5px);} }
-.gp-logo { animation: gp-logo-f 4s ease-in-out infinite; filter: drop-shadow(0 0 14px rgba(139,92,246,0.45)); }
+/* Logo float */
+@keyframes gp-logo-f { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-2px);} }
+.gp-logo { animation: gp-logo-f 4s ease-in-out infinite; filter: drop-shadow(0 0 12px rgba(139,92,246,0.42)); }
 
-/* ── Falling cards ── */
+/* Falling cards */
 @keyframes fallingCard { 0%{transform:translateY(-120px) rotate(-8deg);opacity:0;} 5%{opacity:1;} 95%{opacity:0.55;} 100%{transform:translateY(calc(100vh + 140px)) rotate(12deg);opacity:0;} }
 @keyframes cardSway    { 0%,100%{transform:translateX(-18px);} 50%{transform:translateX(18px);} }
 @keyframes cardFlipSpin{ 0%{transform:rotateY(0deg);} 45%{transform:rotateY(0deg);} 55%{transform:rotateY(180deg);} 100%{transform:rotateY(180deg);} }
 @keyframes cardHoloShift{ 0%,100%{opacity:0.05;} 50%{opacity:0.18;} }
 
-/* ── Misc ── */
+/* Misc */
 .rarity-lr{box-shadow:0 0 20px rgba(239,68,68,0.5),0 0 40px rgba(251,191,36,0.3);border:2px solid #fbbf24;}
 .rarity-ur{box-shadow:0 0 18px rgba(245,158,11,0.5);border:2px solid #f59e0b;}
 .rarity-sr{box-shadow:0 0 16px rgba(168,85,247,0.5);border:2px solid #a855f7;}
@@ -235,9 +203,6 @@ const GP_CSS = `
 .aura-logo{filter:drop-shadow(0 0 12px rgba(139,92,246,0.5));}
 `
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   CARD THEMES (falling cards on default wallpaper)
-───────────────────────────────────────────────────────────────────────────── */
 const CARD_THEMES = [
   { bg:"linear-gradient(145deg,#1e3a5f,#0c4a6e,#164e63)",border:"#38bdf8",glow:"rgba(56,189,248,0.35)",accent:"#7dd3fc"},
   { bg:"linear-gradient(145deg,#5b1a1a,#7f1d1d,#991b1b)",border:"#fca5a5",glow:"rgba(252,165,165,0.30)",accent:"#fecaca"},
@@ -258,16 +223,16 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
 
-  const [showPlayMenu,      setShowPlayMenu]      = useState(false)
-  const [showGiftBox,       setShowGiftBox]        = useState(false)
-  const [claimedCard,       setClaimedCard]        = useState<ReturnType<typeof claimGift>>(null)
-  const [claimedCoins,      setClaimedCoins]       = useState<number | null>(null)
-  const [isOpening,         setIsOpening]          = useState(false)
-  const [isClaimingAll,     setIsClaimingAll]      = useState(false)
-  const [claimAllResults,   setClaimAllResults]    = useState<{cards:any[];coins:number}|null>(null)
-  const [showWallpaperModal,setShowWallpaperModal] = useState(false)
-  const [showDailyBonus,    setShowDailyBonus]     = useState(false)
-  const [dailyBonusClaimed, setDailyBonusClaimed]  = useState<boolean>(() => {
+  const [showPlayMenu,       setShowPlayMenu]       = useState(false)
+  const [showGiftBox,        setShowGiftBox]         = useState(false)
+  const [claimedCard,        setClaimedCard]         = useState<ReturnType<typeof claimGift>>(null)
+  const [claimedCoins,       setClaimedCoins]        = useState<number | null>(null)
+  const [isOpening,          setIsOpening]           = useState(false)
+  const [isClaimingAll,      setIsClaimingAll]       = useState(false)
+  const [claimAllResults,    setClaimAllResults]     = useState<{cards:any[];coins:number}|null>(null)
+  const [showWallpaperModal, setShowWallpaperModal]  = useState(false)
+  const [showDailyBonus,     setShowDailyBonus]      = useState(false)
+  const [dailyBonusClaimed,  setDailyBonusClaimed]   = useState<boolean>(() => {
     if (typeof window === "undefined") return false
     const last = localStorage.getItem("gpgame_daily_bonus_date")
     if (!last) return false
@@ -283,15 +248,14 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     setDailyBonusJustClaimed(true)
   }
 
-  /* ── Wallpaper system ──────────────────────────────────────────────────── */
   const WALLPAPERS = [
-    { id:"default",         name:"Padrão",           description:"Fundo padrão do menu com cartas caindo",   image:null,                                        cost:0,   free:true  },
-    { id:"fehnon_wallpaper",name:"Fehnon Wallpaper",  description:"Arte do Fehnon Hoskie",                   image:"/images/wallpapers/fehnon_wallpaper.png",   cost:0,   free:true  },
-    { id:"arthur_wallpaper",name:"Arthur Wallpaper",  description:"Arte do Arthur com o Vazio",              image:"/images/wallpapers/arthur_wallpaper.png",   cost:500, free:false },
-    { id:"fsg_wallpaper",   name:"FSG Wallpaper",     description:"Arte dos Fundadores da Santa Guerra",     image:"/images/wallpapers/fsg_wallpaper.png",      cost:500, free:false },
-    { id:"fsg_wallpaper_2", name:"FSG Wallpaper 2",   description:"Arte especial dos personagens",           image:"/images/wallpapers/fsg_wallpaper_2.png",    cost:500, free:false },
-    { id:"fsg_wallpaper_3", name:"FSG Wallpaper 3",   description:"Arte do Fehnon e Morgana",                image:"/images/wallpapers/fsg_wallpaper_3.png",    cost:500, free:false },
-    { id:"fsg_wallpaper_4", name:"FSG Wallpaper 4",   description:"Arte do grupo FSG",                       image:"/images/wallpapers/fsg_wallpaper_4.png",    cost:500, free:false },
+    { id:"default",          name:"Padrão",           description:"Fundo padrão do menu com cartas caindo",   image:null,                                        cost:0,   free:true  },
+    { id:"fehnon_wallpaper", name:"Fehnon Wallpaper",  description:"Arte do Fehnon Hoskie",                   image:"/images/wallpapers/fehnon_wallpaper.png",   cost:0,   free:true  },
+    { id:"arthur_wallpaper", name:"Arthur Wallpaper",  description:"Arte do Arthur com o Vazio",              image:"/images/wallpapers/arthur_wallpaper.png",   cost:500, free:false },
+    { id:"fsg_wallpaper",    name:"FSG Wallpaper",     description:"Arte dos Fundadores da Santa Guerra",     image:"/images/wallpapers/fsg_wallpaper.png",      cost:500, free:false },
+    { id:"fsg_wallpaper_2",  name:"FSG Wallpaper 2",   description:"Arte especial dos personagens",           image:"/images/wallpapers/fsg_wallpaper_2.png",    cost:500, free:false },
+    { id:"fsg_wallpaper_3",  name:"FSG Wallpaper 3",   description:"Arte do Fehnon e Morgana",                image:"/images/wallpapers/fsg_wallpaper_3.png",    cost:500, free:false },
+    { id:"fsg_wallpaper_4",  name:"FSG Wallpaper 4",   description:"Arte do grupo FSG",                       image:"/images/wallpapers/fsg_wallpaper_4.png",    cost:500, free:false },
   ]
   const WALLPAPER_LS_KEY = "gpgame_selected_wallpaper"
   const UNLOCKED_LS_KEY  = "gpgame_unlocked_wallpapers"
@@ -302,7 +266,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const [unlockedWallpapers, setUnlockedWallpapers] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved  = localStorage.getItem(UNLOCKED_LS_KEY)
+        const saved = localStorage.getItem(UNLOCKED_LS_KEY)
         const parsed = saved ? JSON.parse(saved) : []
         return [...new Set(["default","fehnon_wallpaper",...parsed])]
       } catch { return ["default","fehnon_wallpaper"] }
@@ -340,7 +304,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     }
   }, [statusMessage, onClearMessage])
 
-  /* ── Falling cards (seeded, sem Math.random) ─────────────────────────── */
   const seededRand = (seed: number) => { const x = Math.sin(seed*9301+49297)*233280; return x-Math.floor(x) }
   const fallingCards = useMemo(() =>
     Array.from({ length: 20 }, (_, i) => ({
@@ -356,7 +319,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [])
 
-  /* ── Gift handlers ───────────────────────────────────────────────────── */
   const handleOpenGift = (giftId: string) => {
     setIsOpening(true)
     const gift = giftBoxes.find(g => g.id === giftId)
@@ -384,7 +346,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   }
   const unclaimedGifts = giftBoxes.filter(g => !g.claimed)
 
-  /* ── Canvas particles ────────────────────────────────────────────────── */
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return
@@ -395,11 +356,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     class P {
       x=0;y=0;sz=0;vx=0;vy=0;op=0;hue=0;li=0;ml=0;tw=0;cop=0
       constructor(){this.reset()}
-      reset(){this.x=Math.random()*canvas.width;this.y=Math.random()*canvas.height;this.sz=Math.random()*1.9+0.3;this.vx=(Math.random()-.5)*.3;this.vy=-Math.random()*.38-.08;this.op=Math.random()*.38+.07;this.hue=Math.random()*42+255;this.li=0;this.ml=Math.random()*180+90;this.tw=Math.random()*Math.PI*2}
-      tick(){this.li++;this.x+=this.vx;this.y+=this.vy;this.tw+=.03;const pr=this.li/this.ml,fi=pr<.12?pr/.12:1,fo=pr>.72?(1-(pr-.72)/.28):1;this.cop=this.op*fi*fo*(.55+Math.sin(this.tw)*.45);if(this.li>=this.ml)this.reset()}
-      draw(){ctx!.beginPath();ctx!.arc(this.x,this.y,this.sz,0,Math.PI*2);ctx!.fillStyle=`hsla(${this.hue},72%,70%,${this.cop})`;ctx!.shadowBlur=this.sz*4;ctx!.shadowColor=`hsla(${this.hue},72%,70%,${this.cop*.38})`;ctx!.fill()}
+      reset(){this.x=Math.random()*canvas.width;this.y=Math.random()*canvas.height;this.sz=Math.random()*1.8+0.3;this.vx=(Math.random()-.5)*.28;this.vy=-Math.random()*.35-.07;this.op=Math.random()*.32+.06;this.hue=Math.random()*42+255;this.li=0;this.ml=Math.random()*180+90;this.tw=Math.random()*Math.PI*2}
+      tick(){this.li++;this.x+=this.vx;this.y+=this.vy;this.tw+=.028;const pr=this.li/this.ml,fi=pr<.12?pr/.12:1,fo=pr>.72?(1-(pr-.72)/.28):1;this.cop=this.op*fi*fo*(.55+Math.sin(this.tw)*.45);if(this.li>=this.ml)this.reset()}
+      draw(){ctx!.beginPath();ctx!.arc(this.x,this.y,this.sz,0,Math.PI*2);ctx!.fillStyle=`hsla(${this.hue},70%,70%,${this.cop})`;ctx!.shadowBlur=this.sz*3.5;ctx!.shadowColor=`hsla(${this.hue},70%,70%,${this.cop*.35})`;ctx!.fill()}
     }
-    const ps:P[]=[]; for(let i=0;i<50;i++){const p=new P();p.li=Math.random()*p.ml;ps.push(p)}
+    const ps:P[]=[]; for(let i=0;i<45;i++){const p=new P();p.li=Math.random()*p.ml;ps.push(p)}
     const loop=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.shadowBlur=0;ps.forEach(p=>{p.tick();p.draw()});animId=requestAnimationFrame(loop)}
     loop()
     return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
@@ -413,10 +374,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* Partículas */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
 
-      {/* Grid + cantos */}
-      <div className="gp-grid" />
-      <div className="gp-corner gp-corner-tl" /><div className="gp-corner gp-corner-tr" />
-      <div className="gp-corner gp-corner-bl" /><div className="gp-corner gp-corner-br" />
+      {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
+      <div className="gp-corner gp-corner-tl" />
+      <div className="gp-corner gp-corner-tr" />
+      <div className="gp-corner gp-corner-bl" />
+      <div className="gp-corner gp-corner-br" />
 
       {/* ══ BACKGROUND ══ */}
       <div className="fixed inset-0 z-0">
@@ -430,8 +392,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             background:"linear-gradient(180deg,#03060F 0%,#060D1C 30%,#080F22 60%,#04091A 100%)",
           }} />
         )}
-
-        {/* Falling cards */}
         {!activeWallpaper?.image && (
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {fallingCards.map(card => {
@@ -441,9 +401,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                 <div key={card.id} className="absolute" style={{left:`${card.x}%`,animation:`fallingCard ${card.duration}s linear infinite`,animationDelay:`${card.delay}s`}}>
                   <div style={{animation:`cardSway ${sw}s ease-in-out infinite`,animationDelay:`${card.delay*.4}s`}}>
                     <div style={{animation:`cardFlipSpin ${fl}s ease-in-out infinite`,animationDelay:`${card.delay*.7}s`,transformStyle:"preserve-3d"}}>
-                      <div style={{width:`${card.width}px`,height:`${card.height}px`,background:th.bg,border:`1.5px solid ${th.border}`,borderRadius:8,boxShadow:`0 0 16px ${th.glow}`,backfaceVisibility:"hidden",overflow:"hidden",position:"relative"}}>
+                      <div style={{width:`${card.width}px`,height:`${card.height}px`,background:th.bg,border:`1.5px solid ${th.border}`,borderRadius:8,boxShadow:`0 0 14px ${th.glow}`,backfaceVisibility:"hidden",overflow:"hidden",position:"relative"}}>
                         <div style={{position:"absolute",inset:0,background:`linear-gradient(${card.shimmerAngle}deg,transparent 30%,rgba(255,255,255,0.15) 50%,transparent 70%)`,animation:`cardHoloShift ${3+(card.id%3)*.8}s ease-in-out infinite`}} />
-                        <div style={{position:"absolute",top:"50%",left:"50%",width:"35%",height:"35%",transform:"translate(-50%,-50%) rotate(45deg)",border:`1px solid ${th.accent}`,opacity:.2,borderRadius:2}} />
                       </div>
                       <div style={{position:"absolute",top:0,left:0,width:`${card.width}px`,height:`${card.height}px`,background:"linear-gradient(145deg,#0f172a,#1e293b)",border:`1.5px solid ${th.border}`,borderRadius:8,backfaceVisibility:"hidden",transform:"rotateY(180deg)"}} />
                     </div>
@@ -453,35 +412,31 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             })}
           </div>
         )}
-
-        {/* Glows atmosféricos */}
-        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 90% 50% at 50% 0%,rgba(109,40,217,0.10) 0%,transparent 55%)"}} />
-        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 65% 42% at 12% 85%,rgba(109,40,217,0.07) 0%,transparent 50%)"}} />
-        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 55% 38% at 88% 82%,rgba(168,85,247,0.05) 0%,transparent 45%)"}} />
+        {/* Glows atmosféricos sutis apenas */}
+        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(109,40,217,0.07) 0%,transparent 55%)"}} />
+        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 55% 35% at 10% 85%,rgba(109,40,217,0.05) 0%,transparent 50%)"}} />
       </div>
 
       {/* ══ TOP HUD ══ */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 relative"
-        style={{ background:"linear-gradient(180deg,rgba(2,1,14,0.98) 0%,rgba(2,1,14,0) 100%)" }}>
+        style={{ background:"linear-gradient(180deg,rgba(2,1,14,0.97) 0%,rgba(2,1,14,0) 100%)" }}>
         <div className="gp-hud-line" />
 
-        {/* ── Esquerda: perfil ── */}
+        {/* ── Esquerda: perfil + master card ── */}
         <div className="flex flex-col gap-2.5">
-          {/* Perfil com anel girando (VERMELHO) */}
+          {/* Avatar + anel girando APENAS aqui (vermelho no guia) */}
           <button onClick={() => onNavigate("profile")}
-            className="flex items-center gap-3 group transition-all duration-200 hover:scale-[1.04]">
-            {/* Avatar + anel conic */}
-            <div className="relative" style={{ width:50, height:50 }}>
-              {/* Anel conic girando */}
+            className="flex items-center gap-3 group transition-all duration-200 hover:scale-[1.03]">
+            <div className="relative" style={{ width:52, height:52 }}>
+              {/* Anel conic girando - SOMENTE no avatar */}
               <div className="gp-conic-ring" style={{ inset:-3, borderRadius:16 }} />
-              {/* Avatar */}
               <div className="relative overflow-hidden" style={{
-                width:50, height:50, borderRadius:14, zIndex:1,
-                border:"1.5px solid rgba(139,92,246,0.4)",
-                boxShadow:"0 0 12px rgba(124,58,237,0.35)",
+                width:52, height:52, borderRadius:14, zIndex:1,
+                border:"1.5px solid rgba(139,92,246,0.35)",
+                boxShadow:"0 0 10px rgba(124,58,237,0.3)",
               }}>
                 {playerProfile.avatarUrl ? (
-                  <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={50} height={50} className="w-full h-full object-cover" />
+                  <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={52} height={52} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" style={{ background:"linear-gradient(135deg,#2E1065,#7C3AED)" }}>
                     <span className="text-white text-lg font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
@@ -495,8 +450,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               <p className="text-[11px] font-semibold tracking-widest" style={{color:"rgba(167,139,250,0.65)"}}>{playerProfile.title||"Jogador"}</p>
             </div>
           </button>
-
-          {/* Master card */}
           <MasterMenuCard onOpen={() => onNavigate("masters")} />
         </div>
 
@@ -506,64 +459,61 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             className="w-36 h-auto aura-logo gp-logo" priority />
         </div>
 
-        {/* ── Direita: Stamina + Coins + Gift (VERDE) — maiores ── */}
+        {/* ── Direita: STAMINA + COINS + GIFT — sem anel girando (verde no guia) ── */}
         <div className="flex items-center gap-2.5">
 
-          {/* Stamina — com anel conic lento */}
-          <div className="relative" style={{ borderRadius:16 }}>
-            <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:16 }} />
-            <div className="relative flex items-center gap-2.5 px-4 py-3" style={{
-              background:"rgba(5,2,18,0.92)", borderRadius:14, zIndex:1,
-              border:"1px solid rgba(124,58,237,0.12)",
-            }}>
-              <span style={{ fontSize:18, filter:"drop-shadow(0 0 6px rgba(96,165,250,0.7))" }}>⚡</span>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-black tracking-widest uppercase" style={{color:"rgba(167,139,250,0.55)"}}>Stamina</span>
-                  <span className="font-black text-base text-white tabular-nums">
-                    {stamina}<span className="font-normal text-sm" style={{color:"rgba(167,139,250,0.4)"}}>/{maxStamina}</span>
+          {/* STAMINA — sem anel girando */}
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl" style={{
+            background:"rgba(5,2,18,0.90)",
+            border:"1px solid rgba(139,92,246,0.28)",
+            boxShadow:"0 0 14px rgba(124,58,237,0.10)",
+          }}>
+            <span style={{ fontSize:18, filter:"drop-shadow(0 0 6px rgba(96,165,250,0.7))" }}>⚡</span>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black tracking-widest uppercase" style={{color:"rgba(167,139,250,0.55)"}}>Stamina</span>
+                <span className="font-black text-base text-white tabular-nums">
+                  {stamina}<span className="font-normal text-sm" style={{color:"rgba(167,139,250,0.4)"}}>/{maxStamina}</span>
+                </span>
+                {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+                  <span className="text-[10px] font-bold tabular-nums" style={{color:"rgba(52,211,153,0.6)"}}>
+                    {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
                   </span>
-                  {stamina < maxStamina && staminaNextTickSeconds > 0 && (
-                    <span className="text-[10px] font-bold tabular-nums" style={{color:"rgba(52,211,153,0.6)"}}>
-                      {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
-                    </span>
-                  )}
-                </div>
-                <div className="rounded-full overflow-hidden" style={{width:90, height:5, background:"rgba(124,58,237,0.12)", border:"1px solid rgba(124,58,237,0.18)"}}>
-                  <div className="h-full rounded-full gp-stam-fill transition-all duration-500" style={{
-                    width:`${Math.min(100,(stamina/maxStamina)*100)}%`,
-                    background: stamina===maxStamina
-                      ? "linear-gradient(90deg,#7C3AED,#E879F9)"
-                      : stamina < maxStamina*.3
-                      ? "linear-gradient(90deg,#ef4444,#f87171)"
-                      : "linear-gradient(90deg,#6D28D9,#8B5CF6)",
-                  }} />
-                </div>
+                )}
+              </div>
+              <div className="rounded-full overflow-hidden" style={{width:88, height:5, background:"rgba(124,58,237,0.12)", border:"1px solid rgba(124,58,237,0.18)"}}>
+                <div className="h-full rounded-full gp-stam-fill transition-all duration-500" style={{
+                  width:`${Math.min(100,(stamina/maxStamina)*100)}%`,
+                  background: stamina===maxStamina
+                    ? "linear-gradient(90deg,#7C3AED,#E879F9)"
+                    : stamina < maxStamina*.3
+                    ? "linear-gradient(90deg,#ef4444,#f87171)"
+                    : "linear-gradient(90deg,#6D28D9,#8B5CF6)",
+                  boxShadow:"0 0 6px rgba(139,92,246,0.4)",
+                }} />
               </div>
             </div>
           </div>
 
-          {/* Coins — com anel dourado */}
-          <div className="relative cursor-pointer" style={{ borderRadius:14 }}>
-            <div className="gp-conic-ring-gold" style={{ inset:-2, borderRadius:14 }} />
-            <div className="relative flex items-center gap-2 px-4 py-3 transition-all hover:brightness-110" style={{
-              background:"rgba(10,6,2,0.92)", borderRadius:12, zIndex:1,
-              border:"1px solid rgba(245,158,11,0.1)",
-            }}>
-              <div className="w-6 h-6 relative">
-                <Image src="/images/icons/gacha-coin.png" alt="Coins" width={24} height={24} className="w-full h-full object-contain drop-shadow-lg" />
-              </div>
-              <span className="font-black text-base tabular-nums" style={{color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)"}}>{coins.toLocaleString()}</span>
-              <span style={{color:"rgba(167,139,250,0.38)", fontSize:15}}>+</span>
+          {/* COINS — sem anel girando */}
+          <div className="flex items-center gap-2 px-4 py-3 rounded-2xl cursor-pointer transition-all hover:brightness-110" style={{
+            background:"rgba(10,6,2,0.90)",
+            border:"1px solid rgba(245,158,11,0.28)",
+            boxShadow:"0 0 12px rgba(245,158,11,0.08)",
+          }}>
+            <div className="w-6 h-6 relative">
+              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={24} height={24} className="w-full h-full object-contain drop-shadow-lg" />
             </div>
+            <span className="font-black text-base tabular-nums" style={{color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)"}}>{coins.toLocaleString()}</span>
+            <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
           </div>
 
-          {/* Gift — com anel lento */}
+          {/* GIFT — com anel girando (faz parte do grupo verde) */}
           <div className="relative" style={{ borderRadius:13 }}>
-            <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:13 }} />
+            <div className="gp-conic-ring" style={{ inset:-2, borderRadius:13 }} />
             <button onClick={() => setShowGiftBox(true)}
               className="relative flex items-center justify-center transition-all hover:scale-105"
-              style={{ width:46, height:46, background:"rgba(10,6,2,0.92)", borderRadius:11, zIndex:1, border:"1px solid rgba(245,158,11,0.1)" }}>
+              style={{ width:48, height:48, background:"rgba(10,6,2,0.92)", borderRadius:11, zIndex:1, border:"1px solid rgba(245,158,11,0.18)" }}>
               <Gift className="w-5 h-5" style={{color:"#FCD34D"}} />
               {unclaimedGifts.length > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white"
@@ -573,7 +523,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               )}
             </button>
           </div>
-
         </div>
       </div>
 
@@ -589,137 +538,86 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         </div>
       )}
 
-      {/* ══ BOTÕES LATERAIS DIREITOS — maiores ══ */}
+      {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
       <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2.5">
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb" onClick={() => onNavigate("deck-builder")}>
-            <Hammer style={{ width:19, height:19, color:"rgba(167,139,250,0.82)" }} /><span className="gp-sb-lbl">Deck</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb" onClick={() => onNavigate("history")}>
-            <History style={{ width:19, height:19, color:"rgba(167,139,250,0.82)" }} /><span className="gp-sb-lbl">Hist.</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb" onClick={() => onNavigate("settings")}>
-            <Settings style={{ width:19, height:19, color:"rgba(167,139,250,0.82)" }} /><span className="gp-sb-lbl">Config</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb relative" onClick={() => { setShowDailyBonus(true); setDailyBonusJustClaimed(false) }}>
-            {!dailyBonusClaimed && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" style={{boxShadow:"0 0 6px rgba(52,211,153,0.8)"}} />}
-            <span style={{ fontSize:17, lineHeight:1 }}>{dailyBonusClaimed ? "✅" : "🎁"}</span>
-            <span className="gp-sb-lbl" style={{ color: dailyBonusClaimed ? "rgba(100,100,100,0.55)" : "rgba(52,211,153,0.8)" }}>Daily</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb" onClick={() => setShowWallpaperModal(true)}>
-            <span style={{ fontSize:17, lineHeight:1 }}>🖼️</span><span className="gp-sb-lbl">Tema</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb relative" onClick={() => onNavigate("gear-pass")}>
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" style={{boxShadow:"0 0 6px rgba(251,191,36,0.8)"}} />
-            <Shield style={{ width:19, height:19, color:"rgba(167,139,250,0.82)" }} /><span className="gp-sb-lbl">Passe</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb" onClick={() => onNavigate("story")}>
-            <BookOpen style={{ width:19, height:19, color:"rgba(167,139,250,0.82)" }} /><span className="gp-sb-lbl">Story</span>
-          </button>
-        </div>
-
-        <div className="relative" style={{ borderRadius:14 }}>
-          <div className="gp-conic-ring-gold" style={{ inset:-2, borderRadius:14 }} />
-          <button className="gp-sb gp-gold" onClick={() => onNavigate("masters")}>
-            <Star style={{ width:19, height:19, color:"rgba(252,211,77,0.92)" }} />
-            <span className="gp-sb-lbl" style={{ color:"rgba(245,158,11,0.88)" }}>Mestre</span>
-          </button>
-        </div>
-
+        {[
+          { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
+          { label:"Hist.",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
+          { label:"Config", icon:<Settings />, onClick:()=>onNavigate("settings"),      gold:false, dot:false    },
+          { label:"Daily",  icon:null,         onClick:()=>{ setShowDailyBonus(true); setDailyBonusJustClaimed(false) }, gold:false, dot:!dailyBonusClaimed, emoji: dailyBonusClaimed ? "✅" : "🎁", dotColor:"rgba(52,211,153,0.9)" },
+          { label:"Tema",   icon:null,         onClick:()=>setShowWallpaperModal(true),  gold:false, dot:false,   emoji:"🖼️" },
+          { label:"Passe",  icon:<Shield />,   onClick:()=>onNavigate("gear-pass"),     gold:false, dot:true,    dotColor:"rgba(251,191,36,0.9)" },
+          { label:"Story",  icon:<BookOpen />, onClick:()=>onNavigate("story"),         gold:false, dot:false    },
+          { label:"Mestre", icon:<Star />,     onClick:()=>onNavigate("masters"),       gold:true,  dot:false    },
+        ].map(btn => (
+          <div key={btn.label} className="relative" style={{ borderRadius:14 }}>
+            <div className={btn.gold ? "gp-conic-ring-gold" : "gp-conic-ring-slow"} style={{ inset:-2, borderRadius:14 }} />
+            <button className={`gp-sb${btn.gold?" gp-gold":""}`} onClick={btn.onClick}>
+              {btn.dot && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{background:btn.dotColor||"rgba(239,68,68,0.9)",boxShadow:`0 0 6px ${btn.dotColor||"rgba(239,68,68,0.9)"}`}} />}
+              {btn.emoji ? <span style={{fontSize:17,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
+              <span className="gp-sb-lbl">{btn.label}</span>
+            </button>
+          </div>
+        ))}
       </div>
 
-      {/* ══ BOTÕES DESTAQUE NA TELA ══ */}
+      {/* ══ 3 BOTÕES DESTAQUE — lateral esquerda, exatamente como no desenho ══ */}
       {!showPlayMenu && (
-        <>
-          {/* ── JOGAR (AZUL) — grande, posicionado à esquerda-centro ── */}
-          <div className="fixed z-20" style={{ left:24, top:"38%", transform:"translateY(-50%)" }}>
-            <button className="gp-play-btn flex flex-col items-center justify-center gap-4"
-              onClick={() => setShowPlayMenu(true)}
-              style={{ width:190, height:140, borderRadius:22 }}>
-              {/* Anel de pulso */}
-              <div className="absolute" style={{ width:60, height:60 }}>
-                <div className="gp-jr1 absolute inset-0 rounded-2xl" style={{ border:"1.5px solid rgba(59,130,246,0.5)" }} />
-                <div className="gp-jr2 absolute inset-0 rounded-2xl" style={{ border:"1px solid rgba(59,130,246,0.3)" }} />
-              </div>
-              <Swords className="relative z-10" style={{ width:44, height:44, color:"rgba(147,197,253,0.95)", filter:"drop-shadow(0 0 10px rgba(59,130,246,0.7))" }} />
-              <span className="relative z-10 font-black tracking-widest text-lg uppercase" style={{ color:"rgba(147,197,253,0.98)", textShadow:"0 0 14px rgba(59,130,246,0.65)" }}>Jogar</span>
-            </button>
-          </div>
+        <div className="fixed z-20" style={{ left:24, top:120 }}>
 
-          {/* ── COLEÇÃO (BRANCO) — retângulo ── */}
-          <div className="fixed z-20" style={{ left:24, bottom:100 }}>
-            <button className="gp-col-btn flex items-center justify-center gap-3"
+          {/* ── JOGAR (AZUL) — retângulo grande com corte no canto ── */}
+          <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
+            onClick={() => setShowPlayMenu(true)}
+            style={{ width:440, height:205, borderRadius:0, marginBottom:10 }}>
+            <Swords style={{ width:48, height:48, color:"rgba(147,197,253,0.95)", filter:"drop-shadow(0 0 12px rgba(59,130,246,0.7))" }} />
+            <span className="font-black tracking-widest text-xl uppercase" style={{ color:"rgba(147,197,253,0.98)", textShadow:"0 0 18px rgba(59,130,246,0.7)", letterSpacing:"0.22em" }}>Jogar</span>
+          </button>
+
+          {/* ── COLEÇÃO (BRANCO) + GACHA (ROSA) lado a lado abaixo do JOGAR ── */}
+          <div className="flex items-center gap-0" style={{ marginTop:0 }}>
+
+            {/* COLEÇÃO — retângulo branco */}
+            <button className="gp-col-btn flex items-center justify-center gap-2.5"
               onClick={() => onNavigate("collection")}
-              style={{ width:155, height:58, borderRadius:14 }}>
-              <BookOpen style={{ width:22, height:22, color:"rgba(255,255,255,0.9)", filter:"drop-shadow(0 0 6px rgba(255,255,255,0.4))" }} />
-              <span className="font-black text-base tracking-widest uppercase" style={{ color:"rgba(255,255,255,0.95)", textShadow:"0 0 10px rgba(255,255,255,0.35)" }}>Coleção</span>
+              style={{ width:220, height:72, borderRadius:10 }}>
+              <BookOpen style={{ width:20, height:20, color:"rgba(255,255,255,0.92)", filter:"drop-shadow(0 0 5px rgba(255,255,255,0.45))" }} />
+              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"rgba(255,255,255,0.98)", textShadow:"0 0 10px rgba(255,255,255,0.4)", letterSpacing:"0.18em" }}>Coleção</span>
             </button>
-          </div>
 
-          {/* ── GACHA (ROSA) — oval/rounded ── */}
-          <div className="fixed z-20" style={{ left:192, bottom:100 }}>
-            <button className="gp-gacha-btn flex items-center justify-center gap-3"
+            {/* GACHA — oval rosa */}
+            <button className="gp-gacha-btn flex items-center justify-center gap-2.5"
               onClick={() => onNavigate("gacha")}
-              style={{ width:148, height:58, borderRadius:34 }}>
-              <Sparkles style={{ width:21, height:21, color:"rgba(249,168,212,0.95)", filter:"drop-shadow(0 0 6px rgba(236,72,153,0.6))" }} />
-              <span className="font-black text-base tracking-widest uppercase" style={{ color:"rgba(249,168,212,0.98)", textShadow:"0 0 10px rgba(236,72,153,0.55)" }}>Gacha</span>
+              style={{ width:200, height:72, borderRadius:40 }}>
+              <Sparkles style={{ width:20, height:20, color:"rgba(249,168,212,0.95)", filter:"drop-shadow(0 0 6px rgba(236,72,153,0.65))" }} />
+              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"rgba(249,168,212,0.98)", textShadow:"0 0 10px rgba(236,72,153,0.6)", letterSpacing:"0.18em" }}>Gacha</span>
             </button>
+
           </div>
-        </>
+        </div>
       )}
 
-      {/* ══ BOTTOM NAV — mais escuro (AMARELO) ══ */}
+      {/* ══ BOTTOM NAV — levemente escuro (AMARELO no guia) ══ */}
       <div className="fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap">
         <div className="gp-nav-line" />
 
         {!showPlayMenu ? (
-          <div className="flex items-center justify-around px-4 pb-5 pt-2 max-w-2xl mx-auto">
-            {/* Social */}
+          /* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */
+          <div className="flex items-center justify-around px-4 pb-5 pt-2">
             <button className="gp-ni" onClick={() => onNavigate("friends")}>
               <Users className="w-6 h-6" /><span className="gp-ni-lbl">Social</span>
             </button>
-            {/* Missões */}
             <button className="gp-ni" onClick={() => onNavigate("missions")}>
               <Target className="w-6 h-6" /><span className="gp-ni-lbl">Missões</span>
             </button>
-            {/* Guilda */}
             <button className="gp-ni" onClick={() => onNavigate("guild")}>
               <Users className="w-6 h-6" /><span className="gp-ni-lbl">Guilda</span>
             </button>
-            {/* Shop */}
-            <button className="gp-ni" onClick={() => onNavigate("shop")}>
-              <span className="w-6 h-6 flex items-center justify-center text-xl">🛒</span>
+            <button className="gp-ni" onClick={() => onNavigate("shop" as GameScreen)}>
+              <span className="w-6 h-6 flex items-center justify-center text-xl leading-none">🛒</span>
               <span className="gp-ni-lbl">Loja</span>
             </button>
-            {/* Profile */}
             <button className="gp-ni" onClick={() => onNavigate("profile")}>
-              <span className="w-6 h-6 flex items-center justify-center text-xl">👤</span>
+              <span className="w-6 h-6 flex items-center justify-center text-xl leading-none">👤</span>
               <span className="gp-ni-lbl">Perfil</span>
             </button>
           </div>
@@ -751,11 +649,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         )}
       </div>
 
-      {/* ══════════════════════ MODAIS (idênticos ao original) ══════════════════════ */}
+      {/* ══════════════════════ MODAIS ══════════════════════════════════════ */}
 
       {/* GIFT BOX */}
       {showGiftBox && (
-        <div className="fixed inset-0 bg-black/92 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="rounded-3xl max-w-md w-full p-6 relative"
             style={{background:"linear-gradient(160deg,#05021A,#07031E)",border:"1px solid rgba(124,58,237,0.25)",boxShadow:"0 0 60px rgba(124,58,237,0.15)"}}>
             <button onClick={() => { setShowGiftBox(false); setClaimedCard(null); setClaimedCoins(null); setClaimAllResults(null) }}
@@ -957,8 +855,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                         <div className="absolute inset-0" style={{backgroundImage:`url(${wp.image})`,backgroundSize:"cover",backgroundPosition:"center"}} />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center gap-1" style={{background:"linear-gradient(145deg,#04081A,#070D24)"}}>
-                          <span className="text-2xl">✨</span>
-                          <span className="text-[10px]" style={{color:"rgba(124,58,237,0.5)"}}>Padrão</span>
+                          <span className="text-2xl">✨</span><span className="text-[10px]" style={{color:"rgba(124,58,237,0.5)"}}>Padrão</span>
                         </div>
                       )}
                       {!isUnlocked && (
