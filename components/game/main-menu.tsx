@@ -66,12 +66,6 @@ const GP_CSS = `
 .gp-corner-bl { bottom: 84px; left: 10px; border-width: 0 0 2px 2px; }
 .gp-corner-br { bottom: 84px; right: 72px; border-width: 0 2px 2px 0; }
 
-/* Linha separadora do HUD topo */
-.gp-hud-line {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), rgba(167,139,250,0.5), rgba(139,92,246,0.3), transparent);
-}
-
 /* Background sutil */
 @keyframes gp-bgb { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.05);} }
 .gp-wbg { animation: gp-bgb 8s ease-in-out infinite; }
@@ -107,12 +101,12 @@ const GP_CSS = `
 
 /* Bottom nav – levemente escuro */
 .gp-nav-wrap {
-  background: linear-gradient(180deg, rgba(1,0,8,0) 0%, rgba(2,1,12,0.88) 35%, rgba(2,1,12,0.96) 100%);
-  backdrop-filter: blur(14px);
+  background: rgba(1,0,8,1);
+  backdrop-filter: blur(18px);
 }
 .gp-nav-line {
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.28), rgba(167,139,250,0.45), rgba(139,92,246,0.28), transparent);
+  background: rgba(139,92,246,0.18);
 }
 .gp-ni {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -505,8 +499,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* ══ TOP HUD ══ */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 relative"
         style={{ background:"linear-gradient(180deg,rgba(2,1,14,0.97) 0%,rgba(2,1,14,0) 100%)" }}>
-        <div className="gp-hud-line" />
-
         {/* ── Esquerda: perfil + master card ── */}
         <div className="flex flex-col gap-2.5">
           {/* Avatar + anel girando APENAS aqui (vermelho no guia) */}
