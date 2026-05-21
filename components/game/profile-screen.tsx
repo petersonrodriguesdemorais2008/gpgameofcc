@@ -50,8 +50,9 @@ const BASE_PLAYER_TITLES = [
   "Lenda Viva",
 ]
 
-// Load base + any unlocked master titles from localStorage
+// Safe: only reads localStorage on client side (never during SSR)
 function getPlayerTitles(): string[] {
+  if (typeof window === "undefined") return BASE_PLAYER_TITLES
   try {
     const raw = localStorage.getItem("gpgame_titles") ?? "[]"
     const unlocked: string[] = JSON.parse(raw)
@@ -84,10 +85,11 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [showIconSelector, setShowIconSelector] = useState(false)
   const [activeTab, setActiveTab] = useState<"stats" | "achievements" | "showcase">("stats")
   const [copied, setCopied] = useState(false)
-  const [playerTitles, setPlayerTitles] = useState<string[]>(getPlayerTitles)
+  const [playerTitles, setPlayerTitles] = useState<string[]>(BASE_PLAYER_TITLES)
 
-  // Reload titles when a new one is unlocked
+  // Load unlocked titles client-side only (localStorage not available on server)
   useEffect(() => {
+    setPlayerTitles(getPlayerTitles())
     const handler = () => setPlayerTitles(getPlayerTitles())
     window.addEventListener("gpgame_title_unlocked", handler)
     return () => window.removeEventListener("gpgame_title_unlocked", handler)
