@@ -130,50 +130,135 @@ const GP_CSS = `
 .gp-ni-lbl { font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: rgba(109,40,217,0.5); transition: color .25s; font-family: inherit; }
 .gp-ni:hover .gp-ni-lbl { color: rgba(139,92,246,0.9); }
 
-/* ── JOGAR (azul) ── */
+/* ── JOGAR (azul vivo) ── */
+@keyframes gp-play-scan {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes gp-play-pulse {
+  0%,100% { box-shadow: 0 0 28px rgba(59,130,246,0.45), 0 0 60px rgba(99,179,237,0.18), inset 0 1px 0 rgba(147,197,253,0.15); }
+  50%     { box-shadow: 0 0 44px rgba(59,130,246,0.70), 0 0 90px rgba(99,179,237,0.28), inset 0 1px 0 rgba(147,197,253,0.22); }
+}
 .gp-play-btn {
-  background: rgba(15,30,80,0.72);
-  border: 2px solid rgba(59,130,246,0.72);
-  box-shadow: 0 0 32px rgba(59,130,246,0.28), inset 0 1px 0 rgba(147,197,253,0.12);
-  backdrop-filter: blur(10px);
-  transition: all .28s ease;
-  clip-path: polygon(0 0, 100% 0, 100% 72%, 88% 100%, 0 100%);
+  background: linear-gradient(140deg,
+    rgba(6,18,72,0.95) 0%,
+    rgba(17,50,160,0.90) 30%,
+    rgba(37,99,235,0.85) 58%,
+    rgba(10,36,130,0.95) 100%
+  );
+  border: 2.5px solid rgba(96,165,250,0.95);
+  animation: gp-play-pulse 2.6s ease-in-out infinite;
+  backdrop-filter: blur(18px);
+  transition: transform .25s ease, border-color .25s ease;
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 89% 100%, 0 100%);
+  position: relative; overflow: hidden;
+}
+.gp-play-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 10%, rgba(147,197,253,0.26) 50%, transparent 90%);
+  background-size: 280% 100%;
+  animation: gp-play-scan 2.5s linear infinite;
+  pointer-events: none;
+}
+.gp-play-btn::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(147,197,253,0.95) 30%, rgba(219,234,254,1) 50%, rgba(147,197,253,0.95) 70%, transparent 100%);
+  pointer-events: none;
 }
 .gp-play-btn:hover {
-  background: rgba(20,45,110,0.82);
-  border-color: rgba(96,165,250,0.95);
-  box-shadow: 0 0 52px rgba(59,130,246,0.45), 0 0 100px rgba(59,130,246,0.15), inset 0 1px 0 rgba(147,197,253,0.18);
-  transform: scale(1.015);
+  border-color: rgba(186,230,253,1);
+  transform: scale(1.022);
+  background: linear-gradient(140deg,
+    rgba(10,28,100,0.98) 0%,
+    rgba(25,65,190,0.95) 30%,
+    rgba(59,130,246,0.92) 58%,
+    rgba(15,48,160,0.98) 100%
+  );
 }
 
-/* ── COLEÇÃO (branco) ── */
+/* ── COLEÇÃO (branco cristal) ── */
+@keyframes gp-col-pulse {
+  0%,100% { box-shadow: 0 0 18px rgba(226,232,240,0.28), 0 0 40px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.18); }
+  50%     { box-shadow: 0 0 30px rgba(226,232,240,0.45), 0 0 60px rgba(255,255,255,0.14), inset 0 1px 0 rgba(255,255,255,0.25); }
+}
 .gp-col-btn {
-  background: rgba(255,255,255,0.07);
-  border: 2px solid rgba(255,255,255,0.68);
-  box-shadow: 0 0 16px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
-  transition: all .28s ease;
+  background: linear-gradient(140deg,
+    rgba(255,255,255,0.08) 0%,
+    rgba(240,248,255,0.13) 45%,
+    rgba(214,228,255,0.09) 100%
+  );
+  border: 2.5px solid rgba(255,255,255,0.88);
+  animation: gp-col-pulse 3s ease-in-out infinite;
+  backdrop-filter: blur(18px);
+  transition: transform .25s ease, border-color .25s ease, background .25s;
+  position: relative; overflow: hidden;
+}
+.gp-col-btn::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.95) 70%, transparent 100%);
+  pointer-events: none;
+}
+.gp-col-btn::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+  pointer-events: none;
 }
 .gp-col-btn:hover {
-  background: rgba(255,255,255,0.13);
   border-color: rgba(255,255,255,1);
-  box-shadow: 0 0 28px rgba(255,255,255,0.22);
-  transform: scale(1.03);
+  transform: scale(1.035);
+  background: linear-gradient(140deg,
+    rgba(255,255,255,0.14) 0%,
+    rgba(240,248,255,0.20) 45%,
+    rgba(214,228,255,0.15) 100%
+  );
+  box-shadow: 0 0 35px rgba(255,255,255,0.25), inset 0 1px 0 rgba(255,255,255,0.3);
 }
 
-/* ── GACHA (rosa) ── */
+/* ── GACHA (rosa neon) ── */
+@keyframes gp-gacha-pulse {
+  0%,100% { box-shadow: 0 0 24px rgba(236,72,153,0.50), 0 0 55px rgba(217,70,239,0.18), inset 0 1px 0 rgba(249,168,212,0.15); }
+  50%     { box-shadow: 0 0 40px rgba(236,72,153,0.75), 0 0 85px rgba(217,70,239,0.30), inset 0 1px 0 rgba(249,168,212,0.22); }
+}
 .gp-gacha-btn {
-  background: rgba(120,20,80,0.55);
-  border: 2px solid rgba(236,72,153,0.72);
-  box-shadow: 0 0 22px rgba(236,72,153,0.28), inset 0 1px 0 rgba(249,168,212,0.1);
-  backdrop-filter: blur(10px);
-  transition: all .28s ease;
+  background: linear-gradient(140deg,
+    rgba(100,10,55,0.90) 0%,
+    rgba(162,20,85,0.86) 35%,
+    rgba(219,39,119,0.80) 65%,
+    rgba(110,12,60,0.90) 100%
+  );
+  border: 2.5px solid rgba(244,114,182,0.95);
+  animation: gp-gacha-pulse 2.4s ease-in-out infinite;
+  backdrop-filter: blur(18px);
+  transition: transform .25s ease, border-color .25s ease;
+  position: relative; overflow: hidden;
+}
+.gp-gacha-btn::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(249,168,212,0.95) 30%, rgba(255,200,230,1) 50%, rgba(249,168,212,0.95) 70%, transparent 100%);
+  pointer-events: none;
+}
+.gp-gacha-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 10%, rgba(249,168,212,0.12) 50%, transparent 90%);
+  background-size: 280% 100%;
+  animation: gp-play-scan 3.2s linear infinite;
+  pointer-events: none;
 }
 .gp-gacha-btn:hover {
-  background: rgba(150,25,100,0.70);
-  border-color: rgba(244,114,182,1);
-  box-shadow: 0 0 40px rgba(236,72,153,0.45), 0 0 70px rgba(236,72,153,0.18);
-  transform: scale(1.03);
+  border-color: rgba(253,186,221,1);
+  transform: scale(1.035);
+  background: linear-gradient(140deg,
+    rgba(130,15,70,0.96) 0%,
+    rgba(190,30,100,0.92) 35%,
+    rgba(236,72,153,0.88) 65%,
+    rgba(140,15,75,0.96) 100%
+  );
 }
 
 /* Stamina pulse */
@@ -563,7 +648,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ══ 3 BOTÕES DESTAQUE — lateral esquerda, exatamente como no desenho ══ */}
       {!showPlayMenu && (
-        <div className="fixed z-20" style={{ left:24, top:120 }}>
+        <div className="fixed z-20" style={{ left:24, top:200 }}>
 
           {/* ── JOGAR (AZUL) — retângulo grande com corte no canto ── */}
           <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
