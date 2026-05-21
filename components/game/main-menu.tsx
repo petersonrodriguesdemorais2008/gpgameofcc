@@ -13,25 +13,33 @@ import { MasterMenuCard } from "./master-screen"
 
 // ── Injeção de CSS ────────────────────────────────────────────────────────────
 const GP_CSS = `
-.gp-scan{position:fixed;inset:0;z-index:100;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.055) 2px,rgba(0,0,0,0.055) 4px);}
-.gp-vign{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 32%,rgba(0,0,8,0.68) 100%);}
-.gp-grid{position:fixed;inset:0;z-index:4;pointer-events:none;background-image:linear-gradient(rgba(124,58,237,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.04) 1px,transparent 1px);background-size:48px 48px;}
-.gp-c{position:fixed;width:20px;height:20px;border-color:rgba(139,92,246,0.22);border-style:solid;z-index:5;pointer-events:none;}
+/* Scanlines: levíssimas, sem escurecer nada */
+.gp-scan{position:fixed;inset:0;z-index:100;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.012) 3px,rgba(0,0,0,0.012) 4px);}
+/* Vinheta: apenas nas bordas externas, centro 100% limpo */
+.gp-vign{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 68%,rgba(0,0,8,0.52) 100%);}
+.gp-grid{position:fixed;inset:0;z-index:4;pointer-events:none;background-image:linear-gradient(rgba(124,58,237,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.035) 1px,transparent 1px);background-size:48px 48px;}
+.gp-c{position:fixed;width:22px;height:22px;border-color:rgba(139,92,246,0.25);border-style:solid;z-index:5;pointer-events:none;}
 .gp-c-tl{top:10px;left:10px;border-width:2px 0 0 2px;}
-.gp-c-tr{top:10px;right:68px;border-width:2px 2px 0 0;}
+.gp-c-tr{top:10px;right:72px;border-width:2px 2px 0 0;}
 .gp-c-bl{bottom:80px;left:10px;border-width:0 0 2px 2px;}
-.gp-c-br{bottom:80px;right:68px;border-width:0 2px 2px 0;}
+.gp-c-br{bottom:80px;right:72px;border-width:0 2px 2px 0;}
 
 .gp-wbg{animation:gp-bgb 8s ease-in-out infinite;}
 @keyframes gp-bgb{0%,100%{filter:brightness(1);}50%{filter:brightness(1.07);}}
 
-.gp-av-ring{position:absolute;inset:-3px;border-radius:14px;background:conic-gradient(rgba(232,121,249,0.62),rgba(139,92,246,0.62),rgba(167,139,250,0.62),rgba(232,121,249,0.62));animation:gp-spin 5s linear infinite;z-index:0;}
+/* Anel girando — avatar E todos os painéis/botões do HUD */
 @keyframes gp-spin{to{transform:rotate(360deg);}}
+.gp-av-ring{position:absolute;inset:-3px;border-radius:14px;background:conic-gradient(rgba(232,121,249,0.72),rgba(139,92,246,0.72),rgba(167,139,250,0.72),rgba(232,121,249,0.72));animation:gp-spin 4.5s linear infinite;z-index:0;}
+/* Anel nos painéis do HUD (stamina / coins / gift) */
+.gp-hud-ring{position:absolute;inset:-2px;border-radius:16px;background:conic-gradient(rgba(139,92,246,0.55),rgba(192,132,252,0.55),rgba(232,121,249,0.35),rgba(139,92,246,0.55));animation:gp-spin 6s linear infinite;z-index:0;pointer-events:none;}
+/* Anel nos botões laterais */
+.gp-sb-ring{position:absolute;inset:-2px;border-radius:14px;background:conic-gradient(rgba(124,58,237,0.50),rgba(167,139,250,0.50),rgba(232,121,249,0.30),rgba(124,58,237,0.50));animation:gp-spin 7s linear infinite;z-index:0;pointer-events:none;}
+.gp-sb-ring.gold{background:conic-gradient(rgba(245,158,11,0.55),rgba(252,211,77,0.55),rgba(251,191,36,0.30),rgba(245,158,11,0.55));}
 
 .gp-logo{filter:drop-shadow(0 0 14px rgba(139,92,246,0.42));animation:gp-logo-f 4s ease-in-out infinite;}
 @keyframes gp-logo-f{0%,100%{transform:translateY(0px);}50%{transform:translateY(-2px);}}
 
-.gp-stam-bar{width:80px;height:5px;border-radius:3px;overflow:hidden;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.18);}
+.gp-stam-bar{width:96px;height:6px;border-radius:3px;overflow:hidden;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.18);}
 .gp-stam-fill{height:100%;border-radius:3px;animation:gp-stam 2.5s ease-in-out infinite;}
 @keyframes gp-stam{0%,100%{opacity:1;box-shadow:0 0 5px rgba(167,139,250,0.35);}50%{opacity:0.82;box-shadow:0 0 10px rgba(232,121,249,0.6);}}
 
@@ -41,33 +49,45 @@ const GP_CSS = `
 
 .gp-hud-sep{position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.28),rgba(167,139,250,0.5),rgba(139,92,246,0.28),transparent);}
 
-.gp-sb{width:52px;padding:7px 0;background:rgba(5,2,18,0.84);border:1px solid rgba(124,58,237,0.15);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .25s ease;position:relative;overflow:hidden;}
-.gp-sb::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:rgba(139,92,246,0.85);transform:scaleY(0);transform-origin:center;transition:transform .25s ease;}
-.gp-sb:hover{background:rgba(10,5,32,0.92);border-color:rgba(139,92,246,0.35);transform:translateX(-2px);box-shadow:2px 0 14px rgba(124,58,237,0.18);}
+/* ── Sidebar botões maiores ── */
+.gp-sb{width:64px;padding:9px 0;background:rgba(5,2,18,0.88);border:1px solid rgba(124,58,237,0.18);border-radius:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .25s ease;position:relative;overflow:hidden;}
+.gp-sb::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2.5px;background:rgba(139,92,246,0.9);transform:scaleY(0);transform-origin:center;transition:transform .25s ease;z-index:1;}
+.gp-sb:hover{background:rgba(10,5,32,0.95);border-color:rgba(139,92,246,0.40);transform:translateX(-2px);box-shadow:2px 0 18px rgba(124,58,237,0.22);}
 .gp-sb:hover::before{transform:scaleY(1);}
-.gp-sb-icon{width:17px;height:17px;color:rgba(167,139,250,0.8);transition:color .25s;}
-.gp-sb:hover .gp-sb-icon{color:rgba(192,132,252,0.95);filter:drop-shadow(0 0 4px rgba(167,139,250,0.45));}
-.gp-sb-lbl{font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(109,40,217,0.75);transition:color .25s;}
-.gp-sb:hover .gp-sb-lbl{color:rgba(139,92,246,0.9);}
-.gp-sb.gp-gold{background:rgba(12,7,2,0.84);border-color:rgba(245,158,11,0.22);}
-.gp-sb.gp-gold::before{background:rgba(245,158,11,0.85);}
-.gp-sb.gp-gold:hover{border-color:rgba(245,158,11,0.52);box-shadow:2px 0 14px rgba(245,158,11,0.18);}
+.gp-sb-icon{width:20px;height:20px;color:rgba(167,139,250,0.85);transition:color .25s;position:relative;z-index:1;}
+.gp-sb:hover .gp-sb-icon{color:rgba(192,132,252,1);filter:drop-shadow(0 0 5px rgba(167,139,250,0.55));}
+.gp-sb-lbl{font-size:8px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(139,92,246,0.80);transition:color .25s;position:relative;z-index:1;}
+.gp-sb:hover .gp-sb-lbl{color:rgba(167,139,250,0.95);}
+.gp-sb.gp-gold{background:rgba(12,7,2,0.88);border-color:rgba(245,158,11,0.25);}
+.gp-sb.gp-gold::before{background:rgba(252,211,77,0.9);}
+.gp-sb.gp-gold:hover{border-color:rgba(245,158,11,0.55);box-shadow:2px 0 18px rgba(245,158,11,0.22);}
 
+/* ── Bottom nav — fundo mais escuro com glitch leve ── */
 .gp-nav-bar{position:relative;}
-.gp-nav-bar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.28),rgba(167,139,250,0.5),rgba(139,92,246,0.28),transparent);}
-.gp-ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 3px;background:transparent;border:none;cursor:pointer;position:relative;transition:background .25s;}
+.gp-nav-bar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.35),rgba(167,139,250,0.60),rgba(139,92,246,0.35),transparent);}
+/* Botões NORMAIS da nav (Social, Missões, Guilda) */
+.gp-ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 3px;background:transparent;border:none;cursor:pointer;position:relative;transition:background .25s;}
 .gp-ni::after{content:'';position:absolute;bottom:0;left:22%;right:22%;height:2px;background:rgba(139,92,246,0.85);transform:scaleX(0);transition:transform .25s;border-radius:1px 1px 0 0;}
 .gp-ni:hover::after{transform:scaleX(1);}
 .gp-ni:hover{background:rgba(124,58,237,0.07);}
-.gp-ni svg{color:rgba(109,40,217,0.62);transition:all .25s;}
+.gp-ni svg{color:rgba(109,40,217,0.55);transition:all .25s;}
 .gp-ni:hover svg{color:rgba(167,139,250,0.9);filter:drop-shadow(0 0 5px rgba(167,139,250,0.45));}
-.gp-ni-lbl{font-size:7.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(109,40,217,0.55);transition:color .25s;}
+.gp-ni-lbl{font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(109,40,217,0.48);transition:color .25s;}
 .gp-ni:hover .gp-ni-lbl{color:rgba(139,92,246,0.85);}
+/* Botões em DESTAQUE da nav (Coleção, Gacha) */
+.gp-ni-hl{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 3px;background:transparent;border:none;cursor:pointer;position:relative;transition:all .25s;}
+.gp-ni-hl::after{content:'';position:absolute;bottom:0;left:15%;right:15%;height:2px;background:linear-gradient(90deg,rgba(139,92,246,0.5),rgba(232,121,249,1),rgba(139,92,246,0.5));transform:scaleX(0);transition:transform .25s;border-radius:1px 1px 0 0;}
+.gp-ni-hl:hover::after,.gp-ni-hl.gp-active::after{transform:scaleX(1);}
+.gp-ni-hl:hover,.gp-ni-hl.gp-active{background:rgba(124,58,237,0.10);}
+.gp-ni-hl svg{color:rgba(167,139,250,0.85);transition:all .25s;filter:drop-shadow(0 0 3px rgba(167,139,250,0.30));}
+.gp-ni-hl:hover svg{color:rgba(232,121,249,1);filter:drop-shadow(0 0 7px rgba(232,121,249,0.60));}
+.gp-ni-hl-lbl{font-size:8.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:rgba(167,139,250,0.75);transition:color .25s;}
+.gp-ni-hl:hover .gp-ni-hl-lbl{color:rgba(232,121,249,1);}
 
-.gp-jogar-btn{width:62px;height:62px;border-radius:18px;background:radial-gradient(circle at 38% 32%,#FF6B7A,#DC2626,#7F1D1D);border:2px solid rgba(255,107,122,0.45);box-shadow:0 0 18px rgba(220,38,38,0.55),0 0 36px rgba(220,38,38,0.22),inset 0 1px 0 rgba(255,255,255,0.18);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s ease;position:relative;overflow:hidden;}
-.gp-jogar-btn::before{content:'';position:absolute;top:12%;left:18%;right:18%;height:26%;background:linear-gradient(180deg,rgba(255,255,255,0.2),transparent);border-radius:50%;filter:blur(2px);pointer-events:none;}
-.gp-jogar-btn:hover{transform:scale(1.07);box-shadow:0 0 28px rgba(220,38,38,0.7),0 0 52px rgba(220,38,38,0.28),inset 0 1px 0 rgba(255,255,255,0.18);}
-.gp-jogar-ring{position:absolute;border-radius:22px;border-style:solid;pointer-events:none;}
+.gp-jogar-btn{width:68px;height:68px;border-radius:20px;background:radial-gradient(circle at 38% 32%,#FF6B7A,#DC2626,#7F1D1D);border:2px solid rgba(255,107,122,0.50);box-shadow:0 0 22px rgba(220,38,38,0.60),0 0 44px rgba(220,38,38,0.25),inset 0 1px 0 rgba(255,255,255,0.20);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s ease;position:relative;overflow:hidden;}
+.gp-jogar-btn::before{content:'';position:absolute;top:12%;left:18%;right:18%;height:26%;background:linear-gradient(180deg,rgba(255,255,255,0.22),transparent);border-radius:50%;filter:blur(2px);pointer-events:none;}
+.gp-jogar-btn:hover{transform:scale(1.08);box-shadow:0 0 32px rgba(220,38,38,0.75),0 0 60px rgba(220,38,38,0.32),inset 0 1px 0 rgba(255,255,255,0.20);}
+.gp-jogar-ring{position:absolute;border-radius:24px;border-style:solid;pointer-events:none;}
 
 /* Rarity borders (used in gift & gacha modals) */
 .rarity-lr{box-shadow:0 0 20px rgba(239,68,68,0.5),0 0 40px rgba(251,191,36,0.3);border:2px solid #fbbf24;}
@@ -349,25 +369,26 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         <div className="gp-hud-sep" />
 
         {/* Esquerda: perfil + MasterCard */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <button onClick={() => onNavigate("profile")}
-            className="flex items-center gap-2.5 group transition-all duration-200 hover:scale-[1.03]">
-            <div className="relative w-10 h-10">
-              <div className="gp-av-ring" />
-              <div className="relative w-10 h-10 rounded-xl overflow-hidden" style={{ zIndex: 1, border: "1.5px solid rgba(139,92,246,0.5)", boxShadow: "0 0 10px rgba(124,58,237,0.35)" }}>
+            className="flex items-center gap-3 group transition-all duration-200 hover:scale-[1.03]">
+            {/* Avatar com anel girando */}
+            <div className="relative w-14 h-14">
+              <div className="gp-av-ring" style={{ inset: -3, borderRadius: 16 }} />
+              <div className="relative w-14 h-14 rounded-2xl overflow-hidden" style={{ zIndex: 1, border: "2px solid rgba(139,92,246,0.55)", boxShadow: "0 0 14px rgba(124,58,237,0.40)" }}>
                 {playerProfile.avatarUrl ? (
-                  <Image src={playerProfile.avatarUrl || "/placeholder.svg"} alt={playerProfile.name} width={40} height={40} className="w-full h-full object-cover" />
+                  <Image src={playerProfile.avatarUrl || "/placeholder.svg"} alt={playerProfile.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#2E1065,#7C3AED)" }}>
-                    <span className="text-white text-base font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
+                    <span className="text-white text-xl font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
                   </div>
                 )}
               </div>
-              {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-black/80" style={{ zIndex: 2 }} />}
+              {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-black/80" style={{ zIndex: 2 }} />}
             </div>
             <div className="text-left">
-              <p className="text-white font-black text-sm leading-tight tracking-wide">{playerProfile.name}</p>
-              <p className="text-[10px] font-semibold tracking-widest" style={{ color: "rgba(167,139,250,0.6)" }}>{playerProfile.title || "Jogador"}</p>
+              <p className="text-white font-black text-base leading-tight tracking-wide">{playerProfile.name}</p>
+              <p className="text-[11px] font-bold tracking-widest" style={{ color: "rgba(167,139,250,0.7)" }}>{playerProfile.title || "Jogador"}</p>
             </div>
           </button>
           <MasterMenuCard onOpen={() => onNavigate("masters")} />
@@ -380,56 +401,65 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         </div>
 
         {/* Direita: recursos */}
-        <div className="flex items-center gap-2">
-          {/* Stamina */}
-          <div className="flex items-center gap-2 px-3 py-2" style={PANEL}>
-            <span className="text-sm" style={{ color: "rgba(96,165,250,0.9)", filter: "drop-shadow(0 0 5px rgba(96,165,250,0.65))" }}>⚡</span>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[8px] font-black tracking-widest uppercase" style={{ color: "rgba(167,139,250,0.5)" }}>Stamina</span>
-                <span className="font-black text-sm text-white tabular-nums">
-                  {stamina}<span className="font-normal text-xs" style={{ color: "rgba(167,139,250,0.4)" }}>/{maxStamina}</span>
-                </span>
-                {stamina < maxStamina && staminaNextTickSeconds > 0 && (
-                  <span className="text-[9px] font-bold tabular-nums" style={{ color: "rgba(52,211,153,0.55)" }}>
-                    {String(Math.floor(staminaNextTickSeconds / 60)).padStart(1,"0")}:{String(staminaNextTickSeconds % 60).padStart(2,"0")}
+        <div className="flex items-center gap-2.5">
+          {/* Stamina — com anel girando */}
+          <div className="relative" style={{ padding: 2 }}>
+            <div className="gp-hud-ring" style={{ borderRadius: 16 }} />
+            <div className="relative flex items-center gap-2.5 px-4 py-3 z-10" style={{ background: "rgba(5,2,18,0.90)", border: "1px solid rgba(124,58,237,0.22)", borderRadius: 14 }}>
+              <span className="text-lg" style={{ color: "rgba(96,165,250,0.95)", filter: "drop-shadow(0 0 6px rgba(96,165,250,0.70))" }}>⚡</span>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: "rgba(167,139,250,0.55)" }}>Stamina</span>
+                  <span className="font-black text-base text-white tabular-nums">
+                    {stamina}<span className="font-normal text-sm" style={{ color: "rgba(167,139,250,0.45)" }}>/{maxStamina}</span>
                   </span>
-                )}
-              </div>
-              <div className="gp-stam-bar">
-                <div className="gp-stam-fill transition-all duration-500" style={{
-                  width: `${Math.min(100, (stamina / maxStamina) * 100)}%`,
-                  background: stamina === maxStamina
-                    ? "linear-gradient(90deg,#7C3AED,#E879F9)"
-                    : stamina < maxStamina * 0.3
-                    ? "linear-gradient(90deg,#ef4444,#f87171)"
-                    : "linear-gradient(90deg,#6D28D9,#8B5CF6)",
-                }} />
+                  {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+                    <span className="text-[10px] font-bold tabular-nums" style={{ color: "rgba(52,211,153,0.65)" }}>
+                      {String(Math.floor(staminaNextTickSeconds / 60)).padStart(1,"0")}:{String(staminaNextTickSeconds % 60).padStart(2,"0")}
+                    </span>
+                  )}
+                </div>
+                <div className="gp-stam-bar">
+                  <div className="gp-stam-fill transition-all duration-500" style={{
+                    width: `${Math.min(100, (stamina / maxStamina) * 100)}%`,
+                    background: stamina === maxStamina
+                      ? "linear-gradient(90deg,#7C3AED,#E879F9)"
+                      : stamina < maxStamina * 0.3
+                      ? "linear-gradient(90deg,#ef4444,#f87171)"
+                      : "linear-gradient(90deg,#6D28D9,#8B5CF6)",
+                  }} />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Coins */}
-          <div className="flex items-center gap-1.5 px-3 py-2 cursor-pointer transition-all hover:brightness-110" style={PANEL}>
-            <div className="w-5 h-5 relative">
-              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={20} height={20} className="w-full h-full object-contain drop-shadow-lg" />
+          {/* Coins — com anel girando */}
+          <div className="relative" style={{ padding: 2 }}>
+            <div className="gp-hud-ring" style={{ borderRadius: 16, animationDuration: "5s", animationDirection: "reverse" }} />
+            <div className="relative flex items-center gap-2 px-4 py-3 cursor-pointer transition-all hover:brightness-110 z-10" style={{ background: "rgba(5,2,18,0.90)", border: "1px solid rgba(124,58,237,0.22)", borderRadius: 14 }}>
+              <div className="w-6 h-6 relative flex-shrink-0">
+                <Image src="/images/icons/gacha-coin.png" alt="Coins" width={24} height={24} className="w-full h-full object-contain drop-shadow-lg" />
+              </div>
+              <span className="font-black text-base tabular-nums" style={{ color: "#FCD34D", textShadow: "0 0 10px rgba(252,211,77,0.45)" }}>{coins.toLocaleString()}</span>
+              <span style={{ color: "rgba(167,139,250,0.45)", fontSize: 14 }}>+</span>
             </div>
-            <span className="font-black text-sm tabular-nums" style={{ color: "#FCD34D", textShadow: "0 0 8px rgba(252,211,77,0.4)" }}>{coins.toLocaleString()}</span>
-            <span style={{ color: "rgba(167,139,250,0.38)", fontSize: 13 }}>+</span>
           </div>
 
-          {/* Gift */}
-          <button onClick={() => setShowGiftBox(true)}
-            className="relative flex items-center justify-center w-9 h-9 transition-all hover:scale-105"
-            style={PANEL_BTN}>
-            <Gift className="w-4 h-4" style={{ color: "#FCD34D" }} />
-            {unclaimedGifts.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-black text-white"
-                style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", boxShadow: "0 0 6px rgba(239,68,68,0.6)", border: "1px solid rgba(255,255,255,0.18)" }}>
-                {unclaimedGifts.length}
-              </span>
-            )}
-          </button>
+          {/* Gift — com anel girando */}
+          <div className="relative" style={{ padding: 2 }}>
+            <div className="gp-hud-ring" style={{ borderRadius: 14, animationDuration: "4s" }} />
+            <button onClick={() => setShowGiftBox(true)}
+              className="relative flex items-center justify-center w-12 h-12 transition-all hover:scale-105 z-10"
+              style={{ background: "rgba(5,2,18,0.90)", border: "1px solid rgba(124,58,237,0.22)", borderRadius: 12 }}>
+              <Gift className="w-5 h-5" style={{ color: "#FCD34D", filter: "drop-shadow(0 0 4px rgba(252,211,77,0.5))" }} />
+              {unclaimedGifts.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white"
+                  style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", boxShadow: "0 0 8px rgba(239,68,68,0.7)", border: "1.5px solid rgba(255,255,255,0.2)" }}>
+                  {unclaimedGifts.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -446,82 +476,113 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ── BOTÕES LATERAIS ── */}
-      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
+      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2.5">
 
-        <button className="gp-sb" onClick={() => onNavigate("deck-builder")}>
-          <Hammer className="gp-sb-icon" /><span className="gp-sb-lbl">Deck</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" />
+          <button className="gp-sb" onClick={() => onNavigate("deck-builder")}>
+            <Hammer className="gp-sb-icon" /><span className="gp-sb-lbl">Deck</span>
+          </button>
+        </div>
 
-        <button className="gp-sb" onClick={() => onNavigate("history")}>
-          <History className="gp-sb-icon" /><span className="gp-sb-lbl">Hist.</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" style={{ animationDuration: "8s", animationDirection: "reverse" }} />
+          <button className="gp-sb" onClick={() => onNavigate("history")}>
+            <History className="gp-sb-icon" /><span className="gp-sb-lbl">Hist.</span>
+          </button>
+        </div>
 
-        <button className="gp-sb" onClick={() => onNavigate("settings")}>
-          <Settings className="gp-sb-icon" /><span className="gp-sb-lbl">Config</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" style={{ animationDuration: "6s" }} />
+          <button className="gp-sb" onClick={() => onNavigate("settings")}>
+            <Settings className="gp-sb-icon" /><span className="gp-sb-lbl">Config</span>
+          </button>
+        </div>
 
-        <button className="gp-sb relative" onClick={() => { setShowDailyBonus(true); setDailyBonusJustClaimed(false) }}>
-          {!dailyBonusClaimed && (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" style={{ boxShadow: "0 0 5px rgba(52,211,153,0.7)" }} />
-          )}
-          <span className="text-base leading-none">{dailyBonusClaimed ? "✅" : "🎁"}</span>
-          <span className="gp-sb-lbl" style={{ color: dailyBonusClaimed ? "rgba(100,100,100,0.55)" : "rgba(52,211,153,0.75)" }}>Daily</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" style={{ animationDuration: "5.5s", animationDirection: "reverse" }} />
+          <button className="gp-sb relative" onClick={() => { setShowDailyBonus(true); setDailyBonusJustClaimed(false) }}>
+            {!dailyBonusClaimed && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" style={{ boxShadow: "0 0 5px rgba(52,211,153,0.7)", zIndex: 2 }} />
+            )}
+            <span className="text-lg leading-none relative z-10">{dailyBonusClaimed ? "✅" : "🎁"}</span>
+            <span className="gp-sb-lbl relative z-10" style={{ color: dailyBonusClaimed ? "rgba(100,100,100,0.55)" : "rgba(52,211,153,0.85)" }}>Daily</span>
+          </button>
+        </div>
 
-        <button className="gp-sb" onClick={() => setShowWallpaperModal(true)}>
-          <span className="text-base leading-none">🖼️</span><span className="gp-sb-lbl">Tema</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" style={{ animationDuration: "9s" }} />
+          <button className="gp-sb" onClick={() => setShowWallpaperModal(true)}>
+            <span className="text-lg leading-none relative z-10">🖼️</span><span className="gp-sb-lbl relative z-10">Tema</span>
+          </button>
+        </div>
 
-        <button className="gp-sb relative" onClick={() => onNavigate("gear-pass")}>
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 animate-pulse" style={{ boxShadow: "0 0 5px rgba(251,191,36,0.7)" }} />
-          <Shield className="gp-sb-icon" /><span className="gp-sb-lbl">Passe</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" style={{ animationDuration: "5s", animationDirection: "reverse" }} />
+          <button className="gp-sb relative" onClick={() => onNavigate("gear-pass")}>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse" style={{ boxShadow: "0 0 5px rgba(251,191,36,0.7)", zIndex: 2 }} />
+            <Shield className="gp-sb-icon relative z-10" /><span className="gp-sb-lbl relative z-10">Passe</span>
+          </button>
+        </div>
 
-        <button className="gp-sb" onClick={() => onNavigate("story")}>
-          <BookOpen className="gp-sb-icon" /><span className="gp-sb-lbl">Story</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring" style={{ animationDuration: "7.5s" }} />
+          <button className="gp-sb" onClick={() => onNavigate("story")}>
+            <BookOpen className="gp-sb-icon relative z-10" /><span className="gp-sb-lbl relative z-10">Story</span>
+          </button>
+        </div>
 
-        <button className="gp-sb gp-gold" onClick={() => onNavigate("masters")}>
-          <Star className="gp-sb-icon" style={{ color: "rgba(252,211,77,0.9)" }} />
-          <span className="gp-sb-lbl" style={{ color: "rgba(245,158,11,0.85)" }}>Mestre</span>
-        </button>
+        <div className="relative" style={{ padding: 2 }}>
+          <div className="gp-sb-ring gold" style={{ animationDuration: "4.5s", animationDirection: "reverse" }} />
+          <button className="gp-sb gp-gold" onClick={() => onNavigate("masters")}>
+            <Star className="gp-sb-icon relative z-10" style={{ color: "rgba(252,211,77,0.95)" }} />
+            <span className="gp-sb-lbl relative z-10" style={{ color: "rgba(252,211,77,0.90)" }}>Mestre</span>
+          </button>
+        </div>
       </div>
 
       {/* ── BOTTOM NAV ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40"
-        style={{ background: "linear-gradient(180deg,rgba(2,1,14,0) 0%,rgba(2,1,14,0.97) 100%)", backdropFilter: "blur(14px)" }}>
+        style={{ background: "linear-gradient(180deg,rgba(2,1,14,0) 0%,rgba(1,0,10,0.98) 55%,rgba(0,0,8,1) 100%)", backdropFilter: "blur(18px)" }}>
 
         {!showPlayMenu ? (
-          <div className="gp-nav-bar flex items-end justify-around px-3 pb-4 pt-2 max-w-lg mx-auto">
+          <div className="gp-nav-bar flex items-end justify-around px-3 pb-4 pt-1.5 max-w-lg mx-auto">
 
-            <button className="gp-ni" onClick={() => onNavigate("collection")}>
-              <BookOpen className="w-5 h-5" /><span className="gp-ni-lbl">Coleção</span>
+            {/* COLEÇÃO — destaque */}
+            <button className="gp-ni-hl" onClick={() => onNavigate("collection")}>
+              <BookOpen className="w-6 h-6" />
+              <span className="gp-ni-hl-lbl">Coleção</span>
             </button>
 
-            <button className="gp-ni" onClick={() => onNavigate("gacha")}>
-              <Sparkles className="w-5 h-5" /><span className="gp-ni-lbl">Gacha</span>
+            {/* GACHA — destaque */}
+            <button className="gp-ni-hl" onClick={() => onNavigate("gacha")}>
+              <Sparkles className="w-6 h-6" />
+              <span className="gp-ni-hl-lbl">Gacha</span>
             </button>
 
-            {/* ── JOGAR ── */}
-            <button onClick={() => setShowPlayMenu(true)} className="relative flex flex-col items-center -mt-7">
-              <div className="relative" style={{ width: 66, height: 66 }}>
-                <div className="gp-jogar-ring gp-jr1" style={{ inset: -9, borderColor: "rgba(220,38,38,0.40)", borderWidth: 1.5 }} />
-                <div className="gp-jogar-ring gp-jr2" style={{ inset: -17, borderColor: "rgba(220,38,38,0.22)", borderWidth: 1 }} />
+            {/* ── JOGAR — máximo destaque ── */}
+            <button onClick={() => setShowPlayMenu(true)} className="relative flex flex-col items-center -mt-9">
+              <div className="relative" style={{ width: 72, height: 72 }}>
+                <div className="gp-jogar-ring gp-jr1" style={{ inset: -10, borderColor: "rgba(220,38,38,0.45)", borderWidth: 2 }} />
+                <div className="gp-jogar-ring gp-jr2" style={{ inset: -19, borderColor: "rgba(220,38,38,0.22)", borderWidth: 1.5 }} />
                 <div className="gp-jogar-btn" style={{ position: "absolute", inset: 0 }}>
-                  <Swords className="w-7 h-7 text-white relative" style={{ zIndex: 1, filter: "drop-shadow(0 0 4px rgba(255,200,200,0.35))" }} />
+                  <Swords className="w-8 h-8 text-white relative" style={{ zIndex: 1, filter: "drop-shadow(0 0 5px rgba(255,200,200,0.40))" }} />
                 </div>
               </div>
-              <span className="text-[9px] font-black tracking-widest mt-1.5 uppercase" style={{ color: "rgba(167,139,250,0.78)" }}>{t("play")}</span>
+              <span className="text-[10px] font-black tracking-widest mt-2 uppercase" style={{ color: "rgba(255,180,180,0.85)", textShadow: "0 0 8px rgba(220,38,38,0.5)" }}>{t("play")}</span>
             </button>
 
+            {/* Social — normal */}
             <button className="gp-ni" onClick={() => onNavigate("friends")}>
               <Users className="w-5 h-5" /><span className="gp-ni-lbl">Social</span>
             </button>
 
+            {/* Missões — normal */}
             <button className="gp-ni" onClick={() => onNavigate("missions")}>
               <Target className="w-5 h-5" /><span className="gp-ni-lbl">Missões</span>
             </button>
 
+            {/* Guilda — normal */}
             <button className="gp-ni" onClick={() => onNavigate("guild")}>
               <Users className="w-5 h-5" /><span className="gp-ni-lbl">Guilda</span>
             </button>
