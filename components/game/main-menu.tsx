@@ -269,6 +269,85 @@ const GP_CSS = `
 @keyframes cardFlipSpin{ 0%{transform:rotateY(0deg);} 45%{transform:rotateY(0deg);} 55%{transform:rotateY(180deg);} 100%{transform:rotateY(180deg);} }
 @keyframes cardHoloShift{ 0%,100%{opacity:0.05;} 50%{opacity:0.18;} }
 
+/* ── Music Player ── */
+@keyframes gp-disc-spin { to { transform: rotate(360deg); } }
+.gp-disc {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: conic-gradient(
+    rgba(139,92,246,0.9) 0deg, rgba(232,121,249,0.85) 90deg,
+    rgba(56,189,248,0.8) 180deg, rgba(167,139,250,0.9) 270deg,
+    rgba(139,92,246,0.9) 360deg
+  );
+  animation: gp-disc-spin 2.8s linear infinite;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 10px rgba(139,92,246,0.45);
+}
+.gp-disc-inner {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: rgba(4,2,16,0.95);
+  border: 1px solid rgba(139,92,246,0.4);
+}
+.gp-disc.paused { animation-play-state: paused; }
+.gp-music-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px 5px 6px;
+  background: rgba(4,2,16,0.88);
+  border: 1px solid rgba(139,92,246,0.22);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: border-color .25s, background .25s;
+  position: relative; overflow: hidden;
+  max-width: 220px;
+}
+.gp-music-bar:hover { border-color: rgba(139,92,246,0.5); background: rgba(8,4,28,0.94); }
+.gp-music-bar::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, rgba(232,121,249,0.8), rgba(139,92,246,0.8));
+  border-radius: 1px;
+}
+.gp-music-title {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px;
+  color: rgba(196,165,250,0.9); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 140px;
+  text-transform: uppercase;
+}
+.gp-music-sub {
+  font-size: 7.5px; font-weight: 600; letter-spacing: 1px;
+  color: rgba(109,40,217,0.65); text-transform: uppercase;
+}
+@keyframes gp-music-scroll {
+  0%   { transform: translateX(0); }
+  40%  { transform: translateX(-50%); }
+  50%  { transform: translateX(-50%); }
+  90%  { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+.gp-music-scroll { animation: gp-music-scroll 8s linear infinite; display: inline-block; white-space: nowrap; }
+
+/* Track selector mini-panel */
+.gp-music-panel {
+  position: fixed; z-index: 200;
+  background: rgba(3,1,14,0.97);
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(124,58,237,0.25), 0 12px 40px rgba(0,0,0,0.7);
+  backdrop-filter: blur(20px);
+  padding: 16px;
+  width: 260px;
+}
+.gp-track-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .2s;
+}
+.gp-track-item:hover { background: rgba(124,58,237,0.12); border-color: rgba(139,92,246,0.25); }
+.gp-track-item.active { background: rgba(109,40,217,0.18); border-color: rgba(139,92,246,0.45); }
+.gp-track-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.gp-track-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: rgba(196,165,250,0.9); }
+.gp-track-name.active { color: rgba(232,121,249,1); }
+.gp-track-sub { font-size: 9px; color: rgba(109,40,217,0.6); letter-spacing: 0.5px; }
+
 /* Misc */
 .rarity-lr{box-shadow:0 0 20px rgba(239,68,68,0.5),0 0 40px rgba(251,191,36,0.3);border:2px solid #fbbf24;}
 .rarity-ur{box-shadow:0 0 18px rgba(245,158,11,0.5);border:2px solid #f59e0b;}
@@ -318,6 +397,56 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     return new Date(last).toDateString() === new Date().toDateString()
   })
   const [dailyBonusJustClaimed, setDailyBonusJustClaimed] = useState(false)
+
+  /* ── Music player ── */
+  const TRACKS = [
+    { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main_Menu_OST_1.mp3" },
+    { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main_Menu_OST_2.mp3" },
+    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu Game OST.mp3"   },
+  ]
+  const MUSIC_LS = "gpgame_menu_track"
+  const [currentTrackId, setCurrentTrackId] = useState<string>(() =>
+    typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "ost1") : "ost1"
+  )
+  const [showMusicPanel, setShowMusicPanel] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const currentTrack = TRACKS.find(t => t.id === currentTrackId) ?? TRACKS[0]
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (!audioRef.current) {
+      audioRef.current = new Audio(currentTrack.src)
+      audioRef.current.loop = true
+      audioRef.current.volume = 0.55
+    }
+    const audio = audioRef.current
+    if (audio.src !== window.location.origin + currentTrack.src) {
+      audio.src = currentTrack.src
+    }
+    const tryPlay = () => audio.play().catch(() => {})
+    tryPlay()
+    const onEnd = () => { audio.currentTime = 0; tryPlay() }
+    audio.addEventListener("ended", onEnd)
+    return () => { audio.removeEventListener("ended", onEnd) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrackId])
+
+  useEffect(() => {
+    return () => { audioRef.current?.pause() }
+  }, [])
+
+  const handleSelectTrack = (id: string) => {
+    if (id === currentTrackId) { setShowMusicPanel(false); return }
+    audioRef.current?.pause()
+    if (audioRef.current) {
+      audioRef.current.src = TRACKS.find(t => t.id === id)!.src
+      audioRef.current.currentTime = 0
+    }
+    setCurrentTrackId(id)
+    if (typeof window !== "undefined") localStorage.setItem(MUSIC_LS, id)
+    setShowMusicPanel(false)
+  }
 
   const handleClaimDailyBonus = () => {
     if (dailyBonusClaimed) return
@@ -528,6 +657,65 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             </div>
           </button>
           <MasterMenuCard onOpen={() => onNavigate("masters")} />
+
+          {/* ── MUSIC BAR ── */}
+          <div className="relative">
+            <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:22 }} />
+            <div className="gp-music-bar relative" style={{ zIndex:1 }}
+              onClick={() => setShowMusicPanel(v => !v)}>
+              {/* Spinning disc */}
+              <div className={`gp-disc`}>
+                <div className="gp-disc-inner" />
+              </div>
+              {/* Track info */}
+              <div className="flex flex-col gap-0.5 overflow-hidden">
+                <span className="gp-music-sub">Tocando agora</span>
+                <div style={{ overflow:"hidden", maxWidth:140 }}>
+                  <span className="gp-music-title gp-music-scroll">{currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}</span>
+                </div>
+              </div>
+              {/* Toggle arrow */}
+              <span style={{ color:"rgba(109,40,217,0.65)", fontSize:10, marginLeft:"auto", flexShrink:0 }}>
+                {showMusicPanel ? "▲" : "▼"}
+              </span>
+            </div>
+
+            {/* Mini panel */}
+            {showMusicPanel && (
+              <div className="gp-music-panel" style={{ top:"calc(100% + 8px)", left:0 }}>
+                <div className="flex items-center justify-between mb-3">
+                  <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
+                    🎵 Músicas do Menu
+                  </p>
+                  <button onClick={() => setShowMusicPanel(false)}
+                    style={{ color:"rgba(139,92,246,0.5)", fontSize:14, background:"none", border:"none", cursor:"pointer", lineHeight:1 }}>✕</button>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {TRACKS.map(track => (
+                    <div key={track.id}
+                      className={`gp-track-item${track.id === currentTrackId ? " active" : ""}`}
+                      onClick={() => handleSelectTrack(track.id)}>
+                      <div className="gp-track-dot" style={{
+                        background: track.id === currentTrackId
+                          ? "linear-gradient(135deg,#E879F9,#8B5CF6)"
+                          : "rgba(109,40,217,0.35)",
+                        boxShadow: track.id === currentTrackId ? "0 0 6px rgba(232,121,249,0.6)" : "none",
+                      }} />
+                      <div>
+                        <p className={`gp-track-name${track.id === currentTrackId ? " active" : ""}`}>
+                          {track.name}
+                        </p>
+                        <p className="gp-track-sub">{track.sub}</p>
+                      </div>
+                      {track.id === currentTrackId && (
+                        <span style={{ marginLeft:"auto", fontSize:9, color:"rgba(232,121,249,0.8)", fontWeight:800, letterSpacing:"1px" }}>▶ NOW</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Centro: Logo ── */}
