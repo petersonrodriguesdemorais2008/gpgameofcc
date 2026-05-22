@@ -72,6 +72,7 @@ const GP_CSS = `
 
 /* Sidebar buttons */
 .gp-sb {
+  contain: layout style;
   width: 58px; padding: 9px 0;
   background: rgba(5,2,18,0.88);
   border: 1px solid rgba(124,58,237,0.18);
@@ -135,6 +136,7 @@ const GP_CSS = `
 }
 .gp-play-btn {
   will-change: box-shadow;
+  transform: translateZ(0);
   background: linear-gradient(140deg,
     rgba(6,18,72,0.95) 0%,
     rgba(17,50,160,0.90) 30%,
@@ -179,6 +181,8 @@ const GP_CSS = `
   50%     { box-shadow: 0 0 30px rgba(226,232,240,0.45), 0 0 60px rgba(255,255,255,0.14), inset 0 1px 0 rgba(255,255,255,0.25); }
 }
 .gp-col-btn {
+  will-change: box-shadow, border-color;
+  transform: translateZ(0);
   background: linear-gradient(140deg,
     rgba(255,255,255,0.08) 0%,
     rgba(240,248,255,0.13) 45%,
@@ -219,6 +223,8 @@ const GP_CSS = `
   50%     { box-shadow: 0 0 40px rgba(236,72,153,0.75), 0 0 85px rgba(217,70,239,0.30), inset 0 1px 0 rgba(249,168,212,0.22); }
 }
 .gp-gacha-btn {
+  will-change: box-shadow, border-color;
+  transform: translateZ(0);
   background: linear-gradient(140deg,
     rgba(100,10,55,0.90) 0%,
     rgba(162,20,85,0.86) 35%,
@@ -378,6 +384,10 @@ interface MainMenuProps {
   onClearMessage?: () => void
 }
 
+// ── Module-level audio singleton — survives navigation to Colecao/Gacha ──
+let _gpAudio: HTMLAudioElement | null = null
+let _gpTrackId: string = ""
+
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
   const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
@@ -411,35 +421,44 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "ost1") : "ost1"
   )
   const [showMusicPanel, setShowMusicPanel] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  // audioRef is intentionally module-level so music persists across screens
 
   const currentTrack = TRACKS.find(t => t.id === currentTrackId) ?? TRACKS[0]
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    if (!audioRef.current) {
-      audioRef.current = new Audio()
-      audioRef.current.loop = true
-      audioRef.current.volume = 0.55
+    // Create singleton once
+    if (!_gpAudio) {
+      _gpAudio = new Audio()
+      _gpAudio.loop = true
+      _gpAudio.volume = 0.55
     }
-    const audio = audioRef.current
-    audio.src = currentTrack.src
-    audio.load()
-    const tryPlay = () => { audio.play().catch(() => {}) }
+    // Only reload if track actually changed
+    if (_gpTrackId !== currentTrack.src) {
+      _gpTrackId = currentTrack.src
+      _gpAudio.src = currentTrack.src
+      _gpAudio.load()
+    }
+    const tryPlay = () => { _gpAudio?.play().catch(() => {}) }
     tryPlay()
     const onFirstClick = () => { tryPlay() }
     document.addEventListener("click", onFirstClick, { once: true })
     return () => { document.removeEventListener("click", onFirstClick) }
+    // NOTE: intentionally NO pause on unmount — music persists across screens
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackId])
-
-  useEffect(() => {
-    return () => { audioRef.current?.pause() }
-  }, [])
 
   const handleSelectTrack = (id: string) => {
     setShowMusicPanel(false)
     if (id === currentTrackId) return
+    // Transition: fade out old, fade in new
+    if (_gpAudio) {
+      const fadeOut = setInterval(() => {
+        if (!_gpAudio) { clearInterval(fadeOut); return }
+        if (_gpAudio.volume > 0.05) { _gpAudio.volume = Math.max(0, _gpAudio.volume - 0.05) }
+        else { _gpAudio.pause(); _gpAudio.volume = 0.55; clearInterval(fadeOut) }
+      }, 40)
+    }
     setCurrentTrackId(id)
     if (typeof window !== "undefined") localStorage.setItem(MUSIC_LS, id)
   }
@@ -562,11 +581,19 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       constructor(){this.reset()}
       reset(){this.x=Math.random()*canvas.width;this.y=Math.random()*canvas.height;this.sz=Math.random()*1.8+0.3;this.vx=(Math.random()-.5)*.28;this.vy=-Math.random()*.35-.07;this.op=Math.random()*.32+.06;this.hue=Math.random()*42+255;this.li=0;this.ml=Math.random()*180+90;this.tw=Math.random()*Math.PI*2}
       tick(){this.li++;this.x+=this.vx;this.y+=this.vy;this.tw+=.028;const pr=this.li/this.ml,fi=pr<.12?pr/.12:1,fo=pr>.72?(1-(pr-.72)/.28):1;this.cop=this.op*fi*fo*(.55+Math.sin(this.tw)*.45);if(this.li>=this.ml)this.reset()}
-      draw(){ctx!.beginPath();ctx!.arc(this.x,this.y,this.sz,0,Math.PI*2);ctx!.fillStyle=`hsla(${this.hue},70%,70%,${this.cop})`;ctx!.shadowBlur=this.sz*3.5;ctx!.shadowColor=`hsla(${this.hue},70%,70%,${this.cop*.35})`;ctx!.fill()}
+      draw(){ctx!.beginPath();ctx!.arc(this.x,this.y,this.sz,0,Math.PI*2);ctx!.fillStyle=`hsla(${this.hue},70%,70%,${this.cop})`;ctx!.fill()}
     }
     const ps:P[]=[]; for(let i=0;i<20;i++){const p=new P();p.li=Math.random()*p.ml;ps.push(p)}
-    const loop=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.shadowBlur=0;ps.forEach(p=>{p.tick();p.draw()});animId=requestAnimationFrame(loop)}
-    loop()
+    let lastT = 0
+    const loop=(t: number)=>{
+      animId=requestAnimationFrame(loop)
+      if(t - lastT < 33) return  // cap to ~30fps
+      lastT = t
+      ctx.clearRect(0,0,canvas.width,canvas.height)
+      ctx.shadowBlur=0
+      ps.forEach(p=>{p.tick();p.draw()})
+    }
+    animId=requestAnimationFrame(loop)
     return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
   }, [])
 
