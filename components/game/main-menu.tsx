@@ -134,6 +134,7 @@ const GP_CSS = `
   50%     { box-shadow: 0 0 44px rgba(59,130,246,0.70), 0 0 90px rgba(99,179,237,0.28), inset 0 1px 0 rgba(147,197,253,0.22); }
 }
 .gp-play-btn {
+  will-change: box-shadow;
   background: linear-gradient(140deg,
     rgba(6,18,72,0.95) 0%,
     rgba(17,50,160,0.90) 30%,
@@ -152,7 +153,7 @@ const GP_CSS = `
   position: absolute; inset: 0;
   background: linear-gradient(110deg, transparent 10%, rgba(147,197,253,0.26) 50%, transparent 90%);
   background-size: 280% 100%;
-  animation: gp-play-scan 2.5s linear infinite;
+  animation: gp-play-scan 4s linear infinite;
   pointer-events: none;
 }
 .gp-play-btn::before {
@@ -241,7 +242,7 @@ const GP_CSS = `
   position: absolute; inset: 0;
   background: linear-gradient(110deg, transparent 10%, rgba(249,168,212,0.12) 50%, transparent 90%);
   background-size: 280% 100%;
-  animation: gp-play-scan 3.2s linear infinite;
+  animation: gp-play-scan 5s linear infinite;
   pointer-events: none;
 }
 .gp-gacha-btn:hover {
@@ -272,6 +273,7 @@ const GP_CSS = `
 /* ── Music Player ── */
 @keyframes gp-disc-spin { to { transform: rotate(360deg); } }
 .gp-disc {
+  will-change: transform;
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
   background: conic-gradient(
     rgba(139,92,246,0.9) 0deg, rgba(232,121,249,0.85) 90deg,
@@ -508,7 +510,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
   const seededRand = (seed: number) => { const x = Math.sin(seed*9301+49297)*233280; return x-Math.floor(x) }
   const fallingCards = useMemo(() =>
-    Array.from({ length: 20 }, (_, i) => ({
+    Array.from({ length: 8 }, (_, i) => ({
       id: i,
       x:        (i*5.1)%94+3+(seededRand(i+1)*3-1.5),
       delay:    (i*0.85)%16+seededRand(i+20)*2,
@@ -562,7 +564,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       tick(){this.li++;this.x+=this.vx;this.y+=this.vy;this.tw+=.028;const pr=this.li/this.ml,fi=pr<.12?pr/.12:1,fo=pr>.72?(1-(pr-.72)/.28):1;this.cop=this.op*fi*fo*(.55+Math.sin(this.tw)*.45);if(this.li>=this.ml)this.reset()}
       draw(){ctx!.beginPath();ctx!.arc(this.x,this.y,this.sz,0,Math.PI*2);ctx!.fillStyle=`hsla(${this.hue},70%,70%,${this.cop})`;ctx!.shadowBlur=this.sz*3.5;ctx!.shadowColor=`hsla(${this.hue},70%,70%,${this.cop*.35})`;ctx!.fill()}
     }
-    const ps:P[]=[]; for(let i=0;i<45;i++){const p=new P();p.li=Math.random()*p.ml;ps.push(p)}
+    const ps:P[]=[]; for(let i=0;i<20;i++){const p=new P();p.li=Math.random()*p.ml;ps.push(p)}
     const loop=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.shadowBlur=0;ps.forEach(p=>{p.tick();p.draw()});animId=requestAnimationFrame(loop)}
     loop()
     return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
@@ -598,15 +600,12 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {fallingCards.map(card => {
               const th = CARD_THEMES[card.themeIndex]
-              const sw = 5+(card.id%4)*.8; const fl = 9+(card.id%5)*1.5
+              const sw = 5+(card.id%4)*.8
               return (
-                <div key={card.id} className="absolute" style={{left:`${card.x}%`,animation:`fallingCard ${card.duration}s linear infinite`,animationDelay:`${card.delay}s`}}>
-                  <div style={{animation:`cardSway ${sw}s ease-in-out infinite`,animationDelay:`${card.delay*.4}s`}}>
-                    <div style={{animation:`cardFlipSpin ${fl}s ease-in-out infinite`,animationDelay:`${card.delay*.7}s`,transformStyle:"preserve-3d"}}>
-                      <div style={{width:`${card.width}px`,height:`${card.height}px`,background:th.bg,border:`1.5px solid ${th.border}`,borderRadius:8,boxShadow:`0 0 14px ${th.glow}`,backfaceVisibility:"hidden",overflow:"hidden",position:"relative"}}>
-                        <div style={{position:"absolute",inset:0,background:`linear-gradient(${card.shimmerAngle}deg,transparent 30%,rgba(255,255,255,0.15) 50%,transparent 70%)`,animation:`cardHoloShift ${3+(card.id%3)*.8}s ease-in-out infinite`}} />
-                      </div>
-                      <div style={{position:"absolute",top:0,left:0,width:`${card.width}px`,height:`${card.height}px`,background:"linear-gradient(145deg,#0f172a,#1e293b)",border:`1.5px solid ${th.border}`,borderRadius:8,backfaceVisibility:"hidden",transform:"rotateY(180deg)"}} />
+                <div key={card.id} className="absolute" style={{left:`${card.x}%`,animation:`fallingCard ${card.duration}s linear infinite`,animationDelay:`${card.delay}s`,willChange:"transform"}}>
+                  <div style={{animation:`cardSway ${sw}s ease-in-out infinite`,animationDelay:`${card.delay*.4}s`,willChange:"transform"}}>
+                    <div style={{width:`${card.width}px`,height:`${card.height}px`,background:th.bg,border:`1.5px solid ${th.border}`,borderRadius:8,boxShadow:`0 0 10px ${th.glow}`,overflow:"hidden",position:"relative"}}>
+                      <div style={{position:"absolute",inset:0,background:`linear-gradient(${card.shimmerAngle}deg,transparent 35%,rgba(255,255,255,0.12) 50%,transparent 65%)`}} />
                     </div>
                   </div>
                 </div>
@@ -703,12 +702,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
           </div>
 
-          {/* GIFT — com anel girando (faz parte do grupo verde) */}
+          {/* GIFT */}
           <div className="relative" style={{ borderRadius:13 }}>
-            <div className="gp-conic-ring" style={{ inset:-2, borderRadius:13 }} />
             <button onClick={() => setShowGiftBox(true)}
               className="relative flex items-center justify-center transition-all hover:scale-105"
-              style={{ width:48, height:48, background:"rgba(10,6,2,0.92)", borderRadius:11, zIndex:1, border:"1px solid rgba(245,158,11,0.18)" }}>
+              style={{ width:48, height:48, background:"rgba(10,6,2,0.92)", borderRadius:11, border:"1.5px solid rgba(245,158,11,0.35)" }}>
               <Gift className="w-5 h-5" style={{color:"#FCD34D"}} />
               {unclaimedGifts.length > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white"
@@ -725,7 +723,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <button
         onClick={() => setShowMusicPanel(v => !v)}
         className="gp-music-bar"
-        style={{ position:"fixed", zIndex:50, bottom:82, left:20, width:230 }}>
+        style={{ position:"fixed", zIndex:50, bottom:110, left:20, width:230 }}>
         <div className="gp-disc"><div className="gp-disc-inner" /></div>
         <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
           <span className="gp-music-sub">Tocando agora</span>
@@ -742,7 +740,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── Music panel — separate fixed element so it's never clipped ── */}
       {showMusicPanel && (
-        <div className="fixed z-[9999]" style={{ bottom: 162, left: 20 }}>
+        <div className="fixed z-[9999]" style={{ bottom: 200, left: 20 }}>
           <div className="gp-music-panel">
             <div className="flex items-center justify-between mb-3">
               <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
@@ -800,7 +798,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           { label:"Mestre", icon:<Star />,     onClick:()=>onNavigate("masters"),       gold:true,  dot:false    },
         ].map(btn => (
           <div key={btn.label} className="relative" style={{ borderRadius:14 }}>
-            <div className={btn.gold ? "gp-conic-ring-gold" : "gp-conic-ring-slow"} style={{ inset:-2, borderRadius:14 }} />
             <button className={`gp-sb${btn.gold?" gp-gold":""}`} onClick={btn.onClick}>
               {btn.dot && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{background:btn.dotColor||"rgba(239,68,68,0.9)",boxShadow:`0 0 6px ${btn.dotColor||"rgba(239,68,68,0.9)"}`}} />}
               {btn.emoji ? <span style={{fontSize:17,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
