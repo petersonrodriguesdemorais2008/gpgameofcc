@@ -296,8 +296,8 @@ const GP_CSS = `
   border-radius: 20px;
   cursor: pointer;
   transition: border-color .25s, background .25s;
-  position: relative; overflow: hidden;
-  max-width: 220px;
+  overflow: hidden;
+  max-width: 230px;
 }
 .gp-music-bar:hover { border-color: rgba(139,92,246,0.5); background: rgba(8,4,28,0.94); }
 .gp-music-bar::before {
@@ -724,8 +724,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* ══ MUSIC BAR — barra fixa topo, alinhada à esquerda perto do perfil ══ */}
       <button
         onClick={() => setShowMusicPanel(v => !v)}
-        className="gp-music-bar fixed z-50"
-        style={{ top: 16, left: 280, width: 230 }}>
+        className="gp-music-bar"
+        style={{ position:"fixed", zIndex:50, top:120, left:20, width:230 }}>
         <div className="gp-disc"><div className="gp-disc-inner" /></div>
         <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
           <span className="gp-music-sub">Tocando agora</span>
@@ -742,7 +742,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── Music panel — separate fixed element so it's never clipped ── */}
       {showMusicPanel && (
-        <div className="fixed z-[9999]" style={{ top: 64, left: 280 }}>
+        <div className="fixed z-[9999]" style={{ top: 170, left: 20 }}>
           <div className="gp-music-panel">
             <div className="flex items-center justify-between mb-3">
               <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
