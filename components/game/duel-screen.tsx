@@ -1,5 +1,7 @@
 "use client"
 
+import { pauseMenuMusic, resumeMenuMusic } from "@/components/game/main-menu"
+
 import React, { Component } from "react"
 import DUEL_OST_SRC from "./duel-ost"
 import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context"
@@ -1914,6 +1916,7 @@ function getDuelOst(): HTMLAudioElement | null {
 }
 
 function startDuelOst() {
+  pauseMenuMusic() // stop menu music before duel OST starts
   const ost = getDuelOst()
   if (!ost) return
   if (!ost.paused) return // already playing
@@ -1935,7 +1938,7 @@ function startDuelOst() {
 function stopDuelOst(fadeOut = true) {
   const ost = getDuelOst()
   if (!ost || ost.paused) return
-  if (!fadeOut) { ost.pause(); ost.currentTime = 0; return }
+  if (!fadeOut) { ost.pause(); ost.currentTime = 0; resumeMenuMusic(); return }
   // Smooth fade-out over 1.5s
   const startVol = ost.volume
   const steps = 30
@@ -1949,6 +1952,7 @@ function stopDuelOst(fadeOut = true) {
       ost.pause()
       ost.currentTime = 0
       ost.volume = 0.35 // reset for next time
+      resumeMenuMusic() // resume menu music after duel ends
     }
   }, 50)
 }
