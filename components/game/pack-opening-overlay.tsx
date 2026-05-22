@@ -478,7 +478,7 @@ export function PackOpeningOverlay({ packId, onClose }: PackOpeningOverlayProps)
                         backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",
                         transform:"rotateY(180deg)",
                       }}>
-                        <Image src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="Card Back" fill sizes="115px" className="object-cover"/>
+                        <Image src={CARD_BACK_IMAGE || "/images/card-back.png"} alt="Card Back" fill sizes="115px" className="object-cover"/>
                       </div>
                     </div>
                   </div>
@@ -581,7 +581,7 @@ export function PackOpeningOverlay({ packId, onClose }: PackOpeningOverlayProps)
         </div>
       )}
 
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{__html: `
         @keyframes packFloat{0%,100%{transform:translateY(0px) rotate(0deg)}30%{transform:translateY(-12px) rotate(0.5deg)}70%{transform:translateY(-8px) rotate(-0.3deg)}}
         @keyframes abraLabel{0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(0.85)}60%{opacity:1;transform:translateX(-50%) translateY(2px) scale(1.05)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
         @keyframes swipeHint{0%,100%{transform:translateX(0);opacity:0.7}40%{transform:translateX(18px);opacity:1}80%{transform:translateX(8px);opacity:0.9}}
@@ -605,7 +605,7 @@ export function PackOpeningOverlay({ packId, onClose }: PackOpeningOverlayProps)
         @keyframes cardPopIn{0%{transform:scale(0) rotate(-12deg);opacity:0}55%{transform:scale(1.12) rotate(2deg)}80%{transform:scale(0.97) rotate(-0.5deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
         @keyframes shake{0%,100%{transform:translateX(0) rotate(0deg)}10%,50%,90%{transform:translateX(-10px) rotate(-1deg)}30%,70%{transform:translateX(10px) rotate(1deg)}}
         .animate-shake{animation:shake 0.5s cubic-bezier(.36,.07,.19,.97) both}
-      `}</style>
+      `}} />
     </div>
   )
 }
