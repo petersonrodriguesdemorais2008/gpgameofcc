@@ -416,23 +416,18 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   useEffect(() => {
     if (typeof window === "undefined") return
     if (!audioRef.current) {
-      audioRef.current = new Audio(currentTrack.src)
+      audioRef.current = new Audio()
       audioRef.current.loop = true
       audioRef.current.volume = 0.55
     }
     const audio = audioRef.current
-    if (!audio.src.endsWith(currentTrack.src.replace(/^\//, ''))) {
-      audio.src = currentTrack.src
-      audio.load()
-    }
-    const tryPlay = () => audio.play().catch(() => {})
+    audio.src = currentTrack.src
+    audio.load()
+    const tryPlay = () => { audio.play().catch(() => {}) }
     tryPlay()
-    // Also try on first user interaction if autoplay blocked
-    const onInteract = () => { tryPlay(); document.removeEventListener('click', onInteract) }
-    document.addEventListener('click', onInteract, { once: true })
-    const onEnd = () => { audio.currentTime = 0; tryPlay() }
-    audio.addEventListener("ended", onEnd)
-    return () => { audio.removeEventListener("ended", onEnd) }
+    const onFirstClick = () => { tryPlay() }
+    document.addEventListener("click", onFirstClick, { once: true })
+    return () => { document.removeEventListener("click", onFirstClick) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackId])
 
@@ -441,15 +436,10 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   }, [])
 
   const handleSelectTrack = (id: string) => {
-    if (id === currentTrackId) { setShowMusicPanel(false); return }
-    audioRef.current?.pause()
-    if (audioRef.current) {
-      audioRef.current.src = TRACKS.find(t => t.id === id)!.src
-      audioRef.current.currentTime = 0
-    }
+    setShowMusicPanel(false)
+    if (id === currentTrackId) return
     setCurrentTrackId(id)
     if (typeof window !== "undefined") localStorage.setItem(MUSIC_LS, id)
-    setShowMusicPanel(false)
   }
 
   const handleClaimDailyBonus = () => {
@@ -731,34 +721,29 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         </div>
       </div>
 
-      {/* ══ MUSIC BAR — fixed top center-left (posição do desenho amarelo) ══ */}
-      <div className="fixed z-50" style={{ top: 18, left: "calc(50% - 140px)" }}>
-        {/* Bar */}
-        <button
-          onClick={() => setShowMusicPanel(v => !v)}
-          className="gp-music-bar"
-          style={{ width: 230 }}>
-          {/* Spinning disc */}
-          <div className="gp-disc">
-            <div className="gp-disc-inner" />
+      {/* ══ MUSIC BAR — barra fixa topo, alinhada à esquerda perto do perfil ══ */}
+      <button
+        onClick={() => setShowMusicPanel(v => !v)}
+        className="gp-music-bar fixed z-50"
+        style={{ top: 16, left: 280, width: 230 }}>
+        <div className="gp-disc"><div className="gp-disc-inner" /></div>
+        <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
+          <span className="gp-music-sub">Tocando agora</span>
+          <div style={{ overflow: "hidden" }}>
+            <span className="gp-music-title gp-music-scroll">
+              {currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}
+            </span>
           </div>
-          {/* Track info */}
-          <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
-            <span className="gp-music-sub">Tocando agora</span>
-            <div style={{ overflow: "hidden" }}>
-              <span className="gp-music-title gp-music-scroll">
-                {currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}
-              </span>
-            </div>
-          </div>
-          <span style={{ color: "rgba(167,139,250,0.6)", fontSize: 10, flexShrink: 0 }}>
-            {showMusicPanel ? "▲" : "▼"}
-          </span>
-        </button>
+        </div>
+        <span style={{ color: "rgba(167,139,250,0.6)", fontSize: 10, flexShrink: 0 }}>
+          {showMusicPanel ? "▲" : "▼"}
+        </span>
+      </button>
 
-        {/* Mini panel — fixed below bar */}
-        {showMusicPanel && (
-          <div className="gp-music-panel" style={{ top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)" }}>
+      {/* ── Music panel — separate fixed element so it's never clipped ── */}
+      {showMusicPanel && (
+        <div className="fixed z-[9999]" style={{ top: 64, left: 280 }}>
+          <div className="gp-music-panel">
             <div className="flex items-center justify-between mb-3">
               <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
                 🎵 Músicas do Menu
@@ -770,16 +755,14 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <div className="flex flex-col gap-1.5">
               {TRACKS.map(track => (
                 <div key={track.id}
-                  className={`gp-track-item${track.id === currentTrackId ? " active" : ""}`}
+                  className={"gp-track-item" + (track.id === currentTrackId ? " active" : "")}
                   onClick={e => { e.stopPropagation(); handleSelectTrack(track.id) }}>
                   <div className="gp-track-dot" style={{
-                    background: track.id === currentTrackId
-                      ? "linear-gradient(135deg,#E879F9,#8B5CF6)"
-                      : "rgba(109,40,217,0.35)",
+                    background: track.id === currentTrackId ? "linear-gradient(135deg,#E879F9,#8B5CF6)" : "rgba(109,40,217,0.35)",
                     boxShadow: track.id === currentTrackId ? "0 0 6px rgba(232,121,249,0.6)" : "none",
                   }} />
                   <div className="flex-1">
-                    <p className={`gp-track-name${track.id === currentTrackId ? " active" : ""}`}>{track.name}</p>
+                    <p className={"gp-track-name" + (track.id === currentTrackId ? " active" : "")}>{track.name}</p>
                     <p className="gp-track-sub">{track.sub}</p>
                   </div>
                   {track.id === currentTrackId && (
@@ -789,8 +772,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── STATUS MESSAGE ── */}
       {statusMessage && (
