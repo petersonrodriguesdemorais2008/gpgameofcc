@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useGame } from "@/contexts/game-context"
 import { PlayerSetupScreen } from "./player-setup-screen"
-import MainMenu from "./main-menu"
+import MainMenu, { pauseMenuMusic, resumeMenuMusic } from "./main-menu"
 import GachaScreen from "./gacha-screen"
 import CollectionScreen from "./collection-screen"
 import DeckBuilderScreen from "./deck-builder-screen"
@@ -83,7 +83,17 @@ export function GameWrapper() {
     return () => clearTimeout(timer)
   }, [playerProfile.hasCompletedSetup])
 
+  const DUEL_SCREENS = ["duel-bot","duel-player","duel-draft","duel-roguelike","duel-catastrophe"]
+
   const navigateTo = (screen: GameScreen) => {
+    // Pause menu music when entering any duel — duel has its own OST
+    if (DUEL_SCREENS.includes(screen)) {
+      pauseMenuMusic()
+    } else if (screen === "menu") {
+      // Resume when returning to menu
+      resumeMenuMusic()
+    }
+
     if (screen === "duel-bot") {
       setDuelMode("bot")
       setCurrentScreen("duel-bot")
