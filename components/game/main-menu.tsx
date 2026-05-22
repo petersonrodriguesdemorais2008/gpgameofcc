@@ -658,64 +658,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </button>
           <MasterMenuCard onOpen={() => onNavigate("masters")} />
 
-          {/* ── MUSIC BAR ── */}
-          <div className="relative">
-            <div className="gp-conic-ring-slow" style={{ inset:-2, borderRadius:22 }} />
-            <div className="gp-music-bar relative" style={{ zIndex:1 }}
-              onClick={() => setShowMusicPanel(v => !v)}>
-              {/* Spinning disc */}
-              <div className={`gp-disc`}>
-                <div className="gp-disc-inner" />
-              </div>
-              {/* Track info */}
-              <div className="flex flex-col gap-0.5 overflow-hidden">
-                <span className="gp-music-sub">Tocando agora</span>
-                <div style={{ overflow:"hidden", maxWidth:140 }}>
-                  <span className="gp-music-title gp-music-scroll">{currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}</span>
-                </div>
-              </div>
-              {/* Toggle arrow */}
-              <span style={{ color:"rgba(109,40,217,0.65)", fontSize:10, marginLeft:"auto", flexShrink:0 }}>
-                {showMusicPanel ? "▲" : "▼"}
-              </span>
-            </div>
-
-            {/* Mini panel */}
-            {showMusicPanel && (
-              <div className="gp-music-panel" style={{ top:"calc(100% + 8px)", left:0 }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
-                    🎵 Músicas do Menu
-                  </p>
-                  <button onClick={() => setShowMusicPanel(false)}
-                    style={{ color:"rgba(139,92,246,0.5)", fontSize:14, background:"none", border:"none", cursor:"pointer", lineHeight:1 }}>✕</button>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {TRACKS.map(track => (
-                    <div key={track.id}
-                      className={`gp-track-item${track.id === currentTrackId ? " active" : ""}`}
-                      onClick={() => handleSelectTrack(track.id)}>
-                      <div className="gp-track-dot" style={{
-                        background: track.id === currentTrackId
-                          ? "linear-gradient(135deg,#E879F9,#8B5CF6)"
-                          : "rgba(109,40,217,0.35)",
-                        boxShadow: track.id === currentTrackId ? "0 0 6px rgba(232,121,249,0.6)" : "none",
-                      }} />
-                      <div>
-                        <p className={`gp-track-name${track.id === currentTrackId ? " active" : ""}`}>
-                          {track.name}
-                        </p>
-                        <p className="gp-track-sub">{track.sub}</p>
-                      </div>
-                      {track.id === currentTrackId && (
-                        <span style={{ marginLeft:"auto", fontSize:9, color:"rgba(232,121,249,0.8)", fontWeight:800, letterSpacing:"1px" }}>▶ NOW</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ── Centro: Logo ── */}
@@ -789,6 +731,67 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ══ MUSIC BAR — fixed top center-left (posição do desenho amarelo) ══ */}
+      <div className="fixed z-50" style={{ top: 18, left: "50%", transform: "translateX(-50%)" }}>
+        {/* Bar */}
+        <button
+          onClick={() => setShowMusicPanel(v => !v)}
+          className="gp-music-bar"
+          style={{ width: 230 }}>
+          {/* Spinning disc */}
+          <div className="gp-disc">
+            <div className="gp-disc-inner" />
+          </div>
+          {/* Track info */}
+          <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
+            <span className="gp-music-sub">Tocando agora</span>
+            <div style={{ overflow: "hidden" }}>
+              <span className="gp-music-title gp-music-scroll">
+                {currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}
+              </span>
+            </div>
+          </div>
+          <span style={{ color: "rgba(167,139,250,0.6)", fontSize: 10, flexShrink: 0 }}>
+            {showMusicPanel ? "▲" : "▼"}
+          </span>
+        </button>
+
+        {/* Mini panel — fixed below bar */}
+        {showMusicPanel && (
+          <div className="gp-music-panel" style={{ top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
+                🎵 Músicas do Menu
+              </p>
+              <button
+                onClick={e => { e.stopPropagation(); setShowMusicPanel(false) }}
+                style={{ color:"rgba(139,92,246,0.5)", fontSize:14, background:"none", border:"none", cursor:"pointer", lineHeight:1 }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {TRACKS.map(track => (
+                <div key={track.id}
+                  className={`gp-track-item${track.id === currentTrackId ? " active" : ""}`}
+                  onClick={e => { e.stopPropagation(); handleSelectTrack(track.id) }}>
+                  <div className="gp-track-dot" style={{
+                    background: track.id === currentTrackId
+                      ? "linear-gradient(135deg,#E879F9,#8B5CF6)"
+                      : "rgba(109,40,217,0.35)",
+                    boxShadow: track.id === currentTrackId ? "0 0 6px rgba(232,121,249,0.6)" : "none",
+                  }} />
+                  <div className="flex-1">
+                    <p className={`gp-track-name${track.id === currentTrackId ? " active" : ""}`}>{track.name}</p>
+                    <p className="gp-track-sub">{track.sub}</p>
+                  </div>
+                  {track.id === currentTrackId && (
+                    <span style={{ fontSize:9, color:"rgba(232,121,249,0.85)", fontWeight:800, letterSpacing:"1px" }}>▶ NOW</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── STATUS MESSAGE ── */}
