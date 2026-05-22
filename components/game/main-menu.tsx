@@ -128,40 +128,10 @@ const GP_CSS = `
   width: 1px;
   background: linear-gradient(180deg, transparent, rgba(139,92,246,0.25), transparent);
 }
-/* Beat pulse layer */
-@keyframes gp-beat-out {
-  0%   { transform: scale(0.95); opacity: 0.55; }
-  60%  { transform: scale(1.08); opacity: 0.18; }
-  100% { transform: scale(1.2);  opacity: 0; }
-}
-.gp-beat-pulse {
-  position: fixed; inset: 0; z-index: 1; pointer-events: none;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 50%,
-    rgba(109,40,217,0.22) 0%,
-    rgba(139,92,246,0.10) 40%,
-    transparent 72%
-  );
-  animation: gp-beat-out 0.65s ease-out forwards;
-}
-/* Parallax bg */
-.gp-parallax-bg {
-  transition: transform 0.12s ease-out;
-  will-change: transform;
-}
-/* Touch particle */
-@keyframes gp-tp { 0%{transform:scale(1);opacity:0.8;} 100%{transform:scale(2.8);opacity:0;} }
-.gp-touch-p {
-  position: fixed; border-radius: 50%; pointer-events: none; z-index: 200;
-  animation: gp-tp 0.55s ease-out forwards;
-}
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
 /* Micro-animations on sidebar */
 .gp-sb:active { transform: translateX(-2px) scale(0.96); }
-/* Logo micro-pulse on beat */
-@keyframes gp-beat-logo { 0%,100%{transform:scale(1);} 50%{transform:scale(1.03);} }
-.gp-beat-logo { animation: gp-beat-logo 0.4s ease-out; }
 .gp-ni {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 3px; padding: 9px 3px; background: transparent; border: none;
@@ -646,12 +616,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   }
   const unclaimedGifts = giftBoxes.filter(g => !g.claimed)
 
-  const canvasRef    = useRef<HTMLCanvasElement>(null)
-  const beatCanvasRef = useRef<HTMLCanvasElement>(null)
-  const parallaxRef  = useRef<HTMLDivElement>(null)
-  const [beats, setBeats] = useState<number[]>([])   // timestamps for beat pulses
-  const [touchParts, setTouchParts] = useState<{id:number;x:number;y:number;color:string}[]>([])
-  const touchPartId = useRef(0)
+  const canvasRef   = useRef<HTMLCanvasElement>(null)
+  const fxCanvasRef = useRef<HTMLCanvasElement>(null)  // beat + touch canvas (no React state)
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return
     const ctx = canvas.getContext("2d"); if (!ctx) return
@@ -679,100 +645,188 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
   }, [])
 
-  // ── Beat generator — simulates rhythm pulses via AudioContext analyser ──
+  // ── FX Canvas: beat pulses + touch particles — ALL canvas, zero React state ──
   useEffect(() => {
-    if (typeof window === "undefined") return
-    let animId: number
+    const canvas = fxCanvasRef.current
+    if (!canvas || typeof window === "undefined") return
+    const ctx = canvas.getContext("2d")!
+    const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight }
+    resize(); window.addEventListener("resize", resize)
+
+    // ---- Beat detection via AudioContext ----
     let analyser: AnalyserNode | null = null
+    let audioCtx: AudioContext | null = null
     let sourceConnected = false
     let lastBeat = 0
-    const MIN_BEAT_INTERVAL = 280 // ms — prevents double-trigger
+    const MIN_BEAT_MS = 300
 
-    const tryConnect = () => {
-      if (!_gpAudio || sourceConnected) return
+    const connectAudio = () => {
+      if (sourceConnected || !_gpAudio) return
       try {
-        const ctx = new AudioContext()
-        const src = ctx.createMediaElementSource(_gpAudio)
-        analyser = ctx.createAnalyser()
-        analyser.fftSize = 256
+        audioCtx = new AudioContext()
+        const src = audioCtx.createMediaElementSource(_gpAudio)
+        analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 512
+        analyser.smoothingTimeConstant = 0.75
         src.connect(analyser)
-        analyser.connect(ctx.destination)
+        analyser.connect(audioCtx.destination)
         sourceConnected = true
-      } catch { /* fallback: timer-based beats */ }
+      } catch {}
     }
 
-    // Fallback: timer-based beat at ~120 BPM until analyser available
-    let fallbackTimer: ReturnType<typeof setInterval>
-    const startFallback = () => {
-      fallbackTimer = setInterval(() => {
-        setBeats(b => [...b.slice(-2), Date.now()])
-      }, 500)
-    }
-    startFallback()
+    // ---- Beat rings ----
+    interface Ring { x:number; y:number; r:number; maxR:number; life:number; hue:number; thick:number }
+    interface Ripple { r:number; maxR:number; life:number; cx:number; cy:number }
+    const rings: Ring[] = []
+    const ripples: Ripple[] = []
 
-    const buf = new Uint8Array(128)
-    const tick = () => {
-      animId = requestAnimationFrame(tick)
-      if (!analyser) return
-      analyser.getByteFrequencyData(buf)
-      // Bass energy (bins 0-4)
-      const bass = (buf[0] + buf[1] + buf[2] + buf[3] + buf[4]) / 5
-      const now = Date.now()
-      if (bass > 140 && now - lastBeat > MIN_BEAT_INTERVAL) {
-        lastBeat = now
-        clearInterval(fallbackTimer) // stop fallback once analyser works
-        setBeats(b => [...b.slice(-2), now])
+    const triggerBeat = () => {
+      const cx = innerWidth / 2, cy = innerHeight / 2
+      const hues = [270, 285, 260, 300, 250]
+      // 3 concentric rings per beat
+      for (let i = 0; i < 3; i++) {
+        rings.push({
+          x: cx, y: cy,
+          r: 80 + i * 60,
+          maxR: 420 + i * 140,
+          life: 1,
+          hue: hues[i % hues.length],
+          thick: 3.5 - i * 0.8
+        })
+      }
+      // Central flash burst
+      ripples.push({ r: 0, maxR: innerWidth * 0.6, life: 1, cx, cy })
+    }
+
+    // ---- Touch/drag particles ----
+    interface TPart { x:number; y:number; vx:number; vy:number; life:number; r:number; hue:number; sat:number }
+    const tparts: TPart[] = []
+    const spawnBurst = (px: number, py: number, count = 8) => {
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5
+        const speed = 1.8 + Math.random() * 2.8
+        tparts.push({
+          x: px, y: py,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 0.5,
+          life: 1,
+          r: 4 + Math.random() * 5,
+          hue: 250 + Math.random() * 60,
+          sat: 70 + Math.random() * 20,
+        })
       }
     }
+    const spawnTrail = (px: number, py: number) => {
+      tparts.push({
+        x: px + (Math.random() - 0.5) * 8,
+        y: py + (Math.random() - 0.5) * 8,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: -Math.random() * 1.5 - 0.5,
+        life: 1,
+        r: 2.5 + Math.random() * 3,
+        hue: 260 + Math.random() * 50,
+        sat: 75,
+      })
+    }
 
-    const onInteract = () => { tryConnect(); tick() }
-    document.addEventListener("click", onInteract, { once: true })
+    const onPointerDown = (e: PointerEvent) => { spawnBurst(e.clientX, e.clientY, 10) }
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.buttons === 0) return
+      if (Math.random() > 0.55) return
+      spawnTrail(e.clientX, e.clientY)
+    }
+    window.addEventListener("pointerdown", onPointerDown)
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("click", connectAudio, { once: true })
+
+    // ---- Fallback beat timer ----
+    let fbTimer: ReturnType<typeof setInterval> | null = setInterval(() => triggerBeat(), 480)
+    const buf = new Uint8Array(256)
+
+    // ---- Main loop — throttled to 40fps for performance ----
+    let lastT = 0; let animId: number
+    const loop = (t: number) => {
+      animId = requestAnimationFrame(loop)
+      if (t - lastT < 25) return   // ~40fps cap
+      lastT = t
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // Beat detection
+      if (analyser) {
+        analyser.getByteFrequencyData(buf)
+        const bass = (buf[1] + buf[2] + buf[3] + buf[4] + buf[5]) / 5
+        if (bass > 135 && t - lastBeat > MIN_BEAT_MS) {
+          lastBeat = t
+          if (fbTimer) { clearInterval(fbTimer); fbTimer = null }
+          triggerBeat()
+        }
+      }
+
+      // Draw central flash ripples
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const rp = ripples[i]
+        rp.r += (rp.maxR - rp.r) * 0.14
+        rp.life -= 0.045
+        if (rp.life <= 0) { ripples.splice(i, 1); continue }
+        const grd = ctx.createRadialGradient(rp.cx, rp.cy, rp.r * 0.4, rp.cx, rp.cy, rp.r)
+        grd.addColorStop(0, `rgba(109,40,217,${rp.life * 0.13})`)
+        grd.addColorStop(0.5, `rgba(139,92,246,${rp.life * 0.07})`)
+        grd.addColorStop(1, "rgba(0,0,0,0)")
+        ctx.fillStyle = grd
+        ctx.beginPath()
+        ctx.arc(rp.cx, rp.cy, rp.r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // Draw beat rings
+      for (let i = rings.length - 1; i >= 0; i--) {
+        const rg = rings[i]
+        rg.r += (rg.maxR - rg.r) * 0.09
+        rg.life -= 0.032
+        if (rg.life <= 0) { rings.splice(i, 1); continue }
+        ctx.beginPath()
+        ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2)
+        ctx.strokeStyle = `hsla(${rg.hue},80%,65%,${rg.life * 0.55})`
+        ctx.lineWidth = rg.thick * rg.life
+        ctx.shadowBlur = 18
+        ctx.shadowColor = `hsla(${rg.hue},80%,65%,${rg.life * 0.4})`
+        ctx.stroke()
+        ctx.shadowBlur = 0
+      }
+
+      // Draw touch particles
+      for (let i = tparts.length - 1; i >= 0; i--) {
+        const p = tparts[i]
+        p.x += p.vx; p.y += p.vy
+        p.vx *= 0.93; p.vy *= 0.93
+        p.life -= 0.028
+        if (p.life <= 0) { tparts.splice(i, 1); continue }
+        const gp = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5)
+        gp.addColorStop(0, `hsla(${p.hue},${p.sat}%,75%,${p.life * 0.95})`)
+        gp.addColorStop(0.5, `hsla(${p.hue},${p.sat}%,65%,${p.life * 0.5})`)
+        gp.addColorStop(1, "rgba(0,0,0,0)")
+        ctx.fillStyle = gp
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2)
+        ctx.fill()
+        // Bright core
+        ctx.fillStyle = `hsla(${p.hue},90%,90%,${p.life * 0.8})`
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r * 0.45, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    animId = requestAnimationFrame(loop)
 
     return () => {
       cancelAnimationFrame(animId)
-      clearInterval(fallbackTimer)
-      document.removeEventListener("click", onInteract)
+      window.removeEventListener("resize", resize)
+      window.removeEventListener("pointerdown", onPointerDown)
+      window.removeEventListener("pointermove", onPointerMove)
+      if (fbTimer) clearInterval(fbTimer)
+      audioCtx?.close().catch(() => {})
     }
   }, [])
-
-  // ── Parallax on mouse/touch move ──
-  useEffect(() => {
-    const el = parallaxRef.current
-    if (!el) return
-    const onMove = (e: MouseEvent | TouchEvent) => {
-      const x = "touches" in e ? e.touches[0].clientX : e.clientX
-      const y = "touches" in e ? e.touches[0].clientY : e.clientY
-      const dx = (x / innerWidth  - 0.5) * 14
-      const dy = (y / innerHeight - 0.5) * 8
-      el.style.transform = `translate(${dx}px, ${dy}px) scale(1.04)`
-    }
-    const onLeave = () => { el.style.transform = "translate(0,0) scale(1.04)" }
-    window.addEventListener("mousemove", onMove)
-    window.addEventListener("touchmove", onMove, { passive: true })
-    window.addEventListener("mouseleave", onLeave)
-    return () => {
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("touchmove", onMove)
-      window.removeEventListener("mouseleave", onLeave)
-    }
-  }, [])
-
-  // ── Touch + drag particles ──
-  const spawnTouchParticle = (x: number, y: number) => {
-    const colors = ["rgba(139,92,246,0.7)","rgba(232,121,249,0.7)","rgba(56,189,248,0.6)","rgba(167,139,250,0.65)"]
-    const color = colors[Math.floor(Math.random() * colors.length)]
-    const id = ++touchPartId.current
-    const size = 12 + Math.random() * 16
-    setTouchParts(p => [...p.slice(-12), { id, x: x - size/2, y: y - size/2, color }])
-    setTimeout(() => setTouchParts(p => p.filter(t => t.id !== id)), 600)
-  }
-
-  const handlePointerDown = (e: React.PointerEvent) => { spawnTouchParticle(e.clientX, e.clientY) }
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (e.buttons === 0) return
-    if (Math.random() > 0.35) return // throttle
-    spawnTouchParticle(e.clientX, e.clientY)
-  }
 
   /* ═══════════════════════════════ RENDER ══════════════════════════════ */
   return (
@@ -781,6 +835,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* Partículas */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
+      <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
 
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
       <div className="gp-corner gp-corner-tl" />
@@ -788,29 +843,16 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className="gp-corner gp-corner-bl" />
       <div className="gp-corner gp-corner-br" />
 
-      {/* Touch + drag particles */}
-      {touchParts.map(tp => (
-        <div key={tp.id} className="gp-touch-p"
-          style={{ left:tp.x, top:tp.y, width:18, height:18, background:tp.color, boxShadow:`0 0 8px ${tp.color}` }} />
-      ))}
-
-      {/* Beat pulse layers */}
-      {beats.map(ts => (
-        <div key={ts} className="gp-beat-pulse" />
-      ))}
-
       {/* ══ BACKGROUND ══ */}
-      <div className="fixed inset-0 z-0" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}>
+      <div className="fixed inset-0 z-0">
         {activeWallpaper?.image ? (
-          <div ref={parallaxRef} className="absolute inset-0 gp-wbg gp-parallax-bg" style={{
+          <div className="absolute inset-0 gp-wbg" style={{
             backgroundImage:`url(${activeWallpaper.image})`,
             backgroundSize:"cover", backgroundPosition:"center", backgroundRepeat:"no-repeat",
-            transform:"scale(1.04)",
           }} />
         ) : (
-          <div ref={parallaxRef} className="absolute inset-0 gp-wbg gp-parallax-bg" style={{
+          <div className="absolute inset-0 gp-wbg" style={{
             background:"linear-gradient(180deg,#03060F 0%,#060D1C 30%,#080F22 60%,#04091A 100%)",
-            transform:"scale(1.04)",
           }} />
         )}
         {!activeWallpaper?.image && (
