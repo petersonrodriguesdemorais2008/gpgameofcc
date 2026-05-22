@@ -400,9 +400,9 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
   /* ── Music player ── */
   const TRACKS = [
-    { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main_Menu_OST_1.mp3" },
-    { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main_Menu_OST_2.mp3" },
-    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3"   },
+    { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%201.mp3" },
+    { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%202.mp3" },
+    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3"     },
   ]
   const MUSIC_LS = "gpgame_menu_track"
   const [currentTrackId, setCurrentTrackId] = useState<string>(() =>
@@ -725,7 +725,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <button
         onClick={() => setShowMusicPanel(v => !v)}
         className="gp-music-bar"
-        style={{ position:"fixed", zIndex:50, top:120, left:20, width:230 }}>
+        style={{ position:"fixed", zIndex:50, bottom:82, left:20, width:230 }}>
         <div className="gp-disc"><div className="gp-disc-inner" /></div>
         <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
           <span className="gp-music-sub">Tocando agora</span>
@@ -742,7 +742,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ── Music panel — separate fixed element so it's never clipped ── */}
       {showMusicPanel && (
-        <div className="fixed z-[9999]" style={{ top: 170, left: 20 }}>
+        <div className="fixed z-[9999]" style={{ bottom: 162, left: 20 }}>
           <div className="gp-music-panel">
             <div className="flex items-center justify-between mb-3">
               <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
