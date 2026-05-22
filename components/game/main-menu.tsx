@@ -73,7 +73,7 @@ const GP_CSS = `
 /* Sidebar buttons */
 .gp-sb {
   contain: layout style;
-  width: 58px; padding: 9px 0;
+  width: 66px; padding: 11px 0;
   background: rgba(5,2,18,0.88);
   border: 1px solid rgba(124,58,237,0.18);
   border-radius: 14px;
@@ -90,9 +90,9 @@ const GP_CSS = `
 }
 .gp-sb:hover { background: rgba(10,5,32,0.95); border-color: rgba(139,92,246,0.42); transform: translateX(-2px); box-shadow: 3px 0 18px rgba(124,58,237,0.2); }
 .gp-sb:hover::before { transform: scaleY(1); }
-.gp-sb svg { width: 19px; height: 19px; color: rgba(167,139,250,0.82); transition: color .25s; }
+.gp-sb svg { width: 21px; height: 21px; color: rgba(167,139,250,0.82); transition: color .25s; }
 .gp-sb:hover svg { color: rgba(196,165,250,1); filter: drop-shadow(0 0 5px rgba(167,139,250,0.5)); }
-.gp-sb-lbl { font-size: 7.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(109,40,217,0.75); transition: color .25s; font-family: inherit; }
+.gp-sb-lbl { font-size: 8.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(109,40,217,0.75); transition: color .25s; font-family: inherit; }
 .gp-sb:hover .gp-sb-lbl { color: rgba(139,92,246,0.95); }
 .gp-sb.gp-gold { background: rgba(12,7,2,0.88); border-color: rgba(245,158,11,0.25); }
 .gp-sb.gp-gold::before { background: rgba(245,158,11,0.9); }
@@ -445,17 +445,26 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       _gpAudio.loop = true
       _gpAudio.volume = 0.55
     }
-    // Only reload if track actually changed
+    // Only reload if track actually changed (handleSelectTrack already handles it directly)
     if (_gpTrackId !== currentTrack.src) {
       _gpTrackId = currentTrack.src
-      _gpAudio.src = currentTrack.src
-      _gpAudio.load()
+      if (_gpAudio.paused) {
+        // Only set src+load here if not already handled by handleSelectTrack
+        if (!_gpAudio.src || _gpAudio.src === window.location.origin + "/") {
+          _gpAudio.src = currentTrack.src
+          _gpAudio.load()
+        }
+        _gpAudio.play().catch(() => {
+          const onFirstClick = () => { _gpAudio?.play().catch(() => {}) }
+          document.addEventListener("click", onFirstClick, { once: true })
+        })
+      }
+    } else if (_gpAudio.paused) {
+      _gpAudio.play().catch(() => {
+        const onFirstClick = () => { _gpAudio?.play().catch(() => {}) }
+        document.addEventListener("click", onFirstClick, { once: true })
+      })
     }
-    const tryPlay = () => { _gpAudio?.play().catch(() => {}) }
-    tryPlay()
-    const onFirstClick = () => { tryPlay() }
-    document.addEventListener("click", onFirstClick, { once: true })
-    return () => { document.removeEventListener("click", onFirstClick) }
     // NOTE: intentionally NO pause on unmount — music persists across screens
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackId])
@@ -463,13 +472,16 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const handleSelectTrack = (id: string) => {
     setShowMusicPanel(false)
     if (id === currentTrackId) return
-    // Transition: fade out old, fade in new
+    // Instant switch: stop current, load + play new immediately (no delay, no click needed)
     if (_gpAudio) {
-      const fadeOut = setInterval(() => {
-        if (!_gpAudio) { clearInterval(fadeOut); return }
-        if (_gpAudio.volume > 0.05) { _gpAudio.volume = Math.max(0, _gpAudio.volume - 0.05) }
-        else { _gpAudio.pause(); _gpAudio.volume = 0.55; clearInterval(fadeOut) }
-      }, 40)
+      _gpAudio.pause()
+      _gpAudio.volume = 0.55
+      const track = TRACKS.find(t => t.id === id)
+      if (track) {
+        _gpAudio.src = track.src
+        _gpAudio.load()
+        _gpAudio.play().catch(() => {})
+      }
     }
     setCurrentTrackId(id)
     if (typeof window !== "undefined") localStorage.setItem(MUSIC_LS, id)
@@ -688,7 +700,9 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               <p className="text-[11px] font-semibold tracking-widest" style={{color:"rgba(167,139,250,0.65)"}}>{playerProfile.title||"Jogador"}</p>
             </div>
           </button>
-          <MasterMenuCard onOpen={() => onNavigate("masters")} />
+          <div style={{ transform:"scaleX(1.12) scaleY(1.08)", transformOrigin:"left center" }}>
+            <MasterMenuCard onOpen={() => onNavigate("masters")} />
+          </div>
 
         </div>
 
@@ -825,7 +839,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
-      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2.5">
+      <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
           { label:"Hist.",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
@@ -839,7 +853,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div key={btn.label} className="relative" style={{ borderRadius:14 }}>
             <button className={`gp-sb${btn.gold?" gp-gold":""}`} onClick={btn.onClick}>
               {btn.dot && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{background:btn.dotColor||"rgba(239,68,68,0.9)",boxShadow:`0 0 6px ${btn.dotColor||"rgba(239,68,68,0.9)"}`}} />}
-              {btn.emoji ? <span style={{fontSize:17,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
+              {btn.emoji ? <span style={{fontSize:19,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
               <span className="gp-sb-lbl">{btn.label}</span>
             </button>
           </div>
