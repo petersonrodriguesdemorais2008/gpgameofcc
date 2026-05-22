@@ -388,6 +388,18 @@ interface MainMenuProps {
 let _gpAudio: HTMLAudioElement | null = null
 let _gpTrackId: string = ""
 
+// Exposed so other screens (duel) can pause/resume menu music
+export function pauseMenuMusic() {
+  if (_gpAudio && !_gpAudio.paused) {
+    _gpAudio.pause()
+  }
+}
+export function resumeMenuMusic() {
+  if (_gpAudio && _gpAudio.paused) {
+    _gpAudio.play().catch(() => {})
+  }
+}
+
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
   const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
