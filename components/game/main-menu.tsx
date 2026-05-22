@@ -402,7 +402,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const TRACKS = [
     { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main_Menu_OST_1.mp3" },
     { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main_Menu_OST_2.mp3" },
-    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu Game OST.mp3"   },
+    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3"   },
   ]
   const MUSIC_LS = "gpgame_menu_track"
   const [currentTrackId, setCurrentTrackId] = useState<string>(() =>
@@ -421,11 +421,15 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       audioRef.current.volume = 0.55
     }
     const audio = audioRef.current
-    if (audio.src !== window.location.origin + currentTrack.src) {
+    if (!audio.src.endsWith(currentTrack.src.replace(/^\//, ''))) {
       audio.src = currentTrack.src
+      audio.load()
     }
     const tryPlay = () => audio.play().catch(() => {})
     tryPlay()
+    // Also try on first user interaction if autoplay blocked
+    const onInteract = () => { tryPlay(); document.removeEventListener('click', onInteract) }
+    document.addEventListener('click', onInteract, { once: true })
     const onEnd = () => { audio.currentTime = 0; tryPlay() }
     audio.addEventListener("ended", onEnd)
     return () => { audio.removeEventListener("ended", onEnd) }
@@ -660,12 +664,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
         </div>
 
-        {/* ── Centro: Logo ── */}
-        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
-          <Image src="/images/gp-cg-logo.png" alt="Gear Perks" width={200} height={66}
-            className="w-36 h-auto aura-logo gp-logo" priority />
-        </div>
-
         {/* ── Direita: STAMINA + COINS + GIFT — sem anel girando (verde no guia) ── */}
         <div className="flex items-center gap-2.5">
 
@@ -734,7 +732,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ MUSIC BAR — fixed top center-left (posição do desenho amarelo) ══ */}
-      <div className="fixed z-50" style={{ top: 18, left: "50%", transform: "translateX(-50%)" }}>
+      <div className="fixed z-50" style={{ top: 18, left: "calc(50% - 140px)" }}>
         {/* Bar */}
         <button
           onClick={() => setShowMusicPanel(v => !v)}
