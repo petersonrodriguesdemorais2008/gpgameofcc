@@ -83,14 +83,9 @@ export function GameWrapper() {
     return () => clearTimeout(timer)
   }, [playerProfile.hasCompletedSetup])
 
-  const DUEL_SCREENS = ["duel-bot","duel-player","duel-draft","duel-roguelike","duel-catastrophe"]
-
   const navigateTo = (screen: GameScreen) => {
-    // Pause menu music when entering any duel — duel has its own OST
-    if (DUEL_SCREENS.includes(screen)) {
-      pauseMenuMusic()
-    } else if (screen === "menu") {
-      // Resume when returning to menu
+    // Resume menu music when returning to menu from duel
+    if (screen === "menu") {
       resumeMenuMusic()
     }
 
@@ -154,7 +149,7 @@ export function GameWrapper() {
       {currentScreen === "collection" && <CollectionScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "deck-builder" && <DeckBuilderScreen onBack={() => navigateTo("menu")} />}
       {(currentScreen === "duel-bot" || currentScreen === "duel-player") && (
-        <DuelScreen mode={duelMode} onBack={() => {
+        <DuelScreen mode={duelMode} onBattleStart={() => pauseMenuMusic()} onBack={() => {
           // If returning from a story battle, go back to story screen
           const storyBattle = (() => {
             try { const r = localStorage.getItem("gpgame_story_battle_pending"); return r ? JSON.parse(r) : null } catch { return null }
@@ -176,13 +171,13 @@ export function GameWrapper() {
         />
       )}
       {currentScreen === "duel-draft" && (
-        <DraftDuelScreen onBack={() => navigateTo("menu")} />
+        <DraftDuelScreen onBattleStart={() => pauseMenuMusic()} onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "duel-roguelike" && (
-        <RoguelikeScreen onBack={() => navigateTo("menu")} />
+        <RoguelikeScreen onBattleStart={() => pauseMenuMusic()} onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "duel-catastrophe" && (
-        <CatastropheScreen onBack={() => navigateTo("menu")} />
+        <CatastropheScreen onBattleStart={() => pauseMenuMusic()} onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "history" && <HistoryScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "settings" && <SettingsScreen
