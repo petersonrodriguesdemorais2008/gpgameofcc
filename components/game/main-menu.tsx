@@ -729,33 +729,86 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       life: number; decay: number
       teeth: number
     }
-    const gears: Gear[] = []
+    // Shatter shard: one detached tooth flying off
+    interface Shard {
+      // Origin gear center
+      cx: number; cy: number
+      // Position of shard (starts near gear perimeter)
+      x: number; y: number
+      vx: number; vy: number
+      rot: number; rotSpeed: number
+      life: number
+      size: number   // tooth size
+      angle: number  // original tooth angle on gear
+    }
 
-    // Spawn burst of gears on click
-    const spawnBurst = (px: number, py: number) => {
-      const count = 6 + Math.floor(Math.random() * 3)
-      for (let i = 0; i < count; i++) {
-        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.6
-        const speed = 1.4 + Math.random() * 2.4
-        gears.push({
-          x: px, y: py,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 0.8,
-          r: 7 + Math.random() * 10,
-          rot: Math.random() * Math.PI * 2,
-          rotSpeed: (Math.random() - 0.5) * 0.12,
+    const gears: Gear[] = []
+    const shards: Shard[] = []
+
+    // ── TOUCH: single gear that shatters its teeth outward ──
+    const spawnShatter = (px: number, py: number) => {
+      const teethCount = 7
+      const R = 20   // gear radius
+      // Brief intact gear flash (life 0.18 → fades as shards fly)
+      gears.push({
+        x: px, y: py, vx: 0, vy: 0,
+        r: R, rot: Math.random() * Math.PI * 2,
+        rotSpeed: 0.08, life: 0.55, decay: 0.045,
+        teeth: teethCount,
+      })
+      // Each tooth becomes a shard
+      for (let i = 0; i < teethCount; i++) {
+        const baseAngle = (Math.PI * 2 * i) / teethCount + Math.random() * 0.18
+        const speed = 2.5 + Math.random() * 3.5
+        shards.push({
+          cx: px, cy: py,
+          x: px + Math.cos(baseAngle) * R * 0.9,
+          y: py + Math.sin(baseAngle) * R * 0.9,
+          vx: Math.cos(baseAngle) * speed,
+          vy: Math.sin(baseAngle) * speed - 1.0,
+          rot: baseAngle,
+          rotSpeed: (Math.random() - 0.5) * 0.22,
           life: 1,
-          decay: 0.016 + Math.random() * 0.01,
-          teeth: [6, 7, 8][Math.floor(Math.random() * 3)],
+          size: 5 + Math.random() * 5,
+          angle: baseAngle,
         })
       }
     }
 
-    // Spawn small trail gear on drag
+    // Draw a single gear tooth shard (trapezoid shape)
+    function drawShard(s: Shard) {
+      ctx.save()
+      ctx.translate(s.x, s.y)
+      ctx.rotate(s.rot)
+      ctx.globalAlpha = s.life * 0.92
+      const w = s.size * 0.55
+      const h = s.size
+      ctx.beginPath()
+      ctx.moveTo(-w * 0.7, 0)
+      ctx.lineTo(-w, -h)
+      ctx.lineTo( w, -h)
+      ctx.lineTo( w * 0.7, 0)
+      ctx.closePath()
+      // Gradient fill same blue as gear
+      const grd = ctx.createLinearGradient(0, -h, 0, 0)
+      grd.addColorStop(0, `rgba(180,230,255,${s.life * 0.95})`)
+      grd.addColorStop(0.4, `rgba(56,160,240,${s.life * 0.85})`)
+      grd.addColorStop(1,   `rgba(20,80,180,${s.life * 0.5})`)
+      ctx.fillStyle = grd
+      ctx.shadowBlur = s.size * 1.2
+      ctx.shadowColor = "rgba(100,200,255,0.7)"
+      ctx.fill()
+      ctx.strokeStyle = `rgba(200,240,255,${s.life * 0.7})`
+      ctx.lineWidth = 0.8
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    // ── DRAG: trail of small spinning gears ──
     let lastTrailX = -999; let lastTrailY = -999
     const spawnTrail = (px: number, py: number) => {
       const dist = Math.hypot(px - lastTrailX, py - lastTrailY)
-      if (dist < 18) return   // only spawn if moved enough
+      if (dist < 18) return
       lastTrailX = px; lastTrailY = py
       gears.push({
         x: px + (Math.random() - 0.5) * 6,
@@ -771,7 +824,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       })
     }
 
-    const onPointerDown = (e: PointerEvent) => { spawnBurst(e.clientX, e.clientY) }
+    const onPointerDown = (e: PointerEvent) => { spawnShatter(e.clientX, e.clientY) }
     const onPointerMove = (e: PointerEvent) => {
       if (e.buttons === 0) return
       spawnTrail(e.clientX, e.clientY)
@@ -783,16 +836,28 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     const loop = () => {
       animId = requestAnimationFrame(loop)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // Draw trail gears
       for (let i = gears.length - 1; i >= 0; i--) {
         const g = gears[i]
         g.x  += g.vx;  g.y  += g.vy
-        g.vx *= 0.94;  g.vy  = g.vy * 0.94 + 0.04   // slight gravity
+        g.vx *= 0.94;  g.vy  = g.vy * 0.94 + 0.04
         g.rot += g.rotSpeed
         g.life -= g.decay
         if (g.life <= 0) { gears.splice(i, 1); continue }
-        // Ease-in alpha: fast fade-in, slow fade-out
         const alpha = g.life > 0.75 ? (1 - g.life) * 4 * g.life : g.life
         drawGear(g.x, g.y, g.r, g.rot, g.teeth, Math.min(alpha, g.life * 1.1), "rgba(56,160,240,0.7)")
+      }
+
+      // Draw shatter shards
+      for (let i = shards.length - 1; i >= 0; i--) {
+        const s = shards[i]
+        s.x   += s.vx;  s.y   += s.vy
+        s.vx  *= 0.93;  s.vy   = s.vy * 0.93 + 0.06
+        s.rot += s.rotSpeed
+        s.life -= 0.022
+        if (s.life <= 0) { shards.splice(i, 1); continue }
+        drawShard(s)
       }
     }
     animId = requestAnimationFrame(loop)
