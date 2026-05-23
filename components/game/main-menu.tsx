@@ -130,6 +130,35 @@ const GP_CSS = `
 }
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
+
+/* Master art panel */
+@keyframes gp-master-in {
+  from { opacity: 0; transform: translateX(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes gp-master-float {
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-8px); }
+}
+.gp-master-art {
+  animation: gp-master-in 0.55s cubic-bezier(0.22,1,0.36,1) both,
+             gp-master-float 5s ease-in-out 0.6s infinite;
+  filter: drop-shadow(0 0 22px rgba(139,92,246,0.45)) drop-shadow(0 0 44px rgba(109,40,217,0.22));
+  will-change: transform;
+}
+.gp-master-art-wrap {
+  position: fixed; z-index: 20;
+  bottom: 74px; right: 70px;
+  width: 310px; height: 480px;
+  pointer-events: none;
+}
+.gp-master-art-wrap::after {
+  content: '';
+  position: absolute; bottom: 0; left: 10%; right: 10%; height: 60px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.28) 0%, transparent 72%);
+  filter: blur(8px);
+  pointer-events: none;
+}
 /* Micro-animations on sidebar */
 .gp-sb:active { transform: translateX(-2px) scale(0.96); }
 .gp-ni {
@@ -413,6 +442,13 @@ let _gpTrackId: string = ""
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _gpACtx: any = null  // AudioContext singleton for spectrum visualizer
 
+// Master art map — keyed by master id (lowercase)
+const MASTER_ART: Record<string, string> = {
+  fehnon:  "/images/masters/fehnon-art.png",
+  morgana: "/images/masters/morgana-art.png",
+  calem:   "/images/masters/calem-art.png",
+}
+
 // Exposed so other screens (duel) can pause/resume menu music
 export function pauseMenuMusic() {
   if (_gpAudio && !_gpAudio.paused) {
@@ -428,6 +464,19 @@ export function resumeMenuMusic() {
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
   const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
+
+  // Resolve active master art from playerProfile
+  // Try: playerProfile.activeMasterId / activeMaster / selectedMaster / equippedMaster / masterId
+  const activeMasterId: string = (
+    (playerProfile as any).activeMasterId ??
+    (playerProfile as any).activeMaster ??
+    (playerProfile as any).selectedMaster ??
+    (playerProfile as any).equippedMaster ??
+    (playerProfile as any).masterId ??
+    "fehnon"
+  ).toString().toLowerCase().split(" ")[0]
+
+  const masterArtSrc = MASTER_ART[activeMasterId] ?? MASTER_ART["fehnon"]
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
 
   const [showPlayMenu,       setShowPlayMenu]       = useState(false)
@@ -1090,6 +1139,20 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </div>
         </div>
       )}
+
+      {/* ══ MASTER ART — right side, between wallpaper and sidebar ══ */}
+      <div className="gp-master-art-wrap">
+        <Image
+          key={masterArtSrc}
+          src={masterArtSrc}
+          alt="Master"
+          fill
+          sizes="310px"
+          className="object-contain object-bottom gp-master-art"
+          style={{ userSelect: "none" }}
+          priority
+        />
+      </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
       <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
