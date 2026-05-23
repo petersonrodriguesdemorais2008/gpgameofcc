@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame, PROFILE_ICONS } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
