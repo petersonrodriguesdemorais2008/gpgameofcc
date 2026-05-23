@@ -618,7 +618,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const unclaimedGifts = giftBoxes.filter(g => !g.claimed)
 
   const canvasRef   = useRef<HTMLCanvasElement>(null)
-  const fxCanvasRef = useRef<HTMLCanvasElement>(null)  // beat + touch canvas (no React state)
+  const fxCanvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return
     const ctx = canvas.getContext("2d"); if (!ctx) return
@@ -646,81 +646,157 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
   }, [])
 
-  // ── FX Canvas: touch particles only (no beat — see vizCanvas for spectrum) ──
+  // ── FX Canvas: blue gear particles on touch/drag ──────────────────────────
   useEffect(() => {
     const canvas = fxCanvasRef.current
     if (!canvas || typeof window === "undefined") return
     const ctx = canvas.getContext("2d")!
     const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight }
-    resize(); window.addEventListener("resize", resize)
+    resize()
+    window.addEventListener("resize", resize)
 
-    interface TPart { x:number; y:number; vx:number; vy:number; life:number; r:number; hue:number; sat:number }
-    const tparts: TPart[] = []
+    // Draw a gear shape at (cx,cy) with radius r, rotation rot, teeth count teeth
+    function drawGear(
+      cx: number, cy: number, r: number, rot: number,
+      teeth: number, alpha: number, glowColor: string
+    ) {
+      const innerR = r * 0.58
+      const toothH = r * 0.32
+      const toothW = (Math.PI * 2) / teeth * 0.42
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate(rot)
+      ctx.globalAlpha = alpha
 
-    const spawnBurst = (px: number, py: number, count = 10) => {
+      // Glow
+      ctx.shadowBlur = r * 1.4
+      ctx.shadowColor = glowColor
+
+      // Gear body path
+      ctx.beginPath()
+      for (let i = 0; i < teeth; i++) {
+        const baseA = (Math.PI * 2 * i) / teeth
+        const a0 = baseA - toothW / 2
+        const a1 = baseA + toothW / 2
+        const a2 = baseA + toothW * 1.6
+        const a3 = baseA + (Math.PI * 2) / teeth - toothW * 0.6
+        // Inner arc before tooth
+        if (i === 0) ctx.moveTo(Math.cos(a0) * innerR, Math.sin(a0) * innerR)
+        else ctx.lineTo(Math.cos(a0) * innerR, Math.sin(a0) * innerR)
+        // Tooth top
+        ctx.lineTo(Math.cos(a0) * (r + toothH), Math.sin(a0) * (r + toothH))
+        ctx.lineTo(Math.cos(a1) * (r + toothH), Math.sin(a1) * (r + toothH))
+        ctx.lineTo(Math.cos(a1) * innerR, Math.sin(a1) * innerR)
+        // Inner arc to next tooth base
+        ctx.arc(0, 0, innerR, a1, a3, false)
+      }
+      ctx.closePath()
+
+      // Blue gradient fill
+      const grd = ctx.createRadialGradient(0, 0, innerR * 0.2, 0, 0, r + toothH)
+      grd.addColorStop(0,   "rgba(147,210,255,0.95)")
+      grd.addColorStop(0.4, "rgba(56,160,240,0.88)")
+      grd.addColorStop(0.75,"rgba(29,100,200,0.75)")
+      grd.addColorStop(1,   "rgba(10,50,140,0.4)")
+      ctx.fillStyle = grd
+      ctx.fill()
+
+      // Bright stroke
+      ctx.strokeStyle = `rgba(180,230,255,${alpha * 0.85})`
+      ctx.lineWidth = r * 0.08
+      ctx.shadowBlur = r * 0.8
+      ctx.shadowColor = "rgba(100,200,255,0.8)"
+      ctx.stroke()
+
+      // Center hole
+      ctx.shadowBlur = 0
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(10,30,80,${alpha * 0.9})`
+      ctx.fill()
+      ctx.strokeStyle = `rgba(147,210,255,${alpha * 0.7})`
+      ctx.lineWidth = r * 0.06
+      ctx.stroke()
+
+      ctx.restore()
+    }
+
+    interface Gear {
+      x: number; y: number
+      vx: number; vy: number
+      r: number
+      rot: number; rotSpeed: number
+      life: number; decay: number
+      teeth: number
+    }
+    const gears: Gear[] = []
+
+    // Spawn burst of gears on click
+    const spawnBurst = (px: number, py: number) => {
+      const count = 6 + Math.floor(Math.random() * 3)
       for (let i = 0; i < count; i++) {
-        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5
-        const speed = 1.8 + Math.random() * 3
-        tparts.push({
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.6
+        const speed = 1.4 + Math.random() * 2.4
+        gears.push({
           x: px, y: py,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 0.6,
+          vy: Math.sin(angle) * speed - 0.8,
+          r: 7 + Math.random() * 10,
+          rot: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.12,
           life: 1,
-          r: 4 + Math.random() * 5,
-          hue: 250 + Math.random() * 65,
-          sat: 72 + Math.random() * 20,
+          decay: 0.016 + Math.random() * 0.01,
+          teeth: [6, 7, 8][Math.floor(Math.random() * 3)],
         })
       }
     }
+
+    // Spawn small trail gear on drag
+    let lastTrailX = -999; let lastTrailY = -999
     const spawnTrail = (px: number, py: number) => {
-      tparts.push({
-        x: px + (Math.random() - 0.5) * 8,
-        y: py + (Math.random() - 0.5) * 8,
-        vx: (Math.random() - 0.5) * 1.2,
-        vy: -Math.random() * 1.8 - 0.4,
-        life: 1,
-        r: 2.5 + Math.random() * 3,
-        hue: 260 + Math.random() * 55,
-        sat: 78,
+      const dist = Math.hypot(px - lastTrailX, py - lastTrailY)
+      if (dist < 18) return   // only spawn if moved enough
+      lastTrailX = px; lastTrailY = py
+      gears.push({
+        x: px + (Math.random() - 0.5) * 6,
+        y: py + (Math.random() - 0.5) * 6,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: -Math.random() * 1.2 - 0.3,
+        r: 4 + Math.random() * 5,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.18,
+        life: 0.85,
+        decay: 0.022 + Math.random() * 0.01,
+        teeth: [5, 6][Math.floor(Math.random() * 2)],
       })
     }
 
-    const onPointerDown = (e: PointerEvent) => { spawnBurst(e.clientX, e.clientY, 10) }
+    const onPointerDown = (e: PointerEvent) => { spawnBurst(e.clientX, e.clientY) }
     const onPointerMove = (e: PointerEvent) => {
       if (e.buttons === 0) return
-      if (Math.random() > 0.5) return
       spawnTrail(e.clientX, e.clientY)
     }
     window.addEventListener("pointerdown", onPointerDown)
-    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointermove", onPointerMove, { passive: true })
 
-    let lastT = 0; let animId: number
-    const loop = (t: number) => {
+    let animId: number
+    const loop = () => {
       animId = requestAnimationFrame(loop)
-      if (t - lastT < 20) return  // 50fps cap
-      lastT = t
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      for (let i = tparts.length - 1; i >= 0; i--) {
-        const p = tparts[i]
-        p.x += p.vx; p.y += p.vy
-        p.vx *= 0.92; p.vy *= 0.92
-        p.life -= 0.025
-        if (p.life <= 0) { tparts.splice(i, 1); continue }
-        const gp = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.8)
-        gp.addColorStop(0, `hsla(${p.hue},${p.sat}%,80%,${p.life * 0.9})`)
-        gp.addColorStop(0.45, `hsla(${p.hue},${p.sat}%,65%,${p.life * 0.45})`)
-        gp.addColorStop(1, "rgba(0,0,0,0)")
-        ctx.fillStyle = gp
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = `hsla(${p.hue},95%,95%,${p.life * 0.85})`
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r * 0.4, 0, Math.PI * 2)
-        ctx.fill()
+      for (let i = gears.length - 1; i >= 0; i--) {
+        const g = gears[i]
+        g.x  += g.vx;  g.y  += g.vy
+        g.vx *= 0.94;  g.vy  = g.vy * 0.94 + 0.04   // slight gravity
+        g.rot += g.rotSpeed
+        g.life -= g.decay
+        if (g.life <= 0) { gears.splice(i, 1); continue }
+        // Ease-in alpha: fast fade-in, slow fade-out
+        const alpha = g.life > 0.75 ? (1 - g.life) * 4 * g.life : g.life
+        drawGear(g.x, g.y, g.r, g.rot, g.teeth, Math.min(alpha, g.life * 1.1), "rgba(56,160,240,0.7)")
       }
     }
     animId = requestAnimationFrame(loop)
+
     return () => {
       cancelAnimationFrame(animId)
       window.removeEventListener("resize", resize)
@@ -731,168 +807,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
   // ── Spectrum visualizer canvas — sits above bottom nav ──
   // Module-level AudioContext singleton so it persists across navigation
-  const vizCanvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const canvas = vizCanvasRef.current
-    if (!canvas || typeof window === "undefined") return
-    const ctx = canvas.getContext("2d")!
-
-    const H = 72
-    const BAR_COUNT = 120
-    const GAP = 1.5
-    const smooth    = new Float32Array(BAR_COUNT).fill(0)
-    const peaks     = new Float32Array(BAR_COUNT).fill(0)
-    const peakDecay = new Float32Array(BAR_COUNT).fill(0)
-
-    // Resize: canvas pixel width = actual element width
-    const resize = () => {
-      canvas.width  = canvas.offsetWidth  || innerWidth
-      canvas.height = H
-    }
-    resize()
-    const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
-
-    // AudioContext + analyser — module-level so it survives navigation
-    let analyser: AnalyserNode | null = (_gpACtx as any)?._analyser ?? null
-    let connected = !!analyser
-
-    const connect = () => {
-      if (connected || !_gpAudio) return
-      try {
-        if (!(_gpACtx as any)) {
-          ;(_gpACtx as any) = new AudioContext()
-        }
-        const ac = _gpACtx as unknown as AudioContext
-        if (ac.state === "suspended") ac.resume()
-        const src = ac.createMediaElementSource(_gpAudio)
-        analyser = ac.createAnalyser()
-        analyser.fftSize = 2048
-        analyser.smoothingTimeConstant = 0.82
-        src.connect(analyser)
-        analyser.connect(ac.destination)
-        ;(ac as any)._analyser = analyser
-        connected = true
-      } catch {}
-    }
-    // Try connecting immediately (works if AudioContext was already unlocked)
-    connect()
-    window.addEventListener("pointerdown", connect, { once: true })
-    window.addEventListener("click",       connect, { once: true })
-
-    let freq: Uint8Array = new Uint8Array(analyser ? analyser.frequencyBinCount : 1024)
-
-    // Idle animation when no audio: gentle sine wave
-    let idleT = 0
-
-    let animId: number
-    const loop = () => {
-      animId = requestAnimationFrame(loop)
-      if (!analyser) { connect(); idleT += 0.04 }
-
-      const W = canvas.width
-      ctx.clearRect(0, 0, W, H)
-
-      if (analyser && freq.length !== analyser.frequencyBinCount) {
-        freq = new Uint8Array(analyser.frequencyBinCount)
-      }
-      if (analyser) analyser.getByteFrequencyData(freq)
-
-      const barW = (W - GAP * (BAR_COUNT - 1)) / BAR_COUNT
-
-      for (let i = 0; i < BAR_COUNT; i++) {
-        let raw = 0
-        if (analyser) {
-          // Log-scale frequency mapping — emphasise bass/mid
-          const t = i / BAR_COUNT
-          const bin = Math.floor(Math.pow(t, 1.5) * (analyser.frequencyBinCount * 0.7))
-          raw = freq[Math.min(bin, freq.length - 1)] / 255
-        } else {
-          // Idle: rolling sine wave
-          raw = 0.08 + 0.06 * Math.sin(idleT + i * 0.25) + 0.04 * Math.sin(idleT * 1.7 + i * 0.4)
-        }
-
-        // Smooth
-        const spd = raw > smooth[i] ? 0.42 : 0.22
-        smooth[i] += (raw - smooth[i]) * spd
-
-        // Peak
-        if (smooth[i] >= peaks[i]) { peaks[i] = smooth[i]; peakDecay[i] = 0 }
-        else { peakDecay[i] = Math.min(peakDecay[i] + 0.0015, 0.04); peaks[i] = Math.max(0, peaks[i] - peakDecay[i]) }
-
-        const x    = i * (barW + GAP)
-        const normH = smooth[i]
-        const barH  = Math.max(2, normH * (H - 6))
-
-        // Gradient: bottom cian → mid violet → top pink/white
-        const grd = ctx.createLinearGradient(x, H - barH, x, H)
-        if (normH > 0.78) {
-          grd.addColorStop(0,    "rgba(255,255,255,0.98)")
-          grd.addColorStop(0.08, "rgba(251,207,232,1)")
-          grd.addColorStop(0.3,  "rgba(232,121,249,0.95)")
-          grd.addColorStop(0.6,  "rgba(139,92,246,0.88)")
-          grd.addColorStop(1,    "rgba(56,189,248,0.55)")
-        } else if (normH > 0.45) {
-          grd.addColorStop(0,   "rgba(232,121,249,0.92)")
-          grd.addColorStop(0.35, "rgba(139,92,246,0.85)")
-          grd.addColorStop(0.7,  "rgba(99,102,241,0.72)")
-          grd.addColorStop(1,    "rgba(56,189,248,0.5)")
-        } else {
-          grd.addColorStop(0,   "rgba(167,139,250,0.8)")
-          grd.addColorStop(0.5, "rgba(99,102,241,0.62)")
-          grd.addColorStop(1,   "rgba(56,189,248,0.4)")
-        }
-
-        // Rounded-top bar
-        const r = Math.min(barW / 2, 2.5)
-        ctx.fillStyle = grd
-        ctx.beginPath()
-        ctx.moveTo(x + r, H - barH)
-        ctx.lineTo(x + barW - r, H - barH)
-        ctx.quadraticCurveTo(x + barW, H - barH, x + barW, H - barH + r)
-        ctx.lineTo(x + barW, H)
-        ctx.lineTo(x, H)
-        ctx.lineTo(x, H - barH + r)
-        ctx.quadraticCurveTo(x, H - barH, x + r, H - barH)
-        ctx.closePath()
-        ctx.fill()
-
-        // Glow on loud bars — single pass, no double fill
-        if (normH > 0.42) {
-          ctx.shadowBlur = normH > 0.72 ? 10 : 5
-          ctx.shadowColor = normH > 0.72
-            ? `rgba(249,168,212,${normH * 0.55})`
-            : `rgba(139,92,246,${normH * 0.42})`
-          ctx.fillRect(x, H - barH, barW, barH)
-          ctx.shadowBlur = 0
-        }
-
-        // Peak tick
-        if (peaks[i] > 0.04) {
-          const py = H - peaks[i] * (H - 6) - 1.5
-          ctx.fillStyle = `rgba(255,255,255,${Math.min(0.95, peaks[i] * 1.4)})`
-          ctx.fillRect(x + barW * 0.15, py, barW * 0.7, 1.5)
-        }
-      }
-
-      // Subtle reflection
-      ctx.save()
-      ctx.globalAlpha = 0.1
-      ctx.translate(0, H * 2)
-      ctx.scale(1, -0.18)
-      ctx.drawImage(canvas, 0, 0)
-      ctx.restore()
-    }
-    animId = requestAnimationFrame(loop)
-
-    return () => {
-      cancelAnimationFrame(animId)
-      ro.disconnect()
-      window.removeEventListener("pointerdown", connect)
-      window.removeEventListener("click",       connect)
-      // NOTE: do NOT close audioCtx — it must survive navigation
-    }
-  }, [])
 
   /* ═══════════════════════════════ RENDER ══════════════════════════════ */
   return (
@@ -902,8 +816,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* Partículas */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
       <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
-      {/* Spectrum visualizer — full width above bottom nav */}
-      <canvas ref={vizCanvasRef} className="fixed pointer-events-none" style={{ zIndex: 39, bottom: 74, left: 0, right: 0, width: "100vw", height: 72, display: "block" }} />
 
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
       <div className="gp-corner gp-corner-tl" />
