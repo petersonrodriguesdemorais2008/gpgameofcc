@@ -407,9 +407,11 @@ interface MainMenuProps {
   onClearMessage?: () => void
 }
 
-// ── Module-level audio singleton — survives navigation to Colecao/Gacha ──
+// ── Module-level singletons — survive navigation ──
 let _gpAudio: HTMLAudioElement | null = null
 let _gpTrackId: string = ""
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _gpACtx: any = null  // AudioContext singleton for spectrum visualizer
 
 // Exposed so other screens (duel) can pause/resume menu music
 export function pauseMenuMusic() {
@@ -468,26 +470,25 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       _gpAudio.loop = true
       _gpAudio.volume = 0.55
     }
-    // Only reload if track actually changed (handleSelectTrack already handles it directly)
+    // Always ensure correct src is loaded
     if (_gpTrackId !== currentTrack.src) {
       _gpTrackId = currentTrack.src
-      if (_gpAudio.paused) {
-        // Only set src+load here if not already handled by handleSelectTrack
-        if (!_gpAudio.src || _gpAudio.src === window.location.origin + "/") {
-          _gpAudio.src = currentTrack.src
-          _gpAudio.load()
-        }
-        _gpAudio.play().catch(() => {
-          const onFirstClick = () => { _gpAudio?.play().catch(() => {}) }
-          document.addEventListener("click", onFirstClick, { once: true })
-        })
-      }
-    } else if (_gpAudio.paused) {
-      _gpAudio.play().catch(() => {
-        const onFirstClick = () => { _gpAudio?.play().catch(() => {}) }
-        document.addEventListener("click", onFirstClick, { once: true })
-      })
+      _gpAudio.src = currentTrack.src
+      _gpAudio.load()
     }
+    // Always try to play — handles returning from profile/other screens
+    const tryPlay = () => _gpAudio!.play().catch(() => {
+      const onc = () => _gpAudio?.play().catch(() => {})
+      document.addEventListener("click", onc, { once: true })
+    })
+    tryPlay()
+    // Resume music when tab regains focus (handles alt-tab / navigate back)
+    const onFocus = () => { if (_gpAudio?.paused) _gpAudio.play().catch(() => {}) }
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && _gpAudio?.paused) _gpAudio.play().catch(() => {})
+    })
+    return () => { window.removeEventListener("focus", onFocus) }
     // NOTE: intentionally NO pause on unmount — music persists across screens
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackId])
@@ -729,148 +730,167 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   }, [])
 
   // ── Spectrum visualizer canvas — sits above bottom nav ──
+  // Module-level AudioContext singleton so it persists across navigation
   const vizCanvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = vizCanvasRef.current
     if (!canvas || typeof window === "undefined") return
     const ctx = canvas.getContext("2d")!
-    const H = 56  // visualizer height in px
-    const resize = () => { canvas.width = innerWidth; canvas.height = H }
-    resize(); window.addEventListener("resize", resize)
 
-    let analyser: AnalyserNode | null = null
-    let audioCtx: AudioContext | null = null
-    let sourceConnected = false
-    // Smoothed bar heights for fluid animation
-    const BAR_COUNT = 80
-    const smooth = new Float32Array(BAR_COUNT).fill(0)
-    const peaks  = new Float32Array(BAR_COUNT).fill(0)
+    const H = 72
+    const BAR_COUNT = 120
+    const GAP = 1.5
+    const smooth    = new Float32Array(BAR_COUNT).fill(0)
+    const peaks     = new Float32Array(BAR_COUNT).fill(0)
     const peakDecay = new Float32Array(BAR_COUNT).fill(0)
 
-    const connectAudio = () => {
-      if (sourceConnected || !_gpAudio) return
+    // Resize: canvas pixel width = actual element width
+    const resize = () => {
+      canvas.width  = canvas.offsetWidth  || innerWidth
+      canvas.height = H
+    }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    // AudioContext + analyser — module-level so it survives navigation
+    let analyser: AnalyserNode | null = (_gpACtx as any)?._analyser ?? null
+    let connected = !!analyser
+
+    const connect = () => {
+      if (connected || !_gpAudio) return
       try {
-        audioCtx = new AudioContext()
-        if (audioCtx.state === "suspended") audioCtx.resume()
-        const src = audioCtx.createMediaElementSource(_gpAudio)
-        analyser = audioCtx.createAnalyser()
-        analyser.fftSize = 1024
-        analyser.smoothingTimeConstant = 0.8
+        if (!(_gpACtx as any)) {
+          ;(_gpACtx as any) = new AudioContext()
+        }
+        const ac = _gpACtx as unknown as AudioContext
+        if (ac.state === "suspended") ac.resume()
+        const src = ac.createMediaElementSource(_gpAudio)
+        analyser = ac.createAnalyser()
+        analyser.fftSize = 2048
+        analyser.smoothingTimeConstant = 0.82
         src.connect(analyser)
-        analyser.connect(audioCtx.destination)
-        sourceConnected = true
+        analyser.connect(ac.destination)
+        ;(ac as any)._analyser = analyser
+        connected = true
       } catch {}
     }
-    window.addEventListener("click", connectAudio, { once: true })
-    window.addEventListener("pointerdown", connectAudio, { once: true })
+    // Try connecting immediately (works if AudioContext was already unlocked)
+    connect()
+    window.addEventListener("pointerdown", connect, { once: true })
+    window.addEventListener("click",       connect, { once: true })
 
-    const freq = new Uint8Array(analyser ? analyser.frequencyBinCount : 512)
+    let freq: Uint8Array = new Uint8Array(analyser ? analyser.frequencyBinCount : 1024)
 
-    // Bar color stops: cyan -> violet -> pink -> white tip
-    const getBarColor = (ctx: CanvasRenderingContext2D, x: number, barW: number, barH: number, normH: number) => {
-      const grd = ctx.createLinearGradient(x, H - barH, x, H)
-      if (normH > 0.85) {
-        grd.addColorStop(0, `rgba(255,255,255,0.95)`)
-        grd.addColorStop(0.05, `rgba(249,168,212,1)`)
-        grd.addColorStop(0.25, `rgba(232,121,249,0.95)`)
-        grd.addColorStop(0.6,  `rgba(139,92,246,0.85)`)
-        grd.addColorStop(1,    `rgba(56,189,248,0.5)`)
-      } else if (normH > 0.55) {
-        grd.addColorStop(0, `rgba(232,121,249,0.9)`)
-        grd.addColorStop(0.3, `rgba(139,92,246,0.85)`)
-        grd.addColorStop(0.7, `rgba(99,102,241,0.7)`)
-        grd.addColorStop(1,   `rgba(56,189,248,0.5)`)
-      } else {
-        grd.addColorStop(0, `rgba(167,139,250,0.75)`)
-        grd.addColorStop(0.5, `rgba(99,102,241,0.6)`)
-        grd.addColorStop(1,   `rgba(56,189,248,0.4)`)
-      }
-      return grd
-    }
+    // Idle animation when no audio: gentle sine wave
+    let idleT = 0
 
     let animId: number
     const loop = () => {
       animId = requestAnimationFrame(loop)
-      ctx.clearRect(0, 0, canvas.width, H)
+      if (!analyser) { connect(); idleT += 0.04 }
 
-      // Get frequency data
-      if (analyser) {
-        analyser.getByteFrequencyData(freq)
+      const W = canvas.width
+      ctx.clearRect(0, 0, W, H)
+
+      if (analyser && freq.length !== analyser.frequencyBinCount) {
+        freq = new Uint8Array(analyser.frequencyBinCount)
       }
+      if (analyser) analyser.getByteFrequencyData(freq)
 
-      const barW = (canvas.width / BAR_COUNT) - 1.5
-      const gap  = 1.5
+      const barW = (W - GAP * (BAR_COUNT - 1)) / BAR_COUNT
 
       for (let i = 0; i < BAR_COUNT; i++) {
-        // Map bar index to frequency bin (log scale, focus on lows/mids)
-        const binIndex = analyser
-          ? Math.floor(Math.pow(i / BAR_COUNT, 1.6) * (analyser.frequencyBinCount * 0.75))
-          : i * 3
-        const raw = analyser ? (freq[Math.min(binIndex, freq.length - 1)] / 255) : 0
-
-        // Smooth towards target
-        smooth[i] += (raw - smooth[i]) * 0.32
-
-        // Peak tracking
-        if (smooth[i] >= peaks[i]) {
-          peaks[i] = smooth[i]
-          peakDecay[i] = 0
+        let raw = 0
+        if (analyser) {
+          // Log-scale frequency mapping — emphasise bass/mid
+          const t = i / BAR_COUNT
+          const bin = Math.floor(Math.pow(t, 1.5) * (analyser.frequencyBinCount * 0.7))
+          raw = freq[Math.min(bin, freq.length - 1)] / 255
         } else {
-          peakDecay[i] += 0.0018
-          peaks[i] = Math.max(0, peaks[i] - peakDecay[i])
+          // Idle: rolling sine wave
+          raw = 0.08 + 0.06 * Math.sin(idleT + i * 0.25) + 0.04 * Math.sin(idleT * 1.7 + i * 0.4)
         }
 
-        const x = i * (barW + gap)
-        const barH = Math.max(2, smooth[i] * (H - 4))
-        const normH = smooth[i]
+        // Smooth
+        const spd = raw > smooth[i] ? 0.42 : 0.22
+        smooth[i] += (raw - smooth[i]) * spd
 
-        // Bar body
-        ctx.fillStyle = getBarColor(ctx, x, barW, barH, normH)
-        const radius = Math.min(barW / 2, 2.5)
+        // Peak
+        if (smooth[i] >= peaks[i]) { peaks[i] = smooth[i]; peakDecay[i] = 0 }
+        else { peakDecay[i] = Math.min(peakDecay[i] + 0.0015, 0.04); peaks[i] = Math.max(0, peaks[i] - peakDecay[i]) }
+
+        const x    = i * (barW + GAP)
+        const normH = smooth[i]
+        const barH  = Math.max(2, normH * (H - 6))
+
+        // Gradient: bottom cian → mid violet → top pink/white
+        const grd = ctx.createLinearGradient(x, H - barH, x, H)
+        if (normH > 0.78) {
+          grd.addColorStop(0,    "rgba(255,255,255,0.98)")
+          grd.addColorStop(0.08, "rgba(251,207,232,1)")
+          grd.addColorStop(0.3,  "rgba(232,121,249,0.95)")
+          grd.addColorStop(0.6,  "rgba(139,92,246,0.88)")
+          grd.addColorStop(1,    "rgba(56,189,248,0.55)")
+        } else if (normH > 0.45) {
+          grd.addColorStop(0,   "rgba(232,121,249,0.92)")
+          grd.addColorStop(0.35, "rgba(139,92,246,0.85)")
+          grd.addColorStop(0.7,  "rgba(99,102,241,0.72)")
+          grd.addColorStop(1,    "rgba(56,189,248,0.5)")
+        } else {
+          grd.addColorStop(0,   "rgba(167,139,250,0.8)")
+          grd.addColorStop(0.5, "rgba(99,102,241,0.62)")
+          grd.addColorStop(1,   "rgba(56,189,248,0.4)")
+        }
+
+        // Rounded-top bar
+        const r = Math.min(barW / 2, 2.5)
+        ctx.fillStyle = grd
         ctx.beginPath()
-        ctx.moveTo(x + radius, H - barH)
-        ctx.lineTo(x + barW - radius, H - barH)
-        ctx.quadraticCurveTo(x + barW, H - barH, x + barW, H - barH + radius)
+        ctx.moveTo(x + r, H - barH)
+        ctx.lineTo(x + barW - r, H - barH)
+        ctx.quadraticCurveTo(x + barW, H - barH, x + barW, H - barH + r)
         ctx.lineTo(x + barW, H)
         ctx.lineTo(x, H)
-        ctx.lineTo(x, H - barH + radius)
-        ctx.quadraticCurveTo(x, H - barH, x + radius, H - barH)
+        ctx.lineTo(x, H - barH + r)
+        ctx.quadraticCurveTo(x, H - barH, x + r, H - barH)
         ctx.closePath()
         ctx.fill()
 
-        // Glow on tall bars
-        if (normH > 0.45) {
-          ctx.shadowBlur = 6
-          ctx.shadowColor = normH > 0.75
-            ? `rgba(249,168,212,${normH * 0.5})`
-            : `rgba(139,92,246,${normH * 0.4})`
-          ctx.fill()
+        // Glow on loud bars — single pass, no double fill
+        if (normH > 0.42) {
+          ctx.shadowBlur = normH > 0.72 ? 10 : 5
+          ctx.shadowColor = normH > 0.72
+            ? `rgba(249,168,212,${normH * 0.55})`
+            : `rgba(139,92,246,${normH * 0.42})`
+          ctx.fillRect(x, H - barH, barW, barH)
           ctx.shadowBlur = 0
         }
 
-        // Peak dot
-        if (peaks[i] > 0.05) {
-          const peakY = H - peaks[i] * (H - 4) - 2
-          ctx.fillStyle = `rgba(255,255,255,${Math.min(1, peaks[i] * 1.2)})`
-          ctx.fillRect(x + barW * 0.2, peakY, barW * 0.6, 1.5)
+        // Peak tick
+        if (peaks[i] > 0.04) {
+          const py = H - peaks[i] * (H - 6) - 1.5
+          ctx.fillStyle = `rgba(255,255,255,${Math.min(0.95, peaks[i] * 1.4)})`
+          ctx.fillRect(x + barW * 0.15, py, barW * 0.7, 1.5)
         }
       }
 
-      // Reflection (mirror below, very faint)
+      // Subtle reflection
       ctx.save()
-      ctx.globalAlpha = 0.12
-      ctx.scale(1, -0.25)
-      ctx.drawImage(canvas, 0, -H * 4 - H)
+      ctx.globalAlpha = 0.1
+      ctx.translate(0, H * 2)
+      ctx.scale(1, -0.18)
+      ctx.drawImage(canvas, 0, 0)
       ctx.restore()
     }
     animId = requestAnimationFrame(loop)
 
     return () => {
       cancelAnimationFrame(animId)
-      window.removeEventListener("resize", resize)
-      window.removeEventListener("click", connectAudio)
-      window.removeEventListener("pointerdown", connectAudio)
-      audioCtx?.close().catch(() => {})
+      ro.disconnect()
+      window.removeEventListener("pointerdown", connect)
+      window.removeEventListener("click",       connect)
+      // NOTE: do NOT close audioCtx — it must survive navigation
     }
   }, [])
 
@@ -882,8 +902,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* Partículas */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
       <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
-      {/* Spectrum visualizer — sits just above bottom nav */}
-      <canvas ref={vizCanvasRef} className="fixed pointer-events-none" style={{ zIndex: 39, bottom: 74, left: 0, width: "100%", height: 56 }} />
+      {/* Spectrum visualizer — full width above bottom nav */}
+      <canvas ref={vizCanvasRef} className="fixed pointer-events-none" style={{ zIndex: 39, bottom: 74, left: 0, right: 0, width: "100vw", height: 72, display: "block" }} />
 
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
       <div className="gp-corner gp-corner-tl" />
