@@ -645,7 +645,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
   }, [])
 
-  // ── FX Canvas: beat pulses + touch particles — ALL canvas, zero React state ──
+  // ── FX Canvas: touch particles only (no beat — see vizCanvas for spectrum) ──
   useEffect(() => {
     const canvas = fxCanvasRef.current
     if (!canvas || typeof window === "undefined") return
@@ -653,66 +653,21 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight }
     resize(); window.addEventListener("resize", resize)
 
-    // ---- Beat detection via AudioContext ----
-    let analyser: AnalyserNode | null = null
-    let audioCtx: AudioContext | null = null
-    let sourceConnected = false
-    let lastBeat = 0
-    const MIN_BEAT_MS = 300
-
-    const connectAudio = () => {
-      if (sourceConnected || !_gpAudio) return
-      try {
-        audioCtx = new AudioContext()
-        const src = audioCtx.createMediaElementSource(_gpAudio)
-        analyser = audioCtx.createAnalyser()
-        analyser.fftSize = 512
-        analyser.smoothingTimeConstant = 0.75
-        src.connect(analyser)
-        analyser.connect(audioCtx.destination)
-        sourceConnected = true
-      } catch {}
-    }
-
-    // ---- Beat rings ----
-    interface Ring { x:number; y:number; r:number; maxR:number; life:number; hue:number; thick:number }
-    interface Ripple { r:number; maxR:number; life:number; cx:number; cy:number }
-    const rings: Ring[] = []
-    const ripples: Ripple[] = []
-
-    const triggerBeat = () => {
-      const cx = innerWidth / 2, cy = innerHeight / 2
-      const hues = [270, 285, 260, 300, 250]
-      // 3 concentric rings per beat
-      for (let i = 0; i < 3; i++) {
-        rings.push({
-          x: cx, y: cy,
-          r: 80 + i * 60,
-          maxR: 420 + i * 140,
-          life: 1,
-          hue: hues[i % hues.length],
-          thick: 3.5 - i * 0.8
-        })
-      }
-      // Central flash burst
-      ripples.push({ r: 0, maxR: innerWidth * 0.6, life: 1, cx, cy })
-    }
-
-    // ---- Touch/drag particles ----
     interface TPart { x:number; y:number; vx:number; vy:number; life:number; r:number; hue:number; sat:number }
     const tparts: TPart[] = []
-    const spawnBurst = (px: number, py: number, count = 8) => {
+
+    const spawnBurst = (px: number, py: number, count = 10) => {
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5
-        const speed = 1.8 + Math.random() * 2.8
+        const speed = 1.8 + Math.random() * 3
         tparts.push({
           x: px, y: py,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 0.5,
+          vy: Math.sin(angle) * speed - 0.6,
           life: 1,
           r: 4 + Math.random() * 5,
-          hue: 250 + Math.random() * 60,
-          sat: 70 + Math.random() * 20,
+          hue: 250 + Math.random() * 65,
+          sat: 72 + Math.random() * 20,
         })
       }
     }
@@ -721,109 +676,200 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         x: px + (Math.random() - 0.5) * 8,
         y: py + (Math.random() - 0.5) * 8,
         vx: (Math.random() - 0.5) * 1.2,
-        vy: -Math.random() * 1.5 - 0.5,
+        vy: -Math.random() * 1.8 - 0.4,
         life: 1,
         r: 2.5 + Math.random() * 3,
-        hue: 260 + Math.random() * 50,
-        sat: 75,
+        hue: 260 + Math.random() * 55,
+        sat: 78,
       })
     }
 
     const onPointerDown = (e: PointerEvent) => { spawnBurst(e.clientX, e.clientY, 10) }
     const onPointerMove = (e: PointerEvent) => {
       if (e.buttons === 0) return
-      if (Math.random() > 0.55) return
+      if (Math.random() > 0.5) return
       spawnTrail(e.clientX, e.clientY)
     }
     window.addEventListener("pointerdown", onPointerDown)
     window.addEventListener("pointermove", onPointerMove)
-    window.addEventListener("click", connectAudio, { once: true })
 
-    // ---- Fallback beat timer ----
-    let fbTimer: ReturnType<typeof setInterval> | null = setInterval(() => triggerBeat(), 480)
-    const buf = new Uint8Array(256)
-
-    // ---- Main loop — throttled to 40fps for performance ----
     let lastT = 0; let animId: number
     const loop = (t: number) => {
       animId = requestAnimationFrame(loop)
-      if (t - lastT < 25) return   // ~40fps cap
+      if (t - lastT < 20) return  // 50fps cap
       lastT = t
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      // Beat detection
-      if (analyser) {
-        analyser.getByteFrequencyData(buf)
-        const bass = (buf[1] + buf[2] + buf[3] + buf[4] + buf[5]) / 5
-        if (bass > 135 && t - lastBeat > MIN_BEAT_MS) {
-          lastBeat = t
-          if (fbTimer) { clearInterval(fbTimer); fbTimer = null }
-          triggerBeat()
-        }
-      }
-
-      // Draw central flash ripples
-      for (let i = ripples.length - 1; i >= 0; i--) {
-        const rp = ripples[i]
-        rp.r += (rp.maxR - rp.r) * 0.14
-        rp.life -= 0.045
-        if (rp.life <= 0) { ripples.splice(i, 1); continue }
-        const grd = ctx.createRadialGradient(rp.cx, rp.cy, rp.r * 0.4, rp.cx, rp.cy, rp.r)
-        grd.addColorStop(0, `rgba(109,40,217,${rp.life * 0.13})`)
-        grd.addColorStop(0.5, `rgba(139,92,246,${rp.life * 0.07})`)
-        grd.addColorStop(1, "rgba(0,0,0,0)")
-        ctx.fillStyle = grd
-        ctx.beginPath()
-        ctx.arc(rp.cx, rp.cy, rp.r, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      // Draw beat rings
-      for (let i = rings.length - 1; i >= 0; i--) {
-        const rg = rings[i]
-        rg.r += (rg.maxR - rg.r) * 0.09
-        rg.life -= 0.032
-        if (rg.life <= 0) { rings.splice(i, 1); continue }
-        ctx.beginPath()
-        ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2)
-        ctx.strokeStyle = `hsla(${rg.hue},80%,65%,${rg.life * 0.55})`
-        ctx.lineWidth = rg.thick * rg.life
-        ctx.shadowBlur = 18
-        ctx.shadowColor = `hsla(${rg.hue},80%,65%,${rg.life * 0.4})`
-        ctx.stroke()
-        ctx.shadowBlur = 0
-      }
-
-      // Draw touch particles
       for (let i = tparts.length - 1; i >= 0; i--) {
         const p = tparts[i]
         p.x += p.vx; p.y += p.vy
-        p.vx *= 0.93; p.vy *= 0.93
-        p.life -= 0.028
+        p.vx *= 0.92; p.vy *= 0.92
+        p.life -= 0.025
         if (p.life <= 0) { tparts.splice(i, 1); continue }
-        const gp = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5)
-        gp.addColorStop(0, `hsla(${p.hue},${p.sat}%,75%,${p.life * 0.95})`)
-        gp.addColorStop(0.5, `hsla(${p.hue},${p.sat}%,65%,${p.life * 0.5})`)
+        const gp = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.8)
+        gp.addColorStop(0, `hsla(${p.hue},${p.sat}%,80%,${p.life * 0.9})`)
+        gp.addColorStop(0.45, `hsla(${p.hue},${p.sat}%,65%,${p.life * 0.45})`)
         gp.addColorStop(1, "rgba(0,0,0,0)")
         ctx.fillStyle = gp
         ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2)
+        ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2)
         ctx.fill()
-        // Bright core
-        ctx.fillStyle = `hsla(${p.hue},90%,90%,${p.life * 0.8})`
+        ctx.fillStyle = `hsla(${p.hue},95%,95%,${p.life * 0.85})`
         ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r * 0.45, 0, Math.PI * 2)
+        ctx.arc(p.x, p.y, p.r * 0.4, 0, Math.PI * 2)
         ctx.fill()
       }
+    }
+    animId = requestAnimationFrame(loop)
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener("resize", resize)
+      window.removeEventListener("pointerdown", onPointerDown)
+      window.removeEventListener("pointermove", onPointerMove)
+    }
+  }, [])
+
+  // ── Spectrum visualizer canvas — sits above bottom nav ──
+  const vizCanvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = vizCanvasRef.current
+    if (!canvas || typeof window === "undefined") return
+    const ctx = canvas.getContext("2d")!
+    const H = 56  // visualizer height in px
+    const resize = () => { canvas.width = innerWidth; canvas.height = H }
+    resize(); window.addEventListener("resize", resize)
+
+    let analyser: AnalyserNode | null = null
+    let audioCtx: AudioContext | null = null
+    let sourceConnected = false
+    // Smoothed bar heights for fluid animation
+    const BAR_COUNT = 80
+    const smooth = new Float32Array(BAR_COUNT).fill(0)
+    const peaks  = new Float32Array(BAR_COUNT).fill(0)
+    const peakDecay = new Float32Array(BAR_COUNT).fill(0)
+
+    const connectAudio = () => {
+      if (sourceConnected || !_gpAudio) return
+      try {
+        audioCtx = new AudioContext()
+        if (audioCtx.state === "suspended") audioCtx.resume()
+        const src = audioCtx.createMediaElementSource(_gpAudio)
+        analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 1024
+        analyser.smoothingTimeConstant = 0.8
+        src.connect(analyser)
+        analyser.connect(audioCtx.destination)
+        sourceConnected = true
+      } catch {}
+    }
+    window.addEventListener("click", connectAudio, { once: true })
+    window.addEventListener("pointerdown", connectAudio, { once: true })
+
+    const freq = new Uint8Array(analyser ? analyser.frequencyBinCount : 512)
+
+    // Bar color stops: cyan -> violet -> pink -> white tip
+    const getBarColor = (ctx: CanvasRenderingContext2D, x: number, barW: number, barH: number, normH: number) => {
+      const grd = ctx.createLinearGradient(x, H - barH, x, H)
+      if (normH > 0.85) {
+        grd.addColorStop(0, `rgba(255,255,255,0.95)`)
+        grd.addColorStop(0.05, `rgba(249,168,212,1)`)
+        grd.addColorStop(0.25, `rgba(232,121,249,0.95)`)
+        grd.addColorStop(0.6,  `rgba(139,92,246,0.85)`)
+        grd.addColorStop(1,    `rgba(56,189,248,0.5)`)
+      } else if (normH > 0.55) {
+        grd.addColorStop(0, `rgba(232,121,249,0.9)`)
+        grd.addColorStop(0.3, `rgba(139,92,246,0.85)`)
+        grd.addColorStop(0.7, `rgba(99,102,241,0.7)`)
+        grd.addColorStop(1,   `rgba(56,189,248,0.5)`)
+      } else {
+        grd.addColorStop(0, `rgba(167,139,250,0.75)`)
+        grd.addColorStop(0.5, `rgba(99,102,241,0.6)`)
+        grd.addColorStop(1,   `rgba(56,189,248,0.4)`)
+      }
+      return grd
+    }
+
+    let animId: number
+    const loop = () => {
+      animId = requestAnimationFrame(loop)
+      ctx.clearRect(0, 0, canvas.width, H)
+
+      // Get frequency data
+      if (analyser) {
+        analyser.getByteFrequencyData(freq)
+      }
+
+      const barW = (canvas.width / BAR_COUNT) - 1.5
+      const gap  = 1.5
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        // Map bar index to frequency bin (log scale, focus on lows/mids)
+        const binIndex = analyser
+          ? Math.floor(Math.pow(i / BAR_COUNT, 1.6) * (analyser.frequencyBinCount * 0.75))
+          : i * 3
+        const raw = analyser ? (freq[Math.min(binIndex, freq.length - 1)] / 255) : 0
+
+        // Smooth towards target
+        smooth[i] += (raw - smooth[i]) * 0.32
+
+        // Peak tracking
+        if (smooth[i] >= peaks[i]) {
+          peaks[i] = smooth[i]
+          peakDecay[i] = 0
+        } else {
+          peakDecay[i] += 0.0018
+          peaks[i] = Math.max(0, peaks[i] - peakDecay[i])
+        }
+
+        const x = i * (barW + gap)
+        const barH = Math.max(2, smooth[i] * (H - 4))
+        const normH = smooth[i]
+
+        // Bar body
+        ctx.fillStyle = getBarColor(ctx, x, barW, barH, normH)
+        const radius = Math.min(barW / 2, 2.5)
+        ctx.beginPath()
+        ctx.moveTo(x + radius, H - barH)
+        ctx.lineTo(x + barW - radius, H - barH)
+        ctx.quadraticCurveTo(x + barW, H - barH, x + barW, H - barH + radius)
+        ctx.lineTo(x + barW, H)
+        ctx.lineTo(x, H)
+        ctx.lineTo(x, H - barH + radius)
+        ctx.quadraticCurveTo(x, H - barH, x + radius, H - barH)
+        ctx.closePath()
+        ctx.fill()
+
+        // Glow on tall bars
+        if (normH > 0.45) {
+          ctx.shadowBlur = 6
+          ctx.shadowColor = normH > 0.75
+            ? `rgba(249,168,212,${normH * 0.5})`
+            : `rgba(139,92,246,${normH * 0.4})`
+          ctx.fill()
+          ctx.shadowBlur = 0
+        }
+
+        // Peak dot
+        if (peaks[i] > 0.05) {
+          const peakY = H - peaks[i] * (H - 4) - 2
+          ctx.fillStyle = `rgba(255,255,255,${Math.min(1, peaks[i] * 1.2)})`
+          ctx.fillRect(x + barW * 0.2, peakY, barW * 0.6, 1.5)
+        }
+      }
+
+      // Reflection (mirror below, very faint)
+      ctx.save()
+      ctx.globalAlpha = 0.12
+      ctx.scale(1, -0.25)
+      ctx.drawImage(canvas, 0, -H * 4 - H)
+      ctx.restore()
     }
     animId = requestAnimationFrame(loop)
 
     return () => {
       cancelAnimationFrame(animId)
       window.removeEventListener("resize", resize)
-      window.removeEventListener("pointerdown", onPointerDown)
-      window.removeEventListener("pointermove", onPointerMove)
-      if (fbTimer) clearInterval(fbTimer)
+      window.removeEventListener("click", connectAudio)
+      window.removeEventListener("pointerdown", connectAudio)
       audioCtx?.close().catch(() => {})
     }
   }, [])
@@ -836,6 +882,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* Partículas */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
       <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
+      {/* Spectrum visualizer — sits just above bottom nav */}
+      <canvas ref={vizCanvasRef} className="fixed pointer-events-none" style={{ zIndex: 39, bottom: 74, left: 0, width: "100%", height: 56 }} />
 
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
       <div className="gp-corner gp-corner-tl" />
