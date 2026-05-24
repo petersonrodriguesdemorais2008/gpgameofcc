@@ -151,7 +151,8 @@ const GP_CSS = `
   position: fixed; z-index: 20;
   bottom: 74px; right: 70px;
   width: 310px; height: 480px;
-  pointer-events: none;
+  pointer-events: all;
+  cursor: pointer;
 }
 .gp-master-art-wrap::after {
   content: '';
@@ -159,6 +160,63 @@ const GP_CSS = `
   background: radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.28) 0%, transparent 72%);
   filter: blur(8px);
   pointer-events: none;
+}
+/* Click bounce */
+@keyframes gp-master-tap {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.06) rotate(-1.5deg); }
+  60%  { transform: scale(0.97) rotate(1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.gp-master-tap { animation: gp-master-tap 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+/* Manga speech bubble */
+@keyframes gp-bubble-in {
+  0%   { opacity:0; transform: scale(0.7) translateY(12px); }
+  70%  { opacity:1; transform: scale(1.04) translateY(-2px); }
+  100% { opacity:1; transform: scale(1) translateY(0); }
+}
+@keyframes gp-bubble-out {
+  0%   { opacity:1; transform: scale(1); }
+  100% { opacity:0; transform: scale(0.85) translateY(6px); }
+}
+.gp-bubble {
+  position: absolute; top: 28px; left: -220px;
+  width: 210px; min-height: 58px;
+  background: #fff;
+  border: 3px solid #111;
+  border-radius: 16px 16px 4px 16px;
+  padding: 10px 13px;
+  box-shadow: 4px 4px 0 #111;
+  z-index: 30;
+  animation: gp-bubble-in 0.35s cubic-bezier(0.22,1,0.36,1) both;
+  pointer-events: none;
+}
+.gp-bubble.out { animation: gp-bubble-out 0.25s ease-in both; }
+/* Manga tail (triangle pointing right-down toward character) */
+.gp-bubble::after {
+  content: '';
+  position: absolute; right: -16px; bottom: 14px;
+  border: 9px solid transparent;
+  border-left: 16px solid #111;
+}
+.gp-bubble::before {
+  content: '';
+  position: absolute; right: -12px; bottom: 16px;
+  border: 7px solid transparent;
+  border-left: 14px solid #fff;
+  z-index: 1;
+}
+.gp-bubble-text {
+  font-family: 'Bangers', 'Comic Sans MS', cursive, sans-serif;
+  font-size: 13.5px; line-height: 1.45;
+  color: #111; font-weight: 700; letter-spacing: 0.3px;
+  position: relative; z-index: 1;
+}
+/* Emphasis lines (manga speed lines around character) */
+@keyframes gp-lines-out { 0%{opacity:.55;transform:scale(0.9);}100%{opacity:0;transform:scale(1.35);} }
+.gp-master-lines {
+  position: absolute; inset: -30px; pointer-events: none; z-index: 19;
+  animation: gp-lines-out 0.55s ease-out both;
 }
 /* Micro-animations on sidebar */
 .gp-sb:active { transform: translateX(-2px) scale(0.96); }
@@ -476,7 +534,81 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     const masters = loadMastersFromStorage()
     const active  = masters.find(m => m.isActive) ?? masters[0]
     if (active?.artPath) setMasterArtSrc(active.artPath)
+    // Also update active master id for voice lines
+    if (active?.id) setActiveMasterId(active.id.split("-")[0].toLowerCase())
   }, [])
+
+  // ── Voice lines data ──
+  const MASTER_VOICES: Record<string, { text: string; src: string }[]> = {
+    fehnon: [
+      { text: "Eae! Meu nome é Fehnon Hoskie, prazer em te conhecer!",  src: "/audio/masters/fehnon_voice_1_apresentacao.mp3" },
+      { text: "Eu tô louco pra entrar nessa festa!",                     src: "/audio/masters/fehnon_voice_2_introduel.mp3" },
+      { text: "Ah! Essa foi por pouco...",                               src: "/audio/masters/fehnon_voice_3_loseduel.mp3" },
+      { text: "Ah moleque! Essa foi uma vitória e tanto!",               src: "/audio/masters/fehnon_voice_4_winduel.mp3" },
+      { text: "Ordem de Laceração!",                                     src: "/audio/masters/fehnon_voice_5_magic.mp3" },
+    ],
+    calem: [
+      { text: "Olá! Me chamo Calem Hidenori",                           src: "/audio/masters/calem_voice_1_apresentacao.mp3" },
+      { text: "Com meu poder, eu não tenho o que temer!",               src: "/audio/masters/calem_voice_2_introduel.mp3" },
+      { text: "Tudo bem! Na próxima me esforço mais...",                src: "/audio/masters/calem_voice_3_loseduel.mp3" },
+      { text: "Incrível! Nós conseguimos!",                             src: "/audio/masters/calem_voice_4_winduel.mp3" },
+      { text: "Julgamento do Vazio Eterno.",                            src: "/audio/masters/calem_voice_5_magic.mp3" },
+    ],
+    morgana: [
+      { text: "Oieee! Me chamo Morgana Pendragon",                      src: "/audio/masters/morgana_voice_1_apresentacao.mp3" },
+      { text: "Vamos sentir a melodia de batalha!",                     src: "/audio/masters/morgana_voice_2_introduel.mp3" },
+      { text: "Droga! Foi quase...",                                    src: "/audio/masters/morgana_voice_3_loseduel.mp3" },
+      { text: "Radical! É isso que eu chamo de sinfonia épica!",        src: "/audio/masters/morgana_voice_4_winduel.mp3" },
+      { text: "Sinfonia Relâmpago!",                                    src: "/audio/masters/morgana_voice_5_magic.mp3" },
+    ],
+  }
+
+  const [activeMasterId,  setActiveMasterId]  = useState<string>(() => {
+    if (typeof window === "undefined") return "fehnon"
+    const masters = loadMastersFromStorage()
+    const active  = masters.find(m => m.isActive) ?? masters[0]
+    return active?.id?.split("-")[0].toLowerCase() ?? "fehnon"
+  })
+  const [bubble,          setBubble]          = useState<{ text: string; out: boolean } | null>(null)
+  const [masterTap,       setMasterTap]       = useState(false)
+  const [showLines,       setShowLines]       = useState(false)
+  const voiceIdxRef       = useRef<Record<string, number>>({})
+  const voiceAudioRef     = useRef<HTMLAudioElement | null>(null)
+  const bubbleTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleMasterClick = () => {
+    const voices = MASTER_VOICES[activeMasterId] ?? MASTER_VOICES["fehnon"]
+    // Cycle through voices in order
+    const idx = (voiceIdxRef.current[activeMasterId] ?? -1) + 1
+    voiceIdxRef.current[activeMasterId] = idx % voices.length
+    const voice = voices[voiceIdxRef.current[activeMasterId]]
+
+    // Bounce animation
+    setMasterTap(true)
+    setShowLines(true)
+    setTimeout(() => { setMasterTap(false); setShowLines(false) }, 500)
+
+    // Clear previous bubble timer
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+
+    // Show bubble
+    setBubble({ text: voice.text, out: false })
+
+    // Play voice audio (separate from menu music)
+    if (voiceAudioRef.current) {
+      voiceAudioRef.current.pause()
+      voiceAudioRef.current.currentTime = 0
+    }
+    voiceAudioRef.current = new Audio(voice.src)
+    voiceAudioRef.current.volume = 0.85
+    voiceAudioRef.current.play().catch(() => {})
+
+    // Auto-hide bubble after 3.2s with fade-out
+    bubbleTimerRef.current = setTimeout(() => {
+      setBubble(b => b ? { ...b, out: true } : null)
+      setTimeout(() => setBubble(null), 260)
+    }, 3200)
+  }
 
   const [showPlayMenu,       setShowPlayMenu]       = useState(false)
   const [showGiftBox,        setShowGiftBox]         = useState(false)
@@ -1139,15 +1271,43 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         </div>
       )}
 
-      {/* ══ MASTER ART — right side, between wallpaper and sidebar ══ */}
-      <div className="gp-master-art-wrap">
+      {/* ══ MASTER ART — right side, clickable with voice + bubble ══ */}
+      <div className="gp-master-art-wrap" onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
+
+        {/* Speed lines flash on click */}
+        {showLines && (
+          <svg className="gp-master-lines" viewBox="0 0 400 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {Array.from({ length: 24 }, (_, i) => {
+              const angle = (Math.PI * 2 * i) / 24
+              const cx = 200, cy = 280
+              const r1 = 90 + (i % 3) * 20
+              const r2 = 210 + (i % 5) * 30
+              return (
+                <line key={i}
+                  x1={cx + Math.cos(angle) * r1} y1={cy + Math.sin(angle) * r1}
+                  x2={cx + Math.cos(angle) * r2} y2={cy + Math.sin(angle) * r2}
+                  stroke="rgba(139,92,246,0.55)" strokeWidth={1.5 + (i % 3) * 0.8}
+                />
+              )
+            })}
+          </svg>
+        )}
+
+        {/* Manga speech bubble */}
+        {bubble && (
+          <div className={`gp-bubble${bubble.out ? " out" : ""}`}>
+            <p className="gp-bubble-text">{bubble.text}</p>
+          </div>
+        )}
+
+        {/* Character art */}
         <Image
           key={masterArtSrc}
           src={masterArtSrc}
           alt="Master"
           fill
           sizes="310px"
-          className="object-contain object-bottom gp-master-art"
+          className={"object-contain object-bottom gp-master-art" + (masterTap ? " gp-master-tap" : "")}
           style={{ userSelect: "none" }}
           priority
         />
