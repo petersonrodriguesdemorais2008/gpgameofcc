@@ -161,62 +161,70 @@ const GP_CSS = `
   filter: blur(8px);
   pointer-events: none;
 }
-/* Click bounce */
+/* Gentle tap: just a soft scale, no rotation, no flash */
 @keyframes gp-master-tap {
   0%   { transform: scale(1); }
-  30%  { transform: scale(1.06) rotate(-1.5deg); }
-  60%  { transform: scale(0.97) rotate(1deg); }
-  100% { transform: scale(1) rotate(0deg); }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
 }
-.gp-master-tap { animation: gp-master-tap 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+.gp-master-tap { animation: gp-master-tap 0.32s ease-in-out both; }
+
 /* Manga speech bubble */
 @keyframes gp-bubble-in {
-  0%   { opacity:0; transform: scale(0.7) translateY(12px); }
-  70%  { opacity:1; transform: scale(1.04) translateY(-2px); }
+  0%   { opacity:0; transform: scale(0.82) translateY(8px); }
+  65%  { opacity:1; transform: scale(1.02) translateY(-1px); }
   100% { opacity:1; transform: scale(1) translateY(0); }
 }
 @keyframes gp-bubble-out {
-  0%   { opacity:1; transform: scale(1); }
-  100% { opacity:0; transform: scale(0.85) translateY(6px); }
+  0%   { opacity:1; }
+  100% { opacity:0; transform: translateY(4px); }
 }
 .gp-bubble {
-  position: absolute; top: 28px; left: -220px;
-  width: 210px; min-height: 58px;
+  /* Bottom-left of character art: near mouth level */
+  position: absolute;
+  bottom: 205px;   /* raise above feet, near mid-body */
+  left: -200px;
+  width: 192px;
   background: #fff;
-  border: 3px solid #111;
-  border-radius: 16px 16px 4px 16px;
-  padding: 10px 13px;
-  box-shadow: 4px 4px 0 #111;
+  border: 2.5px solid #111;
+  border-radius: 14px 14px 14px 4px;
+  padding: 9px 12px 9px 12px;
+  box-shadow: 3px 3px 0 #111;
   z-index: 30;
-  animation: gp-bubble-in 0.35s cubic-bezier(0.22,1,0.36,1) both;
+  animation: gp-bubble-in 0.32s cubic-bezier(0.22,1,0.36,1) both;
+  pointer-events: none;
+  /* Keep bubble above its sibling overflow */
+  overflow: visible;
+}
+.gp-bubble.out { animation: gp-bubble-out 0.22s ease-in both; }
+
+/* Tail: separate element so it is truly OUTSIDE the bubble box */
+.gp-bubble-tail {
+  position: absolute;
+  /* sits to the right of the bubble, pointing right toward the character */
+  right: -20px;
+  bottom: 16px;
+  width: 0; height: 0;
+  /* Outer border (stroke) */
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 20px solid #111;
   pointer-events: none;
 }
-.gp-bubble.out { animation: gp-bubble-out 0.25s ease-in both; }
-/* Manga tail (triangle pointing right-down toward character) */
-.gp-bubble::after {
+.gp-bubble-tail::after {
   content: '';
-  position: absolute; right: -16px; bottom: 14px;
-  border: 9px solid transparent;
-  border-left: 16px solid #111;
+  position: absolute;
+  top: -8px; left: -22px;
+  width: 0; height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 18px solid #fff;
 }
-.gp-bubble::before {
-  content: '';
-  position: absolute; right: -12px; bottom: 16px;
-  border: 7px solid transparent;
-  border-left: 14px solid #fff;
-  z-index: 1;
-}
+
 .gp-bubble-text {
-  font-family: 'Bangers', 'Comic Sans MS', cursive, sans-serif;
-  font-size: 13.5px; line-height: 1.45;
-  color: #111; font-weight: 700; letter-spacing: 0.3px;
-  position: relative; z-index: 1;
-}
-/* Emphasis lines (manga speed lines around character) */
-@keyframes gp-lines-out { 0%{opacity:.55;transform:scale(0.9);}100%{opacity:0;transform:scale(1.35);} }
-.gp-master-lines {
-  position: absolute; inset: -30px; pointer-events: none; z-index: 19;
-  animation: gp-lines-out 0.55s ease-out both;
+  font-size: 12.5px; line-height: 1.5;
+  color: #111; font-weight: 700; letter-spacing: 0.2px;
+  font-family: 'Geist', 'Inter', sans-serif;
 }
 /* Micro-animations on sidebar */
 .gp-sb:active { transform: translateX(-2px) scale(0.96); }
@@ -571,7 +579,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   })
   const [bubble,          setBubble]          = useState<{ text: string; out: boolean } | null>(null)
   const [masterTap,       setMasterTap]       = useState(false)
-  const [showLines,       setShowLines]       = useState(false)
   const voiceIdxRef       = useRef<Record<string, number>>({})
   const voiceAudioRef     = useRef<HTMLAudioElement | null>(null)
   const bubbleTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -585,8 +592,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
     // Bounce animation
     setMasterTap(true)
-    setShowLines(true)
-    setTimeout(() => { setMasterTap(false); setShowLines(false) }, 500)
+    setTimeout(() => setMasterTap(false), 380)
 
     // Clear previous bubble timer
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
@@ -1274,29 +1280,12 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* ══ MASTER ART — right side, clickable with voice + bubble ══ */}
       <div className="gp-master-art-wrap" onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
 
-        {/* Speed lines flash on click */}
-        {showLines && (
-          <svg className="gp-master-lines" viewBox="0 0 400 560" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {Array.from({ length: 24 }, (_, i) => {
-              const angle = (Math.PI * 2 * i) / 24
-              const cx = 200, cy = 280
-              const r1 = 90 + (i % 3) * 20
-              const r2 = 210 + (i % 5) * 30
-              return (
-                <line key={i}
-                  x1={cx + Math.cos(angle) * r1} y1={cy + Math.sin(angle) * r1}
-                  x2={cx + Math.cos(angle) * r2} y2={cy + Math.sin(angle) * r2}
-                  stroke="rgba(139,92,246,0.55)" strokeWidth={1.5 + (i % 3) * 0.8}
-                />
-              )
-            })}
-          </svg>
-        )}
-
         {/* Manga speech bubble */}
         {bubble && (
           <div className={`gp-bubble${bubble.out ? " out" : ""}`}>
             <p className="gp-bubble-text">{bubble.text}</p>
+            {/* Tail is a child but overflow:visible means it renders outside the box */}
+            <div className="gp-bubble-tail" />
           </div>
         )}
 
