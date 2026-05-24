@@ -161,13 +161,23 @@ const GP_CSS = `
   filter: blur(8px);
   pointer-events: none;
 }
-/* Gentle tap: just a soft scale, no rotation, no flash */
-@keyframes gp-master-tap {
+/* Tap wrapper: ripple glow, no transform on the image itself */
+@keyframes gp-master-tap-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(139,92,246,0.55); opacity: 1; }
+  100% { box-shadow: 0 0 0 38px rgba(139,92,246,0); opacity: 0; }
+}
+@keyframes gp-master-tap-scale {
   0%   { transform: scale(1); }
-  40%  { transform: scale(1.04); }
+  35%  { transform: scale(1.035); }
   100% { transform: scale(1); }
 }
-.gp-master-tap { animation: gp-master-tap 0.32s ease-in-out both; }
+/* Applied to the inner art wrapper only — doesn't reset float/entry */
+.gp-master-tap-wrap { animation: gp-master-tap-scale 0.35s ease-in-out both; }
+/* Glow ring: absolutely positioned, doesn't affect layout */
+.gp-master-tap-ring {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 5;
+  animation: gp-master-tap-ring 0.55s ease-out both;
+}
 
 /* Manga speech bubble */
 @keyframes gp-bubble-in {
@@ -182,7 +192,7 @@ const GP_CSS = `
 .gp-bubble {
   /* Bottom-left of character art: near mouth level */
   position: absolute;
-  bottom: 205px;   /* raise above feet, near mid-body */
+  bottom: 145px;   /* near hands/waist area */
   left: -200px;
   width: 192px;
   background: #fff;
@@ -1289,17 +1299,20 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </div>
         )}
 
-        {/* Character art */}
-        <Image
-          key={masterArtSrc}
-          src={masterArtSrc}
-          alt="Master"
-          fill
-          sizes="310px"
-          className={"object-contain object-bottom gp-master-art" + (masterTap ? " gp-master-tap" : "")}
-          style={{ userSelect: "none" }}
-          priority
-        />
+        {/* Character art — tap class on wrapper so entry/float animations don't reset */}
+        {masterTap && <div className="gp-master-tap-ring" />}
+        <div className={masterTap ? "gp-master-tap-wrap" : ""} style={{ position:"absolute", inset:0 }}>
+          <Image
+            key={masterArtSrc}
+            src={masterArtSrc}
+            alt="Master"
+            fill
+            sizes="310px"
+            className="object-contain object-bottom gp-master-art"
+            style={{ userSelect: "none" }}
+            priority
+          />
+        </div>
       </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
