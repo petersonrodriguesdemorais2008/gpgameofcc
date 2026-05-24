@@ -1,606 +1,647 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame, PROFILE_ICONS } from "@/contexts/game-context"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { 
-  ArrowLeft, 
-  User, 
-  Trophy, 
-  Swords, 
-  Star,
-  Crown,
-  Edit3,
-  Check,
-  X,
-  Shield,
-  Flame,
-  Target,
-  Award,
-  Copy,
-  BookOpen
-} from "lucide-react"
+import { ArrowLeft, Edit3, Check, X, Copy, Shield, Flame, Crown, BookOpen, Star, Trophy, Swords, Zap, Lock } from "lucide-react"
 import Image from "next/image"
 
-interface ProfileScreenProps {
-  onBack: () => void
-}
+interface ProfileScreenProps { onBack: () => void }
 
-interface Achievement {
-  id: string
-  name: string
-  description: string
-  icon: React.ReactNode
-  progress: number
-  maxProgress: number
-  completed: boolean
-  reward: string
-}
+const BASE_PLAYER_TITLES = ["Iniciante","Colecionador","Estrategista","Mestre das Cartas","Guardiao Lendario","Comandante de Elite","Senhor do Gacha","Lenda Viva"]
 
-const BASE_PLAYER_TITLES = [
-  "Iniciante",
-  "Colecionador",
-  "Estrategista",
-  "Mestre das Cartas",
-  "Guardiao Lendario",
-  "Comandante de Elite",
-  "Senhor do Gacha",
-  "Lenda Viva",
-]
-
-// Safe: only reads localStorage on client side (never during SSR)
 function getPlayerTitles(): string[] {
   if (typeof window === "undefined") return BASE_PLAYER_TITLES
   try {
     const raw = localStorage.getItem("gpgame_titles") ?? "[]"
     const unlocked: string[] = JSON.parse(raw)
     const all = [...BASE_PLAYER_TITLES]
-    for (const t of unlocked) {
-      if (!all.includes(t)) all.push(t)
-    }
+    for (const t of unlocked) { if (!all.includes(t)) all.push(t) }
     return all
-  } catch {
-    return BASE_PLAYER_TITLES
-  }
+  } catch { return BASE_PLAYER_TITLES }
+}
+
+const ELEMENT_COLORS: Record<string,string> = {
+  Aquos:"#38bdf8", Fire:"#f87171", Darkus:"#a855f7", Void:"#22d3ee",
+  Ventus:"#4ade80", Lightness:"#fde68a", Subterra:"#fb923c", Haos:"#fde68a",
+  Darkness:"#a855f7", Shadow:"#8b5cf6",
+}
+
+function rarityGlow(r: string) {
+  if (r==="LR") return "0 0 20px rgba(239,68,68,0.9),0 0 40px rgba(251,191,36,0.5)"
+  if (r==="UR") return "0 0 16px rgba(56,189,248,0.85),0 0 32px rgba(99,179,237,0.4)"
+  if (r==="SR") return "0 0 14px rgba(168,85,247,0.8),0 0 28px rgba(192,132,252,0.3)"
+  return "none"
+}
+function rarityBorder(r: string) {
+  if (r==="LR") return "2px solid rgba(239,68,68,0.9)"
+  if (r==="UR") return "2px solid rgba(56,189,248,0.85)"
+  if (r==="SR") return "1.5px solid rgba(168,85,247,0.75)"
+  return "1px solid rgba(148,163,184,0.3)"
+}
+function rarityBg(r: string) {
+  if (r==="LR") return "linear-gradient(135deg,rgba(239,68,68,0.15),rgba(251,191,36,0.08))"
+  if (r==="UR") return "linear-gradient(135deg,rgba(56,189,248,0.12),rgba(99,179,237,0.06))"
+  if (r==="SR") return "linear-gradient(135deg,rgba(168,85,247,0.12),rgba(192,132,252,0.06))"
+  return "rgba(255,255,255,0.03)"
+}
+
+// Tab background colours
+const TAB_BG: Record<string,string> = {
+  stats:        "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(56,189,248,0.10) 0%,transparent 70%)",
+  achievements: "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(251,191,36,0.10) 0%,transparent 70%)",
+  collection:   "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(168,85,247,0.12) 0%,transparent 70%)",
+}
+
+// Particle canvas for achievements
+function AchievementParticles({ active }: { active: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const raf  = useRef<number>()
+  useEffect(() => {
+    if (!active) return
+    const c = ref.current; if (!c) return
+    const ctx = c.getContext("2d")!
+    c.width = c.offsetWidth; c.height = c.offsetHeight
+    const pts: { x:number;y:number;vx:number;vy:number;life:number;col:string }[] = []
+    const cols = ["#fbbf24","#f59e0b","#fcd34d","#fff","#a78bfa"]
+    for (let i=0;i<40;i++) pts.push({
+      x:Math.random()*c.width, y:c.height+10,
+      vx:(Math.random()-.5)*1.5, vy:-1-Math.random()*2,
+      life:1, col:cols[Math.floor(Math.random()*cols.length)]
+    })
+    const draw = () => {
+      ctx.clearRect(0,0,c.width,c.height)
+      pts.forEach((p,i)=>{
+        p.x+=p.vx; p.y+=p.vy; p.life-=0.012
+        if (p.life<=0) {
+          pts[i]={x:Math.random()*c.width,y:c.height+10,vx:(Math.random()-.5)*1.5,vy:-1-Math.random()*2,life:1,col:cols[Math.floor(Math.random()*cols.length)]}
+        }
+        ctx.globalAlpha=p.life*.8
+        ctx.fillStyle=p.col
+        ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill()
+      })
+      ctx.globalAlpha=1
+      raf.current=requestAnimationFrame(draw)
+    }
+    draw()
+    return ()=>{if(raf.current) cancelAnimationFrame(raf.current)}
+  },[active])
+  return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
+}
+
+// Animated win-rate ring
+function WinRing({ rate }: { rate: number }) {
+  const r=48, stroke=7, circ=2*Math.PI*r
+  const dash = circ*(rate/100)
+  return (
+    <svg width={120} height={120} style={{transform:"rotate(-90deg)"}}>
+      <circle cx={60} cy={60} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
+      <circle cx={60} cy={60} r={r} fill="none"
+        stroke={rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"}
+        strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={`${dash} ${circ}`}
+        style={{transition:"stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)",filter:`drop-shadow(0 0 6px ${rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"})`}}/>
+    </svg>
+  )
 }
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const { t } = useLanguage()
-  const { 
-    playerProfile, 
-    updatePlayerProfile, 
-    collection, 
-    decks, 
-    matchHistory, 
-    coins, 
-    friendPoints,
-    playerId 
-  } = useGame()
-  
-  const [isEditing, setIsEditing] = useState(false)
-  const [editName, setEditName] = useState(playerProfile.name)
-  const [editTitle, setEditTitle] = useState(playerProfile.title)
-  const [showIconSelector, setShowIconSelector] = useState(false)
-  const [activeTab, setActiveTab] = useState<"stats" | "achievements" | "showcase">("stats")
-  const [copied, setCopied] = useState(false)
-  const [playerTitles, setPlayerTitles] = useState<string[]>(BASE_PLAYER_TITLES)
+  const { playerProfile, updatePlayerProfile, collection, decks, matchHistory, coins, friendPoints, playerId } = useGame()
 
-  // Load unlocked titles client-side only (localStorage not available on server)
+  const [isEditing,       setIsEditing]       = useState(false)
+  const [editName,        setEditName]         = useState(playerProfile.name)
+  const [editTitle,       setEditTitle]        = useState(playerProfile.title)
+  const [showIconSel,     setShowIconSel]      = useState(false)
+  const [activeTab,       setActiveTab]        = useState<"stats"|"achievements"|"collection">("stats")
+  const [copied,          setCopied]           = useState(false)
+  const [playerTitles,    setPlayerTitles]     = useState<string[]>(BASE_PLAYER_TITLES)
+  const [hoveredCard,     setHoveredCard]      = useState<string|null>(null)
+  const [cardTilt,        setCardTilt]         = useState({x:0,y:0})
+  const [zoomedCard,      setZoomedCard]       = useState<any|null>(null)
+
   useEffect(() => {
     setPlayerTitles(getPlayerTitles())
-    const handler = () => setPlayerTitles(getPlayerTitles())
-    window.addEventListener("gpgame_title_unlocked", handler)
-    return () => window.removeEventListener("gpgame_title_unlocked", handler)
+    const h = () => setPlayerTitles(getPlayerTitles())
+    window.addEventListener("gpgame_title_unlocked", h)
+    return () => window.removeEventListener("gpgame_title_unlocked", h)
   }, [])
 
-  // Calculate stats
-  const totalCards = collection.length
-  const uniqueCards = new Set(collection.map(c => c.id.split("-").slice(0, -2).join("-"))).size
+  // Stats
   const totalMatches = matchHistory.length
-  const wins = matchHistory.filter(m => m.result === "won").length
-  const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0
+  const wins         = matchHistory.filter(m => m.result==="won").length
+  const winRate      = totalMatches>0 ? Math.round((wins/totalMatches)*100) : 0
+  const uniqueCards  = new Set(collection.map(c=>c.id.split("-").slice(0,-2).join("-"))).size
+  const rarityCount  = { LR:0,UR:0,SR:0,R:0 } as Record<string,number>
+  collection.forEach(c=>{ if(rarityCount[c.rarity]!==undefined) rarityCount[c.rarity]++ })
 
-  // Card rarity breakdown
-  const rarityBreakdown = {
-    LR: collection.filter(c => c.rarity === "LR").length,
-    UR: collection.filter(c => c.rarity === "UR").length,
-    SR: collection.filter(c => c.rarity === "SR").length,
-    R: collection.filter(c => c.rarity === "R").length,
+  // Favourite element from units
+  const elemMap: Record<string,number> = {}
+  collection.filter(c=>c.type==="unit").forEach(c=>{ if(c.element) elemMap[c.element]=(elemMap[c.element]||0)+1 })
+  const favElement = Object.entries(elemMap).sort((a,b)=>b[1]-a[1])[0]
+
+  // Account prestige aura
+  const totalRare = rarityCount.LR*4+rarityCount.UR*2+rarityCount.SR
+  const prestige = totalRare>200?"legendary":totalRare>80?"epic":totalRare>20?"rare":"common"
+  const PRESTIGE_COLORS: Record<string,string[]> = {
+    legendary:["#ef4444","#fbbf24","#a855f7"],
+    epic:["#38bdf8","#8b5cf6","#06b6d4"],
+    rare:["#a855f7","#8b5cf6","#c084fc"],
+    common:["#64748b","#94a3b8"],
   }
+  const pc = PRESTIGE_COLORS[prestige]
 
-  // Mock achievements (in a real app, these would come from the game context)
-  const achievements: Achievement[] = [
-    {
-      id: "first-win",
-      name: "Primeira Vitoria",
-      description: "Venca sua primeira partida",
-      icon: <Trophy className="w-6 h-6 text-amber-400" />,
-      progress: Math.min(wins, 1),
-      maxProgress: 1,
-      completed: wins >= 1,
-      reward: "100 Moedas"
-    },
-    {
-      id: "collector-10",
-      name: "Colecionador Iniciante",
-      description: "Colete 10 cartas unicas",
-      icon: <BookOpen className="w-6 h-6 text-blue-400" />,
-      progress: Math.min(uniqueCards, 10),
-      maxProgress: 10,
-      completed: uniqueCards >= 10,
-      reward: "200 Moedas"
-    },
-    {
-      id: "collector-50",
-      name: "Colecionador Veterano",
-      description: "Colete 50 cartas unicas",
-      icon: <Star className="w-6 h-6 text-purple-400" />,
-      progress: Math.min(uniqueCards, 50),
-      maxProgress: 50,
-      completed: uniqueCards >= 50,
-      reward: "500 Moedas"
-    },
-    {
-      id: "deck-master",
-      name: "Mestre dos Decks",
-      description: "Crie 3 decks diferentes",
-      icon: <Shield className="w-6 h-6 text-cyan-400" />,
-      progress: Math.min(decks.length, 3),
-      maxProgress: 3,
-      completed: decks.length >= 3,
-      reward: "300 Moedas"
-    },
-    {
-      id: "win-streak",
-      name: "Sequencia Vitoriosa",
-      description: "Venca 5 partidas seguidas",
-      icon: <Flame className="w-6 h-6 text-orange-400" />,
-      progress: 0, // Would need tracking in context
-      maxProgress: 5,
-      completed: false,
-      reward: "500 Moedas"
-    },
-    {
-      id: "legendary-hunter",
-      name: "Cacador de Lendas",
-      description: "Obtenha uma carta LR",
-      icon: <Crown className="w-6 h-6 text-amber-400" />,
-      progress: Math.min(rarityBreakdown.LR, 1),
-      maxProgress: 1,
-      completed: rarityBreakdown.LR >= 1,
-      reward: "1000 Moedas"
-    },
+  // Active master
+  const [activeMasterName, setActiveMasterName] = useState<string|null>(null)
+  const [activeMasterIcon, setActiveMasterIcon] = useState<string|null>(null)
+  useEffect(() => {
+    if (typeof window==="undefined") return
+    try {
+      const raw = localStorage.getItem("gpgame_masters_v1")
+      if (raw) {
+        const arr = JSON.parse(raw)
+        const active = arr.find((m:any)=>m.isActive)
+        if (active) {
+          const names:Record<string,string> = {fehnon:"Fehnon Hoskie",morgana:"Morgana Pendragon",calem:"Calem Hidenori"}
+          const icons:Record<string,string> = {fehnon:"/images/icons/fehnon-icon.png",morgana:"/images/icons/morgana-icon.png",calem:"/images/icons/calem-icon.png"}
+          setActiveMasterName(names[active.id]||active.id)
+          setActiveMasterIcon(icons[active.id]||null)
+        }
+      }
+    } catch {}
+  }, [])
+
+  // Favourite card (highest rarity, first found)
+  const favCard = collection.find(c=>c.rarity==="LR") || collection.find(c=>c.rarity==="UR") || collection.find(c=>c.rarity==="SR") || collection[0]
+
+  // Achievements
+  const achievements = [
+    { id:"first-win",    name:"Primeira Vitória",      desc:"Vença sua primeira partida",     icon:"🏆", progress:Math.min(wins,1),     max:1,   done:wins>=1,          rarity:"common",  reward:"100 Moedas", secret:false },
+    { id:"col10",        name:"Colecionador Iniciante", desc:"Colete 10 cartas únicas",        icon:"📚", progress:Math.min(uniqueCards,10), max:10, done:uniqueCards>=10, rarity:"common",  reward:"200 Moedas", secret:false },
+    { id:"col50",        name:"Colecionador Veterano",  desc:"Colete 50 cartas únicas",        icon:"⭐", progress:Math.min(uniqueCards,50), max:50, done:uniqueCards>=50, rarity:"rare",    reward:"500 Moedas", secret:false },
+    { id:"decks3",       name:"Mestre dos Decks",       desc:"Crie 3 decks diferentes",        icon:"🛡", progress:Math.min(decks.length,3), max:3, done:decks.length>=3,  rarity:"common",  reward:"300 Moedas", secret:false },
+    { id:"lr-hunter",   name:"Caçador de Lendas",      desc:"Obtenha uma carta LR",           icon:"👑", progress:Math.min(rarityCount.LR,1),max:1,done:rarityCount.LR>=1,rarity:"legendary",reward:"1000 Moedas",secret:false },
+    { id:"win10",        name:"Guerreiro",               desc:"Vença 10 partidas",              icon:"⚔", progress:Math.min(wins,10),    max:10,  done:wins>=10,         rarity:"rare",    reward:"400 Moedas", secret:false },
+    { id:"secret1",      name:"???",                    desc:"Conquista secreta",              icon:"🔒", progress:0,                    max:1,   done:false,            rarity:"legendary",reward:"???",        secret:true },
+    { id:"secret2",      name:"???",                    desc:"Conquista secreta",              icon:"🔒", progress:0,                    max:1,   done:false,            rarity:"rare",    reward:"???",        secret:true },
   ]
 
-  const handleSaveProfile = () => {
-    updatePlayerProfile({
-      name: editName,
-      title: editTitle
-    })
-    setIsEditing(false)
+  const RARITY_ACHIEV: Record<string,{color:string;label:string;bg:string}> = {
+    legendary:{ color:"#fbbf24", label:"Lendária", bg:"rgba(251,191,36,0.15)" },
+    rare:     { color:"#a855f7", label:"Rara",     bg:"rgba(168,85,247,0.12)" },
+    common:   { color:"#64748b", label:"Comum",    bg:"rgba(255,255,255,0.05)" },
   }
 
-  const handleIconSelect = (iconImage: string) => {
-    updatePlayerProfile({ avatarUrl: iconImage })
-    setShowIconSelector(false)
-  }
+  const handleSave = () => { updatePlayerProfile({name:editName,title:editTitle}); setIsEditing(false) }
+  const handleIcon = (icon:string) => { updatePlayerProfile({avatarUrl:icon}); setShowIconSel(false) }
+  const handleCopy = () => { navigator.clipboard.writeText(playerId); setCopied(true); setTimeout(()=>setCopied(false),2000) }
 
-  const handleCopyId = () => {
-    navigator.clipboard.writeText(playerId)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  // 3D tilt for cards
+  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientY-rect.top)/rect.height-.5)*14
+    const y = -((e.clientX-rect.left)/rect.width-.5)*14
+    setCardTilt({x,y})
   }
-
-  const completedAchievements = achievements.filter(a => a.completed).length
 
   return (
-  <div className="min-h-screen flex flex-col relative overflow-hidden">
-  {/* Premium Background */}
-  <div className="fixed inset-0">
-  <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-purple-950/30 to-slate-950" />
-  <div className="absolute inset-0 bg-gradient-to-t from-cyan-900/15 via-transparent to-purple-900/15" />
-  <div className="absolute inset-0 opacity-[0.05]"
-  style={{
-  backgroundImage: `radial-gradient(circle at 1px 1px, rgba(139,92,246,0.5) 1px, transparent 0)`,
-  backgroundSize: "36px 36px",
-  }}
-  />
-  <div 
-  className="absolute inset-0"
-  style={{
-  backgroundImage: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(168,85,247,0.1) 0%, transparent 50%), radial-gradient(ellipse 50% 30% at 80% 100%, rgba(56,189,248,0.08) 0%, transparent 40%)"
-  }}
-  />
-  </div>
-  
-  {/* Header */}
-  <div className="relative z-10 glass-card border-b border-cyan-500/20">
-        <div className="flex items-center justify-between p-4">
-          <Button
-            onClick={onBack}
-            variant="ghost"
-            className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
-          >
-            <ArrowLeft className="mr-2 h-5 w-5" />
-            {t("back")}
-          </Button>
-          <div className="flex items-center gap-2">
-            <User className="w-6 h-6 text-cyan-400" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-              PERFIL
-            </h1>
-          </div>
-          <div className="w-20" />
+    <div style={{minHeight:"100vh",background:"#05000f",color:"#f1f0ee",fontFamily:"'Segoe UI',system-ui,sans-serif",position:"relative",overflow:"hidden"}}>
+
+      {/* ── Dynamic tab background ── */}
+      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,transition:"background 0.6s ease"}}>
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 100% 80% at 50% -20%,rgba(10,5,30,0.95),transparent 60%)"}}/>
+        <div style={{position:"absolute",inset:0,background:TAB_BG[activeTab],transition:"background 0.6s ease"}}/>
+        {/* Grid */}
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(139,92,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.04) 1px,transparent 1px)",backgroundSize:"48px 48px",opacity:0.5}}/>
+      </div>
+
+      {/* ── Header ── */}
+      <div style={{position:"sticky",top:0,zIndex:50,backdropFilter:"blur(20px)",background:"rgba(5,0,15,0.85)",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",padding:"12px 16px",gap:12}}>
+        <button onClick={onBack} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,width:38,height:38,cursor:"pointer",color:"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <ArrowLeft size={18}/>
+        </button>
+        <span style={{fontWeight:900,fontSize:18,background:"linear-gradient(135deg,#f1f0ee,#c4b5fd)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"0.04em"}}>PERFIL</span>
+        {/* Online status */}
+        <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",background:"rgba(34,197,94,0.10)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:20,padding:"4px 12px"}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",animation:"onlinePulse 2s ease-in-out infinite"}}/>
+          <span style={{fontSize:11,fontWeight:700,color:"#22c55e"}}>Online</span>
         </div>
       </div>
 
-      {/* Profile Card */}
-      <div className="relative z-10 p-4">
-        <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-800/90 border border-cyan-500/30 shadow-xl shadow-cyan-500/10">
-          {/* Banner background */}
-          <div className="h-32 bg-gradient-to-r from-cyan-600/30 via-purple-600/30 to-pink-600/30 relative">
-            <div className="absolute inset-0 bg-[url('/images/the_great_order_wallpaper.png')] bg-cover bg-center opacity-20" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
+      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",padding:"0 0 100px"}}>
+
+        {/* ══════════ HERO SECTION ══════════ */}
+        <div style={{position:"relative",marginBottom:0}}>
+
+          {/* Banner */}
+          <div style={{position:"relative",height:180,overflow:"hidden"}}>
+            {/* Animated gradient banner */}
+            <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${pc[0]}25,${pc[1]||pc[0]}15,${pc[2]||pc[0]}20)`,backgroundSize:"200% 200%",animation:"bannerShift 6s ease-in-out infinite"}}/>
+            <div style={{position:"absolute",inset:0,background:"url('/images/the_great_order_wallpaper.png') center/cover",opacity:0.15,mixBlendMode:"screen"}}/>
+            {/* Prestige aura at top */}
+            {prestige==="legendary"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444410,#fbbf2410,#a855f710,#ef444410)",backgroundSize:"400% 100%",animation:"bannerShift 3s linear infinite"}}/>}
+            {/* Master art in background */}
+            {activeMasterIcon && (
+              <div style={{position:"absolute",right:0,top:0,height:"100%",width:"50%",opacity:0.15,overflow:"hidden"}}>
+                <Image src={activeMasterIcon} alt="" fill style={{objectFit:"contain",objectPosition:"right center",filter:"blur(1px)"}}/>
+              </div>
+            )}
+            {/* Prestige badge */}
+            <div style={{position:"absolute",top:12,right:16,background:`linear-gradient(135deg,${pc[0]}30,${pc[1]||pc[0]}20)`,border:`1px solid ${pc[0]}50`,borderRadius:20,padding:"4px 12px",backdropFilter:"blur(8px)"}}>
+              <span style={{fontSize:10,fontWeight:900,color:pc[0],letterSpacing:"0.10em",textTransform:"uppercase"}}>
+                {prestige==="legendary"?"⚜ Lendário":prestige==="epic"?"✦ Épico":prestige==="rare"?"◈ Raro":"● Comum"}
+              </span>
+            </div>
+            {/* Gradient overlay bottom */}
+            <div style={{position:"absolute",bottom:0,left:0,right:0,height:"80%",background:"linear-gradient(transparent,#05000f)"}}/>
           </div>
 
-          {/* Profile content */}
-          <div className="relative -mt-16 px-6 pb-6">
-            {/* Avatar */}
-            <div className="flex items-end gap-4 mb-4">
-              <div 
-                className="relative cursor-pointer group"
-                onClick={() => setShowIconSelector(true)}
-              >
-                <div className="w-28 h-28 rounded-2xl overflow-hidden border-4 border-cyan-400/50 shadow-lg shadow-cyan-500/30 bg-slate-800">
-                  {playerProfile.avatarUrl ? (
-                    <Image
-                      src={playerProfile.avatarUrl}
-                      alt={playerProfile.name}
-                      width={112}
-                      height={112}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
-                      <span className="text-white text-3xl font-bold">{playerProfile.name.charAt(0).toUpperCase()}</span>
-                    </div>
-                  )}
+          {/* Avatar + info — overlaps banner */}
+          <div style={{position:"relative",marginTop:-70,padding:"0 20px 0"}}>
+            <div style={{display:"flex",alignItems:"flex-end",gap:20}}>
+
+              {/* Avatar with holographic ring */}
+              <div style={{position:"relative",flexShrink:0}} onClick={()=>!isEditing&&setShowIconSel(true)}>
+                <div style={{
+                  position:"absolute",inset:-4,borderRadius:"50%",
+                  background:`conic-gradient(${pc.join(",")},${pc[0]})`,
+                  animation:"rotateSpin 3s linear infinite",
+                  filter:`blur(2px) drop-shadow(0 0 12px ${pc[0]})`,
+                }}/>
+                <div style={{position:"relative",width:96,height:96,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
+                  {playerProfile.avatarUrl
+                    ? <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
+                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${pc[0]},${pc[1]||pc[0]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:"#fff"}}>{playerProfile.name.charAt(0).toUpperCase()}</div>
+                  }
                 </div>
-                <div className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Edit3 className="w-6 h-6 text-white" />
-                </div>
-                {/* Level badge */}
-                <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold text-sm px-3 py-1 rounded-full shadow-lg">
-                  Lv.{playerProfile.level}
+                {/* Lv badge */}
+                <div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:99,padding:"1px 8px",border:"2px solid #05000f",whiteSpace:"nowrap"}}>
+                  <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>Lv.{playerProfile.level||1}</span>
                 </div>
               </div>
 
-              {/* Name and title */}
-              <div className="flex-1 pb-2">
+              {/* Name / title / id */}
+              <div style={{flex:1,paddingBottom:8,minWidth:0}}>
                 {isEditing ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="bg-slate-800 border-cyan-500/30 text-white text-xl font-bold"
-                      placeholder="Nome"
-                    />
-                    <select
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="w-full bg-slate-800 border border-cyan-500/30 text-cyan-400 rounded-lg px-3 py-2 text-sm"
-                    >
-                      {playerTitles.map(title => (
-                        <option key={title} value={title}>{title}</option>
-                      ))}
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <input value={editName} onChange={e=>setEditName(e.target.value)} maxLength={20}
+                      style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(139,92,246,0.40)",borderRadius:8,padding:"7px 12px",color:"#f1f0ee",fontSize:15,fontWeight:800,outline:"none"}}/>
+                    <select value={editTitle} onChange={e=>setEditTitle(e.target.value)}
+                      style={{background:"rgba(10,5,30,0.95)",border:"1px solid rgba(139,92,246,0.30)",borderRadius:8,padding:"6px 10px",color:"#c4b5fd",fontSize:12}}>
+                      {playerTitles.map(tt=><option key={tt} value={tt}>{tt}</option>)}
                     </select>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleSaveProfile} className="bg-green-600 hover:bg-green-500">
-                        <Check className="w-4 h-4 mr-1" /> Salvar
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
-                        <X className="w-4 h-4 mr-1" /> Cancelar
-                      </Button>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={handleSave} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#065f46,#059669)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}}>✓ Salvar</button>
+                      <button onClick={()=>setIsEditing(false)} style={{flex:1,padding:"7px",borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.10)",color:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>✕</button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-2xl font-bold text-white">{playerProfile.name}</h2>
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="p-1.5 rounded-lg hover:bg-slate-700/50 transition-colors"
-                      >
-                        <Edit3 className="w-4 h-4 text-slate-400" />
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                      <h2 style={{fontWeight:900,fontSize:22,margin:0,background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerProfile.name}</h2>
+                      <button onClick={()=>setIsEditing(true)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✎</button>
+                    </div>
+                    {/* Title badge */}
+                    {playerProfile.title&&(
+                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`linear-gradient(135deg,${pc[0]}20,${pc[1]||pc[0]}10)`,border:`1px solid ${pc[0]}40`,borderRadius:20,padding:"3px 12px",marginBottom:8}}>
+                        <span style={{fontSize:12,fontWeight:800,color:pc[0]}}>{playerProfile.title}</span>
+                      </div>
+                    )}
+                    {/* ID row */}
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:11,color:"#374151",fontFamily:"monospace"}}>ID: {playerId?.slice(0,12)}...</span>
+                      <button onClick={handleCopy} style={{background:"none",border:"none",cursor:"pointer",color:copied?"#22c55e":"#4b5563",fontSize:11,fontWeight:600,padding:0}}>
+                        {copied?"✓ Copiado":"⎘ Copiar"}
                       </button>
                     </div>
-                    <p className="text-cyan-400 font-medium">{playerProfile.title}</p>
                   </>
                 )}
               </div>
+
+              {/* Active master pill */}
+              {activeMasterName&&(
+                <div style={{flexShrink:0,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"8px 12px",textAlign:"center",minWidth:90}}>
+                  {activeMasterIcon&&(
+                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}60`,margin:"0 auto 4px"}}>
+                      <Image src={activeMasterIcon} alt="" width={36} height={36} style={{objectFit:"cover"}}/>
+                    </div>
+                  )}
+                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>Mestre</div>
+                  <div style={{fontSize:11,fontWeight:800,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{activeMasterName.split(" ")[0]}</div>
+                </div>
+              )}
             </div>
 
-            {/* Player ID */}
-            <div className="flex items-center gap-2 mb-4 bg-slate-800/50 rounded-xl px-4 py-2 border border-slate-700/50">
-              <span className="text-slate-400 text-sm">ID:</span>
-              <span className="text-white font-mono text-sm flex-1">{playerId}</span>
-              <button
-                onClick={handleCopyId}
-                className="p-1.5 rounded-lg hover:bg-slate-700/50 transition-colors"
-              >
-                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
-              </button>
-            </div>
-
-            {/* Quick stats */}
-            <div className="grid grid-cols-4 gap-3">
+            {/* Quick-stats row */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:16}}>
               {[
-                { icon: <BookOpen className="w-5 h-5" />, value: uniqueCards, label: "Cartas" },
-                { icon: <Swords className="w-5 h-5" />, value: totalMatches, label: "Partidas" },
-                { icon: <Trophy className="w-5 h-5" />, value: `${winRate}%`, label: "Vitorias" },
-                { icon: <Award className="w-5 h-5" />, value: `${completedAchievements}/${achievements.length}`, label: "Conquistas" },
-              ].map((stat, i) => (
-                <div key={i} className="bg-slate-800/50 rounded-xl p-3 text-center border border-slate-700/50">
-                  <div className="text-cyan-400 mb-1 flex justify-center">{stat.icon}</div>
-                  <div className="text-white font-bold text-lg">{stat.value}</div>
-                  <div className="text-slate-400 text-xs">{stat.label}</div>
+                {icon:"⚔",val:totalMatches,lbl:"Partidas"},
+                {icon:"🏆",val:wins,lbl:"Vitórias"},
+                {icon:"📚",val:uniqueCards,lbl:"Cartas"},
+                {icon:"🪙",val:coins,lbl:"Moedas"},
+              ].map(s=>(
+                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+                  <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
+                  <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
+                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.lbl}</div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="relative z-10 px-4">
-        <div className="flex gap-2 bg-slate-900/50 rounded-xl p-1 border border-slate-700/50">
-          {[
-            { id: "stats", label: "Estatisticas", icon: Target },
-            { id: "achievements", label: "Conquistas", icon: Trophy },
-            { id: "showcase", label: "Colecao", icon: Star },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id as typeof activeTab)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
-                activeTab === id
-                  ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 p-4 overflow-y-auto relative z-10">
-        {activeTab === "stats" && (
-          <div className="space-y-4">
-            {/* Resources */}
-            <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-700/50">
-              <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                <Star className="w-5 h-5 text-amber-400" />
-                Recursos
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl p-3">
-                  <Image src="/images/icons/gacha-coin.png" alt="Coins" width={40} height={40} className="w-10 h-10" />
-                  <div>
-                    <div className="text-amber-400 font-bold text-xl">{coins.toLocaleString()}</div>
-                    <div className="text-slate-400 text-xs">Moedas</div>
+            {/* Favourite card signature */}
+            {favCard&&(
+              <div style={{marginTop:14,display:"flex",alignItems:"center",gap:14,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:14,padding:"12px 16px"}}>
+                <div style={{position:"relative",width:52,height:72,flexShrink:0,borderRadius:6,overflow:"hidden",boxShadow:rarityGlow(favCard.rarity)}}>
+                  <Image src={favCard.image||"/placeholder.svg"} alt={favCard.name} fill style={{objectFit:"cover"}}/>
+                  {/* Holographic sheen */}
+                  <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.18) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
+                  {favCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
+                </div>
+                <div>
+                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.10em",marginBottom:4}}>🃏 Carta Favorita</div>
+                  <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee",marginBottom:3}}>{favCard.name}</div>
+                  <div style={{display:"flex",gap:6}}>
+                    <span style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,background:rarityBg(favCard.rarity),color:favCard.rarity==="LR"?"#ef4444":favCard.rarity==="UR"?"#38bdf8":favCard.rarity==="SR"?"#a855f7":"#94a3b8"}}>{favCard.rarity}</span>
+                    {favCard.element&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,color:ELEMENT_COLORS[favCard.element]||"#94a3b8",background:`${ELEMENT_COLORS[favCard.element]||"#94a3b8"}15`}}>{favCard.element}</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl p-3">
-                  <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
-                    <Star className="w-6 h-6 text-pink-400" />
-                  </div>
-                  <div>
-                    <div className="text-pink-400 font-bold text-xl">{friendPoints}</div>
-                    <div className="text-slate-400 text-xs">Pontos de Amizade</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card breakdown */}
-            <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-700/50">
-              <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-cyan-400" />
-                Cartas por Raridade
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { rarity: "LR", count: rarityBreakdown.LR, color: "from-red-500 to-amber-500", textColor: "text-amber-400" },
-                  { rarity: "UR", count: rarityBreakdown.UR, color: "from-amber-500 to-yellow-400", textColor: "text-yellow-400" },
-                  { rarity: "SR", count: rarityBreakdown.SR, color: "from-purple-500 to-pink-500", textColor: "text-purple-400" },
-                  { rarity: "R", count: rarityBreakdown.R, color: "from-slate-500 to-slate-400", textColor: "text-slate-400" },
-                ].map(({ rarity, count, color, textColor }) => (
-                  <div key={rarity} className="flex items-center gap-3">
-                    <span className={`font-bold w-8 ${textColor}`}>{rarity}</span>
-                    <div className="flex-1 h-3 bg-slate-700 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full bg-gradient-to-r ${color} transition-all duration-500`}
-                        style={{ width: `${Math.min((count / Math.max(totalCards, 1)) * 100, 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-white font-bold w-12 text-right">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Match history */}
-            <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-700/50">
-              <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                <Swords className="w-5 h-5 text-red-400" />
-                Historico de Batalhas
-              </h3>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-slate-800/50 rounded-xl p-3">
-                  <div className="text-green-400 font-bold text-2xl">{wins}</div>
-                  <div className="text-slate-400 text-xs">Vitorias</div>
-                </div>
-                <div className="bg-slate-800/50 rounded-xl p-3">
-                  <div className="text-red-400 font-bold text-2xl">{totalMatches - wins}</div>
-                  <div className="text-slate-400 text-xs">Derrotas</div>
-                </div>
-                <div className="bg-slate-800/50 rounded-xl p-3">
-                  <div className="text-cyan-400 font-bold text-2xl">{winRate}%</div>
-                  <div className="text-slate-400 text-xs">Taxa</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "achievements" && (
-          <div className="space-y-3">
-            {achievements.map((achievement) => (
-              <div 
-                key={achievement.id}
-                className={`bg-slate-900/50 rounded-2xl p-4 border transition-all ${
-                  achievement.completed 
-                    ? "border-amber-500/50 shadow-lg shadow-amber-500/10" 
-                    : "border-slate-700/50"
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                    achievement.completed 
-                      ? "bg-gradient-to-br from-amber-500/30 to-yellow-500/30" 
-                      : "bg-slate-800/50"
-                  }`}>
-                    {achievement.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-white font-bold">{achievement.name}</h4>
-                      {achievement.completed && (
-                        <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full">
-                          Completo
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-slate-400 text-sm mb-2">{achievement.description}</p>
-                    
-                    {/* Progress bar */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-500 ${
-                            achievement.completed 
-                              ? "bg-gradient-to-r from-amber-500 to-yellow-400" 
-                              : "bg-gradient-to-r from-cyan-500 to-blue-500"
-                          }`}
-                          style={{ width: `${(achievement.progress / achievement.maxProgress) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-slate-400 text-sm">
-                        {achievement.progress}/{achievement.maxProgress}
-                      </span>
-                    </div>
-                    
-                    {/* Reward */}
-                    <div className="mt-2 flex items-center gap-1 text-amber-400 text-sm">
-                      <Gift className="w-4 h-4" />
-                      Recompensa: {achievement.reward}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "showcase" && (
-          <div className="space-y-4">
-            <p className="text-slate-400 text-center">
-              Suas cartas mais raras serao exibidas aqui em breve!
-            </p>
-            {/* Show top cards by rarity */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {collection
-                .filter(c => c.rarity === "LR" || c.rarity === "UR")
-                .slice(0, 10)
-                .map((card, i) => (
-                  <div 
-                    key={`${card.id}-${i}`}
-                    className={`aspect-[3/4] rounded-xl overflow-hidden border-2 ${
-                      card.rarity === "LR" 
-                        ? "border-amber-500 shadow-lg shadow-amber-500/30" 
-                        : "border-purple-500 shadow-lg shadow-purple-500/20"
-                    }`}
-                  >
-                    <Image
-                      src={card.image}
-                      alt={card.name}
-                      width={100}
-                      height={140}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-            </div>
-            {collection.filter(c => c.rarity === "LR" || c.rarity === "UR").length === 0 && (
-              <div className="text-center py-8">
-                <Crown className="w-16 h-16 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-500">Nenhuma carta UR ou LR ainda</p>
-                <p className="text-slate-600 text-sm">Abra packs no Gacha para conseguir!</p>
               </div>
             )}
           </div>
+        </div>
+
+        {/* Icon selector */}
+        {showIconSel&&(
+          <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"linear-gradient(160deg,#100c08,#0e0b18)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:20,maxWidth:400,width:"100%"}}>
+              <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:14}}>Escolher Avatar</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+                {PROFILE_ICONS.map((icon:string)=>(
+                  <button key={icon} onClick={()=>handleIcon(icon)}
+                    style={{aspectRatio:"1",borderRadius:12,overflow:"hidden",border:playerProfile.avatarUrl===icon?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)"}}>
+                    <Image src={icon} alt="" width={60} height={60} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  </button>
+                ))}
+              </div>
+              <button onClick={()=>setShowIconSel(false)} style={{marginTop:14,width:"100%",padding:"10px",borderRadius:10,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#6b7280",fontWeight:700,fontSize:13,cursor:"pointer"}}>Fechar</button>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════ TABS ══════════ */}
+        <div style={{display:"flex",margin:"20px 20px 0",borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
+          {(["stats","achievements","collection"] as const).map(tab=>{
+            const icons={"stats":"📊","achievements":"🏆","collection":"🃏"}
+            const labels={"stats":"Estatísticas","achievements":"Conquistas","collection":"Coleção"}
+            const active=activeTab===tab
+            const colors={"stats":"#38bdf8","achievements":"#fbbf24","collection":"#a855f7"}
+            return (
+              <button key={tab} onClick={()=>setActiveTab(tab)} style={{
+                flex:1,padding:"12px 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                background:active?`${colors[tab]}12`:"transparent",
+                borderBottom:`2px solid ${active?colors[tab]:"transparent"}`,
+                border:"none",cursor:"pointer",transition:"all .2s",
+                borderRight:tab!=="collection"?"1px solid rgba(255,255,255,0.05)":"none",
+              }}>
+                <span style={{fontSize:16}}>{icons[tab]}</span>
+                <span style={{fontSize:10,fontWeight:700,color:active?colors[tab]:"#4b5563",letterSpacing:"0.04em"}}>{labels[tab]}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ══════════ STATS TAB ══════════ */}
+        {activeTab==="stats"&&(
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* Win rate ring + breakdown */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:16,padding:"18px",textAlign:"center",position:"relative"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Taxa de Vitória</div>
+                <div style={{position:"relative",display:"inline-block"}}>
+                  <WinRing rate={winRate}/>
+                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transform:"rotate(90deg)"}}>
+                    <span style={{fontWeight:900,fontSize:22,color:"#f1f0ee"}}>{winRate}%</span>
+                    <span style={{fontSize:9,color:"#4b5563"}}>{wins}V/{totalMatches-wins}D</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {/* Rarity breakdown */}
+                {(["LR","UR","SR","R"] as const).map(r=>{
+                  const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
+                  const pct=uniqueCards>0?Math.min(100,(rarityCount[r]/uniqueCards)*100):0
+                  return(
+                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                        <span style={{fontSize:11,fontWeight:800,color:col}}>{r}</span>
+                        <span style={{fontSize:11,color:"#6b7280"}}>{rarityCount[r]}</span>
+                      </div>
+                      <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
+                        <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:`linear-gradient(90deg,${col}80,${col})`,boxShadow:`0 0 6px ${col}60`,transition:"width .8s ease"}}/>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Favourite element + deck */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"14px"}}>
+                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚡ Elemento Favorito</div>
+                {favElement?(
+                  <>
+                    <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||"#94a3b8",marginBottom:2}}>{favElement[0]}</div>
+                    <div style={{fontSize:11,color:"#4b5563"}}>{favElement[1]} cartas</div>
+                  </>
+                ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
+              </div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"14px"}}>
+                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>🃏 Decks Criados</div>
+                <div style={{fontWeight:900,fontSize:18,color:"#f1f0ee",marginBottom:2}}>{decks.length}</div>
+                <div style={{fontSize:11,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
+              </div>
+            </div>
+
+            {/* Resources */}
+            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>💰 Recursos</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:22}}>🪙</span>
+                  <div>
+                    <div style={{fontWeight:900,fontSize:16,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
+                    <div style={{fontSize:10,color:"#4b5563"}}>Moedas</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:22}}>⭐</span>
+                  <div>
+                    <div style={{fontWeight:900,fontSize:16,color:"#c4b5fd"}}>{friendPoints||0}</div>
+                    <div style={{fontSize:10,color:"#4b5563"}}>Pts Amizade</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════ ACHIEVEMENTS TAB ══════════ */}
+        {activeTab==="achievements"&&(
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <span style={{fontSize:12,color:"#4b5563"}}>{achievements.filter(a=>a.done).length}/{achievements.length} completas</span>
+              <div style={{height:5,flex:1,margin:"0 12px",borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
+                <div style={{height:"100%",borderRadius:99,width:`${(achievements.filter(a=>a.done).length/achievements.length)*100}%`,background:"linear-gradient(90deg,#7c3aed,#e8c96d)",transition:"width .8s ease"}}/>
+              </div>
+            </div>
+            {achievements.map(a=>{
+              const ra=RARITY_ACHIEV[a.rarity]
+              const pct=a.max>0?(a.progress/a.max)*100:0
+              return(
+                <div key={a.id} style={{position:"relative",background:a.done?ra.bg:"rgba(255,255,255,0.02)",border:`1px solid ${a.done?ra.color+"40":"rgba(255,255,255,0.06)"}`,borderRadius:14,padding:"14px 16px",overflow:"hidden",transition:"all .2s"}}>
+                  {/* Particle effect for completed */}
+                  {a.done&&<AchievementParticles active={true}/>}
+                  {/* Completed glow */}
+                  {a.done&&<div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 0% 50%,${ra.color}15,transparent 60%)`,pointerEvents:"none"}}/>}
+                  <div style={{position:"relative",display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{
+                      width:44,height:44,borderRadius:12,flexShrink:0,
+                      background:a.done?`linear-gradient(135deg,${ra.color}25,${ra.color}10)`:"rgba(255,255,255,0.04)",
+                      border:`1px solid ${a.done?ra.color+"50":"rgba(255,255,255,0.07)"}`,
+                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
+                      boxShadow:a.done?`0 0 16px ${ra.color}40`:"none",
+                    }}>{a.secret&&!a.done?"🔒":a.icon}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+                        <span style={{fontWeight:800,fontSize:13,color:a.done?"#f1f0ee":"#6b7280"}}>{a.secret&&!a.done?"???":a.name}</span>
+                        <span style={{fontSize:8,fontWeight:800,padding:"1px 6px",borderRadius:4,color:ra.color,background:ra.bg}}>{ra.label}</span>
+                        {a.done&&<span style={{fontSize:10,color:"#22c55e"}}>✓</span>}
+                      </div>
+                      <div style={{fontSize:11,color:"#4b5563",marginBottom:a.max>1?6:0}}>{a.secret&&!a.done?"Complete desafios secretos para descobrir...":a.desc}</div>
+                      {a.max>1&&!a.secret&&(
+                        <div>
+                          <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
+                            <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:a.done?`linear-gradient(90deg,${ra.color}80,${ra.color})`:
+                              "linear-gradient(90deg,#38bdf880,#38bdf8)",transition:"width .8s ease"}}/>
+                          </div>
+                          <div style={{fontSize:9,color:"#4b5563",marginTop:2}}>{a.progress}/{a.max}</div>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{flexShrink:0,fontSize:10,color:"#e8c96d",fontWeight:700,textAlign:"right"}}>
+                      {a.done&&!a.secret?a.reward:""}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ══════════ COLLECTION TAB ══════════ */}
+        {activeTab==="collection"&&(
+          <div style={{padding:"16px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <span style={{fontSize:13,color:"#4b5563"}}>{uniqueCards} cartas únicas</span>
+              <div style={{display:"flex",gap:6}}>
+                {(["LR","UR","SR","R"] as const).map(r=>{
+                  const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
+                  return <span key={r} style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,color:col,background:`${col}15`}}>{r}: {rarityCount[r]}</span>
+                })}
+              </div>
+            </div>
+
+            {/* Rarity sections */}
+            {(["LR","UR","SR","R"] as const).map(rarity=>{
+              const cards = collection.filter(c=>c.rarity===rarity)
+              if (!cards.length) return null
+              const rc = rarity==="LR"?"#ef4444":rarity==="UR"?"#38bdf8":rarity==="SR"?"#a855f7":"#94a3b8"
+              return(
+                <div key={rarity} style={{marginBottom:20}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                    <div style={{height:1,flex:1,background:`linear-gradient(to right,${rc}40,transparent)`}}/>
+                    <span style={{fontSize:11,fontWeight:800,color:rc,textTransform:"uppercase",letterSpacing:"0.10em"}}>{rarity}</span>
+                    <span style={{fontSize:9,color:"#4b5563"}}>{cards.length}</span>
+                    <div style={{height:1,flex:1,background:`linear-gradient(to left,${rc}40,transparent)`}}/>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                    {cards.slice(0,16).map((card,i)=>(
+                      <div key={`${card.id}-${i}`}
+                        onMouseMove={e=>{setHoveredCard(card.id+i);handleCardMouseMove(e)}}
+                        onMouseLeave={()=>{setHoveredCard(null);setCardTilt({x:0,y:0})}}
+                        onClick={()=>setZoomedCard(card)}
+                        style={{
+                          position:"relative",aspectRatio:"3/4",borderRadius:8,overflow:"hidden",cursor:"pointer",
+                          border:rarityBorder(rarity),
+                          boxShadow:hoveredCard===card.id+i?rarityGlow(rarity):"none",
+                          transform:hoveredCard===card.id+i?`perspective(600px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1.08)`:"scale(1)",
+                          transition:"transform .15s ease,box-shadow .15s ease",
+                        }}>
+                        <Image src={card.image||"/placeholder.svg"} alt={card.name} fill style={{objectFit:"cover"}}/>
+                        {/* Holographic overlay on hover */}
+                        {hoveredCard===card.id+i&&(
+                          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.20) 50%,transparent 65%)",pointerEvents:"none"}}/>
+                        )}
+                        {/* Rarity border effect */}
+                        {rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite",pointerEvents:"none"}}/>}
+                        {rarity==="UR"&&<div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 12px rgba(56,189,248,0.25)",pointerEvents:"none",animation:"urPulse 2s ease-in-out infinite"}}/>}
+                        {/* LR particles */}
+                        {rarity==="LR"&&hoveredCard===card.id+i&&<LRParticles/>}
+                      </div>
+                    ))}
+                  </div>
+                  {cards.length>16&&<div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#4b5563"}}>+{cards.length-16} cartas</div>}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
-      {/* Icon Selector Modal */}
-      {showIconSelector && (
-        <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowIconSelector(false)}
-        >
-          <div 
-            className="bg-slate-900 rounded-2xl border border-cyan-500/30 p-6 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-bold text-white mb-4 text-center">Escolha seu Avatar</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {PROFILE_ICONS.map((icon) => (
-                <button
-                  key={icon.id}
-                  onClick={() => handleIconSelect(icon.image)}
-                  className={`aspect-square rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${
-                    playerProfile.avatarUrl === icon.image 
-                      ? "border-cyan-400 shadow-lg shadow-cyan-500/30" 
-                      : "border-slate-600 hover:border-slate-400"
-                  }`}
-                >
-                  <Image
-                    src={icon.image}
-                    alt={icon.name}
-                    width={100}
-                    height={100}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-            <Button 
-              onClick={() => setShowIconSelector(false)}
-              className="w-full mt-4 bg-slate-700 hover:bg-slate-600"
-            >
-              Fechar
-            </Button>
+      {/* Card zoom */}
+      {zoomedCard&&(
+        <div onClick={()=>setZoomedCard(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{width:260,aspectRatio:"3/4",position:"relative",borderRadius:12,overflow:"hidden",boxShadow:rarityGlow(zoomedCard.rarity)}}>
+            <Image src={zoomedCard.image||"/placeholder.svg"} alt={zoomedCard.name} fill style={{objectFit:"cover"}}/>
+            {zoomedCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
           </div>
         </div>
       )}
+
+      <style dangerouslySetInnerHTML={{__html:`
+        @keyframes onlinePulse{0%,100%{opacity:1;box-shadow:0 0 8px #22c55e}50%{opacity:0.6;box-shadow:0 0 16px #22c55e}}
+        @keyframes rotateSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes bannerShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+        @keyframes holoSheen{0%,100%{background-position:200% 200%;opacity:0.5}50%{background-position:-100% -100%;opacity:1}}
+        @keyframes rainbowShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+        @keyframes urPulse{0%,100%{box-shadow:inset 0 0 12px rgba(56,189,248,0.2)}50%{box-shadow:inset 0 0 22px rgba(56,189,248,0.5)}}
+      `}}/>
     </div>
   )
 }
 
-// Missing import
-import { Gift } from "lucide-react"
+// LR particle effect
+function LRParticles() {
+  const cols=["#ef4444","#fbbf24","#a855f7","#fff"]
+  return(
+    <div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden"}}>
+      {[...Array(8)].map((_,i)=>(
+        <div key={i} style={{
+          position:"absolute",
+          width:3,height:3,borderRadius:"50%",
+          background:cols[i%cols.length],
+          left:`${10+i*11}%`,
+          animation:`lrFloat${i%3} ${1.2+i*0.2}s ease-in-out ${i*0.15}s infinite`,
+          boxShadow:`0 0 6px ${cols[i%cols.length]}`,
+        }}/>
+      ))}
+      <style dangerouslySetInnerHTML={{__html:`
+        @keyframes lrFloat0{0%,100%{top:90%;opacity:0}50%{top:10%;opacity:1}}
+        @keyframes lrFloat1{0%,100%{top:80%;opacity:0}60%{top:20%;opacity:0.8}}
+        @keyframes lrFloat2{0%,100%{top:95%;opacity:0}40%{top:5%;opacity:1}}
+      `}}/>
+    </div>
+  )
+}
