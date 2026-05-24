@@ -74,7 +74,7 @@ const GP_CSS = `
 /* Sidebar buttons */
 .gp-sb {
   contain: layout style;
-  width: 66px; padding: 11px 0;
+  width: 76px; padding: 13px 0;
   background: rgba(5,2,18,0.88);
   border: 1px solid rgba(124,58,237,0.18);
   border-radius: 14px;
@@ -91,9 +91,9 @@ const GP_CSS = `
 }
 .gp-sb:hover { background: rgba(10,5,32,0.95); border-color: rgba(139,92,246,0.42); transform: translateX(-2px); box-shadow: 3px 0 18px rgba(124,58,237,0.2); }
 .gp-sb:hover::before { transform: scaleY(1); }
-.gp-sb svg { width: 21px; height: 21px; color: rgba(167,139,250,0.82); transition: color .25s; }
+.gp-sb svg { width: 23px; height: 23px; color: rgba(167,139,250,0.82); transition: color .25s; }
 .gp-sb:hover svg { color: rgba(196,165,250,1); filter: drop-shadow(0 0 5px rgba(167,139,250,0.5)); }
-.gp-sb-lbl { font-size: 8.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(109,40,217,0.75); transition: color .25s; font-family: inherit; }
+.gp-sb-lbl { font-size: 9.5px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: rgba(109,40,217,0.75); transition: color .25s; font-family: inherit; }
 .gp-sb:hover .gp-sb-lbl { color: rgba(139,92,246,0.95); }
 .gp-sb.gp-gold { background: rgba(12,7,2,0.88); border-color: rgba(245,158,11,0.25); }
 .gp-sb.gp-gold::before { background: rgba(245,158,11,0.9); }
@@ -130,6 +130,39 @@ const GP_CSS = `
   position: absolute; left: 0; top: 20%; bottom: 20%;
   width: 1px;
   background: linear-gradient(180deg, transparent, rgba(139,92,246,0.25), transparent);
+}
+/* Active deck badge above JOGAR */
+@keyframes gp-deck-holo {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.gp-deck-badge {
+  background: linear-gradient(115deg,
+    rgba(6,18,60,0.90) 0%, rgba(14,40,120,0.88) 35%,
+    rgba(30,64,175,0.82) 60%, rgba(14,40,120,0.88) 80%, rgba(6,18,60,0.90) 100%
+  );
+  background-size: 250% 250%;
+  animation: gp-deck-holo 4s ease infinite;
+  border: 1.5px solid rgba(96,165,250,0.62);
+  box-shadow: 0 2px 14px rgba(59,130,246,0.28), inset 0 1px 0 rgba(147,197,253,0.12);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 8px;
+  cursor: pointer; transition: all .22s;
+  width: 440px;
+}
+.gp-deck-badge:hover {
+  border-color: rgba(147,197,253,0.85);
+  box-shadow: 0 4px 22px rgba(59,130,246,0.42), inset 0 1px 0 rgba(147,197,253,0.18);
+  transform: translateY(-1px);
+}
+.gp-deck-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 0 6px rgba(96,165,250,0.8);
+  flex-shrink: 0;
+  animation: gp-play-aura 2s ease-in-out infinite;
 }
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
@@ -242,7 +275,7 @@ const GP_CSS = `
 .gp-sb:active { transform: translateX(-2px) scale(0.96); }
 .gp-ni {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; padding: 10px 3px 8px; background: transparent; border: none;
+  gap: 5px; padding: 11px 4px 9px; background: transparent; border: none;
   cursor: pointer; position: relative; transition: background .2s;
   outline: none;
 }
@@ -263,6 +296,7 @@ const GP_CSS = `
 .gp-ni svg {
   color: rgba(109,40,217,0.62); transition: all .22s;
   filter: none;
+  width: 27px; height: 27px;
 }
 .gp-ni:hover svg {
   color: rgba(192,132,252,1);
@@ -271,7 +305,7 @@ const GP_CSS = `
 }
 /* Label */
 .gp-ni-lbl {
-  font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
   color: rgba(109,40,217,0.52); transition: all .22s; font-family: inherit;
 }
 .gp-ni:hover .gp-ni-lbl {
@@ -396,12 +430,13 @@ const GP_CSS = `
 .gp-col-btn {
   will-change: box-shadow, border-color;
   transform: translateZ(0);
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.55));
   background: linear-gradient(140deg,
     rgba(255,255,255,0.08) 0%,
     rgba(240,248,255,0.13) 45%,
     rgba(214,228,255,0.09) 100%
   );
-  border: 2.5px solid rgba(255,255,255,0.88);
+  border: 2.5px solid rgba(255,255,255,0.96);
   animation: gp-col-pulse 3s ease-in-out infinite;
   backdrop-filter: blur(18px);
   transition: transform .25s ease, border-color .25s ease, background .25s;
@@ -438,6 +473,7 @@ const GP_CSS = `
 .gp-gacha-btn {
   will-change: box-shadow, border-color;
   transform: translateZ(0);
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.55));
   background: linear-gradient(140deg,
     rgba(100,10,55,0.90) 0%,
     rgba(162,20,85,0.86) 35%,
@@ -619,9 +655,12 @@ export function resumeMenuMusic() {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
+  const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks } = useGame()
 
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
+
+  // Active deck (first deck = default active)
+  const activeDeck = decks?.[0] ?? null
 
   // Active master art — read directly from masters-data storage
   const [masterArtSrc, setMasterArtSrc] = useState<string>(() => {
@@ -1415,12 +1454,12 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
-          { label:"Hist.",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
-          { label:"Config", icon:<Settings />, onClick:()=>onNavigate("settings"),      gold:false, dot:false    },
-          { label:"Daily",  icon:null,         onClick:()=>{ setShowDailyBonus(true); setDailyBonusJustClaimed(false) }, gold:false, dot:!dailyBonusClaimed, emoji: dailyBonusClaimed ? "✅" : "🎁", dotColor:"rgba(52,211,153,0.9)" },
+          { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
+          { label:"Config.", icon:<Settings />, onClick:()=>onNavigate("settings"),      gold:false, dot:false    },
+          { label:"Diárias",  icon:null,         onClick:()=>{ setShowDailyBonus(true); setDailyBonusJustClaimed(false) }, gold:false, dot:!dailyBonusClaimed, emoji: dailyBonusClaimed ? "✅" : "🎁", dotColor:"rgba(52,211,153,0.9)" },
           { label:"Tema",   icon:null,         onClick:()=>setShowWallpaperModal(true),  gold:false, dot:false,   emoji:"🖼️" },
           { label:"Passe",  icon:<Shield />,   onClick:()=>onNavigate("gear-pass"),     gold:false, dot:true,    dotColor:"rgba(251,191,36,0.9)" },
-          { label:"Story",  icon:<BookOpen />, onClick:()=>onNavigate("story"),         gold:false, dot:false    },
+          { label:"História",  icon:<BookOpen />, onClick:()=>onNavigate("story"),         gold:false, dot:false    },
           { label:"Mestre", icon:<Star />,     onClick:()=>onNavigate("masters"),       gold:true,  dot:false    },
         ].map(btn => (
           <div key={btn.label} className="relative" style={{ borderRadius:14 }}>
@@ -1436,6 +1475,20 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* ══ 3 BOTÕES DESTAQUE — lateral esquerda, exatamente como no desenho ══ */}
       {!showPlayMenu && (
         <div className="fixed z-20" style={{ left:24, top:200 }}>
+
+          {/* ── DECK ATIVO — indicador acima do JOGAR ── */}
+          {activeDeck && (
+            <button className="gp-deck-badge" onClick={() => onNavigate("deck-builder")} style={{ marginBottom: 6 }}>
+              <div className="gp-deck-badge-dot" />
+              <div className="flex flex-col gap-0.5 overflow-hidden">
+                <span style={{ fontSize:8, fontWeight:800, letterSpacing:"1.5px", textTransform:"uppercase", color:"rgba(147,197,253,0.55)" }}>Deck Ativo</span>
+                <span style={{ fontSize:13, fontWeight:900, color:"rgba(219,234,254,0.95)", letterSpacing:"0.5px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:360, textShadow:"0 0 10px rgba(59,130,246,0.5)" }}>
+                  {activeDeck.name}
+                </span>
+              </div>
+              <span style={{ marginLeft:"auto", fontSize:10, color:"rgba(96,165,250,0.55)", fontWeight:700, flexShrink:0 }}>▸ {activeDeck.cards?.length ?? 0} cartas</span>
+            </button>
+          )}
 
           {/* ── JOGAR (AZUL) — retângulo grande com corte no canto ── */}
           <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
