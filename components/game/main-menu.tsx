@@ -103,24 +103,26 @@ const GP_CSS = `
 
 /* Bottom nav – levemente escuro */
 .gp-nav-wrap {
-  background: rgba(3,1,18,0.78);
-  backdrop-filter: blur(22px);
+  background: linear-gradient(180deg, rgba(3,1,18,0.65) 0%, rgba(3,1,18,0.96) 100%);
+  backdrop-filter: blur(24px);
   border-top: 1px solid transparent;
 }
+@keyframes gp-navline-run {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
 .gp-nav-line {
-  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
   background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(139,92,246,0.0) 5%,
-    rgba(139,92,246,0.6) 20%,
-    rgba(232,121,249,0.9) 35%,
-    rgba(255,255,255,0.7) 50%,
-    rgba(232,121,249,0.9) 65%,
-    rgba(139,92,246,0.6) 80%,
-    rgba(139,92,246,0.0) 95%,
-    transparent 100%
+    transparent 0%, rgba(109,40,217,0) 8%,
+    rgba(139,92,246,0.55) 22%, rgba(196,132,252,0.85) 35%,
+    rgba(255,255,255,0.9) 50%,
+    rgba(232,121,249,0.85) 65%, rgba(139,92,246,0.55) 78%,
+    rgba(109,40,217,0) 92%, transparent 100%
   );
-  box-shadow: 0 0 12px rgba(139,92,246,0.35), 0 0 24px rgba(139,92,246,0.12);
+  background-size: 200% 100%;
+  animation: gp-navline-run 4s linear infinite;
+  box-shadow: 0 0 10px rgba(167,139,250,0.4), 0 0 22px rgba(139,92,246,0.18);
 }
 /* Nav separators between items */
 .gp-ni + .gp-ni::before {
@@ -240,69 +242,151 @@ const GP_CSS = `
 .gp-sb:active { transform: translateX(-2px) scale(0.96); }
 .gp-ni {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; padding: 9px 3px; background: transparent; border: none;
-  cursor: pointer; position: relative; transition: background .25s;
+  gap: 4px; padding: 10px 3px 8px; background: transparent; border: none;
+  cursor: pointer; position: relative; transition: background .2s;
+  outline: none;
 }
+/* Active glow line at bottom */
 .gp-ni::after {
-  content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
-  background: rgba(139,92,246,0.9); transform: scaleX(0); transition: transform .25s; border-radius: 1px 1px 0 0;
+  content: ''; position: absolute; bottom: 0; left: 15%; right: 15%; height: 2.5px;
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,0.9), rgba(232,121,249,1), rgba(167,139,250,0.9), transparent);
+  transform: scaleX(0); transition: transform .22s cubic-bezier(0.22,1,0.36,1);
+  border-radius: 1px 1px 0 0;
+  box-shadow: 0 0 10px rgba(167,139,250,0.6), 0 0 20px rgba(139,92,246,0.25);
 }
 .gp-ni:hover::after { transform: scaleX(1); }
-.gp-ni:hover { background: rgba(124,58,237,0.07); }
-.gp-ni svg { color: rgba(109,40,217,0.65); transition: all .25s; }
-.gp-ni:hover svg { color: rgba(167,139,250,0.95); filter: drop-shadow(0 0 5px rgba(167,139,250,0.45)); }
-.gp-ni-lbl { font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: rgba(109,40,217,0.5); transition: color .25s; font-family: inherit; }
-.gp-ni:hover .gp-ni-lbl { color: rgba(139,92,246,0.9); }
-
-/* ── JOGAR (azul vivo) ── */
-@keyframes gp-play-scan {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+/* Active bg glow */
+.gp-ni:hover {
+  background: linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(139,92,246,0.12) 100%);
 }
-@keyframes gp-play-pulse {
-  0%,100% { box-shadow: 0 0 28px rgba(59,130,246,0.45), 0 0 60px rgba(99,179,237,0.18), inset 0 1px 0 rgba(147,197,253,0.15); }
-  50%     { box-shadow: 0 0 44px rgba(59,130,246,0.70), 0 0 90px rgba(99,179,237,0.28), inset 0 1px 0 rgba(147,197,253,0.22); }
+/* Icon transitions */
+.gp-ni svg {
+  color: rgba(109,40,217,0.62); transition: all .22s;
+  filter: none;
+}
+.gp-ni:hover svg {
+  color: rgba(192,132,252,1);
+  filter: drop-shadow(0 0 7px rgba(167,139,250,0.6)) drop-shadow(0 0 14px rgba(139,92,246,0.3));
+  transform: translateY(-2px) scale(1.08);
+}
+/* Label */
+.gp-ni-lbl {
+  font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  color: rgba(109,40,217,0.52); transition: all .22s; font-family: inherit;
+}
+.gp-ni:hover .gp-ni-lbl {
+  color: rgba(192,132,252,1);
+  text-shadow: 0 0 8px rgba(139,92,246,0.5);
+}
+/* Luminous separator between items */
+.gp-ni + .gp-ni::before {
+  content: '';
+  position: absolute; left: 0; top: 22%; bottom: 22%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(139,92,246,0.22), rgba(139,92,246,0.32), rgba(139,92,246,0.22), transparent);
+  box-shadow: 0 0 4px rgba(139,92,246,0.12);
+}
+
+/* ── JOGAR — energetic overhaul ── */
+@keyframes gp-play-bg {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gp-play-aura {
+  0%,100% {
+    box-shadow:
+      0 0 22px 3px rgba(59,130,246,0.55),
+      0 0 55px 8px rgba(29,78,216,0.28),
+      0 0 110px 14px rgba(99,179,237,0.12),
+      inset 0 0 22px rgba(147,197,253,0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 38px 6px rgba(96,165,250,0.80),
+      0 0 80px 14px rgba(59,130,246,0.42),
+      0 0 150px 22px rgba(147,197,253,0.18),
+      inset 0 0 32px rgba(147,197,253,0.14);
+  }
+}
+@keyframes gp-play-scan {
+  0%   { transform: translateX(-100%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
+}
+@keyframes gp-play-holo {
+  0%   { opacity: 0.06; background-position: 0% 0%; }
+  50%  { opacity: 0.14; background-position: 100% 100%; }
+  100% { opacity: 0.06; background-position: 0% 0%; }
+}
+@keyframes gp-play-border-run {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }
 .gp-play-btn {
-  will-change: box-shadow;
-  transform: translateZ(0);
-  background: linear-gradient(140deg,
-    rgba(6,18,72,0.95) 0%,
-    rgba(17,50,160,0.90) 30%,
-    rgba(37,99,235,0.85) 58%,
-    rgba(10,36,130,0.95) 100%
+  will-change: box-shadow, transform;
+  background: linear-gradient(135deg,
+    #020c3a 0%, #0a1e7a 18%, #1d4ed8 38%,
+    #3b82f6 52%, #1d4ed8 66%, #0a1e7a 82%, #020c3a 100%
   );
-  border: 2.5px solid rgba(96,165,250,0.95);
-  animation: gp-play-pulse 2.6s ease-in-out infinite;
-  backdrop-filter: blur(18px);
-  transition: transform .25s ease, border-color .25s ease;
+  background-size: 300% 300%;
+  animation: gp-play-bg 5s ease infinite, gp-play-aura 2.4s ease-in-out infinite;
+  border: none;
+  outline: none;
   clip-path: polygon(0 0, 100% 0, 100% 80%, 89% 100%, 0 100%);
   position: relative; overflow: hidden;
+  transition: transform .2s ease, filter .2s ease;
+  filter: brightness(1);
+  /* Animated border via pseudo-element */
 }
-.gp-play-btn::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(110deg, transparent 10%, rgba(147,197,253,0.26) 50%, transparent 90%);
-  background-size: 280% 100%;
-  animation: gp-play-scan 4s linear infinite;
-  pointer-events: none;
-}
+/* Running border glow */
 .gp-play-btn::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent 0%, rgba(147,197,253,0.95) 30%, rgba(219,234,254,1) 50%, rgba(147,197,253,0.95) 70%, transparent 100%);
+  position: absolute; inset: 0;
+  clip-path: inherit;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(147,197,253,0) 30%,
+    rgba(219,234,254,1) 50%, rgba(147,197,253,0) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-play-border-run 2s linear infinite;
   pointer-events: none;
+  z-index: 1;
+  /* Fake border: mask to thin lines only */
+  -webkit-mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+                linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+  mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+        linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+}
+/* Scan flash */
+.gp-play-btn::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(147,197,253,0.32) 50%, transparent 100%);
+  animation: gp-play-scan 2.8s ease-in-out infinite;
+  pointer-events: none; z-index: 2;
+}
+/* Holographic overlay */
+.gp-play-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: repeating-linear-gradient(
+    58deg,
+    rgba(147,197,253,0.08) 0px, rgba(147,197,253,0.08) 1px,
+    transparent 1px, transparent 6px
+  );
+  animation: gp-play-holo 4s ease-in-out infinite;
 }
 .gp-play-btn:hover {
-  border-color: rgba(186,230,253,1);
-  transform: scale(1.022);
-  background: linear-gradient(140deg,
-    rgba(10,28,100,0.98) 0%,
-    rgba(25,65,190,0.95) 30%,
-    rgba(59,130,246,0.92) 58%,
-    rgba(15,48,160,0.98) 100%
-  );
+  transform: scale(1.028) translateY(-1px);
+  filter: brightness(1.15);
 }
+.gp-play-btn:hover::after {
+  animation-duration: 1.2s;
+}
+/* Canvas particles placeholder — handled via JS canvas */
 
 /* ── COLEÇÃO (branco cristal) ── */
 @keyframes gp-col-pulse {
@@ -587,7 +671,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     const active  = masters.find(m => m.isActive) ?? masters[0]
     return active?.id?.split("-")[0].toLowerCase() ?? "fehnon"
   })
-  const [bubble,          setBubble]          = useState<{ text: string; out: boolean } | null>(null)
+  const [bubble,          setBubble]          = useState<{ text: string; full: string; out: boolean } | null>(null)
+  const typewriterRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const [masterTap,       setMasterTap]       = useState(false)
   const voiceIdxRef       = useRef<Record<string, number>>({})
   const voiceAudioRef     = useRef<HTMLAudioElement | null>(null)
@@ -607,8 +692,18 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     // Clear previous bubble timer
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
 
-    // Show bubble
-    setBubble({ text: voice.text, out: false })
+    // Show bubble with typewriter effect
+    if (typewriterRef.current) clearInterval(typewriterRef.current)
+    let i = 0
+    setBubble({ text: "", full: voice.text, out: false })
+    typewriterRef.current = setInterval(() => {
+      i++
+      setBubble(b => b ? { ...b, text: voice.text.slice(0, i) } : null)
+      if (i >= voice.text.length && typewriterRef.current) {
+        clearInterval(typewriterRef.current)
+        typewriterRef.current = null
+      }
+    }, 38)
 
     // Play voice audio (separate from menu music)
     if (voiceAudioRef.current) {
@@ -621,6 +716,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
     // Auto-hide bubble after 3.2s with fade-out
     bubbleTimerRef.current = setTimeout(() => {
+      if (typewriterRef.current) { clearInterval(typewriterRef.current); typewriterRef.current = null }
       setBubble(b => b ? { ...b, out: true } : null)
       setTimeout(() => setBubble(null), 260)
     }, 3200)
@@ -1345,8 +1441,25 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
             onClick={() => setShowPlayMenu(true)}
             style={{ width:440, height:205, borderRadius:0, marginBottom:10 }}>
-            <Swords style={{ width:48, height:48, color:"rgba(147,197,253,0.95)", filter:"drop-shadow(0 0 12px rgba(59,130,246,0.7))" }} />
-            <span className="font-black tracking-widest text-xl uppercase" style={{ color:"rgba(147,197,253,0.98)", textShadow:"0 0 18px rgba(59,130,246,0.7)", letterSpacing:"0.22em" }}>Jogar</span>
+            {/* Holographic lines overlay */}
+            <div className="gp-play-holo" />
+            {/* Sword icon with dual-glow */}
+            <div className="relative" style={{ zIndex:4 }}>
+              <Swords style={{ width:54, height:54, color:"#e0f2fe", filter:"drop-shadow(0 0 8px #60a5fa) drop-shadow(0 0 22px #3b82f6)" }} />
+              {/* Aura ring behind sword */}
+              <div style={{
+                position:"absolute", inset:-14, borderRadius:"50%",
+                background:"radial-gradient(ellipse at 50% 50%, rgba(59,130,246,0.22) 0%, transparent 70%)",
+                animation:"gp-play-aura 2.4s ease-in-out infinite",
+                pointerEvents:"none",
+              }} />
+            </div>
+            <span className="font-black tracking-widest text-2xl uppercase relative" style={{
+              zIndex:4,
+              color:"#fff",
+              textShadow:"0 0 12px #60a5fa, 0 0 28px #3b82f6, 0 2px 0 rgba(0,0,50,0.8)",
+              letterSpacing:"0.28em",
+            }}>Jogar</span>
           </button>
 
           {/* ── COLEÇÃO (BRANCO) + GACHA (ROSA) lado a lado abaixo do JOGAR ── */}
