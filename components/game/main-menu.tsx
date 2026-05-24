@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import dynamic from "next/dynamic"
+import { loadMastersFromStorage } from "@/lib/masters-data"
 
 const MasterMenuCard = dynamic(
   () => import("./master-screen").then(m => ({ default: m.MasterMenuCard })),
@@ -442,12 +443,7 @@ let _gpTrackId: string = ""
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _gpACtx: any = null  // AudioContext singleton for spectrum visualizer
 
-// Master art map — keyed by master id (lowercase)
-const MASTER_ART: Record<string, string> = {
-  fehnon:  "/images/masters/fehnon-art.png",
-  morgana: "/images/masters/morgana-art.png",
-  calem:   "/images/masters/calem-art.png",
-}
+
 
 // Exposed so other screens (duel) can pause/resume menu music
 export function pauseMenuMusic() {
@@ -465,19 +461,22 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const { t } = useLanguage()
   const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds } = useGame()
 
-  // Resolve active master art from playerProfile
-  // Try: playerProfile.activeMasterId / activeMaster / selectedMaster / equippedMaster / masterId
-  const activeMasterId: string = (
-    (playerProfile as any).activeMasterId ??
-    (playerProfile as any).activeMaster ??
-    (playerProfile as any).selectedMaster ??
-    (playerProfile as any).equippedMaster ??
-    (playerProfile as any).masterId ??
-    "fehnon"
-  ).toString().toLowerCase().split(" ")[0]
-
-  const masterArtSrc = MASTER_ART[activeMasterId] ?? MASTER_ART["fehnon"]
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
+
+  // Active master art — read directly from masters-data storage
+  const [masterArtSrc, setMasterArtSrc] = useState<string>(() => {
+    if (typeof window === "undefined") return "/images/masters/fehnon-art.png"
+    const masters = loadMastersFromStorage()
+    const active  = masters.find(m => m.isActive) ?? masters[0]
+    return active?.artPath ?? "/images/masters/fehnon-art.png"
+  })
+
+  // Refresh master art whenever this screen mounts (player may have changed master)
+  useEffect(() => {
+    const masters = loadMastersFromStorage()
+    const active  = masters.find(m => m.isActive) ?? masters[0]
+    if (active?.artPath) setMasterArtSrc(active.artPath)
+  }, [])
 
   const [showPlayMenu,       setShowPlayMenu]       = useState(false)
   const [showGiftBox,        setShowGiftBox]         = useState(false)
