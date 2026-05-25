@@ -74,7 +74,7 @@ const GP_CSS = `
 /* Sidebar buttons */
 .gp-sb {
   contain: layout style;
-  width: 76px; padding: 13px 0;
+  width: 56px; padding: 8px 0;
   background: rgba(5,2,18,0.88);
   border: 1px solid rgba(124,58,237,0.18);
   border-radius: 14px;
@@ -1375,10 +1375,10 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div className="relative" style={{ borderRadius:16 }}>
             <button onClick={() => setShowGiftBox(true)}
               className="relative flex items-center justify-center transition-all hover:scale-105"
-              style={{ width:64, height:64, background:"rgba(10,6,2,0.92)", borderRadius:14, border:"2px solid rgba(245,158,11,0.45)", boxShadow:"0 0 14px rgba(245,158,11,0.18)" }}>
-              <Gift style={{ width:30, height:30, color:"#FCD34D", filter:"drop-shadow(0 0 6px rgba(252,211,77,0.6))" }} />
+              style={{ width:46, height:46, background:"rgba(10,6,2,0.92)", borderRadius:11, border:"1.5px solid rgba(245,158,11,0.42)", boxShadow:"0 0 10px rgba(245,158,11,0.16)" }}>
+              <Gift style={{ width:20, height:20, color:"#FCD34D", filter:"drop-shadow(0 0 5px rgba(252,211,77,0.55))" }} />
               {unclaimedGifts.length > 0 && (
-                <span className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black text-white"
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white"
                   style={{ background:"linear-gradient(135deg,#ef4444,#dc2626)", boxShadow:"0 0 8px rgba(239,68,68,0.65)", border:"1.5px solid rgba(255,255,255,0.15)", zIndex:2 }}>
                   {unclaimedGifts.length}
                 </span>
@@ -1497,7 +1497,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div key={btn.label} className="relative" style={{ borderRadius:14 }}>
             <button className={`gp-sb${btn.gold?" gp-gold":""}`} onClick={btn.onClick}>
               {btn.dot && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{background:btn.dotColor||"rgba(239,68,68,0.9)",boxShadow:`0 0 6px ${btn.dotColor||"rgba(239,68,68,0.9)"}`}} />}
-              {btn.emoji ? <span style={{fontSize:19,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
+              {btn.emoji ? <span style={{fontSize:16,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
               <span className="gp-sb-lbl">{btn.label}</span>
             </button>
           </div>
