@@ -1340,13 +1340,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </div>
 
           {/* GIFT */}
-          <div className="relative" style={{ borderRadius:13 }}>
+          <div className="relative" style={{ borderRadius:16 }}>
             <button onClick={() => setShowGiftBox(true)}
               className="relative flex items-center justify-center transition-all hover:scale-105"
-              style={{ width:48, height:48, background:"rgba(10,6,2,0.92)", borderRadius:11, border:"1.5px solid rgba(245,158,11,0.35)" }}>
-              <Gift className="w-5 h-5" style={{color:"#FCD34D"}} />
+              style={{ width:64, height:64, background:"rgba(10,6,2,0.92)", borderRadius:14, border:"2px solid rgba(245,158,11,0.45)", boxShadow:"0 0 14px rgba(245,158,11,0.18)" }}>
+              <Gift style={{ width:30, height:30, color:"#FCD34D", filter:"drop-shadow(0 0 6px rgba(252,211,77,0.6))" }} />
               {unclaimedGifts.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white"
+                <span className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black text-white"
                   style={{ background:"linear-gradient(135deg,#ef4444,#dc2626)", boxShadow:"0 0 8px rgba(239,68,68,0.65)", border:"1.5px solid rgba(255,255,255,0.15)", zIndex:2 }}>
                   {unclaimedGifts.length}
                 </span>
