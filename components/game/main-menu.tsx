@@ -164,6 +164,57 @@ const GP_CSS = `
   flex-shrink: 0;
   animation: gp-play-aura 2s ease-in-out infinite;
 }
+/* ══ ENTRANCE ANIMATIONS ══ */
+@keyframes gp-enter-zoom {
+  0%   { opacity: 0; transform: scale(1.10); }
+  60%  { opacity: 1; transform: scale(0.99); }
+  80%  { transform: scale(1.006); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes gp-enter-drop {
+  0%   { opacity: 0; transform: translateY(-24px) scale(0.96); }
+  65%  { opacity: 1; transform: translateY(2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gp-enter-rise {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.96); }
+  65%  { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gp-enter-left {
+  0%   { opacity: 0; transform: translateX(30px) scale(0.96); }
+  65%  { opacity: 1; transform: translateX(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes gp-enter-right {
+  0%   { opacity: 0; transform: translateX(-30px) scale(0.96); }
+  65%  { opacity: 1; transform: translateX(2px) scale(1.01); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes gp-enter-pop {
+  0%   { opacity: 0; transform: scale(0.72); }
+  55%  { opacity: 1; transform: scale(1.06); }
+  75%  { transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes gp-enter-flash {
+  0%   { opacity: 0; transform: scale(1.18); filter: brightness(2.5); }
+  35%  { opacity: 1; filter: brightness(1.4); transform: scale(1.02); }
+  60%  { filter: brightness(1.1); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
+/* Applied per-section with staggered delays */
+.gp-anim-bg       { animation: gp-enter-zoom  0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.gp-anim-hud      { animation: gp-enter-drop  0.55s cubic-bezier(0.22,1,0.36,1) 0.12s both; }
+.gp-anim-sidebar  { animation: gp-enter-left  0.52s cubic-bezier(0.22,1,0.36,1) 0.22s both; }
+.gp-anim-nav      { animation: gp-enter-rise  0.52s cubic-bezier(0.22,1,0.36,1) 0.18s both; }
+.gp-anim-jogar    { animation: gp-enter-flash 0.62s cubic-bezier(0.22,1,0.36,1) 0.32s both; }
+.gp-anim-col      { animation: gp-enter-pop   0.48s cubic-bezier(0.22,1,0.36,1) 0.44s both; }
+.gp-anim-gacha    { animation: gp-enter-pop   0.48s cubic-bezier(0.22,1,0.36,1) 0.50s both; }
+.gp-anim-music    { animation: gp-enter-rise  0.45s cubic-bezier(0.22,1,0.36,1) 0.38s both; }
+.gp-anim-master   { animation: gp-enter-right 0.60s cubic-bezier(0.22,1,0.36,1) 0.28s both; }
+
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
 
@@ -1220,7 +1271,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className="gp-corner gp-corner-br" />
 
       {/* ══ BACKGROUND ══ */}
-      <div className="fixed inset-0 z-0">
+      <div className="fixed inset-0 z-0 gp-anim-bg">
         {activeWallpaper?.image ? (
           <div className="absolute inset-0 gp-wbg" style={{
             backgroundImage:`url(${activeWallpaper.image})`,
@@ -1254,7 +1305,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ TOP HUD ══ */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 relative"
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 relative gp-anim-hud"
         style={{ background:"linear-gradient(180deg,rgba(2,1,14,0.97) 0%,rgba(2,1,14,0) 100%)" }}>
         {/* ── Esquerda: perfil + master card ── */}
         <div className="flex flex-col gap-2.5">
@@ -1359,7 +1410,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* ══ MUSIC BAR — barra fixa topo, alinhada à esquerda perto do perfil ══ */}
       <button
         onClick={() => setShowMusicPanel(v => !v)}
-        className="gp-music-bar"
+        className="gp-music-bar gp-anim-music"
         style={{ position:"fixed", zIndex:50, bottom:110, left:20, width:230 }}>
         <div className="gp-disc"><div className="gp-disc-inner" /></div>
         <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
@@ -1423,7 +1474,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ══ MASTER ART — right side, clickable with voice + bubble ══ */}
-      <div className="gp-master-art-wrap" onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
+      <div className="gp-master-art-wrap gp-anim-master" onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
 
         {/* Manga speech bubble */}
         {bubble && (
@@ -1451,7 +1502,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
-      <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
+      <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 gp-anim-sidebar">
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
           { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
@@ -1491,7 +1542,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           )}
 
           {/* ── JOGAR (AZUL) — retângulo grande com corte no canto ── */}
-          <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
+          <button className="gp-play-btn flex flex-col items-center justify-center gap-3 gp-anim-jogar"
             onClick={() => setShowPlayMenu(true)}
             style={{ width:440, height:205, borderRadius:0, marginBottom:10 }}>
             {/* Holographic lines overlay */}
@@ -1519,7 +1570,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div className="flex items-center gap-0" style={{ marginTop:0 }}>
 
             {/* COLEÇÃO — retângulo branco */}
-            <button className="gp-col-btn flex items-center justify-center gap-2.5"
+            <button className="gp-col-btn flex items-center justify-center gap-2.5 gp-anim-col"
               onClick={() => onNavigate("collection")}
               style={{ width:220, height:72, borderRadius:10 }}>
               <BookOpen style={{ width:20, height:20, color:"rgba(255,255,255,0.92)", filter:"drop-shadow(0 0 5px rgba(255,255,255,0.45))" }} />
@@ -1527,7 +1578,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             </button>
 
             {/* GACHA — oval rosa */}
-            <button className="gp-gacha-btn flex items-center justify-center gap-2.5"
+            <button className="gp-gacha-btn flex items-center justify-center gap-2.5 gp-anim-gacha"
               onClick={() => onNavigate("gacha")}
               style={{ width:200, height:72, borderRadius:40 }}>
               <Sparkles style={{ width:20, height:20, color:"rgba(249,168,212,0.95)", filter:"drop-shadow(0 0 6px rgba(236,72,153,0.65))" }} />
@@ -1539,7 +1590,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ══ BOTTOM NAV — levemente escuro (AMARELO no guia) ══ */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap">
+      <div className="fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap gp-anim-nav">
         <div className="gp-nav-line" />
 
         {!showPlayMenu ? (
