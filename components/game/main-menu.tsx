@@ -1287,7 +1287,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ══ TOP HUD ══ */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 relative gp-anim-hud"
-        style={{ background:"linear-gradient(180deg,rgba(2,1,14,0.97) 0%,rgba(2,1,14,0) 100%)" }}>
+        style={{ background:"transparent" }}>
         {/* ── Esquerda: perfil + master card ── */}
         <div className="flex flex-col gap-2.5">
           {/* Avatar + anel girando APENAS aqui (vermelho no guia) */}
