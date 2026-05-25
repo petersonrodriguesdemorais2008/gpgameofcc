@@ -1320,6 +1320,24 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <MasterMenuCard onOpen={() => onNavigate("masters")} />
           </div>
 
+          {/* ── GEAR PASS icon button — top left ── */}
+          <button
+            onClick={() => onNavigate("gear-pass")}
+            className="relative group transition-all duration-200 hover:scale-105 active:scale-95"
+            title="Gear Pass"
+            style={{ width:120, height:38, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
+            <Image
+              src="/images/gear-pass-icon.png"
+              alt="Gear Pass"
+              width={120}
+              height={38}
+              className="w-full h-full object-contain"
+              style={{ filter:"drop-shadow(0 0 8px rgba(232,121,249,0.55)) drop-shadow(0 2px 8px rgba(0,0,0,0.5))", transition:"filter .25s" }}
+            />
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse"
+              style={{ background:"linear-gradient(135deg,#f59e0b,#fbbf24)", boxShadow:"0 0 6px rgba(251,191,36,0.8)", border:"1.5px solid rgba(0,0,0,0.5)" }} />
+          </button>
+
         </div>
 
         {/* ── Direita: STAMINA + COINS + GIFT — sem anel girando (verde no guia) ── */}
@@ -1490,7 +1508,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           { label:"Config.", icon:<Settings />, onClick:()=>onNavigate("settings"),      gold:false, dot:false    },
           { label:"Diárias",  icon:null,         onClick:()=>{ setShowDailyBonus(true); setDailyBonusJustClaimed(false) }, gold:false, dot:!dailyBonusClaimed, emoji: dailyBonusClaimed ? "✅" : "🎁", dotColor:"rgba(52,211,153,0.9)" },
           { label:"Tema",   icon:null,         onClick:()=>setShowWallpaperModal(true),  gold:false, dot:false,   emoji:"🖼️" },
-          { label:"Passe",  icon:<Shield />,   onClick:()=>onNavigate("gear-pass"),     gold:false, dot:true,    dotColor:"rgba(251,191,36,0.9)" },
           { label:"História",  icon:<BookOpen />, onClick:()=>onNavigate("story"),         gold:false, dot:false    },
           { label:"Mestre", icon:<Star />,     onClick:()=>onNavigate("masters"),       gold:true,  dot:false    },
         ].map(btn => (
