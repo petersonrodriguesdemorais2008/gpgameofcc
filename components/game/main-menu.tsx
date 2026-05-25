@@ -164,42 +164,37 @@ const GP_CSS = `
   flex-shrink: 0;
   animation: gp-play-aura 2s ease-in-out infinite;
 }
-/* ══ ENTRANCE ANIMATION — zoom-out impact, no position shift ══ */
-/* Phase 1: white flash (0–120ms) */
-/* Phase 2: zoom out from 1.12 → 1 with elastic overshoot (120–700ms) */
-/* Phase 3: everything fully settled */
+/* ══ ENTRANCE ANIMATION — zoom-out impact, no position shift, no flash ══ */
 @keyframes gp-enter-scene {
-  0%   { opacity: 0; transform: scale(1.14); filter: brightness(2.2) saturate(0.4); }
-  12%  { opacity: 1; filter: brightness(1.8) saturate(0.7); }
-  38%  { transform: scale(1.005); filter: brightness(1.15) saturate(1.1); }
-  60%  { transform: scale(0.998); filter: brightness(1.04) saturate(1); }
-  100% { opacity: 1; transform: scale(1); filter: brightness(1) saturate(1); }
+  0%   { opacity: 0;   transform: scale(1.22); }
+  18%  { opacity: 1;   transform: scale(1.22); }
+  65%  { opacity: 1;   transform: scale(1.004); }
+  82%  { transform: scale(0.9985); }
+  100% { opacity: 1;   transform: scale(1); }
 }
-/* Elements fade in at same time as scene, no position shift */
 @keyframes gp-enter-ui {
   0%   { opacity: 0; }
-  30%  { opacity: 0; }
-  70%  { opacity: 1; }
+  25%  { opacity: 0; }
+  75%  { opacity: 1; }
   100% { opacity: 1; }
 }
-/* Buttons pop slightly at end of sequence */
 @keyframes gp-enter-btn {
-  0%   { opacity: 0; transform: scale(0.92); filter: brightness(0.6); }
-  30%  { opacity: 0; transform: scale(0.92); }
-  68%  { opacity: 1; transform: scale(1.04); filter: brightness(1.35); }
-  84%  { transform: scale(0.98); filter: brightness(1.08); }
-  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  0%   { opacity: 0; transform: scale(0.88); }
+  28%  { opacity: 0; transform: scale(0.88); }
+  72%  { opacity: 1; transform: scale(1.032); }
+  88%  { transform: scale(0.992); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-.gp-anim-bg      { animation: gp-enter-scene 0.72s cubic-bezier(0.22,1,0.36,1) both; }
-.gp-anim-hud     { animation: gp-enter-ui    0.72s ease both; }
-.gp-anim-sidebar { animation: gp-enter-ui    0.72s ease both; }
-.gp-anim-nav     { animation: gp-enter-ui    0.72s ease both; }
-.gp-anim-music   { animation: gp-enter-ui    0.72s ease both; }
-.gp-anim-master  { animation: gp-enter-ui    0.72s ease both; }
-.gp-anim-jogar   { animation: gp-enter-btn   0.80s cubic-bezier(0.22,1,0.36,1) both; }
-.gp-anim-col     { animation: gp-enter-btn   0.80s cubic-bezier(0.22,1,0.36,1) 0.06s both; }
-.gp-anim-gacha   { animation: gp-enter-btn   0.80s cubic-bezier(0.22,1,0.36,1) 0.10s both; }
+.gp-anim-bg      { animation: gp-enter-scene 0.82s cubic-bezier(0.16,1,0.3,1) both; }
+.gp-anim-hud     { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-sidebar { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-nav     { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-music   { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-master  { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-jogar   { animation: gp-enter-btn   0.88s cubic-bezier(0.16,1,0.3,1) both; }
+.gp-anim-col     { animation: gp-enter-btn   0.88s cubic-bezier(0.16,1,0.3,1) 0.07s both; }
+.gp-anim-gacha   { animation: gp-enter-btn   0.88s cubic-bezier(0.16,1,0.3,1) 0.13s both; }
 
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
