@@ -335,7 +335,7 @@ const GP_CSS = `
 }
 /* Label */
 .gp-ni-lbl {
-  font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
   color: rgba(109,40,217,0.52); transition: all .22s; font-family: inherit;
 }
 .gp-ni:hover .gp-ni-lbl {
@@ -460,15 +460,16 @@ const GP_CSS = `
 .gp-col-btn {
   will-change: box-shadow, border-color;
   transform: translateZ(0);
-  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.55));
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.65)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
   background: linear-gradient(140deg,
-    rgba(255,255,255,0.08) 0%,
-    rgba(240,248,255,0.13) 45%,
-    rgba(214,228,255,0.09) 100%
+    rgba(255,255,255,0.11) 0%,
+    rgba(240,248,255,0.17) 45%,
+    rgba(214,228,255,0.12) 100%
   );
-  border: 2.5px solid rgba(255,255,255,0.96);
+  border: 2.5px solid rgba(255,255,255,1);
   animation: gp-col-pulse 3s ease-in-out infinite;
   backdrop-filter: blur(18px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
   transition: transform .25s ease, border-color .25s ease, background .25s;
   position: relative; overflow: hidden;
 }
@@ -503,16 +504,17 @@ const GP_CSS = `
 .gp-gacha-btn {
   will-change: box-shadow, border-color;
   transform: translateZ(0);
-  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.55));
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.65)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
   background: linear-gradient(140deg,
-    rgba(100,10,55,0.90) 0%,
-    rgba(162,20,85,0.86) 35%,
-    rgba(219,39,119,0.80) 65%,
-    rgba(110,12,60,0.90) 100%
+    rgba(100,10,55,0.96) 0%,
+    rgba(162,20,85,0.92) 35%,
+    rgba(219,39,119,0.88) 65%,
+    rgba(110,12,60,0.96) 100%
   );
-  border: 2.5px solid rgba(244,114,182,0.95);
+  border: 2.5px solid rgba(249,168,212,1);
   animation: gp-gacha-pulse 2.4s ease-in-out infinite;
   backdrop-filter: blur(18px);
+  box-shadow: 0 0 22px rgba(219,39,119,0.25), inset 0 1px 0 rgba(249,168,212,0.18);
   transition: transform .25s ease, border-color .25s ease;
   position: relative; overflow: hidden;
 }
@@ -1576,20 +1578,20 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           /* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */
           <div className="flex items-center justify-around px-4 pb-5 pt-2">
             <button className="gp-ni" onClick={() => onNavigate("friends")}>
-              <Users className="w-6 h-6" /><span className="gp-ni-lbl">Social</span>
+              <Users className="w-7 h-7" /><span className="gp-ni-lbl">Social</span>
             </button>
             <button className="gp-ni" onClick={() => onNavigate("missions")}>
-              <Target className="w-6 h-6" /><span className="gp-ni-lbl">Missões</span>
+              <Target className="w-7 h-7" /><span className="gp-ni-lbl">Missões</span>
             </button>
             <button className="gp-ni" onClick={() => onNavigate("guild")}>
-              <Users className="w-6 h-6" /><span className="gp-ni-lbl">Guilda</span>
+              <Users className="w-7 h-7" /><span className="gp-ni-lbl">Guilda</span>
             </button>
             <button className="gp-ni" onClick={() => onNavigate("shop" as GameScreen)}>
-              <span className="w-6 h-6 flex items-center justify-center text-xl leading-none">🛒</span>
+              <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">🛒</span>
               <span className="gp-ni-lbl">Loja</span>
             </button>
             <button className="gp-ni" onClick={() => onNavigate("profile")}>
-              <span className="w-6 h-6 flex items-center justify-center text-xl leading-none">👤</span>
+              <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">👤</span>
               <span className="gp-ni-lbl">Perfil</span>
             </button>
           </div>
