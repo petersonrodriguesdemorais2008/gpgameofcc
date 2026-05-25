@@ -192,9 +192,7 @@ const GP_CSS = `
 .gp-anim-nav     { animation: gp-enter-ui    0.82s ease both; }
 .gp-anim-music   { animation: gp-enter-ui    0.82s ease both; }
 .gp-anim-master  { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-jogar   { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-col     { animation: gp-enter-ui    0.82s ease 0.07s both; }
-.gp-anim-gacha   { animation: gp-enter-ui    0.82s ease 0.13s both; }
+.gp-anim-ui-btns { animation: gp-enter-ui    0.82s ease both; }
 
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
@@ -1506,7 +1504,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ══ 3 BOTÕES DESTAQUE — lateral esquerda, exatamente como no desenho ══ */}
       {!showPlayMenu && (
-        <div className="fixed z-20" style={{ left:24, top:200 }}>
+        <div className="fixed z-20 gp-anim-ui-btns" style={{ left:24, top:200 }}>
 
           {/* ── DECK ATIVO — indicador acima do JOGAR ── */}
           {activeDeck && (
@@ -1523,7 +1521,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           )}
 
           {/* ── JOGAR (AZUL) — retângulo grande com corte no canto ── */}
-          <button className="gp-play-btn flex flex-col items-center justify-center gap-3 gp-anim-jogar"
+          <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
             onClick={() => setShowPlayMenu(true)}
             style={{ width:440, height:205, borderRadius:0, marginBottom:10 }}>
             {/* Holographic lines overlay */}
@@ -1551,7 +1549,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div className="flex items-center gap-0" style={{ marginTop:0 }}>
 
             {/* COLEÇÃO — retângulo branco */}
-            <button className="gp-col-btn flex items-center justify-center gap-2.5 gp-anim-col"
+            <button className="gp-col-btn flex items-center justify-center gap-2.5"
               onClick={() => onNavigate("collection")}
               style={{ width:220, height:72, borderRadius:10 }}>
               <BookOpen style={{ width:20, height:20, color:"rgba(255,255,255,0.92)", filter:"drop-shadow(0 0 5px rgba(255,255,255,0.45))" }} />
@@ -1559,7 +1557,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             </button>
 
             {/* GACHA — oval rosa */}
-            <button className="gp-gacha-btn flex items-center justify-center gap-2.5 gp-anim-gacha"
+            <button className="gp-gacha-btn flex items-center justify-center gap-2.5"
               onClick={() => onNavigate("gacha")}
               style={{ width:200, height:72, borderRadius:40 }}>
               <Sparkles style={{ width:20, height:20, color:"rgba(249,168,212,0.95)", filter:"drop-shadow(0 0 6px rgba(236,72,153,0.65))" }} />
