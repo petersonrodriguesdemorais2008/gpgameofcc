@@ -192,9 +192,9 @@ const GP_CSS = `
 .gp-anim-nav     { animation: gp-enter-ui    0.82s ease both; }
 .gp-anim-music   { animation: gp-enter-ui    0.82s ease both; }
 .gp-anim-master  { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-jogar   { animation: gp-enter-btn   0.88s cubic-bezier(0.16,1,0.3,1) both; }
-.gp-anim-col     { animation: gp-enter-btn   0.88s cubic-bezier(0.16,1,0.3,1) 0.07s both; }
-.gp-anim-gacha   { animation: gp-enter-btn   0.88s cubic-bezier(0.16,1,0.3,1) 0.13s both; }
+.gp-anim-jogar   { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-col     { animation: gp-enter-ui    0.82s ease 0.07s both; }
+.gp-anim-gacha   { animation: gp-enter-ui    0.82s ease 0.13s both; }
 
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
