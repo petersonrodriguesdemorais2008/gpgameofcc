@@ -1499,7 +1499,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
-      <div className="fixed right-2 z-30 flex flex-col gap-2 gp-anim-sidebar" style={{ top:76 }}>
+      <div className="fixed right-2 z-30 flex flex-col gap-2 gp-anim-sidebar" style={{ top:152 }}>
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
           { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
