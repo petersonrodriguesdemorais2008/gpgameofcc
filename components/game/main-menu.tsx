@@ -1291,17 +1291,15 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         onClick={() => onNavigate("gear-pass")}
         className="fixed z-50 gp-anim-hud group transition-all duration-200 hover:scale-105 active:scale-95"
         title="Gear Pass"
-        style={{ top:10, left:260, width:180, height:56, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
+        style={{ top:8, left:250, width:320, height:100, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
         <Image
           src="/images/gear-pass-icon.png"
           alt="Gear Pass"
-          width={180}
-          height={56}
+          width={320}
+          height={100}
           className="w-full h-full object-contain"
-          style={{ filter:"drop-shadow(0 0 14px rgba(232,121,249,0.65)) drop-shadow(0 3px 10px rgba(0,0,0,0.6))", transition:"filter .25s" }}
+          style={{ filter:"drop-shadow(0 0 18px rgba(232,121,249,0.65)) drop-shadow(0 3px 12px rgba(0,0,0,0.6))", transition:"filter .25s" }}
         />
-        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full animate-pulse"
-          style={{ background:"linear-gradient(135deg,#f59e0b,#fbbf24)", boxShadow:"0 0 8px rgba(251,191,36,0.8)", border:"1.5px solid rgba(0,0,0,0.5)", zIndex:2 }} />
       </button>
 
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-2 pb-2 relative gp-anim-hud"
