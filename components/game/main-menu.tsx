@@ -1381,7 +1381,16 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             boxShadow:"0 0 12px rgba(245,158,11,0.08)",
           }}>
             <div className="relative flex-shrink-0" style={{ width:52, height:52 }}>
-              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={52} height={52} className="w-full h-full object-contain drop-shadow-lg" style={{ filter:"drop-shadow(0 0 8px rgba(252,211,77,0.65))" }} />
+              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={200} height={200}
+                style={{
+                  position:"absolute", top:"50%", left:"50%",
+                  transform:"translate(-50%,-50%)",
+                  width:200, height:200,
+                  objectFit:"contain",
+                  filter:"drop-shadow(0 0 14px rgba(252,211,77,0.75))",
+                  pointerEvents:"none",
+                }}
+              />
             </div>
             <span className="font-black text-base tabular-nums" style={{color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)"}}>{coins.toLocaleString()}</span>
             <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
