@@ -1286,7 +1286,25 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ TOP HUD ══ */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 relative gp-anim-hud"
+      {/* ── GEAR PASS — fixed top left, beside profile ── */}
+      <button
+        onClick={() => onNavigate("gear-pass")}
+        className="fixed z-50 gp-anim-hud group transition-all duration-200 hover:scale-105 active:scale-95"
+        title="Gear Pass"
+        style={{ top:10, left:260, width:180, height:56, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
+        <Image
+          src="/images/gear-pass-icon.png"
+          alt="Gear Pass"
+          width={180}
+          height={56}
+          className="w-full h-full object-contain"
+          style={{ filter:"drop-shadow(0 0 14px rgba(232,121,249,0.65)) drop-shadow(0 3px 10px rgba(0,0,0,0.6))", transition:"filter .25s" }}
+        />
+        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full animate-pulse"
+          style={{ background:"linear-gradient(135deg,#f59e0b,#fbbf24)", boxShadow:"0 0 8px rgba(251,191,36,0.8)", border:"1.5px solid rgba(0,0,0,0.5)", zIndex:2 }} />
+      </button>
+
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-2 pb-2 relative gp-anim-hud"
         style={{ background:"transparent" }}>
         {/* ── Esquerda: perfil + master card ── */}
         <div className="flex flex-col gap-2.5">
@@ -1319,24 +1337,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           <div style={{ transform:"scaleX(1.12) scaleY(1.08)", transformOrigin:"left center" }}>
             <MasterMenuCard onOpen={() => onNavigate("masters")} />
           </div>
-
-          {/* ── GEAR PASS icon button — top left ── */}
-          <button
-            onClick={() => onNavigate("gear-pass")}
-            className="relative group transition-all duration-200 hover:scale-105 active:scale-95"
-            title="Gear Pass"
-            style={{ width:120, height:38, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
-            <Image
-              src="/images/gear-pass-icon.png"
-              alt="Gear Pass"
-              width={120}
-              height={38}
-              className="w-full h-full object-contain"
-              style={{ filter:"drop-shadow(0 0 8px rgba(232,121,249,0.55)) drop-shadow(0 2px 8px rgba(0,0,0,0.5))", transition:"filter .25s" }}
-            />
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse"
-              style={{ background:"linear-gradient(135deg,#f59e0b,#fbbf24)", boxShadow:"0 0 6px rgba(251,191,36,0.8)", border:"1.5px solid rgba(0,0,0,0.5)" }} />
-          </button>
 
         </div>
 
@@ -1501,7 +1501,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
-      <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 gp-anim-sidebar">
+      <div className="fixed right-2 z-30 flex flex-col gap-2 gp-anim-sidebar" style={{ top:76 }}>
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
           { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
