@@ -1291,7 +1291,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         onClick={() => onNavigate("gear-pass")}
         className="fixed z-50 gp-anim-hud group transition-all duration-200 hover:scale-105 active:scale-95"
         title="Gear Pass"
-        style={{ top:8, left:250, width:320, height:100, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
+        style={{ top:8, left:175, width:320, height:100, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
         <Image
           src="/images/gear-pass-icon.png"
           alt="Gear Pass"
