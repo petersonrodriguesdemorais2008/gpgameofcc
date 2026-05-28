@@ -1428,22 +1428,25 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </div>
 
           {/* COINS — sem anel girando */}
-          <div className="flex items-center gap-2 px-4 py-3 rounded-2xl cursor-pointer transition-all hover:brightness-110" style={{
-            background:"rgba(10,6,2,0.90)",
-            border:"1px solid rgba(245,158,11,0.28)",
-            boxShadow:"0 0 12px rgba(245,158,11,0.08)",
-          }}>
-            <Image src="/images/icons/gacha-coin.png" alt="Coins" width={42} height={42}
-              className="flex-shrink-0"
-              style={{
-                width:42, height:42,
-                objectFit:"contain",
-                filter:"drop-shadow(0 0 14px rgba(252,211,77,0.85))",
-                pointerEvents:"none",
-              }}
-            />
-            <span className="font-black text-base tabular-nums" style={{color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)"}}>{coins.toLocaleString()}</span>
-            <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
+          <div className="relative flex items-center cursor-pointer transition-all hover:brightness-110"
+            style={{ background:"rgba(10,6,2,0.90)", border:"1px solid rgba(245,158,11,0.28)",
+              boxShadow:"0 0 12px rgba(245,158,11,0.08)", borderRadius:16,
+              padding:"0 14px", height:44, overflow:"visible" }}>
+            {/* Coin icon: larger than bar, overflows via absolute so bar height stays fixed */}
+            <div style={{ position:"relative", width:28, height:0, flexShrink:0, overflow:"visible" }}>
+              <Image src="/images/Gacha_Coin.png" alt="Coins" width={52} height={52}
+                style={{
+                  position:"absolute", top:"50%", left:"50%",
+                  transform:"translate(-50%,-50%)",
+                  width:52, height:52,
+                  objectFit:"contain",
+                  filter:"drop-shadow(0 0 10px rgba(252,211,77,0.7))",
+                  pointerEvents:"none",
+                }}
+              />
+            </div>
+            <span className="font-black text-base tabular-nums ml-2" style={{color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)"}}>{coins.toLocaleString()}</span>
+            <span style={{color:"rgba(167,139,250,0.35)", fontSize:14, marginLeft:4}}>+</span>
           </div>
 
           {/* GIFT */}
