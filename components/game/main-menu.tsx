@@ -1434,11 +1434,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             boxShadow:"0 0 12px rgba(245,158,11,0.08)",
           }}>
             <div className="relative flex-shrink-0" style={{ width:52, height:52, overflow:"visible" }}>
-              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={96} height={96}
+              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={48} height={48}
                 style={{
                   position:"absolute", top:"50%", left:"50%",
                   transform:"translate(-50%,-50%)",
-                  width:96, height:96,
+                  width:48, height:48,
                   objectFit:"contain",
                   filter:"drop-shadow(0 0 16px rgba(252,211,77,0.8))",
                   pointerEvents:"none",
