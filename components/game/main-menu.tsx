@@ -452,82 +452,135 @@ const GP_CSS = `
 }
 /* Canvas particles placeholder — handled via JS canvas */
 
-/* ── COLEÇÃO (branco cristal) ── */
-@keyframes gp-col-pulse {
-  0%,100% { box-shadow: 0 0 18px rgba(226,232,240,0.28), 0 0 40px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.18); }
-  50%     { box-shadow: 0 0 30px rgba(226,232,240,0.45), 0 0 60px rgba(255,255,255,0.14), inset 0 1px 0 rgba(255,255,255,0.25); }
+/* ── COLEÇÃO (white/crystal — animated like JOGAR) ── */
+@keyframes gp-col-bg {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gp-col-aura {
+  0%,100% { box-shadow: 0 0 18px 2px rgba(226,232,240,0.45), 0 0 45px 6px rgba(255,255,255,0.12), inset 0 0 18px rgba(255,255,255,0.06); }
+  50%      { box-shadow: 0 0 32px 5px rgba(226,232,240,0.70), 0 0 70px 12px rgba(255,255,255,0.20), inset 0 0 28px rgba(255,255,255,0.10); }
+}
+@keyframes gp-col-scan {
+  0%   { transform: translateX(-100%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
+}
+@keyframes gp-col-border-run {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }
 .gp-col-btn {
-  will-change: box-shadow, border-color;
-  transform: translateZ(0);
-  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.65)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-  background: linear-gradient(140deg,
-    rgba(255,255,255,0.11) 0%,
-    rgba(240,248,255,0.17) 45%,
-    rgba(214,228,255,0.12) 100%
+  will-change: box-shadow, transform;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.55));
+  background: linear-gradient(135deg,
+    rgba(200,220,255,0.18) 0%, rgba(240,248,255,0.28) 18%,
+    rgba(255,255,255,0.42) 38%, rgba(214,228,255,0.35) 52%,
+    rgba(255,255,255,0.42) 66%, rgba(240,248,255,0.28) 82%, rgba(200,220,255,0.18) 100%
   );
-  border: 2.5px solid rgba(255,255,255,1);
-  animation: gp-col-pulse 3s ease-in-out infinite;
+  background-size: 300% 300%;
+  border: none; outline: none;
+  animation: gp-col-bg 5s ease infinite, gp-col-aura 2.8s ease-in-out infinite;
   backdrop-filter: blur(18px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
-  transition: transform .25s ease, border-color .25s ease, background .25s;
   position: relative; overflow: hidden;
+  transition: transform .2s ease, filter .2s ease;
 }
 .gp-col-btn::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.95) 70%, transparent 100%);
-  pointer-events: none;
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,0) 30%,
+    rgba(255,255,255,1) 50%, rgba(255,255,255,0) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-col-border-run 2.2s linear infinite;
+  pointer-events: none; z-index: 1;
+  -webkit-mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+                linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+  mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+        linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
 }
 .gp-col-btn::after {
   content: '';
-  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
-  pointer-events: none;
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.38) 50%, transparent 100%);
+  animation: gp-col-scan 3s ease-in-out infinite;
+  pointer-events: none; z-index: 2;
+}
+.gp-col-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: repeating-linear-gradient(
+    58deg,
+    rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px,
+    transparent 1px, transparent 6px
+  );
+  animation: gp-play-holo 4s ease-in-out infinite;
 }
 .gp-col-btn:hover {
-  border-color: rgba(255,255,255,1);
-  transform: scale(1.035);
-  background: linear-gradient(140deg,
-    rgba(255,255,255,0.14) 0%,
-    rgba(240,248,255,0.20) 45%,
-    rgba(214,228,255,0.15) 100%
-  );
-  box-shadow: 0 0 35px rgba(255,255,255,0.25), inset 0 1px 0 rgba(255,255,255,0.3);
+  transform: scale(1.028) translateY(-1px);
+  filter: brightness(1.12) drop-shadow(0 4px 16px rgba(0,0,0,0.55));
 }
+.gp-col-btn:hover::after { animation-duration: 1.4s; }
 
-/* ── GACHA (rosa neon) ── */
-@keyframes gp-gacha-pulse {
-  0%,100% { box-shadow: 0 0 24px rgba(236,72,153,0.50), 0 0 55px rgba(217,70,239,0.18), inset 0 1px 0 rgba(249,168,212,0.15); }
-  50%     { box-shadow: 0 0 40px rgba(236,72,153,0.75), 0 0 85px rgba(217,70,239,0.30), inset 0 1px 0 rgba(249,168,212,0.22); }
+/* ── GACHA (rose neon — animated like JOGAR) ── */
+@keyframes gp-gacha-bg {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gp-gacha-aura {
+  0%,100% { box-shadow: 0 0 22px 3px rgba(236,72,153,0.55), 0 0 55px 8px rgba(217,70,239,0.20), inset 0 0 22px rgba(249,168,212,0.06); }
+  50%      { box-shadow: 0 0 38px 6px rgba(236,72,153,0.80), 0 0 88px 14px rgba(217,70,239,0.36), inset 0 0 32px rgba(249,168,212,0.12); }
+}
+@keyframes gp-gacha-scan {
+  0%   { transform: translateX(-100%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
+}
+@keyframes gp-gacha-border-run {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }
 .gp-gacha-btn {
-  will-change: box-shadow, border-color;
-  transform: translateZ(0);
-  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.65)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-  background: linear-gradient(140deg,
-    rgba(100,10,55,0.96) 0%,
-    rgba(162,20,85,0.92) 35%,
-    rgba(219,39,119,0.88) 65%,
-    rgba(110,12,60,0.96) 100%
+  will-change: box-shadow, transform;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.55));
+  background: linear-gradient(135deg,
+    #3d0220 0%, #7a0a3a 18%, #be185d 38%,
+    #ec4899 52%, #be185d 66%, #7a0a3a 82%, #3d0220 100%
   );
-  border: 2.5px solid rgba(249,168,212,1);
-  animation: gp-gacha-pulse 2.4s ease-in-out infinite;
+  background-size: 300% 300%;
+  border: none; outline: none;
+  animation: gp-gacha-bg 5s ease infinite, gp-gacha-aura 2.4s ease-in-out infinite;
   backdrop-filter: blur(18px);
-  box-shadow: 0 0 22px rgba(219,39,119,0.25), inset 0 1px 0 rgba(249,168,212,0.18);
-  transition: transform .25s ease, border-color .25s ease;
   position: relative; overflow: hidden;
+  transition: transform .2s ease, filter .2s ease;
 }
 .gp-gacha-btn::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent 0%, rgba(249,168,212,0.95) 30%, rgba(255,200,230,1) 50%, rgba(249,168,212,0.95) 70%, transparent 100%);
-  pointer-events: none;
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(249,168,212,0) 30%,
+    rgba(255,200,230,1) 50%, rgba(249,168,212,0) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-gacha-border-run 2s linear infinite;
+  pointer-events: none; z-index: 1;
+  -webkit-mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+                linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+  mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+        linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
 }
 .gp-gacha-btn::after {
   content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(110deg, transparent 10%, rgba(249,168,212,0.12) 50%, transparent 90%);
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(249,168,212,0.38) 50%, transparent 100%);
   background-size: 280% 100%;
   animation: gp-play-scan 5s linear infinite;
   pointer-events: none;
@@ -1381,13 +1434,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             boxShadow:"0 0 12px rgba(245,158,11,0.08)",
           }}>
             <div className="relative flex-shrink-0" style={{ width:52, height:52, overflow:"visible" }}>
-              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={56} height={56}
+              <Image src="/images/icons/gacha-coin.png" alt="Coins" width={96} height={96}
                 style={{
                   position:"absolute", top:"50%", left:"50%",
                   transform:"translate(-50%,-50%)",
-                  width:56, height:56,
+                  width:96, height:96,
                   objectFit:"contain",
-                  filter:"drop-shadow(0 0 14px rgba(252,211,77,0.75))",
+                  filter:"drop-shadow(0 0 16px rgba(252,211,77,0.8))",
                   pointerEvents:"none",
                 }}
               />
@@ -1578,16 +1631,18 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <button className="gp-col-btn flex items-center justify-center gap-2.5"
               onClick={() => onNavigate("collection")}
               style={{ width:220, height:72, borderRadius:10 }}>
-              <BookOpen style={{ width:20, height:20, color:"rgba(255,255,255,0.92)", filter:"drop-shadow(0 0 5px rgba(255,255,255,0.45))" }} />
-              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"rgba(255,255,255,0.98)", textShadow:"0 0 10px rgba(255,255,255,0.4)", letterSpacing:"0.18em" }}>Coleção</span>
+              <div className="gp-col-holo" />
+              <BookOpen style={{ width:22, height:22, color:"#fff", filter:"drop-shadow(0 0 8px rgba(255,255,255,0.9)) drop-shadow(0 0 18px rgba(200,220,255,0.6))", zIndex:4, position:"relative" }} />
+              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"#fff", textShadow:"0 0 14px rgba(255,255,255,0.9), 0 0 28px rgba(200,230,255,0.5)", letterSpacing:"0.18em", zIndex:4, position:"relative" }}>Coleção</span>
             </button>
 
             {/* GACHA — oval rosa */}
             <button className="gp-gacha-btn flex items-center justify-center gap-2.5"
               onClick={() => onNavigate("gacha")}
               style={{ width:200, height:72, borderRadius:40 }}>
-              <Sparkles style={{ width:20, height:20, color:"rgba(249,168,212,0.95)", filter:"drop-shadow(0 0 6px rgba(236,72,153,0.65))" }} />
-              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"rgba(249,168,212,0.98)", textShadow:"0 0 10px rgba(236,72,153,0.6)", letterSpacing:"0.18em" }}>Gacha</span>
+              <div className="gp-play-holo" />
+              <Sparkles style={{ width:22, height:22, color:"#fce7f3", filter:"drop-shadow(0 0 8px rgba(249,168,212,0.95)) drop-shadow(0 0 18px rgba(236,72,153,0.6))", zIndex:4, position:"relative" }} />
+              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"#fce7f3", textShadow:"0 0 14px rgba(249,168,212,0.95), 0 0 28px rgba(236,72,153,0.55)", letterSpacing:"0.18em", zIndex:4, position:"relative" }}>Gacha</span>
             </button>
 
           </div>
