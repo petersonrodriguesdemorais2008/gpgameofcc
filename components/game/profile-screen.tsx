@@ -375,11 +375,20 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
             <div style={{background:"linear-gradient(160deg,#100c08,#0e0b18)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:20,maxWidth:400,width:"100%"}}>
               <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:14}}>Escolher Avatar</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
-                {PROFILE_ICONS.map((icon:string)=>(
-                  <button key={icon} onClick={()=>handleIcon(icon)}
-                    style={{aspectRatio:"1",borderRadius:12,overflow:"hidden",border:playerProfile.avatarUrl===icon?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)"}}>
-                    <Image src={icon} alt="" width={60} height={60} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                {PROFILE_ICONS.map((icon: {id:string;name:string;image:string})=>(
+                  <button key={icon.id} onClick={()=>handleIcon(icon.image)}
+                    style={{
+                      aspectRatio:"1",borderRadius:12,overflow:"hidden",
+                      border:playerProfile.avatarUrl===icon.image?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",
+                      cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)",
+                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
+                      transition:"all 0.2s",
+                    }}>
+                    <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden"}}>
+                      <Image src={icon.image} alt={icon.name} fill style={{objectFit:"cover"}}/>
+                    </div>
+                    <span style={{fontSize:9,fontWeight:700,color:"#6b7280"}}>{icon.name}</span>
                   </button>
                 ))}
               </div>
