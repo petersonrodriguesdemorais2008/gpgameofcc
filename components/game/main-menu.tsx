@@ -74,7 +74,7 @@ const GP_CSS = `
 /* Sidebar buttons */
 .gp-sb {
   contain: layout style;
-  width: 56px; padding: 8px 0;
+  width: 54px; padding: 8px 0;
   background: rgba(5,2,18,0.88);
   border: 1px solid rgba(124,58,237,0.18);
   border-radius: 14px;
@@ -472,16 +472,17 @@ const GP_CSS = `
 }
 .gp-col-btn {
   will-change: box-shadow, transform;
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.55));
+  filter: drop-shadow(0 6px 22px rgba(0,0,0,0.65));
   background: linear-gradient(135deg,
-    rgba(200,220,255,0.18) 0%, rgba(240,248,255,0.28) 18%,
-    rgba(255,255,255,0.42) 38%, rgba(214,228,255,0.35) 52%,
-    rgba(255,255,255,0.42) 66%, rgba(240,248,255,0.28) 82%, rgba(200,220,255,0.18) 100%
+    rgba(200,220,255,0.52) 0%, rgba(240,248,255,0.62) 25%,
+    rgba(255,255,255,0.72) 50%, rgba(240,248,255,0.62) 75%, rgba(200,220,255,0.52) 100%
   );
   background-size: 300% 300%;
-  border: none; outline: none;
+  border: 2.5px solid rgba(255,255,255,1);
+  box-shadow: 0 0 18px rgba(255,255,255,0.28), inset 0 1px 0 rgba(255,255,255,0.5);
+  outline: none;
   animation: gp-col-bg 5s ease infinite, gp-col-aura 2.8s ease-in-out infinite;
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(10px);
   position: relative; overflow: hidden;
   transition: transform .2s ease, filter .2s ease;
 }
@@ -1362,27 +1363,27 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           {/* Avatar + anel girando APENAS aqui (vermelho no guia) */}
           <button onClick={() => onNavigate("profile")}
             className="flex items-center gap-3 group transition-all duration-200 hover:scale-[1.03]">
-            <div className="relative" style={{ width:52, height:52 }}>
+            <div className="relative" style={{ width:68, height:68 }}>
               {/* Anel conic girando - SOMENTE no avatar */}
-              <div className="gp-conic-ring" style={{ inset:-3, borderRadius:16 }} />
+              <div className="gp-conic-ring" style={{ inset:-4, borderRadius:20 }} />
               <div className="relative overflow-hidden" style={{
-                width:52, height:52, borderRadius:14, zIndex:1,
-                border:"1.5px solid rgba(139,92,246,0.35)",
-                boxShadow:"0 0 10px rgba(124,58,237,0.3)",
+                width:68, height:68, borderRadius:18, zIndex:1,
+                border:"2px solid rgba(139,92,246,0.45)",
+                boxShadow:"0 0 16px rgba(124,58,237,0.45)",
               }}>
                 {playerProfile.avatarUrl ? (
-                  <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={52} height={52} className="w-full h-full object-cover" />
+                  <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={68} height={68} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" style={{ background:"linear-gradient(135deg,#2E1065,#7C3AED)" }}>
-                    <span className="text-white text-lg font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
+                    <span className="text-white text-2xl font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
                   </div>
                 )}
               </div>
               {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-black/80" style={{zIndex:2}} />}
             </div>
             <div className="text-left">
-              <p className="text-white font-black text-base leading-tight tracking-wide">{playerProfile.name}</p>
-              <p className="text-[11px] font-semibold tracking-widest" style={{color:"rgba(167,139,250,0.65)"}}>{playerProfile.title||"Jogador"}</p>
+              <p className="text-white font-black text-xl leading-tight tracking-wide">{playerProfile.name}</p>
+              <p className="text-[13px] font-bold tracking-widest" style={{color:"rgba(192,132,252,0.85)", textShadow:"0 0 8px rgba(139,92,246,0.4)"}}>{playerProfile.title||"Jogador"}</p>
             </div>
           </button>
           <div style={{ transform:"scaleX(1.12) scaleY(1.08)", transformOrigin:"left center" }}>
@@ -1562,7 +1563,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
-      <div className="fixed right-2 z-30 flex flex-col gap-2 gp-anim-sidebar" style={{ top:152 }}>
+      <div className="fixed z-30 flex flex-col gap-2 gp-anim-sidebar" style={{ top:152, right:4 }}>
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
           { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
