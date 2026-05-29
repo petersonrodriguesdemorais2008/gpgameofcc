@@ -836,7 +836,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       voiceAudioRef.current.currentTime = 0
     }
     voiceAudioRef.current = new Audio(voice.src)
-    voiceAudioRef.current.volume = 0.85
+    voiceAudioRef.current.volume = 1.0
     voiceAudioRef.current.play().catch(() => {})
 
     // Auto-hide bubble after 3.2s with fade-out
