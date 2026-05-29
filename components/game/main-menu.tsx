@@ -61,11 +61,6 @@ const GP_CSS = `
 }
 
 /* Cantos decorativos HUD */
-.gp-corner { position: fixed; width: 20px; height: 20px; border-color: rgba(139,92,246,0.22); border-style: solid; z-index: 5; pointer-events: none; }
-.gp-corner-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
-.gp-corner-tr { top: 10px; right: 72px; border-width: 2px 2px 0 0; }
-.gp-corner-bl { bottom: 84px; left: 10px; border-width: 0 0 2px 2px; }
-.gp-corner-br { bottom: 84px; right: 72px; border-width: 0 2px 2px 0; }
 
 /* Background sutil */
 @keyframes gp-bgb { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.05);} }
@@ -1300,10 +1295,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
 
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
-      <div className="gp-corner gp-corner-tl" />
-      <div className="gp-corner gp-corner-tr" />
-      <div className="gp-corner gp-corner-bl" />
-      <div className="gp-corner gp-corner-br" />
 
       {/* ══ BACKGROUND ══ */}
       <div className="fixed inset-0 z-0 gp-anim-bg">
