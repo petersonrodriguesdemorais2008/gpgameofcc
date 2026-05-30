@@ -376,21 +376,28 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             <div style={{background:"linear-gradient(160deg,#100c08,#0e0b18)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:20,maxWidth:400,width:"100%"}}>
               <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:14}}>Escolher Avatar</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                {PROFILE_ICONS.map((icon: {id:string;name:string;image:string})=>(
-                  <button key={icon.id} onClick={()=>handleIcon(icon.image)}
-                    style={{
-                      aspectRatio:"1",borderRadius:12,overflow:"hidden",
-                      border:playerProfile.avatarUrl===icon.image?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",
-                      cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)",
-                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
-                      transition:"all 0.2s",
-                    }}>
-                    <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden"}}>
-                      <Image src={icon.image} alt={icon.name} fill style={{objectFit:"cover"}}/>
-                    </div>
-                    <span style={{fontSize:9,fontWeight:700,color:"#6b7280"}}>{icon.name}</span>
-                  </button>
-                ))}
+                {(PROFILE_ICONS as Array<{id:string;name:string;image:string}|string>).map((raw, idx) => {
+                  // Normalise: suporta tanto objetos {id,name,image} quanto strings legadas
+                  const icon: {id:string;name:string;image:string} =
+                    typeof raw === "string"
+                      ? { id: `icon-${idx}`, image: raw, name: `Ícone ${idx + 1}` }
+                      : raw
+                  return (
+                    <button key={icon.id} onClick={()=>handleIcon(icon.image)}
+                      style={{
+                        aspectRatio:"1",borderRadius:12,overflow:"hidden",
+                        border:playerProfile.avatarUrl===icon.image?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",
+                        cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)",
+                        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
+                        transition:"all 0.2s",
+                      }}>
+                      <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden"}}>
+                        <Image src={icon.image} alt={icon.name} fill style={{objectFit:"cover"}}/>
+                      </div>
+                      <span style={{fontSize:9,fontWeight:700,color:"#6b7280"}}>{icon.name}</span>
+                    </button>
+                  )
+                })}
               </div>
               <button onClick={()=>setShowIconSel(false)} style={{marginTop:14,width:"100%",padding:"10px",borderRadius:10,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#6b7280",fontWeight:700,fontSize:13,cursor:"pointer"}}>Fechar</button>
             </div>
