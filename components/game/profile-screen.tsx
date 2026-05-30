@@ -6,6 +6,30 @@ import { useGame, PROFILE_ICONS } from "@/contexts/game-context"
 import { ArrowLeft, Edit3, Check, X, Copy, Shield, Flame, Crown, BookOpen, Star, Trophy, Swords, Zap, Lock } from "lucide-react"
 import Image from "next/image"
 
+// ─── Menu Music Controls ──────────────────────────────────────────────────────
+// Module-level ref so duel-screen (and any other screen) can pause/resume the
+// menu background music without needing a React context.
+let _menuAudio: HTMLAudioElement | null = null
+
+/** Call this from the main-menu component to register the audio element. */
+export function setMenuAudioRef(audio: HTMLAudioElement | null) {
+  _menuAudio = audio
+}
+
+/** Pause the menu background music (e.g. before a duel starts). */
+export function pauseMenuMusic(): void {
+  if (_menuAudio && !_menuAudio.paused) {
+    _menuAudio.pause()
+  }
+}
+
+/** Resume the menu background music (e.g. after a duel ends). */
+export function resumeMenuMusic(): void {
+  if (_menuAudio && _menuAudio.paused) {
+    _menuAudio.play().catch(() => {/* autoplay blocked – ignore */})
+  }
+}
+
 interface ProfileScreenProps { onBack: () => void }
 
 const BASE_PLAYER_TITLES = ["Iniciante","Colecionador","Estrategista","Mestre das Cartas","Guardiao Lendario","Comandante de Elite","Senhor do Gacha","Lenda Viva"]
