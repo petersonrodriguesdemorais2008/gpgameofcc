@@ -1,733 +1,2126 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame, PROFILE_ICONS } from "@/contexts/game-context"
-import { ArrowLeft, Edit3, Check, X, Copy, Shield, Flame, Crown, BookOpen, Star, Trophy, Swords, Zap, Lock } from "lucide-react"
+import { useGame } from "@/contexts/game-context"
+import type { GameScreen } from "@/components/game/game-wrapper"
+import {
+  Swords, Bot, Users, Gift, BookOpen, Hammer, History, Settings,
+  Coins, X, Sparkles, Star, Target, Shield,
+} from "lucide-react"
 import Image from "next/image"
+import dynamic from "next/dynamic"
+import { loadMastersFromStorage } from "@/lib/masters-data"
 
-// ─── Menu Music Controls ──────────────────────────────────────────────────────
-// Module-level ref so duel-screen (and any other screen) can pause/resume the
-// menu background music without needing a React context.
-let _menuAudio: HTMLAudioElement | null = null
+const MasterMenuCard = dynamic(
+  () => import("./master-screen").then(m => ({ default: m.MasterMenuCard })),
+  { ssr: false, loading: () => null }
+)
 
-/** Call this from the main-menu component to register the audio element. */
-export function setMenuAudioRef(audio: HTMLAudioElement | null) {
-  _menuAudio = audio
+const GP_CSS = `
+@keyframes gp-conic-spin { to { transform: rotate(360deg); } }
+
+/* Anel girando – roxo/pink – para avatar e gift */
+.gp-conic-ring {
+  position: absolute; border-radius: inherit;
+  background: conic-gradient(
+    rgba(232,121,249,0.75) 0deg,
+    rgba(139,92,246,0.75) 90deg,
+    rgba(56,189,248,0.65) 180deg,
+    rgba(167,139,250,0.75) 270deg,
+    rgba(232,121,249,0.75) 360deg
+  );
+  animation: gp-conic-spin 4s linear infinite;
+  z-index: 0;
+}
+/* Anel girando – dourado – para botão MESTRE */
+.gp-conic-ring-gold {
+  position: absolute; border-radius: inherit;
+  background: conic-gradient(
+    rgba(252,211,77,0.8) 0deg,
+    rgba(245,158,11,0.6) 90deg,
+    rgba(234,179,8,0.8) 180deg,
+    rgba(252,211,77,0.6) 270deg,
+    rgba(252,211,77,0.8) 360deg
+  );
+  animation: gp-conic-spin 3.5s linear infinite;
+  z-index: 0;
+}
+/* Anel girando – lento roxo – para botões sidebar */
+.gp-conic-ring-slow {
+  position: absolute; border-radius: inherit;
+  background: conic-gradient(
+    rgba(139,92,246,0.45) 0deg,
+    rgba(232,121,249,0.35) 90deg,
+    rgba(56,189,248,0.45) 180deg,
+    rgba(139,92,246,0.35) 270deg,
+    rgba(139,92,246,0.45) 360deg
+  );
+  animation: gp-conic-spin 6s linear infinite;
+  z-index: 0;
 }
 
-/** Pause the menu background music (e.g. before a duel starts). */
-export function pauseMenuMusic(): void {
-  if (_menuAudio && !_menuAudio.paused) {
-    _menuAudio.pause()
+/* Cantos decorativos HUD */
+
+/* Background sutil */
+@keyframes gp-bgb { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.05);} }
+.gp-wbg { animation: gp-bgb 8s ease-in-out infinite; }
+
+/* Sidebar buttons */
+.gp-sb {
+  contain: layout style;
+  width: 54px; padding: 8px 0;
+  background: rgba(5,2,18,0.88);
+  border: 1px solid rgba(124,58,237,0.18);
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: all .25s ease;
+  position: relative; overflow: hidden;
+}
+.gp-sb::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2.5px;
+  background: rgba(139,92,246,0.9);
+  transform: scaleY(0); transform-origin: center;
+  transition: transform .25s ease;
+}
+.gp-sb:hover { background: rgba(10,5,32,0.95); border-color: rgba(139,92,246,0.42); transform: translateX(-2px); box-shadow: 3px 0 18px rgba(124,58,237,0.2); }
+.gp-sb:hover::before { transform: scaleY(1); }
+.gp-sb svg { width: 23px; height: 23px; color: rgba(167,139,250,0.82); transition: color .25s; }
+.gp-sb:hover svg { color: rgba(196,165,250,1); filter: drop-shadow(0 0 5px rgba(167,139,250,0.5)); }
+.gp-sb-lbl { font-size: 9.5px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: rgba(109,40,217,0.75); transition: color .25s; font-family: inherit; }
+.gp-sb:hover .gp-sb-lbl { color: rgba(139,92,246,0.95); }
+.gp-sb.gp-gold { background: rgba(12,7,2,0.88); border-color: rgba(245,158,11,0.25); }
+.gp-sb.gp-gold::before { background: rgba(245,158,11,0.9); }
+.gp-sb.gp-gold:hover { border-color: rgba(245,158,11,0.55); box-shadow: 3px 0 18px rgba(245,158,11,0.2); }
+.gp-sb.gp-gold svg { color: rgba(252,211,77,0.9); }
+.gp-sb.gp-gold .gp-sb-lbl { color: rgba(245,158,11,0.8); }
+
+/* Bottom nav – levemente escuro */
+.gp-nav-wrap {
+  background: linear-gradient(180deg, rgba(3,1,18,0.65) 0%, rgba(3,1,18,0.96) 100%);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid transparent;
+}
+@keyframes gp-navline-run {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+.gp-nav-line {
+  position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(109,40,217,0) 8%,
+    rgba(139,92,246,0.55) 22%, rgba(196,132,252,0.85) 35%,
+    rgba(255,255,255,0.9) 50%,
+    rgba(232,121,249,0.85) 65%, rgba(139,92,246,0.55) 78%,
+    rgba(109,40,217,0) 92%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-navline-run 4s linear infinite;
+  box-shadow: 0 0 10px rgba(167,139,250,0.4), 0 0 22px rgba(139,92,246,0.18);
+}
+/* Nav separators between items */
+.gp-ni + .gp-ni::before {
+  content: '';
+  position: absolute; left: 0; top: 20%; bottom: 20%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(139,92,246,0.25), transparent);
+}
+/* Active deck badge above JOGAR */
+@keyframes gp-deck-holo {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.gp-deck-badge {
+  background: linear-gradient(115deg,
+    rgba(6,18,60,0.90) 0%, rgba(14,40,120,0.88) 35%,
+    rgba(30,64,175,0.82) 60%, rgba(14,40,120,0.88) 80%, rgba(6,18,60,0.90) 100%
+  );
+  background-size: 250% 250%;
+  animation: gp-deck-holo 4s ease infinite;
+  border: 1.5px solid rgba(96,165,250,0.62);
+  box-shadow: 0 2px 14px rgba(59,130,246,0.28), inset 0 1px 0 rgba(147,197,253,0.12);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 8px;
+  cursor: pointer; transition: all .22s;
+  width: 440px;
+}
+.gp-deck-badge:hover {
+  border-color: rgba(147,197,253,0.85);
+  box-shadow: 0 4px 22px rgba(59,130,246,0.42), inset 0 1px 0 rgba(147,197,253,0.18);
+  transform: translateY(-1px);
+}
+.gp-deck-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 0 6px rgba(96,165,250,0.8);
+  flex-shrink: 0;
+  animation: gp-play-aura 2s ease-in-out infinite;
+}
+/* ══ ENTRANCE ANIMATION — zoom-out impact, no position shift, no flash ══ */
+@keyframes gp-enter-scene {
+  0%   { opacity: 0;   transform: scale(1.22); }
+  18%  { opacity: 1;   transform: scale(1.22); }
+  65%  { opacity: 1;   transform: scale(1.004); }
+  82%  { transform: scale(0.9985); }
+  100% { opacity: 1;   transform: scale(1); }
+}
+@keyframes gp-enter-ui {
+  0%   { opacity: 0; }
+  25%  { opacity: 0; }
+  75%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+@keyframes gp-enter-btn {
+  0%   { opacity: 0; transform: scale(0.88); }
+  28%  { opacity: 0; transform: scale(0.88); }
+  72%  { opacity: 1; transform: scale(1.032); }
+  88%  { transform: scale(0.992); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.gp-anim-bg      { animation: gp-enter-scene 0.82s cubic-bezier(0.16,1,0.3,1) both; }
+.gp-anim-hud     { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-sidebar { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-nav     { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-music   { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-master  { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-ui-btns { animation: gp-enter-ui    0.82s ease both; }
+
+/* ══ ACHIEVEMENT POP-UP ══ */
+@keyframes gp-achieve-in {
+  0%   { opacity:0; transform: translateX(120px) scale(0.85); }
+  55%  { opacity:1; transform: translateX(-6px) scale(1.03); }
+  75%  { transform: translateX(2px) scale(0.99); }
+  100% { opacity:1; transform: translateX(0) scale(1); }
+}
+@keyframes gp-achieve-out {
+  0%   { opacity:1; transform: translateX(0); }
+  100% { opacity:0; transform: translateX(100px); }
+}
+.gp-achieve {
+  position: fixed; z-index: 9999;
+  top: 80px; right: 12px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px 10px 10px;
+  background: linear-gradient(135deg, rgba(5,2,18,0.97), rgba(10,5,32,0.97));
+  border: 1.5px solid rgba(139,92,246,0.55);
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(124,58,237,0.3), 0 6px 28px rgba(0,0,0,0.55), inset 0 1px 0 rgba(167,139,250,0.08);
+  backdrop-filter: blur(18px);
+  min-width: 240px; max-width: 300px;
+  pointer-events: none;
+  animation: gp-achieve-in 0.45s cubic-bezier(0.22,1,0.36,1) both;
+}
+.gp-achieve.out { animation: gp-achieve-out 0.3s ease-in both; }
+.gp-achieve-icon {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(109,40,217,0.5), rgba(167,139,250,0.3));
+  border: 1px solid rgba(139,92,246,0.45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.gp-achieve-title { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(167,139,250,0.7); }
+.gp-achieve-msg   { font-size: 12.5px; font-weight: 700; color: #fff; letter-spacing: 0.2px; margin-top: 1px; }
+.gp-achieve-bar {
+  position: absolute; bottom: 0; left: 0; height: 2.5px; border-radius: 0 0 14px 14px;
+  background: linear-gradient(90deg, rgba(109,40,217,0.9), rgba(232,121,249,0.9));
+  animation: gp-achieve-progress 4s linear both;
+}
+@keyframes gp-achieve-progress { 0%{width:100%;} 100%{width:0%;} }
+
+/* ══ COIN COUNTER ANIMATION ══ */
+@keyframes gp-coin-pop { 0%{transform:scale(1);} 30%{transform:scale(1.22);} 70%{transform:scale(0.95);} 100%{transform:scale(1);} }
+.gp-coin-pop { animation: gp-coin-pop 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+.gp-coin-plus {
+  position: absolute; right: -8px; top: -14px;
+  font-size: 11px; font-weight: 900; color: #4ade80;
+  text-shadow: 0 0 6px rgba(74,222,128,0.7);
+  animation: gp-coin-plus-anim 1.2s ease-out both;
+  pointer-events: none; white-space: nowrap; z-index: 10;
+}
+@keyframes gp-coin-plus-anim { 0%{opacity:1;transform:translateY(0);} 60%{opacity:1;transform:translateY(-18px);} 100%{opacity:0;transform:translateY(-28px);} }
+
+/* Nav item active glow */
+.gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
+
+/* Master art panel */
+@keyframes gp-master-in {
+  from { opacity: 0; transform: translateX(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes gp-master-float {
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-8px); }
+}
+.gp-master-art {
+  animation: gp-master-in 0.55s cubic-bezier(0.22,1,0.36,1) both,
+             gp-master-float 5s ease-in-out 0.6s infinite;
+  filter: drop-shadow(0 0 22px rgba(139,92,246,0.45)) drop-shadow(0 0 44px rgba(109,40,217,0.22));
+  will-change: transform;
+}
+.gp-master-art-wrap {
+  position: fixed; z-index: 20;
+  bottom: 74px; right: 70px;
+  width: 310px; height: 480px;
+  pointer-events: all;
+  cursor: pointer;
+}
+.gp-master-art-wrap::after {
+  content: '';
+  position: absolute; bottom: 0; left: 10%; right: 10%; height: 60px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.28) 0%, transparent 72%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+/* Tap wrapper: ripple glow, no transform on the image itself */
+@keyframes gp-master-tap-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(139,92,246,0.55); opacity: 1; }
+  100% { box-shadow: 0 0 0 38px rgba(139,92,246,0); opacity: 0; }
+}
+@keyframes gp-master-tap-scale {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+/* Applied to the inner art wrapper only — doesn't reset float/entry */
+.gp-master-tap-wrap { animation: gp-master-tap-scale 0.35s ease-in-out both; }
+/* Glow ring: absolutely positioned, doesn't affect layout */
+.gp-master-tap-ring {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 5;
+  animation: gp-master-tap-ring 0.55s ease-out both;
+}
+
+/* Manga speech bubble */
+@keyframes gp-bubble-in {
+  0%   { opacity:0; transform: scale(0.82) translateY(8px); }
+  65%  { opacity:1; transform: scale(1.02) translateY(-1px); }
+  100% { opacity:1; transform: scale(1) translateY(0); }
+}
+@keyframes gp-bubble-out {
+  0%   { opacity:1; }
+  100% { opacity:0; transform: translateY(4px); }
+}
+.gp-bubble {
+  /* Bottom-left of character art: near mouth level */
+  position: absolute;
+  bottom: 145px;   /* near hands/waist area */
+  left: -200px;
+  width: 192px;
+  background: #fff;
+  border: 2.5px solid #111;
+  border-radius: 14px 14px 14px 4px;
+  padding: 9px 12px 9px 12px;
+  box-shadow: 3px 3px 0 #111;
+  z-index: 30;
+  animation: gp-bubble-in 0.32s cubic-bezier(0.22,1,0.36,1) both;
+  pointer-events: none;
+  /* Keep bubble above its sibling overflow */
+  overflow: visible;
+}
+.gp-bubble.out { animation: gp-bubble-out 0.22s ease-in both; }
+
+/* Tail: separate element so it is truly OUTSIDE the bubble box */
+.gp-bubble-tail {
+  position: absolute;
+  /* sits to the right of the bubble, pointing right toward the character */
+  right: -20px;
+  bottom: 16px;
+  width: 0; height: 0;
+  /* Outer border (stroke) */
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 20px solid #111;
+  pointer-events: none;
+}
+.gp-bubble-tail::after {
+  content: '';
+  position: absolute;
+  top: -8px; left: -22px;
+  width: 0; height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 18px solid #fff;
+}
+
+.gp-bubble-text {
+  font-size: 12.5px; line-height: 1.5;
+  color: #111; font-weight: 700; letter-spacing: 0.2px;
+  font-family: 'Geist', 'Inter', sans-serif;
+}
+/* Micro-animations on sidebar */
+.gp-sb:active { transform: translateX(-2px) scale(0.96); }
+.gp-ni {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; padding: 11px 4px 9px; background: transparent; border: none;
+  cursor: pointer; position: relative; transition: background .2s;
+  outline: none;
+}
+/* Active glow line at bottom */
+.gp-ni::after {
+  content: ''; position: absolute; bottom: 0; left: 15%; right: 15%; height: 2.5px;
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,0.9), rgba(232,121,249,1), rgba(167,139,250,0.9), transparent);
+  transform: scaleX(0); transition: transform .22s cubic-bezier(0.22,1,0.36,1);
+  border-radius: 1px 1px 0 0;
+  box-shadow: 0 0 10px rgba(167,139,250,0.6), 0 0 20px rgba(139,92,246,0.25);
+}
+.gp-ni:hover::after { transform: scaleX(1); }
+/* Active bg glow */
+.gp-ni:hover {
+  background: linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(139,92,246,0.12) 100%);
+}
+/* Icon transitions */
+.gp-ni svg {
+  color: rgba(109,40,217,0.62); transition: all .22s;
+  filter: none;
+  width: 27px; height: 27px;
+}
+.gp-ni:hover svg {
+  color: rgba(192,132,252,1);
+  filter: drop-shadow(0 0 7px rgba(167,139,250,0.6)) drop-shadow(0 0 14px rgba(139,92,246,0.3));
+  transform: translateY(-2px) scale(1.08);
+}
+/* Label */
+.gp-ni-lbl {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+  color: rgba(109,40,217,0.52); transition: all .22s; font-family: inherit;
+}
+.gp-ni:hover .gp-ni-lbl {
+  color: rgba(192,132,252,1);
+  text-shadow: 0 0 8px rgba(139,92,246,0.5);
+}
+/* Luminous separator between items */
+.gp-ni + .gp-ni::before {
+  content: '';
+  position: absolute; left: 0; top: 22%; bottom: 22%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(139,92,246,0.22), rgba(139,92,246,0.32), rgba(139,92,246,0.22), transparent);
+  box-shadow: 0 0 4px rgba(139,92,246,0.12);
+}
+
+/* ── JOGAR — energetic overhaul ── */
+@keyframes gp-play-bg {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gp-play-aura {
+  0%,100% {
+    box-shadow:
+      0 0 22px 3px rgba(59,130,246,0.55),
+      0 0 55px 8px rgba(29,78,216,0.28),
+      0 0 110px 14px rgba(99,179,237,0.12),
+      inset 0 0 22px rgba(147,197,253,0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 38px 6px rgba(96,165,250,0.80),
+      0 0 80px 14px rgba(59,130,246,0.42),
+      0 0 150px 22px rgba(147,197,253,0.18),
+      inset 0 0 32px rgba(147,197,253,0.14);
+  }
+}
+@keyframes gp-play-scan {
+  0%   { transform: translateX(-100%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
+}
+@keyframes gp-play-holo {
+  0%   { opacity: 0.06; background-position: 0% 0%; }
+  50%  { opacity: 0.14; background-position: 100% 100%; }
+  100% { opacity: 0.06; background-position: 0% 0%; }
+}
+@keyframes gp-play-border-run {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.gp-play-btn {
+  will-change: box-shadow, transform;
+  background: linear-gradient(135deg,
+    #020c3a 0%, #0a1e7a 18%, #1d4ed8 38%,
+    #3b82f6 52%, #1d4ed8 66%, #0a1e7a 82%, #020c3a 100%
+  );
+  background-size: 300% 300%;
+  animation: gp-play-bg 5s ease infinite, gp-play-aura 2.4s ease-in-out infinite;
+  border: none;
+  outline: none;
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 89% 100%, 0 100%);
+  position: relative; overflow: hidden;
+  transition: transform .2s ease, filter .2s ease;
+  filter: brightness(1);
+  /* Animated border via pseudo-element */
+}
+/* Running border glow */
+.gp-play-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  clip-path: inherit;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(147,197,253,0) 30%,
+    rgba(219,234,254,1) 50%, rgba(147,197,253,0) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-play-border-run 2s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+  /* Fake border: mask to thin lines only */
+  -webkit-mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+                linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+  mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+        linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+}
+/* Scan flash */
+.gp-play-btn::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(147,197,253,0.32) 50%, transparent 100%);
+  animation: gp-play-scan 2.8s ease-in-out infinite;
+  pointer-events: none; z-index: 2;
+}
+/* Holographic overlay */
+.gp-play-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: repeating-linear-gradient(
+    58deg,
+    rgba(147,197,253,0.08) 0px, rgba(147,197,253,0.08) 1px,
+    transparent 1px, transparent 6px
+  );
+  animation: gp-play-holo 4s ease-in-out infinite;
+}
+.gp-play-btn:hover {
+  transform: scale(1.028) translateY(-1px);
+  filter: brightness(1.15);
+}
+.gp-play-btn:hover::after {
+  animation-duration: 1.2s;
+}
+/* Canvas particles placeholder — handled via JS canvas */
+
+/* ── COLEÇÃO (white/crystal — animated like JOGAR) ── */
+@keyframes gp-col-bg {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gp-col-aura {
+  0%,100% { box-shadow: 0 0 18px 2px rgba(226,232,240,0.45), 0 0 45px 6px rgba(255,255,255,0.12), inset 0 0 18px rgba(255,255,255,0.06); }
+  50%      { box-shadow: 0 0 32px 5px rgba(226,232,240,0.70), 0 0 70px 12px rgba(255,255,255,0.20), inset 0 0 28px rgba(255,255,255,0.10); }
+}
+@keyframes gp-col-scan {
+  0%   { transform: translateX(-100%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
+}
+@keyframes gp-col-border-run {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.gp-col-btn {
+  will-change: box-shadow, transform;
+  filter: drop-shadow(0 6px 22px rgba(0,0,0,0.65));
+  background: linear-gradient(135deg,
+    rgba(200,220,255,0.52) 0%, rgba(240,248,255,0.62) 25%,
+    rgba(255,255,255,0.72) 50%, rgba(240,248,255,0.62) 75%, rgba(200,220,255,0.52) 100%
+  );
+  background-size: 300% 300%;
+  border: 2.5px solid rgba(255,255,255,1);
+  box-shadow: 0 0 18px rgba(255,255,255,0.28), inset 0 1px 0 rgba(255,255,255,0.5);
+  outline: none;
+  animation: gp-col-bg 5s ease infinite, gp-col-aura 2.8s ease-in-out infinite;
+  backdrop-filter: blur(10px);
+  position: relative; overflow: hidden;
+  transition: transform .2s ease, filter .2s ease;
+}
+.gp-col-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,0) 30%,
+    rgba(255,255,255,1) 50%, rgba(255,255,255,0) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-col-border-run 2.2s linear infinite;
+  pointer-events: none; z-index: 1;
+  -webkit-mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+                linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+  mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+        linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+}
+.gp-col-btn::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.38) 50%, transparent 100%);
+  animation: gp-col-scan 3s ease-in-out infinite;
+  pointer-events: none; z-index: 2;
+}
+.gp-col-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: repeating-linear-gradient(
+    58deg,
+    rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px,
+    transparent 1px, transparent 6px
+  );
+  animation: gp-play-holo 4s ease-in-out infinite;
+}
+.gp-col-btn:hover {
+  transform: scale(1.028) translateY(-1px);
+  filter: brightness(1.12) drop-shadow(0 4px 16px rgba(0,0,0,0.55));
+}
+.gp-col-btn:hover::after { animation-duration: 1.4s; }
+
+/* ── GACHA (rose neon — animated like JOGAR) ── */
+@keyframes gp-gacha-bg {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gp-gacha-aura {
+  0%,100% { box-shadow: 0 0 22px 3px rgba(236,72,153,0.55), 0 0 55px 8px rgba(217,70,239,0.20), inset 0 0 22px rgba(249,168,212,0.06); }
+  50%      { box-shadow: 0 0 38px 6px rgba(236,72,153,0.80), 0 0 88px 14px rgba(217,70,239,0.36), inset 0 0 32px rgba(249,168,212,0.12); }
+}
+@keyframes gp-gacha-scan {
+  0%   { transform: translateX(-100%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
+}
+@keyframes gp-gacha-border-run {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.gp-gacha-btn {
+  will-change: box-shadow, transform;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.55));
+  background: linear-gradient(135deg,
+    #3d0220 0%, #7a0a3a 18%, #be185d 38%,
+    #ec4899 52%, #be185d 66%, #7a0a3a 82%, #3d0220 100%
+  );
+  background-size: 300% 300%;
+  border: none; outline: none;
+  animation: gp-gacha-bg 5s ease infinite, gp-gacha-aura 2.4s ease-in-out infinite;
+  backdrop-filter: blur(18px);
+  position: relative; overflow: hidden;
+  transition: transform .2s ease, filter .2s ease;
+}
+.gp-gacha-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(249,168,212,0) 30%,
+    rgba(255,200,230,1) 50%, rgba(249,168,212,0) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-gacha-border-run 2s linear infinite;
+  pointer-events: none; z-index: 1;
+  -webkit-mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+                linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+                linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+  mask: linear-gradient(#fff,#fff) top/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) bottom/100% 2.5px no-repeat,
+        linear-gradient(#fff,#fff) left/2.5px 100% no-repeat,
+        linear-gradient(#fff,#fff) right/2.5px 100% no-repeat;
+}
+.gp-gacha-btn::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(249,168,212,0.38) 50%, transparent 100%);
+  background-size: 280% 100%;
+  animation: gp-play-scan 5s linear infinite;
+  pointer-events: none;
+}
+.gp-gacha-btn:hover {
+  border-color: rgba(253,186,221,1);
+  transform: scale(1.035);
+  background: linear-gradient(140deg,
+    rgba(130,15,70,0.96) 0%,
+    rgba(190,30,100,0.92) 35%,
+    rgba(236,72,153,0.88) 65%,
+    rgba(140,15,75,0.96) 100%
+  );
+}
+
+/* Stamina pulse */
+@keyframes gp-stam { 0%,100%{opacity:1;} 50%{opacity:.82;} }
+.gp-stam-fill { animation: gp-stam 2.5s ease-in-out infinite; }
+
+/* Logo float */
+@keyframes gp-logo-f { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-2px);} }
+.gp-logo { animation: gp-logo-f 4s ease-in-out infinite; filter: drop-shadow(0 0 12px rgba(139,92,246,0.42)); }
+
+/* Falling cards */
+@keyframes fallingCard { 0%{transform:translateY(-120px) rotate(-8deg);opacity:0;} 5%{opacity:1;} 95%{opacity:0.55;} 100%{transform:translateY(calc(100vh + 140px)) rotate(12deg);opacity:0;} }
+@keyframes cardSway    { 0%,100%{transform:translateX(-18px);} 50%{transform:translateX(18px);} }
+@keyframes cardFlipSpin{ 0%{transform:rotateY(0deg);} 45%{transform:rotateY(0deg);} 55%{transform:rotateY(180deg);} 100%{transform:rotateY(180deg);} }
+@keyframes cardHoloShift{ 0%,100%{opacity:0.05;} 50%{opacity:0.18;} }
+
+/* ── Music Player ── */
+@keyframes gp-disc-spin { to { transform: rotate(360deg); } }
+.gp-disc {
+  will-change: transform;
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: conic-gradient(
+    rgba(139,92,246,0.9) 0deg, rgba(232,121,249,0.85) 90deg,
+    rgba(56,189,248,0.8) 180deg, rgba(167,139,250,0.9) 270deg,
+    rgba(139,92,246,0.9) 360deg
+  );
+  animation: gp-disc-spin 2.8s linear infinite;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 10px rgba(139,92,246,0.45);
+}
+.gp-disc-inner {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: rgba(4,2,16,0.95);
+  border: 1px solid rgba(139,92,246,0.4);
+}
+.gp-disc.paused { animation-play-state: paused; }
+.gp-music-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px 5px 6px;
+  background: rgba(4,2,16,0.88);
+  border: 1px solid rgba(139,92,246,0.22);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: border-color .25s, background .25s;
+  overflow: hidden;
+  max-width: 230px;
+}
+.gp-music-bar:hover { border-color: rgba(139,92,246,0.5); background: rgba(8,4,28,0.94); }
+.gp-music-bar::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, rgba(232,121,249,0.8), rgba(139,92,246,0.8));
+  border-radius: 1px;
+}
+.gp-music-title {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px;
+  color: rgba(196,165,250,0.9); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 140px;
+  text-transform: uppercase;
+}
+.gp-music-sub {
+  font-size: 7.5px; font-weight: 600; letter-spacing: 1px;
+  color: rgba(109,40,217,0.65); text-transform: uppercase;
+}
+@keyframes gp-music-scroll {
+  0%   { transform: translateX(0); }
+  40%  { transform: translateX(-50%); }
+  50%  { transform: translateX(-50%); }
+  90%  { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+.gp-music-scroll { animation: gp-music-scroll 8s linear infinite; display: inline-block; white-space: nowrap; }
+
+/* Track selector mini-panel */
+.gp-music-panel {
+  position: fixed; z-index: 200;
+  background: rgba(3,1,14,0.97);
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(124,58,237,0.25), 0 12px 40px rgba(0,0,0,0.7);
+  backdrop-filter: blur(20px);
+  padding: 16px;
+  width: 260px;
+}
+.gp-track-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .2s;
+}
+.gp-track-item:hover { background: rgba(124,58,237,0.12); border-color: rgba(139,92,246,0.25); }
+.gp-track-item.active { background: rgba(109,40,217,0.18); border-color: rgba(139,92,246,0.45); }
+.gp-track-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.gp-track-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: rgba(196,165,250,0.9); }
+.gp-track-name.active { color: rgba(232,121,249,1); }
+.gp-track-sub { font-size: 9px; color: rgba(109,40,217,0.6); letter-spacing: 0.5px; }
+
+/* Misc */
+.rarity-lr{box-shadow:0 0 20px rgba(239,68,68,0.5),0 0 40px rgba(251,191,36,0.3);border:2px solid #fbbf24;}
+.rarity-ur{box-shadow:0 0 18px rgba(245,158,11,0.5);border:2px solid #f59e0b;}
+.rarity-sr{box-shadow:0 0 16px rgba(168,85,247,0.5);border:2px solid #a855f7;}
+.rarity-r{box-shadow:0 0 10px rgba(148,163,184,0.3);border:2px solid #94a3b8;}
+.gacha-btn{transition:all .2s;}
+.gacha-btn:hover{transform:scale(1.02);filter:brightness(1.1);}
+.gacha-btn:active{transform:scale(0.98);}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.animate-float{animation:float 3s ease-in-out infinite;}
+.aura-logo{filter:drop-shadow(0 0 12px rgba(139,92,246,0.5));}
+`
+
+const CARD_THEMES = [
+  { bg:"linear-gradient(145deg,#1e3a5f,#0c4a6e,#164e63)",border:"#38bdf8",glow:"rgba(56,189,248,0.35)",accent:"#7dd3fc"},
+  { bg:"linear-gradient(145deg,#5b1a1a,#7f1d1d,#991b1b)",border:"#fca5a5",glow:"rgba(252,165,165,0.30)",accent:"#fecaca"},
+  { bg:"linear-gradient(145deg,#713f12,#92400e,#78350f)",border:"#fcd34d",glow:"rgba(252,211,77,0.35)",accent:"#fde68a"},
+  { bg:"linear-gradient(145deg,#3b0764,#581c87,#6b21a8)",border:"#d8b4fe",glow:"rgba(216,180,254,0.30)",accent:"#e9d5ff"},
+  { bg:"linear-gradient(145deg,#064e3b,#065f46,#047857)",border:"#6ee7b7",glow:"rgba(110,231,183,0.30)",accent:"#a7f3d0"},
+  { bg:"linear-gradient(145deg,#1e293b,#334155,#475569)",border:"#e2e8f0",glow:"rgba(226,232,240,0.25)",accent:"#f1f5f9"},
+]
+
+interface MainMenuProps {
+  onNavigate: (screen: GameScreen) => void
+  statusMessage?: string | null
+  onClearMessage?: () => void
+}
+
+// ── Module-level singletons — survive navigation ──
+let _gpAudio: HTMLAudioElement | null = null
+let _gpTrackId: string = ""
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _gpACtx: any = null  // AudioContext singleton for spectrum visualizer
+
+
+
+// Exposed so other screens (duel) can pause/resume menu music
+export function pauseMenuMusic() {
+  if (_gpAudio && !_gpAudio.paused) {
+    _gpAudio.pause()
+  }
+}
+export function resumeMenuMusic() {
+  if (_gpAudio && _gpAudio.paused) {
+    _gpAudio.play().catch(() => {})
   }
 }
 
-/** Resume the menu background music (e.g. after a duel ends). */
-export function resumeMenuMusic(): void {
-  if (_menuAudio && _menuAudio.paused) {
-    _menuAudio.play().catch(() => {/* autoplay blocked – ignore */})
-  }
-}
-
-interface ProfileScreenProps { onBack: () => void }
-
-const BASE_PLAYER_TITLES = ["Iniciante","Colecionador","Estrategista","Mestre das Cartas","Guardiao Lendario","Comandante de Elite","Senhor do Gacha","Lenda Viva"]
-
-function getPlayerTitles(): string[] {
-  if (typeof window === "undefined") return BASE_PLAYER_TITLES
-  try {
-    const raw = localStorage.getItem("gpgame_titles") ?? "[]"
-    const unlocked: string[] = JSON.parse(raw)
-    const all = [...BASE_PLAYER_TITLES]
-    for (const t of unlocked) { if (!all.includes(t)) all.push(t) }
-    return all
-  } catch { return BASE_PLAYER_TITLES }
-}
-
-const ELEMENT_COLORS: Record<string,string> = {
-  Aquos:"#38bdf8", Fire:"#f87171", Darkus:"#a855f7", Void:"#22d3ee",
-  Ventus:"#4ade80", Lightness:"#fde68a", Subterra:"#fb923c", Haos:"#fde68a",
-  Darkness:"#a855f7", Shadow:"#8b5cf6",
-}
-
-function rarityGlow(r: string) {
-  if (r==="LR") return "0 0 20px rgba(239,68,68,0.9),0 0 40px rgba(251,191,36,0.5)"
-  if (r==="UR") return "0 0 16px rgba(56,189,248,0.85),0 0 32px rgba(99,179,237,0.4)"
-  if (r==="SR") return "0 0 14px rgba(168,85,247,0.8),0 0 28px rgba(192,132,252,0.3)"
-  return "none"
-}
-function rarityBorder(r: string) {
-  if (r==="LR") return "2px solid rgba(239,68,68,0.9)"
-  if (r==="UR") return "2px solid rgba(56,189,248,0.85)"
-  if (r==="SR") return "1.5px solid rgba(168,85,247,0.75)"
-  return "1px solid rgba(148,163,184,0.3)"
-}
-function rarityBg(r: string) {
-  if (r==="LR") return "linear-gradient(135deg,rgba(239,68,68,0.15),rgba(251,191,36,0.08))"
-  if (r==="UR") return "linear-gradient(135deg,rgba(56,189,248,0.12),rgba(99,179,237,0.06))"
-  if (r==="SR") return "linear-gradient(135deg,rgba(168,85,247,0.12),rgba(192,132,252,0.06))"
-  return "rgba(255,255,255,0.03)"
-}
-
-// Rename legacy element IDs for display
-function displayElement(el: string): string {
-  const map: Record<string,string> = { Darkus:"Darkness", Sombra:"Shadow", Vento:"Ventus" }
-  return map[el] ?? el
-}
-
-// Tab background colours
-const TAB_BG: Record<string,string> = {
-  stats:        "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(56,189,248,0.10) 0%,transparent 70%)",
-  achievements: "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(251,191,36,0.10) 0%,transparent 70%)",
-  collection:   "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(168,85,247,0.12) 0%,transparent 70%)",
-}
-
-// Particle canvas for achievements
-function AchievementParticles({ active }: { active: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  const raf  = useRef<number>()
-  useEffect(() => {
-    if (!active) return
-    const c = ref.current; if (!c) return
-    const ctx = c.getContext("2d")!
-    c.width = c.offsetWidth; c.height = c.offsetHeight
-    const pts: { x:number;y:number;vx:number;vy:number;life:number;col:string }[] = []
-    const cols = ["#fbbf24","#f59e0b","#fcd34d","#fff","#a78bfa"]
-    for (let i=0;i<40;i++) pts.push({
-      x:Math.random()*c.width, y:c.height+10,
-      vx:(Math.random()-.5)*1.5, vy:-1-Math.random()*2,
-      life:1, col:cols[Math.floor(Math.random()*cols.length)]
-    })
-    const draw = () => {
-      ctx.clearRect(0,0,c.width,c.height)
-      pts.forEach((p,i)=>{
-        p.x+=p.vx; p.y+=p.vy; p.life-=0.012
-        if (p.life<=0) {
-          pts[i]={x:Math.random()*c.width,y:c.height+10,vx:(Math.random()-.5)*1.5,vy:-1-Math.random()*2,life:1,col:cols[Math.floor(Math.random()*cols.length)]}
-        }
-        ctx.globalAlpha=p.life*.8
-        ctx.fillStyle=p.col
-        ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill()
-      })
-      ctx.globalAlpha=1
-      raf.current=requestAnimationFrame(draw)
-    }
-    draw()
-    return ()=>{if(raf.current) cancelAnimationFrame(raf.current)}
-  },[active])
-  return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
-}
-
-// Animated win-rate ring
-function WinRing({ rate }: { rate: number }) {
-  const r=48, stroke=7, circ=2*Math.PI*r
-  const dash = circ*(rate/100)
-  return (
-    <svg width={120} height={120} style={{transform:"rotate(-90deg)"}}>
-      <circle cx={60} cy={60} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
-      <circle cx={60} cy={60} r={r} fill="none"
-        stroke={rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"}
-        strokeWidth={stroke} strokeLinecap="round"
-        strokeDasharray={`${dash} ${circ}`}
-        style={{transition:"stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)",filter:`drop-shadow(0 0 6px ${rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"})`}}/>
-    </svg>
-  )
-}
-
-export default function ProfileScreen({ onBack }: ProfileScreenProps) {
+export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { playerProfile, updatePlayerProfile, collection, decks, matchHistory, coins, setCoins, friendPoints, playerId } = useGame()
+  const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends } = useGame()
 
-  const [isEditing,       setIsEditing]       = useState(false)
-  const [editName,        setEditName]         = useState(playerProfile.name)
-  const [editTitle,       setEditTitle]        = useState(playerProfile.title)
-  const [showIconSel,     setShowIconSel]      = useState(false)
-  const [activeTab,       setActiveTab]        = useState<"stats"|"achievements"|"collection">("stats")
-  const [copied,          setCopied]           = useState(false)
-  const [playerTitles,    setPlayerTitles]     = useState<string[]>(BASE_PLAYER_TITLES)
-  const [hoveredCard,     setHoveredCard]      = useState<string|null>(null)
-  const [cardTilt,        setCardTilt]         = useState({x:0,y:0})
-  const [zoomedCard,      setZoomedCard]       = useState<any|null>(null)
-  const [claimedAchievements, setClaimedAchievements] = useState<Set<string>>(new Set())
+  // ── Ensure entrance animation fires every time component mounts ──
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    // Double RAF ensures browser has painted once before starting animation
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => setMounted(true))
+      return () => cancelAnimationFrame(raf2)
+    })
+    return () => { cancelAnimationFrame(raf1); setMounted(false) }
+  }, [])
+
+  // ── Friends online count (simulate: friends with level > 0 as "online") ──
+  const onlineFriends = friends?.filter((f: any) => f.isOnline || (f.affinityPoints ?? 0) > 0).length ?? 0
+
+  // ── Achievement pop-up ──
+  const [achievement, setAchievement] = useState<{ icon:string; title:string; msg:string; out:boolean } | null>(null)
+  const achieveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showAchievement = (icon: string, title: string, msg: string) => {
+    if (achieveTimerRef.current) clearTimeout(achieveTimerRef.current)
+    setAchievement({ icon, title, msg, out: false })
+    achieveTimerRef.current = setTimeout(() => {
+      setAchievement(a => a ? { ...a, out: true } : null)
+      setTimeout(() => setAchievement(null), 320)
+    }, 4200)
+  }
+
+  // ── Coin animation ──
+  const COIN_LS = "gpgame_menu_prev_coins"
+
+  const [displayCoins, setDisplayCoins] = useState(coins)
+  const [coinDelta, setCoinDelta] = useState<number | null>(null)
+  const [coinPop, setCoinPop] = useState(false)
+  const coinAnimRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // prevCoinsRef persists via localStorage across navigation/unmounts
+  const prevCoinsRef = useRef<number>(() => {
+    if (typeof window === "undefined") return coins
+    const saved = localStorage.getItem(COIN_LS)
+    return saved !== null ? parseInt(saved) : coins
+  } as unknown as number)
+
+  // Initialise prevCoinsRef on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const saved = localStorage.getItem(COIN_LS)
+    prevCoinsRef.current = saved !== null ? parseInt(saved) : coins
+    // If coins changed while away, animate the difference immediately
+    const diff = coins - prevCoinsRef.current
+    if (Math.abs(diff) > 0) triggerCoinAnim(prevCoinsRef.current, coins, diff)
+    // Save current on unmount
+    return () => { localStorage.setItem(COIN_LS, String(coins)) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const triggerCoinAnim = (start: number, end: number, diff: number) => {
+    // Pop
+    setCoinPop(true)
+    setTimeout(() => setCoinPop(false), 380)
+    // Delta label (only for gains)
+    if (diff > 0) {
+      setCoinDelta(diff)
+      setTimeout(() => setCoinDelta(null), 1400)
+    }
+    // Rolling counter
+    const steps = 28
+    const stepVal = (end - start) / steps
+    let step = 0
+    if (coinAnimRef.current) clearInterval(coinAnimRef.current)
+    coinAnimRef.current = setInterval(() => {
+      step++
+      setDisplayCoins(Math.round(start + stepVal * step))
+      if (step >= steps) {
+        if (coinAnimRef.current) clearInterval(coinAnimRef.current)
+        setDisplayCoins(end)
+        localStorage.setItem(COIN_LS, String(end))
+      }
+    }, 18)
+  }
 
   useEffect(() => {
-    setPlayerTitles(getPlayerTitles())
-    const h = () => setPlayerTitles(getPlayerTitles())
-    window.addEventListener("gpgame_title_unlocked", h)
-    return () => window.removeEventListener("gpgame_title_unlocked", h)
+    const diff = coins - prevCoinsRef.current
+    if (diff === 0) { setDisplayCoins(coins); return }
+    triggerCoinAnim(prevCoinsRef.current, coins, diff)
+    prevCoinsRef.current = coins
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coins])
+
+  // ── Watch level changes for achievement ──
+  const prevLevelMenuRef = useRef(playerProfile.level)
+  useEffect(() => {
+    if (playerProfile.level > prevLevelMenuRef.current) {
+      showAchievement("⭐", "LEVEL UP!", `Nível ${playerProfile.level} alcançado!`)
+    }
+    prevLevelMenuRef.current = playerProfile.level
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerProfile.level])
+
+  const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
+
+  // Active deck (first deck = default active)
+  const activeDeck = decks?.[0] ?? null
+
+  // Active master art — read directly from masters-data storage
+  const [masterArtSrc, setMasterArtSrc] = useState<string>(() => {
+    if (typeof window === "undefined") return "/images/masters/fehnon-art.png"
+    const masters = loadMastersFromStorage()
+    const active  = masters.find(m => m.isActive) ?? masters[0]
+    return active?.artPath ?? "/images/masters/fehnon-art.png"
+  })
+
+  // Refresh master art whenever this screen mounts (player may have changed master)
+  useEffect(() => {
+    const masters = loadMastersFromStorage()
+    const active  = masters.find(m => m.isActive) ?? masters[0]
+    if (active?.artPath) setMasterArtSrc(active.artPath)
+    // Also update active master id for voice lines
+    if (active?.id) setActiveMasterId(active.id.split("-")[0].toLowerCase())
   }, [])
+
+  // ── Voice lines data ──
+  const MASTER_VOICES: Record<string, { text: string; src: string }[]> = {
+    fehnon: [
+      { text: "Eae! Meu nome é Fehnon Hoskie, prazer em te conhecer!",  src: "/audio/masters/fehnon_voice_1_apresentacao.mp3" },
+      { text: "Eu tô louco pra entrar nessa festa!",                     src: "/audio/masters/fehnon_voice_2_introduel.mp3" },
+      { text: "Ah! Essa foi por pouco...",                               src: "/audio/masters/fehnon_voice_3_loseduel.mp3" },
+      { text: "Ah moleque! Essa foi uma vitória e tanto!",               src: "/audio/masters/fehnon_voice_4_winduel.mp3" },
+      { text: "Ordem de Laceração!",                                     src: "/audio/masters/fehnon_voice_5_magic.mp3" },
+    ],
+    calem: [
+      { text: "Olá! Me chamo Calem Hidenori",                           src: "/audio/masters/calem_voice_1_apresentacao.mp3" },
+      { text: "Com meu poder, eu não tenho o que temer!",               src: "/audio/masters/calem_voice_2_introduel.mp3" },
+      { text: "Tudo bem! Na próxima me esforço mais...",                src: "/audio/masters/calem_voice_3_loseduel.mp3" },
+      { text: "Incrível! Nós conseguimos!",                             src: "/audio/masters/calem_voice_4_winduel.mp3" },
+      { text: "Julgamento do Vazio Eterno.",                            src: "/audio/masters/calem_voice_5_magic.mp3" },
+    ],
+    morgana: [
+      { text: "Oieee! Me chamo Morgana Pendragon",                      src: "/audio/masters/morgana_voice_1_apresentacao.mp3" },
+      { text: "Vamos sentir a melodia de batalha!",                     src: "/audio/masters/morgana_voice_2_introduel.mp3" },
+      { text: "Droga! Foi quase...",                                    src: "/audio/masters/morgana_voice_3_loseduel.mp3" },
+      { text: "Radical! É isso que eu chamo de sinfonia épica!",        src: "/audio/masters/morgana_voice_4_winduel.mp3" },
+      { text: "Sinfonia Relâmpago!",                                    src: "/audio/masters/morgana_voice_5_magic.mp3" },
+    ],
+  }
+
+  const [activeMasterId,  setActiveMasterId]  = useState<string>(() => {
+    if (typeof window === "undefined") return "fehnon"
+    const masters = loadMastersFromStorage()
+    const active  = masters.find(m => m.isActive) ?? masters[0]
+    return active?.id?.split("-")[0].toLowerCase() ?? "fehnon"
+  })
+  const [bubble,          setBubble]          = useState<{ text: string; full: string; out: boolean } | null>(null)
+  const typewriterRef     = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [masterTap,       setMasterTap]       = useState(false)
+  const voiceIdxRef       = useRef<Record<string, number>>({})
+  const voiceAudioRef     = useRef<HTMLAudioElement | null>(null)
+  const bubbleTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleMasterClick = () => {
+    const voices = MASTER_VOICES[activeMasterId] ?? MASTER_VOICES["fehnon"]
+    // Cycle through voices in order
+    const idx = (voiceIdxRef.current[activeMasterId] ?? -1) + 1
+    voiceIdxRef.current[activeMasterId] = idx % voices.length
+    const voice = voices[voiceIdxRef.current[activeMasterId]]
+
+    // Bounce animation
+    setMasterTap(true)
+    setTimeout(() => setMasterTap(false), 380)
+
+    // Clear previous bubble timer
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+
+    // Show bubble with typewriter effect
+    if (typewriterRef.current) clearInterval(typewriterRef.current)
+    let i = 0
+    setBubble({ text: "", full: voice.text, out: false })
+    typewriterRef.current = setInterval(() => {
+      i++
+      setBubble(b => b ? { ...b, text: voice.text.slice(0, i) } : null)
+      if (i >= voice.text.length && typewriterRef.current) {
+        clearInterval(typewriterRef.current)
+        typewriterRef.current = null
+      }
+    }, 38)
+
+    // Play voice audio (separate from menu music)
+    if (voiceAudioRef.current) {
+      voiceAudioRef.current.pause()
+      voiceAudioRef.current.currentTime = 0
+    }
+    voiceAudioRef.current = new Audio(voice.src)
+    voiceAudioRef.current.volume = 1.0
+    voiceAudioRef.current.play().catch(() => {})
+
+    // Auto-hide bubble after 3.2s with fade-out
+    bubbleTimerRef.current = setTimeout(() => {
+      if (typewriterRef.current) { clearInterval(typewriterRef.current); typewriterRef.current = null }
+      setBubble(b => b ? { ...b, out: true } : null)
+      setTimeout(() => setBubble(null), 260)
+    }, 3200)
+  }
+
+  const [showPlayMenu,       setShowPlayMenu]       = useState(false)
+  const [showGiftBox,        setShowGiftBox]         = useState(false)
+  const [claimedCard,        setClaimedCard]         = useState<ReturnType<typeof claimGift>>(null)
+  const [claimedCoins,       setClaimedCoins]        = useState<number | null>(null)
+  const [isOpening,          setIsOpening]           = useState(false)
+  const [isClaimingAll,      setIsClaimingAll]       = useState(false)
+  const [claimAllResults,    setClaimAllResults]     = useState<{cards:any[];coins:number}|null>(null)
+  const [showWallpaperModal, setShowWallpaperModal]  = useState(false)
+  const [showDailyBonus,     setShowDailyBonus]      = useState(false)
+  const [dailyBonusClaimed,  setDailyBonusClaimed]   = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    const last = localStorage.getItem("gpgame_daily_bonus_date")
+    if (!last) return false
+    return new Date(last).toDateString() === new Date().toDateString()
+  })
+  const [dailyBonusJustClaimed, setDailyBonusJustClaimed] = useState(false)
+
+  /* ── Music player ── */
+  const TRACKS = [
+    { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%201.mp3" },
+    { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%202.mp3" },
+    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3"     },
+  ]
+  const MUSIC_LS = "gpgame_menu_track"
+  const [currentTrackId, setCurrentTrackId] = useState<string>(() =>
+    typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "ost1") : "ost1"
+  )
+  const [showMusicPanel, setShowMusicPanel] = useState(false)
+  // audioRef is intentionally module-level so music persists across screens
+
+  const currentTrack = TRACKS.find(t => t.id === currentTrackId) ?? TRACKS[0]
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    try {
-      const raw = localStorage.getItem("gpgame_claimed_achievements") ?? "[]"
-      setClaimedAchievements(new Set(JSON.parse(raw) as string[]))
-    } catch {}
-  }, [])
-
-  // Stats
-  const totalMatches = matchHistory.length
-  const wins         = matchHistory.filter(m => m.result==="won").length
-  const winRate      = totalMatches>0 ? Math.round((wins/totalMatches)*100) : 0
-  const uniqueCards  = new Set(collection.map(c=>c.id.split("-").slice(0,-2).join("-"))).size
-  const rarityCount  = { LR:0,UR:0,SR:0,R:0 } as Record<string,number>
-  collection.forEach(c=>{ if(rarityCount[c.rarity]!==undefined) rarityCount[c.rarity]++ })
-
-  // Favourite element from units
-  const elemMap: Record<string,number> = {}
-  collection.filter(c=>c.type==="unit").forEach(c=>{ if(c.element) elemMap[c.element]=(elemMap[c.element]||0)+1 })
-  const favElement = Object.entries(elemMap).sort((a,b)=>b[1]-a[1])[0]
-
-  // Account prestige aura
-  const totalRare = rarityCount.LR*4+rarityCount.UR*2+rarityCount.SR
-  const prestige = totalRare>200?"legendary":totalRare>80?"epic":totalRare>20?"rare":"common"
-  const PRESTIGE_COLORS: Record<string,string[]> = {
-    legendary:["#ef4444","#fbbf24","#a855f7"],
-    epic:["#38bdf8","#8b5cf6","#06b6d4"],
-    rare:["#a855f7","#8b5cf6","#c084fc"],
-    common:["#64748b","#94a3b8"],
-  }
-  const pc = PRESTIGE_COLORS[prestige]
-
-  // Active master
-  const [activeMasterName, setActiveMasterName] = useState<string|null>(null)
-  const [activeMasterIcon, setActiveMasterIcon] = useState<string|null>(null)
-  useEffect(() => {
-    if (typeof window==="undefined") return
-    try {
-      const raw = localStorage.getItem("gpgame_masters_v1")
-      if (raw) {
-        const arr = JSON.parse(raw)
-        const active = arr.find((m:any)=>m.isActive)
-        if (active) {
-          const names:Record<string,string> = {fehnon:"Fehnon Hoskie",morgana:"Morgana Pendragon",calem:"Calem Hidenori"}
-          setActiveMasterName(names[active.id]||active.id)
-          // Prefer the iconPath stored in master data; fall back to /images/masters/
-          const iconPath: string = active.iconPath || `/images/masters/${active.id}-icon.png`
-          setActiveMasterIcon(iconPath)
-        }
-      }
-    } catch {}
-  }, [])
-
-  // Favourite card (highest rarity, first found)
-  const favCard = collection.find(c=>c.rarity==="LR") || collection.find(c=>c.rarity==="UR") || collection.find(c=>c.rarity==="SR") || collection[0]
-
-  // Achievements
-  const achievements = [
-    { id:"first-win",    name:"Primeira Vitória",      desc:"Vença sua primeira partida",     icon:"🏆", progress:Math.min(wins,1),     max:1,   done:wins>=1,          rarity:"common",  reward:"100 Moedas", secret:false },
-    { id:"col10",        name:"Colecionador Iniciante", desc:"Colete 10 cartas únicas",        icon:"📚", progress:Math.min(uniqueCards,10), max:10, done:uniqueCards>=10, rarity:"common",  reward:"200 Moedas", secret:false },
-    { id:"col50",        name:"Colecionador Veterano",  desc:"Colete 50 cartas únicas",        icon:"⭐", progress:Math.min(uniqueCards,50), max:50, done:uniqueCards>=50, rarity:"rare",    reward:"500 Moedas", secret:false },
-    { id:"decks3",       name:"Mestre dos Decks",       desc:"Crie 3 decks diferentes",        icon:"🛡", progress:Math.min(decks.length,3), max:3, done:decks.length>=3,  rarity:"common",  reward:"300 Moedas", secret:false },
-    { id:"lr-hunter",   name:"Caçador de Lendas",      desc:"Obtenha uma carta LR",           icon:"👑", progress:Math.min(rarityCount.LR,1),max:1,done:rarityCount.LR>=1,rarity:"legendary",reward:"1000 Moedas",secret:false },
-    { id:"win10",        name:"Guerreiro",               desc:"Vença 10 partidas",              icon:"⚔", progress:Math.min(wins,10),    max:10,  done:wins>=10,         rarity:"rare",    reward:"400 Moedas", secret:false },
-    { id:"secret1",      name:"???",                    desc:"Conquista secreta",              icon:"🔒", progress:0,                    max:1,   done:false,            rarity:"legendary",reward:"???",        secret:true },
-    { id:"secret2",      name:"???",                    desc:"Conquista secreta",              icon:"🔒", progress:0,                    max:1,   done:false,            rarity:"rare",    reward:"???",        secret:true },
-  ]
-
-  const RARITY_ACHIEV: Record<string,{color:string;label:string;bg:string}> = {
-    legendary:{ color:"#fbbf24", label:"Lendária", bg:"rgba(251,191,36,0.15)" },
-    rare:     { color:"#a855f7", label:"Rara",     bg:"rgba(168,85,247,0.12)" },
-    common:   { color:"#64748b", label:"Comum",    bg:"rgba(255,255,255,0.05)" },
-  }
-
-  const handleSave = () => { updatePlayerProfile({name:editName,title:editTitle}); setIsEditing(false) }
-  const handleIcon = (icon:string) => { updatePlayerProfile({avatarUrl:icon}); setShowIconSel(false) }
-  const handleCopy = () => { navigator.clipboard.writeText(playerId); setCopied(true); setTimeout(()=>setCopied(false),2000) }
-
-  const handleClaimAchievement = (id: string, reward: string) => {
-    // Parse coin amount from strings like "100 Moedas"
-    const match = reward.match(/(\d[\d.]*)\s*Moedas?/i)
-    const amount = match ? parseInt(match[1].replace(/\./g,""), 10) : 0
-    if (amount > 0) {
-      const newTotal = coins + amount
-      if (typeof setCoins === "function") setCoins(newTotal)
-      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
+    // Create singleton once
+    if (!_gpAudio) {
+      _gpAudio = new Audio()
+      _gpAudio.loop = true
+      _gpAudio.volume = 0.55
     }
-    setClaimedAchievements(prev => {
-      const next = new Set(prev)
-      next.add(id)
-      try { localStorage.setItem("gpgame_claimed_achievements", JSON.stringify(Array.from(next))) } catch {}
-      return next
+    // Always ensure correct src is loaded
+    if (_gpTrackId !== currentTrack.src) {
+      _gpTrackId = currentTrack.src
+      _gpAudio.src = currentTrack.src
+      _gpAudio.load()
+    }
+    // Always try to play — handles returning from profile/other screens
+    const tryPlay = () => _gpAudio!.play().catch(() => {
+      const onc = () => _gpAudio?.play().catch(() => {})
+      document.addEventListener("click", onc, { once: true })
     })
+    tryPlay()
+    // Resume music when tab regains focus (handles alt-tab / navigate back)
+    const onFocus = () => { if (_gpAudio?.paused) _gpAudio.play().catch(() => {}) }
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && _gpAudio?.paused) _gpAudio.play().catch(() => {})
+    })
+    return () => { window.removeEventListener("focus", onFocus) }
+    // NOTE: intentionally NO pause on unmount — music persists across screens
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrackId])
+
+  const handleSelectTrack = (id: string) => {
+    setShowMusicPanel(false)
+    if (id === currentTrackId) return
+    // Instant switch: stop current, load + play new immediately (no delay, no click needed)
+    if (_gpAudio) {
+      _gpAudio.pause()
+      _gpAudio.volume = 0.55
+      const track = TRACKS.find(t => t.id === id)
+      if (track) {
+        _gpAudio.src = track.src
+        _gpAudio.load()
+        _gpAudio.play().catch(() => {})
+      }
+    }
+    setCurrentTrackId(id)
+    if (typeof window !== "undefined") localStorage.setItem(MUSIC_LS, id)
   }
 
-  // 3D tilt for cards
-  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = ((e.clientY-rect.top)/rect.height-.5)*14
-    const y = -((e.clientX-rect.left)/rect.width-.5)*14
-    setCardTilt({x,y})
+  const handleClaimDailyBonus = () => {
+    if (dailyBonusClaimed) return
+    setCoins((prev: number) => prev + 50)
+    localStorage.setItem("gpgame_daily_bonus_date", new Date().toISOString())
+    setDailyBonusClaimed(true)
+    setDailyBonusJustClaimed(true)
   }
 
+  const WALLPAPERS = [
+    { id:"default",          name:"Padrão",           description:"Fundo padrão do menu com cartas caindo",   image:null,                                        cost:0,   free:true  },
+    { id:"fehnon_wallpaper", name:"Fehnon Wallpaper",  description:"Arte do Fehnon Hoskie",                   image:"/images/wallpapers/fehnon_wallpaper.png",   cost:0,   free:true  },
+    { id:"arthur_wallpaper", name:"Arthur Wallpaper",  description:"Arte do Arthur com o Vazio",              image:"/images/wallpapers/arthur_wallpaper.png",   cost:500, free:false },
+    { id:"fsg_wallpaper",    name:"FSG Wallpaper",     description:"Arte dos Fundadores da Santa Guerra",     image:"/images/wallpapers/fsg_wallpaper.png",      cost:500, free:false },
+    { id:"fsg_wallpaper_2",  name:"FSG Wallpaper 2",   description:"Arte especial dos personagens",           image:"/images/wallpapers/fsg_wallpaper_2.png",    cost:500, free:false },
+    { id:"fsg_wallpaper_3",  name:"FSG Wallpaper 3",   description:"Arte do Fehnon e Morgana",                image:"/images/wallpapers/fsg_wallpaper_3.png",    cost:500, free:false },
+    { id:"fsg_wallpaper_4",  name:"FSG Wallpaper 4",   description:"Arte do grupo FSG",                       image:"/images/wallpapers/fsg_wallpaper_4.png",    cost:500, free:false },
+  ]
+  const WALLPAPER_LS_KEY = "gpgame_selected_wallpaper"
+  const UNLOCKED_LS_KEY  = "gpgame_unlocked_wallpapers"
+
+  const [selectedWallpaper, setSelectedWallpaper] = useState<string>(() =>
+    typeof window !== "undefined" ? (localStorage.getItem(WALLPAPER_LS_KEY) ?? "fehnon_wallpaper") : "fehnon_wallpaper"
+  )
+  const [unlockedWallpapers, setUnlockedWallpapers] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(UNLOCKED_LS_KEY)
+        const parsed = saved ? JSON.parse(saved) : []
+        return [...new Set(["default","fehnon_wallpaper",...parsed])]
+      } catch { return ["default","fehnon_wallpaper"] }
+    }
+    return ["default","fehnon_wallpaper"]
+  })
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (!localStorage.getItem(UNLOCKED_LS_KEY) && !localStorage.getItem(WALLPAPER_LS_KEY)) {
+      setSelectedWallpaper("fehnon_wallpaper")
+      setUnlockedWallpapers(["default","fehnon_wallpaper"])
+    }
+  }, [coins])
+
+  const activeWallpaper = WALLPAPERS.find(w => w.id === selectedWallpaper)
+
+  const handleSelectWallpaper = (id: string) => {
+    setSelectedWallpaper(id)
+    if (typeof window !== "undefined") localStorage.setItem(WALLPAPER_LS_KEY, id)
+  }
+  const handleUnlockWallpaper = (wallpaper: typeof WALLPAPERS[0]) => {
+    if (coins < wallpaper.cost) return
+    spendCoins(wallpaper.cost)
+    const next = [...new Set([...unlockedWallpapers, wallpaper.id])]
+    setUnlockedWallpapers(next)
+    if (typeof window !== "undefined") localStorage.setItem(UNLOCKED_LS_KEY, JSON.stringify(next))
+    handleSelectWallpaper(wallpaper.id)
+  }
+
+  useEffect(() => {
+    if (statusMessage && onClearMessage) {
+      const timer = setTimeout(() => onClearMessage(), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [statusMessage, onClearMessage])
+
+  const seededRand = (seed: number) => { const x = Math.sin(seed*9301+49297)*233280; return x-Math.floor(x) }
+  const fallingCards = useMemo(() =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      x:        (i*5.1)%94+3+(seededRand(i+1)*3-1.5),
+      delay:    (i*0.85)%16+seededRand(i+20)*2,
+      duration: 18+seededRand(i+40)*12,
+      width:    48+seededRand(i+60)*16,
+      height:   68+seededRand(i+80)*20,
+      themeIndex: i % CARD_THEMES.length,
+      shimmerAngle: 110+seededRand(i+100)*40,
+    })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [])
+
+  const handleOpenGift = (giftId: string) => {
+    setIsOpening(true)
+    const gift = giftBoxes.find(g => g.id === giftId)
+    setTimeout(() => {
+      const card = claimGift(giftId)
+      setClaimedCard(card)
+      if (gift?.coinsReward && !card) setClaimedCoins(gift.coinsReward)
+      setIsOpening(false)
+    }, 1500)
+  }
+  const handleClaimAll = () => {
+    setIsClaimingAll(true)
+    const cards: any[] = []; let totalCoins = 0
+    setTimeout(() => {
+      giftBoxes.forEach(gift => {
+        if (!gift.claimed) {
+          const card = claimGift(gift.id)
+          if (card) cards.push(card)
+          else if (gift.coinsReward) totalCoins += gift.coinsReward
+        }
+      })
+      setClaimAllResults({ cards, coins: totalCoins })
+      setIsClaimingAll(false)
+    }, 1500)
+  }
+  const unclaimedGifts = giftBoxes.filter(g => !g.claimed)
+
+  const canvasRef   = useRef<HTMLCanvasElement>(null)
+  const fxCanvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return
+    const ctx = canvas.getContext("2d"); if (!ctx) return
+    let animId: number
+    const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight }
+    resize(); addEventListener("resize", resize)
+    class P {
+      x=0;y=0;sz=0;vx=0;vy=0;op=0;hue=0;li=0;ml=0;tw=0;cop=0
+      constructor(){this.reset()}
+      reset(){this.x=Math.random()*canvas.width;this.y=Math.random()*canvas.height;this.sz=Math.random()*1.8+0.3;this.vx=(Math.random()-.5)*.28;this.vy=-Math.random()*.35-.07;this.op=Math.random()*.32+.06;this.hue=Math.random()*42+255;this.li=0;this.ml=Math.random()*180+90;this.tw=Math.random()*Math.PI*2}
+      tick(){this.li++;this.x+=this.vx;this.y+=this.vy;this.tw+=.028;const pr=this.li/this.ml,fi=pr<.12?pr/.12:1,fo=pr>.72?(1-(pr-.72)/.28):1;this.cop=this.op*fi*fo*(.55+Math.sin(this.tw)*.45);if(this.li>=this.ml)this.reset()}
+      draw(){ctx!.beginPath();ctx!.arc(this.x,this.y,this.sz,0,Math.PI*2);ctx!.fillStyle=`hsla(${this.hue},70%,70%,${this.cop})`;ctx!.fill()}
+    }
+    const ps:P[]=[]; for(let i=0;i<20;i++){const p=new P();p.li=Math.random()*p.ml;ps.push(p)}
+    let lastT = 0
+    const loop=(t: number)=>{
+      animId=requestAnimationFrame(loop)
+      if(t - lastT < 33) return  // cap to ~30fps
+      lastT = t
+      ctx.clearRect(0,0,canvas.width,canvas.height)
+      ctx.shadowBlur=0
+      ps.forEach(p=>{p.tick();p.draw()})
+    }
+    animId=requestAnimationFrame(loop)
+    return ()=>{removeEventListener("resize",resize);cancelAnimationFrame(animId)}
+  }, [])
+
+  // ── FX Canvas: blue gear particles on touch/drag ──────────────────────────
+  useEffect(() => {
+    const canvas = fxCanvasRef.current
+    if (!canvas || typeof window === "undefined") return
+    const ctx = canvas.getContext("2d")!
+    const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight }
+    resize()
+    window.addEventListener("resize", resize)
+
+    // Draw a gear shape at (cx,cy) with radius r, rotation rot, teeth count teeth
+    function drawGear(
+      cx: number, cy: number, r: number, rot: number,
+      teeth: number, alpha: number, glowColor: string
+    ) {
+      const innerR = r * 0.58
+      const toothH = r * 0.32
+      const toothW = (Math.PI * 2) / teeth * 0.42
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate(rot)
+      ctx.globalAlpha = alpha
+
+      // Glow
+      ctx.shadowBlur = r * 1.4
+      ctx.shadowColor = glowColor
+
+      // Gear body path
+      ctx.beginPath()
+      for (let i = 0; i < teeth; i++) {
+        const baseA = (Math.PI * 2 * i) / teeth
+        const a0 = baseA - toothW / 2
+        const a1 = baseA + toothW / 2
+        const a2 = baseA + toothW * 1.6
+        const a3 = baseA + (Math.PI * 2) / teeth - toothW * 0.6
+        // Inner arc before tooth
+        if (i === 0) ctx.moveTo(Math.cos(a0) * innerR, Math.sin(a0) * innerR)
+        else ctx.lineTo(Math.cos(a0) * innerR, Math.sin(a0) * innerR)
+        // Tooth top
+        ctx.lineTo(Math.cos(a0) * (r + toothH), Math.sin(a0) * (r + toothH))
+        ctx.lineTo(Math.cos(a1) * (r + toothH), Math.sin(a1) * (r + toothH))
+        ctx.lineTo(Math.cos(a1) * innerR, Math.sin(a1) * innerR)
+        // Inner arc to next tooth base
+        ctx.arc(0, 0, innerR, a1, a3, false)
+      }
+      ctx.closePath()
+
+      // Blue gradient fill
+      const grd = ctx.createRadialGradient(0, 0, innerR * 0.2, 0, 0, r + toothH)
+      grd.addColorStop(0,   "rgba(147,210,255,0.95)")
+      grd.addColorStop(0.4, "rgba(56,160,240,0.88)")
+      grd.addColorStop(0.75,"rgba(29,100,200,0.75)")
+      grd.addColorStop(1,   "rgba(10,50,140,0.4)")
+      ctx.fillStyle = grd
+      ctx.fill()
+
+      // Bright stroke
+      ctx.strokeStyle = `rgba(180,230,255,${alpha * 0.85})`
+      ctx.lineWidth = r * 0.08
+      ctx.shadowBlur = r * 0.8
+      ctx.shadowColor = "rgba(100,200,255,0.8)"
+      ctx.stroke()
+
+      // Center hole
+      ctx.shadowBlur = 0
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(10,30,80,${alpha * 0.9})`
+      ctx.fill()
+      ctx.strokeStyle = `rgba(147,210,255,${alpha * 0.7})`
+      ctx.lineWidth = r * 0.06
+      ctx.stroke()
+
+      ctx.restore()
+    }
+
+    interface Gear {
+      x: number; y: number
+      vx: number; vy: number
+      r: number
+      rot: number; rotSpeed: number
+      life: number; decay: number
+      teeth: number
+    }
+    // Shatter shard: one detached tooth flying off
+    interface Shard {
+      // Origin gear center
+      cx: number; cy: number
+      // Position of shard (starts near gear perimeter)
+      x: number; y: number
+      vx: number; vy: number
+      rot: number; rotSpeed: number
+      life: number
+      size: number   // tooth size
+      angle: number  // original tooth angle on gear
+    }
+
+    const gears: Gear[] = []
+    const shards: Shard[] = []
+
+    // ── TOUCH: single gear that shatters its teeth outward ──
+    const spawnShatter = (px: number, py: number) => {
+      const teethCount = 7
+      const R = 20   // gear radius
+      // Brief intact gear flash (life 0.18 → fades as shards fly)
+      gears.push({
+        x: px, y: py, vx: 0, vy: 0,
+        r: R, rot: Math.random() * Math.PI * 2,
+        rotSpeed: 0.08, life: 0.55, decay: 0.045,
+        teeth: teethCount,
+      })
+      // Each tooth becomes a shard
+      for (let i = 0; i < teethCount; i++) {
+        const baseAngle = (Math.PI * 2 * i) / teethCount + Math.random() * 0.18
+        const speed = 2.5 + Math.random() * 3.5
+        shards.push({
+          cx: px, cy: py,
+          x: px + Math.cos(baseAngle) * R * 0.9,
+          y: py + Math.sin(baseAngle) * R * 0.9,
+          vx: Math.cos(baseAngle) * speed,
+          vy: Math.sin(baseAngle) * speed - 1.0,
+          rot: baseAngle,
+          rotSpeed: (Math.random() - 0.5) * 0.22,
+          life: 1,
+          size: 5 + Math.random() * 5,
+          angle: baseAngle,
+        })
+      }
+    }
+
+    // Draw a single gear tooth shard (trapezoid shape)
+    function drawShard(s: Shard) {
+      ctx.save()
+      ctx.translate(s.x, s.y)
+      ctx.rotate(s.rot)
+      ctx.globalAlpha = s.life * 0.92
+      const w = s.size * 0.55
+      const h = s.size
+      ctx.beginPath()
+      ctx.moveTo(-w * 0.7, 0)
+      ctx.lineTo(-w, -h)
+      ctx.lineTo( w, -h)
+      ctx.lineTo( w * 0.7, 0)
+      ctx.closePath()
+      // Gradient fill same blue as gear
+      const grd = ctx.createLinearGradient(0, -h, 0, 0)
+      grd.addColorStop(0, `rgba(180,230,255,${s.life * 0.95})`)
+      grd.addColorStop(0.4, `rgba(56,160,240,${s.life * 0.85})`)
+      grd.addColorStop(1,   `rgba(20,80,180,${s.life * 0.5})`)
+      ctx.fillStyle = grd
+      ctx.shadowBlur = s.size * 1.2
+      ctx.shadowColor = "rgba(100,200,255,0.7)"
+      ctx.fill()
+      ctx.strokeStyle = `rgba(200,240,255,${s.life * 0.7})`
+      ctx.lineWidth = 0.8
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    // ── DRAG: trail of small spinning gears ──
+    let lastTrailX = -999; let lastTrailY = -999
+    const spawnTrail = (px: number, py: number) => {
+      const dist = Math.hypot(px - lastTrailX, py - lastTrailY)
+      if (dist < 18) return
+      lastTrailX = px; lastTrailY = py
+      gears.push({
+        x: px + (Math.random() - 0.5) * 6,
+        y: py + (Math.random() - 0.5) * 6,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: -Math.random() * 1.2 - 0.3,
+        r: 4 + Math.random() * 5,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.18,
+        life: 0.85,
+        decay: 0.022 + Math.random() * 0.01,
+        teeth: [5, 6][Math.floor(Math.random() * 2)],
+      })
+    }
+
+    const onPointerDown = (e: PointerEvent) => { spawnShatter(e.clientX, e.clientY) }
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.buttons === 0) return
+      spawnTrail(e.clientX, e.clientY)
+    }
+    window.addEventListener("pointerdown", onPointerDown)
+    window.addEventListener("pointermove", onPointerMove, { passive: true })
+
+    let animId: number
+    const loop = () => {
+      animId = requestAnimationFrame(loop)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // Draw trail gears
+      for (let i = gears.length - 1; i >= 0; i--) {
+        const g = gears[i]
+        g.x  += g.vx;  g.y  += g.vy
+        g.vx *= 0.94;  g.vy  = g.vy * 0.94 + 0.04
+        g.rot += g.rotSpeed
+        g.life -= g.decay
+        if (g.life <= 0) { gears.splice(i, 1); continue }
+        const alpha = g.life > 0.75 ? (1 - g.life) * 4 * g.life : g.life
+        drawGear(g.x, g.y, g.r, g.rot, g.teeth, Math.min(alpha, g.life * 1.1), "rgba(56,160,240,0.7)")
+      }
+
+      // Draw shatter shards
+      for (let i = shards.length - 1; i >= 0; i--) {
+        const s = shards[i]
+        s.x   += s.vx;  s.y   += s.vy
+        s.vx  *= 0.93;  s.vy   = s.vy * 0.93 + 0.06
+        s.rot += s.rotSpeed
+        s.life -= 0.022
+        if (s.life <= 0) { shards.splice(i, 1); continue }
+        drawShard(s)
+      }
+    }
+    animId = requestAnimationFrame(loop)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener("resize", resize)
+      window.removeEventListener("pointerdown", onPointerDown)
+      window.removeEventListener("pointermove", onPointerMove)
+    }
+  }, [])
+
+  // ── Spectrum visualizer canvas — sits above bottom nav ──
+  // Module-level AudioContext singleton so it persists across navigation
+
+  /* ═══════════════════════════════ RENDER ══════════════════════════════ */
   return (
-    <div style={{minHeight:"100vh",background:"#05000f",color:"#f1f0ee",fontFamily:"'Segoe UI',system-ui,sans-serif",position:"relative",overflow:"hidden"}}>
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <style dangerouslySetInnerHTML={{ __html: GP_CSS }} />
 
-      {/* ── Dynamic tab background ── */}
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,transition:"background 0.6s ease"}}>
-        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 100% 80% at 50% -20%,rgba(10,5,30,0.95),transparent 60%)"}}/>
-        <div style={{position:"absolute",inset:0,background:TAB_BG[activeTab],transition:"background 0.6s ease"}}/>
-        {/* Grid */}
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(139,92,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.04) 1px,transparent 1px)",backgroundSize:"48px 48px",opacity:0.5}}/>
+      {/* Partículas */}
+      <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
+      <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
+
+      {/* ══ ACHIEVEMENT POP-UP ══ */}
+      {achievement && (
+        <div className={"gp-achieve" + (achievement.out ? " out" : "")}>
+          <div className="gp-achieve-icon">{achievement.icon}</div>
+          <div>
+            <div className="gp-achieve-title">{achievement.title}</div>
+            <div className="gp-achieve-msg">{achievement.msg}</div>
+          </div>
+          <div className="gp-achieve-bar" />
+        </div>
+      )}
+
+      {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
+
+      {/* ══ BACKGROUND ══ */}
+      <div className={"fixed inset-0 z-0" + (mounted ? " gp-anim-bg" : "")}>
+        {activeWallpaper?.image ? (
+          <div className="absolute inset-0 gp-wbg" style={{
+            backgroundImage:`url(${activeWallpaper.image})`,
+            backgroundSize:"cover", backgroundPosition:"center", backgroundRepeat:"no-repeat",
+          }} />
+        ) : (
+          <div className="absolute inset-0 gp-wbg" style={{
+            background:"linear-gradient(180deg,#03060F 0%,#060D1C 30%,#080F22 60%,#04091A 100%)",
+          }} />
+        )}
+        {!activeWallpaper?.image && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {fallingCards.map(card => {
+              const th = CARD_THEMES[card.themeIndex]
+              const sw = 5+(card.id%4)*.8
+              return (
+                <div key={card.id} className="absolute" style={{left:`${card.x}%`,animation:`fallingCard ${card.duration}s linear infinite`,animationDelay:`${card.delay}s`,willChange:"transform"}}>
+                  <div style={{animation:`cardSway ${sw}s ease-in-out infinite`,animationDelay:`${card.delay*.4}s`,willChange:"transform"}}>
+                    <div style={{width:`${card.width}px`,height:`${card.height}px`,background:th.bg,border:`1.5px solid ${th.border}`,borderRadius:8,boxShadow:`0 0 10px ${th.glow}`,overflow:"hidden",position:"relative"}}>
+                      <div style={{position:"absolute",inset:0,background:`linear-gradient(${card.shimmerAngle}deg,transparent 35%,rgba(255,255,255,0.12) 50%,transparent 65%)`}} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {/* Glows atmosféricos sutis apenas */}
+        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(109,40,217,0.07) 0%,transparent 55%)"}} />
+        <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 55% 35% at 10% 85%,rgba(109,40,217,0.05) 0%,transparent 50%)"}} />
       </div>
 
-      {/* ── Header ── */}
-      <div style={{position:"sticky",top:0,zIndex:50,backdropFilter:"blur(20px)",background:"rgba(5,0,15,0.85)",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",padding:"12px 16px",gap:12}}>
-        <button onClick={onBack} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,width:38,height:38,cursor:"pointer",color:"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <ArrowLeft size={18}/>
-        </button>
-        <span style={{fontWeight:900,fontSize:18,background:"linear-gradient(135deg,#f1f0ee,#c4b5fd)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"0.04em"}}>PERFIL</span>
-        {/* Online status */}
-        <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",background:"rgba(34,197,94,0.10)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:20,padding:"4px 12px"}}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",animation:"onlinePulse 2s ease-in-out infinite"}}/>
-          <span style={{fontSize:11,fontWeight:700,color:"#22c55e"}}>Online</span>
+      {/* ══ TOP HUD ══ */}
+      {/* ── GEAR PASS — fixed top left, beside profile ── */}
+      <button
+        onClick={() => onNavigate("gear-pass")}
+        className="fixed z-50 gp-anim-hud group transition-all duration-200 hover:scale-105 active:scale-95"
+        title="Gear Pass"
+        style={{ top:8, left:175, width:320, height:100, background:"transparent", border:"none", padding:0, cursor:"pointer" }}>
+        <Image
+          src="/images/gear-pass-icon.png"
+          alt="Gear Pass"
+          width={320}
+          height={100}
+          className="w-full h-full object-contain"
+          style={{ filter:"drop-shadow(0 0 18px rgba(232,121,249,0.65)) drop-shadow(0 3px 12px rgba(0,0,0,0.6))", transition:"filter .25s" }}
+        />
+      </button>
+
+      <div className={"fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-2 pb-2 relative" + (mounted ? " gp-anim-hud" : "")}
+        style={{ background:"transparent" }}>
+        {/* ── Esquerda: perfil + master card ── */}
+        <div className="flex flex-col gap-2.5">
+          {/* Avatar + anel girando APENAS aqui (vermelho no guia) */}
+          <button onClick={() => onNavigate("profile")}
+            className="flex items-center gap-3 group transition-all duration-200 hover:scale-[1.03]">
+            <div className="relative" style={{ width:68, height:68 }}>
+              {/* Anel conic girando - SOMENTE no avatar */}
+              <div className="gp-conic-ring" style={{ inset:-4, borderRadius:20 }} />
+              <div className="relative overflow-hidden" style={{
+                width:68, height:68, borderRadius:18, zIndex:1,
+                border:"2px solid rgba(139,92,246,0.45)",
+                boxShadow:"0 0 16px rgba(124,58,237,0.45)",
+              }}>
+                {playerProfile.avatarUrl ? (
+                  <Image src={playerProfile.avatarUrl||"/placeholder.svg"} alt={playerProfile.name} width={68} height={68} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background:"linear-gradient(135deg,#2E1065,#7C3AED)" }}>
+                    <span className="text-white text-2xl font-black">{playerProfile.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                )}
+              </div>
+              {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-black/80" style={{zIndex:2}} />}
+            </div>
+            <div className="text-left">
+              <p className="text-white font-black text-xl leading-tight tracking-wide" style={{ textShadow:"0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7), -1px -1px 0 rgba(0,0,0,0.6), 1px -1px 0 rgba(0,0,0,0.6), -1px 1px 0 rgba(0,0,0,0.6), 1px 1px 0 rgba(0,0,0,0.6)" }}>{playerProfile.name}</p>
+              <p className="text-[13px] font-bold tracking-widest" style={{color:"rgba(192,132,252,0.95)", textShadow:"0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(139,92,246,0.4)"}}>{playerProfile.title||"Jogador"}</p>
+            </div>
+          </button>
+          <div style={{ transform:"scaleX(1.12) scaleY(1.08)", transformOrigin:"left center" }}>
+            <MasterMenuCard onOpen={() => onNavigate("masters")} />
+          </div>
+
+        </div>
+
+        {/* ── Direita: STAMINA + COINS + GIFT — sem anel girando (verde no guia) ── */}
+        <div className="flex items-center gap-2.5">
+
+          {/* STAMINA — sem anel girando */}
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl" style={{
+            background:"rgba(5,2,18,0.90)",
+            border:"1px solid rgba(139,92,246,0.28)",
+            boxShadow:"0 0 14px rgba(124,58,237,0.10)",
+          }}>
+            <span style={{ fontSize:18, filter:"drop-shadow(0 0 6px rgba(96,165,250,0.7))" }}>⚡</span>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black tracking-widest uppercase" style={{color:"rgba(167,139,250,0.55)"}}>Stamina</span>
+                <span className="font-black text-base text-white tabular-nums">
+                  {stamina}<span className="font-normal text-sm" style={{color:"rgba(167,139,250,0.4)"}}>/{maxStamina}</span>
+                </span>
+                {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+                  <span className="text-[10px] font-bold tabular-nums" style={{color:"rgba(52,211,153,0.6)"}}>
+                    {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
+                  </span>
+                )}
+              </div>
+              <div className="rounded-full overflow-hidden" style={{width:88, height:5, background:"rgba(124,58,237,0.12)", border:"1px solid rgba(124,58,237,0.18)"}}>
+                <div className="h-full rounded-full gp-stam-fill transition-all duration-500" style={{
+                  width:`${Math.min(100,(stamina/maxStamina)*100)}%`,
+                  background: stamina===maxStamina
+                    ? "linear-gradient(90deg,#7C3AED,#E879F9)"
+                    : stamina < maxStamina*.3
+                    ? "linear-gradient(90deg,#ef4444,#f87171)"
+                    : "linear-gradient(90deg,#6D28D9,#8B5CF6)",
+                  boxShadow:"0 0 6px rgba(139,92,246,0.4)",
+                }} />
+              </div>
+            </div>
+          </div>
+
+          {/* COINS — sem anel girando */}
+          <div className="relative cursor-pointer transition-all hover:brightness-110"
+            style={{ background:"rgba(10,6,2,0.90)", border:"1px solid rgba(245,158,11,0.28)",
+              boxShadow:"0 0 12px rgba(245,158,11,0.08)", borderRadius:16,
+              height:44, paddingLeft:58, paddingRight:14,
+              display:"flex", alignItems:"center", gap:4,
+              overflow:"visible" }}>
+            {/* Coin icon — absolute, overflows bar vertically, bar height stays 44px */}
+            <Image src="/images/Gacha_Coin.png" alt="Coins" width={58} height={58}
+              style={{
+                position:"absolute", left:4, top:"50%",
+                transform:"translateY(-50%)",
+                width:58, height:58,
+                objectFit:"contain",
+                filter:"drop-shadow(0 0 12px rgba(252,211,77,0.75))",
+                pointerEvents:"none",
+                zIndex:1,
+              }}
+            />
+            <span className={"font-black text-base tabular-nums" + (coinPop ? " gp-coin-pop" : "")}
+              style={{ color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)", position:"relative" }}>
+              {displayCoins.toLocaleString()}
+              {coinDelta !== null && <span className="gp-coin-plus">+{coinDelta}</span>}
+            </span>
+            <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
+          </div>
+
+          {/* GIFT */}
+          <div className="relative" style={{ borderRadius:16 }}>
+            <button onClick={() => setShowGiftBox(true)}
+              className="relative flex items-center justify-center transition-all hover:scale-105"
+              style={{ width:46, height:46, background:"rgba(10,6,2,0.92)", borderRadius:11, border:"1.5px solid rgba(245,158,11,0.42)", boxShadow:"0 0 10px rgba(245,158,11,0.16)" }}>
+              <Gift style={{ width:20, height:20, color:"#FCD34D", filter:"drop-shadow(0 0 5px rgba(252,211,77,0.55))" }} />
+              {unclaimedGifts.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white"
+                  style={{ background:"linear-gradient(135deg,#ef4444,#dc2626)", boxShadow:"0 0 8px rgba(239,68,68,0.65)", border:"1.5px solid rgba(255,255,255,0.15)", zIndex:2 }}>
+                  {unclaimedGifts.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",padding:"0 0 100px"}}>
-
-        {/* ══════════ HERO SECTION ══════════ */}
-        <div style={{position:"relative",marginBottom:0}}>
-
-          {/* Banner */}
-          <div style={{position:"relative",height:180,overflow:"hidden"}}>
-            {/* Animated gradient banner */}
-            <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${pc[0]}25,${pc[1]||pc[0]}15,${pc[2]||pc[0]}20)`,backgroundSize:"200% 200%",animation:"bannerShift 6s ease-in-out infinite"}}/>
-            <div style={{position:"absolute",inset:0,background:"url('/images/the_great_order_wallpaper.png') center/cover",opacity:0.15,mixBlendMode:"screen"}}/>
-            {/* Prestige aura at top */}
-            {prestige==="legendary"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444410,#fbbf2410,#a855f710,#ef444410)",backgroundSize:"400% 100%",animation:"bannerShift 3s linear infinite"}}/>}
-            {/* Master art in background */}
-            {activeMasterIcon && (
-              <div style={{position:"absolute",right:0,top:0,height:"100%",width:"50%",opacity:0.15,overflow:"hidden"}}>
-                <Image src={activeMasterIcon} alt="" fill style={{objectFit:"contain",objectPosition:"right center",filter:"blur(1px)"}}/>
-              </div>
-            )}
-            {/* Prestige badge */}
-            <div style={{position:"absolute",top:12,right:16,background:`linear-gradient(135deg,${pc[0]}30,${pc[1]||pc[0]}20)`,border:`1px solid ${pc[0]}50`,borderRadius:20,padding:"4px 12px",backdropFilter:"blur(8px)"}}>
-              <span style={{fontSize:10,fontWeight:900,color:pc[0],letterSpacing:"0.10em",textTransform:"uppercase"}}>
-                {prestige==="legendary"?"⚜ Lendário":prestige==="epic"?"✦ Épico":prestige==="rare"?"◈ Raro":"● Comum"}
-              </span>
-            </div>
-            {/* Gradient overlay bottom */}
-            <div style={{position:"absolute",bottom:0,left:0,right:0,height:"80%",background:"linear-gradient(transparent,#05000f)"}}/>
+      {/* ══ MUSIC BAR — barra fixa topo, alinhada à esquerda perto do perfil ══ */}
+      <button
+        onClick={() => setShowMusicPanel(v => !v)}
+        className={"gp-music-bar" + (mounted ? " gp-anim-music" : "")}
+        style={{ position:"fixed", zIndex:50, bottom:110, left:20, width:230 }}>
+        <div className="gp-disc"><div className="gp-disc-inner" /></div>
+        <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
+          <span className="gp-music-sub">Tocando agora</span>
+          <div style={{ overflow: "hidden" }}>
+            <span className="gp-music-title gp-music-scroll">
+              {currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}
+            </span>
           </div>
+        </div>
+        <span style={{ color: "rgba(167,139,250,0.6)", fontSize: 10, flexShrink: 0 }}>
+          {showMusicPanel ? "▲" : "▼"}
+        </span>
+      </button>
 
-          {/* Avatar + info — overlaps banner */}
-          <div style={{position:"relative",marginTop:-70,padding:"0 20px 0"}}>
-            <div style={{display:"flex",alignItems:"flex-end",gap:20}}>
-
-              {/* Avatar with holographic ring */}
-              <div style={{position:"relative",flexShrink:0}} onClick={()=>!isEditing&&setShowIconSel(true)}>
-                <div style={{
-                  position:"absolute",inset:-4,borderRadius:"50%",
-                  background:`conic-gradient(${pc.join(",")},${pc[0]})`,
-                  animation:"rotateSpin 3s linear infinite",
-                  filter:`blur(2px) drop-shadow(0 0 12px ${pc[0]})`,
-                }}/>
-                <div style={{position:"relative",width:96,height:96,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
-                  {playerProfile.avatarUrl
-                    ? <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
-                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${pc[0]},${pc[1]||pc[0]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:"#fff"}}>{playerProfile.name.charAt(0).toUpperCase()}</div>
-                  }
-                </div>
-                {/* Lv badge */}
-                <div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:99,padding:"1px 8px",border:"2px solid #05000f",whiteSpace:"nowrap"}}>
-                  <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>Lv.{playerProfile.level||1}</span>
-                </div>
-              </div>
-
-              {/* Name / title / id */}
-              <div style={{flex:1,paddingBottom:8,minWidth:0}}>
-                {isEditing ? (
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    <input value={editName} onChange={e=>setEditName(e.target.value)} maxLength={20}
-                      style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(139,92,246,0.40)",borderRadius:8,padding:"7px 12px",color:"#f1f0ee",fontSize:15,fontWeight:800,outline:"none"}}/>
-                    <select value={editTitle} onChange={e=>setEditTitle(e.target.value)}
-                      style={{background:"rgba(10,5,30,0.95)",border:"1px solid rgba(139,92,246,0.30)",borderRadius:8,padding:"6px 10px",color:"#c4b5fd",fontSize:12}}>
-                      {playerTitles.map(tt=><option key={tt} value={tt}>{tt}</option>)}
-                    </select>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={handleSave} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#065f46,#059669)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}}>✓ Salvar</button>
-                      <button onClick={()=>setIsEditing(false)} style={{flex:1,padding:"7px",borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.10)",color:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>✕</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-                      <h2 style={{fontWeight:900,fontSize:22,margin:0,background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerProfile.name}</h2>
-                      <button onClick={()=>setIsEditing(true)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✎</button>
-                    </div>
-                    {/* Title badge */}
-                    {playerProfile.title&&(
-                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`linear-gradient(135deg,${pc[0]}20,${pc[1]||pc[0]}10)`,border:`1px solid ${pc[0]}40`,borderRadius:20,padding:"3px 12px",marginBottom:8}}>
-                        <span style={{fontSize:12,fontWeight:800,color:pc[0]}}>{playerProfile.title}</span>
-                      </div>
-                    )}
-                    {/* ID row */}
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:11,color:"#374151",fontFamily:"monospace"}}>ID: {playerId?.slice(0,12)}...</span>
-                      <button onClick={handleCopy} style={{background:"none",border:"none",cursor:"pointer",color:copied?"#22c55e":"#4b5563",fontSize:11,fontWeight:600,padding:0}}>
-                        {copied?"✓ Copiado":"⎘ Copiar"}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Active master pill */}
-              {activeMasterName&&(
-                <div style={{flexShrink:0,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"8px 12px",textAlign:"center",minWidth:90}}>
-                  {activeMasterIcon&&(
-                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}60`,margin:"0 auto 4px"}}>
-                      <Image src={activeMasterIcon} alt="" width={36} height={36} style={{objectFit:"cover"}}/>
-                    </div>
-                  )}
-                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>Mestre</div>
-                  <div style={{fontSize:11,fontWeight:800,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{activeMasterName.split(" ")[0]}</div>
-                </div>
-              )}
+      {/* ── Music panel — separate fixed element so it's never clipped ── */}
+      {showMusicPanel && (
+        <div className="fixed z-[9999]" style={{ bottom: 200, left: 20 }}>
+          <div className="gp-music-panel">
+            <div className="flex items-center justify-between mb-3">
+              <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
+                🎵 Músicas do Menu
+              </p>
+              <button
+                onClick={e => { e.stopPropagation(); setShowMusicPanel(false) }}
+                style={{ color:"rgba(139,92,246,0.5)", fontSize:14, background:"none", border:"none", cursor:"pointer", lineHeight:1 }}>✕</button>
             </div>
-
-            {/* Quick-stats row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:16}}>
-              {[
-                {icon:"⚔",    val:totalMatches, lbl:"Partidas"},
-                {icon:"🏆",   val:wins,         lbl:"Vitórias"},
-                {icon:"📚",   val:uniqueCards,  lbl:"Cartas"},
-                {icon:"",     val:coins,        lbl:"Moedas", iconImg:"/images/icons/gacha-coin.png"},
-              ].map(s=>(
-                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
-                  {(s as any).iconImg
-                    ? <img src={(s as any).iconImg} alt="" style={{width:22,height:22,objectFit:"contain",marginBottom:4,display:"block",margin:"0 auto 4px"}}/>
-                    : <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
-                  }
-                  <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
-                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.lbl}</div>
+            <div className="flex flex-col gap-1.5">
+              {TRACKS.map(track => (
+                <div key={track.id}
+                  className={"gp-track-item" + (track.id === currentTrackId ? " active" : "")}
+                  onClick={e => { e.stopPropagation(); handleSelectTrack(track.id) }}>
+                  <div className="gp-track-dot" style={{
+                    background: track.id === currentTrackId ? "linear-gradient(135deg,#E879F9,#8B5CF6)" : "rgba(109,40,217,0.35)",
+                    boxShadow: track.id === currentTrackId ? "0 0 6px rgba(232,121,249,0.6)" : "none",
+                  }} />
+                  <div className="flex-1">
+                    <p className={"gp-track-name" + (track.id === currentTrackId ? " active" : "")}>{track.name}</p>
+                    <p className="gp-track-sub">{track.sub}</p>
+                  </div>
+                  {track.id === currentTrackId && (
+                    <span style={{ fontSize:9, color:"rgba(232,121,249,0.85)", fontWeight:800, letterSpacing:"1px" }}>▶ NOW</span>
+                  )}
                 </div>
               ))}
             </div>
-
-            {/* Favourite card signature */}
-            {favCard&&(
-              <div style={{marginTop:14,display:"flex",alignItems:"center",gap:14,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:14,padding:"12px 16px"}}>
-                <div style={{position:"relative",width:52,height:72,flexShrink:0,borderRadius:6,overflow:"hidden",boxShadow:rarityGlow(favCard.rarity)}}>
-                  <Image src={favCard.image||"/placeholder.svg"} alt={favCard.name} fill style={{objectFit:"cover"}}/>
-                  {/* Holographic sheen */}
-                  <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.18) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
-                  {favCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
-                </div>
-                <div>
-                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.10em",marginBottom:4}}>🃏 Carta Favorita</div>
-                  <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee",marginBottom:3}}>{favCard.name}</div>
-                  <div style={{display:"flex",gap:6}}>
-                    <span style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,background:rarityBg(favCard.rarity),color:favCard.rarity==="LR"?"#ef4444":favCard.rarity==="UR"?"#38bdf8":favCard.rarity==="SR"?"#a855f7":"#94a3b8"}}>{favCard.rarity}</span>
-                    {favCard.element&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,color:ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8",background:`${ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8"}15`}}>{displayElement(favCard.element)}</span>}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Icon selector */}
-        {showIconSel&&(
-          <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-            <div style={{background:"linear-gradient(160deg,#100c08,#0e0b18)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:20,maxWidth:400,width:"100%"}}>
-              <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:14}}>Escolher Avatar</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                {PROFILE_ICONS.map((icon: {id:string;name:string;image:string})=>(
-                  <button key={icon.id} onClick={()=>handleIcon(icon.image)}
-                    style={{
-                      aspectRatio:"1",borderRadius:12,overflow:"hidden",
-                      border:playerProfile.avatarUrl===icon.image?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",
-                      cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)",
-                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
-                      transition:"all 0.2s",
-                    }}>
-                    <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden"}}>
-                      <Image src={icon.image} alt={icon.name} fill style={{objectFit:"cover"}}/>
-                    </div>
-                    <span style={{fontSize:9,fontWeight:700,color:"#6b7280"}}>{icon.name}</span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={()=>setShowIconSel(false)} style={{marginTop:14,width:"100%",padding:"10px",borderRadius:10,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#6b7280",fontWeight:700,fontSize:13,cursor:"pointer"}}>Fechar</button>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════ TABS ══════════ */}
-        <div style={{display:"flex",margin:"20px 20px 0",borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
-          {(["stats","achievements","collection"] as const).map(tab=>{
-            const icons={"stats":"📊","achievements":"🏆","collection":"🃏"}
-            const labels={"stats":"Estatísticas","achievements":"Conquistas","collection":"Coleção"}
-            const active=activeTab===tab
-            const colors={"stats":"#38bdf8","achievements":"#fbbf24","collection":"#a855f7"}
-            return (
-              <button key={tab} onClick={()=>setActiveTab(tab)} style={{
-                flex:1,padding:"12px 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-                background:active?`${colors[tab]}12`:"transparent",
-                borderBottom:`2px solid ${active?colors[tab]:"transparent"}`,
-                border:"none",cursor:"pointer",transition:"all .2s",
-                borderRight:tab!=="collection"?"1px solid rgba(255,255,255,0.05)":"none",
-              }}>
-                <span style={{fontSize:16}}>{icons[tab]}</span>
-                <span style={{fontSize:10,fontWeight:700,color:active?colors[tab]:"#4b5563",letterSpacing:"0.04em"}}>{labels[tab]}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* ══════════ STATS TAB ══════════ */}
-        {activeTab==="stats"&&(
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
-
-            {/* Win rate ring + breakdown */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:16,padding:"18px",textAlign:"center",position:"relative"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Taxa de Vitória</div>
-                <div style={{position:"relative",display:"inline-block"}}>
-                  <WinRing rate={winRate}/>
-                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transform:"rotate(90deg)"}}>
-                    <span style={{fontWeight:900,fontSize:22,color:"#f1f0ee"}}>{winRate}%</span>
-                    <span style={{fontSize:9,color:"#4b5563"}}>{wins}V/{totalMatches-wins}D</span>
-                  </div>
-                </div>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {/* Rarity breakdown */}
-                {(["LR","UR","SR","R"] as const).map(r=>{
-                  const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
-                  const pct=uniqueCards>0?Math.min(100,(rarityCount[r]/uniqueCards)*100):0
-                  return(
-                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                        <span style={{fontSize:11,fontWeight:800,color:col}}>{r}</span>
-                        <span style={{fontSize:11,color:"#6b7280"}}>{rarityCount[r]}</span>
-                      </div>
-                      <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
-                        <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:`linear-gradient(90deg,${col}80,${col})`,boxShadow:`0 0 6px ${col}60`,transition:"width .8s ease"}}/>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Favourite element + deck */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"14px"}}>
-                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚡ Elemento Favorito</div>
-                {favElement?(
-                  <>
-                    <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:2}}>{displayElement(favElement[0])}</div>
-                    <div style={{fontSize:11,color:"#4b5563"}}>{favElement[1]} cartas</div>
-                  </>
-                ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
-              </div>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"14px"}}>
-                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>🃏 Decks Criados</div>
-                <div style={{fontWeight:900,fontSize:18,color:"#f1f0ee",marginBottom:2}}>{decks.length}</div>
-                <div style={{fontSize:11,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
-              </div>
-            </div>
-
-            {/* Resources */}
-            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:14,padding:"14px 16px"}}>
-              <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>💰 Recursos</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <img src="/images/icons/gacha-coin.png" alt="" style={{width:24,height:24,objectFit:"contain",flexShrink:0}}/>
-                  <div>
-                    <div style={{fontWeight:900,fontSize:16,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
-                    <div style={{fontSize:10,color:"#4b5563"}}>Moedas</div>
-                  </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:22}}>⭐</span>
-                  <div>
-                    <div style={{fontWeight:900,fontSize:16,color:"#c4b5fd"}}>{friendPoints||0}</div>
-                    <div style={{fontSize:10,color:"#4b5563"}}>Pts Amizade</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════ ACHIEVEMENTS TAB ══════════ */}
-        {activeTab==="achievements"&&(
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <span style={{fontSize:12,color:"#4b5563"}}>{achievements.filter(a=>a.done).length}/{achievements.length} completas</span>
-              <div style={{height:5,flex:1,margin:"0 12px",borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
-                <div style={{height:"100%",borderRadius:99,width:`${(achievements.filter(a=>a.done).length/achievements.length)*100}%`,background:"linear-gradient(90deg,#7c3aed,#e8c96d)",transition:"width .8s ease"}}/>
-              </div>
-            </div>
-            {achievements.map(a=>{
-              const ra=RARITY_ACHIEV[a.rarity]
-              const pct=a.max>0?(a.progress/a.max)*100:0
-              return(
-                <div key={a.id} style={{position:"relative",background:a.done?ra.bg:"rgba(255,255,255,0.02)",border:`1px solid ${a.done?ra.color+"40":"rgba(255,255,255,0.06)"}`,borderRadius:14,padding:"14px 16px",overflow:"hidden",transition:"all .2s"}}>
-                  {/* Particle effect for completed */}
-                  {a.done&&<AchievementParticles active={true}/>}
-                  {/* Completed glow */}
-                  {a.done&&<div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 0% 50%,${ra.color}15,transparent 60%)`,pointerEvents:"none"}}/>}
-                  <div style={{position:"relative",display:"flex",alignItems:"center",gap:12}}>
-                    <div style={{
-                      width:44,height:44,borderRadius:12,flexShrink:0,
-                      background:a.done?`linear-gradient(135deg,${ra.color}25,${ra.color}10)`:"rgba(255,255,255,0.04)",
-                      border:`1px solid ${a.done?ra.color+"50":"rgba(255,255,255,0.07)"}`,
-                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
-                      boxShadow:a.done?`0 0 16px ${ra.color}40`:"none",
-                    }}>{a.secret&&!a.done?"🔒":a.icon}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
-                        <span style={{fontWeight:800,fontSize:13,color:a.done?"#f1f0ee":"#6b7280"}}>{a.secret&&!a.done?"???":a.name}</span>
-                        <span style={{fontSize:8,fontWeight:800,padding:"1px 6px",borderRadius:4,color:ra.color,background:ra.bg}}>{ra.label}</span>
-                        {a.done&&<span style={{fontSize:10,color:"#22c55e"}}>✓</span>}
-                      </div>
-                      <div style={{fontSize:11,color:"#4b5563",marginBottom:a.max>1?6:0}}>{a.secret&&!a.done?"Complete desafios secretos para descobrir...":a.desc}</div>
-                      {a.max>1&&!a.secret&&(
-                        <div>
-                          <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
-                            <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:a.done?`linear-gradient(90deg,${ra.color}80,${ra.color})`:
-                              "linear-gradient(90deg,#38bdf880,#38bdf8)",transition:"width .8s ease"}}/>
-                          </div>
-                          <div style={{fontSize:9,color:"#4b5563",marginTop:2}}>{a.progress}/{a.max}</div>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,minWidth:90}}>
-                      {a.done&&!a.secret&&!claimedAchievements.has(a.id)&&(
-                        <button
-                          onClick={()=>handleClaimAchievement(a.id,a.reward)}
-                          style={{
-                            background:"linear-gradient(135deg,#7a5c0f,#e8c96d)",
-                            border:"none",borderRadius:7,padding:"5px 12px",cursor:"pointer",
-                            color:"#0c0a06",fontWeight:900,fontSize:11,
-                            boxShadow:"0 2px 10px rgba(232,201,109,0.40)",whiteSpace:"nowrap",
-                          }}>
-                          🎁 Receber
-                        </button>
-                      )}
-                      {a.done&&!a.secret&&claimedAchievements.has(a.id)&&(
-                        <span style={{fontSize:10,color:"#22c55e",fontWeight:700}}>✓ Coletado</span>
-                      )}
-                      <span style={{fontSize:10,color:a.done&&!claimedAchievements.has(a.id)?"#e8c96d":"#374151",fontWeight:700,textAlign:"right"}}>
-                        {!a.secret?a.reward:""}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* ══════════ COLLECTION TAB ══════════ */}
-        {activeTab==="collection"&&(
-          <div style={{padding:"16px 20px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <span style={{fontSize:13,color:"#4b5563"}}>{uniqueCards} cartas únicas</span>
-              <div style={{display:"flex",gap:6}}>
-                {(["LR","UR","SR","R"] as const).map(r=>{
-                  const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
-                  return <span key={r} style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,color:col,background:`${col}15`}}>{r}: {rarityCount[r]}</span>
-                })}
-              </div>
-            </div>
-
-            {/* Rarity sections */}
-            {(["LR","UR","SR","R"] as const).map(rarity=>{
-              const cards = collection.filter(c=>c.rarity===rarity)
-              if (!cards.length) return null
-              const rc = rarity==="LR"?"#ef4444":rarity==="UR"?"#38bdf8":rarity==="SR"?"#a855f7":"#94a3b8"
-              return(
-                <div key={rarity} style={{marginBottom:20}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                    <div style={{height:1,flex:1,background:`linear-gradient(to right,${rc}40,transparent)`}}/>
-                    <span style={{fontSize:11,fontWeight:800,color:rc,textTransform:"uppercase",letterSpacing:"0.10em"}}>{rarity}</span>
-                    <span style={{fontSize:9,color:"#4b5563"}}>{cards.length}</span>
-                    <div style={{height:1,flex:1,background:`linear-gradient(to left,${rc}40,transparent)`}}/>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                    {cards.slice(0,16).map((card,i)=>(
-                      <div key={`${card.id}-${i}`}
-                        onMouseMove={e=>{setHoveredCard(card.id+i);handleCardMouseMove(e)}}
-                        onMouseLeave={()=>{setHoveredCard(null);setCardTilt({x:0,y:0})}}
-                        onClick={()=>setZoomedCard(card)}
-                        style={{
-                          position:"relative",aspectRatio:"3/4",borderRadius:8,overflow:"hidden",cursor:"pointer",
-                          border:rarityBorder(rarity),
-                          boxShadow:hoveredCard===card.id+i?rarityGlow(rarity):"none",
-                          transform:hoveredCard===card.id+i?`perspective(600px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1.08)`:"scale(1)",
-                          transition:"transform .15s ease,box-shadow .15s ease",
-                        }}>
-                        <Image src={card.image||"/placeholder.svg"} alt={card.name} fill style={{objectFit:"cover"}}/>
-                        {/* Holographic overlay on hover */}
-                        {hoveredCard===card.id+i&&(
-                          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.20) 50%,transparent 65%)",pointerEvents:"none"}}/>
-                        )}
-                        {/* Rarity border effect */}
-                        {rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite",pointerEvents:"none"}}/>}
-                        {rarity==="UR"&&<div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 12px rgba(56,189,248,0.25)",pointerEvents:"none",animation:"urPulse 2s ease-in-out infinite"}}/>}
-                        {/* LR particles */}
-                        {rarity==="LR"&&hoveredCard===card.id+i&&<LRParticles/>}
-                      </div>
-                    ))}
-                  </div>
-                  {cards.length>16&&<div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#4b5563"}}>+{cards.length-16} cartas</div>}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Card zoom */}
-      {zoomedCard&&(
-        <div onClick={()=>setZoomedCard(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{width:260,aspectRatio:"3/4",position:"relative",borderRadius:12,overflow:"hidden",boxShadow:rarityGlow(zoomedCard.rarity)}}>
-            <Image src={zoomedCard.image||"/placeholder.svg"} alt={zoomedCard.name} fill style={{objectFit:"cover"}}/>
-            {zoomedCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
           </div>
         </div>
       )}
 
-      <style dangerouslySetInnerHTML={{__html:`
-        @keyframes onlinePulse{0%,100%{opacity:1;box-shadow:0 0 8px #22c55e}50%{opacity:0.6;box-shadow:0 0 16px #22c55e}}
-        @keyframes rotateSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes bannerShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-        @keyframes holoSheen{0%,100%{background-position:200% 200%;opacity:0.5}50%{background-position:-100% -100%;opacity:1}}
-        @keyframes rainbowShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
-        @keyframes urPulse{0%,100%{box-shadow:inset 0 0 12px rgba(56,189,248,0.2)}50%{box-shadow:inset 0 0 22px rgba(56,189,248,0.5)}}
-      `}}/>
-    </div>
-  )
-}
+      {/* ── STATUS MESSAGE ── */}
+      {statusMessage && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur-md ${
+            statusMessage.includes("ativado") ? "border-emerald-500/40 text-emerald-300" : "border-amber-500/40 text-amber-300"
+          }`} style={{ background: statusMessage.includes("ativado") ? "rgba(3,18,10,0.94)" : "rgba(18,10,2,0.94)" }}>
+            <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${statusMessage.includes("ativado") ? "bg-emerald-400" : "bg-amber-400"}`} />
+            {statusMessage}
+          </div>
+        </div>
+      )}
 
-// LR particle effect
-function LRParticles() {
-  const cols=["#ef4444","#fbbf24","#a855f7","#fff"]
-  return(
-    <div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden"}}>
-      {[...Array(8)].map((_,i)=>(
-        <div key={i} style={{
-          position:"absolute",
-          width:3,height:3,borderRadius:"50%",
-          background:cols[i%cols.length],
-          left:`${10+i*11}%`,
-          animation:`lrFloat${i%3} ${1.2+i*0.2}s ease-in-out ${i*0.15}s infinite`,
-          boxShadow:`0 0 6px ${cols[i%cols.length]}`,
-        }}/>
-      ))}
-      <style dangerouslySetInnerHTML={{__html:`
-        @keyframes lrFloat0{0%,100%{top:90%;opacity:0}50%{top:10%;opacity:1}}
-        @keyframes lrFloat1{0%,100%{top:80%;opacity:0}60%{top:20%;opacity:0.8}}
-        @keyframes lrFloat2{0%,100%{top:95%;opacity:0}40%{top:5%;opacity:1}}
-      `}}/>
+      {/* ══ MASTER ART — right side, clickable with voice + bubble ══ */}
+      <div className={"gp-master-art-wrap" + (mounted ? " gp-anim-master" : "")} onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
+
+        {/* Manga speech bubble */}
+        {bubble && (
+          <div className={`gp-bubble${bubble.out ? " out" : ""}`}>
+            <p className="gp-bubble-text">{bubble.text}</p>
+            {/* Tail is a child but overflow:visible means it renders outside the box */}
+            <div className="gp-bubble-tail" />
+          </div>
+        )}
+
+        {/* Character art — tap class on wrapper so entry/float animations don't reset */}
+        {masterTap && <div className="gp-master-tap-ring" />}
+        <div className={masterTap ? "gp-master-tap-wrap" : ""} style={{ position:"absolute", inset:0 }}>
+          <Image
+            key={masterArtSrc}
+            src={masterArtSrc}
+            alt="Master"
+            fill
+            sizes="310px"
+            className="object-contain object-bottom gp-master-art"
+            style={{ userSelect: "none" }}
+            priority
+          />
+        </div>
+      </div>
+
+      {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
+      <div className={"fixed z-30 flex flex-col gap-2" + (mounted ? " gp-anim-sidebar" : "")} style={{ top:152, right:4 }}>
+        {[
+          { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
+          { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
+          { label:"Config.", icon:<Settings />, onClick:()=>onNavigate("settings"),      gold:false, dot:false    },
+          { label:"Diárias",  icon:null,         onClick:()=>{ setShowDailyBonus(true); setDailyBonusJustClaimed(false) }, gold:false, dot:!dailyBonusClaimed, emoji: dailyBonusClaimed ? "✅" : "🎁", dotColor:"rgba(52,211,153,0.9)" },
+          { label:"Tema",   icon:null,         onClick:()=>setShowWallpaperModal(true),  gold:false, dot:false,   emoji:"🖼️" },
+          { label:"História",  icon:<BookOpen />, onClick:()=>onNavigate("story"),         gold:false, dot:false    },
+          { label:"Mestre", icon:<Star />,     onClick:()=>onNavigate("masters"),       gold:true,  dot:false    },
+        ].map(btn => (
+          <div key={btn.label} className="relative" style={{ borderRadius:14 }}>
+            <button className={`gp-sb${btn.gold?" gp-gold":""}`} onClick={btn.onClick}>
+              {btn.dot && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{background:btn.dotColor||"rgba(239,68,68,0.9)",boxShadow:`0 0 6px ${btn.dotColor||"rgba(239,68,68,0.9)"}`}} />}
+              {btn.emoji ? <span style={{fontSize:16,lineHeight:1}}>{btn.emoji}</span> : btn.icon}
+              <span className="gp-sb-lbl">{btn.label}</span>
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* ══ 3 BOTÕES DESTAQUE — lateral esquerda, exatamente como no desenho ══ */}
+      {!showPlayMenu && (
+        <div className={"fixed z-20" + (mounted ? " gp-anim-ui-btns" : "")} style={{ left:24, top:200 }}>
+
+          {/* ── DECK ATIVO — indicador acima do JOGAR ── */}
+          {activeDeck && (
+            <button className="gp-deck-badge" onClick={() => onNavigate("deck-builder")} style={{ marginBottom: 6 }}>
+              <div className="gp-deck-badge-dot" />
+              <div className="flex flex-col gap-0.5 overflow-hidden">
+                <span style={{ fontSize:8, fontWeight:800, letterSpacing:"1.5px", textTransform:"uppercase", color:"rgba(147,197,253,0.55)" }}>Deck Ativo</span>
+                <span style={{ fontSize:13, fontWeight:900, color:"rgba(219,234,254,0.98)", letterSpacing:"0.5px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:360, textShadow:"0 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(59,130,246,0.5)" }}>
+                  {activeDeck.name}
+                </span>
+              </div>
+              <span style={{ marginLeft:"auto", fontSize:10, color:"rgba(96,165,250,0.55)", fontWeight:700, flexShrink:0 }}>▸ {activeDeck.cards?.length ?? 0} cartas</span>
+            </button>
+          )}
+
+          {/* ── JOGAR (AZUL) — retângulo grande com corte no canto ── */}
+          <button className="gp-play-btn flex flex-col items-center justify-center gap-3"
+            onClick={() => setShowPlayMenu(true)}
+            style={{ width:440, height:205, borderRadius:0, marginBottom:10 }}>
+            {/* Holographic lines overlay */}
+            <div className="gp-play-holo" />
+            {/* Sword icon with dual-glow */}
+            <div className="relative" style={{ zIndex:4 }}>
+              <Swords style={{ width:54, height:54, color:"#e0f2fe", filter:"drop-shadow(0 0 8px #60a5fa) drop-shadow(0 0 22px #3b82f6)" }} />
+              {/* Aura ring behind sword */}
+              <div style={{
+                position:"absolute", inset:-14, borderRadius:"50%",
+                background:"radial-gradient(ellipse at 50% 50%, rgba(59,130,246,0.22) 0%, transparent 70%)",
+                animation:"gp-play-aura 2.4s ease-in-out infinite",
+                pointerEvents:"none",
+              }} />
+            </div>
+            <span className="font-black tracking-widest text-2xl uppercase relative" style={{
+              zIndex:4,
+              color:"#fff",
+              textShadow:"0 0 12px #60a5fa, 0 0 28px #3b82f6, 0 2px 0 rgba(0,0,50,0.8)",
+              letterSpacing:"0.28em",
+            }}>Jogar</span>
+          </button>
+
+          {/* ── COLEÇÃO (BRANCO) + GACHA (ROSA) lado a lado abaixo do JOGAR ── */}
+          <div className="flex items-center gap-0" style={{ marginTop:0 }}>
+
+            {/* COLEÇÃO — retângulo branco */}
+            <button className="gp-col-btn flex items-center justify-center gap-2.5"
+              onClick={() => onNavigate("collection")}
+              style={{ width:220, height:72, borderRadius:10 }}>
+              <div className="gp-col-holo" />
+              <BookOpen style={{ width:22, height:22, color:"#fff", filter:"drop-shadow(0 0 8px rgba(255,255,255,0.9)) drop-shadow(0 0 18px rgba(200,220,255,0.6))", zIndex:4, position:"relative" }} />
+              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"#fff", textShadow:"0 0 14px rgba(255,255,255,0.9), 0 0 28px rgba(200,230,255,0.5)", letterSpacing:"0.18em", zIndex:4, position:"relative" }}>Coleção</span>
+            </button>
+
+            {/* GACHA — oval rosa */}
+            <button className="gp-gacha-btn flex items-center justify-center gap-2.5"
+              onClick={() => onNavigate("gacha")}
+              style={{ width:200, height:72, borderRadius:40 }}>
+              <div className="gp-play-holo" />
+              <Sparkles style={{ width:22, height:22, color:"#fce7f3", filter:"drop-shadow(0 0 8px rgba(249,168,212,0.95)) drop-shadow(0 0 18px rgba(236,72,153,0.6))", zIndex:4, position:"relative" }} />
+              <span className="font-black text-sm tracking-widest uppercase" style={{ color:"#fce7f3", textShadow:"0 0 14px rgba(249,168,212,0.95), 0 0 28px rgba(236,72,153,0.55)", letterSpacing:"0.18em", zIndex:4, position:"relative" }}>Gacha</span>
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* ══ BOTTOM NAV — levemente escuro (AMARELO no guia) ══ */}
+      <div className={"fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap" + (mounted ? " gp-anim-nav" : "")}>
+        <div className="gp-nav-line" />
+
+        {!showPlayMenu ? (
+          /* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */
+          <div className="flex items-center justify-around px-4 pb-5 pt-2">
+            <button className="gp-ni relative" onClick={() => onNavigate("friends")}>
+              <Users className="w-7 h-7" />
+              {onlineFriends > 0 && (
+                <span className="absolute top-1.5 right-3 min-w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
+                  style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)", boxShadow:"0 0 6px rgba(34,197,94,0.7)", border:"1px solid rgba(255,255,255,0.2)" }}>
+                  {onlineFriends}
+                </span>
+              )}
+              <span className="gp-ni-lbl">Social</span>
+            </button>
+            <button className="gp-ni" onClick={() => onNavigate("missions")}>
+              <Target className="w-7 h-7" /><span className="gp-ni-lbl">Missões</span>
+            </button>
+            <button className="gp-ni" onClick={() => onNavigate("guild")}>
+              <Users className="w-7 h-7" /><span className="gp-ni-lbl">Guilda</span>
+            </button>
+            <button className="gp-ni" onClick={() => onNavigate("shop" as GameScreen)}>
+              <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">🛒</span>
+              <span className="gp-ni-lbl">Loja</span>
+            </button>
+            <button className="gp-ni" onClick={() => onNavigate("profile")}>
+              <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">👤</span>
+              <span className="gp-ni-lbl">Perfil</span>
+            </button>
+          </div>
+        ) : (
+          /* Sub-menu de modos de jogo */
+          <div className="px-4 pb-6 pt-4 max-w-lg mx-auto space-y-2.5">
+            <p className="text-center text-[11px] font-black tracking-widest uppercase mb-3" style={{color:"rgba(139,92,246,0.5)"}}>Modo de jogo</p>
+            <button onClick={() => onNavigate("duel-bot")}
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#1d4ed8,#3b82f6,#2563eb)",boxShadow:"0 8px 24px rgba(59,130,246,0.25)"}}>
+              <Bot className="h-6 w-6" />{t("vsBot")}
+            </button>
+            <button onClick={() => onNavigate("duel-player")}
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#c2410c,#f97316,#ea580c)",boxShadow:"0 8px 24px rgba(249,115,22,0.25)"}}>
+              <Users className="h-6 w-6" />{t("vsPlayer")}
+            </button>
+            <button onClick={() => { setShowPlayMenu(false); onNavigate("story") }}
+              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
+              style={{background:"linear-gradient(135deg,#5b21b6,#7c3aed,#4c1d95)",boxShadow:"0 8px 24px rgba(124,58,237,0.30)"}}>
+              <BookOpen className="h-6 w-6" />Campanha
+            </button>
+            <button onClick={() => setShowPlayMenu(false)}
+              className="w-full h-10 rounded-xl border text-sm font-semibold transition-colors hover:bg-white/[0.04]"
+              style={{borderColor:"rgba(255,255,255,0.08)",color:"rgba(139,92,246,0.5)"}}>
+              {t("back")}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════ MODAIS ══════════════════════════════════════ */}
+
+      {/* GIFT BOX */}
+      {showGiftBox && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="rounded-3xl max-w-md w-full p-6 relative"
+            style={{background:"linear-gradient(160deg,#05021A,#07031E)",border:"1px solid rgba(124,58,237,0.25)",boxShadow:"0 0 60px rgba(124,58,237,0.15)"}}>
+            <button onClick={() => { setShowGiftBox(false); setClaimedCard(null); setClaimedCoins(null); setClaimAllResults(null) }}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors">
+              <X className="w-5 h-5" style={{color:"rgba(167,139,250,0.7)"}} />
+            </button>
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <Gift className="w-7 h-7" style={{color:"#FCD34D"}} />
+              <h2 className="text-xl font-black" style={{background:"linear-gradient(135deg,#FCD34D,#F59E0B)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Caixa de Presentes</h2>
+            </div>
+            {!claimedCard && !claimedCoins && !claimAllResults ? (
+              unclaimedGifts.length > 0 ? (
+                <>
+                  {unclaimedGifts.length > 1 && (
+                    <button onClick={handleClaimAll} disabled={isClaimingAll}
+                      className="w-full gacha-btn h-12 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow-lg mb-4"
+                      style={{background:"linear-gradient(135deg,#059669,#10b981)",boxShadow:"0 4px 20px rgba(16,185,129,0.3)"}}>
+                      {isClaimingAll ? <><Sparkles className="w-4 h-4 animate-spin" />Coletando...</> : <><Gift className="w-4 h-4" />Coletar Tudo ({unclaimedGifts.length})</>}
+                    </button>
+                  )}
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                    {unclaimedGifts.map(gift => (
+                      <div key={gift.id} className="rounded-2xl p-4" style={{background:"rgba(124,58,237,0.10)",border:"1px solid rgba(124,58,237,0.25)"}}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 rounded-xl" style={{background:"linear-gradient(135deg,#7C3AED,#A855F7)"}}><Gift className="w-6 h-6 text-white" /></div>
+                          <h3 className="font-bold text-white">{gift.title}</h3>
+                        </div>
+                        <p className="text-slate-300 text-sm mb-4">{gift.message}</p>
+                        {gift.coinsReward && <div className="flex items-center gap-2 mb-3" style={{color:"#FCD34D"}}><Coins className="w-4 h-4" /><span>+{gift.coinsReward} Moedas</span></div>}
+                        <button onClick={() => handleOpenGift(gift.id)} disabled={isOpening}
+                          className="gacha-btn w-full h-12 rounded-xl text-black font-bold flex items-center justify-center gap-2 shadow-lg"
+                          style={{background:"linear-gradient(135deg,#FCD34D,#F59E0B)",boxShadow:"0 4px 16px rgba(245,158,11,0.35)"}}>
+                          {isOpening ? <><Sparkles className="w-4 h-4 animate-spin" />Abrindo...</> : "Abrir Presente"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{background:"rgba(124,58,237,0.10)"}}>
+                    <Gift className="w-8 h-8" style={{color:"rgba(124,58,237,0.45)"}} />
+                  </div>
+                  <p style={{color:"rgba(167,139,250,0.55)"}}>Nenhum presente disponível no momento.</p>
+                </div>
+              )
+            ) : claimedCard ? (
+              <div className="flex flex-col items-center py-4">
+                <p className="font-bold text-lg mb-4" style={{color:"#FCD34D"}}>Você recebeu:</p>
+                <div className="relative animate-float">
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 blur-2xl opacity-50 animate-pulse" />
+                  <div className={`relative w-40 h-56 rounded-xl overflow-hidden shadow-2xl ${claimedCard.rarity==="LR"?"rarity-lr":claimedCard.rarity==="UR"?"rarity-ur":claimedCard.rarity==="SR"?"rarity-sr":"rarity-r"}`}>
+                    <Image src={claimedCard.image||"/placeholder.svg"} alt={claimedCard.name} fill sizes="160px" className="object-cover" />
+                  </div>
+                </div>
+                <h3 className="mt-4 text-xl font-bold text-white text-center">{claimedCard.name}</h3>
+                <span className={`mt-2 px-4 py-1 rounded-full text-sm font-bold ${claimedCard.rarity==="LR"?"bg-gradient-to-r from-red-500 to-amber-500 text-white":claimedCard.rarity==="UR"?"bg-gradient-to-r from-amber-500 to-yellow-400 text-black":claimedCard.rarity==="SR"?"bg-purple-500 text-white":"bg-slate-500 text-white"}`}>{claimedCard.rarity}</span>
+                <button onClick={() => { setShowGiftBox(false); setClaimedCard(null) }}
+                  className="mt-6 gacha-btn px-8 py-3 rounded-xl text-white font-bold shadow-lg"
+                  style={{background:"linear-gradient(135deg,#7C3AED,#A855F7)",boxShadow:"0 4px 20px rgba(124,58,237,0.4)"}}>Fechar</button>
+              </div>
+            ) : claimAllResults ? (
+              <div className="flex flex-col items-center py-4">
+                <p className="font-bold text-lg mb-4" style={{color:"#FCD34D"}}>Você recebeu:</p>
+                <div className="w-full max-h-[50vh] overflow-y-auto space-y-3 mb-4">
+                  {claimAllResults.cards.length > 0 && (
+                    <div className="rounded-2xl p-4" style={{background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.2)"}}>
+                      <h3 className="text-white font-bold mb-3 flex items-center gap-2"><Star className="w-5 h-5" style={{color:"#FCD34D"}} />Cartas ({claimAllResults.cards.length})</h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        {claimAllResults.cards.map((card, index) => (
+                          <div key={index}>
+                            <div className={`relative w-full aspect-[2/3] rounded-lg overflow-hidden shadow-lg ${card.rarity==="LR"?"rarity-lr":card.rarity==="UR"?"rarity-ur":card.rarity==="SR"?"rarity-sr":"rarity-r"}`}>
+                              <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="100px" className="object-cover" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {claimAllResults.coins > 0 && (
+                    <div className="rounded-2xl p-4" style={{background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.25)"}}>
+                      <div className="flex items-center justify-center gap-3">
+                        <Image src="/images/icons/gacha-coin.png" alt="Gacha Coin" width={40} height={40} className="w-10 h-10 object-contain" />
+                        <span className="text-2xl font-bold" style={{color:"#FCD34D"}}>+{claimAllResults.coins}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => { setShowGiftBox(false); setClaimAllResults(null) }}
+                  className="gacha-btn px-8 py-3 rounded-xl text-white font-bold shadow-lg"
+                  style={{background:"linear-gradient(135deg,#7C3AED,#A855F7)",boxShadow:"0 4px 20px rgba(124,58,237,0.4)"}}>Fechar</button>
+              </div>
+            ) : claimedCoins ? (
+              <div className="flex flex-col items-center py-8">
+                <p className="font-bold text-lg mb-4" style={{color:"#FCD34D"}}>Você recebeu:</p>
+                <div className="relative animate-float">
+                  <div className="absolute inset-0 rounded-2xl blur-2xl opacity-50 animate-pulse" style={{background:"linear-gradient(135deg,#FCD34D,#F59E0B)"}} />
+                  <div className="relative flex items-center gap-3 px-8 py-6 rounded-2xl shadow-2xl"
+                    style={{background:"linear-gradient(135deg,#D97706,#F59E0B)",boxShadow:"0 8px 32px rgba(245,158,11,0.35)"}}>
+                    <Coins className="w-12 h-12 text-white" /><span className="text-4xl font-bold text-white">+{claimedCoins}</span>
+                  </div>
+                </div>
+                <p className="mt-4 text-xl font-bold text-white">Moedas de Gacha!</p>
+                <button onClick={() => { setShowGiftBox(false); setClaimedCoins(null) }}
+                  className="mt-6 gacha-btn px-8 py-3 rounded-xl text-white font-bold"
+                  style={{background:"linear-gradient(135deg,#7C3AED,#A855F7)",boxShadow:"0 4px 20px rgba(124,58,237,0.4)"}}>Fechar</button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* DAILY BONUS */}
+      {showDailyBonus && (
+        <div className="fixed inset-0 z-[9400] flex items-center justify-center p-4"
+          style={{background:"rgba(0,0,0,0.88)",backdropFilter:"blur(8px)"}}>
+          <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+            style={{background:"linear-gradient(160deg,#05021A,#07031E)",border:dailyBonusClaimed?"1px solid rgba(100,100,100,0.15)":"1px solid rgba(34,197,94,0.35)",boxShadow:dailyBonusClaimed?"none":"0 0 60px rgba(34,197,94,0.20)"}}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="text-6xl mb-3">{dailyBonusClaimed?"✅":"🎁"}</div>
+              <h2 className="text-white font-black text-2xl mb-1">Bônus Diário</h2>
+              <p className="text-sm" style={{color:"rgba(167,139,250,0.58)"}}>{dailyBonusClaimed?"Você já coletou o bônus de hoje. Volte amanhã!":"Colete suas recompensas diárias gratuitas!"}</p>
+            </div>
+            <div className="px-6 py-5">
+              <div className="rounded-2xl p-5 flex items-center justify-center gap-4"
+                style={{background:dailyBonusClaimed?"rgba(255,255,255,0.03)":"rgba(34,197,94,0.08)",border:dailyBonusClaimed?"1px solid rgba(100,100,100,0.12)":"1px solid rgba(34,197,94,0.25)"}}>
+                <div className="relative">
+                  <Image src="/images/icons/gacha-coin.png" alt="Gacha Coin" width={56} height={56} className="drop-shadow-lg" />
+                  {!dailyBonusClaimed && <div className="absolute inset-0 rounded-full blur-xl" style={{background:"rgba(251,191,36,0.4)",transform:"scale(1.5)"}} />}
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-widest mb-0.5" style={{color:"rgba(167,139,250,0.5)"}}>Recompensa</p>
+                  <p className="text-4xl font-black" style={{color:dailyBonusClaimed?"rgba(100,100,100,0.5)":"#FCD34D"}}>+50</p>
+                  <p className="text-xs" style={{color:"rgba(124,58,237,0.5)"}}>Gacha Coins</p>
+                </div>
+              </div>
+              {dailyBonusJustClaimed && (
+                <div className="mt-3 text-center py-2.5 rounded-xl" style={{border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.10)"}}>
+                  <p className="font-black text-sm" style={{color:"#34d399"}}>🎉 +50 Coins coletados!</p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 pb-6 space-y-2.5">
+              {!dailyBonusClaimed ? (
+                <button onClick={handleClaimDailyBonus}
+                  className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all hover:scale-[1.02] hover:brightness-110 shadow-2xl"
+                  style={{background:"linear-gradient(135deg,#15803d,#22c55e,#16a34a)",boxShadow:"0 8px 32px rgba(34,197,94,0.35)"}}>
+                  🎁 Coletar Agora!
+                </button>
+              ) : (
+                <div className="w-full py-4 rounded-2xl text-center font-bold" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(100,100,100,0.14)",color:"rgba(100,100,100,0.6)"}}>
+                  Coletado hoje · Volte amanhã
+                </div>
+              )}
+              <button onClick={() => setShowDailyBonus(false)}
+                className="w-full py-2.5 rounded-xl border text-sm font-semibold transition-colors hover:bg-white/[0.04]"
+                style={{borderColor:"rgba(255,255,255,0.08)",color:"rgba(139,92,246,0.5)"}}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WALLPAPER MODAL */}
+      {showWallpaperModal && (
+        <div className="fixed inset-0 z-[9500] flex flex-col" style={{background:"rgba(0,0,0,0.94)",backdropFilter:"blur(8px)"}}>
+          <div className="flex items-center justify-between px-5 py-4"
+            style={{background:"rgba(5,2,18,0.95)",borderBottom:"1px solid rgba(124,58,237,0.22)"}}>
+            <div>
+              <h2 className="text-white font-black text-xl flex items-center gap-2">🖼️ Tema do Menu</h2>
+              <p className="text-xs mt-0.5" style={{color:"rgba(124,58,237,0.5)"}}>Escolha o wallpaper do menu principal</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{background:"rgba(12,7,2,0.88)",border:"1px solid rgba(245,158,11,0.2)"}}>
+                <Image src="/images/icons/gacha-coin.png" alt="" width={16} height={16} className="object-contain" />
+                <span className="font-black text-sm" style={{color:"#FCD34D"}}>{coins.toLocaleString()}</span>
+              </div>
+              <button onClick={() => setShowWallpaperModal(false)}
+                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-white/10"
+                style={{border:"1px solid rgba(255,255,255,0.1)",color:"rgba(167,139,250,0.7)"}}>
+                ✕
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+              {WALLPAPERS.map(wp => {
+                const isSelected = selectedWallpaper === wp.id
+                const isUnlocked = unlockedWallpapers.includes(wp.id)
+                const canAfford  = coins >= wp.cost
+                return (
+                  <div key={wp.id}
+                    className="relative rounded-2xl overflow-hidden cursor-pointer transition-all"
+                    style={{border:isSelected?"2px solid rgba(139,92,246,0.85)":isUnlocked?"1px solid rgba(124,58,237,0.25)":"1px solid rgba(124,58,237,0.10)",boxShadow:isSelected?"0 0 22px rgba(124,58,237,0.32)":"none",transform:isSelected?"scale(1.02)":undefined,opacity:isUnlocked?1:0.82}}
+                    onClick={() => { if (isUnlocked) handleSelectWallpaper(wp.id) }}>
+                    <div className="relative aspect-video w-full overflow-hidden">
+                      {wp.image ? (
+                        <div className="absolute inset-0" style={{backgroundImage:`url(${wp.image})`,backgroundSize:"cover",backgroundPosition:"center"}} />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1" style={{background:"linear-gradient(145deg,#04081A,#070D24)"}}>
+                          <span className="text-2xl">✨</span><span className="text-[10px]" style={{color:"rgba(124,58,237,0.5)"}}>Padrão</span>
+                        </div>
+                      )}
+                      {!isUnlocked && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2" style={{background:"rgba(0,0,0,0.72)"}}>
+                          <span className="text-3xl">🔒</span>
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{background:"rgba(12,7,2,0.92)",border:"1px solid rgba(245,158,11,0.35)"}}>
+                            <Image src="/images/icons/gacha-coin.png" alt="" width={14} height={14} className="object-contain" />
+                            <span className="font-black text-xs" style={{color:"#FCD34D"}}>{wp.cost}</span>
+                          </div>
+                        </div>
+                      )}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-lg" style={{background:"rgba(124,58,237,0.92)"}}>
+                          <span className="text-white text-xs font-black">✓</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-3 py-2.5" style={{background:"rgba(5,2,18,0.94)"}}>
+                      <p className="text-white font-bold text-sm truncate">{wp.name}</p>
+                      <p className="text-xs truncate" style={{color:"rgba(124,58,237,0.52)"}}>{wp.description}</p>
+                      <div className="mt-2">
+                        {isSelected ? (
+                          <div className="w-full py-1.5 rounded-lg text-center text-[11px] font-black" style={{background:"rgba(88,28,135,0.25)",border:"1px solid rgba(124,58,237,0.30)",color:"rgba(167,139,250,0.9)"}}>✓ Ativo</div>
+                        ) : isUnlocked ? (
+                          <button onClick={e => { e.stopPropagation(); handleSelectWallpaper(wp.id) }}
+                            className="w-full py-1.5 rounded-lg text-center text-[11px] font-bold text-white transition-all hover:brightness-110"
+                            style={{background:"linear-gradient(135deg,#5b21b6,#7c3aed)"}}>Selecionar</button>
+                        ) : (
+                          <button onClick={e => { e.stopPropagation(); if (canAfford) handleUnlockWallpaper(wp) }}
+                            disabled={!canAfford}
+                            className="w-full py-1.5 rounded-lg text-center text-[11px] font-black flex items-center justify-center gap-1 transition-all"
+                            style={canAfford?{background:"linear-gradient(135deg,#92400E,#D97706)",color:"#000"}:{background:"rgba(28,28,28,0.8)",border:"1px solid rgba(100,100,100,0.2)",color:"rgba(150,150,150,0.6)"}}>
+                            {canAfford ? <><Image src="/images/icons/gacha-coin.png" alt="" width={14} height={14} className="object-contain" />{wp.cost} — Desbloquear</> : <>🔒 Coins insuficientes</>}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
