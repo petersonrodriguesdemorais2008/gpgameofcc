@@ -189,6 +189,60 @@ const GP_CSS = `
 .gp-anim-master  { animation: gp-enter-ui    0.82s ease both; }
 .gp-anim-ui-btns { animation: gp-enter-ui    0.82s ease both; }
 
+/* ══ ACHIEVEMENT POP-UP ══ */
+@keyframes gp-achieve-in {
+  0%   { opacity:0; transform: translateX(120px) scale(0.85); }
+  55%  { opacity:1; transform: translateX(-6px) scale(1.03); }
+  75%  { transform: translateX(2px) scale(0.99); }
+  100% { opacity:1; transform: translateX(0) scale(1); }
+}
+@keyframes gp-achieve-out {
+  0%   { opacity:1; transform: translateX(0); }
+  100% { opacity:0; transform: translateX(100px); }
+}
+.gp-achieve {
+  position: fixed; z-index: 9999;
+  top: 80px; right: 12px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px 10px 10px;
+  background: linear-gradient(135deg, rgba(5,2,18,0.97), rgba(10,5,32,0.97));
+  border: 1.5px solid rgba(139,92,246,0.55);
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(124,58,237,0.3), 0 6px 28px rgba(0,0,0,0.55), inset 0 1px 0 rgba(167,139,250,0.08);
+  backdrop-filter: blur(18px);
+  min-width: 240px; max-width: 300px;
+  pointer-events: none;
+  animation: gp-achieve-in 0.45s cubic-bezier(0.22,1,0.36,1) both;
+}
+.gp-achieve.out { animation: gp-achieve-out 0.3s ease-in both; }
+.gp-achieve-icon {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(109,40,217,0.5), rgba(167,139,250,0.3));
+  border: 1px solid rgba(139,92,246,0.45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.gp-achieve-title { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(167,139,250,0.7); }
+.gp-achieve-msg   { font-size: 12.5px; font-weight: 700; color: #fff; letter-spacing: 0.2px; margin-top: 1px; }
+.gp-achieve-bar {
+  position: absolute; bottom: 0; left: 0; height: 2.5px; border-radius: 0 0 14px 14px;
+  background: linear-gradient(90deg, rgba(109,40,217,0.9), rgba(232,121,249,0.9));
+  animation: gp-achieve-progress 4s linear both;
+}
+@keyframes gp-achieve-progress { 0%{width:100%;} 100%{width:0%;} }
+
+/* ══ COIN COUNTER ANIMATION ══ */
+@keyframes gp-coin-pop { 0%{transform:scale(1);} 30%{transform:scale(1.22);} 70%{transform:scale(0.95);} 100%{transform:scale(1);} }
+.gp-coin-pop { animation: gp-coin-pop 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+.gp-coin-plus {
+  position: absolute; right: -8px; top: -14px;
+  font-size: 11px; font-weight: 900; color: #4ade80;
+  text-shadow: 0 0 6px rgba(74,222,128,0.7);
+  animation: gp-coin-plus-anim 1.2s ease-out both;
+  pointer-events: none; white-space: nowrap; z-index: 10;
+}
+@keyframes gp-coin-plus-anim { 0%{opacity:1;transform:translateY(0);} 60%{opacity:1;transform:translateY(-18px);} 100%{opacity:0;transform:translateY(-28px);} }
+
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
 
@@ -736,7 +790,69 @@ export function resumeMenuMusic() {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks } = useGame()
+  const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends } = useGame()
+
+  // ── Friends online count (simulate: friends with level > 0 as "online") ──
+  const onlineFriends = friends?.filter((f: any) => f.isOnline || (f.affinityPoints ?? 0) > 0).length ?? 0
+
+  // ── Achievement pop-up ──
+  const [achievement, setAchievement] = useState<{ icon:string; title:string; msg:string; out:boolean } | null>(null)
+  const achieveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showAchievement = (icon: string, title: string, msg: string) => {
+    if (achieveTimerRef.current) clearTimeout(achieveTimerRef.current)
+    setAchievement({ icon, title, msg, out: false })
+    achieveTimerRef.current = setTimeout(() => {
+      setAchievement(a => a ? { ...a, out: true } : null)
+      setTimeout(() => setAchievement(null), 320)
+    }, 4200)
+  }
+
+  // ── Coin animation ──
+  const [displayCoins, setDisplayCoins] = useState(coins)
+  const [coinDelta, setCoinDelta] = useState<number | null>(null)
+  const [coinPop, setCoinPop] = useState(false)
+  const prevCoinsRef = useRef(coins)
+  const coinAnimRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    const diff = coins - prevCoinsRef.current
+    if (diff === 0) return
+    // Pop animation
+    setCoinPop(true)
+    setTimeout(() => setCoinPop(false), 380)
+    // Show +/- delta
+    if (diff > 0) {
+      setCoinDelta(diff)
+      setTimeout(() => setCoinDelta(null), 1300)
+    }
+    // Roll counter
+    const start = prevCoinsRef.current
+    const end = coins
+    const steps = 22
+    const stepVal = (end - start) / steps
+    let step = 0
+    if (coinAnimRef.current) clearInterval(coinAnimRef.current)
+    coinAnimRef.current = setInterval(() => {
+      step++
+      setDisplayCoins(Math.round(start + stepVal * step))
+      if (step >= steps) {
+        if (coinAnimRef.current) clearInterval(coinAnimRef.current)
+        setDisplayCoins(end)
+      }
+    }, 22)
+    prevCoinsRef.current = coins
+  }, [coins])
+
+  // ── Watch level changes for achievement ──
+  const prevLevelMenuRef = useRef(playerProfile.level)
+  useEffect(() => {
+    if (playerProfile.level > prevLevelMenuRef.current) {
+      showAchievement("⭐", "LEVEL UP!", `Nível ${playerProfile.level} alcançado!`)
+    }
+    prevLevelMenuRef.current = playerProfile.level
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerProfile.level])
 
   const spendCoins = (amount: number) => setCoins((prev: number) => Math.max(0, prev - amount))
 
@@ -1294,6 +1410,18 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
       <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
 
+      {/* ══ ACHIEVEMENT POP-UP ══ */}
+      {achievement && (
+        <div className={"gp-achieve" + (achievement.out ? " out" : "")}>
+          <div className="gp-achieve-icon">{achievement.icon}</div>
+          <div>
+            <div className="gp-achieve-title">{achievement.title}</div>
+            <div className="gp-achieve-msg">{achievement.msg}</div>
+          </div>
+          <div className="gp-achieve-bar" />
+        </div>
+      )}
+
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
 
       {/* ══ BACKGROUND ══ */}
@@ -1373,8 +1501,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               {mobileMode && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-black/80" style={{zIndex:2}} />}
             </div>
             <div className="text-left">
-              <p className="text-white font-black text-xl leading-tight tracking-wide">{playerProfile.name}</p>
-              <p className="text-[13px] font-bold tracking-widest" style={{color:"rgba(192,132,252,0.85)", textShadow:"0 0 8px rgba(139,92,246,0.4)"}}>{playerProfile.title||"Jogador"}</p>
+              <p className="text-white font-black text-xl leading-tight tracking-wide" style={{ textShadow:"0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7), -1px -1px 0 rgba(0,0,0,0.6), 1px -1px 0 rgba(0,0,0,0.6), -1px 1px 0 rgba(0,0,0,0.6), 1px 1px 0 rgba(0,0,0,0.6)" }}>{playerProfile.name}</p>
+              <p className="text-[13px] font-bold tracking-widest" style={{color:"rgba(192,132,252,0.95)", textShadow:"0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(139,92,246,0.4)"}}>{playerProfile.title||"Jogador"}</p>
             </div>
           </button>
           <div style={{ transform:"scaleX(1.12) scaleY(1.08)", transformOrigin:"left center" }}>
@@ -1438,7 +1566,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                 zIndex:1,
               }}
             />
-            <span className="font-black text-base tabular-nums" style={{color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)"}}>{coins.toLocaleString()}</span>
+            <span className={"font-black text-base tabular-nums" + (coinPop ? " gp-coin-pop" : "")}
+              style={{ color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)", position:"relative" }}>
+              {displayCoins.toLocaleString()}
+              {coinDelta !== null && <span className="gp-coin-plus">+{coinDelta}</span>}
+            </span>
             <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
           </div>
 
@@ -1584,7 +1716,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               <div className="gp-deck-badge-dot" />
               <div className="flex flex-col gap-0.5 overflow-hidden">
                 <span style={{ fontSize:8, fontWeight:800, letterSpacing:"1.5px", textTransform:"uppercase", color:"rgba(147,197,253,0.55)" }}>Deck Ativo</span>
-                <span style={{ fontSize:13, fontWeight:900, color:"rgba(219,234,254,0.95)", letterSpacing:"0.5px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:360, textShadow:"0 0 10px rgba(59,130,246,0.5)" }}>
+                <span style={{ fontSize:13, fontWeight:900, color:"rgba(219,234,254,0.98)", letterSpacing:"0.5px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:360, textShadow:"0 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(59,130,246,0.5)" }}>
                   {activeDeck.name}
                 </span>
               </div>
@@ -1649,8 +1781,15 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         {!showPlayMenu ? (
           /* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */
           <div className="flex items-center justify-around px-4 pb-5 pt-2">
-            <button className="gp-ni" onClick={() => onNavigate("friends")}>
-              <Users className="w-7 h-7" /><span className="gp-ni-lbl">Social</span>
+            <button className="gp-ni relative" onClick={() => onNavigate("friends")}>
+              <Users className="w-7 h-7" />
+              {onlineFriends > 0 && (
+                <span className="absolute top-1.5 right-3 min-w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
+                  style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)", boxShadow:"0 0 6px rgba(34,197,94,0.7)", border:"1px solid rgba(255,255,255,0.2)" }}>
+                  {onlineFriends}
+                </span>
+              )}
+              <span className="gp-ni-lbl">Social</span>
             </button>
             <button className="gp-ni" onClick={() => onNavigate("missions")}>
               <Target className="w-7 h-7" /><span className="gp-ni-lbl">Missões</span>
