@@ -827,11 +827,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const [coinPop, setCoinPop] = useState(false)
   const coinAnimRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // prevCoinsRef persists via localStorage across navigation/unmounts
-  const prevCoinsRef = useRef<number>(() => {
-    if (typeof window === "undefined") return coins
-    const saved = localStorage.getItem(COIN_LS)
-    return saved !== null ? parseInt(saved) : coins
-  } as unknown as number)
+  const prevCoinsRef = useRef<number>(coins)
 
   // Initialise prevCoinsRef on mount
   useEffect(() => {
