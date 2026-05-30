@@ -46,6 +46,12 @@ function rarityBg(r: string) {
   return "rgba(255,255,255,0.03)"
 }
 
+// Rename legacy element IDs for display
+function displayElement(el: string): string {
+  const map: Record<string,string> = { Darkus:"Darkness", Sombra:"Shadow", Vento:"Ventus" }
+  return map[el] ?? el
+}
+
 // Tab background colours
 const TAB_BG: Record<string,string> = {
   stats:        "radial-gradient(ellipse 80% 60% at 50% 0%,rgba(56,189,248,0.10) 0%,transparent 70%)",
@@ -107,7 +113,7 @@ function WinRing({ rate }: { rate: number }) {
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const { t } = useLanguage()
-  const { playerProfile, updatePlayerProfile, collection, decks, matchHistory, coins, friendPoints, playerId } = useGame()
+  const { playerProfile, updatePlayerProfile, collection, decks, matchHistory, coins, setCoins, friendPoints, playerId } = useGame()
 
   const [isEditing,       setIsEditing]       = useState(false)
   const [editName,        setEditName]         = useState(playerProfile.name)
@@ -119,12 +125,21 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [hoveredCard,     setHoveredCard]      = useState<string|null>(null)
   const [cardTilt,        setCardTilt]         = useState({x:0,y:0})
   const [zoomedCard,      setZoomedCard]       = useState<any|null>(null)
+  const [claimedAchievements, setClaimedAchievements] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setPlayerTitles(getPlayerTitles())
     const h = () => setPlayerTitles(getPlayerTitles())
     window.addEventListener("gpgame_title_unlocked", h)
     return () => window.removeEventListener("gpgame_title_unlocked", h)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const raw = localStorage.getItem("gpgame_claimed_achievements") ?? "[]"
+      setClaimedAchievements(new Set(JSON.parse(raw) as string[]))
+    } catch {}
   }, [])
 
   // Stats
@@ -163,9 +178,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         const active = arr.find((m:any)=>m.isActive)
         if (active) {
           const names:Record<string,string> = {fehnon:"Fehnon Hoskie",morgana:"Morgana Pendragon",calem:"Calem Hidenori"}
-          const icons:Record<string,string> = {fehnon:"/images/icons/fehnon-icon.png",morgana:"/images/icons/morgana-icon.png",calem:"/images/icons/calem-icon.png"}
           setActiveMasterName(names[active.id]||active.id)
-          setActiveMasterIcon(icons[active.id]||null)
+          // Prefer the iconPath stored in master data; fall back to /images/masters/
+          const iconPath: string = active.iconPath || `/images/masters/${active.id}-icon.png`
+          setActiveMasterIcon(iconPath)
         }
       }
     } catch {}
@@ -195,6 +211,23 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const handleSave = () => { updatePlayerProfile({name:editName,title:editTitle}); setIsEditing(false) }
   const handleIcon = (icon:string) => { updatePlayerProfile({avatarUrl:icon}); setShowIconSel(false) }
   const handleCopy = () => { navigator.clipboard.writeText(playerId); setCopied(true); setTimeout(()=>setCopied(false),2000) }
+
+  const handleClaimAchievement = (id: string, reward: string) => {
+    // Parse coin amount from strings like "100 Moedas"
+    const match = reward.match(/(\d[\d.]*)\s*Moedas?/i)
+    const amount = match ? parseInt(match[1].replace(/\./g,""), 10) : 0
+    if (amount > 0) {
+      const newTotal = coins + amount
+      if (typeof setCoins === "function") setCoins(newTotal)
+      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
+    }
+    setClaimedAchievements(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      try { localStorage.setItem("gpgame_claimed_achievements", JSON.stringify(Array.from(next))) } catch {}
+      return next
+    })
+  }
 
   // 3D tilt for cards
   const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -335,13 +368,16 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             {/* Quick-stats row */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:16}}>
               {[
-                {icon:"⚔",val:totalMatches,lbl:"Partidas"},
-                {icon:"🏆",val:wins,lbl:"Vitórias"},
-                {icon:"📚",val:uniqueCards,lbl:"Cartas"},
-                {icon:"🪙",val:coins,lbl:"Moedas"},
+                {icon:"⚔",    val:totalMatches, lbl:"Partidas"},
+                {icon:"🏆",   val:wins,         lbl:"Vitórias"},
+                {icon:"📚",   val:uniqueCards,  lbl:"Cartas"},
+                {icon:"",     val:coins,        lbl:"Moedas", iconImg:"/images/icons/gacha-coin.png"},
               ].map(s=>(
                 <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
-                  <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
+                  {(s as any).iconImg
+                    ? <img src={(s as any).iconImg} alt="" style={{width:22,height:22,objectFit:"contain",marginBottom:4,display:"block",margin:"0 auto 4px"}}/>
+                    : <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
+                  }
                   <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
                   <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.lbl}</div>
                 </div>
@@ -362,7 +398,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee",marginBottom:3}}>{favCard.name}</div>
                   <div style={{display:"flex",gap:6}}>
                     <span style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,background:rarityBg(favCard.rarity),color:favCard.rarity==="LR"?"#ef4444":favCard.rarity==="UR"?"#38bdf8":favCard.rarity==="SR"?"#a855f7":"#94a3b8"}}>{favCard.rarity}</span>
-                    {favCard.element&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,color:ELEMENT_COLORS[favCard.element]||"#94a3b8",background:`${ELEMENT_COLORS[favCard.element]||"#94a3b8"}15`}}>{favCard.element}</span>}
+                    {favCard.element&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,color:ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8",background:`${ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8"}15`}}>{displayElement(favCard.element)}</span>}
                   </div>
                 </div>
               </div>
@@ -376,28 +412,21 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             <div style={{background:"linear-gradient(160deg,#100c08,#0e0b18)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:20,maxWidth:400,width:"100%"}}>
               <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:14}}>Escolher Avatar</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                {(PROFILE_ICONS as Array<{id:string;name:string;image:string}|string>).map((raw, idx) => {
-                  // Normalise: suporta tanto objetos {id,name,image} quanto strings legadas
-                  const icon: {id:string;name:string;image:string} =
-                    typeof raw === "string"
-                      ? { id: `icon-${idx}`, image: raw, name: `Ícone ${idx + 1}` }
-                      : raw
-                  return (
-                    <button key={icon.id} onClick={()=>handleIcon(icon.image)}
-                      style={{
-                        aspectRatio:"1",borderRadius:12,overflow:"hidden",
-                        border:playerProfile.avatarUrl===icon.image?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",
-                        cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)",
-                        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
-                        transition:"all 0.2s",
-                      }}>
-                      <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden"}}>
-                        <Image src={icon.image} alt={icon.name} fill style={{objectFit:"cover"}}/>
-                      </div>
-                      <span style={{fontSize:9,fontWeight:700,color:"#6b7280"}}>{icon.name}</span>
-                    </button>
-                  )
-                })}
+                {PROFILE_ICONS.map((icon: {id:string;name:string;image:string})=>(
+                  <button key={icon.id} onClick={()=>handleIcon(icon.image)}
+                    style={{
+                      aspectRatio:"1",borderRadius:12,overflow:"hidden",
+                      border:playerProfile.avatarUrl===icon.image?"2px solid #e8c96d":"2px solid rgba(255,255,255,0.07)",
+                      cursor:"pointer",padding:0,background:"rgba(255,255,255,0.04)",
+                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
+                      transition:"all 0.2s",
+                    }}>
+                    <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden"}}>
+                      <Image src={icon.image} alt={icon.name} fill style={{objectFit:"cover"}}/>
+                    </div>
+                    <span style={{fontSize:9,fontWeight:700,color:"#6b7280"}}>{icon.name}</span>
+                  </button>
+                ))}
               </div>
               <button onClick={()=>setShowIconSel(false)} style={{marginTop:14,width:"100%",padding:"10px",borderRadius:10,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#6b7280",fontWeight:700,fontSize:13,cursor:"pointer"}}>Fechar</button>
             </div>
@@ -468,7 +497,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚡ Elemento Favorito</div>
                 {favElement?(
                   <>
-                    <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||"#94a3b8",marginBottom:2}}>{favElement[0]}</div>
+                    <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:2}}>{displayElement(favElement[0])}</div>
                     <div style={{fontSize:11,color:"#4b5563"}}>{favElement[1]} cartas</div>
                   </>
                 ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
@@ -485,7 +514,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>💰 Recursos</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:22}}>🪙</span>
+                  <img src="/images/icons/gacha-coin.png" alt="" style={{width:24,height:24,objectFit:"contain",flexShrink:0}}/>
                   <div>
                     <div style={{fontWeight:900,fontSize:16,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
                     <div style={{fontSize:10,color:"#4b5563"}}>Moedas</div>
@@ -546,8 +575,25 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                         </div>
                       )}
                     </div>
-                    <div style={{flexShrink:0,fontSize:10,color:"#e8c96d",fontWeight:700,textAlign:"right"}}>
-                      {a.done&&!a.secret?a.reward:""}
+                    <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,minWidth:90}}>
+                      {a.done&&!a.secret&&!claimedAchievements.has(a.id)&&(
+                        <button
+                          onClick={()=>handleClaimAchievement(a.id,a.reward)}
+                          style={{
+                            background:"linear-gradient(135deg,#7a5c0f,#e8c96d)",
+                            border:"none",borderRadius:7,padding:"5px 12px",cursor:"pointer",
+                            color:"#0c0a06",fontWeight:900,fontSize:11,
+                            boxShadow:"0 2px 10px rgba(232,201,109,0.40)",whiteSpace:"nowrap",
+                          }}>
+                          🎁 Receber
+                        </button>
+                      )}
+                      {a.done&&!a.secret&&claimedAchievements.has(a.id)&&(
+                        <span style={{fontSize:10,color:"#22c55e",fontWeight:700}}>✓ Coletado</span>
+                      )}
+                      <span style={{fontSize:10,color:a.done&&!claimedAchievements.has(a.id)?"#e8c96d":"#374151",fontWeight:700,textAlign:"right"}}>
+                        {!a.secret?a.reward:""}
+                      </span>
                     </div>
                   </div>
                 </div>
