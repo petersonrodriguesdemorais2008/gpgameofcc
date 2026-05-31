@@ -6,30 +6,6 @@ import { useGame, PROFILE_ICONS } from "@/contexts/game-context"
 import { ArrowLeft, Edit3, Check, X, Copy, Shield, Flame, Crown, BookOpen, Star, Trophy, Swords, Zap, Lock } from "lucide-react"
 import Image from "next/image"
 
-// ─── Menu Music Controls ──────────────────────────────────────────────────────
-// Module-level ref so duel-screen (and any other screen) can pause/resume the
-// menu background music without needing a React context.
-let _menuAudio: HTMLAudioElement | null = null
-
-/** Call this from the main-menu component to register the audio element. */
-export function setMenuAudioRef(audio: HTMLAudioElement | null) {
-  _menuAudio = audio
-}
-
-/** Pause the menu background music (e.g. before a duel starts). */
-export function pauseMenuMusic(): void {
-  if (_menuAudio && !_menuAudio.paused) {
-    _menuAudio.pause()
-  }
-}
-
-/** Resume the menu background music (e.g. after a duel ends). */
-export function resumeMenuMusic(): void {
-  if (_menuAudio && _menuAudio.paused) {
-    _menuAudio.play().catch(() => {/* autoplay blocked – ignore */})
-  }
-}
-
 interface ProfileScreenProps { onBack: () => void }
 
 const BASE_PLAYER_TITLES = ["Iniciante","Colecionador","Estrategista","Mestre das Cartas","Guardiao Lendario","Comandante de Elite","Senhor do Gacha","Lenda Viva"]
@@ -47,7 +23,7 @@ function getPlayerTitles(): string[] {
 
 const ELEMENT_COLORS: Record<string,string> = {
   Aquos:"#38bdf8", Fire:"#f87171", Darkus:"#a855f7", Void:"#22d3ee",
-  Ventus:"#4ade80", Lightness:"#fde68a", Subterra:"#fb923c", Haos:"#fde68a",
+  Ventus:"#4ade80", Lightness:"#fde68a", Lighness:"#fde68a", Subterra:"#fb923c", Haos:"#fde68a",
   Darkness:"#a855f7", Shadow:"#8b5cf6",
 }
 
@@ -72,7 +48,7 @@ function rarityBg(r: string) {
 
 // Rename legacy element IDs for display
 function displayElement(el: string): string {
-  const map: Record<string,string> = { Darkus:"Darkness", Sombra:"Shadow", Vento:"Ventus" }
+  const map: Record<string,string> = { Darkus:"Darkness", Sombra:"Shadow", Vento:"Ventus", Haos:"Lighness" }
   return map[el] ?? el
 }
 
@@ -121,12 +97,12 @@ function AchievementParticles({ active }: { active: boolean }) {
 
 // Animated win-rate ring
 function WinRing({ rate }: { rate: number }) {
-  const r=48, stroke=7, circ=2*Math.PI*r
+  const r=35, stroke=6, circ=2*Math.PI*r
   const dash = circ*(rate/100)
   return (
-    <svg width={120} height={120} style={{transform:"rotate(-90deg)"}}>
-      <circle cx={60} cy={60} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
-      <circle cx={60} cy={60} r={r} fill="none"
+    <svg width={90} height={90} style={{transform:"rotate(-90deg)"}}>
+      <circle cx={45} cy={45} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
+      <circle cx={45} cy={45} r={r} fill="none"
         stroke={rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"}
         strokeWidth={stroke} strokeLinecap="round"
         strokeDasharray={`${dash} ${circ}`}
@@ -262,7 +238,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   }
 
   return (
-    <div style={{minHeight:"100vh",background:"#05000f",color:"#f1f0ee",fontFamily:"'Segoe UI',system-ui,sans-serif",position:"relative",overflow:"hidden"}}>
+    <div style={{height:"100vh",background:"#05000f",color:"#f1f0ee",fontFamily:"'Segoe UI',system-ui,sans-serif",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
 
       {/* ── Dynamic tab background ── */}
       <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,transition:"background 0.6s ease"}}>
@@ -285,13 +261,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         </div>
       </div>
 
-      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",padding:"0 0 100px"}}>
+      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",flex:1,overflowY:"auto",paddingBottom:8}}>
 
         {/* ══════════ HERO SECTION ══════════ */}
         <div style={{position:"relative",marginBottom:0}}>
 
           {/* Banner */}
-          <div style={{position:"relative",height:180,overflow:"hidden"}}>
+          <div style={{position:"relative",height:80,overflow:"hidden"}}>
             {/* Animated gradient banner */}
             <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${pc[0]}25,${pc[1]||pc[0]}15,${pc[2]||pc[0]}20)`,backgroundSize:"200% 200%",animation:"bannerShift 6s ease-in-out infinite"}}/>
             <div style={{position:"absolute",inset:0,background:"url('/images/the_great_order_wallpaper.png') center/cover",opacity:0.15,mixBlendMode:"screen"}}/>
@@ -314,7 +290,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           </div>
 
           {/* Avatar + info — overlaps banner */}
-          <div style={{position:"relative",marginTop:-70,padding:"0 20px 0"}}>
+          <div style={{position:"relative",marginTop:-44,padding:"0 16px 0"}}>
             <div style={{display:"flex",alignItems:"flex-end",gap:20}}>
 
               {/* Avatar with holographic ring */}
@@ -325,7 +301,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   animation:"rotateSpin 3s linear infinite",
                   filter:`blur(2px) drop-shadow(0 0 12px ${pc[0]})`,
                 }}/>
-                <div style={{position:"relative",width:96,height:96,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
+                <div style={{position:"relative",width:72,height:72,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
                   {playerProfile.avatarUrl
                     ? <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
                     : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${pc[0]},${pc[1]||pc[0]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:"#fff"}}>{playerProfile.name.charAt(0).toUpperCase()}</div>
@@ -390,28 +366,28 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             </div>
 
             {/* Quick-stats row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
               {[
                 {icon:"⚔",    val:totalMatches, lbl:"Partidas"},
                 {icon:"🏆",   val:wins,         lbl:"Vitórias"},
                 {icon:"📚",   val:uniqueCards,  lbl:"Cartas"},
                 {icon:"",     val:coins,        lbl:"Moedas", iconImg:"/images/icons/gacha-coin.png"},
               ].map(s=>(
-                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"7px 4px",textAlign:"center"}}>
                   {(s as any).iconImg
-                    ? <img src={(s as any).iconImg} alt="" style={{width:22,height:22,objectFit:"contain",marginBottom:4,display:"block",margin:"0 auto 4px"}}/>
-                    : <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
+                    ? <img src={(s as any).iconImg} alt="" style={{width:18,height:18,objectFit:"contain",display:"block",margin:"0 auto 2px"}}/>
+                    : <div style={{fontSize:13,marginBottom:2}}>{s.icon}</div>
                   }
-                  <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
-                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.lbl}</div>
+                  <div style={{fontWeight:900,fontSize:13,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
+                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.lbl}</div>
                 </div>
               ))}
             </div>
 
             {/* Favourite card signature */}
             {favCard&&(
-              <div style={{marginTop:14,display:"flex",alignItems:"center",gap:14,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:14,padding:"12px 16px"}}>
-                <div style={{position:"relative",width:52,height:72,flexShrink:0,borderRadius:6,overflow:"hidden",boxShadow:rarityGlow(favCard.rarity)}}>
+              <div style={{marginTop:8,display:"flex",alignItems:"center",gap:10,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:12,padding:"8px 12px"}}>
+                <div style={{position:"relative",width:40,height:56,flexShrink:0,borderRadius:5,overflow:"hidden",boxShadow:rarityGlow(favCard.rarity)}}>
                   <Image src={favCard.image||"/placeholder.svg"} alt={favCard.name} fill style={{objectFit:"cover"}}/>
                   {/* Holographic sheen */}
                   <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.18) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
@@ -481,16 +457,16 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
         {/* ══════════ STATS TAB ══════════ */}
         {activeTab==="stats"&&(
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
+          <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:10}}>
 
             {/* Win rate ring + breakdown */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:16,padding:"18px",textAlign:"center",position:"relative"}}>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:14,padding:"12px",textAlign:"center",position:"relative"}}>
                 <div style={{fontSize:10,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Taxa de Vitória</div>
                 <div style={{position:"relative",display:"inline-block"}}>
                   <WinRing rate={winRate}/>
-                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transform:"rotate(90deg)"}}>
-                    <span style={{fontWeight:900,fontSize:22,color:"#f1f0ee"}}>{winRate}%</span>
+                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                    <span style={{fontWeight:900,fontSize:17,color:"#f1f0ee"}}>{winRate}%</span>
                     <span style={{fontSize:9,color:"#4b5563"}}>{wins}V/{totalMatches-wins}D</span>
                   </div>
                 </div>
@@ -501,7 +477,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
                   const pct=uniqueCards>0?Math.min(100,(rarityCount[r]/uniqueCards)*100):0
                   return(
-                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
+                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"5px 10px"}}>
                       <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                         <span style={{fontSize:11,fontWeight:800,color:col}}>{r}</span>
                         <span style={{fontSize:11,color:"#6b7280"}}>{rarityCount[r]}</span>
@@ -517,8 +493,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
             {/* Favourite element + deck */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"14px"}}>
-                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚡ Elemento Favorito</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px"}}>
+                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>⚡ Elemento Favorito</div>
                 {favElement?(
                   <>
                     <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:2}}>{displayElement(favElement[0])}</div>
@@ -526,16 +502,16 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   </>
                 ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
               </div>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"14px"}}>
-                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>🃏 Decks Criados</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px"}}>
+                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>🃏 Decks Criados</div>
                 <div style={{fontWeight:900,fontSize:18,color:"#f1f0ee",marginBottom:2}}>{decks.length}</div>
                 <div style={{fontSize:11,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
               </div>
             </div>
 
             {/* Resources */}
-            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:14,padding:"14px 16px"}}>
-              <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>💰 Recursos</div>
+            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:12,padding:"10px 14px"}}>
+              <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>💰 Recursos</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <img src="/images/icons/gacha-coin.png" alt="" style={{width:24,height:24,objectFit:"contain",flexShrink:0}}/>
