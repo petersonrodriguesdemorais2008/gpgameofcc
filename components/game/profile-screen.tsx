@@ -195,12 +195,14 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   // Favourite card (highest rarity, first found)
   const favCard = collection.find(c=>c.rarity==="LR") || collection.find(c=>c.rarity==="UR") || collection.find(c=>c.rarity==="SR") || collection[0]
 
-  // Win streak (consecutive wins from most recent)
+  // Win streak (consecutive wins from most recent — skip records with missing result)
   const winStreak = (() => {
     let s = 0
     for (let i = matchHistory.length - 1; i >= 0; i--) {
-      if ((matchHistory[i] as any).result === "won") s++
-      else break
+      const r = (matchHistory[i] as any).result
+      if (!r) continue               // skip corrupted/old records without result
+      if (r === "won") s++
+      else break                     // first valid loss resets streak
     }
     return s
   })()
@@ -605,17 +607,26 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚔ Últimas Partidas</div>
                 <div style={{display:"flex",flexDirection:"column",gap:5}}>
                   {recentMatches.map((m:any,i:number)=>{
-                    const won = m.result==="won"
-                    const opp = m.opponent||m.opponentName||"Desconhecido"
-                    const deck = m.deckName||m.deck||""
-                    const date = m.date||m.timestamp ? new Date(m.date||m.timestamp).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) : ""
+                    const won = m.result === "won"
+                    // duel-screen saves: opponent, deckUsed, date, mode, result
+                    const opp  = m.opponent || ""
+                    const deck = m.deckUsed || m.deckName || m.deck || ""
+                    const date = m.date
+                      ? new Date(m.date).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
+                      : m.timestamp
+                        ? new Date(m.timestamp).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
+                        : ""
+                    // Skip records with no valid result to avoid showing false defeats
+                    if (!m.result) return null
                     return(
-                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:6,background:won?"rgba(34,197,94,0.05)":"rgba(239,68,68,0.05)",border:`1px solid ${won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)"}`}}>
-                        <div style={{width:20,height:20,borderRadius:5,flexShrink:0,background:won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>
+                      <div key={m.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:6,background:won?"rgba(34,197,94,0.05)":"rgba(239,68,68,0.05)",border:`1px solid ${won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)"}`}}>
+                        <div style={{width:20,height:20,borderRadius:5,flexShrink:0,background:won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:won?"#4ade80":"#f87171"}}>
                           {won?"✓":"✗"}
                         </div>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:11,fontWeight:700,color:won?"#4ade80":"#f87171"}}>{won?"Vitória":"Derrota"}{opp&&opp!=="Desconhecido"?` vs ${opp}`:""}</div>
+                          <div style={{fontSize:11,fontWeight:700,color:won?"#4ade80":"#f87171"}}>
+                            {won?"Vitória":"Derrota"}{opp?` vs ${opp}`:""}
+                          </div>
                           {deck&&<div style={{fontSize:9,color:"#4b5563",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deck}</div>}
                         </div>
                         {date&&<div style={{fontSize:9,color:"#374151",flexShrink:0}}>{date}</div>}
