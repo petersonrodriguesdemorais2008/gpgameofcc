@@ -97,16 +97,20 @@ function AchievementParticles({ active }: { active: boolean }) {
 
 // Animated win-rate ring
 function WinRing({ rate }: { rate: number }) {
-  const r=35, stroke=6, circ=2*Math.PI*r
+  const r=34, stroke=6, circ=2*Math.PI*r
   const dash = circ*(rate/100)
+  const color = rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"
   return (
-    <svg width={90} height={90} style={{transform:"rotate(-90deg)"}}>
-      <circle cx={45} cy={45} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
-      <circle cx={45} cy={45} r={r} fill="none"
-        stroke={rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"}
+    // SVG NOT rotated — only the progress circle is, via SVG transform.
+    // This keeps the absolutely-positioned text overlay upright.
+    <svg width={84} height={84}>
+      <circle cx={42} cy={42} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
+      <circle cx={42} cy={42} r={r} fill="none"
+        stroke={color}
         strokeWidth={stroke} strokeLinecap="round"
         strokeDasharray={`${dash} ${circ}`}
-        style={{transition:"stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)",filter:`drop-shadow(0 0 6px ${rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"})`}}/>
+        transform="rotate(-90 42 42)"
+        style={{transition:"stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)",filter:`drop-shadow(0 0 6px ${color})`}}/>
     </svg>
   )
 }
@@ -261,13 +265,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         </div>
       </div>
 
-      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",flex:1,overflowY:"auto",paddingBottom:8}}>
+      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
 
         {/* ══════════ HERO SECTION ══════════ */}
-        <div style={{position:"relative",marginBottom:0}}>
+        <div style={{position:"relative",marginBottom:0,flexShrink:0}}>
 
           {/* Banner */}
-          <div style={{position:"relative",height:80,overflow:"hidden"}}>
+          <div style={{position:"relative",height:62,overflow:"hidden"}}>
             {/* Animated gradient banner */}
             <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${pc[0]}25,${pc[1]||pc[0]}15,${pc[2]||pc[0]}20)`,backgroundSize:"200% 200%",animation:"bannerShift 6s ease-in-out infinite"}}/>
             <div style={{position:"absolute",inset:0,background:"url('/images/the_great_order_wallpaper.png') center/cover",opacity:0.15,mixBlendMode:"screen"}}/>
@@ -290,8 +294,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           </div>
 
           {/* Avatar + info — overlaps banner */}
-          <div style={{position:"relative",marginTop:-44,padding:"0 16px 0"}}>
-            <div style={{display:"flex",alignItems:"flex-end",gap:20}}>
+          <div style={{position:"relative",marginTop:-30,padding:"0 12px 0"}}>
+            <div style={{display:"flex",alignItems:"flex-end",gap:12}}>
 
               {/* Avatar with holographic ring */}
               <div style={{position:"relative",flexShrink:0}} onClick={()=>!isEditing&&setShowIconSel(true)}>
@@ -301,7 +305,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   animation:"rotateSpin 3s linear infinite",
                   filter:`blur(2px) drop-shadow(0 0 12px ${pc[0]})`,
                 }}/>
-                <div style={{position:"relative",width:72,height:72,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
+                <div style={{position:"relative",width:60,height:60,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
                   {playerProfile.avatarUrl
                     ? <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
                     : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${pc[0]},${pc[1]||pc[0]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:"#fff"}}>{playerProfile.name.charAt(0).toUpperCase()}</div>
@@ -330,13 +334,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   </div>
                 ) : (
                   <>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-                      <h2 style={{fontWeight:900,fontSize:22,margin:0,background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerProfile.name}</h2>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+                      <h2 style={{fontWeight:900,fontSize:18,margin:0,background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerProfile.name}</h2>
                       <button onClick={()=>setIsEditing(true)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✎</button>
                     </div>
                     {/* Title badge */}
                     {playerProfile.title&&(
-                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`linear-gradient(135deg,${pc[0]}20,${pc[1]||pc[0]}10)`,border:`1px solid ${pc[0]}40`,borderRadius:20,padding:"3px 12px",marginBottom:8}}>
+                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`linear-gradient(135deg,${pc[0]}20,${pc[1]||pc[0]}10)`,border:`1px solid ${pc[0]}40`,borderRadius:20,padding:"2px 10px",marginBottom:4}}>
                         <span style={{fontSize:12,fontWeight:800,color:pc[0]}}>{playerProfile.title}</span>
                       </div>
                     )}
@@ -366,39 +370,38 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             </div>
 
             {/* Quick-stats row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,marginTop:6}}>
               {[
                 {icon:"⚔",    val:totalMatches, lbl:"Partidas"},
                 {icon:"🏆",   val:wins,         lbl:"Vitórias"},
                 {icon:"📚",   val:uniqueCards,  lbl:"Cartas"},
                 {icon:"",     val:coins,        lbl:"Moedas", iconImg:"/images/icons/gacha-coin.png"},
               ].map(s=>(
-                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"7px 4px",textAlign:"center"}}>
+                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"5px 4px",textAlign:"center"}}>
                   {(s as any).iconImg
-                    ? <img src={(s as any).iconImg} alt="" style={{width:18,height:18,objectFit:"contain",display:"block",margin:"0 auto 2px"}}/>
-                    : <div style={{fontSize:13,marginBottom:2}}>{s.icon}</div>
+                    ? <img src={(s as any).iconImg} alt="" style={{width:14,height:14,objectFit:"contain",display:"block",margin:"0 auto 2px"}}/>
+                    : <div style={{fontSize:12,marginBottom:2}}>{s.icon}</div>
                   }
                   <div style={{fontWeight:900,fontSize:13,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
-                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.lbl}</div>
+                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.lbl}</div>
                 </div>
               ))}
             </div>
 
             {/* Favourite card signature */}
             {favCard&&(
-              <div style={{marginTop:8,display:"flex",alignItems:"center",gap:10,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:12,padding:"8px 12px"}}>
-                <div style={{position:"relative",width:40,height:56,flexShrink:0,borderRadius:5,overflow:"hidden",boxShadow:rarityGlow(favCard.rarity)}}>
+              <div style={{marginTop:5,display:"flex",alignItems:"center",gap:8,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:10,padding:"6px 10px"}}>
+                <div style={{position:"relative",width:32,height:44,flexShrink:0,borderRadius:4,overflow:"hidden",boxShadow:rarityGlow(favCard.rarity)}}>
                   <Image src={favCard.image||"/placeholder.svg"} alt={favCard.name} fill style={{objectFit:"cover"}}/>
-                  {/* Holographic sheen */}
                   <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.18) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
                   {favCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
                 </div>
                 <div>
-                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.10em",marginBottom:4}}>🃏 Carta Favorita</div>
-                  <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee",marginBottom:3}}>{favCard.name}</div>
-                  <div style={{display:"flex",gap:6}}>
-                    <span style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,background:rarityBg(favCard.rarity),color:favCard.rarity==="LR"?"#ef4444":favCard.rarity==="UR"?"#38bdf8":favCard.rarity==="SR"?"#a855f7":"#94a3b8"}}>{favCard.rarity}</span>
-                    {favCard.element&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,color:ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8",background:`${ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8"}15`}}>{displayElement(favCard.element)}</span>}
+                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.10em",marginBottom:2}}>🃏 Carta Favorita</div>
+                  <div style={{fontWeight:900,fontSize:13,color:"#f1f0ee",marginBottom:2}}>{favCard.name}</div>
+                  <div style={{display:"flex",gap:5}}>
+                    <span style={{fontSize:8,fontWeight:800,padding:"1px 6px",borderRadius:3,background:rarityBg(favCard.rarity),color:favCard.rarity==="LR"?"#ef4444":favCard.rarity==="UR"?"#38bdf8":favCard.rarity==="SR"?"#a855f7":"#94a3b8"}}>{favCard.rarity}</span>
+                    {favCard.element&&<span style={{fontSize:8,fontWeight:700,padding:"1px 6px",borderRadius:3,color:ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8",background:`${ELEMENT_COLORS[favCard.element]||ELEMENT_COLORS[displayElement(favCard.element)]||"#94a3b8"}15`}}>{displayElement(favCard.element)}</span>}
                   </div>
                 </div>
               </div>
@@ -434,7 +437,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         )}
 
         {/* ══════════ TABS ══════════ */}
-        <div style={{display:"flex",margin:"20px 20px 0",borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
+        <div style={{flexShrink:0,display:"flex",margin:"8px 12px 0",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
           {(["stats","achievements","collection"] as const).map(tab=>{
             const icons={"stats":"📊","achievements":"🏆","collection":"🃏"}
             const labels={"stats":"Estatísticas","achievements":"Conquistas","collection":"Coleção"}
@@ -442,32 +445,35 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             const colors={"stats":"#38bdf8","achievements":"#fbbf24","collection":"#a855f7"}
             return (
               <button key={tab} onClick={()=>setActiveTab(tab)} style={{
-                flex:1,padding:"12px 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                flex:1,padding:"8px 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,
                 background:active?`${colors[tab]}12`:"transparent",
                 borderBottom:`2px solid ${active?colors[tab]:"transparent"}`,
                 border:"none",cursor:"pointer",transition:"all .2s",
                 borderRight:tab!=="collection"?"1px solid rgba(255,255,255,0.05)":"none",
               }}>
-                <span style={{fontSize:16}}>{icons[tab]}</span>
-                <span style={{fontSize:10,fontWeight:700,color:active?colors[tab]:"#4b5563",letterSpacing:"0.04em"}}>{labels[tab]}</span>
+                <span style={{fontSize:14}}>{icons[tab]}</span>
+                <span style={{fontSize:9,fontWeight:700,color:active?colors[tab]:"#4b5563",letterSpacing:"0.04em"}}>{labels[tab]}</span>
               </button>
             )
           })}
         </div>
 
+        {/* ══════════ TAB CONTENT (scrolls independently) ══════════ */}
+        <div style={{flex:1,overflowY:"auto",paddingBottom:8}}>
+
         {/* ══════════ STATS TAB ══════════ */}
         {activeTab==="stats"&&(
-          <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
 
             {/* Win rate ring + breakdown */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:14,padding:"12px",textAlign:"center",position:"relative"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Taxa de Vitória</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:12,padding:"8px",textAlign:"center",position:"relative"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Taxa de Vitória</div>
                 <div style={{position:"relative",display:"inline-block"}}>
                   <WinRing rate={winRate}/>
                   <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                    <span style={{fontWeight:900,fontSize:17,color:"#f1f0ee"}}>{winRate}%</span>
-                    <span style={{fontSize:9,color:"#4b5563"}}>{wins}V/{totalMatches-wins}D</span>
+                    <span style={{fontWeight:900,fontSize:16,color:"#f1f0ee",lineHeight:1}}>{winRate}%</span>
+                    <span style={{fontSize:9,color:"#4b5563",marginTop:2}}>{wins}V/{totalMatches-wins}D</span>
                   </div>
                 </div>
               </div>
@@ -477,10 +483,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
                   const pct=uniqueCards>0?Math.min(100,(rarityCount[r]/uniqueCards)*100):0
                   return(
-                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"5px 10px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                        <span style={{fontSize:11,fontWeight:800,color:col}}>{r}</span>
-                        <span style={{fontSize:11,color:"#6b7280"}}>{rarityCount[r]}</span>
+                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:7,padding:"4px 8px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                        <span style={{fontSize:10,fontWeight:800,color:col}}>{r}</span>
+                        <span style={{fontSize:10,color:"#6b7280"}}>{rarityCount[r]}</span>
                       </div>
                       <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
                         <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:`linear-gradient(90deg,${col}80,${col})`,boxShadow:`0 0 6px ${col}60`,transition:"width .8s ease"}}/>
@@ -492,26 +498,26 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             </div>
 
             {/* Favourite element + deck */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px"}}>
-                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>⚡ Elemento Favorito</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
+                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>⚡ Elemento Favorito</div>
                 {favElement?(
                   <>
-                    <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:2}}>{displayElement(favElement[0])}</div>
-                    <div style={{fontSize:11,color:"#4b5563"}}>{favElement[1]} cartas</div>
+                    <div style={{fontWeight:900,fontSize:15,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:1}}>{displayElement(favElement[0])}</div>
+                    <div style={{fontSize:10,color:"#4b5563"}}>{favElement[1]} cartas</div>
                   </>
                 ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
               </div>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px"}}>
-                <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>🃏 Decks Criados</div>
-                <div style={{fontWeight:900,fontSize:18,color:"#f1f0ee",marginBottom:2}}>{decks.length}</div>
-                <div style={{fontSize:11,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
+                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>🃏 Decks Criados</div>
+                <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:1}}>{decks.length}</div>
+                <div style={{fontSize:10,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
               </div>
             </div>
 
             {/* Resources */}
-            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:12,padding:"10px 14px"}}>
-              <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>💰 Recursos</div>
+            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:10,padding:"8px 12px"}}>
+              <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>💰 Recursos</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <img src="/images/icons/gacha-coin.png" alt="" style={{width:24,height:24,objectFit:"contain",flexShrink:0}}/>
@@ -534,7 +540,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
         {/* ══════════ ACHIEVEMENTS TAB ══════════ */}
         {activeTab==="achievements"&&(
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
               <span style={{fontSize:12,color:"#4b5563"}}>{achievements.filter(a=>a.done).length}/{achievements.length} completas</span>
               <div style={{height:5,flex:1,margin:"0 12px",borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
@@ -545,18 +551,18 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               const ra=RARITY_ACHIEV[a.rarity]
               const pct=a.max>0?(a.progress/a.max)*100:0
               return(
-                <div key={a.id} style={{position:"relative",background:a.done?ra.bg:"rgba(255,255,255,0.02)",border:`1px solid ${a.done?ra.color+"40":"rgba(255,255,255,0.06)"}`,borderRadius:14,padding:"14px 16px",overflow:"hidden",transition:"all .2s"}}>
+                <div key={a.id} style={{position:"relative",background:a.done?ra.bg:"rgba(255,255,255,0.02)",border:`1px solid ${a.done?ra.color+"40":"rgba(255,255,255,0.06)"}`,borderRadius:12,padding:"10px 12px",overflow:"hidden",transition:"all .2s"}}>
                   {/* Particle effect for completed */}
                   {a.done&&<AchievementParticles active={true}/>}
                   {/* Completed glow */}
                   {a.done&&<div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 0% 50%,${ra.color}15,transparent 60%)`,pointerEvents:"none"}}/>}
                   <div style={{position:"relative",display:"flex",alignItems:"center",gap:12}}>
                     <div style={{
-                      width:44,height:44,borderRadius:12,flexShrink:0,
+                      width:38,height:38,borderRadius:10,flexShrink:0,
                       background:a.done?`linear-gradient(135deg,${ra.color}25,${ra.color}10)`:"rgba(255,255,255,0.04)",
                       border:`1px solid ${a.done?ra.color+"50":"rgba(255,255,255,0.07)"}`,
-                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
-                      boxShadow:a.done?`0 0 16px ${ra.color}40`:"none",
+                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,
+                      boxShadow:a.done?`0 0 14px ${ra.color}40`:"none",
                     }}>{a.secret&&!a.done?"🔒":a.icon}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
@@ -604,7 +610,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
         {/* ══════════ COLLECTION TAB ══════════ */}
         {activeTab==="collection"&&(
-          <div style={{padding:"16px 20px"}}>
+          <div style={{padding:"10px 12px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <span style={{fontSize:13,color:"#4b5563"}}>{uniqueCards} cartas únicas</span>
               <div style={{display:"flex",gap:6}}>
@@ -659,7 +665,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               )
             })}
           </div>
-        )}
+        </div>{/* end tab content scroll wrapper */}
       </div>
 
       {/* Card zoom */}
