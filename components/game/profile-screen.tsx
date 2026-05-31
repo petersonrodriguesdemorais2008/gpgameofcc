@@ -665,7 +665,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               )
             })}
           </div>
-        </div>{/* end tab content scroll wrapper */}
+        </div>
       </div>
 
       {/* Card zoom */}
