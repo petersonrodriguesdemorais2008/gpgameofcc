@@ -265,7 +265,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         </div>
       </div>
 
-      <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:"100%",flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      {/* Centering row — prevents margin:auto flex-shrink bug */}
+      <div style={{position:"relative",zIndex:1,flex:1,overflow:"hidden",display:"flex",justifyContent:"center"}}>
+      {/* Width-capped content column */}
+      <div style={{width:"100%",maxWidth:960,display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
         {/* ══════════ HERO SECTION ══════════ */}
         <div style={{position:"relative",marginBottom:0,flexShrink:0}}>
@@ -667,7 +670,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           </div>
         )}
         </div>
-      </div>
+      </div>{/* end width-capped content column */}
+      </div>{/* end centering wrapper */}
 
       {/* Card zoom */}
       {zoomedCard&&(
