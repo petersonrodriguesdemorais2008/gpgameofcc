@@ -265,7 +265,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         </div>
       </div>
 
-      <div style={{position:"relative",zIndex:1,maxWidth:900,margin:"0 auto",flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:"100%",flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
 
         {/* ══════════ HERO SECTION ══════════ */}
         <div style={{position:"relative",marginBottom:0,flexShrink:0}}>
