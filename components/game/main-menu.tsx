@@ -160,34 +160,29 @@ const GP_CSS = `
   animation: gp-play-aura 2s ease-in-out infinite;
 }
 /* ══ ENTRANCE ANIMATION — zoom-out impact, no position shift, no flash ══ */
+/* Pre-mount: keep invisible so zero flicker before animation */
+.gp-pre-mount { opacity: 0 !important; }
+
+/* Smooth zoom-out from 1.14 with elastic overshoot */
 @keyframes gp-enter-scene {
-  0%   { opacity: 0;   transform: scale(1.22); }
-  18%  { opacity: 1;   transform: scale(1.22); }
-  65%  { opacity: 1;   transform: scale(1.004); }
-  82%  { transform: scale(0.9985); }
-  100% { opacity: 1;   transform: scale(1); }
-}
-@keyframes gp-enter-ui {
-  0%   { opacity: 0; }
-  25%  { opacity: 0; }
-  75%  { opacity: 1; }
-  100% { opacity: 1; }
-}
-@keyframes gp-enter-btn {
-  0%   { opacity: 0; transform: scale(0.88); }
-  28%  { opacity: 0; transform: scale(0.88); }
-  72%  { opacity: 1; transform: scale(1.032); }
-  88%  { transform: scale(0.992); }
+  0%   { opacity: 0; transform: scale(1.14); }
+  60%  { opacity: 1; transform: scale(1.003); }
+  80%  { transform: scale(0.999); }
   100% { opacity: 1; transform: scale(1); }
 }
+/* Clean fade-in for UI elements */
+@keyframes gp-enter-ui {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
 
-.gp-anim-bg      { animation: gp-enter-scene 0.82s cubic-bezier(0.16,1,0.3,1) both; }
-.gp-anim-hud     { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-sidebar { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-nav     { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-music   { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-master  { animation: gp-enter-ui    0.82s ease both; }
-.gp-anim-ui-btns { animation: gp-enter-ui    0.82s ease both; }
+.gp-anim-bg      { animation: gp-enter-scene 0.68s cubic-bezier(0.16,1,0.3,1) both; }
+.gp-anim-hud     { animation: gp-enter-ui    0.50s ease both; }
+.gp-anim-sidebar { animation: gp-enter-ui    0.50s ease 0.05s both; }
+.gp-anim-nav     { animation: gp-enter-ui    0.50s ease 0.05s both; }
+.gp-anim-music   { animation: gp-enter-ui    0.50s ease 0.08s both; }
+.gp-anim-master  { animation: gp-enter-ui    0.55s ease 0.06s both; }
+.gp-anim-ui-btns { animation: gp-enter-ui    0.50s ease 0.10s both; }
 
 /* ══ ACHIEVEMENT POP-UP ══ */
 @keyframes gp-achieve-in {
@@ -792,15 +787,12 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const { t } = useLanguage()
   const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends } = useGame()
 
-  // ── Ensure entrance animation fires every time component mounts ──
+  // ── Entrance animation: hidden until mounted, then animate in ──
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    // Double RAF ensures browser has painted once before starting animation
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => setMounted(true))
-      return () => cancelAnimationFrame(raf2)
-    })
-    return () => { cancelAnimationFrame(raf1); setMounted(false) }
+    // Single RAF — elements are already hidden via CSS, no flicker
+    const id = requestAnimationFrame(() => setMounted(true))
+    return () => { cancelAnimationFrame(id); setMounted(false) }
   }, [])
 
   // ── Friends online count (simulate: friends with level > 0 as "online") ──
@@ -1456,7 +1448,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* Cantos decorativos – NENHUM overlay escuro/vignette/scanline */}
 
       {/* ══ BACKGROUND ══ */}
-      <div className={"fixed inset-0 z-0" + (mounted ? " gp-anim-bg" : "")}>
+      <div className={"fixed inset-0 z-0" + (mounted ? " gp-anim-bg" : " gp-pre-mount")}>
         {activeWallpaper?.image ? (
           <div className="absolute inset-0 gp-wbg" style={{
             backgroundImage:`url(${activeWallpaper.image})`,
@@ -1506,7 +1498,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         />
       </button>
 
-      <div className={"fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-2 pb-2 relative" + (mounted ? " gp-anim-hud" : "")}
+      <div className={"fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-2 pb-2 relative" + (mounted ? " gp-anim-hud" : " gp-pre-mount")}
         style={{ background:"transparent" }}>
         {/* ── Esquerda: perfil + master card ── */}
         <div className="flex flex-col gap-2.5">
@@ -1625,7 +1617,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       {/* ══ MUSIC BAR — barra fixa topo, alinhada à esquerda perto do perfil ══ */}
       <button
         onClick={() => setShowMusicPanel(v => !v)}
-        className={"gp-music-bar" + (mounted ? " gp-anim-music" : "")}
+        className={"gp-music-bar" + (mounted ? " gp-anim-music" : " gp-pre-mount")}
         style={{ position:"fixed", zIndex:50, bottom:110, left:20, width:230 }}>
         <div className="gp-disc"><div className="gp-disc-inner" /></div>
         <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
@@ -1689,7 +1681,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ══ MASTER ART — right side, clickable with voice + bubble ══ */}
-      <div className={"gp-master-art-wrap" + (mounted ? " gp-anim-master" : "")} onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
+      <div className={"gp-master-art-wrap" + (mounted ? " gp-anim-master" : " gp-pre-mount")} onClick={handleMasterClick} role="button" aria-label="Falar com Mestre">
 
         {/* Manga speech bubble */}
         {bubble && (
@@ -1717,7 +1709,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       </div>
 
       {/* ══ BOTÕES LATERAIS DIREITOS — com anel lento ══ */}
-      <div className={"fixed z-30 flex flex-col gap-2" + (mounted ? " gp-anim-sidebar" : "")} style={{ top:152, right:4 }}>
+      <div className={"fixed z-30 flex flex-col gap-2" + (mounted ? " gp-anim-sidebar" : " gp-pre-mount")} style={{ top:152, right:4 }}>
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
           { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
@@ -1739,7 +1731,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
       {/* ══ 3 BOTÕES DESTAQUE — lateral esquerda, exatamente como no desenho ══ */}
       {!showPlayMenu && (
-        <div className={"fixed z-20" + (mounted ? " gp-anim-ui-btns" : "")} style={{ left:24, top:200 }}>
+        <div className={"fixed z-20" + (mounted ? " gp-anim-ui-btns" : " gp-pre-mount")} style={{ left:24, top:200 }}>
 
           {/* ── DECK ATIVO — indicador acima do JOGAR ── */}
           {activeDeck && (
@@ -1806,7 +1798,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       )}
 
       {/* ══ BOTTOM NAV — levemente escuro (AMARELO no guia) ══ */}
-      <div className={"fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap" + (mounted ? " gp-anim-nav" : "")}>
+      <div className={"fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap" + (mounted ? " gp-anim-nav" : " gp-pre-mount")}>
         <div className="gp-nav-line" />
 
         {!showPlayMenu ? (
