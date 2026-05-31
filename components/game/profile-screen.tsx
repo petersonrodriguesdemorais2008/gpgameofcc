@@ -195,23 +195,34 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   // Favourite card (highest rarity, first found)
   const favCard = collection.find(c=>c.rarity==="LR") || collection.find(c=>c.rarity==="UR") || collection.find(c=>c.rarity==="SR") || collection[0]
 
-  // Win streak (consecutive wins from most recent — skip records with missing result)
-  const winStreak = (() => {
+  // Win streak — useState+useEffect so React detects new matches even if array ref is mutated
+  const [winStreak, setWinStreak] = useState(0)
+  useEffect(() => {
     let s = 0
     for (let i = matchHistory.length - 1; i >= 0; i--) {
       const r = (matchHistory[i] as any).result
-      if (!r) continue               // skip corrupted/old records without result
+      if (!r) break         // treat missing/corrupt record as non-win (safe break)
       if (r === "won") s++
-      else break                     // first valid loss resets streak
+      else break
     }
-    return s
-  })()
+    setWinStreak(s)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchHistory.length, wins])  // wins changes every new victory → guaranteed re-run
 
-  // XP system: 100 XP per win, 30 per loss → level every 500 XP
-  const totalXP   = wins * 100 + (totalMatches - wins) * 30
-  const xpPerLevel = 500
-  const levelXP   = totalXP % xpPerLevel
-  const xpPct     = Math.round((levelXP / xpPerLevel) * 100)
+  // XP system: 100 XP per win, 30 per loss → level up every 500 XP
+  const xpPerLevel  = 500
+  const totalXP     = wins * 100 + (totalMatches - wins) * 30
+  const currentLevel = Math.max(1, Math.floor(totalXP / xpPerLevel) + 1)
+  const levelXP     = totalXP % xpPerLevel
+  const xpPct       = Math.round((levelXP / xpPerLevel) * 100)
+
+  // Sync computed level back to playerProfile whenever it rises
+  useEffect(() => {
+    if (currentLevel > (playerProfile.level || 1)) {
+      updatePlayerProfile({ level: currentLevel })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLevel])
 
   // Recent matches (last 5, newest first)
   const recentMatches = [...matchHistory].reverse().slice(0, 5)
@@ -406,19 +417,44 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
               {/* Active master pill */}
               {activeMasterName&&(
-                <div style={{flexShrink:0,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"8px 10px",textAlign:"center",minWidth:88}}>
+                <div style={{
+                  flexShrink:0,
+                  background:"linear-gradient(160deg,rgba(232,201,109,0.08),rgba(255,255,255,0.02))",
+                  border:"1px solid rgba(232,201,109,0.25)",
+                  borderRadius:14,padding:"10px 12px",textAlign:"center",minWidth:100,
+                  boxShadow:"0 0 20px rgba(232,201,109,0.08)",
+                }}>
                   {activeMasterIcon&&(
-                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}60`,margin:"0 auto 4px",position:"relative"}}>
-                      <Image src={activeMasterIcon} alt="" width={36} height={36} style={{objectFit:"cover"}}/>
+                    <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",
+                      border:`2px solid rgba(232,201,109,0.5)`,
+                      boxShadow:"0 0 12px rgba(232,201,109,0.3)",
+                      margin:"0 auto 5px",position:"relative"}}>
+                      <Image src={activeMasterIcon} alt="" width={48} height={48} style={{objectFit:"cover"}}/>
                     </div>
                   )}
-                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>Mestre</div>
-                  <div style={{fontSize:11,fontWeight:800,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80,marginBottom:4}}>{activeMasterName.split(" ")[0]}</div>
-                  {/* Bond level + progress */}
-                  <div style={{fontSize:8,color:"#e8c96d",fontWeight:700,marginBottom:3}}>Vínculo Lv.{masterBondLv}</div>
-                  <div style={{height:3,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
-                    <div style={{height:"100%",borderRadius:99,width:`${masterBondPct}%`,background:`linear-gradient(90deg,${pc[0]},${pc[1]||pc[0]})`,transition:"width 1s ease"}}/>
+                  <div style={{fontSize:8,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:1}}>Mestre</div>
+                  <div style={{fontSize:12,fontWeight:900,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90,marginBottom:5}}>
+                    {activeMasterName.split(" ")[0]}
                   </div>
+                  {/* Bond level - gold gradient */}
+                  <div style={{
+                    display:"inline-block",
+                    background:"linear-gradient(90deg,#b7791f,#e8c96d,#b7791f)",
+                    WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",
+                    backgroundClip:"text",
+                    fontSize:10,fontWeight:900,letterSpacing:"0.04em",marginBottom:5,
+                  }}>⚔ Vínculo Lv.{masterBondLv}</div>
+                  {/* Bond progress bar — thick + glowing */}
+                  <div style={{height:6,borderRadius:99,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
+                    <div style={{
+                      height:"100%",borderRadius:99,
+                      width:`${masterBondPct}%`,
+                      background:"linear-gradient(90deg,#b7791f,#e8c96d)",
+                      boxShadow:"0 0 8px rgba(232,201,109,0.6)",
+                      transition:"width 1s ease",
+                    }}/>
+                  </div>
+                  <div style={{fontSize:8,color:"#4b5563",marginTop:3}}>{Math.round(masterBondPct)}% → Lv.{masterBondLv+1}</div>
                 </div>
               )}
             </div>
@@ -445,7 +481,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             {/* XP progress bar */}
             <div style={{marginTop:5,padding:"5px 8px",background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)",borderRadius:8}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                <span style={{fontSize:8,fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.06em"}}>⚡ XP — Lv.{playerProfile.level||1}</span>
+                <span style={{fontSize:8,fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.06em"}}>⚡ XP — Lv.{currentLevel}</span>
                 <span style={{fontSize:8,color:"#6b7280"}}>{levelXP} / {xpPerLevel} XP</span>
               </div>
               <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
