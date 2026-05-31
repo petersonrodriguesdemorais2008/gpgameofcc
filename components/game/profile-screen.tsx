@@ -665,6 +665,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               )
             })}
           </div>
+        )}
         </div>
       </div>
 
