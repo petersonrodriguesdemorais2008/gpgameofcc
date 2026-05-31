@@ -101,16 +101,17 @@ function WinRing({ rate }: { rate: number }) {
   const dash = circ*(rate/100)
   const color = rate>=60?"#4ade80":rate>=40?"#fbbf24":"#f87171"
   return (
-    // SVG NOT rotated — only the progress circle is, via SVG transform.
-    // This keeps the absolutely-positioned text overlay upright.
     <svg width={84} height={84}>
+      {/* Background track */}
       <circle cx={42} cy={42} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke}/>
-      <circle cx={42} cy={42} r={r} fill="none"
-        stroke={color}
-        strokeWidth={stroke} strokeLinecap="round"
-        strokeDasharray={`${dash} ${circ}`}
-        transform="rotate(-90 42 42)"
-        style={{transition:"stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)",filter:`drop-shadow(0 0 6px ${color})`}}/>
+      {/* Empty-state: dashed ring when 0% */}
+      {rate===0&&<circle cx={42} cy={42} r={r} fill="none" stroke="rgba(255,255,255,0.12)"
+        strokeWidth={stroke} strokeDasharray="6 6" transform="rotate(-90 42 42)"/>}
+      {/* Progress arc */}
+      {rate>0&&<circle cx={42} cy={42} r={r} fill="none"
+        stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={`${dash} ${circ}`} transform="rotate(-90 42 42)"
+        style={{transition:"stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)",filter:`drop-shadow(0 0 6px ${color})`}}/>}
     </svg>
   )
 }
@@ -193,6 +194,29 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
   // Favourite card (highest rarity, first found)
   const favCard = collection.find(c=>c.rarity==="LR") || collection.find(c=>c.rarity==="UR") || collection.find(c=>c.rarity==="SR") || collection[0]
+
+  // Win streak (consecutive wins from most recent)
+  const winStreak = (() => {
+    let s = 0
+    for (let i = matchHistory.length - 1; i >= 0; i--) {
+      if ((matchHistory[i] as any).result === "won") s++
+      else break
+    }
+    return s
+  })()
+
+  // XP system: 100 XP per win, 30 per loss → level every 500 XP
+  const totalXP   = wins * 100 + (totalMatches - wins) * 30
+  const xpPerLevel = 500
+  const levelXP   = totalXP % xpPerLevel
+  const xpPct     = Math.round((levelXP / xpPerLevel) * 100)
+
+  // Recent matches (last 5, newest first)
+  const recentMatches = [...matchHistory].reverse().slice(0, 5)
+
+  // Master bond (approximated by total matches until per-master tracking is added)
+  const masterBondPct = Math.min(100, (totalMatches % 20) / 20 * 100)
+  const masterBondLv  = Math.floor(totalMatches / 20) + 1
 
   // Achievements
   const achievements = [
@@ -354,20 +378,45 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                         {copied?"✓ Copiado":"⎘ Copiar"}
                       </button>
                     </div>
+                    {/* Recent achievement chips */}
+                    {achievements.filter(a=>a.done&&!a.secret).slice(0,3).length>0&&(
+                      <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
+                        {achievements.filter(a=>a.done&&!a.secret).slice(0,3).map(a=>{
+                          const ra=RARITY_ACHIEV[a.rarity]
+                          return(
+                            <div key={a.id} title={a.name} style={{display:"inline-flex",alignItems:"center",gap:4,background:ra.bg,border:`1px solid ${ra.color}40`,borderRadius:20,padding:"2px 8px",fontSize:9,color:ra.color,fontWeight:700}}>
+                              <span style={{fontSize:10}}>{a.icon}</span>{a.name.split(" ")[0]}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {/* Streak badge */}
+                    {winStreak>=2&&(
+                      <div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:4,background:"rgba(251,146,60,0.12)",border:"1px solid rgba(251,146,60,0.35)",borderRadius:20,padding:"2px 8px"}}>
+                        <span style={{fontSize:10}}>🔥</span>
+                        <span style={{fontSize:9,fontWeight:800,color:"#fb923c"}}>{winStreak} vitórias seguidas</span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
 
               {/* Active master pill */}
               {activeMasterName&&(
-                <div style={{flexShrink:0,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"8px 12px",textAlign:"center",minWidth:90}}>
+                <div style={{flexShrink:0,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"8px 10px",textAlign:"center",minWidth:88}}>
                   {activeMasterIcon&&(
-                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}60`,margin:"0 auto 4px"}}>
+                    <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}60`,margin:"0 auto 4px",position:"relative"}}>
                       <Image src={activeMasterIcon} alt="" width={36} height={36} style={{objectFit:"cover"}}/>
                     </div>
                   )}
-                  <div style={{fontSize:9,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>Mestre</div>
-                  <div style={{fontSize:11,fontWeight:800,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{activeMasterName.split(" ")[0]}</div>
+                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>Mestre</div>
+                  <div style={{fontSize:11,fontWeight:800,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80,marginBottom:4}}>{activeMasterName.split(" ")[0]}</div>
+                  {/* Bond level + progress */}
+                  <div style={{fontSize:8,color:"#e8c96d",fontWeight:700,marginBottom:3}}>Vínculo Lv.{masterBondLv}</div>
+                  <div style={{height:3,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
+                    <div style={{height:"100%",borderRadius:99,width:`${masterBondPct}%`,background:`linear-gradient(90deg,${pc[0]},${pc[1]||pc[0]})`,transition:"width 1s ease"}}/>
+                  </div>
                 </div>
               )}
             </div>
@@ -389,6 +438,17 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.lbl}</div>
                 </div>
               ))}
+            </div>
+
+            {/* XP progress bar */}
+            <div style={{marginTop:5,padding:"5px 8px",background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)",borderRadius:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                <span style={{fontSize:8,fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.06em"}}>⚡ XP — Lv.{playerProfile.level||1}</span>
+                <span style={{fontSize:8,color:"#6b7280"}}>{levelXP} / {xpPerLevel} XP</span>
+              </div>
+              <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
+                <div style={{height:"100%",borderRadius:99,width:`${xpPct}%`,background:"linear-gradient(90deg,#7c3aed,#a855f7,#c084fc)",boxShadow:"0 0 8px rgba(168,85,247,0.5)",transition:"width 1s ease"}}/>
+              </div>
             </div>
 
             {/* Favourite card signature */}
@@ -538,6 +598,33 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 </div>
               </div>
             </div>
+
+            {/* Recent matches */}
+            {recentMatches.length>0&&(
+              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
+                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚔ Últimas Partidas</div>
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {recentMatches.map((m:any,i:number)=>{
+                    const won = m.result==="won"
+                    const opp = m.opponent||m.opponentName||"Desconhecido"
+                    const deck = m.deckName||m.deck||""
+                    const date = m.date||m.timestamp ? new Date(m.date||m.timestamp).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) : ""
+                    return(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:6,background:won?"rgba(34,197,94,0.05)":"rgba(239,68,68,0.05)",border:`1px solid ${won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)"}`}}>
+                        <div style={{width:20,height:20,borderRadius:5,flexShrink:0,background:won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>
+                          {won?"✓":"✗"}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:11,fontWeight:700,color:won?"#4ade80":"#f87171"}}>{won?"Vitória":"Derrota"}{opp&&opp!=="Desconhecido"?` vs ${opp}`:""}</div>
+                          {deck&&<div style={{fontSize:9,color:"#4b5563",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deck}</div>}
+                        </div>
+                        {date&&<div style={{fontSize:9,color:"#374151",flexShrink:0}}>{date}</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
