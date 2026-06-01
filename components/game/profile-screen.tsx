@@ -305,7 +305,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       {/* Centering row — prevents margin:auto flex-shrink bug */}
       <div style={{position:"relative",zIndex:1,flex:1,overflow:"hidden",display:"flex",justifyContent:"center"}}>
       {/* Width-capped content column */}
-      <div style={{width:"100%",maxWidth:960,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{width:"100%",maxWidth:1400,padding:"0 32px",display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
         {/* ══════════ HERO SECTION ══════════ */}
         <div style={{position:"relative",marginBottom:0,flexShrink:0}}>
@@ -335,7 +335,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
           {/* Avatar + info — overlaps banner */}
           <div style={{position:"relative",marginTop:-30,padding:"0 12px 0"}}>
-            <div style={{display:"flex",alignItems:"flex-end",gap:12}}>
+            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}}>
 
               {/* Avatar with holographic ring */}
               <div style={{position:"relative",flexShrink:0}} onClick={()=>!isEditing&&setShowIconSel(true)}>
@@ -567,7 +567,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
 
             {/* Win rate ring + breakdown */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:12}}>
               <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:12,padding:"8px",textAlign:"center",position:"relative"}}>
                 <div style={{fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Taxa de Vitória</div>
                 <div style={{position:"relative",display:"inline-block"}}>
@@ -598,8 +598,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               </div>
             </div>
 
-            {/* Favourite element + deck */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {/* Favourite element + decks + resources — 3 columns */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+              {/* Element */}
               <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
                 <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>⚡ Elemento Favorito</div>
                 {favElement?(
@@ -609,29 +610,29 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   </>
                 ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
               </div>
+              {/* Decks */}
               <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
                 <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>🃏 Decks Criados</div>
                 <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:1}}>{decks.length}</div>
                 <div style={{fontSize:10,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
               </div>
-            </div>
-
-            {/* Resources */}
-            <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:10,padding:"8px 12px"}}>
-              <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>💰 Recursos</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <img src="/images/icons/gacha-coin.png" alt="" style={{width:24,height:24,objectFit:"contain",flexShrink:0}}/>
-                  <div>
-                    <div style={{fontWeight:900,fontSize:16,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
-                    <div style={{fontSize:10,color:"#4b5563"}}>Moedas</div>
+              {/* Resources */}
+              <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:10,padding:"8px"}}>
+                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>💰 Recursos</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <img src="/images/icons/gacha-coin.png" alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>
+                    <div>
+                      <div style={{fontWeight:900,fontSize:14,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
+                      <div style={{fontSize:9,color:"#4b5563"}}>Moedas</div>
+                    </div>
                   </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:22}}>⭐</span>
-                  <div>
-                    <div style={{fontWeight:900,fontSize:16,color:"#c4b5fd"}}>{friendPoints||0}</div>
-                    <div style={{fontSize:10,color:"#4b5563"}}>Pts Amizade</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:16}}>⭐</span>
+                    <div>
+                      <div style={{fontWeight:900,fontSize:14,color:"#c4b5fd"}}>{friendPoints||0}</div>
+                      <div style={{fontSize:9,color:"#4b5563"}}>Pts Amizade</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -641,7 +642,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             {recentMatches.length>0&&(
               <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
                 <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚔ Últimas Partidas</div>
-                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
                   {recentMatches.map((m:any,i:number)=>{
                     const won = m.result === "won"
                     // duel-screen saves: opponent, deckUsed, date, mode, result
