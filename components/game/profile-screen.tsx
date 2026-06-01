@@ -311,10 +311,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         </div>
       </div>
 
-      {/* Centering row — prevents margin:auto flex-shrink bug */}
-      <div style={{position:"relative",zIndex:1,flex:1,overflow:"hidden",display:"flex",justifyContent:"center"}}>
-      {/* Width-capped content column */}
-      <div style={{width:"100%",maxWidth:1400,padding:"0 32px",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* Centering row — scrollbar at right edge of viewport */}
+      <div style={{position:"relative",zIndex:1,flex:1,overflowY:"auto",overflowX:"hidden",display:"flex",justifyContent:"center"}}>
+      {/* Width-capped content column — auto height so centering wrapper scrolls */}
+      <div style={{width:"100%",maxWidth:1400,padding:"0 32px 24px",display:"flex",flexDirection:"column"}}>
 
         {/* ══════════ HERO SECTION ══════════ */}
         <div style={{position:"relative",marginBottom:0,flexShrink:0}}>
@@ -569,7 +569,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         </div>
 
         {/* ══════════ TAB CONTENT (scrolls independently) ══════════ */}
-        <div style={{flex:1,overflowY:"auto",paddingBottom:8}}>
+        <div style={{paddingBottom:8}}>
 
         {/* ══════════ STATS TAB ══════════ */}
         {activeTab==="stats"&&(
