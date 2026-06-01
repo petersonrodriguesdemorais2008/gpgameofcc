@@ -195,19 +195,28 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   // Favourite card (highest rarity, first found)
   const favCard = collection.find(c=>c.rarity==="LR") || collection.find(c=>c.rarity==="UR") || collection.find(c=>c.rarity==="SR") || collection[0]
 
-  // Win streak — useState+useEffect so React detects new matches even if array ref is mutated
-  const [winStreak, setWinStreak] = useState(0)
-  useEffect(() => {
+  // Win streak — inline (no useState) so it recalculates every render.
+  // Sort by date DESC so the result is correct regardless of how the context
+  // stores the array (newest-first or oldest-first, mutated or replaced).
+  const winStreak = (() => {
+    const sorted = [...matchHistory]
+      .filter((m: any) => !!m.result)
+      .sort((a: any, b: any) => {
+        const ta = a.date
+          ? new Date(a.date).getTime()
+          : a.id ? parseInt((a.id as string).replace("match-", ""), 10) : 0
+        const tb = b.date
+          ? new Date(b.date).getTime()
+          : b.id ? parseInt((b.id as string).replace("match-", ""), 10) : 0
+        return tb - ta  // newest first
+      })
     let s = 0
-    for (let i = matchHistory.length - 1; i >= 0; i--) {
-      const r = (matchHistory[i] as any).result
-      if (!r) break         // treat missing/corrupt record as non-win (safe break)
-      if (r === "won") s++
+    for (const m of sorted) {
+      if (m.result === "won") s++
       else break
     }
-    setWinStreak(s)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchHistory.length, wins])  // wins changes every new victory → guaranteed re-run
+    return s
+  })()
 
   // XP system: 100 XP per win, 30 per loss → level up every 500 XP
   const xpPerLevel  = 500
