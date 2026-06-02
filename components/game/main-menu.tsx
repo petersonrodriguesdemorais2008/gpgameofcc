@@ -159,6 +159,58 @@ const GP_CSS = `
   flex-shrink: 0;
   animation: gp-play-aura 2s ease-in-out infinite;
 }
+/* ══ EVENT BANNER CAROUSEL ══ */
+@keyframes gp-banner-fade-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes gp-banner-fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.97); }
+}
+@keyframes gp-banner-shine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.gp-banner-wrap {
+  position: fixed; z-index: 48;
+  left: 175px; top: 115px;
+  width: 320px; height: 100px;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 0 1.5px rgba(255,255,255,0.12);
+  cursor: pointer;
+}
+.gp-banner-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; border-radius: 14px;
+}
+.gp-banner-img.entering { animation: gp-banner-fade-in 0.42s cubic-bezier(0.22,1,0.36,1) both; }
+.gp-banner-img.leaving  { animation: gp-banner-fade-out 0.32s ease-in both; }
+/* Animated shimmer on top */
+.gp-banner-wrap::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+  background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.10) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: gp-banner-shine 3.5s linear infinite;
+  z-index: 2;
+}
+/* Dot indicators */
+.gp-banner-dots {
+  position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 5px; z-index: 3;
+}
+.gp-banner-dot {
+  width: 6px; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.35);
+  transition: all 0.3s ease;
+}
+.gp-banner-dot.active {
+  width: 16px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 0 6px rgba(255,255,255,0.5);
+}
+
 /* ══ ENTRANCE ANIMATION — zoom-out impact, no position shift, no flash ══ */
 /* Pre-mount: keep invisible so zero flicker before animation */
 .gp-pre-mount { opacity: 0 !important; }
@@ -794,6 +846,31 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     const id = requestAnimationFrame(() => setMounted(true))
     return () => { cancelAnimationFrame(id); setMounted(false) }
   }, [])
+
+  // ── Event banner carousel ──
+  const BANNERS = [
+    { src: "/images/banners/fsg-anuncio.png",      action: () => onNavigate("gacha") },
+    { src: "/images/banners/banner-jogueagora.png", action: () => setShowPlayMenu(true) },
+  ]
+  const [bannerIdx,   setBannerIdx]   = useState(0)
+  const [bannerPhase, setBannerPhase] = useState<"entering"|"showing"|"leaving">("entering")
+  const bannerTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    // Auto-rotate every 5s
+    bannerTimer.current = setInterval(() => {
+      setBannerPhase("leaving")
+      setTimeout(() => {
+        setBannerIdx(i => (i + 1) % BANNERS.length)
+        setBannerPhase("entering")
+        setTimeout(() => setBannerPhase("showing"), 420)
+      }, 340)
+    }, 5000)
+    return () => { if (bannerTimer.current) clearInterval(bannerTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleBannerClick = () => { BANNERS[bannerIdx].action() }
 
   // ── Friends online count (simulate: friends with level > 0 as "online") ──
   const onlineFriends = friends?.filter((f: any) => f.isOnline || (f.affinityPoints ?? 0) > 0).length ?? 0
@@ -1497,6 +1574,32 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           style={{ filter:"drop-shadow(0 0 18px rgba(232,121,249,0.65)) drop-shadow(0 3px 12px rgba(0,0,0,0.6))", transition:"filter .25s" }}
         />
       </button>
+
+      {/* ══ EVENT BANNER CAROUSEL ══ */}
+      <div className={"gp-banner-wrap" + (mounted ? " gp-anim-ui-btns" : " gp-pre-mount")}
+        onClick={handleBannerClick}>
+        <Image
+          key={bannerIdx}
+          src={BANNERS[bannerIdx].src}
+          alt="Event Banner"
+          fill
+          sizes="320px"
+          className={"gp-banner-img " + bannerPhase}
+          style={{ objectFit:"cover" }}
+          priority={bannerIdx === 0}
+        />
+        <div className="gp-banner-dots">
+          {BANNERS.map((_, i) => (
+            <div key={i} className={"gp-banner-dot" + (i === bannerIdx ? " active" : "")}
+              onClick={e => {
+                e.stopPropagation()
+                if (i === bannerIdx) return
+                setBannerPhase("leaving")
+                setTimeout(() => { setBannerIdx(i); setBannerPhase("entering"); setTimeout(() => setBannerPhase("showing"), 420) }, 340)
+              }} />
+          ))}
+        </div>
+      </div>
 
       <div className={"fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-2 pb-2 relative" + (mounted ? " gp-anim-hud" : " gp-pre-mount")}
         style={{ background:"transparent" }}>
