@@ -688,21 +688,32 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 )}
               </div>
 
-              {/* QR Code via Google Charts */}
+              {/* QR Code via qrserver.com (reliable, no auth needed) */}
               <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
-                <div style={{flexShrink:0,background:"#fff",borderRadius:10,padding:6}}>
-                  {/* QR encodes the player stats as text */}
+                <div style={{flexShrink:0,background:"#fff",borderRadius:10,padding:6,width:120,height:120,display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <img
-                    src={`https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl=${encodeURIComponent([
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=2&data=${encodeURIComponent([
                       `GP Card Game — ${playerProfile.name}`,
-                      `Nível ${currentLevel} | ${prestige}`,
-                      `${wins}V/${totalMatches-wins}D | Win rate: ${winRate}%`,
-                      `${uniqueCards} cartas únicas`,
+                      `Lv.${currentLevel} | ${prestige}`,
+                      `${wins}V/${totalMatches-wins}D | ${winRate}% win rate`,
+                      `${uniqueCards} cartas | LR:${rarityCount.LR} UR:${rarityCount.UR}`,
                       `ID: ${playerId}`,
-                    ].join(' | '))}&choe=UTF-8`}
-                    alt="QR Code do perfil"
-                    width={120} height={120}
-                    style={{display:"block",borderRadius:6}}
+                    ].join('\n'))}`}
+                    alt="QR Code"
+                    width={110} height={110}
+                    style={{display:"block",borderRadius:4}}
+                    onError={e => {
+                      const el = e.currentTarget as HTMLImageElement
+                      el.style.display = "none"
+                      const parent = el.parentElement
+                      if (parent && !parent.querySelector(".qr-fallback")) {
+                        const fb = document.createElement("div")
+                        fb.className = "qr-fallback"
+                        fb.style.cssText = "font-size:9px;color:#6b7280;text-align:center;padding:4px;line-height:1.4"
+                        fb.textContent = "QR indisponível\n(sem internet)"
+                        parent.appendChild(fb)
+                      }
+                    }}
                   />
                 </div>
                 <div style={{flex:1}}>
