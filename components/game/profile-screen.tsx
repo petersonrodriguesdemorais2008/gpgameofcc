@@ -123,7 +123,11 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [isEditing,       setIsEditing]       = useState(false)
   const [editName,        setEditName]         = useState(playerProfile.name)
   const [editTitle,       setEditTitle]        = useState(playerProfile.title)
+  const [editBio,         setEditBio]          = useState("")
+  const [bio,             setBio]              = useState("")
   const [showIconSel,     setShowIconSel]      = useState(false)
+  const [showShare,       setShowShare]        = useState(false)
+  const [shareCopied,     setShareCopied]      = useState(false)
   const [activeTab,       setActiveTab]        = useState<"stats"|"achievements"|"collection">("stats")
   const [copied,          setCopied]           = useState(false)
   const [playerTitles,    setPlayerTitles]     = useState<string[]>(BASE_PLAYER_TITLES)
@@ -145,6 +149,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       const raw = localStorage.getItem("gpgame_claimed_achievements") ?? "[]"
       setClaimedAchievements(new Set(JSON.parse(raw) as string[]))
     } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const saved = localStorage.getItem("gpgame_profile_bio") ?? ""
+    setBio(saved)
+    setEditBio(saved)
   }, [])
 
   // Stats
@@ -258,9 +269,31 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     common:   { color:"#64748b", label:"Comum",    bg:"rgba(255,255,255,0.05)" },
   }
 
-  const handleSave = () => { updatePlayerProfile({name:editName,title:editTitle}); setIsEditing(false) }
+  const handleSave = () => {
+    updatePlayerProfile({name:editName,title:editTitle})
+    const trimmed = editBio.slice(0,80)
+    setBio(trimmed)
+    try { localStorage.setItem("gpgame_profile_bio", trimmed) } catch {}
+    setIsEditing(false)
+  }
   const handleIcon = (icon:string) => { updatePlayerProfile({avatarUrl:icon}); setShowIconSel(false) }
   const handleCopy = () => { navigator.clipboard.writeText(playerId); setCopied(true); setTimeout(()=>setCopied(false),2000) }
+
+  const handleCopyStats = () => {
+    const txt = [
+      `🎮 ${playerProfile.name} — GP Card Game`,
+      `🏆 Nível ${currentLevel} | ${prestige.charAt(0).toUpperCase()+prestige.slice(1)}`,
+      `⚔ ${wins}V / ${totalMatches-wins}D (${winRate}% win rate)`,
+      `📚 ${uniqueCards} cartas únicas | LR: ${rarityCount.LR} | UR: ${rarityCount.UR}`,
+      `💰 ${coins.toLocaleString()} moedas`,
+      favElement?`⚡ Elemento favorito: ${displayElement(favElement[0])}`:"",
+      winStreak>=2?`🔥 Streak: ${winStreak} vitórias seguidas`:"",
+      `🆔 ID: ${playerId}`,
+    ].filter(Boolean).join("\n")
+    navigator.clipboard.writeText(txt)
+    setShareCopied(true)
+    setTimeout(()=>setShareCopied(false), 2500)
+  }
 
   const handleClaimAchievement = (id: string, reward: string) => {
     // Parse coin amount from strings like "100 Moedas"
@@ -304,6 +337,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           <ArrowLeft size={18}/>
         </button>
         <span style={{fontWeight:900,fontSize:18,background:"linear-gradient(135deg,#f1f0ee,#c4b5fd)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"0.04em"}}>PERFIL</span>
+        {/* Share button */}
+        <button onClick={()=>setShowShare(true)} style={{marginLeft:8,background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.30)",borderRadius:10,padding:"6px 12px",cursor:"pointer",color:"#a78bfa",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:6}}>
+          🌐 Compartilhar
+        </button>
         {/* Online status */}
         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",background:"rgba(34,197,94,0.10)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:20,padding:"4px 12px"}}>
           <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",animation:"onlinePulse 2s ease-in-out infinite"}}/>
@@ -376,6 +413,17 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       style={{background:"rgba(10,5,30,0.95)",border:"1px solid rgba(139,92,246,0.30)",borderRadius:8,padding:"6px 10px",color:"#c4b5fd",fontSize:12}}>
                       {playerTitles.map(tt=><option key={tt} value={tt}>{tt}</option>)}
                     </select>
+                    {/* Bio field */}
+                    <div style={{position:"relative"}}>
+                      <textarea
+                        value={editBio}
+                        onChange={e=>setEditBio(e.target.value.slice(0,80))}
+                        placeholder="Bio (máx. 80 caracteres)…"
+                        rows={2}
+                        style={{width:"100%",boxSizing:"border-box",padding:"7px 10px",borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.30)",color:"#c4b5fd",fontSize:12,outline:"none",resize:"none",fontFamily:"inherit"}}
+                      />
+                      <span style={{position:"absolute",bottom:6,right:8,fontSize:9,color:editBio.length>=75?"#f87171":"#374151"}}>{editBio.length}/80</span>
+                    </div>
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={handleSave} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#065f46,#059669)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}}>✓ Salvar</button>
                       <button onClick={()=>setIsEditing(false)} style={{flex:1,padding:"7px",borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.10)",color:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>✕</button>
@@ -392,6 +440,12 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`linear-gradient(135deg,${pc[0]}20,${pc[1]||pc[0]}10)`,border:`1px solid ${pc[0]}40`,borderRadius:20,padding:"2px 10px",marginBottom:4}}>
                         <span style={{fontSize:12,fontWeight:800,color:pc[0]}}>{playerProfile.title}</span>
                       </div>
+                    )}
+                    {/* Bio */}
+                    {bio?(
+                      <div style={{fontSize:12,color:"#94a3b8",fontStyle:"italic",marginBottom:4,maxWidth:380,lineHeight:1.4}}>"{bio}"</div>
+                    ):(
+                      <button onClick={()=>setIsEditing(true)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontSize:11,color:"#374151",fontStyle:"italic",marginBottom:4}}>+ Adicionar bio…</button>
                     )}
                     {/* ID row */}
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -518,6 +572,174 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             )}
           </div>
         </div>
+
+        {/* ═══ SHARE MODAL ═══ */}
+        {showShare&&(
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.88)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"linear-gradient(160deg,#100c08,#0a0618)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:22,padding:24,maxWidth:400,width:"100%",boxShadow:"0 0 60px rgba(139,92,246,0.15)"}}>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+                <div style={{fontWeight:900,fontSize:17,color:"#f1f0ee"}}>🌐 Compartilhar Perfil</div>
+                <button onClick={()=>setShowShare(false)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#6b7280",fontSize:14}}>✕</button>
+              </div>
+
+              {/* Profile card preview */}
+              <div style={{background:"linear-gradient(135deg,rgba(139,92,246,0.10),rgba(232,201,109,0.05))",border:"1px solid rgba(139,92,246,0.20)",borderRadius:14,padding:16,marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                  {playerProfile.avatarUrl&&(
+                    <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}`,flexShrink:0,position:"relative"}}>
+                      <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
+                    </div>
+                  )}
+                  <div>
+                    <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{playerProfile.name}</div>
+                    {playerProfile.title&&<div style={{fontSize:11,color:pc[0],fontWeight:700}}>{playerProfile.title}</div>}
+                    {bio&&<div style={{fontSize:11,color:"#94a3b8",fontStyle:"italic",marginTop:2}}>"{bio}"</div>}
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+                  {[
+                    {l:"Nível",v:`Lv.${currentLevel}`},
+                    {l:"Vitórias",v:String(wins)},
+                    {l:"Cartas",v:String(uniqueCards)},
+                    {l:"Win%",v:`${winRate}%`},
+                  ].map(s=>(
+                    <div key={s.l} style={{textAlign:"center",background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"5px 4px"}}>
+                      <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee"}}>{s.v}</div>
+                      <div style={{fontSize:8,color:"#4b5563"}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* QR Code via Google Charts (no external npm needed) */}
+                <div style={{display:"flex",justifyContent:"center",padding:"8px 0"}}>
+                  <div style={{background:"#fff",borderRadius:8,padding:6}}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`GP Card Game\n${playerProfile.name} | Lv.${currentLevel}\n${wins}V ${totalMatches-wins}D (${winRate}%)\n${uniqueCards} cartas únicas\nID: ${playerId}`)}`}
+                      alt="QR Code do perfil"
+                      width={100} height={100}
+                    />
+                  </div>
+                </div>
+                <div style={{textAlign:"center",fontSize:9,color:"#374151",marginTop:4}}>Escaneie para ver os stats</div>
+              </div>
+
+              {/* Copy stats button */}
+              <button
+                onClick={handleCopyStats}
+                style={{
+                  width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",fontWeight:800,fontSize:13,
+                  background:shareCopied?"linear-gradient(135deg,#065f46,#059669)":"linear-gradient(135deg,#4c1d95,#7c3aed)",
+                  border:"none",color:"#fff",
+                  boxShadow:shareCopied?"0 0 20px rgba(5,150,105,0.4)":"0 0 20px rgba(124,58,237,0.4)",
+                  transition:"all 0.3s",
+                }}
+              >
+                {shareCopied?"✓ Stats copiados!":"📋 Copiar stats como texto"}
+              </button>
+              <div style={{fontSize:10,color:"#374151",textAlign:"center",marginTop:8}}>
+                Cole no Discord, WhatsApp ou onde quiser
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════ SHARE MODAL ══════════ */}
+        {showShare&&(
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.88)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"linear-gradient(160deg,#0f0b1a,#0a0510)",border:"1px solid rgba(139,92,246,0.25)",borderRadius:20,padding:24,maxWidth:420,width:"100%",boxShadow:"0 0 40px rgba(139,92,246,0.15)"}}>
+              {/* Title */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>🌐 Compartilhar Perfil</div>
+                <button onClick={()=>setShowShare(false)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✕</button>
+              </div>
+
+              {/* Profile card preview */}
+              <div style={{background:"linear-gradient(135deg,rgba(139,92,246,0.08),rgba(232,201,109,0.04))",border:`1px solid ${pc[0]}30`,borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                  {playerProfile.avatarUrl&&(
+                    <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}60`,flexShrink:0,position:"relative"}}>
+                      <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
+                    </div>
+                  )}
+                  <div>
+                    <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{playerProfile.name}</div>
+                    {playerProfile.title&&<div style={{fontSize:11,color:pc[0],fontWeight:700}}>{playerProfile.title}</div>}
+                    {bio&&<div style={{fontSize:11,color:"#6b7280",fontStyle:"italic",marginTop:2}}>"{bio}"</div>}
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+                  {[
+                    {v:`Lv.${currentLevel}`, l:"Nível"},
+                    {v:`${winRate}%`, l:"Win rate"},
+                    {v:String(wins), l:"Vitórias"},
+                    {v:String(uniqueCards), l:"Cartas"},
+                  ].map(s=>(
+                    <div key={s.l} style={{textAlign:"center",background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"5px 4px"}}>
+                      <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee"}}>{s.v}</div>
+                      <div style={{fontSize:9,color:"#4b5563"}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+                {winStreak>=2&&(
+                  <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(251,146,60,0.12)",border:"1px solid rgba(251,146,60,0.30)",borderRadius:20,padding:"2px 8px"}}>
+                    <span>🔥</span><span style={{fontSize:10,color:"#fb923c",fontWeight:700}}>{winStreak} vitórias seguidas</span>
+                  </div>
+                )}
+              </div>
+
+              {/* QR Code via Google Charts */}
+              <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
+                <div style={{flexShrink:0,background:"#fff",borderRadius:10,padding:6}}>
+                  {/* QR encodes the player stats as text */}
+                  <img
+                    src={`https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl=${encodeURIComponent([
+                      `GP Card Game — ${playerProfile.name}`,
+                      `Nível ${currentLevel} | ${prestige}`,
+                      `${wins}V/${totalMatches-wins}D | Win rate: ${winRate}%`,
+                      `${uniqueCards} cartas únicas`,
+                      `ID: ${playerId}`,
+                    ].join(' | '))}&choe=UTF-8`}
+                    alt="QR Code do perfil"
+                    width={120} height={120}
+                    style={{display:"block",borderRadius:6}}
+                  />
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:"#6b7280",marginBottom:8,lineHeight:1.5}}>
+                    Escaneie o QR Code para ver os seus stats, ou copie o resumo do perfil para compartilhar onde quiser.
+                  </div>
+                  <button
+                    onClick={handleCopyStats}
+                    style={{
+                      width:"100%",padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:800,fontSize:13,
+                      background:shareCopied?"linear-gradient(135deg,#065f46,#059669)":"linear-gradient(135deg,#4c1d95,#7c3aed)",
+                      border:"none",color:"#fff",
+                      boxShadow:shareCopied?"0 0 16px rgba(5,150,105,0.4)":"0 0 16px rgba(124,58,237,0.3)",
+                      transition:"all .3s",
+                    }}>
+                    {shareCopied?"✓ Copiado!":"📋 Copiar Resumo"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats text preview */}
+              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:9,color:"#374151",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Prévia do texto copiado</div>
+                <pre style={{margin:0,fontSize:11,color:"#94a3b8",fontFamily:"monospace",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{[
+                  `🎮 ${playerProfile.name} — GP Card Game`,
+                  `🏆 Nível ${currentLevel} | ${prestige.charAt(0).toUpperCase()+prestige.slice(1)}`,
+                  `⚔ ${wins}V / ${totalMatches-wins}D (${winRate}% win rate)`,
+                  `📚 ${uniqueCards} cartas únicas | LR:${rarityCount.LR} UR:${rarityCount.UR}`,
+                  `💰 ${coins.toLocaleString()} moedas`,
+                  favElement?`⚡ Elemento: ${displayElement(favElement[0])}`:"",
+                  winStreak>=2?`🔥 Streak: ${winStreak} vitórias seguidas`:"",
+                  `🆔 ID: ${playerId}`,
+                ].filter(Boolean).join("\n")}</pre>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Icon selector */}
         {showIconSel&&(
