@@ -95,6 +95,107 @@ function AchievementParticles({ active }: { active: boolean }) {
   return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
 }
 
+// ─── Profile themes ──────────────────────────────────────────────────────────
+const PROFILE_THEMES: Record<string,{label:string;colors:string[];emoji:string}> = {
+  auto:     { label:"Auto (Prestígio)", colors:[],               emoji:"✨" },
+  purple:   { label:"Roxo",             colors:["#7c3aed","#a855f7","#c084fc"],  emoji:"💜" },
+  gold:     { label:"Dourado",          colors:["#b7791f","#e8c96d","#fde68a"],  emoji:"🌟" },
+  red:      { label:"Vermelho",         colors:["#dc2626","#ef4444","#fca5a5"],  emoji:"❤️" },
+  cyan:     { label:"Ciano",            colors:["#0891b2","#38bdf8","#7dd3fc"],  emoji:"💙" },
+  green:    { label:"Verde",            colors:["#059669","#4ade80","#86efac"],  emoji:"💚" },
+  rose:     { label:"Rosa",             colors:["#be185d","#f472b6","#fbcfe8"],  emoji:"🌸" },
+  orange:   { label:"Laranja",          colors:["#c2410c","#fb923c","#fed7aa"],  emoji:"🔥" },
+}
+
+// ─── Performance bar chart ────────────────────────────────────────────────────
+function PerformanceChart({ matches }: { matches: any[] }) {
+  const last10 = [...matches]
+    .filter((m:any) => !!m.result)
+    .sort((a:any,b:any) => {
+      const ta = a.date ? new Date(a.date).getTime() : a.id ? parseInt((a.id as string).replace("match-",""),10) : 0
+      const tb = b.date ? new Date(b.date).getTime() : b.id ? parseInt((b.id as string).replace("match-",""),10) : 0
+      return ta - tb  // oldest first for chart
+    })
+    .slice(-10)
+
+  if (last10.length === 0) return (
+    <div style={{textAlign:"center",color:"#374151",fontSize:12,padding:"20px 0"}}>Nenhuma partida registrada ainda</div>
+  )
+
+  const BAR_W = 28, GAP = 8, H = 80
+  const totalW = last10.length * (BAR_W + GAP) - GAP
+
+  // rolling win rate per match (cumulative)
+  let wins = 0
+  const rates = last10.map((m,i) => { if (m.result==="won") wins++; return Math.round((wins/(i+1))*100) })
+
+  return (
+    <div style={{overflowX:"auto"}}>
+      <svg width={Math.max(totalW,200)} height={H+36} style={{display:"block",margin:"0 auto"}}>
+        {/* Grid lines */}
+        {[0,25,50,75,100].map(pct => {
+          const y = H - (pct/100)*H
+          return <line key={pct} x1={0} y1={y} x2={totalW} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>
+        })}
+
+        {/* Bars */}
+        {last10.map((m,i) => {
+          const won = m.result === "won"
+          const x = i*(BAR_W+GAP)
+          const barH = won ? H * 0.75 : H * 0.35
+          const y = H - barH
+          const col  = won ? "#4ade80" : "#f87171"
+          const glow = won ? "rgba(74,222,128,0.4)" : "rgba(248,113,113,0.4)"
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={BAR_W} height={barH}
+                fill={`url(#barGrad${i})`} rx={4}
+                style={{filter:`drop-shadow(0 0 4px ${glow})`}}/>
+              <defs>
+                <linearGradient id={`barGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={col} stopOpacity={0.9}/>
+                  <stop offset="100%" stopColor={col} stopOpacity={0.3}/>
+                </linearGradient>
+              </defs>
+              {/* W/L label */}
+              <text x={x+BAR_W/2} y={H+14} textAnchor="middle" fontSize={10} fontWeight={800} fill={col}>{won?"V":"D"}</text>
+              {/* Match number */}
+              <text x={x+BAR_W/2} y={H+26} textAnchor="middle" fontSize={8} fill="#374151">{i+1}</text>
+            </g>
+          )
+        })}
+
+        {/* Trend line (rolling win rate) */}
+        {rates.length > 1 && (
+          <polyline
+            points={rates.map((r,i) => {
+              const x = i*(BAR_W+GAP) + BAR_W/2
+              const y = H - (r/100)*H
+              return `${x},${y}`
+            }).join(" ")}
+            fill="none" stroke="#e8c96d" strokeWidth={1.5} strokeDasharray="4 2"
+            opacity={0.6}
+          />
+        )}
+      </svg>
+      <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <div style={{width:10,height:10,borderRadius:2,background:"#4ade80"}}/>
+          <span style={{fontSize:9,color:"#4b5563"}}>Vitória</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <div style={{width:10,height:10,borderRadius:2,background:"#f87171"}}/>
+          <span style={{fontSize:9,color:"#4b5563"}}>Derrota</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <div style={{width:18,height:2,borderRadius:1,background:"#e8c96d",opacity:0.6}}/>
+          <span style={{fontSize:9,color:"#4b5563"}}>Win rate</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Animated win-rate ring
 function WinRing({ rate }: { rate: number }) {
   const r=34, stroke=6, circ=2*Math.PI*r
@@ -128,6 +229,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [showIconSel,     setShowIconSel]      = useState(false)
   const [showShare,       setShowShare]        = useState(false)
   const [shareCopied,     setShareCopied]      = useState(false)
+  const [showThemeSel,    setShowThemeSel]     = useState(false)
+  const [profileTheme,    setProfileTheme]     = useState("auto")
+  const [showcaseIds,     setShowcaseIds]      = useState<(string|null)[]>([null,null,null])
+  const [showShowcasePick,setShowShowcasePick] = useState<number|null>(null)
   const [activeTab,       setActiveTab]        = useState<"stats"|"achievements"|"collection">("stats")
   const [copied,          setCopied]           = useState(false)
   const [playerTitles,    setPlayerTitles]     = useState<string[]>(BASE_PLAYER_TITLES)
@@ -156,6 +261,12 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     const saved = localStorage.getItem("gpgame_profile_bio") ?? ""
     setBio(saved)
     setEditBio(saved)
+    const theme = localStorage.getItem("gpgame_profile_theme") ?? "auto"
+    setProfileTheme(theme)
+    try {
+      const sc = JSON.parse(localStorage.getItem("gpgame_showcase") ?? "[]")
+      if (Array.isArray(sc)) setShowcaseIds([sc[0]??null, sc[1]??null, sc[2]??null])
+    } catch {}
   }, [])
 
   // Stats
@@ -180,7 +291,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     rare:["#a855f7","#8b5cf6","#c084fc"],
     common:["#64748b","#94a3b8"],
   }
-  const pc = PRESTIGE_COLORS[prestige]
+  const pc = profileTheme !== "auto" && PROFILE_THEMES[profileTheme]?.colors.length
+    ? PROFILE_THEMES[profileTheme].colors
+    : PRESTIGE_COLORS[prestige]
 
   // Active master
   const [activeMasterName, setActiveMasterName] = useState<string|null>(null)
@@ -312,7 +425,21 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     })
   }
 
-  // 3D tilt for cards
+  const handleTheme = (t: string) => {
+    setProfileTheme(t)
+    try { localStorage.setItem("gpgame_profile_theme", t) } catch {}
+    setShowThemeSel(false)
+  }
+
+  const handleShowcasePick = (slot: number, cardId: string | null) => {
+    setShowcaseIds(prev => {
+      const next = [...prev]
+      next[slot] = cardId
+      try { localStorage.setItem("gpgame_showcase", JSON.stringify(next)) } catch {}
+      return next
+    })
+    setShowShowcasePick(null)
+  }
   const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientY-rect.top)/rect.height-.5)*14
@@ -340,6 +467,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         {/* Share button */}
         <button onClick={()=>setShowShare(true)} style={{marginLeft:8,background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.30)",borderRadius:10,padding:"6px 12px",cursor:"pointer",color:"#a78bfa",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:6}}>
           🌐 Compartilhar
+        </button>
+        {/* Theme button */}
+        <button onClick={()=>setShowThemeSel(true)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:10,padding:"6px 12px",cursor:"pointer",color:"#94a3b8",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:6}}>
+          {PROFILE_THEMES[profileTheme]?.emoji} Tema
         </button>
         {/* Online status */}
         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",background:"rgba(34,197,94,0.10)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:20,padding:"4px 12px"}}>
@@ -552,6 +683,51 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               </div>
             </div>
 
+            {/* ══ CARD SHOWCASE ══ */}
+            <div style={{marginTop:8,padding:"8px 0"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                <span style={{fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>🃏 Vitrine de Cartas</span>
+                <span style={{fontSize:9,color:"#374151"}}>— clique para escolher</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                {[0,1,2].map(slot => {
+                  const card = showcaseIds[slot] ? collection.find(c=>c.id===showcaseIds[slot]) : null
+                  return (
+                    <div key={slot} onClick={()=>setShowShowcasePick(slot)}
+                      style={{
+                        position:"relative",aspectRatio:"3/4",borderRadius:10,overflow:"hidden",cursor:"pointer",
+                        border: card ? rarityBorder(card.rarity) : "2px dashed rgba(255,255,255,0.10)",
+                        background: card ? rarityBg(card.rarity) : "rgba(255,255,255,0.02)",
+                        transition:"all .2s",
+                        boxShadow: card ? rarityGlow(card.rarity) : "none",
+                      }}>
+                      {card ? (
+                        <>
+                          <Image src={card.image||"/placeholder.svg"} alt={card.name} fill style={{objectFit:"cover"}}/>
+                          {/* Holo sheen */}
+                          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.12) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
+                          {card.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
+                          {/* Bottom label */}
+                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.85))",padding:"16px 6px 5px"}}>
+                            <div style={{fontSize:9,fontWeight:800,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</div>
+                            <div style={{fontSize:8,color: card.rarity==="LR"?"#ef4444":card.rarity==="UR"?"#38bdf8":card.rarity==="SR"?"#a855f7":"#94a3b8"}}>{card.rarity}</div>
+                          </div>
+                          {/* Remove button */}
+                          <button onClick={e=>{e.stopPropagation();handleShowcasePick(slot,null)}}
+                            style={{position:"absolute",top:4,right:4,width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",cursor:"pointer",color:"#f87171",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                        </>
+                      ) : (
+                        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
+                          <span style={{fontSize:22,opacity:.25}}>🃏</span>
+                          <span style={{fontSize:9,color:"#374151"}}>Slot {slot+1}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* Favourite card signature */}
             {favCard&&(
               <div style={{marginTop:5,display:"flex",alignItems:"center",gap:8,background:rarityBg(favCard.rarity),border:rarityBorder(favCard.rarity),borderRadius:10,padding:"6px 10px"}}>
@@ -639,6 +815,75 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               </button>
               <div style={{fontSize:10,color:"#374151",textAlign:"center",marginTop:8}}>
                 Cole no Discord, WhatsApp ou onde quiser
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════ THEME SELECTOR MODAL ══════════ */}
+        {showThemeSel&&(
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.80)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"linear-gradient(160deg,#0f0b1a,#0a0510)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:24,maxWidth:380,width:"100%"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>🎨 Tema do Perfil</div>
+                <button onClick={()=>setShowThemeSel(false)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✕</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {Object.entries(PROFILE_THEMES).map(([key,th])=>(
+                  <button key={key} onClick={()=>handleTheme(key)}
+                    style={{
+                      padding:"10px 12px",borderRadius:12,cursor:"pointer",textAlign:"left",
+                      background: profileTheme===key ? `linear-gradient(135deg,${(th.colors[0]||"#7c3aed")}30,${(th.colors[1]||"#a855f7")}15)` : "rgba(255,255,255,0.03)",
+                      border: profileTheme===key ? `1.5px solid ${th.colors[0]||"#7c3aed"}` : "1px solid rgba(255,255,255,0.07)",
+                      transition:"all .2s",
+                    }}>
+                    <div style={{fontSize:18,marginBottom:4}}>{th.emoji}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:profileTheme===key?(th.colors[0]||"#a855f7"):"#94a3b8"}}>{th.label}</div>
+                    {th.colors.length>0&&(
+                      <div style={{display:"flex",gap:3,marginTop:5}}>
+                        {th.colors.map(c=>(
+                          <div key={c} style={{width:12,height:12,borderRadius:"50%",background:c,boxShadow:`0 0 5px ${c}80`}}/>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════ SHOWCASE CARD PICKER ══════════ */}
+        {showShowcasePick!==null&&(
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"linear-gradient(160deg,#0f0b1a,#0a0510)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:20,padding:20,maxWidth:560,width:"100%",maxHeight:"80vh",display:"flex",flexDirection:"column"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee"}}>🃏 Escolher carta — Slot {showShowcasePick+1}</div>
+                <button onClick={()=>setShowShowcasePick(null)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✕</button>
+              </div>
+              {/* Remove option */}
+              <button onClick={()=>handleShowcasePick(showShowcasePick,null)}
+                style={{marginBottom:10,padding:"7px",borderRadius:8,background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.20)",color:"#f87171",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                🗑 Remover carta deste slot
+              </button>
+              {/* Card grid */}
+              <div style={{overflowY:"auto",flex:1}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+                  {/* Sort by rarity */}
+                  {[...collection].sort((a,b)=>{const o={LR:0,UR:1,SR:2,R:3,C:4};return (o[a.rarity as keyof typeof o]??5)-(o[b.rarity as keyof typeof o]??5)}).map(card=>(
+                    <div key={card.id} onClick={()=>handleShowcasePick(showShowcasePick,card.id)}
+                      style={{
+                        position:"relative",aspectRatio:"3/4",borderRadius:7,overflow:"hidden",cursor:"pointer",
+                        border: showcaseIds.includes(card.id) ? `2px solid #e8c96d` : rarityBorder(card.rarity),
+                        boxShadow: rarityGlow(card.rarity), transition:"all .15s",
+                      }}>
+                      <Image src={card.image||"/placeholder.svg"} alt={card.name} fill style={{objectFit:"cover"}}/>
+                      {showcaseIds.includes(card.id)&&(
+                        <div style={{position:"absolute",inset:0,background:"rgba(232,201,109,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>✓</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -878,6 +1123,12 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Performance chart */}
+            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📊 Gráfico de Desempenho — Últimas 10</div>
+              <PerformanceChart matches={matchHistory}/>
             </div>
 
             {/* Recent matches */}
