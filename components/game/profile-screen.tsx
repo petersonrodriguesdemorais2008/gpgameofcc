@@ -217,6 +217,41 @@ function WinRing({ rate }: { rate: number }) {
   )
 }
 
+// ─── Bio Profanity Filter ─────────────────────────────────────────────────────
+const BIO_BAD_WORDS = [
+  // PT-BR
+  "porra","caralho","cu","cuzão","cuzao","arrombado","pinto","penis","pênis",
+  "rola","xereca","xoxota","viado","viadão","viadao","buceta","puta","putaria",
+  "foder","foda","fodasse","fdp","filhadaputa","filhode","vsf","vai se foder",
+  "merda","bosta","cocô","coco","escroto","escrotão","imbecil","idiota","corno",
+  "safado","safada","vagabundo","vagabunda","prostituta","piranha","punheta",
+  "gozar","gozo","tesão","tesao","sacanagem","tarado","tarada","pervertido",
+  "porra","fudendo","fuder","transar","trepando","trepar","sexo","sexualize",
+  // EN fallback
+  "fuck","shit","ass","bitch","cunt","dick","cock","pussy","nigga","faggot",
+]
+
+// Normalise leetspeak: 4→a, 3→e, 1→i, 0→o, 5→s, @→a, $→s, +→t
+function normaliseLeet(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/4/g,"a").replace(/3/g,"e").replace(/1/g,"i")
+    .replace(/0/g,"o").replace(/5/g,"s").replace(/@/g,"a")
+    .replace(/\$/g,"s").replace(/\+/g,"t").replace(/!/g,"i")
+    .replace(/\*/g,"").replace(/\./g,"").replace(/_/g,"")
+}
+
+function bioHasProfanity(text: string): string | null {
+  const norm = normaliseLeet(text)
+  // also strip spaces for run-together check: "p o r r a"
+  const compact = norm.replace(/\s+/g,"")
+  for (const w of BIO_BAD_WORDS) {
+    const nw = normaliseLeet(w)
+    if (norm.includes(nw) || compact.includes(nw)) return w
+  }
+  return null
+}
+
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const { t } = useLanguage()
   const { playerProfile, updatePlayerProfile, collection, decks, matchHistory, coins, setCoins, friendPoints, playerId } = useGame()
@@ -226,6 +261,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [editTitle,       setEditTitle]        = useState(playerProfile.title)
   const [editBio,         setEditBio]          = useState("")
   const [bio,             setBio]              = useState("")
+  const [bioError,        setBioError]         = useState<string|null>(null)
   const [showIconSel,     setShowIconSel]      = useState(false)
   const [showShare,       setShowShare]        = useState(false)
   const [shareCopied,     setShareCopied]      = useState(false)
@@ -383,9 +419,15 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   }
 
   const handleSave = () => {
-    updatePlayerProfile({name:editName,title:editTitle})
     const trimmed = editBio.slice(0,80)
+    const bad = bioHasProfanity(trimmed)
+    if (bad) {
+      setBioError("Bio contém linguagem inapropriada. Por favor, revise o texto.")
+      return
+    }
+    updatePlayerProfile({name:editName,title:editTitle})
     setBio(trimmed)
+    setBioError(null)
     try { localStorage.setItem("gpgame_profile_bio", trimmed) } catch {}
     setIsEditing(false)
   }
@@ -548,13 +590,25 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                     <div style={{position:"relative"}}>
                       <textarea
                         value={editBio}
-                        onChange={e=>setEditBio(e.target.value.slice(0,80))}
+                        onChange={e=>{ setEditBio(e.target.value.slice(0,80)); setBioError(null) }}
                         placeholder="Bio (máx. 80 caracteres)…"
                         rows={2}
-                        style={{width:"100%",boxSizing:"border-box",padding:"7px 10px",borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.30)",color:"#c4b5fd",fontSize:12,outline:"none",resize:"none",fontFamily:"inherit"}}
+                        style={{
+                          width:"100%",boxSizing:"border-box",padding:"7px 10px",borderRadius:8,
+                          background:"rgba(255,255,255,0.05)",
+                          border:`1px solid ${bioError?"rgba(239,68,68,0.60)":"rgba(139,92,246,0.30)"}`,
+                          color:"#c4b5fd",fontSize:12,outline:"none",resize:"none",fontFamily:"inherit",
+                        }}
                       />
                       <span style={{position:"absolute",bottom:6,right:8,fontSize:9,color:editBio.length>=75?"#f87171":"#374151"}}>{editBio.length}/80</span>
                     </div>
+                    {/* Profanity error */}
+                    {bioError&&(
+                      <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.10)",border:"1px solid rgba(239,68,68,0.30)"}}>
+                        <span style={{fontSize:13}}>🚫</span>
+                        <span style={{fontSize:11,color:"#f87171",fontWeight:600}}>{bioError}</span>
+                      </div>
+                    )}
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={handleSave} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#065f46,#059669)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}}>✓ Salvar</button>
                       <button onClick={()=>setIsEditing(false)} style={{flex:1,padding:"7px",borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.10)",color:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>✕</button>
