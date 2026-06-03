@@ -842,9 +842,10 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   // ── Entrance animation: hidden until mounted, then animate in ──
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    // Single RAF — elements are already hidden via CSS, no flicker
-    const id = requestAnimationFrame(() => setMounted(true))
-    return () => { cancelAnimationFrame(id); setMounted(false) }
+    // setTimeout gives the browser time to load CSS + paint before animating.
+    // RAF alone can fire before stylesheets are applied on first load.
+    const t = setTimeout(() => setMounted(true), 60)
+    return () => { clearTimeout(t); setMounted(false) }
   }, [])
 
   // ── Event banner carousel ──
