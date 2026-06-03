@@ -218,38 +218,87 @@ function WinRing({ rate }: { rate: number }) {
 }
 
 // ─── Bio Profanity Filter ─────────────────────────────────────────────────────
-const BIO_BAD_WORDS = [
-  // PT-BR
-  "porra","caralho","cu","cuzão","cuzao","arrombado","pinto","penis","pênis",
-  "rola","xereca","xoxota","viado","viadão","viadao","buceta","puta","putaria",
-  "foder","foda","fodasse","fdp","filhadaputa","filhode","vsf","vai se foder",
-  "merda","bosta","cocô","coco","escroto","escrotão","imbecil","idiota","corno",
-  "safado","safada","vagabundo","vagabunda","prostituta","piranha","punheta",
-  "gozar","gozo","tesão","tesao","sacanagem","tarado","tarada","pervertido",
-  "porra","fudendo","fuder","transar","trepando","trepar","sexo","sexualize",
-  // EN fallback
-  "fuck","shit","ass","bitch","cunt","dick","cock","pussy","nigga","faggot",
+// Base roots — suffixes (diminutives, augmentatives, etc.) are stripped
+// automatically, so "cuzinho", "fodinha", "pintudão" are all caught.
+const BIO_BAD_ROOTS = [
+  // PT-BR — raízes
+  "porra","caralh","cuzao","cuzão","arrombad","burr",
+  "cu","cú",
+  "pint","penis","pênis","rola","pau",
+  "xoxot","xerec","bucet","pepec",
+  "viado","viadao","viadão",
+  "puta","put","piranha","prostitu",
+  "foder","foda","fud","fuder","fudend",
+  "fdp","filhadaputa","filhode","vsf",
+  "merd","bost","cocô","escrot",
+  "safad","vagabund",
+  "punhet","gozar","gozo","tesão","tesao",
+  "sacanaг","sacanag","tarad","pervertid",
+  "trepand","trepar","sexo oral","anal",
+  "corno","corna","broquel",
+  "imbecil","idiota","retardad",
+  // EN fallback roots
+  "fuck","shit","ass","bitch","cunt","dick","cock",
+  "pussy","nigga","faggot","whore","bastard",
 ]
 
-// Normalise leetspeak: 4→a, 3→e, 1→i, 0→o, 5→s, @→a, $→s, +→t
+// Suffixes to strip before root-matching (PT diminutives/augmentatives/etc.)
+const PT_SUFFIXES = [
+  "zinhozinho","zinhaozinha","zinhao",
+  "zinhaz","zinhao",
+  "zozinho","zozinha",
+  "zinho","zinha","zão","zao","zona",
+  "inho","inha","ões","oes",
+  "udo","uda","udão","udao","udinho","udinha",
+  "ão","ao","ona","ona",
+  "eiro","eira","ista",
+  "ada","ado","ados","adas",
+  "ando","endo","indo",
+  "iss","iss",
+  "s",
+]
+
+// Normalise leetspeak: 4→a, 3→e, 1→i, 0→o, 5→s, @→a, $→s
 function normaliseLeet(s: string): string {
-  return s
-    .toLowerCase()
+  return s.toLowerCase()
     .replace(/4/g,"a").replace(/3/g,"e").replace(/1/g,"i")
     .replace(/0/g,"o").replace(/5/g,"s").replace(/@/g,"a")
     .replace(/\$/g,"s").replace(/\+/g,"t").replace(/!/g,"i")
     .replace(/\*/g,"").replace(/\./g,"").replace(/_/g,"")
+    .replace(/-/g,"").replace(/\s+/g," ").trim()
 }
 
-function bioHasProfanity(text: string): string | null {
-  const norm = normaliseLeet(text)
-  // also strip spaces for run-together check: "p o r r a"
-  const compact = norm.replace(/\s+/g,"")
-  for (const w of BIO_BAD_WORDS) {
-    const nw = normaliseLeet(w)
-    if (norm.includes(nw) || compact.includes(nw)) return w
+// Strip one suffix from the end of a word (longest match first)
+function stripSuffix(word: string): string {
+  for (const sfx of PT_SUFFIXES) {
+    if (word.length > sfx.length + 2 && word.endsWith(sfx)) {
+      return word.slice(0, word.length - sfx.length)
+    }
   }
-  return null
+  return word
+}
+
+// Check word against all roots, with and without suffix stripping
+function matchesRoot(word: string): boolean {
+  const candidates = [word, stripSuffix(word), stripSuffix(stripSuffix(word))]
+  for (const c of candidates) {
+    for (const root of BIO_BAD_ROOTS) {
+      const nr = normaliseLeet(root)
+      if (c === nr || c.startsWith(nr)) return true
+    }
+  }
+  return false
+}
+
+function bioHasProfanity(text: string): boolean {
+  const norm = normaliseLeet(text)
+  // Check the full normalised string for any root
+  for (const root of BIO_BAD_ROOTS) {
+    if (norm.replace(/\s/g,"").includes(normaliseLeet(root))) return true
+  }
+  // Also check each individual word with suffix stripping
+  const words = norm.split(/\s+/)
+  return words.some(matchesRoot)
 }
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
@@ -420,8 +469,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
   const handleSave = () => {
     const trimmed = editBio.slice(0,80)
-    const bad = bioHasProfanity(trimmed)
-    if (bad) {
+    if (bioHasProfanity(trimmed)) {
       setBioError("Bio contém linguagem inapropriada. Por favor, revise o texto.")
       return
     }
