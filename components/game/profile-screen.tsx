@@ -665,8 +665,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 ) : (
                   <>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
-                      <h2 style={{fontWeight:900,fontSize:18,margin:0,background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playerProfile.name}</h2>
-                      <button onClick={()=>setIsEditing(true)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#6b7280",fontSize:13}}>✎</button>
+                      <h2 style={{fontWeight:900,fontSize:18,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:pc[0],minWidth:0}}>
+                        <span style={{background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{playerProfile.name}</span>
+                      </h2>
+                      <button onClick={()=>setIsEditing(true)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#6b7280",fontSize:13,flexShrink:0}}>✎</button>
                     </div>
                     {/* Title badge */}
                     {playerProfile.title&&(
