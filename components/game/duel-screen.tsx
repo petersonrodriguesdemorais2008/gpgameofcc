@@ -10196,8 +10196,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         <div
           className="fixed z-40 flex items-center justify-center"
           style={{
-            bottom: "230px",
-            right: `calc(clamp(140px,17vw,230px) + 42px)`,
+            bottom: "235px",
+            right: `clamp(140px,17vw,230px)`,
             width: "clamp(120px,11vw,158px)",
           }}
         >
