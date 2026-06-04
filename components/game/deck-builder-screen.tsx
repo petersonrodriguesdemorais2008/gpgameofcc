@@ -750,7 +750,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                     title="Clique para remover"
                   >
                     <Image
-                      src={card.image || "/placeholder.svg"}
+                      src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                       alt={card.name}
                       fill
                       sizes="(max-width: 768px) 20vw, 60px"
@@ -908,7 +908,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 transition-all group"
   title="Clique para remover, segure para zoom"
   >
-  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill sizes="60px" className="object-cover pointer-events-none" />
+  <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill sizes="60px" className="object-cover pointer-events-none" />
   <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/60 transition-colors flex items-center justify-center">
   <X className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
   </div>
