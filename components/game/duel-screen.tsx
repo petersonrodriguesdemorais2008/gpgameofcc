@@ -82,6 +82,7 @@ interface DuelLogEntry {
   // Dados extras para popular o DETALHE ao clicar no thumbnail
   cardAbility?: string
   cardAbilityDescription?: string
+  cardAttackDescription?: string
   cardAttack?: string
   cardDp?: number
   cardElement?: string
@@ -3540,7 +3541,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // ── Duel Log ─────────────────────────────────────────────────────────────
   const [duelLog, setDuelLog] = useState<DuelLogEntry[]>([])
   const [showDuelLog, setShowDuelLog] = useState(false)
-  const [logCardDetail, setLogCardDetail] = useState<{image:string;name:string;ability?:string;abilityDescription?:string;dp?:number;element?:string;attack?:string;category?:string}|null>(null)
+  const [logCardDetail, setLogCardDetail] = useState<{image:string;name:string;ability?:string;abilityDescription?:string;attackDescription?:string;dp?:number;element?:string;attack?:string;category?:string}|null>(null)
   const logIdRef = useRef(0)
   const duelLogRef = useRef<HTMLDivElement>(null)
   const turnRef = useRef(turn)
@@ -3551,7 +3552,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const logEvent = useCallback((
     type: DuelLogEntry["type"],
     message: string,
-    card?: { image?: string; name?: string; ability?: string; abilityDescription?: string; attack?: string; dp?: number; element?: string; category?: string; cardType?: string }
+    card?: { image?: string; name?: string; ability?: string; abilityDescription?: string; attackDescription?: string; attack?: string; dp?: number; element?: string; category?: string; cardType?: string }
   ) => {
     const entry: DuelLogEntry = {
       id: ++logIdRef.current,
@@ -3563,6 +3564,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       cardName: card?.name,
       cardAbility: card?.ability,
       cardAbilityDescription: card?.abilityDescription,
+      cardAttackDescription: card?.attackDescription,
       cardAttack: card?.attack,
       cardDp: card?.dp,
       cardElement: card?.element,
@@ -4384,6 +4386,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         name: cardToPlace.name,
         ability: (cardToPlace as any).ability,
         abilityDescription: (cardToPlace as any).abilityDescription,
+        attackDescription: (cardToPlace as any).attackDescription,
         attack: (cardToPlace as any).attack,
         dp: cardToPlace.dp,
         element: (cardToPlace as any).element,
@@ -5116,6 +5119,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       name: cardToPlace.name,
       ability: (cardToPlace as any).ability,
       abilityDescription: (cardToPlace as any).abilityDescription,
+      attackDescription: (cardToPlace as any).attackDescription,
       attack: (cardToPlace as any).attack,
       dp: cardToPlace.dp,
       element: (cardToPlace as any).element,
@@ -5235,6 +5239,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       name: cardToPlace.name,
       ability: (cardToPlace as any).ability,
       abilityDescription: (cardToPlace as any).abilityDescription,
+      attackDescription: (cardToPlace as any).attackDescription,
       attack: (cardToPlace as any).attack,
       dp: cardToPlace.dp,
       element: (cardToPlace as any).element,
@@ -7236,6 +7241,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         name: card.name,
         ability: (card as any).ability,
         abilityDescription: (card as any).abilityDescription,
+        attackDescription: (card as any).attackDescription,
         dp: card.dp,
         element: (card as any).element,
         attack: (card as any).attack,
@@ -7331,7 +7337,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (card && card.type === "scenario" && !newScenarioZone) {
             newScenarioZone = card
             newHand.splice(i, 1)
-            logEvent("play", `Oponente jogou o Cenário ${card.name}`, { image: card.image, name: card.name })
+            logEvent("play", `Oponente jogou o Cenário ${card.name}`, {
+              image: card.image,
+              name: card.name,
+              ability: (card as any).ability,
+              abilityDescription: (card as any).abilityDescription,
+              attackDescription: (card as any).attackDescription,
+              attack: (card as any).attack,
+              dp: card.dp,
+              element: (card as any).element,
+              category: (card as any).category,
+              cardType: card.type,
+            })
 
             // Bot scenario effects
             if (card.ability === "RUÍNAS ABANDONADAS" || card.ability === "ARENA ESCANDINAVA") {
@@ -7416,7 +7433,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }
               newHand.splice(i, 1)
               botNormalSummonUsed = true
-              logEvent("play", `Oponente invocou ${card.name}`, { image: card.image, name: card.name })
+              logEvent("play", `Oponente invocou ${card.name}`, {
+                image: card.image,
+                name: card.name,
+                ability: (card as any).ability,
+                abilityDescription: (card as any).abilityDescription,
+                attackDescription: (card as any).attackDescription,
+                attack: (card as any).attack,
+                dp: card.dp,
+                element: (card as any).element,
+                category: (card as any).category,
+                cardType: card.type,
+              })
             }
           }
         }
@@ -7446,7 +7474,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             if (emptySlot !== -1) {
               newFunctionZone[emptySlot] = { ...card, isFaceDown: false }
               newHand = newHand.filter((_, idx) => idx !== i)
-              logEvent("play", `Oponente jogou ${card.name}`, { image: card.image, name: card.name })
+              logEvent("play", `Oponente jogou ${card.name}`, {
+                image: card.image,
+                name: card.name,
+                ability: (card as any).ability,
+                abilityDescription: (card as any).abilityDescription,
+                attackDescription: (card as any).attackDescription,
+                attack: (card as any).attack,
+                dp: card.dp,
+                element: (card as any).element,
+                category: (card as any).category,
+                cardType: card.type,
+              })
               setTimeout(() => showEffectFeedback(`Bot jogou: ${card.name}!`, "warning"), 300)
             }
           } else if (isTrap) {
@@ -9296,10 +9335,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 )}
                 {/* Ataque — para Unidades de Tropas e cartas com ataque nomeado */}
                 {card.attack && (
-                  <p className="text-amber-400 text-[10px] font-semibold flex items-center gap-1">
-                    <span className="text-amber-500">⚔</span>
-                    {card.attack}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-amber-400 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="text-amber-500">⚔</span>
+                      {card.attack}
+                    </p>
+                    {card.attackDescription && (
+                      <p className="text-slate-400 text-[9px] leading-relaxed pl-3 border-l border-amber-500/30">
+                        {card.attackDescription}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -9339,6 +9385,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     name: entry.cardName || "",
                     ability: entry.cardAbility,
                     abilityDescription: entry.cardAbilityDescription,
+                    attackDescription: entry.cardAttackDescription,
                     attack: entry.cardAttack,
                     dp: entry.cardDp,
                     element: entry.cardElement,
@@ -10302,6 +10349,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           name: card.name,
                           ability: (card as any).ability,
                           abilityDescription: (card as any).abilityDescription,
+                          attackDescription: (card as any).attackDescription,
                           dp: card.dp,
                           element: (card as any).element,
                           attack: (card as any).attack,
