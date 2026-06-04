@@ -682,8 +682,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                     )}
                     {/* ID row */}
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:11,color:"#374151",fontFamily:"monospace"}}>ID: {playerId?.slice(0,12)}...</span>
-                      <button onClick={handleCopy} style={{background:"none",border:"none",cursor:"pointer",color:copied?"#22c55e":"#4b5563",fontSize:11,fontWeight:600,padding:0}}>
+                      <span style={{fontSize:12,color:"#64748b",fontFamily:"monospace"}}>ID: {playerId?.slice(0,12)}...</span>
+                      <button onClick={handleCopy} style={{background:"none",border:"none",cursor:"pointer",color:copied?"#22c55e":"#6b7280",fontSize:12,fontWeight:600,padding:0}}>
                         {copied?"✓ Copiado":"⎘ Copiar"}
                       </button>
                     </div>
@@ -728,7 +728,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       <Image src={activeMasterIcon} alt="" width={48} height={48} style={{objectFit:"cover"}}/>
                     </div>
                   )}
-                  <div style={{fontSize:8,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:1}}>Mestre</div>
+                  <div style={{fontSize:10,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:1}}>Mestre</div>
                   <div style={{fontSize:12,fontWeight:900,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90,marginBottom:5}}>
                     {activeMasterName.split(" ")[0]}
                   </div>
@@ -750,7 +750,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       transition:"width 1s ease",
                     }}/>
                   </div>
-                  <div style={{fontSize:8,color:"#4b5563",marginTop:3}}>{Math.round(masterBondPct)}% → Lv.{masterBondLv+1}</div>
+                  <div style={{fontSize:10,color:"#64748b",marginTop:3}}>{Math.round(masterBondPct)}% → Lv.{masterBondLv+1}</div>
                 </div>
               )}
             </div>
@@ -776,9 +776,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
             {/* XP progress bar */}
             <div style={{marginTop:5,padding:"5px 8px",background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)",borderRadius:8}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                <span style={{fontSize:8,fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.06em"}}>⚡ XP — Lv.{currentLevel}</span>
-                <span style={{fontSize:8,color:"#6b7280"}}>{levelXP} / {xpPerLevel} XP</span>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontSize:11,fontWeight:700,color:"#a78bfa",letterSpacing:"0.04em"}}>⚡ XP — Lv.{currentLevel}</span>
+                <span style={{fontSize:11,color:"#6b7280"}}>{levelXP} / {xpPerLevel} XP</span>
               </div>
               <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
                 <div style={{height:"100%",borderRadius:99,width:`${xpPct}%`,background:"linear-gradient(90deg,#7c3aed,#a855f7,#c084fc)",boxShadow:"0 0 8px rgba(168,85,247,0.5)",transition:"width 1s ease"}}/>
@@ -788,8 +788,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             {/* ══ CARD SHOWCASE ══ */}
             <div style={{marginTop:8,padding:"8px 0"}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                <span style={{fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>🃏 Vitrine de Cartas</span>
-                <span style={{fontSize:9,color:"#374151"}}>— clique para escolher</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.04em"}}>🃏 Vitrine de Cartas</span>
+                <span style={{fontSize:10,color:"#374151"}}>— clique para escolher</span>
               </div>
               {/* Fan / cascade — center card leads, side cards rotated behind */}
               <div style={{display:"flex",justifyContent:"center",alignItems:"flex-end",gap:0,paddingBottom:4}}>
@@ -1155,7 +1155,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 borderRight:tab!=="collection"?"1px solid rgba(255,255,255,0.05)":"none",
               }}>
                 <span style={{fontSize:14}}>{icons[tab]}</span>
-                <span style={{fontSize:9,fontWeight:700,color:active?colors[tab]:"#4b5563",letterSpacing:"0.04em"}}>{labels[tab]}</span>
+                <span style={{fontSize:12,fontWeight:700,color:active?colors[tab]:"#64748b",letterSpacing:"0.02em"}}>{labels[tab]}</span>
               </button>
             )
           })}
@@ -1166,23 +1166,23 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
         {/* ══════════ STATS TAB ══════════ */}
         {activeTab==="stats"&&(
-          <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:10}}>
 
             {/* Win rate ring + breakdown */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:12}}>
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:12,padding:"8px",textAlign:"center",position:"relative"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Taxa de Vitória</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:12,padding:"12px 10px",textAlign:"center",position:"relative"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:6}}>Taxa de Vitória</div>
                 <div style={{position:"relative",display:"inline-block"}}>
                   <WinRing rate={winRate}/>
                   <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                    <span style={{fontWeight:900,fontSize:16,color:"#f1f0ee",lineHeight:1}}>{winRate}%</span>
-                    <span style={{fontSize:9,color:"#64748b",marginTop:2}}>{wins}V/{totalMatches-wins}D</span>
+                    <span style={{fontWeight:900,fontSize:18,color:"#f1f0ee",lineHeight:1}}>{winRate}%</span>
+                    <span style={{fontSize:10,color:"#64748b",marginTop:2}}>{wins}V/{totalMatches-wins}D</span>
                   </div>
                 </div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:0}}>
                 {/* Rarity breakdown — grouped card */}
-                <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",gap:7}}>
+                <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
                 {(["LR","UR","SR","R"] as const).map(r=>{
                   const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
                   const pct=uniqueCards>0?Math.min(100,(rarityCount[r]/uniqueCards)*100):0
@@ -1203,37 +1203,37 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             {/* Favourite element + decks + resources — 3 columns */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
               {/* Element */}
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>⚡ Elemento Favorito</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 11px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:6}}>⚡ Elemento</div>
                 {favElement?(
                   <>
-                    <div style={{fontWeight:900,fontSize:15,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:1}}>{displayElement(favElement[0])}</div>
-                    <div style={{fontSize:10,color:"#6b7280"}}>{favElement[1]} cartas</div>
+                    <div style={{fontWeight:900,fontSize:17,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayElement(favElement[0])}</div>
+                    <div style={{fontSize:12,color:"#6b7280"}}>{favElement[1]} cartas</div>
                   </>
-                ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
+                ):<div style={{color:"#4b5563",fontSize:13}}>Sem dados</div>}
               </div>
               {/* Decks */}
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>🃏 Decks Criados</div>
-                <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:1}}>{decks.length}</div>
-                <div style={{fontSize:10,color:"#6b7280"}}>{decks[0]?.name||"Nenhum deck"}</div>
+              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 11px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:6}}>🃏 Decks</div>
+                <div style={{fontWeight:900,fontSize:17,color:"#f1f0ee",marginBottom:2}}>{decks.length}</div>
+                <div style={{fontSize:12,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{decks[0]?.name||"Nenhum deck"}</div>
               </div>
               {/* Resources */}
-              <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:10,padding:"8px"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>💰 Recursos</div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:12,padding:"12px 11px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8}}>💰 Recursos</div>
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <img src="/images/icons/gacha-coin.png" alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>
                     <div>
-                      <div style={{fontWeight:900,fontSize:14,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
-                      <div style={{fontSize:9,color:"#6b7280"}}>Moedas</div>
+                      <div style={{fontWeight:900,fontSize:15,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
+                      <div style={{fontSize:11,color:"#6b7280"}}>Moedas</div>
                     </div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontSize:16}}>⭐</span>
                     <div>
-                      <div style={{fontWeight:900,fontSize:14,color:"#c4b5fd"}}>{friendPoints||0}</div>
-                      <div style={{fontSize:9,color:"#4b5563"}}>Pts Amizade</div>
+                      <div style={{fontWeight:900,fontSize:15,color:"#c4b5fd"}}>{friendPoints||0}</div>
+                      <div style={{fontSize:11,color:"#6b7280"}}>Pts Amizade</div>
                     </div>
                   </div>
                 </div>
@@ -1241,19 +1241,18 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             </div>
 
             {/* Performance chart */}
-            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📊 Gráfico de Desempenho — Últimas 10</div>
+            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"12px 14px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:10}}>📊 Desempenho — Últimas 10</div>
               <PerformanceChart matches={matchHistory}/>
             </div>
 
             {/* Recent matches */}
             {recentMatches.length>0&&(
-              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚔ Últimas Partidas</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"12px 14px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:10}}>⚔ Últimas Partidas</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {recentMatches.map((m:any,i:number)=>{
                     const won = m.result === "won"
-                    // duel-screen saves: opponent, deckUsed, date, mode, result
                     const opp  = m.opponent || ""
                     const deck = m.deckUsed || m.deckName || m.deck || ""
                     const date = m.date
@@ -1261,20 +1260,19 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       : m.timestamp
                         ? new Date(m.timestamp).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
                         : ""
-                    // Skip records with no valid result to avoid showing false defeats
                     if (!m.result) return null
                     return(
-                      <div key={m.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:6,background:won?"rgba(34,197,94,0.05)":"rgba(239,68,68,0.05)",border:`1px solid ${won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)"}`}}>
-                        <div style={{width:20,height:20,borderRadius:5,flexShrink:0,background:won?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:won?"#4ade80":"#f87171"}}>
+                      <div key={m.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 11px",borderRadius:9,background:won?"rgba(34,197,94,0.06)":"rgba(239,68,68,0.06)",border:`1px solid ${won?"rgba(34,197,94,0.18)":"rgba(239,68,68,0.18)"}`}}>
+                        <div style={{width:26,height:26,borderRadius:6,flexShrink:0,background:won?"rgba(34,197,94,0.18)":"rgba(239,68,68,0.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:won?"#4ade80":"#f87171"}}>
                           {won?"✓":"✗"}
                         </div>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:11,fontWeight:700,color:won?"#4ade80":"#f87171"}}>
+                          <div style={{fontSize:13,fontWeight:700,color:won?"#4ade80":"#f87171"}}>
                             {won?"Vitória":"Derrota"}{opp?` vs ${opp}`:""}
                           </div>
-                          {deck&&<div style={{fontSize:10,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deck}</div>}
+                          {deck&&<div style={{fontSize:11,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deck}</div>}
                         </div>
-                        {date&&<div style={{fontSize:10,fontWeight:600,color:"#94a3b8",flexShrink:0}}>{date}</div>}
+                        {date&&<div style={{fontSize:11,fontWeight:600,color:"#94a3b8",flexShrink:0}}>{date}</div>}
                       </div>
                     )
                   })}
@@ -1288,8 +1286,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         {activeTab==="achievements"&&(
           <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <span style={{fontSize:12,color:"#4b5563"}}>{achievements.filter(a=>a.done).length}/{achievements.length} completas</span>
-              <div style={{height:5,flex:1,margin:"0 12px",borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
+              <span style={{fontSize:13,fontWeight:600,color:"#6b7280"}}>{achievements.filter(a=>a.done).length}/{achievements.length} completas</span>
+              <div style={{height:5,flex:1,margin:"0 12px",borderRadius:99,background:"rgba(255,255,255,0.07)"}}>
                 <div style={{height:"100%",borderRadius:99,width:`${(achievements.filter(a=>a.done).length/achievements.length)*100}%`,background:"linear-gradient(90deg,#7c3aed,#e8c96d)",transition:"width .8s ease"}}/>
               </div>
             </div>
@@ -1297,26 +1295,26 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               const ra=RARITY_ACHIEV[a.rarity]
               const pct=a.max>0?(a.progress/a.max)*100:0
               return(
-                <div key={a.id} style={{position:"relative",background:a.done?ra.bg:"rgba(255,255,255,0.02)",border:`1px solid ${a.done?ra.color+"40":"rgba(255,255,255,0.06)"}`,borderRadius:12,padding:"10px 12px",overflow:"hidden",transition:"all .2s"}}>
+                <div key={a.id} style={{position:"relative",background:a.done?ra.bg:"rgba(255,255,255,0.02)",border:`1px solid ${a.done?ra.color+"40":"rgba(255,255,255,0.06)"}`,borderRadius:12,padding:"12px 14px",overflow:"hidden",transition:"all .2s"}}>
                   {/* Particle effect for completed */}
                   {a.done&&<AchievementParticles active={true}/>}
                   {/* Completed glow */}
                   {a.done&&<div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 0% 50%,${ra.color}15,transparent 60%)`,pointerEvents:"none"}}/>}
                   <div style={{position:"relative",display:"flex",alignItems:"center",gap:12}}>
                     <div style={{
-                      width:38,height:38,borderRadius:10,flexShrink:0,
+                      width:40,height:40,borderRadius:10,flexShrink:0,
                       background:a.done?`linear-gradient(135deg,${ra.color}25,${ra.color}10)`:"rgba(255,255,255,0.04)",
                       border:`1px solid ${a.done?ra.color+"50":"rgba(255,255,255,0.07)"}`,
-                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,
+                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,
                       boxShadow:a.done?`0 0 14px ${ra.color}40`:"none",
                     }}>{a.secret&&!a.done?"🔒":a.icon}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
-                        <span style={{fontWeight:800,fontSize:13,color:a.done?"#f1f0ee":"#6b7280"}}>{a.secret&&!a.done?"???":a.name}</span>
-                        <span style={{fontSize:8,fontWeight:800,padding:"1px 6px",borderRadius:4,color:ra.color,background:ra.bg}}>{ra.label}</span>
-                        {a.done&&<span style={{fontSize:10,color:"#22c55e"}}>✓</span>}
+                        <span style={{fontWeight:800,fontSize:14,color:a.done?"#f1f0ee":"#6b7280"}}>{a.secret&&!a.done?"???":a.name}</span>
+                        <span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:4,color:ra.color,background:ra.bg}}>{ra.label}</span>
+                        {a.done&&<span style={{fontSize:11,color:"#22c55e"}}>✓</span>}
                       </div>
-                      <div style={{fontSize:11,color:"#6b7280",marginBottom:a.max>1?6:0}}>{a.secret&&!a.done?"Complete desafios secretos para descobrir...":a.desc}</div>
+                      <div style={{fontSize:12,color:"#6b7280",marginBottom:a.max>1?7:0}}>{a.secret&&!a.done?"Complete desafios secretos para descobrir...":a.desc}</div>
                       {a.max>1&&!a.secret&&(
                         <div>
                           <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
@@ -1340,9 +1338,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                         </button>
                       )}
                       {a.done&&!a.secret&&claimedAchievements.has(a.id)&&(
-                        <span style={{fontSize:10,color:"#22c55e",fontWeight:700}}>✓ Coletado</span>
+                        <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>✓ Coletado</span>
                       )}
-                      <span style={{fontSize:10,color:a.done&&!claimedAchievements.has(a.id)?"#e8c96d":"#374151",fontWeight:700,textAlign:"right"}}>
+                      <span style={{fontSize:11,color:a.done&&!claimedAchievements.has(a.id)?"#e8c96d":"#6b7280",fontWeight:700,textAlign:"right"}}>
                         {!a.secret?a.reward:""}
                       </span>
                     </div>
@@ -1375,8 +1373,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 <div key={rarity} style={{marginBottom:20}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                     <div style={{height:1,flex:1,background:`linear-gradient(to right,${rc}40,transparent)`}}/>
-                    <span style={{fontSize:11,fontWeight:800,color:rc,textTransform:"uppercase",letterSpacing:"0.10em"}}>{rarity}</span>
-                    <span style={{fontSize:9,color:"#4b5563"}}>{cards.length}</span>
+                    <span style={{fontSize:12,fontWeight:800,color:rc,textTransform:"uppercase",letterSpacing:"0.10em"}}>{rarity}</span>
+                    <span style={{fontSize:11,color:"#6b7280"}}>{cards.length}</span>
                     <div style={{height:1,flex:1,background:`linear-gradient(to left,${rc}40,transparent)`}}/>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
@@ -1405,7 +1403,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       </div>
                     ))}
                   </div>
-                  {cards.length>16&&<div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#4b5563"}}>+{cards.length-16} cartas</div>}
+                  {cards.length>16&&<div style={{textAlign:"center",marginTop:8,fontSize:12,color:"#6b7280"}}>+{cards.length-16} cartas</div>}
                 </div>
               )
             })}
