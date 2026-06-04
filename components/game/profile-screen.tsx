@@ -325,6 +325,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [cardTilt,        setCardTilt]         = useState({x:0,y:0})
   const [zoomedCard,      setZoomedCard]       = useState<any|null>(null)
   const [claimedAchievements, setClaimedAchievements] = useState<Set<string>>(new Set())
+  const [claimToast,          setClaimToast]          = useState<string|null>(null)
+  const [collectionSearch,    setCollectionSearch]     = useState("")
+  const [collectionElemFilter,setCollectionElemFilter] = useState<string|null>(null)
+  const [expandedRarities,    setExpandedRarities]     = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setPlayerTitles(getPlayerTitles())
@@ -506,6 +510,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       const newTotal = coins + amount
       if (typeof setCoins === "function") setCoins(newTotal)
       try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
+      // Toast notification
+      setClaimToast(`+${amount.toLocaleString()} Moedas`)
+      setTimeout(() => setClaimToast(null), 2800)
     }
     setClaimedAchievements(prev => {
       const next = new Set(prev)
@@ -850,77 +857,6 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             )}
           </div>
         </div>
-
-        {/* ═══ SHARE MODAL ═══ */}
-        {showShare&&(
-          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.88)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-            <div style={{background:"linear-gradient(160deg,#100c08,#0a0618)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:22,padding:24,maxWidth:400,width:"100%",boxShadow:"0 0 60px rgba(139,92,246,0.15)"}}>
-              {/* Header */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-                <div style={{fontWeight:900,fontSize:17,color:"#f1f0ee"}}>🌐 Compartilhar Perfil</div>
-                <button onClick={()=>setShowShare(false)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#6b7280",fontSize:14}}>✕</button>
-              </div>
-
-              {/* Profile card preview */}
-              <div style={{background:"linear-gradient(135deg,rgba(139,92,246,0.10),rgba(232,201,109,0.05))",border:"1px solid rgba(139,92,246,0.20)",borderRadius:14,padding:16,marginBottom:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-                  {playerProfile.avatarUrl&&(
-                    <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}`,flexShrink:0,position:"relative"}}>
-                      <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
-                    </div>
-                  )}
-                  <div>
-                    <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{playerProfile.name}</div>
-                    {playerProfile.title&&<div style={{fontSize:11,color:pc[0],fontWeight:700}}>{playerProfile.title}</div>}
-                    {bio&&<div style={{fontSize:11,color:"#94a3b8",fontStyle:"italic",marginTop:2}}>"{bio}"</div>}
-                  </div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
-                  {[
-                    {l:"Nível",v:`Lv.${currentLevel}`},
-                    {l:"Vitórias",v:String(wins)},
-                    {l:"Cartas",v:String(uniqueCards)},
-                    {l:"Win%",v:`${winRate}%`},
-                  ].map(s=>(
-                    <div key={s.l} style={{textAlign:"center",background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"5px 4px"}}>
-                      <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee"}}>{s.v}</div>
-                      <div style={{fontSize:8,color:"#4b5563"}}>{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* QR Code via Google Charts (no external npm needed) */}
-                <div style={{display:"flex",justifyContent:"center",padding:"8px 0"}}>
-                  <div style={{background:"#fff",borderRadius:8,padding:6}}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`GP Card Game\n${playerProfile.name} | Lv.${currentLevel}\n${wins}V ${totalMatches-wins}D (${winRate}%)\n${uniqueCards} cartas únicas\nID: ${playerId}`)}`}
-                      alt="QR Code do perfil"
-                      width={100} height={100}
-                    />
-                  </div>
-                </div>
-                <div style={{textAlign:"center",fontSize:9,color:"#374151",marginTop:4}}>Escaneie para ver os stats</div>
-              </div>
-
-              {/* Copy stats button */}
-              <button
-                onClick={handleCopyStats}
-                style={{
-                  width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",fontWeight:800,fontSize:13,
-                  background:shareCopied?"linear-gradient(135deg,#065f46,#059669)":"linear-gradient(135deg,#4c1d95,#7c3aed)",
-                  border:"none",color:"#fff",
-                  boxShadow:shareCopied?"0 0 20px rgba(5,150,105,0.4)":"0 0 20px rgba(124,58,237,0.4)",
-                  transition:"all 0.3s",
-                }}
-              >
-                {shareCopied?"✓ Stats copiados!":"📋 Copiar stats como texto"}
-              </button>
-              <div style={{fontSize:10,color:"#374151",textAlign:"center",marginTop:8}}>
-                Cole no Discord, WhatsApp ou onde quiser
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ══════════ THEME SELECTOR MODAL ══════════ */}
         {showThemeSel&&(
@@ -1344,7 +1280,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         {/* ══════════ COLLECTION TAB ══════════ */}
         {activeTab==="collection"&&(
           <div style={{padding:"10px 12px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            {/* Header row */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <span style={{fontSize:13,color:"#4b5563"}}>{uniqueCards} cartas únicas</span>
               <div style={{display:"flex",gap:6}}>
                 {(["LR","UR","SR","R"] as const).map(r=>{
@@ -1354,11 +1291,74 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               </div>
             </div>
 
+            {/* ── Search + Element filter bar ── */}
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+              {/* Search input */}
+              <div style={{position:"relative"}}>
+                <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,pointerEvents:"none",opacity:0.4}}>🔍</span>
+                <input
+                  value={collectionSearch}
+                  onChange={e=>setCollectionSearch(e.target.value)}
+                  placeholder="Buscar carta por nome…"
+                  style={{
+                    width:"100%",boxSizing:"border-box",
+                    background:"rgba(255,255,255,0.04)",
+                    border:"1px solid rgba(255,255,255,0.08)",
+                    borderRadius:10,padding:"7px 10px 7px 32px",
+                    color:"#f1f0ee",fontSize:12,outline:"none",fontFamily:"inherit",
+                  }}
+                />
+                {collectionSearch&&(
+                  <button onClick={()=>setCollectionSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#4b5563",fontSize:14,lineHeight:1}}>✕</button>
+                )}
+              </div>
+              {/* Element filter chips */}
+              {(()=>{
+                const usedElements = [...new Set(collection.filter(c=>c.element).map(c=>displayElement(c.element!)))]
+                if (usedElements.length===0) return null
+                return (
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                    <span style={{fontSize:9,color:"#374151",fontWeight:700}}>Elemento:</span>
+                    <button
+                      onClick={()=>setCollectionElemFilter(null)}
+                      style={{padding:"2px 10px",borderRadius:99,fontSize:9,fontWeight:700,cursor:"pointer",border:`1px solid ${collectionElemFilter===null?"rgba(255,255,255,0.30)":"rgba(255,255,255,0.08)"}`,background:collectionElemFilter===null?"rgba(255,255,255,0.10)":"rgba(255,255,255,0.03)",color:collectionElemFilter===null?"#f1f0ee":"#4b5563",transition:"all .15s"}}>
+                      Todos
+                    </button>
+                    {usedElements.map(el=>{
+                      const ec = ELEMENT_COLORS[el]||"#94a3b8"
+                      const active = collectionElemFilter===el
+                      return (
+                        <button key={el} onClick={()=>setCollectionElemFilter(active?null:el)}
+                          style={{padding:"2px 10px",borderRadius:99,fontSize:9,fontWeight:700,cursor:"pointer",
+                            border:`1px solid ${active?ec:ec+"30"}`,
+                            background:active?`${ec}20`:"rgba(255,255,255,0.02)",
+                            color:active?ec:"#4b5563",transition:"all .15s",
+                          }}>
+                          {el}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+
             {/* Rarity sections */}
             {(["LR","UR","SR","R"] as const).map(rarity=>{
-              const cards = collection.filter(c=>c.rarity===rarity)
+              // Apply search + element filter
+              let cards = collection.filter(c=>c.rarity===rarity)
+              if (collectionSearch.trim()) {
+                const q = collectionSearch.toLowerCase()
+                cards = cards.filter(c=>c.name.toLowerCase().includes(q))
+              }
+              if (collectionElemFilter) {
+                cards = cards.filter(c=>c.element&&displayElement(c.element)===collectionElemFilter)
+              }
               if (!cards.length) return null
               const rc = rarity==="LR"?"#ef4444":rarity==="UR"?"#38bdf8":rarity==="SR"?"#a855f7":"#94a3b8"
+              const isExpanded = expandedRarities.has(rarity)
+              const LIMIT = 16
+              const visible = isExpanded ? cards : cards.slice(0,LIMIT)
               return(
                 <div key={rarity} style={{marginBottom:20}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -1368,7 +1368,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                     <div style={{height:1,flex:1,background:`linear-gradient(to left,${rc}40,transparent)`}}/>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                    {cards.slice(0,16).map((card,i)=>(
+                    {visible.map((card,i)=>(
                       <div key={`${card.id}-${i}`}
                         onMouseMove={e=>{setHoveredCard(card.id+i);handleCardMouseMove(e)}}
                         onMouseLeave={()=>{setHoveredCard(null);setCardTilt({x:0,y:0})}}
@@ -1393,22 +1393,145 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       </div>
                     ))}
                   </div>
-                  {cards.length>16&&<div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#4b5563"}}>+{cards.length-16} cartas</div>}
+                  {/* Expand / Collapse button */}
+                  {cards.length>LIMIT&&(
+                    <button
+                      onClick={()=>setExpandedRarities(prev=>{
+                        const next=new Set(prev)
+                        if (next.has(rarity)) next.delete(rarity)
+                        else next.add(rarity)
+                        return next
+                      })}
+                      style={{
+                        display:"block",width:"100%",marginTop:8,padding:"6px",
+                        borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:11,
+                        background:`${rc}12`,border:`1px solid ${rc}30`,color:rc,
+                        transition:"all .2s",
+                      }}>
+                      {isExpanded?`▲ Recolher`:`▼ Ver todas ${cards.length} cartas (+${cards.length-LIMIT})`}
+                    </button>
+                  )}
                 </div>
               )
             })}
+            {/* Empty state */}
+            {(collectionSearch||collectionElemFilter)&&(["LR","UR","SR","R"] as const).every(r=>{
+              let c=collection.filter(x=>x.rarity===r)
+              if(collectionSearch.trim()) c=c.filter(x=>x.name.toLowerCase().includes(collectionSearch.toLowerCase()))
+              if(collectionElemFilter) c=c.filter(x=>x.element&&displayElement(x.element)===collectionElemFilter)
+              return c.length===0
+            })&&(
+              <div style={{textAlign:"center",padding:"30px 0",color:"#374151",fontSize:13}}>
+                Nenhuma carta encontrada para "{collectionSearch||collectionElemFilter}"
+              </div>
+            )}
           </div>
         )}
         </div>
       </div>{/* end width-capped content column */}
       </div>{/* end centering wrapper */}
 
-      {/* Card zoom */}
+      {/* ── Achievement Claim Toast ── */}
+      {claimToast&&(
+        <div style={{
+          position:"fixed",bottom:32,left:"50%",transform:"translateX(-50%)",zIndex:500,
+          background:"linear-gradient(135deg,#7a5c0f,#e8c96d,#7a5c0f)",
+          borderRadius:99,padding:"10px 24px",
+          boxShadow:"0 0 32px rgba(232,201,109,0.60)",
+          display:"flex",alignItems:"center",gap:10,
+          animation:"toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+          pointerEvents:"none",
+        }}>
+          <img src="/images/icons/gacha-coin.png" alt="" style={{width:22,height:22,objectFit:"contain"}}/>
+          <span style={{fontWeight:900,fontSize:16,color:"#0c0a06",letterSpacing:"0.02em"}}>{claimToast} coletados!</span>
+          <span style={{fontSize:18}}>🎉</span>
+        </div>
+      )}
+
+      {/* ── Enhanced Card Zoom Modal ── */}
       {zoomedCard&&(
-        <div onClick={()=>setZoomedCard(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{width:260,aspectRatio:"3/4",position:"relative",borderRadius:12,overflow:"hidden",boxShadow:rarityGlow(zoomedCard.rarity)}}>
-            <Image src={zoomedCard.image||"/placeholder.svg"} alt={zoomedCard.name} fill style={{objectFit:"cover"}}/>
-            {zoomedCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
+        <div onClick={()=>setZoomedCard(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:16,alignItems:"flex-start",maxWidth:600,width:"100%"}}>
+            {/* Card image */}
+            <div style={{width:200,flexShrink:0,aspectRatio:"3/4",position:"relative",borderRadius:14,overflow:"hidden",boxShadow:rarityGlow(zoomedCard.rarity)}}>
+              <Image src={zoomedCard.image||"/placeholder.svg"} alt={zoomedCard.name} fill style={{objectFit:"cover"}}/>
+              {zoomedCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.12) 50%,transparent 60%)",animation:"holoSheen 2.5s ease-in-out infinite",pointerEvents:"none"}}/>
+            </div>
+            {/* Card info panel */}
+            <div style={{flex:1,display:"flex",flexDirection:"column",gap:10}}>
+              {/* Name + rarity */}
+              <div>
+                <div style={{fontSize:8,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.10em",marginBottom:4}}>Carta</div>
+                <h3 style={{margin:0,fontWeight:900,fontSize:17,color:"#f1f0ee",lineHeight:1.3,marginBottom:6}}>{zoomedCard.name}</h3>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <span style={{
+                    fontSize:10,fontWeight:800,padding:"2px 8px",borderRadius:4,
+                    color:zoomedCard.rarity==="LR"?"#ef4444":zoomedCard.rarity==="UR"?"#38bdf8":zoomedCard.rarity==="SR"?"#a855f7":"#94a3b8",
+                    background:rarityBg(zoomedCard.rarity),border:rarityBorder(zoomedCard.rarity),
+                  }}>{zoomedCard.rarity}</span>
+                  {zoomedCard.element&&<span style={{
+                    fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,
+                    color:ELEMENT_COLORS[zoomedCard.element]||ELEMENT_COLORS[displayElement(zoomedCard.element)]||"#94a3b8",
+                    background:`${ELEMENT_COLORS[zoomedCard.element]||ELEMENT_COLORS[displayElement(zoomedCard.element)]||"#94a3b8"}18`,
+                  }}>{displayElement(zoomedCard.element)}</span>
+                  {(zoomedCard as any).type&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,color:"#94a3b8",background:"rgba(255,255,255,0.06)"}}>{(zoomedCard as any).type}</span>}
+                </div>
+              </div>
+
+              {/* DP / power */}
+              {(zoomedCard as any).dp&&(
+                <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontWeight:900,fontSize:22,color:
+                    zoomedCard.rarity==="LR"?"#fbbf24":
+                    zoomedCard.rarity==="UR"?"#38bdf8":
+                    zoomedCard.rarity==="SR"?"#a855f7":"#94a3b8"
+                  }}>{(zoomedCard as any).dp}</span>
+                  <span style={{fontSize:11,color:"#4b5563",fontWeight:700}}>DP</span>
+                </div>
+              )}
+
+              {/* Effect / description */}
+              {(zoomedCard as any).effect&&(
+                <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:5}}>Efeito</div>
+                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{(zoomedCard as any).effect}</div>
+                </div>
+              )}
+
+              {/* How many copies player owns */}
+              {(()=>{
+                const copies = collection.filter(c=>c.id.split("-").slice(0,-2).join("-")===zoomedCard.id.split("-").slice(0,-2).join("-")).length
+                return copies>0?(
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:10,color:"#4b5563"}}>Você possui</span>
+                    <span style={{fontWeight:900,fontSize:14,color:"#e8c96d"}}>{copies}×</span>
+                    <span style={{fontSize:10,color:"#4b5563"}}>desta carta</span>
+                  </div>
+                ):null
+              })()}
+
+              {/* Quick-add to showcase */}
+              {showcaseIds.some(id=>id===null)&&(
+                <button
+                  onClick={()=>{
+                    const slot=showcaseIds.findIndex(id=>id===null)
+                    if(slot>=0){ handleShowcasePick(slot,zoomedCard.id); setZoomedCard(null) }
+                  }}
+                  style={{
+                    padding:"8px 14px",borderRadius:10,border:"1px solid rgba(232,201,109,0.35)",
+                    background:"rgba(232,201,109,0.08)",color:"#e8c96d",fontWeight:800,fontSize:12,cursor:"pointer",
+                    display:"flex",alignItems:"center",gap:6,transition:"all .2s",
+                  }}>
+                  🃏 Adicionar à vitrine
+                </button>
+              )}
+
+              {/* Close */}
+              <button onClick={()=>setZoomedCard(null)} style={{marginTop:"auto",padding:"8px",borderRadius:10,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+                ✕ Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1420,6 +1543,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         @keyframes holoSheen{0%,100%{background-position:200% 200%;opacity:0.5}50%{background-position:-100% -100%;opacity:1}}
         @keyframes rainbowShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
         @keyframes urPulse{0%,100%{box-shadow:inset 0 0 12px rgba(56,189,248,0.2)}50%{box-shadow:inset 0 0 22px rgba(56,189,248,0.5)}}
+        @keyframes toastIn{0%{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.85)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
       `}}/>
     </div>
   )
