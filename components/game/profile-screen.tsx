@@ -325,10 +325,6 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [cardTilt,        setCardTilt]         = useState({x:0,y:0})
   const [zoomedCard,      setZoomedCard]       = useState<any|null>(null)
   const [claimedAchievements, setClaimedAchievements] = useState<Set<string>>(new Set())
-  const [claimToast,          setClaimToast]          = useState<string|null>(null)
-  const [collectionSearch,    setCollectionSearch]     = useState("")
-  const [collectionElemFilter,setCollectionElemFilter] = useState<string|null>(null)
-  const [expandedRarities,    setExpandedRarities]     = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setPlayerTitles(getPlayerTitles())
@@ -510,9 +506,6 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       const newTotal = coins + amount
       if (typeof setCoins === "function") setCoins(newTotal)
       try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
-      // Toast notification
-      setClaimToast(`+${amount.toLocaleString()} Moedas`)
-      setTimeout(() => setClaimToast(null), 2800)
     }
     setClaimedAchievements(prev => {
       const next = new Set(prev)
@@ -770,13 +763,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 {icon:"📚",   val:uniqueCards,  lbl:"Cartas"},
                 {icon:"",     val:coins,        lbl:"Moedas", iconImg:"/images/icons/gacha-coin.png"},
               ].map(s=>(
-                <div key={s.lbl} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"5px 4px",textAlign:"center"}}>
+                <div key={s.lbl} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:8,padding:"8px 4px 6px",textAlign:"center"}}>
                   {(s as any).iconImg
-                    ? <img src={(s as any).iconImg} alt="" style={{width:14,height:14,objectFit:"contain",display:"block",margin:"0 auto 2px"}}/>
-                    : <div style={{fontSize:12,marginBottom:2}}>{s.icon}</div>
+                    ? <img src={(s as any).iconImg} alt="" style={{width:15,height:15,objectFit:"contain",display:"block",margin:"0 auto 3px"}}/>
+                    : <div style={{fontSize:13,marginBottom:3}}>{s.icon}</div>
                   }
-                  <div style={{fontWeight:900,fontSize:13,color:"#f1f0ee"}}>{s.val.toLocaleString()}</div>
-                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.lbl}</div>
+                  <div style={{fontWeight:900,fontSize:20,color:"#f1f0ee",lineHeight:1}}>{s.val.toLocaleString()}</div>
+                  <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.04em",marginTop:3}}>{s.lbl}</div>
                 </div>
               ))}
             </div>
@@ -794,41 +787,54 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
             {/* ══ CARD SHOWCASE ══ */}
             <div style={{marginTop:8,padding:"8px 0"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                 <span style={{fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em"}}>🃏 Vitrine de Cartas</span>
                 <span style={{fontSize:9,color:"#374151"}}>— clique para escolher</span>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-                {[0,1,2].map(slot => {
+              {/* Fan / cascade — center card leads, side cards rotated behind */}
+              <div style={{display:"flex",justifyContent:"center",alignItems:"flex-end",gap:0,paddingBottom:4}}>
+                {[0,1,2].map((slot,idx) => {
                   const card = showcaseIds[slot] ? collection.find(c=>c.id===showcaseIds[slot]) : null
+                  const isCenter = idx === 1
+                  const cardW = isCenter ? 100 : 76
+                  const cardH = Math.round(cardW * 4/3)
+                  const mr = idx < 2 ? -16 : 0
+                  const transforms = ["translateY(14px) rotate(-5deg)","none","translateY(14px) rotate(5deg)"]
                   return (
                     <div key={slot} onClick={()=>setShowShowcasePick(slot)}
                       style={{
-                        position:"relative",aspectRatio:"3/4",borderRadius:10,overflow:"hidden",cursor:"pointer",
+                        position:"relative",
+                        width:cardW, height:cardH,
+                        borderRadius:10, overflow:"hidden", cursor:"pointer",
                         border: card ? rarityBorder(card.rarity) : "2px dashed rgba(255,255,255,0.10)",
                         background: card ? rarityBg(card.rarity) : "rgba(255,255,255,0.02)",
                         transition:"all .2s",
-                        boxShadow: card ? rarityGlow(card.rarity) : "none",
+                        boxShadow: card
+                          ? (isCenter ? rarityGlow(card.rarity) : "0 4px 16px rgba(0,0,0,0.5)")
+                          : (isCenter ? "none" : "0 4px 12px rgba(0,0,0,0.4)"),
+                        zIndex: isCenter ? 10 : 4,
+                        marginRight: mr,
+                        transform: transforms[idx],
+                        flexShrink: 0,
                       }}>
                       {card ? (
                         <>
                           <Image src={card.image||"/placeholder.svg"} alt={card.name} fill style={{objectFit:"cover"}}/>
-                          {/* Holo sheen */}
+                          {/* Dim side cards slightly */}
+                          {!isCenter&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.25)",pointerEvents:"none"}}/>}
                           <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.12) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
                           {card.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
-                          {/* Bottom label */}
-                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.85))",padding:"16px 6px 5px"}}>
-                            <div style={{fontSize:9,fontWeight:800,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</div>
-                            <div style={{fontSize:8,color: card.rarity==="LR"?"#ef4444":card.rarity==="UR"?"#38bdf8":card.rarity==="SR"?"#a855f7":"#94a3b8"}}>{card.rarity}</div>
+                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.88))",padding:"14px 5px 5px"}}>
+                            <div style={{fontSize:isCenter?9:7,fontWeight:800,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</div>
+                            <div style={{fontSize:7,color: card.rarity==="LR"?"#ef4444":card.rarity==="UR"?"#38bdf8":card.rarity==="SR"?"#a855f7":"#94a3b8"}}>{card.rarity}</div>
                           </div>
-                          {/* Remove button */}
                           <button onClick={e=>{e.stopPropagation();handleShowcasePick(slot,null)}}
-                            style={{position:"absolute",top:4,right:4,width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",cursor:"pointer",color:"#f87171",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                            style={{position:"absolute",top:3,right:3,width:16,height:16,borderRadius:"50%",background:"rgba(0,0,0,0.65)",border:"none",cursor:"pointer",color:"#f87171",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                         </>
                       ) : (
-                        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
-                          <span style={{fontSize:22,opacity:.25}}>🃏</span>
-                          <span style={{fontSize:9,color:"#374151"}}>Slot {slot+1}</span>
+                        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}>
+                          <span style={{fontSize:isCenter?22:16,opacity:.20}}>🃏</span>
+                          <span style={{fontSize:8,color:"#374151"}}>Slot {slot+1}</span>
                         </div>
                       )}
                     </div>
@@ -857,6 +863,77 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             )}
           </div>
         </div>
+
+        {/* ═══ SHARE MODAL ═══ */}
+        {showShare&&(
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.88)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"linear-gradient(160deg,#100c08,#0a0618)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:22,padding:24,maxWidth:400,width:"100%",boxShadow:"0 0 60px rgba(139,92,246,0.15)"}}>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+                <div style={{fontWeight:900,fontSize:17,color:"#f1f0ee"}}>🌐 Compartilhar Perfil</div>
+                <button onClick={()=>setShowShare(false)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#6b7280",fontSize:14}}>✕</button>
+              </div>
+
+              {/* Profile card preview */}
+              <div style={{background:"linear-gradient(135deg,rgba(139,92,246,0.10),rgba(232,201,109,0.05))",border:"1px solid rgba(139,92,246,0.20)",borderRadius:14,padding:16,marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                  {playerProfile.avatarUrl&&(
+                    <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",border:`2px solid ${pc[0]}`,flexShrink:0,position:"relative"}}>
+                      <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
+                    </div>
+                  )}
+                  <div>
+                    <div style={{fontWeight:900,fontSize:16,color:"#f1f0ee"}}>{playerProfile.name}</div>
+                    {playerProfile.title&&<div style={{fontSize:11,color:pc[0],fontWeight:700}}>{playerProfile.title}</div>}
+                    {bio&&<div style={{fontSize:11,color:"#94a3b8",fontStyle:"italic",marginTop:2}}>"{bio}"</div>}
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+                  {[
+                    {l:"Nível",v:`Lv.${currentLevel}`},
+                    {l:"Vitórias",v:String(wins)},
+                    {l:"Cartas",v:String(uniqueCards)},
+                    {l:"Win%",v:`${winRate}%`},
+                  ].map(s=>(
+                    <div key={s.l} style={{textAlign:"center",background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"5px 4px"}}>
+                      <div style={{fontWeight:900,fontSize:14,color:"#f1f0ee"}}>{s.v}</div>
+                      <div style={{fontSize:8,color:"#4b5563"}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* QR Code via Google Charts (no external npm needed) */}
+                <div style={{display:"flex",justifyContent:"center",padding:"8px 0"}}>
+                  <div style={{background:"#fff",borderRadius:8,padding:6}}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`GP Card Game\n${playerProfile.name} | Lv.${currentLevel}\n${wins}V ${totalMatches-wins}D (${winRate}%)\n${uniqueCards} cartas únicas\nID: ${playerId}`)}`}
+                      alt="QR Code do perfil"
+                      width={100} height={100}
+                    />
+                  </div>
+                </div>
+                <div style={{textAlign:"center",fontSize:9,color:"#374151",marginTop:4}}>Escaneie para ver os stats</div>
+              </div>
+
+              {/* Copy stats button */}
+              <button
+                onClick={handleCopyStats}
+                style={{
+                  width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",fontWeight:800,fontSize:13,
+                  background:shareCopied?"linear-gradient(135deg,#065f46,#059669)":"linear-gradient(135deg,#4c1d95,#7c3aed)",
+                  border:"none",color:"#fff",
+                  boxShadow:shareCopied?"0 0 20px rgba(5,150,105,0.4)":"0 0 20px rgba(124,58,237,0.4)",
+                  transition:"all 0.3s",
+                }}
+              >
+                {shareCopied?"✓ Stats copiados!":"📋 Copiar stats como texto"}
+              </button>
+              <div style={{fontSize:10,color:"#374151",textAlign:"center",marginTop:8}}>
+                Cole no Discord, WhatsApp ou onde quiser
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ══════════ THEME SELECTOR MODAL ══════════ */}
         {showThemeSel&&(
@@ -1094,32 +1171,32 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             {/* Win rate ring + breakdown */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:12}}>
               <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:12,padding:"8px",textAlign:"center",position:"relative"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Taxa de Vitória</div>
+                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Taxa de Vitória</div>
                 <div style={{position:"relative",display:"inline-block"}}>
                   <WinRing rate={winRate}/>
                   <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
                     <span style={{fontWeight:900,fontSize:16,color:"#f1f0ee",lineHeight:1}}>{winRate}%</span>
-                    <span style={{fontSize:9,color:"#4b5563",marginTop:2}}>{wins}V/{totalMatches-wins}D</span>
+                    <span style={{fontSize:9,color:"#64748b",marginTop:2}}>{wins}V/{totalMatches-wins}D</span>
                   </div>
                 </div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {/* Rarity breakdown */}
+              <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                {/* Rarity breakdown — grouped card */}
+                <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",gap:7}}>
                 {(["LR","UR","SR","R"] as const).map(r=>{
                   const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
                   const pct=uniqueCards>0?Math.min(100,(rarityCount[r]/uniqueCards)*100):0
                   return(
-                    <div key={r} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:7,padding:"4px 8px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                        <span style={{fontSize:10,fontWeight:800,color:col}}>{r}</span>
-                        <span style={{fontSize:10,color:"#6b7280"}}>{rarityCount[r]}</span>
+                    <div key={r} style={{display:"flex",alignItems:"center",gap:7}}>
+                      <span style={{fontSize:10,fontWeight:800,color:col,width:22,flexShrink:0,lineHeight:1}}>{r}</span>
+                      <div style={{flex:1,height:5,borderRadius:99,background:"rgba(255,255,255,0.07)",overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:`linear-gradient(90deg,${col}70,${col})`,boxShadow:`0 0 6px ${col}50`,transition:"width .8s ease"}}/>
                       </div>
-                      <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
-                        <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:`linear-gradient(90deg,${col}80,${col})`,boxShadow:`0 0 6px ${col}60`,transition:"width .8s ease"}}/>
-                      </div>
+                      <span style={{fontSize:10,fontWeight:700,color:col,width:28,textAlign:"right",flexShrink:0}}>{rarityCount[r]}</span>
                     </div>
                   )
                 })}
+                </div>
               </div>
             </div>
 
@@ -1127,29 +1204,29 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
               {/* Element */}
               <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
-                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>⚡ Elemento Favorito</div>
+                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>⚡ Elemento Favorito</div>
                 {favElement?(
                   <>
                     <div style={{fontWeight:900,fontSize:15,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:1}}>{displayElement(favElement[0])}</div>
-                    <div style={{fontSize:10,color:"#4b5563"}}>{favElement[1]} cartas</div>
+                    <div style={{fontSize:10,color:"#6b7280"}}>{favElement[1]} cartas</div>
                   </>
                 ):<div style={{color:"#374151",fontSize:12}}>Sem dados</div>}
               </div>
               {/* Decks */}
               <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"8px"}}>
-                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>🃏 Decks Criados</div>
+                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>🃏 Decks Criados</div>
                 <div style={{fontWeight:900,fontSize:15,color:"#f1f0ee",marginBottom:1}}>{decks.length}</div>
-                <div style={{fontSize:10,color:"#4b5563"}}>{decks[0]?.name||"Nenhum deck"}</div>
+                <div style={{fontSize:10,color:"#6b7280"}}>{decks[0]?.name||"Nenhum deck"}</div>
               </div>
               {/* Resources */}
               <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:10,padding:"8px"}}>
-                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>💰 Recursos</div>
+                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>💰 Recursos</div>
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <img src="/images/icons/gacha-coin.png" alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>
                     <div>
                       <div style={{fontWeight:900,fontSize:14,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
-                      <div style={{fontSize:9,color:"#4b5563"}}>Moedas</div>
+                      <div style={{fontSize:9,color:"#6b7280"}}>Moedas</div>
                     </div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1165,14 +1242,14 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
             {/* Performance chart */}
             <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📊 Gráfico de Desempenho — Últimas 10</div>
+              <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>📊 Gráfico de Desempenho — Últimas 10</div>
               <PerformanceChart matches={matchHistory}/>
             </div>
 
             {/* Recent matches */}
             {recentMatches.length>0&&(
               <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 12px"}}>
-                <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚔ Últimas Partidas</div>
+                <div style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>⚔ Últimas Partidas</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
                   {recentMatches.map((m:any,i:number)=>{
                     const won = m.result === "won"
@@ -1195,9 +1272,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                           <div style={{fontSize:11,fontWeight:700,color:won?"#4ade80":"#f87171"}}>
                             {won?"Vitória":"Derrota"}{opp?` vs ${opp}`:""}
                           </div>
-                          {deck&&<div style={{fontSize:9,color:"#4b5563",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deck}</div>}
+                          {deck&&<div style={{fontSize:10,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deck}</div>}
                         </div>
-                        {date&&<div style={{fontSize:9,color:"#374151",flexShrink:0}}>{date}</div>}
+                        {date&&<div style={{fontSize:10,fontWeight:600,color:"#94a3b8",flexShrink:0}}>{date}</div>}
                       </div>
                     )
                   })}
@@ -1239,14 +1316,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                         <span style={{fontSize:8,fontWeight:800,padding:"1px 6px",borderRadius:4,color:ra.color,background:ra.bg}}>{ra.label}</span>
                         {a.done&&<span style={{fontSize:10,color:"#22c55e"}}>✓</span>}
                       </div>
-                      <div style={{fontSize:11,color:"#4b5563",marginBottom:a.max>1?6:0}}>{a.secret&&!a.done?"Complete desafios secretos para descobrir...":a.desc}</div>
+                      <div style={{fontSize:11,color:"#6b7280",marginBottom:a.max>1?6:0}}>{a.secret&&!a.done?"Complete desafios secretos para descobrir...":a.desc}</div>
                       {a.max>1&&!a.secret&&(
                         <div>
                           <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,0.06)"}}>
-                            <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:a.done?`linear-gradient(90deg,${ra.color}80,${ra.color})`:
-                              "linear-gradient(90deg,#38bdf880,#38bdf8)",transition:"width .8s ease"}}/>
+                            <div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:`linear-gradient(90deg,${ra.color}70,${ra.color})`,transition:"width .8s ease"}}/>
                           </div>
-                          <div style={{fontSize:9,color:"#4b5563",marginTop:2}}>{a.progress}/{a.max}</div>
+                          <div style={{fontSize:9,color:"#64748b",marginTop:2}}>{a.progress}/{a.max}</div>
                         </div>
                       )}
                     </div>
@@ -1280,9 +1356,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         {/* ══════════ COLLECTION TAB ══════════ */}
         {activeTab==="collection"&&(
           <div style={{padding:"10px 12px"}}>
-            {/* Header row */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <span style={{fontSize:13,color:"#4b5563"}}>{uniqueCards} cartas únicas</span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <span style={{fontSize:13,color:"#6b7280"}}>{uniqueCards} cartas únicas</span>
               <div style={{display:"flex",gap:6}}>
                 {(["LR","UR","SR","R"] as const).map(r=>{
                   const col=r==="LR"?"#ef4444":r==="UR"?"#38bdf8":r==="SR"?"#a855f7":"#94a3b8"
@@ -1291,74 +1366,11 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               </div>
             </div>
 
-            {/* ── Search + Element filter bar ── */}
-            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-              {/* Search input */}
-              <div style={{position:"relative"}}>
-                <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,pointerEvents:"none",opacity:0.4}}>🔍</span>
-                <input
-                  value={collectionSearch}
-                  onChange={e=>setCollectionSearch(e.target.value)}
-                  placeholder="Buscar carta por nome…"
-                  style={{
-                    width:"100%",boxSizing:"border-box",
-                    background:"rgba(255,255,255,0.04)",
-                    border:"1px solid rgba(255,255,255,0.08)",
-                    borderRadius:10,padding:"7px 10px 7px 32px",
-                    color:"#f1f0ee",fontSize:12,outline:"none",fontFamily:"inherit",
-                  }}
-                />
-                {collectionSearch&&(
-                  <button onClick={()=>setCollectionSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#4b5563",fontSize:14,lineHeight:1}}>✕</button>
-                )}
-              </div>
-              {/* Element filter chips */}
-              {(()=>{
-                const usedElements = [...new Set(collection.filter(c=>c.element).map(c=>displayElement(c.element!)))]
-                if (usedElements.length===0) return null
-                return (
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                    <span style={{fontSize:9,color:"#374151",fontWeight:700}}>Elemento:</span>
-                    <button
-                      onClick={()=>setCollectionElemFilter(null)}
-                      style={{padding:"2px 10px",borderRadius:99,fontSize:9,fontWeight:700,cursor:"pointer",border:`1px solid ${collectionElemFilter===null?"rgba(255,255,255,0.30)":"rgba(255,255,255,0.08)"}`,background:collectionElemFilter===null?"rgba(255,255,255,0.10)":"rgba(255,255,255,0.03)",color:collectionElemFilter===null?"#f1f0ee":"#4b5563",transition:"all .15s"}}>
-                      Todos
-                    </button>
-                    {usedElements.map(el=>{
-                      const ec = ELEMENT_COLORS[el]||"#94a3b8"
-                      const active = collectionElemFilter===el
-                      return (
-                        <button key={el} onClick={()=>setCollectionElemFilter(active?null:el)}
-                          style={{padding:"2px 10px",borderRadius:99,fontSize:9,fontWeight:700,cursor:"pointer",
-                            border:`1px solid ${active?ec:ec+"30"}`,
-                            background:active?`${ec}20`:"rgba(255,255,255,0.02)",
-                            color:active?ec:"#4b5563",transition:"all .15s",
-                          }}>
-                          {el}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-            </div>
-
             {/* Rarity sections */}
             {(["LR","UR","SR","R"] as const).map(rarity=>{
-              // Apply search + element filter
-              let cards = collection.filter(c=>c.rarity===rarity)
-              if (collectionSearch.trim()) {
-                const q = collectionSearch.toLowerCase()
-                cards = cards.filter(c=>c.name.toLowerCase().includes(q))
-              }
-              if (collectionElemFilter) {
-                cards = cards.filter(c=>c.element&&displayElement(c.element)===collectionElemFilter)
-              }
+              const cards = collection.filter(c=>c.rarity===rarity)
               if (!cards.length) return null
               const rc = rarity==="LR"?"#ef4444":rarity==="UR"?"#38bdf8":rarity==="SR"?"#a855f7":"#94a3b8"
-              const isExpanded = expandedRarities.has(rarity)
-              const LIMIT = 16
-              const visible = isExpanded ? cards : cards.slice(0,LIMIT)
               return(
                 <div key={rarity} style={{marginBottom:20}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -1368,7 +1380,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                     <div style={{height:1,flex:1,background:`linear-gradient(to left,${rc}40,transparent)`}}/>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                    {visible.map((card,i)=>(
+                    {cards.slice(0,16).map((card,i)=>(
                       <div key={`${card.id}-${i}`}
                         onMouseMove={e=>{setHoveredCard(card.id+i);handleCardMouseMove(e)}}
                         onMouseLeave={()=>{setHoveredCard(null);setCardTilt({x:0,y:0})}}
@@ -1393,145 +1405,22 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                       </div>
                     ))}
                   </div>
-                  {/* Expand / Collapse button */}
-                  {cards.length>LIMIT&&(
-                    <button
-                      onClick={()=>setExpandedRarities(prev=>{
-                        const next=new Set(prev)
-                        if (next.has(rarity)) next.delete(rarity)
-                        else next.add(rarity)
-                        return next
-                      })}
-                      style={{
-                        display:"block",width:"100%",marginTop:8,padding:"6px",
-                        borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:11,
-                        background:`${rc}12`,border:`1px solid ${rc}30`,color:rc,
-                        transition:"all .2s",
-                      }}>
-                      {isExpanded?`▲ Recolher`:`▼ Ver todas ${cards.length} cartas (+${cards.length-LIMIT})`}
-                    </button>
-                  )}
+                  {cards.length>16&&<div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#4b5563"}}>+{cards.length-16} cartas</div>}
                 </div>
               )
             })}
-            {/* Empty state */}
-            {(collectionSearch||collectionElemFilter)&&(["LR","UR","SR","R"] as const).every(r=>{
-              let c=collection.filter(x=>x.rarity===r)
-              if(collectionSearch.trim()) c=c.filter(x=>x.name.toLowerCase().includes(collectionSearch.toLowerCase()))
-              if(collectionElemFilter) c=c.filter(x=>x.element&&displayElement(x.element)===collectionElemFilter)
-              return c.length===0
-            })&&(
-              <div style={{textAlign:"center",padding:"30px 0",color:"#374151",fontSize:13}}>
-                Nenhuma carta encontrada para "{collectionSearch||collectionElemFilter}"
-              </div>
-            )}
           </div>
         )}
         </div>
       </div>{/* end width-capped content column */}
       </div>{/* end centering wrapper */}
 
-      {/* ── Achievement Claim Toast ── */}
-      {claimToast&&(
-        <div style={{
-          position:"fixed",bottom:32,left:"50%",transform:"translateX(-50%)",zIndex:500,
-          background:"linear-gradient(135deg,#7a5c0f,#e8c96d,#7a5c0f)",
-          borderRadius:99,padding:"10px 24px",
-          boxShadow:"0 0 32px rgba(232,201,109,0.60)",
-          display:"flex",alignItems:"center",gap:10,
-          animation:"toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-          pointerEvents:"none",
-        }}>
-          <img src="/images/icons/gacha-coin.png" alt="" style={{width:22,height:22,objectFit:"contain"}}/>
-          <span style={{fontWeight:900,fontSize:16,color:"#0c0a06",letterSpacing:"0.02em"}}>{claimToast} coletados!</span>
-          <span style={{fontSize:18}}>🎉</span>
-        </div>
-      )}
-
-      {/* ── Enhanced Card Zoom Modal ── */}
+      {/* Card zoom */}
       {zoomedCard&&(
-        <div onClick={()=>setZoomedCard(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:16,alignItems:"flex-start",maxWidth:600,width:"100%"}}>
-            {/* Card image */}
-            <div style={{width:200,flexShrink:0,aspectRatio:"3/4",position:"relative",borderRadius:14,overflow:"hidden",boxShadow:rarityGlow(zoomedCard.rarity)}}>
-              <Image src={zoomedCard.image||"/placeholder.svg"} alt={zoomedCard.name} fill style={{objectFit:"cover"}}/>
-              {zoomedCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.12) 50%,transparent 60%)",animation:"holoSheen 2.5s ease-in-out infinite",pointerEvents:"none"}}/>
-            </div>
-            {/* Card info panel */}
-            <div style={{flex:1,display:"flex",flexDirection:"column",gap:10}}>
-              {/* Name + rarity */}
-              <div>
-                <div style={{fontSize:8,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.10em",marginBottom:4}}>Carta</div>
-                <h3 style={{margin:0,fontWeight:900,fontSize:17,color:"#f1f0ee",lineHeight:1.3,marginBottom:6}}>{zoomedCard.name}</h3>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  <span style={{
-                    fontSize:10,fontWeight:800,padding:"2px 8px",borderRadius:4,
-                    color:zoomedCard.rarity==="LR"?"#ef4444":zoomedCard.rarity==="UR"?"#38bdf8":zoomedCard.rarity==="SR"?"#a855f7":"#94a3b8",
-                    background:rarityBg(zoomedCard.rarity),border:rarityBorder(zoomedCard.rarity),
-                  }}>{zoomedCard.rarity}</span>
-                  {zoomedCard.element&&<span style={{
-                    fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,
-                    color:ELEMENT_COLORS[zoomedCard.element]||ELEMENT_COLORS[displayElement(zoomedCard.element)]||"#94a3b8",
-                    background:`${ELEMENT_COLORS[zoomedCard.element]||ELEMENT_COLORS[displayElement(zoomedCard.element)]||"#94a3b8"}18`,
-                  }}>{displayElement(zoomedCard.element)}</span>
-                  {(zoomedCard as any).type&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,color:"#94a3b8",background:"rgba(255,255,255,0.06)"}}>{(zoomedCard as any).type}</span>}
-                </div>
-              </div>
-
-              {/* DP / power */}
-              {(zoomedCard as any).dp&&(
-                <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontWeight:900,fontSize:22,color:
-                    zoomedCard.rarity==="LR"?"#fbbf24":
-                    zoomedCard.rarity==="UR"?"#38bdf8":
-                    zoomedCard.rarity==="SR"?"#a855f7":"#94a3b8"
-                  }}>{(zoomedCard as any).dp}</span>
-                  <span style={{fontSize:11,color:"#4b5563",fontWeight:700}}>DP</span>
-                </div>
-              )}
-
-              {/* Effect / description */}
-              {(zoomedCard as any).effect&&(
-                <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"10px 12px"}}>
-                  <div style={{fontSize:8,color:"#4b5563",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:5}}>Efeito</div>
-                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{(zoomedCard as any).effect}</div>
-                </div>
-              )}
-
-              {/* How many copies player owns */}
-              {(()=>{
-                const copies = collection.filter(c=>c.id.split("-").slice(0,-2).join("-")===zoomedCard.id.split("-").slice(0,-2).join("-")).length
-                return copies>0?(
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:10,color:"#4b5563"}}>Você possui</span>
-                    <span style={{fontWeight:900,fontSize:14,color:"#e8c96d"}}>{copies}×</span>
-                    <span style={{fontSize:10,color:"#4b5563"}}>desta carta</span>
-                  </div>
-                ):null
-              })()}
-
-              {/* Quick-add to showcase */}
-              {showcaseIds.some(id=>id===null)&&(
-                <button
-                  onClick={()=>{
-                    const slot=showcaseIds.findIndex(id=>id===null)
-                    if(slot>=0){ handleShowcasePick(slot,zoomedCard.id); setZoomedCard(null) }
-                  }}
-                  style={{
-                    padding:"8px 14px",borderRadius:10,border:"1px solid rgba(232,201,109,0.35)",
-                    background:"rgba(232,201,109,0.08)",color:"#e8c96d",fontWeight:800,fontSize:12,cursor:"pointer",
-                    display:"flex",alignItems:"center",gap:6,transition:"all .2s",
-                  }}>
-                  🃏 Adicionar à vitrine
-                </button>
-              )}
-
-              {/* Close */}
-              <button onClick={()=>setZoomedCard(null)} style={{marginTop:"auto",padding:"8px",borderRadius:10,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>
-                ✕ Fechar
-              </button>
-            </div>
+        <div onClick={()=>setZoomedCard(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{width:260,aspectRatio:"3/4",position:"relative",borderRadius:12,overflow:"hidden",boxShadow:rarityGlow(zoomedCard.rarity)}}>
+            <Image src={zoomedCard.image||"/placeholder.svg"} alt={zoomedCard.name} fill style={{objectFit:"cover"}}/>
+            {zoomedCard.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
           </div>
         </div>
       )}
@@ -1543,7 +1432,6 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         @keyframes holoSheen{0%,100%{background-position:200% 200%;opacity:0.5}50%{background-position:-100% -100%;opacity:1}}
         @keyframes rainbowShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
         @keyframes urPulse{0%,100%{box-shadow:inset 0 0 12px rgba(56,189,248,0.2)}50%{box-shadow:inset 0 0 22px rgba(56,189,248,0.5)}}
-        @keyframes toastIn{0%{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.85)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
       `}}/>
     </div>
   )
