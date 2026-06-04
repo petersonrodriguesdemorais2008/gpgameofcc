@@ -10197,18 +10197,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           className="fixed z-40 flex items-center justify-center"
           style={{
             bottom: "235px",
-            right: `clamp(140px,17vw,230px)`,
-            width: "clamp(120px,11vw,158px)",
+            right: `calc(clamp(140px,17vw,230px) + 18px)`,
+            width: "clamp(115px,9vw,138px)",
           }}
         >
           {phase === "draw" && (
             <button
               onClick={advancePhase}
-              className="w-full font-black text-sm text-white rounded-2xl border-2 border-green-400/70 transition-all active:scale-95 hover:brightness-110"
+              className="w-full font-black text-xs text-white rounded-xl border-2 border-green-400/70 transition-all active:scale-95 hover:brightness-110 whitespace-nowrap"
               style={{
                 background: "linear-gradient(135deg,#15803d,#22c55e,#16a34a)",
-                boxShadow: "0 0 20px rgba(34,197,94,0.55), 0 6px 18px rgba(0,0,0,0.7)",
-                padding: "10px 14px",
+                boxShadow: "0 0 16px rgba(34,197,94,0.50), 0 4px 14px rgba(0,0,0,0.7)",
+                padding: "9px 10px",
               }}
             >
               🃏 {t("drawCard")}
@@ -10217,11 +10217,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           {phase === "main" && (
             <button
               onClick={advancePhase}
-              className="w-full font-black text-sm text-white rounded-2xl border-2 border-blue-400/70 transition-all active:scale-95 hover:brightness-110"
+              className="w-full font-black text-xs text-white rounded-xl border-2 border-blue-400/70 transition-all active:scale-95 hover:brightness-110 whitespace-nowrap"
               style={{
                 background: "linear-gradient(135deg,#1e40af,#3b82f6,#1d4ed8)",
-                boxShadow: "0 0 20px rgba(59,130,246,0.55), 0 6px 18px rgba(0,0,0,0.7)",
-                padding: "10px 14px",
+                boxShadow: "0 0 16px rgba(59,130,246,0.50), 0 4px 14px rgba(0,0,0,0.7)",
+                padding: "9px 10px",
               }}
             >
               ⚔️ {t("toBattle")}
@@ -10230,11 +10230,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           {phase === "battle" && (
             <button
               onClick={endTurn}
-              className="w-full font-black text-sm text-white rounded-2xl border-2 border-amber-400/70 transition-all active:scale-95 hover:brightness-110"
+              className="w-full font-black text-xs text-white rounded-xl border-2 border-amber-400/70 transition-all active:scale-95 hover:brightness-110 whitespace-nowrap"
               style={{
                 background: "linear-gradient(135deg,#b45309,#f59e0b,#d97706)",
-                boxShadow: "0 0 20px rgba(245,158,11,0.55), 0 6px 18px rgba(0,0,0,0.7)",
-                padding: "10px 14px",
+                boxShadow: "0 0 16px rgba(245,158,11,0.50), 0 4px 14px rgba(0,0,0,0.7)",
+                padding: "9px 10px",
               }}
             >
               ✅ {t("endTurn")}
