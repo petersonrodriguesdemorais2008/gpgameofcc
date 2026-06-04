@@ -79,6 +79,14 @@ interface DuelLogEntry {
   message: string
   cardImage?: string
   cardName?: string
+  // Dados extras para popular o DETALHE ao clicar no thumbnail
+  cardAbility?: string
+  cardAbilityDescription?: string
+  cardAttack?: string
+  cardDp?: number
+  cardElement?: string
+  cardCategory?: string
+  cardType?: string
 }
 
 interface DuelScreenProps {
@@ -3543,7 +3551,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const logEvent = useCallback((
     type: DuelLogEntry["type"],
     message: string,
-    card?: { image?: string; name?: string }
+    card?: { image?: string; name?: string; ability?: string; abilityDescription?: string; attack?: string; dp?: number; element?: string; category?: string; cardType?: string }
   ) => {
     const entry: DuelLogEntry = {
       id: ++logIdRef.current,
@@ -3553,6 +3561,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       message,
       cardImage: card?.image,
       cardName: card?.name,
+      cardAbility: card?.ability,
+      cardAbilityDescription: card?.abilityDescription,
+      cardAttack: card?.attack,
+      cardDp: card?.dp,
+      cardElement: card?.element,
+      cardCategory: card?.category,
+      cardType: card?.cardType,
     }
     setDuelLog(prev => {
       const next = [...prev, entry]
@@ -4364,7 +4379,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       })
       playSound("cardSummon")
       setNormalSummonUsed(true)
-      logEvent("play", `Você jogou ${cardToPlace.name} na Zona de Unidades`, { image: cardToPlace.image, name: cardToPlace.name })
+      logEvent("play", `Você jogou ${cardToPlace.name} na Zona de Unidades`, {
+        image: getActiveSkin(cardToPlace.image || ""),
+        name: cardToPlace.name,
+        ability: (cardToPlace as any).ability,
+        abilityDescription: (cardToPlace as any).abilityDescription,
+        attack: (cardToPlace as any).attack,
+        dp: cardToPlace.dp,
+        element: (cardToPlace as any).element,
+        category: (cardToPlace as any).category,
+        cardType: cardToPlace.type,
+      })
       // Broadcast unit placement in online mode
       if (mode === "player" && onlineRoomData) {
         const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
@@ -5086,7 +5111,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
 
     playSound("cardSummon", 0.5)
-    logEvent("play", `Você jogou o Cenário ${cardToPlace.name}`, { image: cardToPlace.image, name: cardToPlace.name })
+    logEvent("play", `Você jogou o Cenário ${cardToPlace.name}`, {
+      image: getActiveSkin(cardToPlace.image || ""),
+      name: cardToPlace.name,
+      ability: (cardToPlace as any).ability,
+      abilityDescription: (cardToPlace as any).abilityDescription,
+      attack: (cardToPlace as any).attack,
+      dp: cardToPlace.dp,
+      element: (cardToPlace as any).element,
+      category: (cardToPlace as any).category,
+      cardType: cardToPlace.type,
+    })
     mpBroadcast("place_card", { zone: "scenario", card: cardToPlace, source: "hand" })
     setSelectedHandCard(null)
     setDraggedHandCard(null)
@@ -5195,6 +5230,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
 
     playSound("cardSummon", 0.6)
+    logEvent("play", `Você equipou ${cardToPlace.name}`, {
+      image: getActiveSkin(cardToPlace.image || ""),
+      name: cardToPlace.name,
+      ability: (cardToPlace as any).ability,
+      abilityDescription: (cardToPlace as any).abilityDescription,
+      attack: (cardToPlace as any).attack,
+      dp: cardToPlace.dp,
+      element: (cardToPlace as any).element,
+      category: (cardToPlace as any).category,
+      cardType: cardToPlace.type,
+    })
     mpBroadcast("place_card", { zone: "ultimate", card: cardToPlace, source: "hand" })
     // Reset one-time ability flag for a new UG
     setPlayerUgAbilityUsed(false)
@@ -9227,13 +9273,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   </p>
                 )}
                 {card.category && <p className="text-slate-600 text-[9px]">{card.category}</p>}
-                {card.ability && (
-                  <div className="bg-white/[0.03] rounded-lg p-1.5 border border-white/[0.05]">
-                    <p className="text-cyan-400 text-[9px] font-bold mb-0.5">{card.ability}</p>
-                    <p className="text-slate-400 text-[9px] leading-relaxed">{card.abilityDescription}</p>
+
+                {/* ── Bloco de habilidade para cartas de Unidade ── */}
+                {card.ability && card.abilityDescription && (
+                  <div className="rounded-lg overflow-hidden border border-cyan-500/20"
+                    style={{background:"linear-gradient(135deg,rgba(6,182,212,0.07),rgba(6,182,212,0.03))"}}>
+                    <div className="flex items-center gap-1 px-2 py-1 border-b border-cyan-500/15"
+                      style={{background:"rgba(6,182,212,0.10)"}}>
+                      <span className="text-cyan-400 text-[9px]">✦</span>
+                      <p className="text-cyan-300 text-[10px] font-black tracking-wide leading-tight">{card.ability}</p>
+                    </div>
+                    <p className="text-slate-300 text-[9px] leading-relaxed px-2 py-1.5">{card.abilityDescription}</p>
                   </div>
                 )}
-                {card.attack && <p className="text-amber-400 text-[9px] font-semibold">⚔ {card.attack}</p>}
+                {/* Apenas nome da habilidade sem descrição (ex: alguns UG) */}
+                {card.ability && !card.abilityDescription && (
+                  <div className="flex items-center gap-1 rounded-lg px-2 py-1 border border-cyan-500/20"
+                    style={{background:"rgba(6,182,212,0.07)"}}>
+                    <span className="text-cyan-400 text-[9px]">✦</span>
+                    <p className="text-cyan-300 text-[10px] font-bold leading-tight">{card.ability}</p>
+                  </div>
+                )}
+                {/* Ataque — para Unidades de Tropas e cartas com ataque nomeado */}
+                {card.attack && (
+                  <p className="text-amber-400 text-[10px] font-semibold flex items-center gap-1">
+                    <span className="text-amber-500">⚔</span>
+                    {card.attack}
+                  </p>
+                )}
               </div>
             </div>
           )
@@ -9267,7 +9334,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }`}>
               {entry.cardImage && (
                 <button className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 cursor-pointer hover:scale-105 transition-transform"
-                  onClick={() => setLogCardDetail({image:entry.cardImage!,name:entry.cardName||""})}>
+                  onClick={() => setLogCardDetail({
+                    image: entry.cardImage!,
+                    name: entry.cardName || "",
+                    ability: entry.cardAbility,
+                    abilityDescription: entry.cardAbilityDescription,
+                    attack: entry.cardAttack,
+                    dp: entry.cardDp,
+                    element: entry.cardElement,
+                    category: entry.cardCategory,
+                  })}>
                   <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-cover" />
                 </button>
               )}
