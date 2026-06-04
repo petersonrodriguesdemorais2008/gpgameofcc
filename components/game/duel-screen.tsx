@@ -21,6 +21,26 @@ import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 
+// ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
+const DUEL_CARD_SKINS: Record<string, { id: string; image: string }[]> = {
+  "fehnon-20ur.png":  [{ id: "fehnon_skin_lv50",  image: "/uploads/fehnon_skin_lv50.jpg"  }],
+  "morgana-20sr.png": [{ id: "morgana_skin_lv50", image: "/uploads/morgana_skin_lv50.jpg" }],
+  "Calem_LR.png":     [{ id: "calem_skin_lv50",   image: "/uploads/calem_skin_lv50.jpg"   }],
+}
+/** Retorna a imagem da skin ativa para uma carta, ou a imagem original se não houver skin equipada */
+function getActiveSkin(cardImageUrl: string): string {
+  try {
+    const filename = cardImageUrl.split("/").pop() ?? ""
+    const raw      = localStorage.getItem("gpgame_active_skins") ?? "{}"
+    const active   = JSON.parse(raw) as Record<string, string>
+    const skinId   = active[filename]
+    if (!skinId) return cardImageUrl
+    const skin = DUEL_CARD_SKINS[filename]?.find(s => s.id === skinId)
+    return skin ? skin.image : cardImageUrl
+  } catch { return cardImageUrl }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Multiplayer types ───────────────────────────────────────────────────────
 interface RoomData {
   roomId: string
@@ -9192,7 +9212,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           return (
             <div className="flex-1 overflow-y-auto p-2 space-y-2" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
               <div className="relative w-full overflow-hidden rounded-lg border border-white/10" style={{aspectRatio:"3/4"}}>
-                <Image src={card.image||"/placeholder.svg"} alt={card.name||""} fill sizes="210px" className="object-cover" />
+                <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill sizes="210px" className="object-cover" />
               </div>
               <div className="space-y-1.5 px-0.5">
                 <p className="text-white font-black text-xs leading-tight">{card.name}</p>
@@ -9640,7 +9660,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {card && (
                           <>
                             <Image
-                              src={card.image || "/placeholder.svg"}
+                              src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                               alt={card.name}
                               fill
                               className="object-cover"
@@ -9731,7 +9751,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             {/* Front of Card */}
                             <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
                               <Image
-                                src={card.image || "/placeholder.svg"}
+                                src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                                 alt={card.name}
                                 fill
                                 className="object-cover rounded"
@@ -9921,7 +9941,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                     zIndex: 5 - idx 
                                   }}
                                 >
-                                  <Image src={card.image || "/placeholder.svg"} alt="" fill className="object-cover" />
+                                  <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill className="object-cover" />
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                                 </div>
                               ))}
@@ -10032,7 +10052,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       }`}
                   >
                     <div className="relative w-full h-full overflow-hidden rounded-lg">
-                      <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-contain" />
+                      <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill className="object-contain" />
                     </div>
                   </div>
                   {/* Drag hint */}
@@ -10122,7 +10142,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             : 'border-yellow-400 shadow-yellow-500/50'
             }`}>
             <img
-              src={draggedHandCard.card.image || "/placeholder.svg"}
+              src={getActiveSkin(draggedHandCard.card.image || "") || "/placeholder.svg"}
               alt={draggedHandCard.card.name}
               className="w-full h-full object-contain"
               draggable={false}
@@ -10165,7 +10185,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }}
           >
             <img
-              src={droppingCard.card.image || "/placeholder.svg"}
+              src={getActiveSkin(droppingCard.card.image || "") || "/placeholder.svg"}
               alt={droppingCard.card.name}
               className="w-full h-full object-contain"
               draggable={false}
@@ -10202,7 +10222,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       onClick={() => {
                         setInspectedCard(card)
                         setLogCardDetail({
-                          image: card.image || "",
+                          image: graveyardView === "player" ? (getActiveSkin(card.image || "") || "") : (card.image || ""),
                           name: card.name,
                           ability: (card as any).ability,
                           abilityDescription: (card as any).abilityDescription,
@@ -10214,7 +10234,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       }}
                     >
                       <img
-                        src={card.image || "/placeholder.svg"}
+                        src={(graveyardView === "player" ? getActiveSkin(card.image || "") : card.image) || "/placeholder.svg"}
                         alt={card.name}
                         className="w-full h-full object-contain"
                       />
@@ -10817,7 +10837,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   {/* Card image */}
                   <div className="w-12 h-16 rounded-lg overflow-hidden border border-amber-500/30 flex-shrink-0 relative">
                     <img
-                      src={card.image || "/placeholder.svg"}
+                      src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                       alt={card.name}
                       className="w-full h-full object-cover"
                     />
@@ -11071,7 +11091,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               }
                             }}
                           >
-                            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+                            <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
 
                             {/* Available Glow Overlay */}
                             {isPlayable && (
