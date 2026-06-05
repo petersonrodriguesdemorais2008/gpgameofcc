@@ -3408,126 +3408,123 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
 
-  // Ataca com unidades do jogador em sequência (espelha fireBotAttack)
-  const fireAutoPlayerAttack = useCallback((queue: number[]) => {
-    if (!autoPlayRef.current) return
-    if (queue.length === 0) { setTimeout(endTurn, 500 / (speedRef.current || 1)); return }
-    const [unitIdx, ...rest] = queue
-
-    setPlayerField(prevPlayer => {
-      const unit = prevPlayer.unitZone[unitIdx]
-      if (!unit || unit.hasAttacked) { setTimeout(() => fireAutoPlayerAttack(rest), 100); return prevPlayer }
-
-      const attackerEl = document.querySelector(`[data-player-unit="${unitIdx}"]`)
-      const attackerRect = attackerEl?.getBoundingClientRect()
-      const startX = attackerRect ? attackerRect.left + attackerRect.width / 2 : window.innerWidth / 2
-      const startY = attackerRect ? attackerRect.top + attackerRect.height / 2 : window.innerHeight * 0.7
-
-      setEnemyField(prevEnemy => {
-        const hasEnemyUnits = prevEnemy.unitZone.some(u => u !== null)
-        const attackerDp = unit.currentDp ?? unit.dp
-
-        if (hasEnemyUnits) {
-          // Escolhe alvo: prefere unidades que podemos destruir; senão, ataca a mais fraca
-          const cands = prevEnemy.unitZone.map((u, i) => ({ u, i })).filter(({ u }) => u !== null)
-          const beatable = cands.filter(({ u }) => u!.currentDp < attackerDp)
-          const pool = beatable.length > 0 ? beatable : cands
-          const target = pool.reduce((w, cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w)
-          const targetIdx = target.i
-          const defender = prevEnemy.unitZone[targetIdx]!
-
-          const targetEl = document.querySelector(`[data-enemy-unit="${targetIdx}"]`)
-          const targetRect = targetEl?.getBoundingClientRect()
-          const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
-          const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.3
-
-          const projId = `auto-p-${Date.now()}-${unitIdx}`
-          setActiveProjectiles(prev => [...prev, { id: projId, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: false }])
-          showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
-
-          const newDefDp = (defender.currentDp ?? defender.dp) - attackerDp
-          setTimeout(() => {
-            setEnemyField(prev => {
-              const z = [...prev.unitZone]
-              const g = [...prev.graveyard]
-              if (newDefDp <= 0) { triggerExplosion(targetX, targetY, unit.element || "neutral"); g.push(defender); z[targetIdx] = null }
-              else { z[targetIdx] = { ...defender, currentDp: newDefDp }; triggerExplosion(targetX, targetY, unit.element || "neutral") }
-              return { ...prev, unitZone: z as (FieldCard | null)[], graveyard: g }
-            })
-            setPlayerField(prev => {
-              const z = [...prev.unitZone]
-              if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
-              return { ...prev, unitZone: z as (FieldCard | null)[] }
-            })
-            setTimeout(() => fireAutoPlayerAttack(rest), 400 / (speedRef.current || 1))
-          }, PROJECTILE_DURATION)
-
-        } else {
-          // Ataque direto ao LP do oponente
-          const directEl = document.querySelector("[data-direct-attack]")
-          const directRect = directEl?.getBoundingClientRect()
-          const targetX = directRect ? directRect.left + directRect.width / 2 : window.innerWidth / 2
-          const targetY = directRect ? directRect.top + directRect.height / 2 : window.innerHeight * 0.25
-
-          const projId = `auto-direct-${Date.now()}-${unitIdx}`
-          setActiveProjectiles(prev => [...prev, { id: projId, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: true }])
-          showEffectFeedback(`${unit.name} ataque direto! -${attackerDp}LP`, "warning")
-
-          setTimeout(() => {
-            setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
-            setPlayerField(prev => {
-              const z = [...prev.unitZone]
-              if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
-              return { ...prev, unitZone: z as (FieldCard | null)[] }
-            })
-            setTimeout(() => fireAutoPlayerAttack(rest), 400 / (speedRef.current || 1))
-          }, PROJECTILE_DURATION)
-        }
-        return prevEnemy
-      })
-      return prevPlayer
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerExplosion, showEffectFeedback, setActiveProjectiles, setEnemyField, setPlayerField, endTurn])
+  // Refs para ler estado atual dentro de callbacks sem deps stale
+  const playerFieldRef = useRef(playerField)
+  const enemyFieldRef  = useRef(enemyField)
+  const normalSummonUsedRef = useRef(normalSummonUsed)
+  const turnRef2 = useRef(turn)
+  useEffect(() => { playerFieldRef.current = playerField },     [playerField])
+  useEffect(() => { enemyFieldRef.current  = enemyField },      [enemyField])
+  useEffect(() => { normalSummonUsedRef.current = normalSummonUsed }, [normalSummonUsed])
+  useEffect(() => { turnRef2.current = turn },                  [turn])
 
   useEffect(() => {
     if (!autoPlay || !gameStarted || !isPlayerTurn || gameResult) return
 
     const spd = speedRef.current || 1
-    const delay = (ms: number) => ms / spd
+    const D   = (ms: number) => ms / spd
+    let cancelled = false
+
+    // Ataca com unidades em fila — sempre lê estado via refs
+    const fireAutoAttacks = (queue: number[]) => {
+      if (cancelled || !autoPlayRef.current) return
+      if (queue.length === 0) {
+        setTimeout(() => { if (!cancelled) endTurn() }, D(500))
+        return
+      }
+
+      const [unitIdx, ...rest] = queue
+      const pf   = playerFieldRef.current
+      const ef   = enemyFieldRef.current
+      const unit = pf.unitZone[unitIdx]
+
+      if (!unit || unit.hasAttacked || !unit.canAttack || turnRef2.current <= unit.canAttackTurn) {
+        setTimeout(() => fireAutoAttacks(rest), D(100))
+        return
+      }
+
+      const attackerEl   = document.querySelector(`[data-player-unit="${unitIdx}"]`)
+      const attackerRect = attackerEl?.getBoundingClientRect()
+      const startX = attackerRect ? attackerRect.left + attackerRect.width  / 2 : window.innerWidth  / 2
+      const startY = attackerRect ? attackerRect.top  + attackerRect.height / 2 : window.innerHeight * 0.7
+      const attackerDp   = unit.currentDp ?? unit.dp
+      const hasEnemyUnits = ef.unitZone.some(u => u !== null)
+
+      if (hasEnemyUnits) {
+        const cands    = ef.unitZone.map((u, i) => ({ u, i })).filter(({ u }) => u !== null)
+        const beatable = cands.filter(({ u }) => u!.currentDp < attackerDp)
+        const pool     = beatable.length > 0 ? beatable : cands
+        const target   = pool.reduce((w, cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w)
+        const targetIdx  = target.i
+        const defender   = ef.unitZone[targetIdx]!
+
+        const tEl = document.querySelector(`[data-enemy-unit="${targetIdx}"]`)
+        const tR  = tEl?.getBoundingClientRect()
+        const targetX = tR ? tR.left + tR.width  / 2 : window.innerWidth  / 2
+        const targetY = tR ? tR.top  + tR.height / 2 : window.innerHeight * 0.3
+
+        const newDefDp = (defender.currentDp ?? defender.dp) - attackerDp
+        setActiveProjectiles(prev => [...prev, { id: `ap-${Date.now()}-${unitIdx}`, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: false }])
+        showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
+
+        setTimeout(() => {
+          if (cancelled) return
+          setEnemyField(prev => {
+            const z = [...prev.unitZone] as (FieldCard | null)[]
+            const g = [...prev.graveyard]
+            if (newDefDp <= 0) { triggerExplosion(targetX, targetY, unit.element || "neutral"); g.push(defender); z[targetIdx] = null }
+            else               { z[targetIdx] = { ...defender, currentDp: newDefDp }; triggerExplosion(targetX, targetY, unit.element || "neutral") }
+            return { ...prev, unitZone: z, graveyard: g }
+          })
+          setPlayerField(prev => {
+            const z = [...prev.unitZone] as (FieldCard | null)[]
+            if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
+            return { ...prev, unitZone: z }
+          })
+          setTimeout(() => { if (!cancelled) fireAutoAttacks(rest) }, D(400))
+        }, PROJECTILE_DURATION)
+
+      } else {
+        const dEl = document.querySelector("[data-direct-attack]")
+        const dR  = dEl?.getBoundingClientRect()
+        const targetX = dR ? dR.left + dR.width  / 2 : window.innerWidth  / 2
+        const targetY = dR ? dR.top  + dR.height / 2 : window.innerHeight * 0.25
+
+        setActiveProjectiles(prev => [...prev, { id: `ap-d-${Date.now()}-${unitIdx}`, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: true }])
+        showEffectFeedback(`${unit.name} ataque direto! -${attackerDp}LP`, "warning")
+
+        setTimeout(() => {
+          if (cancelled) return
+          setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
+          setPlayerField(prev => {
+            const z = [...prev.unitZone] as (FieldCard | null)[]
+            if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
+            return { ...prev, unitZone: z }
+          })
+          setTimeout(() => { if (!cancelled) fireAutoAttacks(rest) }, D(400))
+        }, PROJECTILE_DURATION)
+      }
+    }
 
     const t = setTimeout(() => {
-      if (!autoPlayRef.current || !isPlayerTurn) return
+      if (cancelled || !autoPlayRef.current || !isPlayerTurn) return
 
       if (phase === "draw") {
-        // Fase Draw: compra carta e avança para Main
         advancePhase()
 
       } else if (phase === "main") {
-        // Fase Main: tenta jogar a melhor unidade disponível, depois avança para Battle
-        const hand = playerField.hand
-        const unitZone = playerField.unitZone
-        const emptySlot = unitZone.findIndex(s => s === null)
+        const pf       = playerFieldRef.current
+        const emptySlot = pf.unitZone.findIndex(s => s === null)
 
-        if (!normalSummonUsed && emptySlot !== -1) {
-          // Escolhe a unidade com maior DP na mão
-          const unitCands = hand
+        if (!normalSummonUsedRef.current && emptySlot !== -1) {
+          const best = pf.hand
             .map((c, i) => ({ c, i }))
             .filter(({ c }) => c.type === "unit" || c.type === "trooper")
-            .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))
+            .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
-          if (unitCands.length > 0) {
-            const best = unitCands[0]
-            const card = best.c
-            const handIdx = best.i
-            const canAttack = turn > (turn) // novo card nunca ataca no turno que entrou
-            const fieldCard: FieldCard = {
-              ...card,
-              currentDp: card.dp,
-              canAttack: false,
-              hasAttacked: false,
-              canAttackTurn: turn,
-            }
+          if (best) {
+            const { c: card, i: handIdx } = best
+            const fieldCard: FieldCard = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turnRef2.current }
             setPlayerField(prev => {
               const newHand = prev.hand.filter((_, i) => i !== handIdx)
               const newZone = [...prev.unitZone] as (FieldCard | null)[]
@@ -3535,39 +3532,28 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               return { ...prev, hand: newHand, unitZone: newZone }
             })
             setNormalSummonUsed(true)
-            logEvent("play", `Você jogou ${card.name} na Zona de Unidades`, {
-              image: getActiveSkin(card.image || ""), name: card.name,
-              ability: (card as any).ability, abilityDescription: (card as any).abilityDescription,
-              attackDescription: (card as any).attackDescription, attack: (card as any).attack,
-              dp: card.dp, element: (card as any).element, category: (card as any).category, cardType: card.type,
-            })
             showEffectFeedback(`AUTO: ${card.name} invocado!`, "success")
           }
         }
-
-        // Avança para Battle após pequena pausa
-        setTimeout(() => { if (autoPlayRef.current && isPlayerTurn) advancePhase() }, delay(600))
+        setTimeout(() => { if (!cancelled && autoPlayRef.current) advancePhase() }, D(700))
 
       } else if (phase === "battle") {
-        // Fase Battle: ataca com todas as unidades disponíveis
-        const attackers = playerField.unitZone
+        const pf       = playerFieldRef.current
+        const curTurn  = turnRef2.current
+        const attackers = pf.unitZone
           .map((u, i) => ({ u, i }))
-          .filter(({ u }) => u !== null && !u.hasAttacked && u.canAttack && turn > u.canAttackTurn)
+          .filter(({ u }) => u && !u.hasAttacked && u.canAttack && curTurn > u.canAttackTurn)
           .map(({ i }) => i)
 
-        if (attackers.length > 0) {
-          fireAutoPlayerAttack(attackers)
-        } else {
-          // Sem atacantes disponíveis → encerra turno
-          setTimeout(endTurn, delay(400))
-        }
+        if (attackers.length > 0) fireAutoAttacks(attackers)
+        else setTimeout(() => { if (!cancelled) endTurn() }, D(400))
 
       } else {
         endTurn()
       }
-    }, delay(700))
+    }, D(700))
 
-    return () => clearTimeout(t)
+    return () => { cancelled = true; clearTimeout(t) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, isPlayerTurn, gameStarted, gameResult, phase])
 
