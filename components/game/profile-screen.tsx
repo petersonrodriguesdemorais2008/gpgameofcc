@@ -553,7 +553,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         <button onClick={onBack} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,width:38,height:38,cursor:"pointer",color:"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <ArrowLeft size={18}/>
         </button>
-        <span style={{fontWeight:900,fontSize:18,background:"linear-gradient(135deg,#f1f0ee,#c4b5fd)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"0.04em"}}>PERFIL</span>
+        <span style={{fontWeight:900,fontSize:18,color:"#f1f0ee",textShadow:"0 0 20px #c4b5fdcc, 0 0 8px #c4b5fd66",letterSpacing:"0.04em"}}>PERFIL</span>
         {/* Share button */}
         <button onClick={()=>setShowShare(true)} style={{marginLeft:8,background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.30)",borderRadius:10,padding:"6px 12px",cursor:"pointer",color:"#a78bfa",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:6}}>
           🌐 Compartilhar
@@ -665,9 +665,13 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 ) : (
                   <>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
-                      <h2 style={{fontWeight:900,fontSize:18,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:pc[0],minWidth:0}}>
-                        <span style={{background:`linear-gradient(135deg,#f1f0ee,${pc[0]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{playerProfile.name}</span>
-                      </h2>
+                      <h2 style={{
+                        fontWeight:900,fontSize:18,margin:0,
+                        color:"#f1f0ee",
+                        textShadow:`0 0 22px ${pc[0]}cc, 0 0 8px ${pc[0]}66`,
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                        minWidth:0,
+                      }}>{playerProfile.name}</h2>
                       <button onClick={()=>setIsEditing(true)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#6b7280",fontSize:13,flexShrink:0}}>✎</button>
                     </div>
                     {/* Title badge */}
@@ -734,13 +738,11 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   <div style={{fontSize:12,fontWeight:900,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90,marginBottom:5}}>
                     {activeMasterName.split(" ")[0]}
                   </div>
-                  {/* Bond level - gold gradient */}
+                  {/* Bond level - gold */}
                   <div style={{
-                    display:"inline-block",
-                    background:"linear-gradient(90deg,#b7791f,#e8c96d,#b7791f)",
-                    WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",
-                    backgroundClip:"text",
                     fontSize:10,fontWeight:900,letterSpacing:"0.04em",marginBottom:5,
+                    color:"#e8c96d",
+                    textShadow:"0 0 14px #e8c96daa, 0 0 4px #e8c96d55",
                   }}>⚔ Vínculo Lv.{masterBondLv}</div>
                   {/* Bond progress bar — thick + glowing */}
                   <div style={{height:6,borderRadius:99,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
