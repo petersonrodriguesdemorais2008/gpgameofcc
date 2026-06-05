@@ -10166,14 +10166,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           top: "8px",
           left: `calc(clamp(130px,16vw,210px) + 14px)`,
         }}>
-          <div className="flex items-center gap-3 rounded-2xl px-5 py-3 border border-red-500/40 backdrop-blur-sm"
+          <div className="flex items-center gap-4 rounded-2xl px-6 py-4 border-2 border-red-500/40 backdrop-blur-sm"
             style={{background:"rgba(0,0,0,0.72)"}}>
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
-              <Swords className="w-6 h-6 text-white" />
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-[3px] border-red-400 flex items-center justify-center flex-shrink-0">
+              <Swords className="w-9 h-9 text-white" />
             </div>
             <div className="leading-none">
-              <span className="text-sm text-slate-400 block mb-1">Oponente</span>
-              <span className="text-3xl font-black text-red-400">LP: {enemyField.life}</span>
+              <span className="text-xl text-slate-400 block mb-1.5">Oponente</span>
+              <span className="text-5xl font-black text-red-400">LP: {enemyField.life}</span>
             </div>
           </div>
         </div>
@@ -10185,14 +10185,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           bottom: "10px",
           right: `calc(clamp(140px,17vw,230px) + 16px)`,
         }}>
-          <div className="flex items-center gap-3 rounded-2xl px-5 py-3 border border-blue-500/40 backdrop-blur-sm"
+          <div className="flex items-center gap-4 rounded-2xl px-6 py-4 border-2 border-blue-500/40 backdrop-blur-sm"
             style={{background:"rgba(0,0,0,0.72)"}}>
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-black text-lg">P1</span>
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-[3px] border-blue-400 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-black text-2xl">P1</span>
             </div>
             <div className="leading-none">
-              <span className="text-sm text-slate-400 block mb-1">Você</span>
-              <span className="text-3xl font-black text-blue-400">LP: {playerField.life}</span>
+              <span className="text-xl text-slate-400 block mb-1.5">Você</span>
+              <span className="text-5xl font-black text-blue-400">LP: {playerField.life}</span>
             </div>
           </div>
         </div>
