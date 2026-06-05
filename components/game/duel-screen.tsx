@@ -3404,17 +3404,172 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return setTimeout(fn, ms / speedRef.current)
   }, [])
 
-  // Auto-play: when it's player's turn, auto-end-turn after a short pause
+  // ── AUTO-PLAY INTELIGENTE ──────────────────────────────────────────────────
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
+
+  // Ataca com unidades do jogador em sequência (espelha fireBotAttack)
+  const fireAutoPlayerAttack = useCallback((queue: number[]) => {
+    if (!autoPlayRef.current) return
+    if (queue.length === 0) { setTimeout(endTurn, 500 / (speedRef.current || 1)); return }
+    const [unitIdx, ...rest] = queue
+
+    setPlayerField(prevPlayer => {
+      const unit = prevPlayer.unitZone[unitIdx]
+      if (!unit || unit.hasAttacked) { setTimeout(() => fireAutoPlayerAttack(rest), 100); return prevPlayer }
+
+      const attackerEl = document.querySelector(`[data-player-unit="${unitIdx}"]`)
+      const attackerRect = attackerEl?.getBoundingClientRect()
+      const startX = attackerRect ? attackerRect.left + attackerRect.width / 2 : window.innerWidth / 2
+      const startY = attackerRect ? attackerRect.top + attackerRect.height / 2 : window.innerHeight * 0.7
+
+      setEnemyField(prevEnemy => {
+        const hasEnemyUnits = prevEnemy.unitZone.some(u => u !== null)
+        const attackerDp = unit.currentDp ?? unit.dp
+
+        if (hasEnemyUnits) {
+          // Escolhe alvo: prefere unidades que podemos destruir; senão, ataca a mais fraca
+          const cands = prevEnemy.unitZone.map((u, i) => ({ u, i })).filter(({ u }) => u !== null)
+          const beatable = cands.filter(({ u }) => u!.currentDp < attackerDp)
+          const pool = beatable.length > 0 ? beatable : cands
+          const target = pool.reduce((w, cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w)
+          const targetIdx = target.i
+          const defender = prevEnemy.unitZone[targetIdx]!
+
+          const targetEl = document.querySelector(`[data-enemy-unit="${targetIdx}"]`)
+          const targetRect = targetEl?.getBoundingClientRect()
+          const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
+          const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.3
+
+          const projId = `auto-p-${Date.now()}-${unitIdx}`
+          setActiveProjectiles(prev => [...prev, { id: projId, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: false }])
+          showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
+
+          const newDefDp = (defender.currentDp ?? defender.dp) - attackerDp
+          setTimeout(() => {
+            setEnemyField(prev => {
+              const z = [...prev.unitZone]
+              const g = [...prev.graveyard]
+              if (newDefDp <= 0) { triggerExplosion(targetX, targetY, unit.element || "neutral"); g.push(defender); z[targetIdx] = null }
+              else { z[targetIdx] = { ...defender, currentDp: newDefDp }; triggerExplosion(targetX, targetY, unit.element || "neutral") }
+              return { ...prev, unitZone: z as (FieldCard | null)[], graveyard: g }
+            })
+            setPlayerField(prev => {
+              const z = [...prev.unitZone]
+              if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
+              return { ...prev, unitZone: z as (FieldCard | null)[] }
+            })
+            setTimeout(() => fireAutoPlayerAttack(rest), 400 / (speedRef.current || 1))
+          }, PROJECTILE_DURATION)
+
+        } else {
+          // Ataque direto ao LP do oponente
+          const directEl = document.querySelector("[data-direct-attack]")
+          const directRect = directEl?.getBoundingClientRect()
+          const targetX = directRect ? directRect.left + directRect.width / 2 : window.innerWidth / 2
+          const targetY = directRect ? directRect.top + directRect.height / 2 : window.innerHeight * 0.25
+
+          const projId = `auto-direct-${Date.now()}-${unitIdx}`
+          setActiveProjectiles(prev => [...prev, { id: projId, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: true }])
+          showEffectFeedback(`${unit.name} ataque direto! -${attackerDp}LP`, "warning")
+
+          setTimeout(() => {
+            setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
+            setPlayerField(prev => {
+              const z = [...prev.unitZone]
+              if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
+              return { ...prev, unitZone: z as (FieldCard | null)[] }
+            })
+            setTimeout(() => fireAutoPlayerAttack(rest), 400 / (speedRef.current || 1))
+          }, PROJECTILE_DURATION)
+        }
+        return prevEnemy
+      })
+      return prevPlayer
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerExplosion, showEffectFeedback, setActiveProjectiles, setEnemyField, setPlayerField, endTurn])
+
   useEffect(() => {
     if (!autoPlay || !gameStarted || !isPlayerTurn || gameResult) return
+
+    const spd = speedRef.current || 1
+    const delay = (ms: number) => ms / spd
+
     const t = setTimeout(() => {
-      if (autoPlayRef.current && isPlayerTurn) endTurn()
-    }, 900 / speedRef.current)
+      if (!autoPlayRef.current || !isPlayerTurn) return
+
+      if (phase === "draw") {
+        // Fase Draw: compra carta e avança para Main
+        advancePhase()
+
+      } else if (phase === "main") {
+        // Fase Main: tenta jogar a melhor unidade disponível, depois avança para Battle
+        const hand = playerField.hand
+        const unitZone = playerField.unitZone
+        const emptySlot = unitZone.findIndex(s => s === null)
+
+        if (!normalSummonUsed && emptySlot !== -1) {
+          // Escolhe a unidade com maior DP na mão
+          const unitCands = hand
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "unit" || c.type === "trooper")
+            .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))
+
+          if (unitCands.length > 0) {
+            const best = unitCands[0]
+            const card = best.c
+            const handIdx = best.i
+            const canAttack = turn > (turn) // novo card nunca ataca no turno que entrou
+            const fieldCard: FieldCard = {
+              ...card,
+              currentDp: card.dp,
+              canAttack: false,
+              hasAttacked: false,
+              canAttackTurn: turn,
+            }
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
+              const newZone = [...prev.unitZone] as (FieldCard | null)[]
+              newZone[emptySlot] = fieldCard
+              return { ...prev, hand: newHand, unitZone: newZone }
+            })
+            setNormalSummonUsed(true)
+            logEvent("play", `Você jogou ${card.name} na Zona de Unidades`, {
+              image: getActiveSkin(card.image || ""), name: card.name,
+              ability: (card as any).ability, abilityDescription: (card as any).abilityDescription,
+              attackDescription: (card as any).attackDescription, attack: (card as any).attack,
+              dp: card.dp, element: (card as any).element, category: (card as any).category, cardType: card.type,
+            })
+            showEffectFeedback(`AUTO: ${card.name} invocado!`, "success")
+          }
+        }
+
+        // Avança para Battle após pequena pausa
+        setTimeout(() => { if (autoPlayRef.current && isPlayerTurn) advancePhase() }, delay(600))
+
+      } else if (phase === "battle") {
+        // Fase Battle: ataca com todas as unidades disponíveis
+        const attackers = playerField.unitZone
+          .map((u, i) => ({ u, i }))
+          .filter(({ u }) => u !== null && !u.hasAttacked && u.canAttack && turn > u.canAttackTurn)
+          .map(({ i }) => i)
+
+        if (attackers.length > 0) {
+          fireAutoPlayerAttack(attackers)
+        } else {
+          // Sem atacantes disponíveis → encerra turno
+          setTimeout(endTurn, delay(400))
+        }
+
+      } else {
+        endTurn()
+      }
+    }, delay(700))
+
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, isPlayerTurn, gameStarted, gameResult])
+  }, [autoPlay, isPlayerTurn, gameStarted, gameResult, phase])
 
   // ── Catastrophe Mode ──────────────────────────────────────────────────────
   const [catastropheEvent, setCatastropheEvent] = useState<{
@@ -11391,22 +11546,42 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               {/* Speed */}
               <div className="w-full py-3 rounded-xl border border-white/[0.08] px-4"
                 style={{background:"rgba(255,255,255,0.03)"}}>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-3">
                   <span className="text-xl">⚡</span>
                   <span className="text-slate-300 font-bold text-sm flex-1">Velocidade do Duelo</span>
-                  <span className="text-amber-300 text-sm font-black">{gameSpeed}x</span>
+                  <span className={`text-sm font-black px-2 py-0.5 rounded-full transition-all duration-200 ${
+                    gameSpeed === 4 ? "bg-red-500/20 text-red-300" :
+                    gameSpeed === 2 ? "bg-amber-500/20 text-amber-300" :
+                    "bg-slate-600/40 text-slate-300"
+                  }`}>{gameSpeed === 1 ? "Normal" : `${gameSpeed}×`}</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 relative">
                   {([1,2,4] as const).map(s => (
                     <button key={s}
                       onClick={() => { setGameSpeed(s); speedRef.current = s }}
-                      className={`flex-1 py-1.5 rounded-lg text-sm font-black border transition-all ${
-                        gameSpeed===s ? "bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20" : "bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-white"
+                      className={`flex-1 py-2 rounded-xl text-sm font-black border-2 transition-all duration-200 relative overflow-hidden ${
+                        gameSpeed === s
+                          ? s === 4 ? "bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/30 scale-105"
+                          : s === 2 ? "bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/30 scale-105"
+                          : "bg-slate-600 border-slate-500 text-white shadow-lg scale-105"
+                          : "bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-white hover:border-white/20"
                       }`}>
-                      {s === 1 ? "Normal" : `${s}×`}
+                      {s === 1 ? "1×" : `${s}×`}
+                      {gameSpeed === s && (
+                        <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                          {Array.from({length: s}).map((_, i) => (
+                            <span key={i} className="w-1 h-1 rounded-full bg-white/60" />
+                          ))}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
+                <p className="text-slate-600 text-[10px] mt-2 text-center">
+                  {gameSpeed === 1 ? "Velocidade padrão — animações completas" :
+                   gameSpeed === 2 ? "Duelo acelerado — animações reduzidas" :
+                   "Velocidade máxima — ações quase instantâneas"}
+                </p>
               </div>
 
               {/* Audio settings */}
