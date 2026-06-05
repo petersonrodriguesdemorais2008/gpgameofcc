@@ -9285,49 +9285,49 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <div className="relative w-full overflow-hidden rounded-lg border border-white/10" style={{aspectRatio:"3/4"}}>
                 <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill sizes="210px" className="object-cover" />
               </div>
-              <div className="space-y-1.5 px-0.5">
-                <p className="text-white font-black text-xs leading-tight">{card.name}</p>
+              <div className="space-y-2 px-0.5">
+                <p className="text-white font-black text-sm leading-tight">{card.name}</p>
                 {card.dp > 0 && (
-                  <p className={`font-bold text-xs ${
+                  <p className={`font-bold text-sm ${
                     inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "text-green-400" :
                     inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "text-red-400" :
                     "text-amber-300"
                   }`}>
                     {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
-                    {card.element && <span className="text-slate-500 font-normal ml-1">· {card.element}</span>}
+                    {card.element && <span className="text-slate-400 font-normal ml-1">· {card.element}</span>}
                   </p>
                 )}
-                {card.category && <p className="text-slate-600 text-[9px]">{card.category}</p>}
+                {card.category && <p className="text-slate-500 text-[11px]">{card.category}</p>}
 
                 {/* ── Bloco de habilidade para cartas de Unidade ── */}
                 {card.ability && card.abilityDescription && (
                   <div className="rounded-lg overflow-hidden border border-cyan-500/20"
                     style={{background:"linear-gradient(135deg,rgba(6,182,212,0.07),rgba(6,182,212,0.03))"}}>
-                    <div className="flex items-center gap-1 px-2 py-1 border-b border-cyan-500/15"
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-cyan-500/15"
                       style={{background:"rgba(6,182,212,0.10)"}}>
-                      <span className="text-cyan-400 text-[9px]">✦</span>
-                      <p className="text-cyan-300 text-[10px] font-black tracking-wide leading-tight">{card.ability}</p>
+                      <span className="text-cyan-400 text-xs">✦</span>
+                      <p className="text-cyan-300 text-xs font-black tracking-wide leading-tight">{card.ability}</p>
                     </div>
-                    <p className="text-slate-300 text-[9px] leading-relaxed px-2 py-1.5">{card.abilityDescription}</p>
+                    <p className="text-slate-300 text-[11px] leading-relaxed px-2 py-2">{card.abilityDescription}</p>
                   </div>
                 )}
                 {/* Apenas nome da habilidade sem descrição (ex: alguns UG) */}
                 {card.ability && !card.abilityDescription && (
-                  <div className="flex items-center gap-1 rounded-lg px-2 py-1 border border-cyan-500/20"
+                  <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 border border-cyan-500/20"
                     style={{background:"rgba(6,182,212,0.07)"}}>
-                    <span className="text-cyan-400 text-[9px]">✦</span>
-                    <p className="text-cyan-300 text-[10px] font-bold leading-tight">{card.ability}</p>
+                    <span className="text-cyan-400 text-xs">✦</span>
+                    <p className="text-cyan-300 text-xs font-bold leading-tight">{card.ability}</p>
                   </div>
                 )}
                 {/* Ataque — para Unidades de Tropas e cartas com ataque nomeado */}
                 {card.attack && (
                   <div className="space-y-1">
-                    <p className="text-amber-400 text-[10px] font-semibold flex items-center gap-1">
+                    <p className="text-amber-400 text-xs font-semibold flex items-center gap-1">
                       <span className="text-amber-500">⚔</span>
                       {card.attack}
                     </p>
                     {card.attackDescription && (
-                      <p className="text-slate-400 text-[9px] leading-relaxed pl-3 border-l border-amber-500/30">
+                      <p className="text-slate-400 text-[11px] leading-relaxed pl-3 border-l border-amber-500/30">
                         {card.attackDescription}
                       </p>
                     )}
