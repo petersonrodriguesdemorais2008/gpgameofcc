@@ -9187,21 +9187,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </svg>
       )}
 
-      {/* Top HUD - Enemy info */}
-      <div className="relative z-20 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center">
-            <Swords className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <span className="text-xs text-slate-400">Oponente</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-red-400">LP: {enemyField.life}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
+      {/* Top HUD - Turn info (LP do oponente movido para fixed abaixo) */}
+      <div className="relative z-20 flex items-center justify-end px-4 py-2 bg-gradient-to-b from-black/80 to-transparent gap-3">
           <div className="text-center px-4 py-1 bg-black/50 rounded-lg border border-amber-500/30">
             <span className="text-xs text-slate-400">{t("turn")}</span>
             <span className="block text-2xl font-bold text-amber-400">{turn}</span>
@@ -10089,26 +10076,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* Bottom HUD */}
       <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-1 pb-2 px-4">
-        {/* Player LP bar + phase buttons */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <span className="text-white font-bold">P1</span>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400">Você</span>
-              <div className="text-xl font-bold text-blue-400">LP: {playerField.life}</div>
-            </div>
-          </div>
-
-          {/* Phase buttons — large fixed button bottom-right of arena */}
-          <div className="flex gap-2 min-h-[40px]">
-            {/* Invisible placeholder to keep layout — real button is fixed below */}
-          </div>
-        </div>
 
         {/* Player Hand - PROMINENT display */}
-        <div className="flex justify-center -mt-14 min-h-28">
+        <div className="flex justify-center mt-0 min-h-28">
           <div ref={handContainerRef} className="flex gap-3 items-end">
             {playerField.hand.map((card, i) => {
               const offset = i - (playerField.hand.length - 1) / 2
@@ -10190,6 +10160,44 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           </div>
         </div>
       </div>
+
+      {/* ── LP OPONENTE — fixed, canto superior esquerdo da arena (círculo verde cima) ── */}
+      {gameStarted && (
+        <div className="fixed z-30" style={{
+          top: "8px",
+          left: `calc(clamp(130px,16vw,210px) + 14px)`,
+        }}>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-1.5 border border-red-500/40 backdrop-blur-sm"
+            style={{background:"rgba(0,0,0,0.72)"}}>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
+              <Swords className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="leading-none">
+              <span className="text-[9px] text-slate-400 block mb-0.5">Oponente</span>
+              <span className="text-base font-black text-red-400">LP: {enemyField.life}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LP JOGADOR — fixed, canto inferior direito da arena (círculo verde baixo) ── */}
+      {gameStarted && (
+        <div className="fixed z-30" style={{
+          bottom: "10px",
+          right: `calc(clamp(140px,17vw,230px) + 16px)`,
+        }}>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-1.5 border border-blue-500/40 backdrop-blur-sm"
+            style={{background:"rgba(0,0,0,0.72)"}}>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-black text-xs">P1</span>
+            </div>
+            <div className="leading-none">
+              <span className="text-[9px] text-slate-400 block mb-0.5">Você</span>
+              <span className="text-base font-black text-blue-400">LP: {playerField.life}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PHASE ACTION BUTTON — fixed, lado direito (entre arena e LOG) ── */}
       {isPlayerTurn && gameStarted && !gameResult && (
