@@ -9223,7 +9223,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 : "🌑 Traps bloqueadas"}
             </div>
           )}
-        </div>
 
         <Button onClick={surrender} size="sm" variant="ghost" className="text-slate-400 hover:text-red-400">
           <ArrowLeft className="w-4 h-4 mr-1" />
