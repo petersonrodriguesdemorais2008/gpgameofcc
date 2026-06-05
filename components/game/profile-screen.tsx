@@ -577,50 +577,55 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         {/* ══════════ HERO SECTION ══════════ */}
         <div style={{position:"relative",marginBottom:0,flexShrink:0}}>
 
-          {/* Banner */}
-          <div style={{position:"relative",height:62,overflow:"hidden"}}>
-            {/* Animated gradient banner */}
-            <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${pc[0]}25,${pc[1]||pc[0]}15,${pc[2]||pc[0]}20)`,backgroundSize:"200% 200%",animation:"bannerShift 6s ease-in-out infinite"}}/>
-            <div style={{position:"absolute",inset:0,background:"url('/images/the_great_order_wallpaper.png') center/cover",opacity:0.15,mixBlendMode:"screen"}}/>
-            {/* Prestige aura at top */}
+          {/* ── BANNER ── 110px, gradientes com presença real, radial aura do avatar */}
+          <div style={{position:"relative",height:110,overflow:"hidden"}}>
+            {/* Gradiente animado — opacidade 45% para cor visível */}
+            <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${pc[0]}45,${pc[1]||pc[0]}28,${pc[2]||pc[0]}35)`,backgroundSize:"200% 200%",animation:"bannerShift 6s ease-in-out infinite"}}/>
+            {/* Wallpaper de textura */}
+            <div style={{position:"absolute",inset:0,background:"url('/images/the_great_order_wallpaper.png') center/cover",opacity:0.18,mixBlendMode:"screen"}}/>
+            {/* Radial aura à esquerda — "palco" invisível do avatar */}
+            <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 15% 60%,${pc[0]}35,transparent 55%)`}}/>
+            {/* Aura arco-íris só para lendário */}
             {prestige==="legendary"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444410,#fbbf2410,#a855f710,#ef444410)",backgroundSize:"400% 100%",animation:"bannerShift 3s linear infinite"}}/>}
-            {/* Master art in background */}
+            {/* Arte do mestre ao fundo — levemente mais visível */}
             {activeMasterIcon && (
-              <div style={{position:"absolute",right:0,top:0,height:"100%",width:"50%",opacity:0.15,overflow:"hidden"}}>
+              <div style={{position:"absolute",right:0,top:0,height:"100%",width:"45%",opacity:0.22,overflow:"hidden"}}>
                 <Image src={activeMasterIcon} alt="" fill style={{objectFit:"contain",objectPosition:"right center",filter:"blur(1px)"}}/>
               </div>
             )}
-            {/* Prestige badge */}
-            <div style={{position:"absolute",top:12,right:16,background:`linear-gradient(135deg,${pc[0]}30,${pc[1]||pc[0]}20)`,border:`1px solid ${pc[0]}50`,borderRadius:20,padding:"4px 12px",backdropFilter:"blur(8px)"}}>
+            {/* Badge de prestígio */}
+            <div style={{position:"absolute",top:14,right:16,background:`linear-gradient(135deg,${pc[0]}30,${pc[1]||pc[0]}20)`,border:`1px solid ${pc[0]}50`,borderRadius:20,padding:"4px 12px",backdropFilter:"blur(8px)"}}>
               <span style={{fontSize:10,fontWeight:900,color:pc[0],letterSpacing:"0.10em",textTransform:"uppercase"}}>
                 {prestige==="legendary"?"⚜ Lendário":prestige==="epic"?"✦ Épico":prestige==="rare"?"◈ Raro":"● Comum"}
               </span>
             </div>
-            {/* Gradient overlay bottom */}
-            <div style={{position:"absolute",bottom:0,left:0,right:0,height:"80%",background:"linear-gradient(transparent,#05000f)"}}/>
+            {/* Fade inferior — 70% para transição suave com o conteúdo */}
+            <div style={{position:"absolute",bottom:0,left:0,right:0,height:"70%",background:"linear-gradient(transparent,#05000f)"}}/>
           </div>
 
-          {/* Avatar + info — overlaps banner */}
-          <div style={{position:"relative",marginTop:-30,padding:"0 12px 0"}}>
+          {/* Avatar + info — margem negativa ajustada para avatar 84px */}
+          <div style={{position:"relative",marginTop:-42,padding:"0 12px 0"}}>
             <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}}>
 
-              {/* Avatar with holographic ring */}
+              {/* ── AVATAR ── 84px, anel holográfico giratório, badge de nível */}
               <div style={{position:"relative",flexShrink:0}} onClick={()=>!isEditing&&setShowIconSel(true)}>
+                {/* Anel de prestígio rotativo */}
                 <div style={{
-                  position:"absolute",inset:-4,borderRadius:"50%",
+                  position:"absolute",inset:-5,borderRadius:"50%",
                   background:`conic-gradient(${pc.join(",")},${pc[0]})`,
                   animation:"rotateSpin 3s linear infinite",
-                  filter:`blur(2px) drop-shadow(0 0 12px ${pc[0]})`,
+                  filter:`blur(2px) drop-shadow(0 0 14px ${pc[0]})`,
                 }}/>
-                <div style={{position:"relative",width:60,height:60,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
+                {/* Foto do avatar — 84px */}
+                <div style={{position:"relative",width:84,height:84,borderRadius:"50%",overflow:"hidden",border:"3px solid rgba(5,0,15,1)",cursor:"pointer"}}>
                   {playerProfile.avatarUrl
                     ? <Image src={playerProfile.avatarUrl} alt="" fill style={{objectFit:"cover"}}/>
-                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${pc[0]},${pc[1]||pc[0]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:"#fff"}}>{playerProfile.name.charAt(0).toUpperCase()}</div>
+                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${pc[0]},${pc[1]||pc[0]})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:38,fontWeight:900,color:"#fff"}}>{playerProfile.name.charAt(0).toUpperCase()}</div>
                   }
                 </div>
-                {/* Lv badge */}
-                <div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:99,padding:"1px 8px",border:"2px solid #05000f",whiteSpace:"nowrap"}}>
-                  <span style={{fontSize:10,fontWeight:900,color:"#fff"}}>Lv.{playerProfile.level||1}</span>
+                {/* Lv badge — proporcional ao avatar maior */}
+                <div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7c3aed,#a855f7)",borderRadius:99,padding:"2px 10px",border:"2px solid #05000f",whiteSpace:"nowrap"}}>
+                  <span style={{fontSize:11,fontWeight:900,color:"#fff"}}>Lv.{playerProfile.level||1}</span>
                 </div>
               </div>
 
@@ -665,10 +670,11 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 ) : (
                   <>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+                      {/* ── NOME ── 26px, branco puro, sombra de profundidade */}
                       <h2 style={{
-                        fontWeight:900,fontSize:18,margin:0,
-                        color:"#f1f0ee",
-                        textShadow:`0 0 22px ${pc[0]}cc, 0 0 8px ${pc[0]}66`,
+                        fontWeight:900,fontSize:26,margin:0,
+                        color:"#ffffff",
+                        textShadow:`0 2px 12px rgba(0,0,0,0.8), 0 0 22px ${pc[0]}cc`,
                         overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                         minWidth:0,
                       }}>{playerProfile.name}</h2>
@@ -780,8 +786,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                     ? <img src={(s as any).iconImg} alt="" style={{width:17,height:17,objectFit:"contain",display:"block",margin:"0 auto 5px",position:"relative"}}/>
                     : <div style={{fontSize:16,marginBottom:5,position:"relative"}}>{s.icon}</div>
                   }
-                  <div style={{fontWeight:900,fontSize:22,color:"#f1f0ee",lineHeight:1,letterSpacing:"-0.01em",position:"relative"}}>{s.val.toLocaleString()}</div>
-                  <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.05em",marginTop:4,position:"relative"}}>{s.lbl}</div>
+                  {/* ── NÚMERO ── 26px, kerning compacto estilo painel premium */}
+                  <div style={{fontWeight:900,fontSize:26,color:"#f1f0ee",lineHeight:1,letterSpacing:"-0.03em",position:"relative"}}>{s.val.toLocaleString()}</div>
+                  {/* ── LABEL ── sem uppercase, contraste AA (#94a3b8) */}
+                  <div style={{fontSize:11,color:"#94a3b8",marginTop:4,position:"relative"}}>{s.lbl}</div>
                 </div>
               ))}
             </div>
@@ -805,8 +813,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 <span style={{fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.10em",userSelect:"none"}}>VITRINE</span>
                 <div style={{height:1,flex:1,background:`linear-gradient(270deg,transparent,${pc[0]}40)`}}/>
               </div>
-              {/* Fan / cascade — center card leads, side cards rotated behind */}
-              <div style={{display:"flex",justifyContent:"center",alignItems:"flex-end",gap:0,paddingBottom:4}}>
+              {/* ── PALCO DA VITRINE ── radial-gradient dá profundidade sem caixas adicionais */}
+              <div style={{position:"relative",display:"flex",justifyContent:"center",alignItems:"flex-end",gap:0,paddingBottom:4}}>
+                {/* Aura de fundo — "spot light" invisível sob as cartas */}
+                <div style={{position:"absolute",top:"5%",left:"50%",transform:"translateX(-50%)",width:240,height:150,background:`radial-gradient(ellipse,${pc[0]}20,transparent 68%)`,pointerEvents:"none",zIndex:0}}/>
                 {[0,1,2].map((slot,idx) => {
                   const card = showcaseIds[slot] ? collection.find(c=>c.id===showcaseIds[slot]) : null
                   const isCenter = idx === 1
@@ -826,7 +836,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                         boxShadow: card
                           ? (isCenter ? rarityGlow(card.rarity) : "0 4px 16px rgba(0,0,0,0.5)")
                           : (isCenter ? "none" : "0 4px 12px rgba(0,0,0,0.4)"),
-                        zIndex: isCenter ? 10 : 4,
+                        zIndex: isCenter ? 11 : 5,
                         marginRight: mr,
                         transform: transforms[idx],
                         flexShrink: 0,
@@ -1214,32 +1224,37 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               </div>
             </div>
 
-            {/* Favourite element + decks + resources — 3 columns */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-              {/* Element */}
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 11px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:6}}>⚡ Elemento</div>
+            {/* ── ELEMENTO / DECKS / RECURSOS ── card unificado com divisores verticais */}
+            <div style={{
+              display:"grid",gridTemplateColumns:"1fr 1fr 1fr",
+              background:"rgba(255,255,255,0.03)",
+              border:"1px solid rgba(255,255,255,0.07)",
+              borderRadius:12,overflow:"hidden",
+            }}>
+              {/* Elemento favorito */}
+              <div style={{padding:"14px 16px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8}}>⚡ Elemento</div>
                 {favElement?(
                   <>
-                    <div style={{fontWeight:900,fontSize:17,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayElement(favElement[0])}</div>
+                    <div style={{fontWeight:900,fontSize:18,color:ELEMENT_COLORS[favElement[0]]||ELEMENT_COLORS[displayElement(favElement[0])]||"#94a3b8",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayElement(favElement[0])}</div>
                     <div style={{fontSize:12,color:"#6b7280"}}>{favElement[1]} cartas</div>
                   </>
-                ):<div style={{color:"#4b5563",fontSize:13}}>Sem dados</div>}
+                ):<div style={{color:"#6b7280",fontSize:13}}>Sem dados</div>}
               </div>
-              {/* Decks */}
-              <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 11px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:6}}>🃏 Decks</div>
-                <div style={{fontWeight:900,fontSize:17,color:"#f1f0ee",marginBottom:2}}>{decks.length}</div>
+              {/* Decks criados */}
+              <div style={{padding:"14px 16px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8}}>🃏 Decks</div>
+                <div style={{fontWeight:900,fontSize:22,color:"#f1f0ee",marginBottom:3,letterSpacing:"-0.02em"}}>{decks.length}</div>
                 <div style={{fontSize:12,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{decks[0]?.name||"Nenhum deck"}</div>
               </div>
-              {/* Resources */}
-              <div style={{background:"rgba(232,201,109,0.05)",border:"1px solid rgba(232,201,109,0.15)",borderRadius:12,padding:"12px 11px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8}}>💰 Recursos</div>
-                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {/* Recursos: moedas e pts amizade */}
+              <div style={{padding:"14px 16px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:10}}>💰 Recursos</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <img src="/images/icons/gacha-coin.png" alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>
                     <div>
-                      <div style={{fontWeight:900,fontSize:15,color:"#e8c96d"}}>{coins.toLocaleString()}</div>
+                      <div style={{fontWeight:900,fontSize:15,color:"#e8c96d",letterSpacing:"-0.01em"}}>{coins.toLocaleString()}</div>
                       <div style={{fontSize:11,color:"#6b7280"}}>Moedas</div>
                     </div>
                   </div>
