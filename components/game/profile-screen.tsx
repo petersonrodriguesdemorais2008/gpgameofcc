@@ -806,59 +806,74 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             </div>
 
             {/* ══ CARD SHOWCASE ══ */}
-            <div style={{marginTop:10,padding:"8px 0"}}>
-              {/* Themed divider */}
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                <div style={{height:1,flex:1,background:`linear-gradient(90deg,transparent,${pc[0]}40)`}}/>
-                <span style={{fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.10em",userSelect:"none"}}>VITRINE</span>
-                <div style={{height:1,flex:1,background:`linear-gradient(270deg,transparent,${pc[0]}40)`}}/>
+            <div style={{marginTop:12,padding:"10px 0 4px"}}>
+
+              {/* Header com diamantes temáticos */}
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+                <div style={{height:1,flex:1,background:`linear-gradient(90deg,transparent,${pc[0]}70)`}}/>
+                <div style={{display:"flex",alignItems:"center",gap:7}}>
+                  <span style={{color:pc[0],fontSize:10,lineHeight:1,animation:"showcasePulse 2s ease-in-out infinite"}}>◆</span>
+                  <span style={{fontSize:12,fontWeight:800,color:"#e2e8f0",letterSpacing:"0.12em"}}>VITRINE DE CARTAS</span>
+                  <span style={{color:pc[0],fontSize:10,lineHeight:1,animation:"showcasePulse 2s ease-in-out infinite 1s"}}>◆</span>
+                </div>
+                <div style={{height:1,flex:1,background:`linear-gradient(270deg,transparent,${pc[0]}70)`}}/>
               </div>
-              {/* ── PALCO DA VITRINE ── radial-gradient dá profundidade sem caixas adicionais */}
-              <div style={{position:"relative",display:"flex",justifyContent:"center",alignItems:"flex-end",gap:0,paddingBottom:4}}>
-                {/* Aura de fundo — "spot light" invisível sob as cartas */}
-                <div style={{position:"absolute",top:"5%",left:"50%",transform:"translateX(-50%)",width:240,height:150,background:`radial-gradient(ellipse,${pc[0]}20,transparent 68%)`,pointerEvents:"none",zIndex:0}}/>
+
+              {/* Palco com 3 camadas de luz */}
+              <div style={{position:"relative",display:"flex",justifyContent:"center",alignItems:"flex-end",gap:0,paddingBottom:10}}>
+                {/* Spotlight principal */}
+                <div style={{position:"absolute",top:"-35%",left:"50%",transform:"translateX(-50%)",width:380,height:210,background:`radial-gradient(ellipse,${pc[0]}38,transparent 65%)`,pointerEvents:"none",zIndex:0}}/>
+                {/* Halo externo suave */}
+                <div style={{position:"absolute",top:"5%",left:"50%",transform:"translateX(-50%)",width:560,height:150,background:`radial-gradient(ellipse,${pc[0]}13,transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+                {/* Reflexo no chão */}
+                <div style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",width:320,height:28,background:`radial-gradient(ellipse,${pc[0]}30,transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+
                 {[0,1,2].map((slot,idx) => {
                   const card = showcaseIds[slot] ? collection.find(c=>c.id===showcaseIds[slot]) : null
                   const isCenter = idx === 1
-                  const cardW = isCenter ? 100 : 76
+                  const cardW = isCenter ? 130 : 96
                   const cardH = Math.round(cardW * 4/3)
-                  const mr = idx < 2 ? -16 : 0
-                  const transforms = ["translateY(14px) rotate(-5deg)","none","translateY(14px) rotate(5deg)"]
+                  const mr = idx < 2 ? -28 : 0
+                  const transforms = ["translateY(24px) rotate(-9deg)","none","translateY(24px) rotate(9deg)"]
+                  const rarityColor = card?.rarity==="LR"?"#ef4444":card?.rarity==="UR"?"#38bdf8":card?.rarity==="SR"?"#a855f7":"#94a3b8"
+                  const centerGlow = card
+                    ? `0 0 28px ${rarityColor}90, 0 0 56px ${rarityColor}35, 0 12px 40px rgba(0,0,0,0.9)`
+                    : `0 0 28px ${pc[0]}50, 0 12px 40px rgba(0,0,0,0.9)`
                   return (
                     <div key={slot} onClick={()=>setShowShowcasePick(slot)}
                       style={{
                         position:"relative",
                         width:cardW, height:cardH,
-                        borderRadius:10, overflow:"hidden", cursor:"pointer",
-                        border: card ? rarityBorder(card.rarity) : "2px dashed rgba(255,255,255,0.10)",
+                        borderRadius:12, overflow:"hidden", cursor:"pointer",
+                        border: card
+                          ? (isCenter ? `2px solid ${rarityColor}95` : `1px solid ${rarityColor}45`)
+                          : "2px dashed rgba(255,255,255,0.12)",
                         background: card ? rarityBg(card.rarity) : "rgba(255,255,255,0.02)",
-                        transition:"all .2s",
-                        boxShadow: card
-                          ? (isCenter ? rarityGlow(card.rarity) : "0 4px 16px rgba(0,0,0,0.5)")
-                          : (isCenter ? "none" : "0 4px 12px rgba(0,0,0,0.4)"),
+                        transition:"transform .25s ease, box-shadow .25s ease",
+                        boxShadow: isCenter ? centerGlow : "0 6px 24px rgba(0,0,0,0.7)",
                         zIndex: isCenter ? 11 : 5,
                         marginRight: mr,
                         transform: transforms[idx],
                         flexShrink: 0,
+                        animation: isCenter && card ? "cardFloat 3.2s ease-in-out infinite" : "none",
                       }}>
                       {card ? (
                         <>
                           <Image src={card.image||"/placeholder.svg"} alt={card.name} fill style={{objectFit:"cover"}}/>
-                          {/* Dim side cards slightly */}
-                          {!isCenter&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.25)",pointerEvents:"none"}}/>}
-                          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.12) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
+                          {!isCenter&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.38)",pointerEvents:"none"}}/>}
+                          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.14) 50%,transparent 65%)",animation:"holoSheen 2.5s ease-in-out infinite"}}/>
                           {card.rarity==="LR"&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,#ef444420,#fbbf2420,#a855f720,#ef444420)",backgroundSize:"300% 100%",animation:"rainbowShift 1.5s linear infinite"}}/>}
-                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.88))",padding:"14px 5px 5px"}}>
-                            <div style={{fontSize:isCenter?9:7,fontWeight:800,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</div>
-                            <div style={{fontSize:7,color: card.rarity==="LR"?"#ef4444":card.rarity==="UR"?"#38bdf8":card.rarity==="SR"?"#a855f7":"#94a3b8"}}>{card.rarity}</div>
+                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.92))",padding:isCenter?"20px 8px 8px":"12px 5px 5px"}}>
+                            <div style={{fontSize:isCenter?11:8,fontWeight:800,color:"#f1f0ee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.name}</div>
+                            <div style={{fontSize:isCenter?9:7,fontWeight:700,color:rarityColor}}>{card.rarity}</div>
                           </div>
                           <button onClick={e=>{e.stopPropagation();handleShowcasePick(slot,null)}}
-                            style={{position:"absolute",top:3,right:3,width:16,height:16,borderRadius:"50%",background:"rgba(0,0,0,0.65)",border:"none",cursor:"pointer",color:"#f87171",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                            style={{position:"absolute",top:4,right:4,width:17,height:17,borderRadius:"50%",background:"rgba(0,0,0,0.72)",border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",color:"#f87171",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                         </>
                       ) : (
-                        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}>
-                          <span style={{fontSize:isCenter?22:16,opacity:.20}}>🃏</span>
-                          <span style={{fontSize:10,color:"#374151"}}>Slot {slot+1}</span>
+                        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5}}>
+                          <span style={{fontSize:isCenter?30:20,opacity:.16}}>🃏</span>
+                          <span style={{fontSize:10,color:"#475569",fontWeight:600}}>Slot {slot+1}</span>
                         </div>
                       )}
                     </div>
@@ -866,6 +881,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                 })}
               </div>
             </div>
+
 
             {/* Favourite card signature */}
             {favCard&&(
@@ -1459,6 +1475,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         @keyframes holoSheen{0%,100%{background-position:200% 200%;opacity:0.5}50%{background-position:-100% -100%;opacity:1}}
         @keyframes rainbowShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
         @keyframes urPulse{0%,100%{box-shadow:inset 0 0 12px rgba(56,189,248,0.2)}50%{box-shadow:inset 0 0 22px rgba(56,189,248,0.5)}}
+        @keyframes cardFloat{0%,100%{transform:translateY(0px)}50%{transform:translateY(-7px)}}
+        @keyframes showcasePulse{0%,100%{opacity:0.6}50%{opacity:1}}
       `}}/>
     </div>
   )
