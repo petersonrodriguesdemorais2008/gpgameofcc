@@ -42,7 +42,22 @@ interface GearPassScreenProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const POINTS_PER_LEVEL = 500
+// ─── Progressive level cost ────────────────────────────────────────────────────
+// Custo para passar do nível N-1 para o nível N: começa em 25 pts, +5 a cada nível
+// ptsForLevel(1)=25, ptsForLevel(2)=30, ptsForLevel(3)=35, ...
+const ptsForLevel = (lvl: number): number => 20 + lvl * 5
+
+// Pontos cumulativos para ALCANÇAR o nível N (chegar ao nível N)
+// Σ(i=1..N) of (20 + 5i) = 20N + 5·N·(N+1)/2
+const totalPtsToReachLevel = (lvl: number): number =>
+  lvl <= 0 ? 0 : 20 * lvl + Math.round(5 * lvl * (lvl + 1) / 2)
+
+// Nível calculado a partir dos pontos totais acumulados
+const levelFromPts = (pts: number): number => {
+  let lvl = 0
+  while (lvl < MAX_LEVELS && pts >= totalPtsToReachLevel(lvl + 1)) lvl++
+  return lvl
+}
 const MAX_LEVELS = 100
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
@@ -570,9 +585,18 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   }, [activeTab, passData.currentLevel])
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const pointsInCurrentLevel = passData.currentPoints % POINTS_PER_LEVEL
-  const progressPct = Math.min(100, Math.round((pointsInCurrentLevel / POINTS_PER_LEVEL) * 100))
-  const totalPointsNeeded = passData.currentLevel * POINTS_PER_LEVEL
+  // Pontos gastos nos níveis anteriores (para calcular progresso no nível atual)
+  const ptsSpentBefore      = totalPtsToReachLevel(passData.currentLevel)
+  // Pontos acumulados dentro do nível atual (acima do limiar do nível anterior)
+  const pointsInCurrentLevel = passData.currentPoints - ptsSpentBefore
+  // Custo do próximo nível (de currentLevel → currentLevel + 1)
+  const nextLevelCost        = ptsForLevel(passData.currentLevel + 1)
+  // Porcentagem de progresso para o próximo nível
+  const progressPct          = passData.currentLevel >= MAX_LEVELS
+    ? 100
+    : Math.min(100, Math.round((pointsInCurrentLevel / nextLevelCost) * 100))
+  // Total acumulado para referência no header
+  const totalPointsNeeded    = totalPtsToReachLevel(passData.currentLevel)
 
   const filteredMissions = missionFilter === "all"
     ? missions
@@ -589,7 +613,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       totalPoints += m.points
     })
     const newPoints = passData.currentPoints + totalPoints
-    const newLevel = Math.min(MAX_LEVELS, Math.floor(newPoints / POINTS_PER_LEVEL))
+    const newLevel = Math.min(MAX_LEVELS, levelFromPts(newPoints))
     setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
     setClaimFeedback(`+${totalPoints} pontos do Passe!`)
     setTimeout(() => setClaimFeedback(null), 2500)
@@ -603,7 +627,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     if (isMissionClaimed(missionId, mission.type)) return
 
     const newPoints = passData.currentPoints + mission.points
-    const newLevel = Math.min(MAX_LEVELS, Math.floor(newPoints / POINTS_PER_LEVEL))
+    const newLevel = Math.min(MAX_LEVELS, levelFromPts(newPoints))
     setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
     claimMission(missionId, mission.type)
     setClaimFeedback(`+${mission.points} pontos do Passe!`)
@@ -798,7 +822,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ color: "#06b6d4", fontWeight: 800, fontSize: 13 }}>
-                      {pointsInCurrentLevel} / {POINTS_PER_LEVEL}
+                      {passData.currentLevel >= MAX_LEVELS
+                        ? "MAX"
+                        : `${pointsInCurrentLevel} / ${nextLevelCost}`}
                     </div>
                     <div style={{ color: "#334155", fontSize: 10 }}>pts p/ próx. nível</div>
                   </div>
