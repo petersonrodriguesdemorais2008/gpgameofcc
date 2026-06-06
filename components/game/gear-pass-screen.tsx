@@ -500,17 +500,30 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     }))
   }
 
+  // ── currentDayKey: muda à meia-noite e força re-avaliação das missões ────────
+  const [currentDayKey, setCurrentDayKey] = useState(() => getDayKey())
+
+  // Login diário — apenas no mount, não a cada claim
+  useEffect(() => { trackDailyLogin() }, [])
+
+  // Detecta virada de dia a cada 60s e atualiza currentDayKey
+  useEffect(() => {
+    const check = () => {
+      const today = getDayKey()
+      if (today !== currentDayKey) setCurrentDayKey(today)
+    }
+    const id = setInterval(check, 60_000)
+    return () => clearInterval(id)
+  }, [currentDayKey])
+
   // Missões lidas ao vivo do tracker + status de claimed
   const [missions, setMissions] = useState<PassMission[]>(() =>
-    buildMissions().map(m => ({
-      ...m,
-      claimed: false,
-    }))
+    buildMissions().map(m => ({ ...m, claimed: false }))
   )
 
-  // Recarrega progresso das missões a cada 3s (para refletir ações do jogo)
+  // Recarrega progresso das missões a cada 3s
+  // Depende de claimedMissionIds (novos claims) e currentDayKey (virada de dia)
   useEffect(() => {
-    trackDailyLogin()
     const refresh = () => {
       const fresh = buildMissions()
       setMissions(fresh.map(m => {
@@ -526,7 +539,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     const interval = setInterval(refresh, 3000)
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claimedMissionIds])
+  }, [claimedMissionIds, currentDayKey])
 
   const [activeTab, setActiveTab] = useState<"pass" | "missions">("pass")
   const [missionFilter, setMissionFilter] = useState<"all" | "daily" | "weekly" | "limited">("all")
