@@ -464,11 +464,14 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
       ...prev,
       [activeTab]: { dayKey: getDayKey(), weekKey: getWeekKey() },
     }))
-  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])((id: string) => {
+  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])
+
+  // Coleta recompensa de uma missão individual
+  const handleClaimReward = useCallback((id: string) => {
     if (claimingId !== null) return
     const mission = allMissions.find(m => m.id === id)
     if (!mission) return
-    // Usa isMissionClaimed para respeitar reset diário/semanal
+    // isMissionClaimed respeita reset diário/semanal
     if (isMissionClaimed(id, mission.type)) return
     if (!mission.completed) return
     setClaimingId(id)
