@@ -3513,13 +3513,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         advancePhase()
 
       } else if (phase === "main") {
-        const pf       = playerFieldRef.current
-        const emptySlot = pf.unitZone.findIndex(s => s === null)
+        const pf        = playerFieldRef.current
+        const emptyUnit = pf.unitZone.findIndex(s => s === null)
+        const emptyFunc = pf.functionZone.findIndex(s => s === null)
 
-        if (!normalSummonUsedRef.current && emptySlot !== -1) {
+        // ── 1. Invoca melhor Unidade / Tropa (se ainda não invocou) ──
+        if (!normalSummonUsedRef.current && emptyUnit !== -1) {
           const best = pf.hand
             .map((c, i) => ({ c, i }))
-            .filter(({ c }) => c.type === "unit" || c.type === "trooper")
+            .filter(({ c }) => (c.type === "unit" || c.type === "trooper") && !isUltimateCard(c))
             .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
           if (best) {
@@ -3528,21 +3530,98 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             setPlayerField(prev => {
               const newHand = prev.hand.filter((_, i) => i !== handIdx)
               const newZone = [...prev.unitZone] as (FieldCard | null)[]
-              newZone[emptySlot] = fieldCard
+              newZone[emptyUnit] = fieldCard
               return { ...prev, hand: newHand, unitZone: newZone }
             })
             setNormalSummonUsed(true)
             showEffectFeedback(`AUTO: ${card.name} invocado!`, "success")
           }
         }
+
+        // ── 2. Joga carta de Function/Ação/Magia na zona de função ──
+        if (emptyFunc !== -1) {
+          const funcCard = pf.hand
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "action" || c.type === "magic" || c.type === "function")
+            .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
+
+          if (funcCard) {
+            const { c: card, i: handIdx } = funcCard
+            const funcSlot = playerFieldRef.current.functionZone.findIndex(s => s === null)
+            if (funcSlot !== -1) {
+              setPlayerField(prev => {
+                const newHand = prev.hand.filter((_, i) => i !== handIdx)
+                const newFZ   = [...prev.functionZone]
+                newFZ[funcSlot] = { ...card, isFaceDown: false }
+                return { ...prev, hand: newHand, functionZone: newFZ }
+              })
+              showEffectFeedback(`AUTO: ${card.name} ativado!`, "info")
+            }
+          }
+        }
+
+        // ── 3. Joga Trap face-down na zona de função ──
+        const emptyFunc2 = playerFieldRef.current.functionZone.findIndex(s => s === null)
+        if (emptyFunc2 !== -1) {
+          const trapCard = pf.hand
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "trap")[0]
+
+          if (trapCard) {
+            const { c: card, i: handIdx } = trapCard
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
+              const newFZ   = [...prev.functionZone]
+              const slot    = newFZ.findIndex(s => s === null)
+              if (slot !== -1) newFZ[slot] = { ...card, isFaceDown: true }
+              return { ...prev, hand: newHand, functionZone: newFZ }
+            })
+            showEffectFeedback(`AUTO: Trap posicionada!`, "info")
+          }
+        }
+
+        // ── 4. Joga Cenário se zona vazia ──
+        if (!playerFieldRef.current.scenarioZone) {
+          const scenCard = pf.hand
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "scenario")[0]
+
+          if (scenCard) {
+            const { c: card, i: handIdx } = scenCard
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
+              return { ...prev, hand: newHand, scenarioZone: card }
+            })
+            showEffectFeedback(`AUTO: Cenário ${card.name}!`, "info")
+          }
+        }
+
+        // ── 5. Equipa Ultimate Gear se há unidade no campo ──
+        const hasUnit = playerFieldRef.current.unitZone.some(u => u !== null)
+        if (hasUnit && !playerFieldRef.current.ultimateZone) {
+          const ugCard = pf.hand
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => isUltimateCard(c))[0]
+
+          if (ugCard) {
+            const { c: card, i: handIdx } = ugCard
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
+              return { ...prev, hand: newHand, ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turnRef2.current } as FieldCard }
+            })
+            showEffectFeedback(`AUTO: ${card.name} equipado!`, "success")
+          }
+        }
+
         setTimeout(() => { if (!cancelled && autoPlayRef.current) advancePhase() }, D(700))
 
       } else if (phase === "battle") {
-        const pf       = playerFieldRef.current
-        const curTurn  = turnRef2.current
+        const pf      = playerFieldRef.current
+        const curTurn = turnRef2.current
+        // Usa SOMENTE !hasAttacked + turn > canAttackTurn (ignora canAttack que pode estar stale)
         const attackers = pf.unitZone
           .map((u, i) => ({ u, i }))
-          .filter(({ u }) => u && !u.hasAttacked && u.canAttack && curTurn > u.canAttackTurn)
+          .filter(({ u }) => u && !u.hasAttacked && curTurn > u.canAttackTurn)
           .map(({ i }) => i)
 
         if (attackers.length > 0) fireAutoAttacks(attackers)
