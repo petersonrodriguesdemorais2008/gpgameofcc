@@ -456,6 +456,8 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   }
 
   const bonusAlreadyClaimed = isBonusClaimed(activeTab)
+  // bonusCoins declarado aqui — antes de handleClaimBonus que o usa no deps array
+  const bonusCoins = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
 
   const handleClaimBonus = useCallback(() => {
     if (isBonusClaimed(activeTab)) return
@@ -530,7 +532,6 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const activeColors = tabColors[activeTabData.color]
 
   const allComplete = filteredMissions.length > 0 && filteredMissions.every(m => isMissionClaimed(m.id, m.type))
-  const bonusCoins  = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#070C18] text-slate-200">
