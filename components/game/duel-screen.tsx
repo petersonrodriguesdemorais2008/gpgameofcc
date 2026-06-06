@@ -3404,6 +3404,32 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return setTimeout(fn, ms / speedRef.current)
   }, [])
 
+  // ── LP CHANGE ANIMATIONS ──────────────────────────────────────────────────
+  const [playerLpAnim, setPlayerLpAnim] = useState<"damage"|"heal"|null>(null)
+  const [enemyLpAnim,  setEnemyLpAnim]  = useState<"damage"|"heal"|null>(null)
+  const prevPlayerLp = useRef<number|null>(null)
+  const prevEnemyLp  = useRef<number|null>(null)
+
+  useEffect(() => {
+    if (prevPlayerLp.current === null) { prevPlayerLp.current = playerField.life; return }
+    if (playerField.life === prevPlayerLp.current) return
+    const type = playerField.life < prevPlayerLp.current ? "damage" : "heal"
+    prevPlayerLp.current = playerField.life
+    setPlayerLpAnim(type)
+    const t = setTimeout(() => setPlayerLpAnim(null), 750)
+    return () => clearTimeout(t)
+  }, [playerField.life])
+
+  useEffect(() => {
+    if (prevEnemyLp.current === null) { prevEnemyLp.current = enemyField.life; return }
+    if (enemyField.life === prevEnemyLp.current) return
+    const type = enemyField.life < prevEnemyLp.current ? "damage" : "heal"
+    prevEnemyLp.current = enemyField.life
+    setEnemyLpAnim(type)
+    const t = setTimeout(() => setEnemyLpAnim(null), 750)
+    return () => clearTimeout(t)
+  }, [enemyField.life])
+
   // ── AUTO-PLAY INTELIGENTE ──────────────────────────────────────────────────
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
@@ -10380,20 +10406,55 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       </div>
 
+      {/* ── KEYFRAMES LP ANIMATIONS ── */}
+      <style>{`
+        @keyframes lp-damage {
+          0%   { transform: scale(1);    color: #f87171; }
+          18%  { transform: scale(1.28); color: #ef4444; }
+          50%  { transform: scale(1.14); color: #fca5a5; }
+          100% { transform: scale(1);    color: #f87171; }
+        }
+        @keyframes lp-heal {
+          0%   { transform: scale(1);    color: #4ade80; }
+          18%  { transform: scale(1.28); color: #22c55e; }
+          50%  { transform: scale(1.14); color: #86efac; }
+          100% { transform: scale(1);    color: #4ade80; }
+        }
+        @keyframes lp-border-damage {
+          0%,100% { box-shadow: none; }
+          25%     { box-shadow: 0 0 16px 3px rgba(239,68,68,0.7); }
+        }
+        @keyframes lp-border-heal {
+          0%,100% { box-shadow: none; }
+          25%     { box-shadow: 0 0 16px 3px rgba(34,197,94,0.7); }
+        }
+        .lp-damage-num  { animation: lp-damage 0.72s ease-out forwards; display:inline-block; }
+        .lp-heal-num    { animation: lp-heal   0.72s ease-out forwards; display:inline-block; }
+        .lp-border-dmg  { animation: lp-border-damage 0.72s ease-out; }
+        .lp-border-heal { animation: lp-border-heal   0.72s ease-out; }
+      `}</style>
+
       {/* ── LP OPONENTE — fixed, canto superior esquerdo da arena (círculo verde cima) ── */}
       {gameStarted && (
         <div className="fixed z-30" style={{
           top: "8px",
           left: `calc(clamp(130px,16vw,210px) + 14px)`,
         }}>
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 border-red-500/40 backdrop-blur-sm"
-            style={{background:"rgba(0,0,0,0.75)"}}>
+          <div className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm transition-colors duration-300 ${
+            enemyLpAnim === "damage" ? "border-red-400/70 lp-border-dmg" :
+            enemyLpAnim === "heal"   ? "border-green-400/70 lp-border-heal" :
+            "border-red-500/40"
+          }`} style={{background:"rgba(0,0,0,0.75)"}}>
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
               <Swords className="w-5 h-5 text-white" />
             </div>
             <div className="leading-none">
               <span className="text-[11px] text-slate-400 block mb-1">Oponente</span>
-              <span className="text-2xl font-black text-red-400">LP: {enemyField.life}</span>
+              <span key={`elp-${enemyField.life}`} className={
+                enemyLpAnim === "damage" ? "lp-damage-num text-2xl font-black" :
+                enemyLpAnim === "heal"   ? "lp-heal-num text-2xl font-black"   :
+                "text-2xl font-black text-red-400"
+              }>LP: {enemyField.life}</span>
             </div>
           </div>
         </div>
@@ -10405,14 +10466,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           bottom: "10px",
           right: `calc(clamp(140px,17vw,230px) + 16px)`,
         }}>
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 border-blue-500/40 backdrop-blur-sm"
-            style={{background:"rgba(0,0,0,0.75)"}}>
+          <div className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm transition-colors duration-300 ${
+            playerLpAnim === "damage" ? "border-red-400/70 lp-border-dmg" :
+            playerLpAnim === "heal"   ? "border-green-400/70 lp-border-heal" :
+            "border-blue-500/40"
+          }`} style={{background:"rgba(0,0,0,0.75)"}}>
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
               <span className="text-white font-black text-sm">P1</span>
             </div>
             <div className="leading-none">
               <span className="text-[11px] text-slate-400 block mb-1">Você</span>
-              <span className="text-2xl font-black text-blue-400">LP: {playerField.life}</span>
+              <span key={`plp-${playerField.life}`} className={
+                playerLpAnim === "damage" ? "lp-damage-num text-2xl font-black" :
+                playerLpAnim === "heal"   ? "lp-heal-num text-2xl font-black"   :
+                "text-2xl font-black text-blue-400"
+              }>LP: {playerField.life}</span>
             </div>
           </div>
         </div>
