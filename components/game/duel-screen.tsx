@@ -3307,6 +3307,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [fehnonUrUsedDoubleThisTurn, setFehnonUrUsedDoubleThisTurn] = useState(false)
   const [fehnonLrDouble, setFehnonLrDouble] = useState(false)
   const [fehnonLrBonusDp, setFehnonLrBonusDp] = useState(0)
+  const [fehnonUrSingBonus, setFehnonUrSingBonus] = useState(0) // Tracks Singularidade Zero temp +DP (reset each turn)
 
 
   // ── Pre-game setup state ──
@@ -3407,26 +3408,32 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // ── LP CHANGE ANIMATIONS ──────────────────────────────────────────────────
   const [playerLpAnim, setPlayerLpAnim] = useState<"damage"|"heal"|null>(null)
   const [enemyLpAnim,  setEnemyLpAnim]  = useState<"damage"|"heal"|null>(null)
+  const [playerLpDelta, setPlayerLpDelta] = useState<number>(0)
+  const [enemyLpDelta,  setEnemyLpDelta]  = useState<number>(0)
   const prevPlayerLp = useRef<number|null>(null)
   const prevEnemyLp  = useRef<number|null>(null)
 
   useEffect(() => {
     if (prevPlayerLp.current === null) { prevPlayerLp.current = playerField.life; return }
     if (playerField.life === prevPlayerLp.current) return
-    const type = playerField.life < prevPlayerLp.current ? "damage" : "heal"
+    const delta = playerField.life - prevPlayerLp.current
+    const type = delta < 0 ? "damage" : "heal"
     prevPlayerLp.current = playerField.life
+    setPlayerLpDelta(delta)
     setPlayerLpAnim(type)
-    const t = setTimeout(() => setPlayerLpAnim(null), 750)
+    const t = setTimeout(() => setPlayerLpAnim(null), 800)
     return () => clearTimeout(t)
   }, [playerField.life])
 
   useEffect(() => {
     if (prevEnemyLp.current === null) { prevEnemyLp.current = enemyField.life; return }
     if (enemyField.life === prevEnemyLp.current) return
-    const type = enemyField.life < prevEnemyLp.current ? "damage" : "heal"
+    const delta = enemyField.life - prevEnemyLp.current
+    const type = delta < 0 ? "damage" : "heal"
     prevEnemyLp.current = enemyField.life
+    setEnemyLpDelta(delta)
     setEnemyLpAnim(type)
-    const t = setTimeout(() => setEnemyLpAnim(null), 750)
+    const t = setTimeout(() => setEnemyLpAnim(null), 800)
     return () => clearTimeout(t)
   }, [enemyField.life])
 
@@ -6685,6 +6692,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   }
                   return { ...prev, unitZone: newUnitZone }
                 })
+                setFehnonUrSingBonus(prev => prev + 2)
                 showEffectFeedback("SINGULARIDADE ZERO: Fehnon UR +2DP até o final do turno!", "success")
               }
 
@@ -8182,17 +8190,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setFehnonUrUsedDoubleThisTurn(false)
     setFehnonLrDouble(false)
     setFehnonLrBonusDp(0)
+    setFehnonUrSingBonus(0)
 
     setPlayerField((prev) => ({
       ...prev,
       unitZone: prev.unitZone.map((unit) => {
         if (!unit) return null
-        if (unit.name.toLowerCase().includes("calem") && unit.dp === 3) return { ...unit, hasAttacked: false, currentDp: unit.dp }
-        // Fehnon UR: Singularidade Zero +2DP buff resets at end of turn
-        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3) return { ...unit, hasAttacked: false, currentDp: unit.dp }
-        // Fehnon LR: +3DP bonus resets at end of turn
-        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp > 0) return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
-        // dados-da-calamidade debuff
+        // Fehnon UR: remove ONLY the Singularidade Zero temp bonus (not all buffs)
+        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3 && fehnonUrSingBonus > 0) {
+          return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonUrSingBonus) }
+        }
+        // Fehnon LR: remove only the battle-phase bonus
+        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp > 0) {
+          return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
+        }
+        // dados-da-calamidade debuff (scheduled for next turn)
         if ((unit as any).calamidadeDebuffTurn === turn + 1) {
           const cur = (unit as any).currentDp || unit.dp
           const newDp = Math.max(0, cur - 5)
@@ -8201,6 +8213,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           delete updated.calamidadeDebuffTurn
           return updated
         }
+        // All other units: just reset attack state, KEEP currentDp (preserve scenario/UG/action buffs)
         return { ...unit, hasAttacked: false }
       }),
     }))
@@ -9787,11 +9800,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         onTouchEnd={handleCardPressEnd}
                       />
                     ) : null}
-                    {enemyField.ultimateZone && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
-                        {enemyField.ultimateZone.currentDp} DP
-                      </div>
-                    )}
+                    {/* Ultimate cards have no DP — don't show badge */}
                   </div>
                 </div>
               </div>
@@ -10186,9 +10195,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           onTouchStart={() => handleCardPressStart(playerField.ultimateZone!)}
                           onTouchEnd={handleCardPressEnd}
                         />
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
-                          {playerField.ultimateZone.currentDp} DP
-                        </div>
+                        {/* Ultimate cards have no DP — don't show badge */}
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
                           (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO") &&
@@ -10409,50 +10416,70 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {/* ── KEYFRAMES LP ANIMATIONS ── */}
       <style>{`
         @keyframes lp-damage {
-          0%   { transform: scale(1);    color: #f87171; }
-          18%  { transform: scale(1.28); color: #ef4444; }
-          50%  { transform: scale(1.14); color: #fca5a5; }
+          0%   { transform: scale(1);    color: #fca5a5; }
+          15%  { transform: scale(1.35); color: #ef4444; text-shadow: 0 0 12px #ef4444; }
+          45%  { transform: scale(1.2);  color: #f87171; }
           100% { transform: scale(1);    color: #f87171; }
         }
         @keyframes lp-heal {
-          0%   { transform: scale(1);    color: #4ade80; }
-          18%  { transform: scale(1.28); color: #22c55e; }
-          50%  { transform: scale(1.14); color: #86efac; }
+          0%   { transform: scale(1);    color: #86efac; }
+          15%  { transform: scale(1.35); color: #22c55e; text-shadow: 0 0 12px #22c55e; }
+          45%  { transform: scale(1.2);  color: #4ade80; }
           100% { transform: scale(1);    color: #4ade80; }
         }
-        @keyframes lp-border-damage {
-          0%,100% { box-shadow: none; }
-          25%     { box-shadow: 0 0 16px 3px rgba(239,68,68,0.7); }
+        @keyframes lp-shake {
+          0%,100% { transform: translateX(0); }
+          20%     { transform: translateX(-6px); }
+          40%     { transform: translateX(6px); }
+          60%     { transform: translateX(-4px); }
+          80%     { transform: translateX(4px); }
         }
-        @keyframes lp-border-heal {
-          0%,100% { box-shadow: none; }
-          25%     { box-shadow: 0 0 16px 3px rgba(34,197,94,0.7); }
+        @keyframes lp-glow-damage {
+          0%,100% { box-shadow: 0 0 0px transparent; border-color: rgba(239,68,68,0.4); }
+          25%     { box-shadow: 0 0 22px 6px rgba(239,68,68,0.65); border-color: rgba(239,68,68,0.9); }
         }
-        .lp-damage-num  { animation: lp-damage 0.72s ease-out forwards; display:inline-block; }
-        .lp-heal-num    { animation: lp-heal   0.72s ease-out forwards; display:inline-block; }
-        .lp-border-dmg  { animation: lp-border-damage 0.72s ease-out; }
-        .lp-border-heal { animation: lp-border-heal   0.72s ease-out; }
+        @keyframes lp-glow-heal {
+          0%,100% { box-shadow: 0 0 0px transparent; border-color: rgba(34,197,94,0.4); }
+          25%     { box-shadow: 0 0 22px 6px rgba(34,197,94,0.65); border-color: rgba(34,197,94,0.9); }
+        }
+        @keyframes lp-delta-up {
+          0%   { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-36px) scale(0.8); }
+        }
+        @keyframes lp-delta-down {
+          0%   { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-36px) scale(0.8); }
+        }
+        .lp-num-damage { animation: lp-damage 0.7s cubic-bezier(0.22,1,0.36,1) forwards; display:inline-block; }
+        .lp-num-heal   { animation: lp-heal   0.7s cubic-bezier(0.22,1,0.36,1) forwards; display:inline-block; }
+        .lp-box-damage { animation: lp-glow-damage 0.7s ease-out, lp-shake 0.4s ease-out; }
+        .lp-box-heal   { animation: lp-glow-heal   0.7s ease-out; }
+        .lp-delta      { animation: lp-delta-up 0.75s ease-out forwards; pointer-events:none; }
       `}</style>
 
       {/* ── LP OPONENTE — fixed, canto superior esquerdo da arena (círculo verde cima) ── */}
       {gameStarted && (
-        <div className="fixed z-30" style={{
-          top: "8px",
-          left: `calc(clamp(130px,16vw,210px) + 14px)`,
-        }}>
-          <div className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm transition-colors duration-300 ${
-            enemyLpAnim === "damage" ? "border-red-400/70 lp-border-dmg" :
-            enemyLpAnim === "heal"   ? "border-green-400/70 lp-border-heal" :
-            "border-red-500/40"
-          }`} style={{background:"rgba(0,0,0,0.75)"}}>
+        <div className="fixed z-30" style={{ top: "8px", left: `calc(clamp(130px,16vw,210px) + 14px)` }}>
+          <div className={`relative flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm ${
+            enemyLpAnim === "damage" ? "lp-box-damage border-red-400/70" :
+            enemyLpAnim === "heal"   ? "lp-box-heal border-green-400/70" : "border-red-500/40"
+          }`} style={{background:"rgba(0,0,0,0.80)"}}>
+            {/* Delta flutuante */}
+            {enemyLpAnim && (
+              <span key={`ed-${enemyField.life}`} className="lp-delta absolute -top-1 right-2 font-black text-sm z-10" style={{
+                color: enemyLpAnim === "damage" ? "#ef4444" : "#22c55e"
+              }}>
+                {enemyLpAnim === "damage" ? `${enemyLpDelta}` : `+${enemyLpDelta}`}
+              </span>
+            )}
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
               <Swords className="w-5 h-5 text-white" />
             </div>
             <div className="leading-none">
               <span className="text-[11px] text-slate-400 block mb-1">Oponente</span>
               <span key={`elp-${enemyField.life}`} className={
-                enemyLpAnim === "damage" ? "lp-damage-num text-2xl font-black" :
-                enemyLpAnim === "heal"   ? "lp-heal-num text-2xl font-black"   :
+                enemyLpAnim === "damage" ? "lp-num-damage text-2xl font-black" :
+                enemyLpAnim === "heal"   ? "lp-num-heal text-2xl font-black" :
                 "text-2xl font-black text-red-400"
               }>LP: {enemyField.life}</span>
             </div>
@@ -10462,23 +10489,27 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ── LP JOGADOR — fixed, canto inferior direito da arena (círculo verde baixo) ── */}
       {gameStarted && (
-        <div className="fixed z-30" style={{
-          bottom: "10px",
-          right: `calc(clamp(140px,17vw,230px) + 16px)`,
-        }}>
-          <div className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm transition-colors duration-300 ${
-            playerLpAnim === "damage" ? "border-red-400/70 lp-border-dmg" :
-            playerLpAnim === "heal"   ? "border-green-400/70 lp-border-heal" :
-            "border-blue-500/40"
-          }`} style={{background:"rgba(0,0,0,0.75)"}}>
+        <div className="fixed z-30" style={{ bottom: "10px", right: `calc(clamp(140px,17vw,230px) + 16px)` }}>
+          <div className={`relative flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm ${
+            playerLpAnim === "damage" ? "lp-box-damage border-red-400/70" :
+            playerLpAnim === "heal"   ? "lp-box-heal border-green-400/70" : "border-blue-500/40"
+          }`} style={{background:"rgba(0,0,0,0.80)"}}>
+            {/* Delta flutuante */}
+            {playerLpAnim && (
+              <span key={`pd-${playerField.life}`} className="lp-delta absolute -top-1 right-2 font-black text-sm z-10" style={{
+                color: playerLpAnim === "damage" ? "#ef4444" : "#22c55e"
+              }}>
+                {playerLpAnim === "damage" ? `${playerLpDelta}` : `+${playerLpDelta}`}
+              </span>
+            )}
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
               <span className="text-white font-black text-sm">P1</span>
             </div>
             <div className="leading-none">
               <span className="text-[11px] text-slate-400 block mb-1">Você</span>
               <span key={`plp-${playerField.life}`} className={
-                playerLpAnim === "damage" ? "lp-damage-num text-2xl font-black" :
-                playerLpAnim === "heal"   ? "lp-heal-num text-2xl font-black"   :
+                playerLpAnim === "damage" ? "lp-num-damage text-2xl font-black" :
+                playerLpAnim === "heal"   ? "lp-num-heal text-2xl font-black" :
                 "text-2xl font-black text-blue-400"
               }>LP: {playerField.life}</span>
             </div>
