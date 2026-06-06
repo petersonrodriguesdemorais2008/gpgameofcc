@@ -24,10 +24,6 @@ import { trackDailyLogin } from "@/lib/mission-tracker"
 import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
 import CatastropheScreen from "./catastrophe-screen"
-// ── TUTORIAL ──────────────────────────────────────────────────────────────────
-import TutorialScreen, { type TutorialMasterId } from "./tutorial-screen"
-import { loadMastersFromStorage, saveMastersToStorage } from "@/lib/masters-data"
-// ─────────────────────────────────────────────────────────────────────────────
 
 export type GameScreen =
   | "menu"
@@ -62,9 +58,6 @@ export function GameWrapper() {
   const [showTitle, setShowTitle] = useState(true)
   // Assets loading gate — shown before everything else
   const [assetsReady, setAssetsReady] = useState(false)
-  // ── TUTORIAL ──────────────────────────────────────────────────────────────
-  const [showTutorial, setShowTutorial] = useState(false)
-  // ─────────────────────────────────────────────────────────────────────────
 
   // Toggle mobile-mode class on html element
   useEffect(() => {
@@ -83,11 +76,6 @@ export function GameWrapper() {
       setIsLoaded(true)
       if (!playerProfile.hasCompletedSetup) {
         setShowSetup(true)
-      } else {
-        // ── TUTORIAL: jogador já tem setup → verifica se precisa do tutorial ─
-        const tutorialDone = !!localStorage.getItem("gpgame_tutorial_done")
-        if (!tutorialDone) setShowTutorial(true)
-        // ─────────────────────────────────────────────────────────────────────
       }
       // Registra login diário para missões
       trackDailyLogin()
@@ -120,34 +108,7 @@ export function GameWrapper() {
 
   const handleSetupComplete = () => {
     setShowSetup(false)
-    // ── TUTORIAL: novo jogador terminou o setup → inicia o tutorial ───────────
-    const tutorialDone = !!localStorage.getItem("gpgame_tutorial_done")
-    if (!tutorialDone) setShowTutorial(true)
-    // ─────────────────────────────────────────────────────────────────────────
   }
-
-  // ── TUTORIAL: callback disparado quando o tutorial é concluído ────────────
-  const handleTutorialComplete = (selectedMasterId: TutorialMasterId) => {
-    // 1. Marca tutorial como concluído
-    localStorage.setItem("gpgame_tutorial_done", "1")
-
-    // 2. Define o Mestre escolhido como ativo no sistema de Mestres
-    try {
-      const masters = loadMastersFromStorage()
-      if (masters.length > 0) {
-        const updated = masters.map(m => ({
-          ...m,
-          isActive: m.id.split("-")[0].toLowerCase() === selectedMasterId,
-        }))
-        saveMastersToStorage(updated)
-      }
-    } catch (err) {
-      console.warn("Erro ao definir mestre ativo após tutorial:", err)
-    }
-
-    setShowTutorial(false)
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   // 1️⃣ Loading screen first — precarrega todas as imagens do jogo
   if (!assetsReady) {
@@ -180,21 +141,7 @@ export function GameWrapper() {
     return <PlayerSetupScreen onComplete={handleSetupComplete} />
   }
 
-  // ── TUTORIAL ──────────────────────────────────────────────────────────────
-  // 5️⃣ Tutorial de primeiro acesso
-  //    Aparece tanto para novos jogadores (após setup) quanto para contas
-  //    existentes que nunca completaram o tutorial.
-  if (showTutorial) {
-    return (
-      <TutorialScreen
-        playerName={playerProfile.name || "Viajante"}
-        onComplete={handleTutorialComplete}
-      />
-    )
-  }
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // 6️⃣ Telas do jogo
+  // 5️⃣ Telas do jogo
   return (
     <>
       {currentScreen === "menu" && <MainMenu onNavigate={navigateTo} statusMessage={menuMessage} onClearMessage={() => setMenuMessage(null)} />}
