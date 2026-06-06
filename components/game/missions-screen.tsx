@@ -102,6 +102,17 @@ function formatCountdown(ms: number) {
 }
 const pad = (n: number) => String(n).padStart(2, "0")
 
+// Chaves de data para resetar claims por dia/semana
+function getDayKey()  { return new Date().toISOString().slice(0, 10) }
+function getWeekKey() {
+  const d = new Date(); const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  const mon = new Date(d); mon.setDate(diff)
+  return mon.toISOString().slice(0, 10)
+}
+// Tipo interno para claims com metadado de data
+type ClaimedMap = Record<string, { dayKey: string; weekKey: string }>
+
 // ─── Countdown Timer ──────────────────────────────────────────────────────────
 function CountdownTimer({ targetMs, label, color }: { targetMs: number; label: string; color: "cyan" | "purple" | "amber" }) {
   const [remaining, setRemaining] = useState(() => Math.max(0, targetMs - Date.now()))
@@ -262,16 +273,36 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
 
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "special">("daily")
   const [claimingId, setClaimingId] = useState<string | null>(null)
-  const [claimedMissions, setClaimedMissions] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set()
+  // ── claimed_missions agora armazena {dayKey, weekKey} para resetar por data ──
+  const [claimedMissions, setClaimedMissions] = useState<ClaimedMap>(() => {
+    if (typeof window === "undefined") return {}
     try {
       const raw = localStorage.getItem("claimed_missions")
-      return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
-    } catch { return new Set() }
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      // Migração: array antigo → objeto com metadado de data
+      if (Array.isArray(parsed)) {
+        const obj: ClaimedMap = {}
+        parsed.forEach((id: string) => {
+          obj[id] = { dayKey: getDayKey(), weekKey: getWeekKey() }
+        })
+        return obj
+      }
+      return parsed as ClaimedMap
+    } catch { return {} }
   })
 
   useEffect(() => {
-    try { localStorage.setItem("claimed_missions", JSON.stringify([...claimedMissions])) } catch {}
+    try { localStorage.setItem("claimed_missions", JSON.stringify(claimedMissions)) } catch {}
+  }, [claimedMissions])
+
+  // Verifica se um claim ainda é válido para o dia/semana atual
+  const isMissionClaimed = useCallback((id: string, type: "daily" | "weekly" | "special"): boolean => {
+    const entry = claimedMissions[id]
+    if (!entry) return false
+    if (type === "daily")   return entry.dayKey  === getDayKey()
+    if (type === "weekly")  return entry.weekKey === getWeekKey()
+    return true // special nunca reseta
   }, [claimedMissions])
 
   const [dailyTarget]  = useState(getNextMidnightUTC)
@@ -395,55 +426,89 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     ]
   }, [trackedProgress, totalCards])
 
-  // ── Bônus de Conclusão — must be declared BEFORE any useCallback ─────────────
-  const [bonusClaimed, setBonusClaimed] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set()
+  // ── Bônus de conclusão com reset diário/semanal ─────────────────────────────
+  const [bonusClaimed, setBonusClaimed] = useState<ClaimedMap>(() => {
+    if (typeof window === "undefined") return {}
     try {
       const raw = localStorage.getItem("claimed_bonus")
-      return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
-    } catch { return new Set() }
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        const obj: ClaimedMap = {}
+        parsed.forEach((id: string) => { obj[id] = { dayKey: getDayKey(), weekKey: getWeekKey() } })
+        return obj
+      }
+      return parsed as ClaimedMap
+    } catch { return {} }
   })
 
   useEffect(() => {
-    try { localStorage.setItem("claimed_bonus", JSON.stringify([...bonusClaimed])) } catch {}
+    try { localStorage.setItem("claimed_bonus", JSON.stringify(bonusClaimed)) } catch {}
   }, [bonusClaimed])
 
-  const handleClaimReward = useCallback((id: string) => {
+  // Bonus diário reseta por dia, semanal por semana, especial nunca
+  const isBonusClaimed = (tab: string) => {
+    const entry = bonusClaimed[tab]
+    if (!entry) return false
+    if (tab === "daily")   return entry.dayKey  === getDayKey()
+    if (tab === "weekly")  return entry.weekKey === getWeekKey()
+    return !!entry.dayKey // special: uma vez por evento
+  }
+
+  const bonusAlreadyClaimed = isBonusClaimed(activeTab)
+
+  const handleClaimBonus = useCallback(() => {
+    if (isBonusClaimed(activeTab)) return
+    setCoins(coins + bonusCoins)
+    setBonusClaimed(prev => ({
+      ...prev,
+      [activeTab]: { dayKey: getDayKey(), weekKey: getWeekKey() },
+    }))
+  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])((id: string) => {
     if (claimingId !== null) return
-    if (claimedMissions.has(id)) return
     const mission = allMissions.find(m => m.id === id)
-    if (!mission?.completed) return
+    if (!mission) return
+    // Usa isMissionClaimed para respeitar reset diário/semanal
+    if (isMissionClaimed(id, mission.type)) return
+    if (!mission.completed) return
     setClaimingId(id)
     setTimeout(() => {
       if (mission.reward.coins && setCoins) setCoins(coins + mission.reward.coins)
-      setClaimedMissions(prev => new Set([...prev, id]))
+      // Grava com metadado de data para reset automático
+      setClaimedMissions(prev => ({
+        ...prev,
+        [id]: { dayKey: getDayKey(), weekKey: getWeekKey() },
+      }))
       setClaimingId(null)
     }, 800)
-  }, [allMissions, claimedMissions, claimingId, setCoins, coins])
+  }, [allMissions, isMissionClaimed, claimingId, setCoins, coins])
 
   const filteredMissions = allMissions.filter(m => m.type === activeTab)
 
-  const claimableAll = filteredMissions.filter(m => m.completed && !claimedMissions.has(m.id))
+  const claimableAll = filteredMissions.filter(m => m.completed && !isMissionClaimed(m.id, m.type))
 
   const handleClaimAll = useCallback(() => {
     if (claimableAll.length === 0) return
     let totalCoins = 0
-    const newClaimed = new Set(claimedMissions)
+    const dayKey  = getDayKey()
+    const weekKey = getWeekKey()
+    const newClaimed = { ...claimedMissions }
     claimableAll.forEach(m => {
-      newClaimed.add(m.id)
+      newClaimed[m.id] = { dayKey, weekKey }
       if (m.reward.coins) totalCoins += m.reward.coins
     })
     setClaimedMissions(newClaimed)
     if (totalCoins > 0 && setCoins) setCoins(coins + totalCoins)
-  }, [claimableAll, claimedMissions, coins, setCoins])
+  }, [claimableAll, claimedMissions, isMissionClaimed, coins, setCoins])
 
   const stats = useMemo(() => {
     const count = (type: string) => ({
       total:     allMissions.filter(m => m.type === type).length,
-      completed: allMissions.filter(m => m.type === type && (m.completed || claimedMissions.has(m.id))).length,
+      // Missão conta como completa se concluída OU já coletada (para o dia/semana atual)
+      completed: allMissions.filter(m => m.type === type && (m.completed || isMissionClaimed(m.id, m.type as any))).length,
     })
     return { daily: count("daily"), weekly: count("weekly"), special: count("special") }
-  }, [allMissions, claimedMissions])
+  }, [allMissions, isMissionClaimed])
 
   const TABS = [
     { id: "daily",   label: "Diárias",   emoji: "☀️", color: "cyan"   as const, stats: stats.daily,   target: dailyTarget,  timerLabel: "Reset Diário"  },
@@ -461,15 +526,8 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
 
   const activeColors = tabColors[activeTabData.color]
 
-  const allComplete = filteredMissions.length > 0 && filteredMissions.every(m => claimedMissions.has(m.id))
+  const allComplete = filteredMissions.length > 0 && filteredMissions.every(m => isMissionClaimed(m.id, m.type))
   const bonusCoins  = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
-  const bonusAlreadyClaimed = bonusClaimed.has(activeTab)
-
-  const handleClaimBonus = useCallback(() => {
-    if (bonusClaimed.has(activeTab)) return
-    setCoins(coins + bonusCoins)
-    setBonusClaimed(prev => new Set([...prev, activeTab]))
-  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#070C18] text-slate-200">
@@ -607,7 +665,7 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
                 <MissionCard
                   key={mission.id}
                   mission={mission}
-                  isClaimed={claimedMissions.has(mission.id)}
+                  isClaimed={isMissionClaimed(mission.id, mission.type)}
                   isClaiming={claimingId === mission.id}
                   tabColor={activeTabData.color}
                   onClaim={() => handleClaimReward(mission.id)}
