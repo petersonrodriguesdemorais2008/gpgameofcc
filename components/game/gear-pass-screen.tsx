@@ -59,6 +59,7 @@ const levelFromPts = (pts: number): number => {
   return lvl
 }
 const MAX_LEVELS = 100
+const VISIBLE = 7          // Número de níveis visíveis por vez na trilha
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
 const STRIPE_PAYMENT_URL = "https://buy.stripe.com/aFafZj1lMfdqdRV5Pk4gg01"
@@ -300,40 +301,41 @@ function buildMissions(): PassMission[] {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function RewardIcon({ reward }: { reward: PassReward }) {
+function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) {
+  const iconSize = small ? 22 : 28
+  const emojiSize = small ? 18 : 24
   const rarityColor: Record<string, string> = {
-    R: "#60a5fa",
-    SR: "#c084fc",
-    UR: "#fbbf24",
-    LR: "#f87171",
+    R: "#60a5fa", SR: "#c084fc", UR: "#fbbf24", LR: "#f87171",
   }
 
   if (reward.type === "coins") {
     return (
-      <img src="/images/icons/gacha-coin.png" alt="Coins"
-        style={{ width: 28, height: 28, objectFit: "contain" }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
-    )
-  }
-  if (reward.type === "gacha_coin") {
-    return <div style={{ fontSize: 22 }}>🎰</div>
-  }
-  if (reward.type === "card_pack") {
-    return (
-      <div style={{
-        fontSize: 10, fontWeight: 900, color: reward.rarity ? rarityColor[reward.rarity] : "#94a3b8",
-        lineHeight: 1, textAlign: "center",
-      }}>
-        <div style={{ fontSize: 20 }}>📦</div>
-        {reward.rarity && <div style={{ color: rarityColor[reward.rarity] }}>{reward.rarity}</div>}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+        <img src="/images/icons/gacha-coin.png" alt="Coins"
+          style={{ width: iconSize, height: iconSize, objectFit: "contain" }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+        {reward.amount && (
+          <span style={{ fontSize: 8, fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>
+            +{reward.amount}
+          </span>
+        )}
       </div>
     )
   }
-  if (reward.type === "exclusive_card") return <div style={{ fontSize: 22 }}>🃏</div>
-  if (reward.type === "playmat") return <div style={{ fontSize: 22 }}>🖼️</div>
-  if (reward.type === "avatar_frame") return <div style={{ fontSize: 22 }}>👑</div>
-  if (reward.type === "title") return <div style={{ fontSize: 22 }}>🏅</div>
-  return <Star size={20} color="#94a3b8" />
+  if (reward.type === "gacha_coin") return <div style={{ fontSize: emojiSize }}>🎰</div>
+  if (reward.type === "card_pack") {
+    return (
+      <div style={{ fontSize: 10, fontWeight: 900, lineHeight: 1, textAlign: "center" }}>
+        <div style={{ fontSize: emojiSize }}>📦</div>
+        {reward.rarity && <div style={{ color: rarityColor[reward.rarity], fontSize: 8, marginTop: 1 }}>{reward.rarity}</div>}
+      </div>
+    )
+  }
+  if (reward.type === "exclusive_card") return <div style={{ fontSize: emojiSize }}>🃏</div>
+  if (reward.type === "playmat")       return <div style={{ fontSize: emojiSize }}>🖼️</div>
+  if (reward.type === "avatar_frame")  return <div style={{ fontSize: emojiSize }}>👑</div>
+  if (reward.type === "title")         return <div style={{ fontSize: emojiSize }}>🏅</div>
+  return <Star size={iconSize - 4} color="#94a3b8" />
 }
 
 function MissionCard({
@@ -561,6 +563,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [claimFeedback, setClaimFeedback] = useState<string | null>(null)
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
+  // Controla qual fatia de níveis está visível na trilha (navegação por setas)
+  const [viewStart, setViewStart] = useState(() =>
+    Math.max(0, Math.min(passData.currentLevel - Math.floor(VISIBLE / 2), MAX_LEVELS - VISIBLE))
+  )
   const passRowRef = useRef<HTMLDivElement>(null)
 
   // Persist passData
@@ -687,10 +693,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     premiumClaimed: passData.claimedPremium.includes(lvl),
   }))
 
-  // ── Visible window: show 5 levels centered on current ────────────────────
-  const VISIBLE = 7
-  const startIdx = Math.max(0, Math.min(passData.currentLevel - Math.floor(VISIBLE / 2), MAX_LEVELS - VISIBLE))
-
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
@@ -763,7 +765,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {!passData.hasPremium && (
             <button onClick={() => setShowPremiumModal(true)} style={{
               background: "linear-gradient(135deg,#b45309,#d97706,#f59e0b)",
-              border: "none", borderRadius: 12, padding: "8px 14px",
+              border: "none", borderRadius: 12, padding: "10px 22px",
               color: "#fff", fontWeight: 900, fontSize: 11, cursor: "pointer",
               boxShadow: "0 4px 16px rgba(217,119,6,0.35)",
               display: "flex", alignItems: "center", gap: 6,
@@ -896,154 +898,202 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   </span>
                 </div>
 
-                {/* Horizontal scroll track */}
-                <div ref={passRowRef} style={{
-                  overflowX: "auto", paddingBottom: 8,
-                  scrollbarWidth: "none",
-                }}>
-                  <div style={{
-                    display: "flex", alignItems: "stretch",
-                    gap: 0, paddingLeft: 16, paddingRight: 16,
-                    minWidth: "max-content",
-                  }}>
-                    {levelGroups.map((lg, idx) => {
-                      const isCurrent = lg.level === passData.currentLevel + 1
-                      const isPast = lg.level <= passData.currentLevel
+                {/* Track with arrow navigation */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center", paddingLeft: 8, paddingRight: 8 }}>
 
-                      return (
-                        <div key={lg.level} data-level={lg.level} style={{ display: "flex", alignItems: "center" }}>
-                          {/* Level column */}
-                          <div style={{ width: 80, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  {/* ← Arrow prev */}
+                  <button
+                    onClick={() => setViewStart(v => Math.max(0, v - 1))}
+                    disabled={viewStart === 0}
+                    style={{
+                      flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      background: viewStart === 0 ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
+                      color: viewStart === 0 ? "#1e293b" : "#06b6d4",
+                      cursor: viewStart === 0 ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 16, fontWeight: 900, transition: "all 0.2s",
+                      boxShadow: viewStart === 0 ? "none" : "0 0 8px rgba(6,182,212,0.20)",
+                    }}>‹</button>
 
-                            {/* Premium reward (top) */}
-                            <button
-                              onClick={() => {
-                                if (isPast) handleClaimPassReward(lg.level, true)
-                              }}
-                              style={{
-                                width: 56, height: 56, borderRadius: 14,
-                                display: "flex", flexDirection: "column", alignItems: "center",
-                                justifyContent: "center", gap: 2, cursor: isPast ? "pointer" : "default",
-                                border: `1.5px solid ${
-                                  lg.premiumClaimed ? "rgba(34,197,94,0.30)" :
-                                  isPast && passData.hasPremium ? "rgba(251,191,36,0.50)" :
-                                  isPast ? "rgba(251,191,36,0.25)" :
-                                  "rgba(255,255,255,0.07)"
-                                }`,
-                                background: lg.premiumClaimed
-                                  ? "rgba(34,197,94,0.08)"
-                                  : isPast && passData.hasPremium
-                                  ? "rgba(217,119,6,0.15)"
-                                  : isPast
-                                  ? "rgba(217,119,6,0.08)"
-                                  : "rgba(255,255,255,0.03)",
-                                position: "relative",
-                                transition: "all 0.2s",
-                                transform: isCurrent ? "scale(1.08)" : "scale(1)",
-                                boxShadow: isCurrent && passData.hasPremium
-                                  ? "0 0 16px rgba(251,191,36,0.25)"
-                                  : "none",
+                  {/* Visible level columns */}
+                  <div ref={passRowRef} style={{ flex: 1, overflow: "hidden" }}>
+                    <div style={{
+                      display: "flex", alignItems: "stretch",
+                      gap: 0, paddingLeft: 8, paddingRight: 8,
+                    }}>
+                      {levelGroups.slice(viewStart, viewStart + VISIBLE).map((lg, idx) => {
+                        const isCurrent = lg.level === passData.currentLevel + 1
+                        const isPast    = lg.level <= passData.currentLevel
+                        const isLast    = idx === Math.min(VISIBLE, MAX_LEVELS - viewStart) - 1
+
+                        return (
+                          <div key={lg.level} data-level={lg.level} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                            {/* Level column */}
+                            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+
+                              {/* ── PREMIUM reward (topo) ── */}
+                              <button
+                                onClick={() => { if (isPast) handleClaimPassReward(lg.level, true) }}
+                                style={{
+                                  width: 56, height: 56, borderRadius: 14,
+                                  display: "flex", flexDirection: "column", alignItems: "center",
+                                  justifyContent: "center", gap: 1,
+                                  cursor: isPast && passData.hasPremium ? "pointer" : "default",
+                                  border: `1.5px solid ${
+                                    lg.premiumClaimed ? "rgba(34,197,94,0.50)" :
+                                    isPast && passData.hasPremium ? "rgba(251,191,36,0.60)" :
+                                    isPast ? "rgba(251,191,36,0.28)" :
+                                    "rgba(251,191,36,0.16)"  // brilho dourado sutil mesmo bloqueado
+                                  }`,
+                                  background: lg.premiumClaimed
+                                    ? "rgba(34,197,94,0.10)"
+                                    : isPast && passData.hasPremium
+                                    ? "rgba(217,119,6,0.18)"
+                                    : isPast
+                                    ? "rgba(217,119,6,0.10)"
+                                    // bloqueado: gradiente dourado sutil para gerar desejo
+                                    : "linear-gradient(145deg,rgba(180,83,9,0.14),rgba(120,53,15,0.08))",
+                                  boxShadow: lg.premiumClaimed
+                                    ? "0 0 10px rgba(34,197,94,0.20), inset 0 0 6px rgba(34,197,94,0.08)"
+                                    : isPast && passData.hasPremium
+                                    ? "0 0 14px rgba(251,191,36,0.28)"
+                                    : !isPast
+                                    ? "inset 0 0 14px rgba(251,191,36,0.06)"  // glow interior dourado
+                                    : "none",
+                                  position: "relative", transition: "all 0.2s",
+                                  transform: isCurrent ? "scale(1.08)" : "scale(1)",
+                                }}>
+                                {lg.premiumClaimed ? (
+                                  // Coletado: checkmark com anel verde
+                                  <div style={{
+                                    width: 30, height: 30, borderRadius: "50%",
+                                    background: "rgba(34,197,94,0.22)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                  }}>
+                                    <Check size={16} color="#22c55e" strokeWidth={3} />
+                                  </div>
+                                ) : !isPast ? (
+                                  <Lock size={14} color="#78350f" />
+                                ) : lg.premium ? (
+                                  <RewardIcon reward={lg.premium} />
+                                ) : null}
+                                {/* Crown badge */}
+                                <Crown size={8} color="#f59e0b" style={{ position: "absolute", top: 3, right: 3 }} />
+                              </button>
+
+                              {/* Connector */}
+                              <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
+
+                              {/* Level number badge */}
+                              <div style={{
+                                width: 36, height: 22, borderRadius: 8,
+                                background: isCurrent
+                                  ? "linear-gradient(135deg,#0e7490,#0369a1)"
+                                  : isPast ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.05)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                border: `1px solid ${isCurrent ? "rgba(6,182,212,0.6)" : isPast ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)"}`,
+                                boxShadow: isCurrent ? "0 0 10px rgba(6,182,212,0.35)" : "none",
                               }}>
-                              {lg.premiumClaimed ? (
-                                <Check size={20} color="#22c55e" />
-                              ) : !isPast ? (
-                                <Lock size={14} color="#334155" />
-                              ) : lg.premium ? (
-                                <RewardIcon reward={lg.premium} />
-                              ) : null}
-                              {/* Crown badge */}
-                              <Crown size={8} color="#f59e0b" style={{ position: "absolute", top: 3, right: 3 }} />
-                            </button>
+                                <span style={{ fontSize: 9, fontWeight: 900, color: isCurrent ? "#e0f2fe" : isPast ? "#38bdf8" : "#334155" }}>
+                                  {lg.level}
+                                </span>
+                              </div>
 
-                            {/* Connector line */}
-                            <div style={{
-                              width: 2, height: 12,
-                              background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)",
-                              borderRadius: 99,
-                            }} />
+                              {/* Connector */}
+                              <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
 
-                            {/* Level badge */}
-                            <div style={{
-                              width: 36, height: 22,
-                              background: isCurrent
-                                ? "linear-gradient(135deg,#0e7490,#0369a1)"
-                                : isPast
-                                ? "rgba(6,182,212,0.15)"
-                                : "rgba(255,255,255,0.05)",
-                              borderRadius: 8,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              border: `1px solid ${isCurrent ? "rgba(6,182,212,0.6)" : isPast ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)"}`,
-                              boxShadow: isCurrent ? "0 0 10px rgba(6,182,212,0.35)" : "none",
-                            }}>
-                              <span style={{
-                                fontSize: 9, fontWeight: 900,
-                                color: isCurrent ? "#e0f2fe" : isPast ? "#38bdf8" : "#334155",
-                              }}>{lg.level}</span>
+                              {/* ── COMMON reward (baixo) — TRILHA ATIVA ── */}
+                              <button
+                                onClick={() => { if (isPast) handleClaimPassReward(lg.level, false) }}
+                                style={{
+                                  width: 56, height: 56, borderRadius: 14,
+                                  display: "flex", flexDirection: "column", alignItems: "center",
+                                  justifyContent: "center", gap: 1,
+                                  cursor: isPast ? "pointer" : "default",
+                                  border: `1.5px solid ${
+                                    lg.commonClaimed ? "rgba(34,197,94,0.55)" :
+                                    isPast ? "rgba(6,182,212,0.50)" :
+                                    isCurrent ? "rgba(6,182,212,0.28)" :
+                                    "rgba(255,255,255,0.07)"
+                                  }`,
+                                  background: lg.commonClaimed
+                                    ? "rgba(34,197,94,0.12)"
+                                    : isPast
+                                    ? "rgba(6,182,212,0.13)"
+                                    : isCurrent
+                                    ? "rgba(6,182,212,0.07)"
+                                    : "rgba(255,255,255,0.03)",
+                                  boxShadow: lg.commonClaimed
+                                    // Coletado: glow verde claro = "OK visual"
+                                    ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10)"
+                                    : isPast
+                                    ? "0 0 8px rgba(6,182,212,0.18)"
+                                    : isCurrent
+                                    ? "0 0 10px rgba(6,182,212,0.22)"
+                                    : "none",
+                                  transition: "all 0.2s",
+                                  transform: isCurrent ? "scale(1.08)" : "scale(1)",
+                                  // Trilha ativa levemente opaca quando coletada (itens claimed)
+                                  opacity: lg.commonClaimed ? 0.85 : 1,
+                                }}>
+                                {lg.commonClaimed ? (
+                                  // Coletado: anel verde + check
+                                  <div style={{
+                                    width: 30, height: 30, borderRadius: "50%",
+                                    background: "rgba(34,197,94,0.22)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                  }}>
+                                    <Check size={16} color="#22c55e" strokeWidth={3} />
+                                  </div>
+                                ) : !isPast ? (
+                                  <Lock size={14} color="#334155" />
+                                ) : lg.common ? (
+                                  <RewardIcon reward={lg.common} />
+                                ) : null}
+                              </button>
+
                             </div>
 
-                            <div style={{
-                              width: 2, height: 12,
-                              background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)",
-                              borderRadius: 99,
-                            }} />
-
-                            {/* Common reward (bottom) */}
-                            <button
-                              onClick={() => {
-                                if (isPast) handleClaimPassReward(lg.level, false)
-                              }}
-                              style={{
-                                width: 56, height: 56, borderRadius: 14,
-                                display: "flex", flexDirection: "column", alignItems: "center",
-                                justifyContent: "center", gap: 2, cursor: isPast ? "pointer" : "default",
-                                border: `1.5px solid ${
-                                  lg.commonClaimed ? "rgba(34,197,94,0.30)" :
-                                  isPast ? "rgba(6,182,212,0.35)" :
-                                  "rgba(255,255,255,0.07)"
-                                }`,
-                                background: lg.commonClaimed
-                                  ? "rgba(34,197,94,0.08)"
-                                  : isPast
-                                  ? "rgba(6,182,212,0.10)"
-                                  : "rgba(255,255,255,0.03)",
-                                transition: "all 0.2s",
-                                transform: isCurrent ? "scale(1.08)" : "scale(1)",
-                                boxShadow: isCurrent ? "0 0 12px rgba(6,182,212,0.20)" : "none",
-                              }}>
-                              {lg.commonClaimed ? (
-                                <Check size={20} color="#22c55e" />
-                              ) : !isPast ? (
-                                <Lock size={14} color="#334155" />
-                              ) : lg.common ? (
-                                <RewardIcon reward={lg.common} />
-                              ) : null}
-                            </button>
-
+                            {/* Horizontal connector between columns */}
+                            {!isLast && (
+                              <div style={{
+                                width: 8, height: 2, alignSelf: "center",
+                                marginTop: -60,
+                                background: lg.isUnlocked ? "rgba(6,182,212,0.35)" : "rgba(255,255,255,0.05)",
+                              }} />
+                            )}
                           </div>
-
-                          {/* Horizontal connector */}
-                          {idx < MAX_LEVELS - 1 && (
-                            <div style={{
-                              width: 8, height: 2, alignSelf: "center",
-                              marginTop: -60, // align with level badge row
-                              background: lg.isUnlocked ? "rgba(6,182,212,0.35)" : "rgba(255,255,255,0.05)",
-                            }} />
-                          )}
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
                   </div>
+
+                  {/* → Arrow next */}
+                  <button
+                    onClick={() => setViewStart(v => Math.min(MAX_LEVELS - VISIBLE, v + 1))}
+                    disabled={viewStart >= MAX_LEVELS - VISIBLE}
+                    style={{
+                      flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      background: viewStart >= MAX_LEVELS - VISIBLE ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
+                      color: viewStart >= MAX_LEVELS - VISIBLE ? "#1e293b" : "#06b6d4",
+                      cursor: viewStart >= MAX_LEVELS - VISIBLE ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 16, fontWeight: 900, transition: "all 0.2s",
+                      boxShadow: viewStart >= MAX_LEVELS - VISIBLE ? "none" : "0 0 8px rgba(6,182,212,0.20)",
+                    }}>›</button>
                 </div>
 
                 {/* Legend */}
-                <div style={{ display: "flex", justifyContent: "center", gap: 16, padding: "6px 16px 0", marginTop: 4 }}>
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, padding: "8px 16px 0", marginTop: 4 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <Crown size={10} color="#f59e0b" />
                     <span style={{ fontSize: 10, color: "#64748b" }}>Recompensa Premium (topo)</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <Shield size={10} color="#06b6d4" />
-                    <span style={{ fontSize: 10, color: "#64748b" }}>Recompensa Comum (baixo)</span>
+                    <span style={{ fontSize: 10, color: "#06b6d4", fontWeight: 700 }}>Trilha Ativa — Comum (baixo)</span>
                   </div>
                 </div>
               </div>
