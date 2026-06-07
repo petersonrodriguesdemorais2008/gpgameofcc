@@ -568,27 +568,63 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [scrollMax,  setScrollMax]  = useState(1)
   const passRowRef = useRef<HTMLDivElement>(null)
 
-  // Refs para arrastar a trilha com o mouse (sem re-render a cada pixel)
-  const isDragging       = useRef(false)
-  const dragStartX       = useRef(0)
+  // ── Drag com inércia — refs não causam re-render durante o movimento ─────────
+  const isDragging        = useRef(false)
+  const dragStartX        = useRef(0)
   const scrollAtDragStart = useRef(0)
+  const lastDragX         = useRef(0)
+  const lastDragTime      = useRef(0)
+  const dragVelocity      = useRef(0)          // px/ms no momento do release
+  const momentumFrame     = useRef<number | null>(null)
+
+  // Para a animação de inércia anterior antes de começar novo arrasto
+  const cancelMomentum = () => {
+    if (momentumFrame.current !== null) {
+      cancelAnimationFrame(momentumFrame.current)
+      momentumFrame.current = null
+    }
+  }
 
   const handleTrackMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    cancelMomentum()
     isDragging.current       = true
     dragStartX.current       = e.pageX
+    lastDragX.current        = e.pageX
+    lastDragTime.current     = performance.now()
+    dragVelocity.current     = 0
     scrollAtDragStart.current = passRowRef.current?.scrollLeft ?? 0
     e.currentTarget.style.cursor     = "grabbing"
     e.currentTarget.style.userSelect = "none"
   }
+
   const handleTrackMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging.current || !passRowRef.current) return
     e.preventDefault()
+    const now = performance.now()
+    const dt  = now - lastDragTime.current
+    const dx  = e.pageX - lastDragX.current
+    // Velocidade em px/ms (suavizada por exponential moving average)
+    if (dt > 0) dragVelocity.current = dragVelocity.current * 0.7 + (dx / dt) * 0.3
+    lastDragX.current    = e.pageX
+    lastDragTime.current = now
     passRowRef.current.scrollLeft = scrollAtDragStart.current - (e.pageX - dragStartX.current)
   }
+
   const handleTrackMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return
     isDragging.current = false
     e.currentTarget.style.cursor     = "grab"
     e.currentTarget.style.userSelect = ""
+
+    // ── Inércia: continua deslizando com desaceleração suave ──
+    let velocity = dragVelocity.current * 16   // converte px/ms → px/frame (60fps)
+    const glide = () => {
+      if (!passRowRef.current || Math.abs(velocity) < 0.4) return
+      passRowRef.current.scrollLeft -= velocity
+      velocity *= 0.88   // atrito — 0.88 dá ~8 frames até parar num arrasto rápido
+      momentumFrame.current = requestAnimationFrame(glide)
+    }
+    if (Math.abs(velocity) > 1) momentumFrame.current = requestAnimationFrame(glide)
   }
 
   // Largura de cada coluna de nível (px) — usada nas setas para scroll por página
@@ -688,6 +724,29 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     claimMission(missionId, mission.type)
     setClaimFeedback(`+${mission.points} pontos do Passe!`)
     setTimeout(() => setClaimFeedback(null), 2000)
+  }
+
+  // ── Bônus de Conclusão: 300 pts (diárias) / 750 pts (semanais) ──────────────
+  const COMPLETION_BONUS = { daily: 300, weekly: 750 } as const
+
+  const getCompletionBonusState = (type: "daily" | "weekly") => {
+    const bonusId  = `${type}_completion_bonus`
+    const ofType   = missions.filter(m => m.type === type)
+    // Todas concluídas ou já coletadas individualmente
+    const allDone  = ofType.length > 0 && ofType.every(m => m.completed || m.claimed)
+    const claimed  = isMissionClaimed(bonusId, type)
+    return { bonusId, allDone, claimed, pts: COMPLETION_BONUS[type] }
+  }
+
+  const handleClaimCompletionBonus = (type: "daily" | "weekly") => {
+    const { bonusId, allDone, claimed, pts } = getCompletionBonusState(type)
+    if (!allDone || claimed) return
+    const newPoints = passData.currentPoints + pts
+    const newLevel  = Math.min(MAX_LEVELS, levelFromPts(newPoints))
+    setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
+    claimMission(bonusId, type)
+    setClaimFeedback(`+${pts} pts — Bônus de Conclusão!`)
+    setTimeout(() => setClaimFeedback(null), 2800)
   }
 
   const handleClaimPassReward = (level: number, isPremium: boolean) => {
@@ -1264,6 +1323,92 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   <MissionCard key={mission.id} mission={mission} onClaim={handleClaimMission} />
                 ))}
               </div>
+
+              {/* ── Bônus de Conclusão — aparece nas abas Diárias e Semanais ── */}
+              {(missionFilter === "daily" || missionFilter === "weekly") && (() => {
+                const { allDone, claimed, pts } = getCompletionBonusState(missionFilter)
+                const color = missionFilter === "daily" ? "#06b6d4" : "#a78bfa"
+                const label = missionFilter === "daily" ? "Diárias" : "Semanais"
+                const icon  = missionFilter === "daily" ? "☀️" : "📅"
+                return (
+                  <div style={{
+                    marginTop: 6,
+                    padding: "14px 18px",
+                    borderRadius: 14,
+                    border: `1.5px solid ${claimed ? "rgba(34,197,94,0.40)" : allDone ? `${color}60` : "rgba(255,255,255,0.07)"}`,
+                    background: claimed
+                      ? "rgba(34,197,94,0.07)"
+                      : allDone
+                      ? `linear-gradient(135deg,${color}15,${color}06)`
+                      : "rgba(255,255,255,0.02)",
+                    boxShadow: allDone && !claimed ? `0 0 20px ${color}20` : "none",
+                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                    transition: "all 0.3s",
+                  }}>
+                    {/* Left: icon + text */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                        background: claimed
+                          ? "rgba(34,197,94,0.15)"
+                          : allDone
+                          ? `${color}20`
+                          : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${claimed ? "rgba(34,197,94,0.35)" : allDone ? `${color}40` : "rgba(255,255,255,0.07)"}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 20,
+                      }}>
+                        {claimed ? "✅" : allDone ? "🏆" : icon}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: claimed ? "#4ade80" : allDone ? "#f1f0ee" : "#475569", marginBottom: 2 }}>
+                          Bônus de Conclusão {label}
+                        </div>
+                        <div style={{ fontSize: 11, color: claimed ? "#4ade80" : allDone ? color : "#334155" }}>
+                          {claimed
+                            ? "✓ Bônus coletado!"
+                            : allDone
+                            ? "Todas as missões concluídas — colete seu bônus!"
+                            : `Complete todas as missões ${label.toLowerCase()} para desbloquear`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: pts badge + button */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                      <div style={{
+                        background: claimed ? "rgba(34,197,94,0.15)" : allDone ? `${color}22` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${claimed ? "rgba(34,197,94,0.30)" : allDone ? `${color}40` : "rgba(255,255,255,0.07)"}`,
+                        borderRadius: 10, padding: "6px 10px", textAlign: "center",
+                      }}>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: claimed ? "#4ade80" : allDone ? color : "#334155", lineHeight: 1 }}>
+                          +{pts}
+                        </div>
+                        <div style={{ fontSize: 9, color: claimed ? "#4ade80" : allDone ? color : "#1e293b", fontWeight: 700 }}>pts</div>
+                      </div>
+
+                      <button
+                        onClick={() => handleClaimCompletionBonus(missionFilter)}
+                        disabled={!allDone || claimed}
+                        style={{
+                          padding: "8px 16px", borderRadius: 10, fontWeight: 800, fontSize: 12,
+                          cursor: allDone && !claimed ? "pointer" : "not-allowed",
+                          border: "none", transition: "all 0.2s",
+                          background: claimed
+                            ? "rgba(34,197,94,0.15)"
+                            : allDone
+                            ? `linear-gradient(135deg,${color},${color}cc)`
+                            : "rgba(255,255,255,0.04)",
+                          color: claimed ? "#4ade80" : allDone ? "#fff" : "#334155",
+                          boxShadow: allDone && !claimed ? `0 4px 14px ${color}40` : "none",
+                          opacity: !allDone && !claimed ? 0.5 : 1,
+                        }}>
+                        {claimed ? "✓ Coletado" : allDone ? "Coletar" : "Bloqueado"}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {filteredMissions.length === 0 && (
                 <div style={{ textAlign: "center", padding: "60px 0", color: "#334155" }}>
