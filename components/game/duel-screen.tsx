@@ -230,8 +230,9 @@ interface EffectTargets {
   diceResult?: number // Result of dice roll (1-6)
 }
 
-// Global projectile delay
-const PROJECTILE_DURATION = 500 // Synchronized with ElementalAttackAnimation (150ms charge + 350ms travel)
+// Global projectile delay — synchronized with ElementalAttackAnimation:
+// T_CHARGE (160ms) + T_TRAVEL (340ms) = 500ms until impact fires
+const PROJECTILE_DURATION = 500
 
 interface EffectResult {
   success: boolean
@@ -1775,6 +1776,61 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: "PEDRA_AFIAR_SEARCH" }
     },
   },
+
+  // ── JULGAMENTO DO VAZIO ETERNO — Item: requer Calem Hidenori no campo, causa 5DP a unidade OU direto no LP ──
+  "julgamento-do-vazio-eterno": {
+    id: "julgamento-do-vazio-eterno",
+    name: "Julgamento do Vazio Eterno",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const hasCalem = context.playerField.unitZone.some(u => u && u.name.toLowerCase().includes("calem"))
+      if (!hasCalem) return { canActivate: false, reason: "Requer Calem Hidenori no seu campo de batalha!" }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some(u => u !== null)
+      if (hasEnemyUnits) {
+        // Show choice: attack unit or direct LP
+        context.setPlayerField(prev => prev) // trigger re-render handled by choice modal
+        return { success: true, message: "JULGAMENTO_VAZIO_CHOOSE" }
+      } else {
+        // Direct LP damage
+        context.setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 5) }))
+        return { success: true, message: "JULGAMENTO DO VAZIO ETERNO: 5DP de dano direto ao oponente!" }
+      }
+    },
+  },
+
+  // ── CÁLICE DE VINHO SAGRADO — Item: restaura 1LP e dá +1DP a uma unidade aliada ──
+  "calice-de-vinho-sagrado": {
+    id: "calice-de-vinho-sagrado",
+    name: "Cálice de Vinho Sagrado",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasAllyUnit = context.playerField.unitZone.some(u => u !== null)
+      if (!hasAllyUnit) return { canActivate: false, reason: "Precisa de pelo menos uma unidade no seu campo!" }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      // Heal 1LP
+      context.setPlayerField(prev => {
+        const newLife = Math.min(50, prev.life + 1)
+        const newUnitZone = [...prev.unitZone]
+        // Apply +1DP to chosen unit if target provided
+        if (targets?.allyUnitIndices?.length) {
+          const idx = targets.allyUnitIndices[0]
+          if (newUnitZone[idx]) {
+            newUnitZone[idx] = { ...newUnitZone[idx]!, currentDp: (newUnitZone[idx]!.currentDp ?? newUnitZone[idx]!.dp) + 1 }
+          }
+        }
+        return { ...prev, life: newLife, unitZone: newUnitZone as (FieldCard | null)[] }
+      })
+      const idx = targets?.allyUnitIndices?.[0]
+      const unitName = idx !== undefined ? (context.playerField.unitZone[idx]?.name ?? "unidade") : "unidade"
+      return { success: true, message: `Cálice de Vinho Sagrado: +1LP restaurado! ${unitName} recebeu +1DP!` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1962,11 +2018,28 @@ function startDuelOst() {
     document.addEventListener("keydown",    resume, { once: true })
     document.addEventListener("touchstart", resume, { once: true })
   })
+
+  // Guard: when tab regains focus, keep duel OST playing and suppress menu music restart
+  const onVisible = () => {
+    if (!document.hidden) {
+      pauseMenuMusic()  // ensure menu music stays paused
+      const o = getDuelOst()
+      if (o && o.paused) o.play().catch(() => {})
+    }
+  }
+  document.removeEventListener("visibilitychange", onVisible)
+  document.addEventListener("visibilitychange", onVisible)
+  // Store handler so stopDuelOst can remove it
+  ;(getDuelOst() as any)._visibilityHandler = onVisible
 }
 
 function stopDuelOst(fadeOut = true) {
   const ost = getDuelOst()
-  if (!ost || ost.paused) return
+  if (!ost) return
+  // Remove visibility guard
+  const handler = (ost as any)._visibilityHandler
+  if (handler) { document.removeEventListener("visibilitychange", handler); delete (ost as any)._visibilityHandler }
+  if (ost.paused) return
   if (!fadeOut) { ost.pause(); ost.currentTime = 0; resumeMenuMusic(); return }
   // Smooth fade-out over 1.5s
   const startVol = ost.volume
@@ -3412,6 +3485,27 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [enemyLpDelta,  setEnemyLpDelta]  = useState<number>(0)
   const prevPlayerLp = useRef<number|null>(null)
   const prevEnemyLp  = useRef<number|null>(null)
+
+  // Player avatar for LP panel
+  const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string|null>(null)
+  useEffect(() => {
+    try {
+      // Try several localStorage keys the game may use
+      const cached = localStorage.getItem("gpgame_avatar_url")
+        || localStorage.getItem("gpgame_selected_avatar")
+        || localStorage.getItem("gpgame_profile_avatar")
+      if (cached) { setPlayerAvatarUrl(cached); return }
+    } catch {}
+    // Fallback: load from Supabase profile
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const sb = createClient()
+      sb.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return
+        sb.from("profiles").select("avatar_url").eq("id", user.id).single()
+          .then(({ data }) => { if (data?.avatar_url) setPlayerAvatarUrl(data.avatar_url) })
+      })
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (prevPlayerLp.current === null) { prevPlayerLp.current = playerField.life; return }
@@ -4876,9 +4970,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             setTimeout(() => showEffectFeedback("Hora das Sombras: 1 carta comprada!", "success"), 500)
           }
 
+          // A Grande Ordem: aplica +3DP imediatamente às unidades aliadas no campo
+          let newUnitZone = [...prev.unitZone] as (FieldCard | null)[]
+          if (cardToPlace.name === "A Grande Ordem") {
+            newUnitZone = newUnitZone.map(u => {
+              if (!u) return null
+              const n = u.name.toLowerCase()
+              if (n.includes("fehnon") || n.includes("morgana") || n.includes("calem")) {
+                setTimeout(() => showEffectFeedback(`A Grande Ordem: ${u.name} +3DP!`, "success"), 400)
+                return { ...u, currentDp: (u.currentDp ?? u.dp) + 3 }
+              }
+              return u
+            }) as (FieldCard | null)[]
+          }
+
           return {
             ...prev,
             functionZone: newFunctionZone,
+            unitZone: newUnitZone,
             hand: newHand,
             deck: newDeck,
           }
@@ -4918,8 +5027,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
       const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
       const isVeredito = cardToPlace.name === "Veredito do Rei Tirano"
+      const isJulgamentoVazio = cardToPlace.name === "Julgamento do Vazio Eterno"
+      const isCaliceVinho    = cardToPlace.name === "Cálice de Vinho Sagrado"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazio || isCaliceVinho) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -4948,6 +5059,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           else if (isDadosCalamidade) effectToUse = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
           else if (isChamadoDaTavola) effectToUse = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
           else if (isVeredito) effectToUse = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
+          else if (isJulgamentoVazio) effectToUse = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
+          else if (isCaliceVinho)    effectToUse = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
         }
 
         if (!effectToUse) return // Safety check
@@ -5116,6 +5229,46 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
               },
               onCancel: () => setDeckSearchModal(null),
+            })
+            return
+          }
+
+          // ── JULGAMENTO DO VAZIO ETERNO: choose target (unit or direct LP) ──
+          if (result.message === "JULGAMENTO_VAZIO_CHOOSE") {
+            const enemyUnits = playerField.unitZone // already removed from hand below
+            setChoiceModal({
+              visible: true,
+              cardName: "Julgamento do Vazio Eterno — Escolha o alvo (5DP)",
+              options: [
+                ...enemyField.unitZone
+                  .map((u, i) => u ? { id: `unit-${i}`, label: u.name, description: `Unidade ${i+1}: ${u.currentDp ?? u.dp}DP` } : null)
+                  .filter(Boolean) as {id:string;label:string;description:string}[],
+                { id: "direct", label: "Ataque Direto ao LP", description: "Causa 5DP diretamente nos LP do oponente" },
+              ],
+              onChoose: (choice) => {
+                setChoiceModal(null)
+                if (choice === "direct") {
+                  setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 5) }))
+                  showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: 5DP direto ao oponente!", "warning")
+                } else {
+                  const idx = parseInt(choice.replace("unit-", ""))
+                  setEnemyField(prev => {
+                    const newZone = [...prev.unitZone] as (FieldCard | null)[]
+                    const target = newZone[idx]
+                    if (!target) return prev
+                    const newDp = (target.currentDp ?? target.dp) - 5
+                    if (newDp <= 0) {
+                      const newGrave = [...prev.graveyard, target]
+                      newZone[idx] = null
+                      showEffectFeedback(`JULGAMENTO DO VAZIO ETERNO: ${target.name} destruída!`, "success")
+                      return { ...prev, unitZone: newZone, graveyard: newGrave }
+                    }
+                    newZone[idx] = { ...target, currentDp: newDp }
+                    showEffectFeedback(`JULGAMENTO DO VAZIO ETERNO: ${target.name} recebeu 5DP de dano!`, "success")
+                    return { ...prev, unitZone: newZone }
+                  })
+                }
+              },
             })
             return
           }
@@ -10502,9 +10655,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 {playerLpAnim === "damage" ? `${playerLpDelta}` : `+${playerLpDelta}`}
               </span>
             )}
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-black text-sm">P1</span>
-            </div>
+            {playerAvatarUrl ? (
+              <img src={playerAvatarUrl} alt="avatar" className="w-11 h-11 rounded-full object-cover border-2 border-blue-400 flex-shrink-0" />
+            ) : (
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-black text-sm">P1</span>
+              </div>
+            )}
             <div className="leading-none">
               <span className="text-[11px] text-slate-400 block mb-1">Você</span>
               <span key={`plp-${playerField.life}`} className={
