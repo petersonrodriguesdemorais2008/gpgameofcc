@@ -25,7 +25,7 @@ import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
 import CatastropheScreen from "./catastrophe-screen"
 // ── TUTORIAL ──────────────────────────────────────────────────────────────────
-import TutorialScreen, { type TutorialMasterId } from "./tutorial-screen"
+import TutorialScreen, { TutorialGameOverlay, type TutorialMasterId } from "./tutorial-screen"
 import { loadMastersFromStorage, saveMastersToStorage } from "@/lib/masters-data"
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,8 @@ export function GameWrapper() {
   const [assetsReady, setAssetsReady] = useState(false)
   // ── TUTORIAL ──────────────────────────────────────────────────────────────
   const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialOverlayActive, setTutorialOverlayActive] = useState(false)
+  const [tutorialOverlayMaster, setTutorialOverlayMaster] = useState<TutorialMasterId | null>(null)
   // ─────────────────────────────────────────────────────────────────────────
 
   // Toggle mobile-mode class on html element
@@ -120,18 +122,15 @@ export function GameWrapper() {
 
   const handleSetupComplete = () => {
     setShowSetup(false)
-    // ── TUTORIAL: novo jogador terminou o setup → inicia o tutorial ───────────
+    // ── TUTORIAL: novo jogador → inicia tutorial se ainda não completou ───────
     const tutorialDone = !!localStorage.getItem("gpgame_tutorial_done")
     if (!tutorialDone) setShowTutorial(true)
     // ─────────────────────────────────────────────────────────────────────────
   }
 
-  // ── TUTORIAL: callback disparado quando o tutorial é concluído ────────────
+  // ── TUTORIAL: master foi escolhido → define master ativo e inicia overlay ──
   const handleTutorialComplete = (selectedMasterId: TutorialMasterId) => {
-    // 1. Marca tutorial como concluído
-    localStorage.setItem("gpgame_tutorial_done", "1")
-
-    // 2. Define o Mestre escolhido como ativo no sistema de Mestres
+    // 1. Define o Mestre escolhido como ativo
     try {
       const masters = loadMastersFromStorage()
       if (masters.length > 0) {
@@ -142,10 +141,28 @@ export function GameWrapper() {
         saveMastersToStorage(updated)
       }
     } catch (err) {
-      console.warn("Erro ao definir mestre ativo após tutorial:", err)
+      console.warn("Erro ao definir mestre ativo:", err)
     }
 
+    // 2. Fecha tutorial standalone e abre overlay sobre o main menu real
     setShowTutorial(false)
+    setTutorialOverlayMaster(selectedMasterId)
+    setTutorialOverlayActive(true)
+    navigateTo("menu")
+  }
+
+  // ── TUTORIAL: overlay concluído → marca tutorial como feito definitivamente ─
+  const handleTutorialOverlayComplete = () => {
+    localStorage.setItem("gpgame_tutorial_done", "1")
+    localStorage.removeItem("gpgame_tutorial_v1") // limpa progresso parcial
+    setTutorialOverlayActive(false)
+    setTutorialOverlayMaster(null)
+    navigateTo("menu")
+    // NOTA PARA O DESENVOLVEDOR: quando o jogador resetar a conta (delete data
+    // em Configurações), adicione estas duas linhas ao seu reset handler:
+    //   localStorage.removeItem("gpgame_tutorial_done")
+    //   localStorage.removeItem("gpgame_tutorial_v1")
+    // Isso garante que o tutorial se repita após o reset.
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -181,9 +198,7 @@ export function GameWrapper() {
   }
 
   // ── TUTORIAL ──────────────────────────────────────────────────────────────
-  // 5️⃣ Tutorial de primeiro acesso
-  //    Aparece tanto para novos jogadores (após setup) quanto para contas
-  //    existentes que nunca completaram o tutorial.
+  // 5️⃣ Tutorial standalone (Lore + Escolha de Mestre)
   if (showTutorial) {
     return (
       <TutorialScreen
@@ -261,6 +276,19 @@ export function GameWrapper() {
           }}
         />
       )}
+      {/* ── TUTORIAL: overlay sobre telas reais (menu, duelo, gacha) ─────── */}
+      {tutorialOverlayActive && tutorialOverlayMaster && (
+        <TutorialGameOverlay
+          masterId={tutorialOverlayMaster}
+          onNavigate={(screen) => {
+            if (screen === "duel-bot") { setDuelMode("bot"); setCurrentScreen("duel-bot") }
+            else if (screen === "gacha") navigateTo("gacha")
+            else if (screen === "menu") navigateTo("menu")
+          }}
+          onComplete={handleTutorialOverlayComplete}
+        />
+      )}
+      {/* ──────────────────────────────────────────────────────────────────── */}
     </>
   )
 }
