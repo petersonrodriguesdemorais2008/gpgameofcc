@@ -563,11 +563,38 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [claimFeedback, setClaimFeedback] = useState<string | null>(null)
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
-  // Controla qual fatia de níveis está visível na trilha (navegação por setas)
-  const [viewStart, setViewStart] = useState(() =>
-    Math.max(0, Math.min(passData.currentLevel - Math.floor(VISIBLE / 2), MAX_LEVELS - VISIBLE))
-  )
+  // Rastreia scrollLeft para saber se as setas estão nos limites
+  const [scrollLeft, setScrollLeft] = useState(0)
+  const [scrollMax,  setScrollMax]  = useState(1)
   const passRowRef = useRef<HTMLDivElement>(null)
+
+  // Largura de cada coluna de nível (px) — usada nas setas para scroll por página
+  const COL_WIDTH = 88  // 80px coluna + 8px conector
+
+  // Desloca a trilha para a esquerda ou direita por VISIBLE colunas
+  const scrollTrack = (dir: 1 | -1) => {
+    passRowRef.current?.scrollBy({ left: dir * COL_WIDTH * VISIBLE, behavior: "smooth" })
+  }
+
+  // Atualiza scrollLeft/scrollMax enquanto o usuário arrasta ou usa as setas
+  useEffect(() => {
+    const el = passRowRef.current
+    if (!el) return
+    const onScroll = () => {
+      setScrollLeft(el.scrollLeft)
+      setScrollMax(el.scrollWidth - el.clientWidth)
+    }
+    el.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()   // leitura inicial
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [activeTab])
+
+  // Centraliza no nível atual ao montar / quando o nível muda
+  useEffect(() => {
+    if (!passRowRef.current) return
+    const targetX = Math.max(0, (passData.currentLevel - Math.floor(VISIBLE / 2)) * COL_WIDTH)
+    passRowRef.current.scrollTo({ left: targetX, behavior: "smooth" })
+  }, [passData.currentLevel])
 
   // Persist passData
   useEffect(() => {
@@ -898,39 +925,76 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   </span>
                 </div>
 
-                {/* Track with arrow navigation */}
-                <div style={{ position: "relative", display: "flex", alignItems: "center", paddingLeft: 8, paddingRight: 8 }}>
+                {/* Wrapper com setas e trilha scrollável */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8 }}>
 
-                  {/* ← Arrow prev */}
+                  {/* ← Seta anterior */}
                   <button
-                    onClick={() => setViewStart(v => Math.max(0, v - 1))}
-                    disabled={viewStart === 0}
+                    onClick={() => scrollTrack(-1)}
+                    disabled={scrollLeft <= 0}
                     style={{
                       flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
                       border: "1px solid rgba(255,255,255,0.10)",
-                      background: viewStart === 0 ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
-                      color: viewStart === 0 ? "#1e293b" : "#06b6d4",
-                      cursor: viewStart === 0 ? "not-allowed" : "pointer",
+                      background: scrollLeft <= 0 ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
+                      color: scrollLeft <= 0 ? "#1e293b" : "#06b6d4",
+                      cursor: scrollLeft <= 0 ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 16, fontWeight: 900, transition: "all 0.2s",
-                      boxShadow: viewStart === 0 ? "none" : "0 0 8px rgba(6,182,212,0.20)",
+                      fontSize: 18, fontWeight: 900, transition: "all 0.2s",
+                      boxShadow: scrollLeft <= 0 ? "none" : "0 0 8px rgba(6,182,212,0.20)",
+                      userSelect: "none",
                     }}>‹</button>
 
-                  {/* Visible level columns */}
-                  <div ref={passRowRef} style={{ flex: 1, overflow: "hidden" }}>
-                    <div style={{
-                      display: "flex", alignItems: "stretch",
-                      gap: 0, paddingLeft: 8, paddingRight: 8,
-                    }}>
-                      {levelGroups.slice(viewStart, viewStart + VISIBLE).map((lg, idx) => {
+                  {/* Trilha scrollável — suporta toque, arrasto e scroll */}
+                  <div
+                    ref={passRowRef}
+                    style={{
+                      flex: 1,
+                      overflowX: "auto",
+                      // Oculta a scrollbar visualmente mas mantém a funcionalidade
+                      scrollbarWidth: "none",
+                      // Momentum scroll suave no iOS
+                      WebkitOverflowScrolling: "touch" as any,
+                      // Snap suave em cada coluna
+                      scrollSnapType: "x mandatory",
+                      cursor: "grab",
+                    }}
+                    // Muda cursor enquanto arrasta no desktop
+                    onMouseDown={e => { (e.currentTarget.style.cursor = "grabbing") }}
+                    onMouseUp={e => { (e.currentTarget.style.cursor = "grab") }}
+                    onMouseLeave={e => { (e.currentTarget.style.cursor = "grab") }}
+                  >
+                    {/* Oculta scrollbar no Webkit */}
+                    <style>{`.passrow::-webkit-scrollbar{display:none}`}</style>
+
+                    <div
+                      className="passrow"
+                      style={{
+                        display: "flex",
+                        alignItems: "stretch",
+                        paddingLeft: 8,
+                        paddingRight: 8,
+                        // Garante que o container interno ocupa a largura total dos níveis
+                        width: `${MAX_LEVELS * COL_WIDTH + 16}px`,
+                      }}
+                    >
+                      {levelGroups.map((lg, idx) => {
                         const isCurrent = lg.level === passData.currentLevel + 1
                         const isPast    = lg.level <= passData.currentLevel
-                        const isLast    = idx === Math.min(VISIBLE, MAX_LEVELS - viewStart) - 1
+                        const isLast    = idx === levelGroups.length - 1
 
                         return (
-                          <div key={lg.level} data-level={lg.level} style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                            {/* Level column */}
-                            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                          <div
+                            key={lg.level}
+                            data-level={lg.level}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              // Snap point em cada nível
+                              scrollSnapAlign: "start",
+                            }}
+                          >
+                            {/* Coluna do nível — largura fixa para manter ritmo visual */}
+                            <div style={{ width: 80, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
 
                               {/* ── PREMIUM reward (topo) ── */}
                               <button
@@ -941,10 +1005,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   justifyContent: "center", gap: 1,
                                   cursor: isPast && passData.hasPremium ? "pointer" : "default",
                                   border: `1.5px solid ${
-                                    lg.premiumClaimed ? "rgba(34,197,94,0.50)" :
+                                    lg.premiumClaimed          ? "rgba(34,197,94,0.50)"   :
                                     isPast && passData.hasPremium ? "rgba(251,191,36,0.60)" :
-                                    isPast ? "rgba(251,191,36,0.28)" :
-                                    "rgba(251,191,36,0.16)"  // brilho dourado sutil mesmo bloqueado
+                                    isPast                     ? "rgba(251,191,36,0.28)"  :
+                                    "rgba(251,191,36,0.16)"
                                   }`,
                                   background: lg.premiumClaimed
                                     ? "rgba(34,197,94,0.10)"
@@ -952,25 +1016,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     ? "rgba(217,119,6,0.18)"
                                     : isPast
                                     ? "rgba(217,119,6,0.10)"
-                                    // bloqueado: gradiente dourado sutil para gerar desejo
                                     : "linear-gradient(145deg,rgba(180,83,9,0.14),rgba(120,53,15,0.08))",
                                   boxShadow: lg.premiumClaimed
                                     ? "0 0 10px rgba(34,197,94,0.20), inset 0 0 6px rgba(34,197,94,0.08)"
                                     : isPast && passData.hasPremium
                                     ? "0 0 14px rgba(251,191,36,0.28)"
                                     : !isPast
-                                    ? "inset 0 0 14px rgba(251,191,36,0.06)"  // glow interior dourado
+                                    ? "inset 0 0 14px rgba(251,191,36,0.06)"
                                     : "none",
                                   position: "relative", transition: "all 0.2s",
                                   transform: isCurrent ? "scale(1.08)" : "scale(1)",
                                 }}>
                                 {lg.premiumClaimed ? (
-                                  // Coletado: checkmark com anel verde
-                                  <div style={{
-                                    width: 30, height: 30, borderRadius: "50%",
-                                    background: "rgba(34,197,94,0.22)",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                  }}>
+                                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <Check size={16} color="#22c55e" strokeWidth={3} />
                                   </div>
                                 ) : !isPast ? (
@@ -978,29 +1036,24 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                 ) : lg.premium ? (
                                   <RewardIcon reward={lg.premium} />
                                 ) : null}
-                                {/* Crown badge */}
                                 <Crown size={8} color="#f59e0b" style={{ position: "absolute", top: 3, right: 3 }} />
                               </button>
 
-                              {/* Connector */}
+                              {/* Conector vertical superior */}
                               <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
 
-                              {/* Level number badge */}
+                              {/* Badge do nível */}
                               <div style={{
                                 width: 36, height: 22, borderRadius: 8,
-                                background: isCurrent
-                                  ? "linear-gradient(135deg,#0e7490,#0369a1)"
-                                  : isPast ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.05)",
+                                background: isCurrent ? "linear-gradient(135deg,#0e7490,#0369a1)" : isPast ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.05)",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 border: `1px solid ${isCurrent ? "rgba(6,182,212,0.6)" : isPast ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)"}`,
                                 boxShadow: isCurrent ? "0 0 10px rgba(6,182,212,0.35)" : "none",
                               }}>
-                                <span style={{ fontSize: 9, fontWeight: 900, color: isCurrent ? "#e0f2fe" : isPast ? "#38bdf8" : "#334155" }}>
-                                  {lg.level}
-                                </span>
+                                <span style={{ fontSize: 9, fontWeight: 900, color: isCurrent ? "#e0f2fe" : isPast ? "#38bdf8" : "#334155" }}>{lg.level}</span>
                               </div>
 
-                              {/* Connector */}
+                              {/* Conector vertical inferior */}
                               <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
 
                               {/* ── COMMON reward (baixo) — TRILHA ATIVA ── */}
@@ -1013,37 +1066,26 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   cursor: isPast ? "pointer" : "default",
                                   border: `1.5px solid ${
                                     lg.commonClaimed ? "rgba(34,197,94,0.55)" :
-                                    isPast ? "rgba(6,182,212,0.50)" :
-                                    isCurrent ? "rgba(6,182,212,0.28)" :
+                                    isPast           ? "rgba(6,182,212,0.50)"  :
+                                    isCurrent        ? "rgba(6,182,212,0.28)"  :
                                     "rgba(255,255,255,0.07)"
                                   }`,
                                   background: lg.commonClaimed
                                     ? "rgba(34,197,94,0.12)"
-                                    : isPast
-                                    ? "rgba(6,182,212,0.13)"
-                                    : isCurrent
-                                    ? "rgba(6,182,212,0.07)"
+                                    : isPast   ? "rgba(6,182,212,0.13)"
+                                    : isCurrent ? "rgba(6,182,212,0.07)"
                                     : "rgba(255,255,255,0.03)",
                                   boxShadow: lg.commonClaimed
-                                    // Coletado: glow verde claro = "OK visual"
                                     ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10)"
-                                    : isPast
-                                    ? "0 0 8px rgba(6,182,212,0.18)"
-                                    : isCurrent
-                                    ? "0 0 10px rgba(6,182,212,0.22)"
+                                    : isPast    ? "0 0 8px rgba(6,182,212,0.18)"
+                                    : isCurrent ? "0 0 10px rgba(6,182,212,0.22)"
                                     : "none",
                                   transition: "all 0.2s",
                                   transform: isCurrent ? "scale(1.08)" : "scale(1)",
-                                  // Trilha ativa levemente opaca quando coletada (itens claimed)
                                   opacity: lg.commonClaimed ? 0.85 : 1,
                                 }}>
                                 {lg.commonClaimed ? (
-                                  // Coletado: anel verde + check
-                                  <div style={{
-                                    width: 30, height: 30, borderRadius: "50%",
-                                    background: "rgba(34,197,94,0.22)",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                  }}>
+                                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <Check size={16} color="#22c55e" strokeWidth={3} />
                                   </div>
                                 ) : !isPast ? (
@@ -1055,11 +1097,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
                             </div>
 
-                            {/* Horizontal connector between columns */}
+                            {/* Conector horizontal entre colunas */}
                             {!isLast && (
                               <div style={{
-                                width: 8, height: 2, alignSelf: "center",
-                                marginTop: -60,
+                                width: 8, height: 2, alignSelf: "center", marginTop: -60,
                                 background: lg.isUnlocked ? "rgba(6,182,212,0.35)" : "rgba(255,255,255,0.05)",
                               }} />
                             )}
@@ -1069,24 +1110,30 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     </div>
                   </div>
 
-                  {/* → Arrow next */}
+                  {/* → Seta próximo */}
                   <button
-                    onClick={() => setViewStart(v => Math.min(MAX_LEVELS - VISIBLE, v + 1))}
-                    disabled={viewStart >= MAX_LEVELS - VISIBLE}
+                    onClick={() => scrollTrack(1)}
+                    disabled={scrollLeft >= scrollMax - 1}
                     style={{
                       flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
                       border: "1px solid rgba(255,255,255,0.10)",
-                      background: viewStart >= MAX_LEVELS - VISIBLE ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
-                      color: viewStart >= MAX_LEVELS - VISIBLE ? "#1e293b" : "#06b6d4",
-                      cursor: viewStart >= MAX_LEVELS - VISIBLE ? "not-allowed" : "pointer",
+                      background: scrollLeft >= scrollMax - 1 ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
+                      color: scrollLeft >= scrollMax - 1 ? "#1e293b" : "#06b6d4",
+                      cursor: scrollLeft >= scrollMax - 1 ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 16, fontWeight: 900, transition: "all 0.2s",
-                      boxShadow: viewStart >= MAX_LEVELS - VISIBLE ? "none" : "0 0 8px rgba(6,182,212,0.20)",
+                      fontSize: 18, fontWeight: 900, transition: "all 0.2s",
+                      boxShadow: scrollLeft >= scrollMax - 1 ? "none" : "0 0 8px rgba(6,182,212,0.20)",
+                      userSelect: "none",
                     }}>›</button>
                 </div>
 
-                {/* Legend */}
-                <div style={{ display: "flex", justifyContent: "center", gap: 16, padding: "8px 16px 0", marginTop: 4 }}>
+                {/* Dica de arrastar */}
+                <div style={{ textAlign: "center", marginTop: 6, fontSize: 9, color: "#1e293b", letterSpacing: "0.04em" }}>
+                  ← arraste ou use as setas para navegar →
+                </div>
+
+                {/* Legenda */}
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, padding: "6px 16px 0" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <Crown size={10} color="#f59e0b" />
                     <span style={{ fontSize: 10, color: "#64748b" }}>Recompensa Premium (topo)</span>
