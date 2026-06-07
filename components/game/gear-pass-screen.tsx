@@ -568,6 +568,29 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [scrollMax,  setScrollMax]  = useState(1)
   const passRowRef = useRef<HTMLDivElement>(null)
 
+  // Refs para arrastar a trilha com o mouse (sem re-render a cada pixel)
+  const isDragging       = useRef(false)
+  const dragStartX       = useRef(0)
+  const scrollAtDragStart = useRef(0)
+
+  const handleTrackMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    isDragging.current       = true
+    dragStartX.current       = e.pageX
+    scrollAtDragStart.current = passRowRef.current?.scrollLeft ?? 0
+    e.currentTarget.style.cursor     = "grabbing"
+    e.currentTarget.style.userSelect = "none"
+  }
+  const handleTrackMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !passRowRef.current) return
+    e.preventDefault()
+    passRowRef.current.scrollLeft = scrollAtDragStart.current - (e.pageX - dragStartX.current)
+  }
+  const handleTrackMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    isDragging.current = false
+    e.currentTarget.style.cursor     = "grab"
+    e.currentTarget.style.userSelect = ""
+  }
+
   // Largura de cada coluna de nível (px) — usada nas setas para scroll por página
   const COL_WIDTH = 88  // 80px coluna + 8px conector
 
@@ -944,36 +967,38 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       userSelect: "none",
                     }}>‹</button>
 
-                  {/* Trilha scrollável — suporta toque, arrasto e scroll */}
+                  {/* Trilha scrollável — suporta toque, arrasto e setas */}
                   <div
                     ref={passRowRef}
+                    className="gp-track"
                     style={{
                       flex: 1,
-                      overflowX: "auto",
-                      // Oculta a scrollbar visualmente mas mantém a funcionalidade
+                      overflowX: "scroll",
+                      // Oculta scrollbar no Firefox
                       scrollbarWidth: "none",
-                      // Momentum scroll suave no iOS
-                      WebkitOverflowScrolling: "touch" as any,
-                      // Snap suave em cada coluna
-                      scrollSnapType: "x mandatory",
+                      // Cursor de "agarrar"
                       cursor: "grab",
+                      // Permite pan horizontal no touch sem interferir no scroll vertical da página
+                      touchAction: "pan-x",
+                      // Evita seleção de texto enquanto arrasta
+                      userSelect: "none",
                     }}
-                    // Muda cursor enquanto arrasta no desktop
-                    onMouseDown={e => { (e.currentTarget.style.cursor = "grabbing") }}
-                    onMouseUp={e => { (e.currentTarget.style.cursor = "grab") }}
-                    onMouseLeave={e => { (e.currentTarget.style.cursor = "grab") }}
+                    onMouseDown={handleTrackMouseDown}
+                    onMouseMove={handleTrackMouseMove}
+                    onMouseUp={handleTrackMouseUp}
+                    onMouseLeave={handleTrackMouseUp}
                   >
-                    {/* Oculta scrollbar no Webkit */}
-                    <style>{`.passrow::-webkit-scrollbar{display:none}`}</style>
+                    {/* Oculta scrollbar no Chrome/Safari — aplicado no elemento com overflow */}
+                    <style>{`
+                      .gp-track::-webkit-scrollbar { display: none; }
+                    `}</style>
 
                     <div
-                      className="passrow"
                       style={{
                         display: "flex",
                         alignItems: "stretch",
                         paddingLeft: 8,
                         paddingRight: 8,
-                        // Garante que o container interno ocupa a largura total dos níveis
                         width: `${MAX_LEVELS * COL_WIDTH + 16}px`,
                       }}
                     >
@@ -986,12 +1011,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                           <div
                             key={lg.level}
                             data-level={lg.level}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              // Snap point em cada nível
-                              scrollSnapAlign: "start",
-                            }}
+                            style={{ display: "flex", alignItems: "center" }}
                           >
                             {/* Coluna do nível — largura fixa para manter ritmo visual */}
                             <div style={{ width: 80, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
