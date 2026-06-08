@@ -380,6 +380,11 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
   const { displayed, done, skip } = useTypewriter(slide.text, 28)
   useTutorialAudio("/audio/Solidificação.mp3", 0.45)
 
+  // Slide 6 = "Ufa, você acordou!" — primeira apresentação real dos personagens.
+  // Antes disso as artes aparecem como silhuetas escuras e misteriosas.
+  const REVEAL_SLIDE = 6
+  const isRevealed = currentSlide >= REVEAL_SLIDE
+
   const isLast = currentSlide === slides.length - 1
 
   const handleClick = () => {
@@ -416,7 +421,10 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
         }}>
           <img src={MASTERS[slide.leftChar].art} alt="" style={{
             height: "100%", objectFit: "contain", objectPosition: "bottom",
-            filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.75))",
+            filter: isRevealed
+              ? "drop-shadow(0 8px 32px rgba(0,0,0,0.75))"
+              : "brightness(0.07) saturate(0.1) contrast(1.15)",
+            transition: isRevealed ? "filter 1.4s ease" : "filter 0.3s ease",
           }} />
         </div>
       )}
@@ -431,7 +439,10 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
         }}>
           <img src={MASTERS[slide.rightChar].art} alt="" style={{
             height: "100%", objectFit: "contain", objectPosition: "bottom",
-            filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.75))",
+            filter: isRevealed
+              ? "drop-shadow(0 8px 32px rgba(0,0,0,0.75))"
+              : "brightness(0.07) saturate(0.1) contrast(1.15)",
+            transition: isRevealed ? "filter 1.4s ease" : "filter 0.3s ease",
           }} />
         </div>
       )}
@@ -532,72 +543,68 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
 }) {
   const [hovered, setHovered] = useState<TutorialMasterId | null>(null)
   const [entered, setEntered] = useState(false)
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useTutorialAudio("/audio/Big Memory.mp3", 0.5)
 
-  useEffect(() => { const t = setTimeout(() => setEntered(true), 60); return () => clearTimeout(t) }, [])
+  // Easing universal para transições suaves
+  const E = "cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 60)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Enter imediato, leave com 130ms de delay → evita flash ao passar entre painéis
+  const handleEnter = (id: TutorialMasterId) => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current)
+    setHovered(id)
+  }
+  const handleLeave = () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current)
+    leaveTimer.current = setTimeout(() => setHovered(null), 130)
+  }
 
   // ── Tela de confirmação ─────────────────────────────────────────────────────
   if (confirmed && selectedMaster) {
     const m = MASTERS[selectedMaster]
     return (
       <div style={{
-        position: "fixed", inset: 0,
-        background: "#030308",
+        position: "fixed", inset: 0, background: "#030308",
         display: "flex", flexDirection: "column", alignItems: "center",
         justifyContent: "center", fontFamily: "'Segoe UI', sans-serif",
         overflow: "hidden",
       }}>
-        {/* Flash colorido de fundo */}
         <div style={{
           position: "absolute", inset: 0,
           background: `radial-gradient(circle at 50% 65%, ${m.color}22 0%, transparent 65%)`,
           animation: "msConfirmBg 0.8s ease both",
         }} />
-        {/* Raios de luz saindo de baixo */}
         <div style={{
-          position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+          position: "absolute", bottom: 0, left: "50%",
+          transform: "translateX(-50%)",
           width: "140%", height: "100%",
           background: `conic-gradient(from 260deg at 50% 120%, transparent 0deg, ${m.color}12 10deg, transparent 20deg, transparent 30deg, ${m.color}08 40deg, transparent 50deg, transparent 60deg, ${m.color}14 70deg, transparent 80deg, transparent 270deg, ${m.color}10 280deg, transparent 290deg, transparent 300deg, ${m.color}06 310deg, transparent 320deg)`,
           animation: "msRays 1.2s ease both",
         }} />
-        {/* Arte do mestre */}
         <img src={m.art} alt={m.name} style={{
           height: "clamp(260px, 54vh, 480px)", objectFit: "contain",
           filter: `drop-shadow(0 0 50px ${m.shadowGlow}) drop-shadow(0 0 100px ${m.color}30)`,
           animation: "msConfirmArt 0.7s cubic-bezier(0.22,1,0.36,1) both",
           position: "relative", zIndex: 2, marginBottom: 4,
         }} />
-        {/* Linha decorativa */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 14, marginBottom: 14, zIndex: 2,
-          animation: "tutFadeIn 0.5s ease 0.35s both",
-          width: "clamp(200px, 36vw, 480px)",
-        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14, zIndex: 2, animation: "tutFadeIn 0.5s ease 0.35s both", width: "clamp(200px, 36vw, 480px)" }}>
           <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${m.color}60)` }} />
           <div style={{ width: 6, height: 6, background: m.color, transform: "rotate(45deg)", boxShadow: `0 0 8px ${m.color}` }} />
           <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, transparent, ${m.color}60)` }} />
         </div>
-        {/* Nome + mensagem */}
         <div style={{ textAlign: "center", zIndex: 2, animation: "tutFadeIn 0.5s ease 0.4s both" }}>
-          <div style={{
-            fontSize: "clamp(9px, 0.9vw, 11px)", letterSpacing: "0.45em",
-            color: m.color, fontWeight: 700, textTransform: "uppercase",
-            marginBottom: 8, textShadow: `0 0 16px ${m.color}`,
-          }}>
+          <div style={{ fontSize: "clamp(9px, 0.9vw, 11px)", letterSpacing: "0.45em", color: m.color, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, textShadow: `0 0 16px ${m.color}` }}>
             Mestre de Jornada Escolhido
           </div>
-          <h2 style={{
-            fontSize: "clamp(28px, 4.2vw, 50px)", fontWeight: 900,
-            color: "#fff", margin: "0 0 12px",
-            textShadow: `0 0 40px ${m.shadowGlow}, 0 4px 20px rgba(0,0,0,0.9)`,
-            letterSpacing: "0.03em",
-          }}>
+          <h2 style={{ fontSize: "clamp(28px, 4.2vw, 50px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", textShadow: `0 0 40px ${m.shadowGlow}, 0 4px 20px rgba(0,0,0,0.9)`, letterSpacing: "0.03em" }}>
             {m.name}
           </h2>
-          <p style={{
-            fontSize: "clamp(13px, 1.5vw, 17px)", color: "rgba(255,255,255,0.65)",
-            margin: "0 0 4px",
-          }}>
+          <p style={{ fontSize: "clamp(13px, 1.5vw, 17px)", color: "rgba(255,255,255,0.65)", margin: "0 0 4px" }}>
             {playerName}, fico muito feliz com sua escolha!
           </p>
           <p style={{ fontSize: "clamp(13px, 1.5vw, 17px)", color: m.color, fontWeight: 700, margin: 0 }}>
@@ -608,7 +615,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
     )
   }
 
-  // ── Tela de seleção — layout fullscreen de 3 painéis ───────────────────────
+  // ── Tela de seleção ─────────────────────────────────────────────────────────
   const order: TutorialMasterId[] = ["morgana", "fehnon", "calem"]
   const active = hovered ?? selectedMaster
 
@@ -617,10 +624,10 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
       position: "fixed", inset: 0, background: "#030308",
       fontFamily: "'Segoe UI', sans-serif", overflow: "hidden",
     }}>
-      {/* Ruído de fundo sutil */}
+      {/* Ruído de fundo */}
       <div style={{
         position: "absolute", inset: 0, opacity: 0.025, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
         backgroundRepeat: "repeat", backgroundSize: "200px",
       }} />
 
@@ -628,30 +635,17 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
         display: "flex", flexDirection: "column", alignItems: "center",
-        padding: "clamp(18px, 3.5vh, 34px) 0 0",
-        background: "linear-gradient(to bottom, rgba(3,3,8,0.95) 0%, transparent 100%)",
-        paddingBottom: 24,
-        animation: "tutFadeIn 0.7s ease both",
-        pointerEvents: "none",
+        padding: "clamp(18px, 3.5vh, 34px) 0 20px",
+        background: "linear-gradient(to bottom, rgba(3,3,8,0.96) 0%, transparent 100%)",
+        pointerEvents: "none", animation: "tutFadeIn 0.7s ease both",
       }}>
-        <span style={{
-          fontSize: "clamp(8px, 0.85vw, 10px)", letterSpacing: "0.5em",
-          color: "rgba(255,255,255,0.28)", textTransform: "uppercase", marginBottom: 10,
-        }}>
+        <span style={{ fontSize: "clamp(8px, 0.85vw, 10px)", letterSpacing: "0.5em", color: "rgba(255,255,255,0.28)", textTransform: "uppercase", marginBottom: 10 }}>
           A Grande Ordem — Sua Escolha
         </span>
-        <h1 style={{
-          fontSize: "clamp(20px, 3vw, 38px)", fontWeight: 900,
-          color: "#ffffff", margin: 0, letterSpacing: "0.01em",
-          textShadow: "0 2px 40px rgba(168,85,247,0.35), 0 0 80px rgba(56,189,248,0.15)",
-        }}>
+        <h1 style={{ fontSize: "clamp(20px, 3vw, 38px)", fontWeight: 900, color: "#ffffff", margin: 0, letterSpacing: "0.01em", textShadow: "0 2px 40px rgba(168,85,247,0.35), 0 0 80px rgba(56,189,248,0.15)" }}>
           Escolha seu Mestre de Jornada
         </h1>
-        {/* Régua decorativa */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10, marginTop: 10,
-          width: "clamp(160px, 30vw, 360px)",
-        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, width: "clamp(160px, 30vw, 360px)" }}>
           <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.12))" }} />
           <div style={{ width: 4, height: 4, background: "rgba(255,255,255,0.25)", transform: "rotate(45deg)" }} />
           <span style={{ fontSize: 9, color: "rgba(255,255,255,0.22)", letterSpacing: "0.18em" }}>DECK INICIAL EXCLUSIVO</span>
@@ -660,175 +654,188 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
         </div>
       </div>
 
-      {/* ── TRÊS PAINÉIS ───────────────────────────────────────────────────── */}
+      {/* ── PAINÉIS ─────────────────────────────────────────────────────────── */}
       <div style={{ position: "absolute", inset: 0, display: "flex" }}>
         {order.map((id, idx) => {
           const m = MASTERS[id]
           const isActive = active === id
           const isSel = selectedMaster === id
           const isCenter = id === "fehnon"
-          // Fehnon é ligeiramente mais proeminente no centro
-          const artH = isCenter ? "clamp(340px, 68vh, 600px)" : "clamp(310px, 63vh, 550px)"
 
           return (
-            <div key={id} style={{
-              flex: isActive ? (isCenter ? 1.18 : 1.12) : (isCenter ? 1.04 : 1),
-              position: "relative", overflow: "hidden", cursor: "pointer",
-              transition: "flex 0.55s cubic-bezier(0.4,0,0.2,1)",
-              borderRight: idx < order.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-            }}
-              onMouseEnter={() => setHovered(id)}
-              onMouseLeave={() => setHovered(null)}
+            <div
+              key={id}
+              onMouseEnter={() => handleEnter(id)}
+              onMouseLeave={handleLeave}
               onClick={() => onSelect(id)}
+              style={{
+                // Painel central ligeiramente mais largo em repouso; todos expandem suavemente no hover
+                flex: isActive ? 1.14 : isCenter ? 1.03 : 0.985,
+                position: "relative", overflow: "hidden", cursor: "pointer",
+                transition: `flex 0.55s ${E}`,
+                borderRight: idx < order.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+              }}
             >
-              {/* Gradiente de fundo do painel */}
+              {/* Fundo do painel */}
               <div style={{
                 position: "absolute", inset: 0,
                 background: isActive
-                  ? `linear-gradient(180deg, #030308 0%, ${m.color}14 60%, ${m.color}22 100%)`
-                  : `linear-gradient(180deg, #030308 0%, ${m.color}05 80%, ${m.color}0a 100%)`,
-                transition: "background 0.55s ease",
+                  ? `linear-gradient(180deg, #030308 0%, ${m.color}12 55%, ${m.color}20 100%)`
+                  : `linear-gradient(180deg, #030308 0%, ${m.color}04 75%, ${m.color}08 100%)`,
+                transition: `background 0.6s ${E}`,
               }} />
 
-              {/* Coluna de luz vertical (fundo) */}
+              {/* Coluna de luz do chão */}
               <div style={{
                 position: "absolute", bottom: 0, left: "50%",
                 transform: "translateX(-50%)",
-                width: isActive ? "55%" : "25%",
-                height: "80%",
-                background: `radial-gradient(ellipse at 50% 100%, ${m.color}${isActive ? "28" : "0c"} 0%, transparent 65%)`,
-                transition: "all 0.55s ease",
+                width: isActive ? "52%" : "22%",
+                height: "78%",
+                background: `radial-gradient(ellipse at 50% 100%, ${m.color}${isActive ? "26" : "0a"} 0%, transparent 65%)`,
+                transition: `width 0.6s ${E}, background 0.6s ${E}`,
                 pointerEvents: "none",
               }} />
 
-              {/* Brilho no chão sob os pés */}
+              {/* Brilho nos pés */}
               <div style={{
                 position: "absolute",
-                bottom: "21%", left: "50%",
+                bottom: "22%", left: "50%",
                 transform: "translateX(-50%)",
-                width: isActive ? "160px" : "80px", height: "20px",
-                background: `radial-gradient(ellipse, ${m.color}${isActive ? "50" : "20"} 0%, transparent 70%)`,
+                width: isActive ? "150px" : "70px",
+                height: isActive ? "22px" : "12px",
+                background: `radial-gradient(ellipse, ${m.color}${isActive ? "48" : "1c"} 0%, transparent 70%)`,
                 filter: "blur(10px)",
-                transition: "all 0.45s ease",
+                transition: `width 0.55s ${E}, height 0.55s ${E}, background 0.55s ${E}`,
                 pointerEvents: "none",
               }} />
 
               {/* Arte do personagem */}
               <div style={{
-                position: "absolute", bottom: "21%", left: "50%",
-                transform: `translateX(-50%) scale(${isActive ? (isCenter ? 1.07 : 1.05) : (isCenter ? 1.02 : 1)})`,
-                height: artH,
+                position: "absolute",
+                bottom: "22%", left: "50%",
+                // Scale sutil: centro ligeiramente maior, hover apenas +3% — sem sacudidas
+                transform: `translateX(-50%) scale(${isActive ? (isCenter ? 1.04 : 1.03) : (isCenter ? 1.01 : 1)})`,
+                height: isCenter ? "clamp(330px, 66vh, 580px)" : "clamp(300px, 62vh, 540px)",
                 transformOrigin: "bottom center",
-                transition: "transform 0.55s cubic-bezier(0.4,0,0.2,1), height 0.55s ease",
+                // will-change: GPU acelera o transform, elimina stuttering
+                willChange: "transform",
+                transition: `transform 0.55s ${E}, height 0.55s ${E}`,
                 pointerEvents: "none",
               }}>
                 <img src={m.art} alt={m.name} style={{
                   height: "100%", objectFit: "contain", objectPosition: "bottom center",
-                  filter: `drop-shadow(0 0 ${isActive ? 36 : 14}px ${m.color}${isActive ? "99" : "44"}) drop-shadow(0 24px 40px rgba(0,0,0,0.85))`,
-                  transition: "filter 0.5s ease",
+                  // Glow cresce suavemente — duas camadas para profundidade
+                  filter: isActive
+                    ? `drop-shadow(0 0 32px ${m.color}88) drop-shadow(0 0 64px ${m.color}28) drop-shadow(0 24px 40px rgba(0,0,0,0.85))`
+                    : `drop-shadow(0 0 12px ${m.color}38) drop-shadow(0 24px 40px rgba(0,0,0,0.85))`,
+                  transition: `filter 0.55s ${E}`,
                 }} />
               </div>
 
-              {/* ── OVERLAY DE INFO (parte inferior) ─────────────────────── */}
+              {/* ── ÁREA DE INFO — altura fixa → zero layout shift ──────── */}
               <div style={{
                 position: "absolute", bottom: 0, left: 0, right: 0,
-                height: "23%",
+                height: "clamp(186px, 24vh, 228px)",
                 background: "linear-gradient(to top, rgba(3,3,8,0.98) 0%, rgba(3,3,8,0.82) 55%, transparent 100%)",
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "flex-end",
-                padding: "0 clamp(10px, 2vw, 20px) clamp(14px, 2.5vh, 24px)",
+                padding: "0 clamp(10px, 2vw, 20px) clamp(14px, 2.5vh, 22px)",
                 zIndex: 5,
               }}>
-                {/* Badge do elemento */}
+                {/* Elemento */}
                 <div style={{
                   fontSize: "clamp(7px, 0.75vw, 9px)", fontWeight: 800,
                   letterSpacing: "0.22em", textTransform: "uppercase",
-                  color: m.color, background: `${m.color}14`,
-                  border: `1px solid ${m.color}${isActive ? "60" : "30"}`,
-                  padding: "3px 12px", borderRadius: 20,
-                  marginBottom: 6,
-                  textShadow: isActive ? `0 0 12px ${m.color}` : "none",
-                  transition: "all 0.4s ease",
+                  color: m.color,
+                  background: isActive ? `${m.color}18` : `${m.color}0c`,
+                  border: `1px solid ${m.color}${isActive ? "55" : "25"}`,
+                  padding: "3px 12px", borderRadius: 20, marginBottom: 6,
+                  textShadow: isActive ? `0 0 10px ${m.color}` : "none",
+                  transition: `all 0.5s ${E}`,
                 }}>
                   {m.element}
                 </div>
 
-                {/* Nome do personagem */}
+                {/* Nome */}
                 <div style={{
-                  fontSize: isCenter
-                    ? "clamp(16px, 1.85vw, 24px)"
-                    : "clamp(14px, 1.65vw, 21px)",
+                  fontSize: isCenter ? "clamp(16px, 1.8vw, 23px)" : "clamp(14px, 1.6vw, 20px)",
                   fontWeight: 900, color: "#ffffff",
-                  letterSpacing: "0.02em", textAlign: "center",
-                  lineHeight: 1.15, marginBottom: 4,
+                  letterSpacing: "0.02em", textAlign: "center", lineHeight: 1.15,
+                  marginBottom: 4,
                   textShadow: isActive
-                    ? `0 0 28px ${m.shadowGlow}, 0 2px 6px rgba(0,0,0,0.9)`
+                    ? `0 0 24px ${m.shadowGlow}, 0 2px 6px rgba(0,0,0,0.9)`
                     : "0 2px 8px rgba(0,0,0,0.9)",
-                  transition: "text-shadow 0.4s ease",
+                  transition: `text-shadow 0.5s ${E}`,
                 }}>
                   {m.name}
                 </div>
 
-                {/* Nome do deck */}
+                {/* Deck */}
                 <div style={{
                   fontSize: "clamp(9px, 0.9vw, 11px)", fontWeight: 600,
-                  color: `${m.color}bb`, letterSpacing: "0.06em",
-                  marginBottom: 8,
+                  color: `${m.color}${isActive ? "cc" : "88"}`,
+                  letterSpacing: "0.06em", marginBottom: 8,
+                  transition: `color 0.5s ${E}`,
                 }}>
                   {m.deckName}
                 </div>
 
-                {/* Descrição — aparece suavemente no hover */}
+                {/* Descrição — fade+slide, container com altura fixa → sem layout shift */}
                 <div style={{
-                  fontSize: "clamp(9px, 0.88vw, 11px)",
-                  color: "rgba(255,255,255,0.42)", textAlign: "center",
-                  lineHeight: 1.55, maxWidth: 220,
-                  marginBottom: 10,
-                  maxHeight: isActive ? "62px" : "0px",
-                  opacity: isActive ? 1 : 0,
-                  overflow: "hidden",
-                  transition: "max-height 0.45s ease, opacity 0.35s ease",
+                  height: "clamp(40px, 5.5vh, 54px)",
+                  display: "flex", alignItems: "flex-start",
+                  justifyContent: "center",
+                  overflow: "hidden", marginBottom: 10,
+                  width: "100%",
                 }}>
-                  {m.deckDesc}
+                  <p style={{
+                    fontSize: "clamp(9px, 0.88vw, 11px)",
+                    color: "rgba(255,255,255,0.45)", textAlign: "center",
+                    lineHeight: 1.55, margin: 0, maxWidth: 210,
+                    opacity: isActive ? 1 : 0,
+                    transform: isActive ? "translateY(0)" : "translateY(7px)",
+                    transition: `opacity 0.45s ${E}, transform 0.45s ${E}`,
+                  }}>
+                    {m.deckDesc}
+                  </p>
                 </div>
 
-                {/* Botão de seleção */}
+                {/* Botão */}
                 <div style={{
-                  width: "clamp(90px, 78%, 170px)",
+                  width: "clamp(90px, 78%, 168px)",
                   padding: "clamp(7px, 1.1vh, 10px) 0",
                   background: isSel
                     ? m.color
                     : isActive
-                      ? `linear-gradient(135deg, ${m.color}28 0%, ${m.color}45 100%)`
+                      ? `linear-gradient(135deg, ${m.color}25, ${m.color}42)`
                       : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${isSel ? m.color : isActive ? m.color + "70" : "rgba(255,255,255,0.1)"}`,
+                  border: `1px solid ${isSel ? m.color : isActive ? m.color + "68" : "rgba(255,255,255,0.09)"}`,
                   borderRadius: 9,
-                  color: isSel ? "#fff" : isActive ? m.color : "rgba(255,255,255,0.35)",
+                  color: isSel ? "#fff" : isActive ? m.color : "rgba(255,255,255,0.32)",
                   fontSize: "clamp(9px, 0.95vw, 11px)", fontWeight: 800,
                   textAlign: "center", letterSpacing: "0.12em", textTransform: "uppercase",
-                  boxShadow: isSel ? `0 4px 20px ${m.color}55` : "none",
-                  transition: "all 0.35s ease",
+                  boxShadow: isSel ? `0 4px 18px ${m.color}50` : "none",
+                  // Transição da cor sem flicker
+                  transition: `background 0.45s ${E}, border 0.45s ${E}, color 0.45s ${E}, box-shadow 0.45s ${E}`,
                 }}>
                   {isSel ? "✓ Selecionado" : "Escolher"}
                 </div>
               </div>
 
-              {/* Borda lateral sutil quando selecionado */}
+              {/* Borda sutil quando selecionado */}
               {isSel && (
                 <div style={{
                   position: "absolute", inset: 0,
-                  border: `1px solid ${m.color}35`,
-                  pointerEvents: "none",
-                  animation: "tutFadeIn 0.3s ease both",
+                  border: `1px solid ${m.color}30`, pointerEvents: "none",
+                  animation: "tutFadeIn 0.35s ease both",
                 }} />
               )}
 
-              {/* Cortina de entrada escalonada por painel */}
+              {/* Cortina de entrada escalonada */}
               <div style={{
-                position: "absolute", inset: 0,
-                background: "#030308",
+                position: "absolute", inset: 0, background: "#030308",
                 opacity: entered ? 0 : 1,
-                transition: `opacity 0.65s ease ${idx * 0.18}s`,
+                transition: `opacity 0.7s ease ${idx * 0.18}s`,
                 pointerEvents: "none",
               }} />
             </div>
@@ -836,16 +843,13 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
         })}
       </div>
 
-      {/* Nota de rodapé */}
+      {/* Rodapé */}
       <div style={{
         position: "absolute", bottom: 10, left: 0, right: 0,
         textAlign: "center", zIndex: 30, pointerEvents: "none",
         animation: "tutFadeIn 1s ease 0.8s both",
       }}>
-        <span style={{
-          fontSize: 10, color: "rgba(255,255,255,0.18)",
-          letterSpacing: "0.16em", textTransform: "uppercase",
-        }}>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
           Passe o mouse para ver mais detalhes
         </span>
       </div>
@@ -853,9 +857,6 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: TUTORIAL GAME OVERLAY (sobre as telas REAIS do jogo)
-// ═══════════════════════════════════════════════════════════════════════════════
 
 export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: TutorialGameOverlayProps) {
   const [phase, setPhase] = useState<OverlayPhase>("menu")
