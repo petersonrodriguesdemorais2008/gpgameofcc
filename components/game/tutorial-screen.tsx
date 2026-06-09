@@ -546,15 +546,8 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useTutorialAudio("/audio/Big Memory.mp3", 0.5)
 
-  // Easing universal para transições suaves
-  const E = "cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+  useEffect(() => { const t = setTimeout(() => setEntered(true), 80); return () => clearTimeout(t) }, [])
 
-  useEffect(() => {
-    const t = setTimeout(() => setEntered(true), 60)
-    return () => clearTimeout(t)
-  }, [])
-
-  // Enter imediato, leave com 130ms de delay → evita flash ao passar entre painéis
   const handleEnter = (id: TutorialMasterId) => {
     if (leaveTimer.current) clearTimeout(leaveTimer.current)
     setHovered(id)
@@ -564,98 +557,77 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
     leaveTimer.current = setTimeout(() => setHovered(null), 130)
   }
 
-  // ── Tela de confirmação ─────────────────────────────────────────────────────
+  // ── TELA DE CONFIRMAÇÃO ────────────────────────────────────────────────────
   if (confirmed && selectedMaster) {
     const m = MASTERS[selectedMaster]
     return (
       <div style={{
-        position: "fixed", inset: 0, background: "#030308",
+        position: "fixed", inset: 0, background: "#060608",
         display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", fontFamily: "'Segoe UI', sans-serif",
-        overflow: "hidden",
+        justifyContent: "center", fontFamily: "'Segoe UI', sans-serif", overflow: "hidden",
       }}>
-        <div style={{
-          position: "absolute", inset: 0,
-          background: `radial-gradient(circle at 50% 65%, ${m.color}22 0%, transparent 65%)`,
-          animation: "msConfirmBg 0.8s ease both",
-        }} />
-        <div style={{
-          position: "absolute", bottom: 0, left: "50%",
-          transform: "translateX(-50%)",
-          width: "140%", height: "100%",
-          background: `conic-gradient(from 260deg at 50% 120%, transparent 0deg, ${m.color}12 10deg, transparent 20deg, transparent 30deg, ${m.color}08 40deg, transparent 50deg, transparent 60deg, ${m.color}14 70deg, transparent 80deg, transparent 270deg, ${m.color}10 280deg, transparent 290deg, transparent 300deg, ${m.color}06 310deg, transparent 320deg)`,
-          animation: "msRays 1.2s ease both",
-        }} />
-        <img src={m.art} alt={m.name} style={{
-          height: "clamp(260px, 54vh, 480px)", objectFit: "contain",
-          filter: `drop-shadow(0 0 50px ${m.shadowGlow}) drop-shadow(0 0 100px ${m.color}30)`,
-          animation: "msConfirmArt 0.7s cubic-bezier(0.22,1,0.36,1) both",
-          position: "relative", zIndex: 2, marginBottom: 4,
-        }} />
+        {/* Burst de fundo */}
+        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 65%, ${m.color}22 0%, transparent 60%)`, animation: "msConfirmBg 0.8s ease both" }} />
+        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "140%", height: "100%", background: `conic-gradient(from 260deg at 50% 120%, transparent 0deg, ${m.color}10 10deg, transparent 20deg, transparent 30deg, ${m.color}08 40deg, transparent 50deg, transparent 60deg, ${m.color}12 70deg, transparent 80deg, transparent 270deg, ${m.color}08 280deg, transparent 290deg, transparent 300deg, ${m.color}06 310deg, transparent 320deg)`, animation: "msRays 1.2s ease both" }} />
+        <img src={m.art} alt={m.name} style={{ height: "clamp(260px, 54vh, 480px)", objectFit: "contain", filter: `drop-shadow(0 0 50px ${m.shadowGlow}) drop-shadow(0 0 100px ${m.color}28)`, animation: "msConfirmArt 0.7s cubic-bezier(0.22,1,0.36,1) both", position: "relative", zIndex: 2, marginBottom: 4 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14, zIndex: 2, animation: "tutFadeIn 0.5s ease 0.35s both", width: "clamp(200px, 36vw, 480px)" }}>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${m.color}60)` }} />
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${m.color}55)` }} />
           <div style={{ width: 6, height: 6, background: m.color, transform: "rotate(45deg)", boxShadow: `0 0 8px ${m.color}` }} />
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, transparent, ${m.color}60)` }} />
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, transparent, ${m.color}55)` }} />
         </div>
         <div style={{ textAlign: "center", zIndex: 2, animation: "tutFadeIn 0.5s ease 0.4s both" }}>
-          <div style={{ fontSize: "clamp(9px, 0.9vw, 11px)", letterSpacing: "0.45em", color: m.color, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, textShadow: `0 0 16px ${m.color}` }}>
-            Mestre de Jornada Escolhido
-          </div>
-          <h2 style={{ fontSize: "clamp(28px, 4.2vw, 50px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", textShadow: `0 0 40px ${m.shadowGlow}, 0 4px 20px rgba(0,0,0,0.9)`, letterSpacing: "0.03em" }}>
-            {m.name}
-          </h2>
-          <p style={{ fontSize: "clamp(13px, 1.5vw, 17px)", color: "rgba(255,255,255,0.65)", margin: "0 0 4px" }}>
-            {playerName}, fico muito feliz com sua escolha!
-          </p>
-          <p style={{ fontSize: "clamp(13px, 1.5vw, 17px)", color: m.color, fontWeight: 700, margin: 0 }}>
-            Você tem MUITO a aprender comigo daqui pra frente!
-          </p>
+          <div style={{ fontSize: "clamp(9px, 0.9vw, 11px)", letterSpacing: "0.45em", color: m.color, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, textShadow: `0 0 14px ${m.color}` }}>Mestre de Jornada Escolhido</div>
+          <h2 style={{ fontSize: "clamp(28px, 4.2vw, 50px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", textShadow: `0 0 40px ${m.shadowGlow}, 0 4px 20px rgba(0,0,0,0.9)`, letterSpacing: "0.03em" }}>{m.name}</h2>
+          <p style={{ fontSize: "clamp(13px, 1.5vw, 17px)", color: "rgba(255,255,255,0.6)", margin: "0 0 4px" }}>{playerName}, fico muito feliz com sua escolha!</p>
+          <p style={{ fontSize: "clamp(13px, 1.5vw, 17px)", color: m.color, fontWeight: 700, margin: 0 }}>Você tem MUITO a aprender comigo daqui pra frente!</p>
         </div>
       </div>
     )
   }
 
-  // ── Tela de seleção ─────────────────────────────────────────────────────────
+  // ── SELEÇÃO ────────────────────────────────────────────────────────────────
   const order: TutorialMasterId[] = ["morgana", "fehnon", "calem"]
   const active = hovered ?? selectedMaster
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "#030308",
-      fontFamily: "'Segoe UI', sans-serif", overflow: "hidden",
-    }}>
-      {/* Ruído de fundo */}
+    <div style={{ position: "fixed", inset: 0, background: "#060608", fontFamily: "'Segoe UI', sans-serif", overflow: "hidden" }}>
+
+      {/* Glow de fundo suave que muda por personagem — só background/opacity */}
       <div style={{
-        position: "absolute", inset: 0, opacity: 0.025, pointerEvents: "none",
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        backgroundRepeat: "repeat", backgroundSize: "200px",
+        position: "absolute", inset: 0, pointerEvents: "none",
+        opacity: active ? 1 : 0,
+        background: active ? `radial-gradient(ellipse 60% 50% at ${active === "morgana" ? "17%" : active === "fehnon" ? "50%" : "83%"} 100%, ${MASTERS[active].color}18 0%, transparent 100%)` : "transparent",
+        transition: "opacity 0.6s ease, background 0.6s ease",
       }} />
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
+        position: "absolute", top: 0, left: 0, right: 0, zIndex: 30,
         display: "flex", flexDirection: "column", alignItems: "center",
-        padding: "clamp(18px, 3.5vh, 34px) 0 20px",
-        background: "linear-gradient(to bottom, rgba(3,3,8,0.96) 0%, transparent 100%)",
-        pointerEvents: "none", animation: "tutFadeIn 0.7s ease both",
+        padding: "clamp(16px, 3vh, 30px) 0 16px",
+        background: "linear-gradient(to bottom, rgba(6,6,8,0.98) 0%, transparent 100%)",
+        pointerEvents: "none", animation: "tutFadeIn 0.6s ease both",
       }}>
-        <span style={{ fontSize: "clamp(8px, 0.85vw, 10px)", letterSpacing: "0.5em", color: "rgba(255,255,255,0.28)", textTransform: "uppercase", marginBottom: 10 }}>
-          A Grande Ordem — Sua Escolha
-        </span>
-        <h1 style={{ fontSize: "clamp(20px, 3vw, 38px)", fontWeight: 900, color: "#ffffff", margin: 0, letterSpacing: "0.01em", textShadow: "0 2px 40px rgba(168,85,247,0.35), 0 0 80px rgba(56,189,248,0.15)" }}>
+        <span style={{ fontSize: "clamp(8px, 0.8vw, 9px)", letterSpacing: "0.55em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase", marginBottom: 9 }}>A Grande Ordem — Sua Escolha</span>
+        <h1 style={{ fontSize: "clamp(21px, 2.9vw, 38px)", fontWeight: 900, color: "#fff", margin: "0 0 9px", letterSpacing: "0.01em", textShadow: "0 2px 32px rgba(120,60,200,0.35)" }}>
           Escolha seu Mestre de Jornada
         </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, width: "clamp(160px, 30vw, 360px)" }}>
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.12))" }} />
-          <div style={{ width: 4, height: 4, background: "rgba(255,255,255,0.25)", transform: "rotate(45deg)" }} />
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.22)", letterSpacing: "0.18em" }}>DECK INICIAL EXCLUSIVO</span>
-          <div style={{ width: 4, height: 4, background: "rgba(255,255,255,0.25)", transform: "rotate(45deg)" }} />
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.12))" }} />
+        {/* Ornamento sob o título */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "clamp(140px, 28vw, 360px)" }}>
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.1))" }} />
+          <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+            <div style={{ width: 3, height: 3, background: "rgba(255,255,255,0.2)", borderRadius: "50%" }} />
+            <div style={{ width: 4, height: 4, background: "rgba(255,255,255,0.22)", transform: "rotate(45deg)" }} />
+            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.18)", letterSpacing: "0.2em" }}>DECK INICIAL EXCLUSIVO</span>
+            <div style={{ width: 4, height: 4, background: "rgba(255,255,255,0.22)", transform: "rotate(45deg)" }} />
+            <div style={{ width: 3, height: 3, background: "rgba(255,255,255,0.2)", borderRadius: "50%" }} />
+          </div>
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.1))" }} />
         </div>
       </div>
 
-      {/* ── PAINÉIS ─────────────────────────────────────────────────────────── */}
-      <div style={{ position: "absolute", inset: 0, display: "flex" }}>
+      {/* ── TRÊS PAINÉIS ────────────────────────────────────────────────────── */}
+      <div style={{ position: "absolute", top: "clamp(92px, 13.5vh, 124px)", left: 0, right: 0, bottom: 0, display: "flex" }}>
         {order.map((id, idx) => {
           const m = MASTERS[id]
           const isActive = active === id
@@ -663,179 +635,236 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
           const isCenter = id === "fehnon"
 
           return (
-            <div
-              key={id}
+            <div key={id}
               onMouseEnter={() => handleEnter(id)}
               onMouseLeave={handleLeave}
               onClick={() => onSelect(id)}
               style={{
-                // Painel central ligeiramente mais largo em repouso; todos expandem suavemente no hover
-                flex: isActive ? 1.14 : isCenter ? 1.03 : 0.985,
-                position: "relative", overflow: "hidden", cursor: "pointer",
-                transition: `flex 0.55s ${E}`,
+                flex: "1 0 0",               // ESTÁTICO — zero layout reflow
+                position: "relative",
+                overflow: "hidden",
+                cursor: "pointer",
+                transform: "translateZ(0)",  // camada GPU dedicada por painel
                 borderRight: idx < order.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
               }}
             >
-              {/* Fundo do painel */}
+              {/* ── Fundo base do painel (estático) */}
               <div style={{
-                position: "absolute", inset: 0,
-                background: isActive
-                  ? `linear-gradient(180deg, #030308 0%, ${m.color}12 55%, ${m.color}20 100%)`
-                  : `linear-gradient(180deg, #030308 0%, ${m.color}04 75%, ${m.color}08 100%)`,
-                transition: `background 0.6s ${E}`,
+                position: "absolute", inset: 0, pointerEvents: "none",
+                background: `linear-gradient(170deg, rgba(6,6,8,0) 0%, ${m.color}06 50%, ${m.color}12 100%)`,
               }} />
 
-              {/* Coluna de luz do chão */}
+              {/* ── Intensificação de cor no hover — só opacity */}
               <div style={{
-                position: "absolute", bottom: 0, left: "50%",
-                transform: "translateX(-50%)",
-                width: isActive ? "52%" : "22%",
-                height: "78%",
-                background: `radial-gradient(ellipse at 50% 100%, ${m.color}${isActive ? "26" : "0a"} 0%, transparent 65%)`,
-                transition: `width 0.6s ${E}, background 0.6s ${E}`,
-                pointerEvents: "none",
+                position: "absolute", inset: 0, pointerEvents: "none",
+                background: `linear-gradient(170deg, transparent 10%, ${m.color}0c 55%, ${m.color}20 100%)`,
+                opacity: isActive ? 1 : 0,
+                willChange: "opacity",
+                transition: "opacity 0.45s ease",
               }} />
 
-              {/* Brilho nos pés */}
+              {/* ── Linha de topo com brilho */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: 2, pointerEvents: "none",
+                background: `linear-gradient(90deg, transparent 5%, ${m.color}${isActive ? "ee" : "44"} 35%, ${m.color}${isActive ? "ff" : "55"} 50%, ${m.color}${isActive ? "ee" : "44"} 65%, transparent 95%)`,
+                boxShadow: isActive ? `0 0 16px 3px ${m.color}60, 0 0 32px ${m.color}30` : "none",
+                willChange: "opacity",
+                transition: "background 0.45s ease, box-shadow 0.45s ease",
+              }} />
+
+              {/* ── Cantos decorativos (top-left e top-right) */}
+              {/* Canto superior esquerdo */}
+              <div style={{ position: "absolute", top: 8, left: 8, width: 18, height: 18, pointerEvents: "none", opacity: isActive ? 0.9 : 0.25, transition: "opacity 0.4s ease" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 2, background: m.color, borderRadius: 1 }} />
+                <div style={{ position: "absolute", top: 0, left: 0, width: 2, height: "100%", background: m.color, borderRadius: 1 }} />
+              </div>
+              {/* Canto superior direito */}
+              <div style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, pointerEvents: "none", opacity: isActive ? 0.9 : 0.25, transition: "opacity 0.4s ease" }}>
+                <div style={{ position: "absolute", top: 0, right: 0, width: "100%", height: 2, background: m.color, borderRadius: 1 }} />
+                <div style={{ position: "absolute", top: 0, right: 0, width: 2, height: "100%", background: m.color, borderRadius: 1 }} />
+              </div>
+              {/* Canto inferior esquerdo */}
+              <div style={{ position: "absolute", bottom: "clamp(152px, 22.5vh, 205px)", left: 8, width: 14, height: 14, pointerEvents: "none", opacity: isActive ? 0.7 : 0.15, transition: "opacity 0.4s ease" }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 1.5, background: m.color }} />
+                <div style={{ position: "absolute", bottom: 0, left: 0, width: 1.5, height: "100%", background: m.color }} />
+              </div>
+              {/* Canto inferior direito */}
+              <div style={{ position: "absolute", bottom: "clamp(152px, 22.5vh, 205px)", right: 8, width: 14, height: 14, pointerEvents: "none", opacity: isActive ? 0.7 : 0.15, transition: "opacity 0.4s ease" }}>
+                <div style={{ position: "absolute", bottom: 0, right: 0, width: "100%", height: 1.5, background: m.color }} />
+                <div style={{ position: "absolute", bottom: 0, right: 0, width: 1.5, height: "100%", background: m.color }} />
+              </div>
+
+              {/* ── Pilar de luz vertical (coluna central, bottom-up) */}
+              <div style={{
+                position: "absolute", bottom: "clamp(150px, 22vh, 204px)", left: "50%",
+                transform: "translateX(-50%)", width: "40%", height: "68%",
+                background: `radial-gradient(ellipse at 50% 100%, ${m.color}${isActive ? "1e" : "08"} 0%, transparent 70%)`,
+                pointerEvents: "none", willChange: "opacity",
+                transition: "background 0.5s ease",
+              }} />
+
+              {/* ── Halo elíptico atrás do personagem */}
               <div style={{
                 position: "absolute",
-                bottom: "22%", left: "50%",
-                transform: "translateX(-50%)",
-                width: isActive ? "150px" : "70px",
-                height: isActive ? "22px" : "12px",
-                background: `radial-gradient(ellipse, ${m.color}${isActive ? "48" : "1c"} 0%, transparent 70%)`,
-                filter: "blur(10px)",
-                transition: `width 0.55s ${E}, height 0.55s ${E}, background 0.55s ${E}`,
-                pointerEvents: "none",
+                bottom: "clamp(155px, 23vh, 210px)",
+                left: "50%", transform: "translateX(-50%)",
+                width: "clamp(160px, 22vw, 280px)",
+                height: "clamp(160px, 22vw, 280px)",
+                borderRadius: "50%",
+                background: `radial-gradient(circle, ${m.color}28 0%, ${m.color}0a 45%, transparent 70%)`,
+                opacity: isActive ? 1 : 0,
+                pointerEvents: "none", willChange: "opacity",
+                transition: "opacity 0.5s ease",
               }} />
 
-              {/* Arte do personagem */}
+              {/* ── Brilho no chão sob os pés */}
               <div style={{
                 position: "absolute",
-                bottom: "22%", left: "50%",
-                // Scale sutil: centro ligeiramente maior, hover apenas +3% — sem sacudidas
-                transform: `translateX(-50%) scale(${isActive ? (isCenter ? 1.04 : 1.03) : (isCenter ? 1.01 : 1)})`,
-                height: isCenter ? "clamp(330px, 66vh, 580px)" : "clamp(300px, 62vh, 540px)",
+                bottom: "clamp(150px, 22vh, 204px)", left: "50%",
+                transform: "translateX(-50%)",
+                width: "90px", height: "16px",
+                background: `radial-gradient(ellipse, ${m.color}60 0%, transparent 70%)`,
+                filter: "blur(8px)",
+                opacity: isActive ? 1 : 0.15,
+                pointerEvents: "none", willChange: "opacity",
+                transition: "opacity 0.4s ease",
+              }} />
+
+              {/* ── ARTE DO PERSONAGEM — transform + filter apenas (GPU puro) */}
+              <div style={{
+                position: "absolute",
+                bottom: "clamp(155px, 23vh, 210px)", left: "50%",
+                transform: `translateX(-50%) translateY(${isActive ? "-10px" : "0px"}) scale(${isActive ? (isCenter ? 1.06 : 1.05) : (isCenter ? 1.02 : 1)})`,
+                height: isCenter ? "clamp(320px, 67vh, 585px)" : "clamp(290px, 63vh, 545px)",
                 transformOrigin: "bottom center",
-                // will-change: GPU acelera o transform, elimina stuttering
                 willChange: "transform",
-                transition: `transform 0.55s ${E}, height 0.55s ${E}`,
+                transition: "transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                 pointerEvents: "none",
               }}>
                 <img src={m.art} alt={m.name} style={{
                   height: "100%", objectFit: "contain", objectPosition: "bottom center",
-                  // Glow cresce suavemente — duas camadas para profundidade
                   filter: isActive
-                    ? `drop-shadow(0 0 32px ${m.color}88) drop-shadow(0 0 64px ${m.color}28) drop-shadow(0 24px 40px rgba(0,0,0,0.85))`
-                    : `drop-shadow(0 0 12px ${m.color}38) drop-shadow(0 24px 40px rgba(0,0,0,0.85))`,
-                  transition: `filter 0.55s ${E}`,
+                    ? `drop-shadow(0 0 22px ${m.color}70) drop-shadow(0 0 44px ${m.color}20)`
+                    : "drop-shadow(0 10px 22px rgba(0,0,0,0.75))",
+                  transition: "filter 0.5s ease",
                 }} />
               </div>
 
-              {/* ── ÁREA DE INFO — altura fixa → zero layout shift ──────── */}
+              {/* ── ÁREA DE INFO — altura fixa, zero layout shift ─────────── */}
               <div style={{
                 position: "absolute", bottom: 0, left: 0, right: 0,
-                height: "clamp(186px, 24vh, 228px)",
-                background: "linear-gradient(to top, rgba(3,3,8,0.98) 0%, rgba(3,3,8,0.82) 55%, transparent 100%)",
+                height: "clamp(152px, 22.5vh, 207px)",
+                background: "linear-gradient(to top, rgba(6,6,8,0.99) 0%, rgba(6,6,8,0.90) 58%, transparent 100%)",
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "flex-end",
-                padding: "0 clamp(10px, 2vw, 20px) clamp(14px, 2.5vh, 22px)",
-                zIndex: 5,
+                padding: "0 clamp(10px, 1.8vw, 20px) clamp(14px, 2.4vh, 22px)",
               }}>
-                {/* Elemento */}
+                {/* Badge do elemento */}
                 <div style={{
-                  fontSize: "clamp(7px, 0.75vw, 9px)", fontWeight: 800,
-                  letterSpacing: "0.22em", textTransform: "uppercase",
-                  color: m.color,
-                  background: isActive ? `${m.color}18` : `${m.color}0c`,
-                  border: `1px solid ${m.color}${isActive ? "55" : "25"}`,
-                  padding: "3px 12px", borderRadius: 20, marginBottom: 6,
-                  textShadow: isActive ? `0 0 10px ${m.color}` : "none",
-                  transition: `all 0.5s ${E}`,
+                  display: "flex", alignItems: "center", gap: 5,
+                  marginBottom: 7,
                 }}>
-                  {m.element}
+                  {/* Pontinho decorativo */}
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: m.color, opacity: isActive ? 0.9 : 0.4, transition: "opacity 0.4s ease", boxShadow: isActive ? `0 0 6px ${m.color}` : "none" }} />
+                  <div style={{
+                    fontSize: "clamp(7px, 0.78vw, 9px)", fontWeight: 800,
+                    letterSpacing: "0.22em", textTransform: "uppercase",
+                    color: m.color,
+                    background: `${m.color}${isActive ? "18" : "0c"}`,
+                    border: `1px solid ${m.color}${isActive ? "55" : "22"}`,
+                    padding: "3px 13px", borderRadius: 20,
+                    boxShadow: isActive ? `0 0 10px ${m.color}35` : "none",
+                    transition: "background 0.4s ease, border 0.4s ease, box-shadow 0.4s ease",
+                  }}>
+                    {m.element}
+                  </div>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: m.color, opacity: isActive ? 0.9 : 0.4, transition: "opacity 0.4s ease", boxShadow: isActive ? `0 0 6px ${m.color}` : "none" }} />
                 </div>
 
-                {/* Nome */}
+                {/* Nome do personagem */}
                 <div style={{
-                  fontSize: isCenter ? "clamp(16px, 1.8vw, 23px)" : "clamp(14px, 1.6vw, 20px)",
-                  fontWeight: 900, color: "#ffffff",
-                  letterSpacing: "0.02em", textAlign: "center", lineHeight: 1.15,
-                  marginBottom: 4,
+                  fontSize: isCenter ? "clamp(16px, 1.85vw, 24px)" : "clamp(15px, 1.65vw, 21px)",
+                  fontWeight: 900, color: "#fff",
+                  letterSpacing: "0.015em", textAlign: "center", lineHeight: 1.15,
+                  marginBottom: 5,
                   textShadow: isActive
-                    ? `0 0 24px ${m.shadowGlow}, 0 2px 6px rgba(0,0,0,0.9)`
+                    ? `0 0 20px ${m.shadowGlow}, 0 2px 4px rgba(0,0,0,0.9)`
                     : "0 2px 8px rgba(0,0,0,0.9)",
-                  transition: `text-shadow 0.5s ${E}`,
+                  transition: "text-shadow 0.5s ease",
                 }}>
                   {m.name}
                 </div>
 
+                {/* Separador decorativo */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 5, marginBottom: 6,
+                  width: "clamp(60px, 55%, 120px)",
+                  opacity: isActive ? 0.6 : 0.2, transition: "opacity 0.4s ease",
+                }}>
+                  <div style={{ flex: 1, height: 1, background: m.color }} />
+                  <div style={{ width: 3, height: 3, background: m.color, transform: "rotate(45deg)" }} />
+                  <div style={{ flex: 1, height: 1, background: m.color }} />
+                </div>
+
                 {/* Deck */}
                 <div style={{
-                  fontSize: "clamp(9px, 0.9vw, 11px)", fontWeight: 600,
-                  color: `${m.color}${isActive ? "cc" : "88"}`,
+                  fontSize: "clamp(9px, 0.88vw, 11px)", fontWeight: 600,
                   letterSpacing: "0.06em", marginBottom: 8,
-                  transition: `color 0.5s ${E}`,
+                  color: `${m.color}${isActive ? "bb" : "55"}`,
+                  transition: "color 0.4s ease",
                 }}>
                   {m.deckName}
                 </div>
 
-                {/* Descrição — fade+slide, container com altura fixa → sem layout shift */}
+                {/* Descrição — fade+slide em container de altura fixa */}
                 <div style={{
-                  height: "clamp(40px, 5.5vh, 54px)",
-                  display: "flex", alignItems: "flex-start",
-                  justifyContent: "center",
-                  overflow: "hidden", marginBottom: 10,
-                  width: "100%",
+                  height: "clamp(36px, 5vh, 50px)",
+                  display: "flex", alignItems: "flex-start", justifyContent: "center",
+                  overflow: "hidden", marginBottom: 10, width: "100%",
                 }}>
                   <p style={{
-                    fontSize: "clamp(9px, 0.88vw, 11px)",
-                    color: "rgba(255,255,255,0.45)", textAlign: "center",
-                    lineHeight: 1.55, margin: 0, maxWidth: 210,
+                    fontSize: "clamp(9px, 0.84vw, 10.5px)",
+                    color: "rgba(255,255,255,0.4)", textAlign: "center",
+                    lineHeight: 1.55, margin: 0, maxWidth: 215,
                     opacity: isActive ? 1 : 0,
-                    transform: isActive ? "translateY(0)" : "translateY(7px)",
-                    transition: `opacity 0.45s ${E}, transform 0.45s ${E}`,
+                    transform: isActive ? "translateY(0)" : "translateY(6px)",
+                    transition: "opacity 0.4s ease, transform 0.4s ease",
                   }}>
                     {m.deckDesc}
                   </p>
                 </div>
 
-                {/* Botão */}
+                {/* Botão ESCOLHER */}
                 <div style={{
-                  width: "clamp(90px, 78%, 168px)",
-                  padding: "clamp(7px, 1.1vh, 10px) 0",
+                  width: "clamp(88px, 74%, 160px)",
+                  padding: "clamp(6px, 1vh, 9px) 0",
                   background: isSel
-                    ? m.color
+                    ? `linear-gradient(135deg, ${m.color}dd, ${m.color})`
                     : isActive
-                      ? `linear-gradient(135deg, ${m.color}25, ${m.color}42)`
-                      : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${isSel ? m.color : isActive ? m.color + "68" : "rgba(255,255,255,0.09)"}`,
-                  borderRadius: 9,
-                  color: isSel ? "#fff" : isActive ? m.color : "rgba(255,255,255,0.32)",
-                  fontSize: "clamp(9px, 0.95vw, 11px)", fontWeight: 800,
-                  textAlign: "center", letterSpacing: "0.12em", textTransform: "uppercase",
-                  boxShadow: isSel ? `0 4px 18px ${m.color}50` : "none",
-                  // Transição da cor sem flicker
-                  transition: `background 0.45s ${E}, border 0.45s ${E}, color 0.45s ${E}, box-shadow 0.45s ${E}`,
+                    ? `${m.color}24`
+                    : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${isSel ? m.color : isActive ? m.color + "58" : "rgba(255,255,255,0.07)"}`,
+                  borderRadius: 8,
+                  color: isSel ? "#fff" : isActive ? m.color : "rgba(255,255,255,0.25)",
+                  fontSize: "clamp(8px, 0.88vw, 10px)", fontWeight: 800,
+                  textAlign: "center", letterSpacing: "0.13em", textTransform: "uppercase",
+                  boxShadow: isSel ? `0 3px 16px ${m.color}50, 0 0 0 1px ${m.color}40 inset` : "none",
+                  transition: "background 0.4s ease, border 0.4s ease, color 0.4s ease, box-shadow 0.4s ease",
                 }}>
                   {isSel ? "✓ Selecionado" : "Escolher"}
                 </div>
               </div>
 
-              {/* Borda sutil quando selecionado */}
+              {/* Borda ao selecionar */}
               {isSel && (
-                <div style={{
-                  position: "absolute", inset: 0,
-                  border: `1px solid ${m.color}30`, pointerEvents: "none",
-                  animation: "tutFadeIn 0.35s ease both",
-                }} />
+                <div style={{ position: "absolute", inset: 0, border: `1px solid ${m.color}28`, pointerEvents: "none", animation: "tutFadeIn 0.3s ease both" }} />
               )}
 
               {/* Cortina de entrada escalonada */}
               <div style={{
-                position: "absolute", inset: 0, background: "#030308",
+                position: "absolute", inset: 0, background: "#060608",
                 opacity: entered ? 0 : 1,
-                transition: `opacity 0.7s ease ${idx * 0.18}s`,
+                transition: `opacity 0.7s ease ${idx * 0.2}s`,
                 pointerEvents: "none",
               }} />
             </div>
@@ -844,14 +873,8 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
       </div>
 
       {/* Rodapé */}
-      <div style={{
-        position: "absolute", bottom: 10, left: 0, right: 0,
-        textAlign: "center", zIndex: 30, pointerEvents: "none",
-        animation: "tutFadeIn 1s ease 0.8s both",
-      }}>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
-          Passe o mouse para ver mais detalhes
-        </span>
+      <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", zIndex: 30, pointerEvents: "none", animation: "tutFadeIn 1s ease 0.9s both" }}>
+        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.14)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Passe o mouse para ver mais detalhes</span>
       </div>
     </div>
   )
