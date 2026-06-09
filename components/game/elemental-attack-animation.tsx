@@ -919,12 +919,14 @@ export function ElementalAttackAnimation({
             ))}
             {/* embers rising */}
             {[{x:-20,r:8},{x:0,r:12},{x:22,r:6},{x:-8,r:16},{x:14,r:10}].map((e,i)=>(
-              <div key={i} style={{position:"absolute",left:`${80+e.x}px`,top:"60px",
+              <div key={i} style={({
+                position:"absolute",left:`${80+e.x}px`,top:"60px",
                 width:"5px",height:"5px",borderRadius:"50%",
                 background:"radial-gradient(circle,white,#fbbf24)",
                 boxShadow:"0 0 6px 3px rgba(251,191,36,0.9)",
                 animation:`a-particle ${T.AFTERMATH*.9}ms cubic-bezier(0.05,0.4,0.2,1) ${i*35}ms forwards`,
-                "--px":`${(e.r-8)*3}px`,"--py":`${-50-e.r*4}px`} as React.CSSProperties}} />
+                "--px":`${(e.r-8)*3}px`,"--py":`${-50-e.r*4}px`,
+              }) as React.CSSProperties} />
             ))}
           </>}
 
