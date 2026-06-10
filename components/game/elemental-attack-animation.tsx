@@ -1,1219 +1,776 @@
 "use client"
-
 import { useEffect, useState, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 
 export interface AttackAnimationProps {
-  id: string
-  startX: number
-  startY: number
-  targetX: number
-  targetY: number
-  element: string
-  isDirect?: boolean
-  attackerImage?: string
-  attackerName?: string
+  id: string; startX: number; startY: number
+  targetX: number; targetY: number; element: string
+  isDirect?: boolean; attackerImage?: string; attackerName?: string
   portalTarget?: HTMLElement | null
   onImpact?: (id: string, x: number, y: number, element: string) => void
   onComplete: (id: string) => void
 }
 
-type Phase = "charge" | "release" | "strike" | "impact" | "aftermath"
+type Phase = "charge"|"release"|"strike"|"impact"|"aftermath"
 
+// ── Timing constants ──────────────────────────────────────────────────────────
 const T = {
-  CHARGE:   170,   // rápido — anticipation curta e tensa
-  RELEASE:   35,
-  STRIKE:   240,   // projétil veloz
-  IMPACT:   190,   // freeze frame mais pesado
-  AFTERMATH: 580,  // residual mais longo = mais peso
-  get TOTAL() { return this.CHARGE + this.RELEASE + this.STRIKE + this.IMPACT + this.AFTERMATH }
+  CHARGE:   155,   // short, tense anticipation
+  RELEASE:  30,
+  STRIKE:   210,   // blazing fast
+  IMPACT:   200,   // heavy freeze frame
+  AFTERMATH:640,   // long cinematic residual
+  get TOTAL() { return this.CHARGE+this.RELEASE+this.STRIKE+this.IMPACT+this.AFTERMATH }
 }
 
-const seed = (id: string, i: number): number => {
-  let h = (i + 1) * 2654435761
-  for (const c of id) h = (h ^ c.charCodeAt(0) * 1000003) >>> 0
-  return h / 4294967295
-}
-const rv = (a: number, b: number, v: number) => a + v * (b - a)
-
-const mkP = (n: number, spread: number, sMin: number, sMax: number, id: string) =>
-  Array.from({ length: n }).map((_, i) => ({
-    id: i,
-    angle: rv(-spread/2, spread/2, seed(id,i))   * (Math.PI/180),
-    spd:   rv(sMin, sMax,          seed(id,i+100)),
-    sz:    rv(2, 7.5,              seed(id,i+200)),
-    life:  rv(0.38, 1,             seed(id,i+300)),
-    del:   rv(0, 68,               seed(id,i+400)),
-    jx:    rv(-3, 3,               seed(id,i+500)),
-    jy:    rv(-3, 3,               seed(id,i+600)),
-    spin:  rv(0, 360,              seed(id,i+700)),
-    riseY: rv(-20, -60,            seed(id,i+800)), // fire particles rise up
+// ── Seeded RNG & particle builder ─────────────────────────────────────────────
+const seed=(id:string,i:number)=>{let h=(i+1)*2654435761;for(const c of id)h=(h^c.charCodeAt(0)*1000003)>>>0;return h/4294967295}
+const rv=(a:number,b:number,v:number)=>a+v*(b-a)
+const mkP=(n:number,sp:number,mn:number,mx:number,id:string)=>
+  Array.from({length:n}).map((_,i)=>({id:i,
+    angle:rv(-sp/2,sp/2,seed(id,i))*(Math.PI/180),
+    spd:rv(mn,mx,seed(id,i+100)), sz:rv(2,9,seed(id,i+200)),
+    life:rv(.35,1,seed(id,i+300)), del:rv(0,85,seed(id,i+400)),
+    jx:rv(-4,4,seed(id,i+500)), jy:rv(-4,4,seed(id,i+600)),
+    spin:rv(0,360,seed(id,i+700)), riseY:rv(-24,-72,seed(id,i+800)),
   }))
 
-const ss = (s: React.CSSProperties) => s
+// ── Palette per element ───────────────────────────────────────────────────────
+const PAL:{[k:string]:{a:string;b:string;c:string;d:string;glow:string;screen:string}} = {
+  fire:    {a:"#ff4500",b:"#fb923c",c:"#fbbf24",d:"#fff",glow:"rgba(251,146,60,1)",screen:"rgba(255,80,0,0.22)"},
+  pyrus:   {a:"#ff4500",b:"#fb923c",c:"#fbbf24",d:"#fff",glow:"rgba(251,146,60,1)",screen:"rgba(255,80,0,0.22)"},
+  aquos:   {a:"#0ea5e9",b:"#38bdf8",c:"#7dd3fc",d:"#e0f2fe",glow:"rgba(56,189,248,1)",screen:"rgba(0,150,255,0.18)"},
+  aquo:    {a:"#0ea5e9",b:"#38bdf8",c:"#7dd3fc",d:"#e0f2fe",glow:"rgba(56,189,248,1)",screen:"rgba(0,150,255,0.18)"},
+  water:   {a:"#0ea5e9",b:"#38bdf8",c:"#7dd3fc",d:"#e0f2fe",glow:"rgba(56,189,248,1)",screen:"rgba(0,150,255,0.18)"},
+  haos:    {a:"#eab308",b:"#fde047",c:"#fef9c3",d:"#fff",glow:"rgba(253,224,71,1)",screen:"rgba(255,240,0,0.24)"},
+  light:   {a:"#eab308",b:"#fde047",c:"#fef9c3",d:"#fff",glow:"rgba(253,224,71,1)",screen:"rgba(255,240,0,0.24)"},
+  lightness:{a:"#eab308",b:"#fde047",c:"#fef9c3",d:"#fff",glow:"rgba(253,224,71,1)",screen:"rgba(255,240,0,0.24)"},
+  darkus:  {a:"#4c1d95",b:"#7e22ce",c:"#a855f7",d:"#e9d5ff",glow:"rgba(168,85,247,1)",screen:"rgba(80,0,140,0.28)"},
+  darkness:{a:"#4c1d95",b:"#7e22ce",c:"#a855f7",d:"#e9d5ff",glow:"rgba(168,85,247,1)",screen:"rgba(80,0,140,0.28)"},
+  dark:    {a:"#4c1d95",b:"#7e22ce",c:"#a855f7",d:"#e9d5ff",glow:"rgba(168,85,247,1)",screen:"rgba(80,0,140,0.28)"},
+  ventus:  {a:"#10b981",b:"#34d399",c:"#6ee7b7",d:"#d1fae5",glow:"rgba(52,211,153,1)",screen:"rgba(0,180,100,0.20)"},
+  wind:    {a:"#10b981",b:"#34d399",c:"#6ee7b7",d:"#d1fae5",glow:"rgba(52,211,153,1)",screen:"rgba(0,180,100,0.20)"},
+  void:    {a:"#334155",b:"#64748b",c:"#94a3b8",d:"#f8fafc",glow:"rgba(148,163,184,1)",screen:"rgba(0,0,0,0.35)"},
+  neutral: {a:"#6366f1",b:"#818cf8",c:"#a5b4fc",d:"#fff",glow:"rgba(129,140,248,1)",screen:"rgba(100,100,255,0.18)"},
+}
+const p=(el:string)=>PAL[el]||PAL.neutral
 
-const Ring = ({ d, bw="2px", bc, bg, glow, anim, op=1, delay }: {
-  d:number; bw?:string; bc?:string; bg?:string; glow?:string
-  anim?:string; op?:number; delay?:number
-}) => (
-  <div style={ss({ position:"absolute",width:d,height:d,
-    marginLeft:-d/2,marginTop:-d/2,borderRadius:"50%",
-    border:bc?`${bw} solid ${bc}`:undefined,
-    background:bg,boxShadow:glow,opacity:op,animation:anim,
-    animationDelay:delay?`${delay}ms`:undefined })} />
-)
+// ── Easing per element ────────────────────────────────────────────────────────
+const EASE:{[k:string]:string}={
+  fire:"cubic-bezier(0.06,0,0.04,1)",pyrus:"cubic-bezier(0.06,0,0.04,1)",
+  aquos:"cubic-bezier(0.08,0.02,0.06,1)",aquo:"cubic-bezier(0.08,0.02,0.06,1)",water:"cubic-bezier(0.08,0.02,0.06,1)",
+  darkus:"cubic-bezier(0.04,0,0.06,1)",darkness:"cubic-bezier(0.04,0,0.06,1)",dark:"cubic-bezier(0.04,0,0.06,1)",
+  haos:"cubic-bezier(0.04,0,0.04,1)",light:"cubic-bezier(0.04,0,0.04,1)",lightness:"cubic-bezier(0.04,0,0.04,1)",
+  ventus:"cubic-bezier(0.06,0.04,0.04,1.02)",wind:"cubic-bezier(0.06,0.04,0.04,1.02)",
+  void:"cubic-bezier(0.02,0,0.04,1)",
+}
 
-export function ElementalAttackAnimation({
-  id, startX, startY, targetX, targetY,
-  element, attackerImage, attackerName,
-  portalTarget, onImpact, onComplete,
-}: AttackAnimationProps) {
-  const [phase, setPhase] = useState<Phase>("charge")
-  const [mounted, setMounted] = useState(false)
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+type S=React.CSSProperties
+const abs=(s:S):S=>({position:"absolute",willChange:"transform,opacity",...s})
+const Ring=({d,bw="2px",bc,bg,glow,anim,op=1}:{d:number;bw?:string;bc?:string;bg?:string;glow?:string;anim?:string;op?:number})=>(
+  <div style={abs({width:d,height:d,marginLeft:-d/2,marginTop:-d/2,borderRadius:"50%",
+    border:bc?`${bw} solid ${bc}`:undefined,background:bg,boxShadow:glow,opacity:op,animation:anim})}/>)
 
-  const dist = Math.hypot(targetX-startX, targetY-startY)
-  const aRad = Math.atan2(targetY-startY, targetX-startX)
-  const aDeg = aRad * (180/Math.PI)
-  const el   = element?.toLowerCase().trim() || "neutral"
-
-  const isUller  = /ullr|uller/i.test(attackerName || "")
-  const isFehnon = /fehnon/i.test(attackerName || "")
-  const isCalem  = /calem/i.test(attackerName || "")
-  const isMorgana = /morgana/i.test(attackerName || "")
-
-  const pts = useMemo(() => {
-    const tbl: Record<string,[number,number,number,number]> = {
-      pyrus:[24,118,38,88],   fire:[24,118,38,88],
-      aquos:[18,112,30,78],   aquo:[18,112,30,78],   water:[18,112,30,78],
-      terra:[18,108,28,72],   subterra:[18,108,28,72],
-      haos:[28,165,34,84],    light:[28,165,34,84],  lightness:[28,165,34,84],
-      darkus:[20,112,20,60],  darkness:[20,112,20,60], dark:[20,112,20,60],
-      ventus:[26,145,30,80],  wind:[26,145,30,80],
-      void:[28,360,22,68],
-    }
-    const [n,sp,mn,mx] = tbl[el] ?? [16,110,30,76]
-    return mkP(n,sp,mn,mx,id)
-  }, [el, id])
-
-  const doneRef = useRef(onComplete)
-  useEffect(() => { doneRef.current = onComplete }, [onComplete])
-
-  useEffect(() => {
-    setMounted(true)
-    const tm = [
-      setTimeout(() => setPhase("release"),   T.CHARGE),
-      setTimeout(() => setPhase("strike"),    T.CHARGE + T.RELEASE),
-      setTimeout(() => { setPhase("impact"); onImpact?.(id,targetX,targetY,el) },
-                                              T.CHARGE + T.RELEASE + T.STRIKE),
-      setTimeout(() => setPhase("aftermath"), T.CHARGE + T.RELEASE + T.STRIKE + T.IMPACT),
-      setTimeout(() => doneRef.current(id),   T.TOTAL),
-    ]
-    return () => tm.forEach(clearTimeout)
-  }, [id])
-
-  if (!mounted) return null
-
-  const inFlight = phase==="charge"||phase==="release"||phase==="strike"
-  const ctr: React.CSSProperties = inFlight
-    ? { position:"absolute",left:startX,top:startY,width:dist,height:60,marginTop:-30,
-        pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)`,
-        willChange:"transform",contain:"layout style paint" }
-    : { position:"absolute",left:targetX,top:targetY,width:0,height:60,marginTop:-30,
-        pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)`,
-        willChange:"transform",contain:"layout style paint" }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  CHARGE
-  // ══════════════════════════════════════════════════════════════════════════
-  const Charge = () => {
-    const hub = (sz=96, ch: React.ReactNode) => (
-      <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-        width:sz,height:sz,display:"flex",alignItems:"center",justifyContent:"center" })}>
-        {ch}
+// ═══════════════════════════════════════════════════════════════════════════
+// CHARGE — dramatic power build-up per element
+// ═══════════════════════════════════════════════════════════════════════════
+function Charge({el,id}:{el:string;id:string}){
+  const pal=p(el)
+  const hub=(sz:number,children:React.ReactNode)=>(
+    <div style={{position:"absolute",left:0,top:"50%",marginTop:-sz/2,
+      width:sz,height:sz,contain:"layout style paint"}}>
+      <div style={{position:"absolute",left:sz/2,top:sz/2,width:0,height:0}}>
+        {children}
       </div>
-    )
-    switch (el) {
-
-      case "pyrus": case "fire": return hub(112, <>
-        {/* Outer unstable corona */}
-        <Ring d={106} bc="rgba(251,146,60,0.6)" bw="1px" anim="a-corona-spin 0.08s linear infinite" />
-        <Ring d={98}  bc="#f97316" bw="2px" glow="0 0 28px 12px rgba(249,115,22,0.82)" anim="a-spin 0.11s linear infinite" op={0.9} />
-        <Ring d={76}  bc="#fbbf24" bw="3px" glow="0 0 18px 8px rgba(251,191,36,0.78)" anim="a-spin 0.07s linear reverse infinite" op={0.85} />
-        <Ring d={54}  bc="#ef4444" bw="2px" glow="0 0 14px 8px rgba(239,68,68,0.86)"  anim="a-spin 0.05s linear infinite" op={0.72} />
-        {/* 4 flame petals radiating outward */}
-        {[0,90,180,270].map((a,i)=>(
-          <div key={i} style={{position:"absolute",width:"18px",height:"32px",
-            background:"linear-gradient(to top,rgba(249,115,22,0.9),rgba(251,191,36,0.6),transparent)",
-            borderRadius:"50% 50% 40% 40%",
-            transformOrigin:"50% 100%",transform:`rotate(${a}deg) translateY(-44px)`,
-            animation:`a-flare 0.09s ease-in-out ${i*22}ms infinite`,willChange:"transform,opacity"}} />
-        ))}
-        {/* Orbiting embers — more of them */}
-        {[{r:50,s:7,c:"rgba(251,191,36,0.98)",dur:200,del:0},
-          {r:44,s:6,c:"rgba(249,115,22,0.88)",dur:160,del:66},
-          {r:50,s:5,c:"rgba(255,255,255,0.82)",dur:185,del:33},
-          {r:42,s:4,c:"rgba(254,100,10,0.76)",dur:140,del:110}].map((o,i)=>(
-          <div key={i} style={{position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-            borderRadius:"50%",background:o.c,boxShadow:`0 0 ${o.s*2}px ${o.s}px ${o.c}`,
-            animation:`a-orbit-${i} ${o.dur}ms linear ${o.del}ms infinite`,willChange:"transform"}} />
-        ))}
-        {/* Magma core — bright white-hot center */}
-        <div style={{position:"absolute",width:36,height:36,borderRadius:"50%",
-          background:"radial-gradient(circle,white 10%,#fb923c 32%,#dc2626 64%,#7f1d1d 100%)",
-          boxShadow:"0 0 0 6px #f97316,0 0 36px 18px rgba(251,146,60,1),0 0 72px 30px rgba(220,38,38,0.75)",
-          animation:"a-fire-pulse 0.06s ease-in-out infinite",willChange:"transform,opacity"}} />
-        <Ring d={108} bg="radial-gradient(circle,rgba(251,146,60,0.26) 0%,transparent 70%)" anim="a-fire-pulse 0.08s ease-in-out infinite" />
-        <Ring d={106} bc="rgba(251,146,60,0.5)" bw="1px" anim="a-burst 0.10s ease-out infinite" />
-        <Ring d={106} bc="rgba(251,146,60,0.3)" bw="1px" anim="a-burst 0.10s ease-out 0.05s infinite" />
-      </>)
-
-      case "aquos": case "aquo": case "water":
-        if (isFehnon) return hub(110, <>
-          {[98,78,60,44].map((d,i) => (
-            <div key={i} style={ss({ position:"absolute",width:d,height:d,
-              marginLeft:-d/2,marginTop:-d/2,borderRadius:"50%",
-              border:`${i===0?"2px":"1px"} solid rgba(56,189,248,${0.84-i*0.16})`,
-              boxShadow: i===0?"0 0 22px 9px rgba(56,189,248,0.6)":undefined,
-              animation:`a-fehnon-contract 0.19s cubic-bezier(.44,0,1,1) ${i*26}ms forwards` })} />
-          ))}
-          {[-28,-19,-12,-5,1,8,14,20,27].map((y,i) => (
-            <div key={i} style={ss({ position:"absolute",height:"1.5px",
-              width:`${82-Math.abs(y)*1.5}px`,
-              background:`linear-gradient(to right,transparent,rgba(56,189,248,${.22+Math.abs(i-4)*.13}),rgba(255,255,255,${.52+Math.abs(i-4)*.1}),rgba(56,189,248,${.22+Math.abs(i-4)*.13}),transparent)`,
-              borderRadius:"9999px",
-              top:`calc(50% + ${y}px)`,left:"50%",transform:"translateX(-50%)",
-              animation:`a-fehnon-scan 0.19s ease-out ${i*8}ms forwards` })} />
-          ))}
-          <div style={ss({ position:"absolute",width:23,height:23,borderRadius:"3px",
-            transform:"rotate(45deg)",
-            background:"radial-gradient(circle,white 7%,#7dd3fc 32%,#0ea5e9 80%)",
-            boxShadow:"0 0 0 2px #38bdf8,0 0 30px 15px rgba(56,189,248,1),0 0 56px 26px rgba(14,165,233,0.76)",
-            animation:"a-fire-pulse 0.08s ease-in-out infinite" })} />
-          <Ring d={106} bg="radial-gradient(circle,rgba(56,189,248,0.2) 0%,transparent 68%)" anim="a-fire-pulse 0.13s ease-in-out infinite" />
-        </>)
-        return hub(96, <>
-          <Ring d={84} bc="#38bdf8" bw="2px" glow="0 0 18px 8px rgba(56,189,248,0.66)" anim="a-spin 0.26s linear infinite" op={0.8} />
-          <Ring d={62} bc="#7dd3fc" bw="2px" glow="0 0 12px 5px rgba(125,211,252,0.56)" anim="a-spin 0.20s linear reverse infinite" op={0.64} />
-          <Ring d={42} bc="#bae6fd" bw="1px" anim="a-spin 0.13s linear infinite" op={0.48} />
-          {[{r:42,s:5,c:"rgba(56,189,248,0.92)",dur:340,del:0,a:60},
-            {r:38,s:4,c:"rgba(125,211,252,0.8)",dur:260,del:120,a:200}].map((o,i)=>(
-            <div key={i} style={ss({ position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-              borderRadius:"50%",background:o.c,boxShadow:`0 0 ${o.s*1.5}px ${o.s}px ${o.c}`,
-              animation:`a-orbit-aq${i} ${o.dur}ms linear ${o.del}ms infinite` })} />
-          ))}
-          <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"50%",
-            background:"radial-gradient(circle,white 12%,#38bdf8 46%,#0284c7 88%)",
-            boxShadow:"0 0 0 2px #7dd3fc,0 0 26px 13px rgba(56,189,248,0.94),0 0 50px 22px rgba(14,165,233,0.56)",
-            animation:"a-fire-pulse 0.11s ease-in-out infinite" })} />
-          <Ring d={92} bg="radial-gradient(circle,rgba(56,189,248,0.15) 0%,transparent 70%)" anim="a-fire-pulse 0.14s ease-in-out infinite" />
-          <Ring d={92} bc="rgba(56,189,248,0.36)" bw="1px" anim="a-burst 0.18s ease-out infinite" />
-        </>)
-
-      case "terra": case "subterra": return hub(98, <>
-        {/* Ground fissure lines */}
-        {[0,40,80,120,160,200,240,280,320].map((a,i) => (
-          <div key={a} style={ss({ position:"absolute",width:"32px",height:"3px",
-            background:"linear-gradient(to right,rgba(180,83,9,0.92),rgba(217,119,6,0.38),transparent)",
-            borderRadius:"3px",transformOrigin:"left center",
-            transform:`rotate(${a}deg) translateX(14px)`,
-            animation:`a-terra-crack 0.17s ease-out ${i*10}ms both` })} />
-        ))}
-        {/* Heavy rock orbs */}
-        {[{r:44,s:7,c:"rgba(180,83,9,0.82)",dur:520,del:0,a:30},
-          {r:40,s:5,c:"rgba(217,119,6,0.72)",dur:440,del:160,a:150},
-          {r:46,s:4,c:"rgba(251,191,36,0.62)",dur:480,del:80,a:270}].map((o,i)=>(
-          <div key={i} style={ss({ position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-            borderRadius:"2px",background:o.c,boxShadow:`0 0 ${o.s}px ${o.s*0.8}px ${o.c}`,
-            animation:`a-orbit-tr${i} ${o.dur}ms linear ${o.del}ms infinite` })} />
-        ))}
-        <Ring d={78} bc="#92400e" bw="2px" glow="0 0 16px 7px rgba(146,64,14,0.6)" anim="a-spin 0.28s linear infinite" op={0.7} />
-        <div style={ss({ position:"absolute",width:28,height:28,borderRadius:"3px",
-          transform:"rotate(45deg)",
-          background:"radial-gradient(circle,#fbbf24 8%,#b45309 38%,#7c2d12 80%)",
-          boxShadow:"0 0 0 4px #92400e,0 0 28px 14px rgba(180,83,9,0.96),0 0 58px 24px rgba(120,53,15,0.6)",
-          animation:"a-terra-pulse 0.11s ease-in-out infinite" })} />
-        <Ring d={92} bc="rgba(180,83,9,0.5)" bw="1px" anim="a-burst 0.17s ease-out infinite" />
-        <Ring d={92} bc="rgba(146,64,14,0.32)" bw="1px" anim="a-burst 0.17s ease-out 0.085s infinite" />
-        <Ring d={98} bg="radial-gradient(circle,rgba(120,53,15,0.28) 0%,transparent 70%)" anim="a-terra-pulse 0.14s ease-in-out infinite" />
-      </>)
-
-      case "haos": case "light": case "lightness": return hub(118, <>
-        {/* Divine crown rays — 24 rays alternating lengths */}
-        {Array.from({length:24},(_,i)=>i*15).map((a,i) => (
-          <div key={a} style={{position:"absolute",width:"2px",
-            height:i%6===0?"42px":i%3===0?"28px":i%2===0?"20px":"14px",
-            background:"linear-gradient(to top,transparent,rgba(254,249,195,0.88),white)",
-            borderRadius:"9999px",transformOrigin:"50% 100%",
-            transform:`rotate(${a}deg) translateY(-${i%6===0?40:i%3===0?26:i%2===0?18:12}px)`,
-            opacity:i%6===0?1:i%3===0?0.8:i%2===0?0.6:0.4,
-            animation:`a-haos-ray 0.07s ease-in-out ${i%4===0?0:i%4===1?18:i%4===2?36:54}ms infinite`,
-            willChange:"transform,opacity"}} />
-        ))}
-        {/* 4 fast golden orbs */}
-        {[{r:56,s:7,c:"rgba(253,224,71,0.99)",dur:150,del:0},
-          {r:52,s:6,c:"rgba(255,255,255,0.95)",dur:120,del:38},
-          {r:56,s:6,c:"rgba(254,240,138,0.90)",dur:165,del:75},
-          {r:52,s:5,c:"rgba(253,224,71,0.84)",dur:140,del:112}].map((o,i)=>(
-          <div key={i} style={{position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-            borderRadius:"50%",background:o.c,boxShadow:`0 0 ${o.s*2.5}px ${o.s}px ${o.c}`,
-            animation:`a-orbit-ha${i} ${o.dur}ms linear ${o.del}ms infinite`,willChange:"transform"}} />
-        ))}
-        {/* Solar core — blinding */}
-        <div style={{position:"absolute",width:38,height:38,borderRadius:"50%",
-          background:"white",
-          boxShadow:"0 0 0 7px #fef08a,0 0 0 13px rgba(253,224,71,0.5),0 0 64px 32px rgba(254,240,138,1),0 0 120px 50px rgba(253,224,71,0.5)",
-          animation:"a-fire-pulse 0.06s ease-in-out infinite",willChange:"transform,opacity"}} />
-        <Ring d={112} bg="radial-gradient(circle,rgba(254,240,138,0.44) 0%,transparent 65%)" anim="a-haos-halo 0.07s ease-in-out infinite" />
-        <Ring d={116} bc="rgba(254,240,138,0.54)" bw="1px" anim="a-burst 0.09s ease-out infinite" />
-        <Ring d={116} bc="rgba(254,240,138,0.32)" bw="1px" anim="a-burst 0.09s ease-out 0.045s infinite" />
-      </>)
-
-      case "darkus": case "darkness": case "dark": return hub(106, <>
-        {/* Void collapse rings — gravity pulling inward */}
-        <Ring d={102} bc="#7e22ce" bw="2px" glow="0 0 32px 14px rgba(88,28,135,0.88)" anim="a-dark-consume 0.18s ease-in infinite" op={0.92} />
-        <Ring d={78}  bc="#a855f7" bw="2px" glow="0 0 20px 9px rgba(168,85,247,0.7)"  anim="a-spin 0.22s linear reverse infinite" op={0.74} />
-        <Ring d={56}  bc="#c084fc" bw="1px" anim="a-spin 0.14s linear infinite" op={0.55} />
-        {/* 8 shadow tendrils — more dramatic */}
-        {[0,45,90,135,180,225,270,315].map((a,i) => (
-          <div key={a} style={{position:"absolute",width:"36px",height:"2px",
-            background:"linear-gradient(to right,rgba(88,28,135,0.97),rgba(88,28,135,0.3),transparent)",
-            borderRadius:"9999px",transformOrigin:"left center",
-            transform:`rotate(${a}deg) translateX(12px)`,
-            animation:`a-dark-tendril 0.18s ease-in-out ${i*15}ms infinite`,willChange:"transform,opacity"}} />
-        ))}
-        {/* Orbital shadow spheres */}
-        {[{r:52,s:6,c:"rgba(88,28,135,0.78)",dur:680,del:0},
-          {r:48,s:5,c:"rgba(168,85,247,0.66)",dur:560,del:180},
-          {r:54,s:4,c:"rgba(192,132,252,0.54)",dur:620,del:360}].map((o,i)=>(
-          <div key={i} style={{position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-            borderRadius:"50%",background:o.c,
-            animation:`a-orbit-dk${i} ${o.dur}ms linear ${o.del}ms infinite reverse`,willChange:"transform"}} />
-        ))}
-        {/* Singularity core — pure void */}
-        <div style={{position:"absolute",width:26,height:26,borderRadius:"50%",
-          background:"radial-gradient(circle,#0f0a1e 14%,black 50%)",
-          boxShadow:"0 0 0 4px #581c87,0 0 0 10px rgba(88,28,135,0.56),0 0 48px 24px rgba(88,28,135,1),0 0 96px 40px rgba(88,28,135,0.64)"}} />
-        <Ring d={104} bg="radial-gradient(circle,rgba(88,28,135,0.52) 0%,transparent 70%)" anim="a-dark-consume 0.11s ease-in infinite" />
-        <Ring d={102} bc="rgba(168,85,247,0.35)" bw="1px" anim="a-burst 0.16s ease-out infinite" />
-      </>)
-
-      case "ventus": case "wind":
-        if (isUller) return hub(96, <>
-          {[0,36,72,108,144,180,216,252,288,324].map((a,i) => (
-            <div key={a} style={ss({ position:"absolute",width:"27px",height:"2px",
-              background:"linear-gradient(to right,rgba(52,211,153,0),#6ee7b7)",
-              borderRadius:"9999px",transformOrigin:"left center",
-              transform:`rotate(${a}deg) translateX(12px)`,opacity:.86,
-              animation:`a-gather 0.18s ease-in ${i*13}ms both` })} />
-          ))}
-          <div style={ss({ position:"absolute",width:23,height:23,borderRadius:"50%",
-            background:"radial-gradient(circle,white 15%,#6ee7b7 50%,#059669 87%)",
-            boxShadow:"0 0 0 3px #34d399,0 0 30px 15px rgba(52,211,153,0.97),0 0 60px 26px rgba(16,185,129,0.6)",
-            animation:"a-fire-pulse 0.1s ease-in-out infinite" })} />
-          <Ring d={88} bc="rgba(52,211,153,0.56)" bw="1px" anim="a-burst 0.13s ease-out infinite" op={0.64} />
-          <Ring d={96} bg="radial-gradient(circle,rgba(52,211,153,0.2) 0%,transparent 70%)" anim="a-fire-pulse 0.12s ease-in-out infinite" />
-        </>)
-        return hub(96, <>
-          <Ring d={88} bc="#34d399" bw="2px" glow="0 0 18px 8px rgba(52,211,153,0.64)" anim="a-spin 0.20s linear infinite" op={0.8} />
-          <Ring d={66} bc="#6ee7b7" bw="2px" glow="0 0 12px 5px rgba(110,231,183,0.56)" anim="a-spin 0.15s linear reverse infinite" op={0.66} />
-          <Ring d={46} bc="#a7f3d0" bw="1px" anim="a-spin 0.10s linear infinite" op={0.5} />
-          {[{r:44,s:5,c:"rgba(52,211,153,0.88)",dur:280,del:0,a:0},
-            {r:40,s:4,c:"rgba(167,243,208,0.72)",dur:220,del:93,a:130},
-            {r:44,s:3,c:"rgba(110,231,183,0.78)",dur:260,del:186,a:250}].map((o,i)=>(
-            <div key={i} style={ss({ position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-              borderRadius:"50%",background:o.c,boxShadow:`0 0 ${o.s*1.5}px ${o.s}px ${o.c}`,
-              animation:`a-orbit-vt${i} ${o.dur}ms linear ${o.del}ms infinite` })} />
-          ))}
-          <div style={ss({ position:"absolute",width:22,height:22,borderRadius:"50%",
-            background:"radial-gradient(circle,white 15%,#6ee7b7 50%,#059669 87%)",
-            boxShadow:"0 0 0 2px #34d399,0 0 26px 13px rgba(110,231,183,0.97),0 0 52px 24px rgba(5,150,105,0.56)",
-            animation:"a-fire-pulse 0.1s ease-in-out infinite" })} />
-          <Ring d={92} bg="radial-gradient(circle,rgba(110,231,183,0.18) 0%,transparent 70%)" anim="a-fire-pulse 0.12s ease-in-out infinite" />
-          <Ring d={92} bc="rgba(52,211,153,0.38)" bw="1px" anim="a-burst 0.15s ease-out infinite" />
-        </>)
-
-      case "void": return hub(98, <>
-        <Ring d={94} bc="rgba(203,213,225,0.84)" bw="1.5px" glow="0 0 22px 9px rgba(203,213,225,0.56)" anim="a-spin 0.48s linear infinite" op={0.72} />
-        <Ring d={72} bc="rgba(226,232,240,0.74)"  bw="1.5px" glow="0 0 15px 6px rgba(226,232,240,0.46)" anim="a-spin 0.32s linear reverse infinite" op={0.6} />
-        <Ring d={52} bc="white" bw="1px" anim="a-spin 0.19s linear infinite" op={0.48} />
-        {[{r:47,s:6,c:"rgba(255,255,255,0.92)",dur:420,del:0,a:20},
-          {r:42,s:5,c:"rgba(203,213,225,0.82)",dur:340,del:105,a:140},
-          {r:48,s:4,c:"rgba(226,232,240,0.72)",dur:380,del:210,a:260},
-          {r:40,s:3,c:"rgba(148,163,184,0.72)",dur:300,del:75,a:80}].map((o,i)=>(
-          <div key={i} style={ss({ position:"absolute",width:`${o.s}px`,height:`${o.s}px`,
-            borderRadius:"50%",background:o.c,boxShadow:`0 0 ${o.s*1.5}px ${o.s}px ${o.c}`,
-            animation:`a-orbit-vo${i} ${o.dur}ms linear ${o.del}ms infinite` })} />
-        ))}
-        <div style={ss({ position:"absolute",width:25,height:25,borderRadius:"50%",
-          background:"radial-gradient(circle,white 13%,#e2e8f0 43%,#94a3b8 80%)",
-          boxShadow:"0 0 0 3px #cbd5e1,0 0 0 7px rgba(148,163,184,0.54),0 0 38px 20px rgba(203,213,225,1),0 0 76px 30px rgba(148,163,184,0.56)",
-          animation:"a-fire-pulse 0.1s ease-in-out infinite" })} />
-        <Ring d={96} bc="rgba(203,213,225,0.4)" bw="1px" anim="a-burst 0.15s ease-out infinite" />
-        <Ring d={96} bc="rgba(203,213,225,0.24)" bw="1px" anim="a-burst 0.15s ease-out 0.075s infinite" />
-        <Ring d={100} bg="radial-gradient(circle,rgba(203,213,225,0.26) 0%,transparent 70%)" anim="a-fire-pulse 0.12s ease-in-out infinite" />
-      </>)
-
-      default: return hub(80, <>
-        <div style={ss({ position:"absolute",width:27,height:27,borderRadius:"50%",
-          background:"white",boxShadow:"0 0 34px 18px rgba(255,255,255,0.84)",
-          animation:"a-fire-pulse 0.1s ease-in-out infinite" })} />
-      </>)
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  RELEASE — element-colored snap
-  // ══════════════════════════════════════════════════════════════════════════
-  const Release = () => {
-    const clr: Record<string,[string,string]> = {
-      pyrus:["#f97316","rgba(249,115,22,0.92)"],   fire:["#f97316","rgba(249,115,22,0.92)"],
-      aquos:["#38bdf8","rgba(56,189,248,0.92)"],   aquo:["#38bdf8","rgba(56,189,248,0.92)"],   water:["#38bdf8","rgba(56,189,248,0.92)"],
-      terra:["#b45309","rgba(180,83,9,0.92)"],     subterra:["#b45309","rgba(180,83,9,0.92)"],
-      haos:["#fde047","rgba(253,224,71,1)"],       light:["#fde047","rgba(253,224,71,1)"],     lightness:["#fde047","rgba(253,224,71,1)"],
-      darkus:["#a855f7","rgba(88,28,135,0.97)"],   darkness:["#a855f7","rgba(88,28,135,0.97)"], dark:["#a855f7","rgba(88,28,135,0.97)"],
-      ventus:["#34d399","rgba(52,211,153,0.92)"],  wind:["#34d399","rgba(52,211,153,0.92)"],
-      void:["#e2e8f0","rgba(203,213,225,1)"],
-    }
-    const [col,glow] = clr[el] ?? ["white","rgba(255,255,255,0.92)"]
-    return (
-      <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-        width:80,height:80,marginTop:-40,display:"flex",alignItems:"center",justifyContent:"center" })}>
-        <Ring d={80} bc={col} bw="3px" anim="a-release-burst 40ms ease-out forwards" glow={`0 0 32px 16px ${glow}`} />
-        <Ring d={60} bc={col} bw="2px" anim="a-release-burst 40ms ease-out 10ms forwards" op={0.72} />
-        <Ring d={40} bc="white" bw="1px" anim="a-release-burst 40ms ease-out 20ms forwards" op={0.52} />
-        <div style={ss({ position:"absolute",width:20,height:20,borderRadius:"50%",
-          background:col,boxShadow:`0 0 44px 22px ${glow}`,
-          animation:"a-release-core 40ms ease-out forwards" })} />
-      </div>
-    )
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  STRIKE — animated trails, element personality
-  // ══════════════════════════════════════════════════════════════════════════
-  const Strike = () => {
-    const ease: Record<string,string> = {
-      pyrus:"cubic-bezier(0.07,0,0.04,1)",  fire:"cubic-bezier(0.07,0,0.04,1)",
-      aquos:"cubic-bezier(0.09,0,0.05,1)",  aquo:"cubic-bezier(0.09,0,0.05,1)",  water:"cubic-bezier(0.09,0,0.05,1)",
-      terra:"cubic-bezier(0.30,0,0.05,1)",  subterra:"cubic-bezier(0.30,0,0.05,1)",
-      haos:"cubic-bezier(0.03,0,0.03,1)",   light:"cubic-bezier(0.03,0,0.03,1)", lightness:"cubic-bezier(0.03,0,0.03,1)",
-      darkus:"cubic-bezier(0.50,0,0.05,1)", darkness:"cubic-bezier(0.50,0,0.05,1)", dark:"cubic-bezier(0.50,0,0.05,1)",
-      ventus:"cubic-bezier(0.09,0,0.04,1)", wind:"cubic-bezier(0.09,0,0.04,1)",
-      void:"cubic-bezier(0.02,0,0.02,1)",
-    }
-    const mv = { animation:`a-move ${T.STRIKE}ms ${ease[el]??"cubic-bezier(0.09,0,0.05,1)"} forwards` } as React.CSSProperties
-
-    switch (el) {
-
-      case "pyrus": case "fire": return (
-        <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-          display:"flex",alignItems:"center",...mv}}>
-          {[-28,-16,-6,0,6,16,28].map((y,i)=>(
-            <div key={`sl${i}`} style={{position:"fixed",left:0,top:`calc(50% + ${y*2.2}px)`,
-              width:"100vw",height:i===3?"3px":"1px",
-              background:`linear-gradient(to right,transparent,rgba(249,115,22,${0.15+Math.abs(i-3)*0.07}),transparent)`,
-              pointerEvents:"none",willChange:"transform,opacity",
-              animation:`a-speed-line ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) ${i*6}ms forwards`}} />
-          ))}
-          <div style={{position:"absolute",width:"240px",height:"22px",
-            background:"linear-gradient(to right,transparent,rgba(127,29,29,0.12),rgba(220,38,38,0.36),#f97316,rgba(251,146,60,0.4))",
-            borderRadius:"9999px",filter:"blur(5px)",opacity:.85,willChange:"opacity",
-            animation:`a-trail-fade ${T.STRIKE}ms ease-in forwards`}} />
-          <div style={{position:"absolute",width:"190px",height:"12px",
-            background:"linear-gradient(to right,transparent,rgba(220,38,38,0.5),#f97316,rgba(251,146,60,0.55))",
-            borderRadius:"9999px",filter:"blur(2px)",opacity:.92,willChange:"opacity"}} />
-          <div style={{position:"absolute",width:"130px",height:"5px",
-            background:"linear-gradient(to right,transparent,#fbbf24,rgba(255,255,255,0.7),rgba(251,146,60,0.3))",
-            borderRadius:"9999px",opacity:.88}} />
-          {[{x:40,y:-14,s:10},{x:65,y:10,s:8},{x:88,y:-10,s:7},{x:110,y:6,s:6},{x:130,y:-7,s:5}].map((e,i)=>(
-            <div key={i} style={{position:"absolute",width:`${e.s}px`,height:`${e.s}px`,
-              borderRadius:"50%",background:"radial-gradient(circle,white,#fbbf24)",
-              boxShadow:`0 0 10px 5px rgba(251,191,36,0.95)`,
-              left:`${e.x}px`,top:`${e.y}px`,opacity:.82-i*.1,willChange:"opacity"}} />
-          ))}
-          <div style={{position:"absolute",width:"120px",height:"4px",
-            background:"linear-gradient(to right,transparent,rgba(251,191,36,0.7),rgba(255,255,255,0.5),transparent)",
-            top:"-14px",left:"28px",borderRadius:"9999px",opacity:.7}} />
-          <div style={{width:"40px",height:"40px",flexShrink:0,borderRadius:"50%",
-            background:"radial-gradient(circle,white 8%,#fb923c 30%,#dc2626 62%,#7f1d1d 100%)",
-            boxShadow:"0 0 0 5px rgba(249,115,22,0.7),0 0 30px 16px rgba(251,146,60,1),0 0 60px 24px rgba(220,38,38,0.72)"}} />
-          <div style={{position:"absolute",width:"16px",height:"16px",right:"-7px",
-            background:"white",borderRadius:"50%",
-            boxShadow:"0 0 22px 11px rgba(255,255,255,1)"}} />
-        </div>
-      )
-
-      case "aquos": case "aquo": case "water":
-        if (isFehnon) return (
-          <div style={ss({ position:"absolute",left:0,top:"50%",marginTop:"-4px" })}>
-            <div style={ss({ width:`${dist}px`,height:"9px",
-              background:"linear-gradient(to right,rgba(14,165,233,0) 0%,rgba(56,189,248,0.44) 7%,white 42%,rgba(125,211,252,0.93) 72%,rgba(56,189,248,0.22) 94%,transparent 100%)",
-              borderRadius:"9999px",
-              boxShadow:"0 0 24px 11px rgba(56,189,248,0.94),0 0 48px 20px rgba(14,165,233,0.6),0 0 80px 32px rgba(56,189,248,0.24)",
-              animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) forwards` })} />
-            <div style={ss({ width:`${dist*.83}px`,height:"3.5px",
-              background:"linear-gradient(to right,transparent,rgba(125,211,252,0.74) 12%,rgba(255,255,255,0.97) 50%,rgba(186,230,253,0.65) 86%,transparent)",
-              borderRadius:"9999px",position:"absolute",top:"-14px",left:`${dist*.05}px`,
-              boxShadow:"0 0 12px 3px rgba(56,189,248,0.74)",
-              animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 16ms forwards` })} />
-            <div style={ss({ width:`${dist*.63}px`,height:"2px",
-              background:"linear-gradient(to right,transparent,rgba(186,230,253,0.72) 18%,rgba(255,255,255,0.84) 56%,transparent)",
-              borderRadius:"9999px",position:"absolute",top:"13px",left:`${dist*.12}px`,
-              boxShadow:"0 0 9px 2px rgba(56,189,248,0.6)",
-              animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 30ms forwards` })} />
-            <div style={ss({ width:`${dist*.41}px`,height:"1px",
-              background:"linear-gradient(to right,transparent,rgba(224,242,254,0.6),transparent)",
-              position:"absolute",top:"-25px",left:`${dist*.18}px`,
-              animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 44ms forwards` })} />
-            <div style={ss({ width:`${dist*.33}px`,height:"1px",
-              background:"linear-gradient(to right,transparent,rgba(224,242,254,0.5),transparent)",
-              position:"absolute",top:"22px",left:`${dist*.24}px`,
-              animation:`a-slash ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) 52ms forwards` })} />
-            <div style={ss({ position:"absolute",width:"28px",height:"28px",borderRadius:"50%",
-              right:"-3px",top:"-12px",
-              background:"radial-gradient(circle,white 13%,#7dd3fc 46%,#0ea5e9 88%)",
-              boxShadow:"0 0 32px 16px rgba(56,189,248,1),0 0 68px 28px rgba(14,165,233,0.74)",
-              animation:`a-fehnon-tip ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) forwards` })} />
-            <div style={ss({ position:"absolute",width:"19px",height:"48px",borderRadius:"50%",
-              right:"-6px",top:"-22px",
-              border:"2px solid rgba(56,189,248,0.8)",
-              boxShadow:"0 0 14px 6px rgba(56,189,248,0.7)",
-              animation:"a-burst 0.22s ease-out forwards" })} />
-          </div>
-        )
-        return (
-          <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-            display:"flex",alignItems:"center",...mv })}>
-            <div style={ss({ position:"absolute",width:"140px",height:"7px",
-              background:"linear-gradient(to right,transparent,rgba(14,165,233,0.28),#0ea5e9,#38bdf8)",
-              borderRadius:"9999px",filter:"blur(2.5px)",opacity:.88,
-              animation:`a-trail-fade ${T.STRIKE}ms ease-in forwards` })} />
-            <div style={ss({ position:"absolute",width:"115px",height:"5px",
-              background:"linear-gradient(to right,transparent,rgba(14,165,233,0.4),#0ea5e9,#38bdf8)",
-              borderRadius:"9999px",filter:"blur(1px)",opacity:.84 })} />
-            {[64,80,94].map((x,i)=>(
-              <div key={i} style={ss({ position:"absolute",width:`${11-i*2}px`,height:`${11-i*2}px`,
-                borderRadius:"50%",border:`1px solid rgba(125,211,252,${0.66-i*0.14})`,
-                left:`${x}px`,top:`${i%2===0?-6:5}px`,opacity:.62 })} />
-            ))}
-            <div style={ss({ width:"32px",height:"32px",flexShrink:0,borderRadius:"50%",
-              background:"radial-gradient(circle,white 8%,#38bdf8 42%,#0284c7 84%)",
-              boxShadow:"0 0 0 2px #7dd3fc,0 0 22px 11px rgba(56,189,248,0.97),0 0 44px 18px rgba(14,165,233,0.56)" })} />
-          </div>
-        )
-
-      case "terra": case "subterra": return (
-        <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-          display:"flex",alignItems:"center",...mv })}>
-          {/* Deep dust cloud trail */}
-          <div style={ss({ position:"absolute",width:"130px",height:"20px",
-            background:"linear-gradient(to right,transparent,rgba(120,53,15,0.25),rgba(146,64,14,0.55),#b45309)",
-            borderRadius:"5px",filter:"blur(4px)",opacity:.84,
-            animation:`a-trail-fade ${T.STRIKE}ms ease-in forwards` })} />
-          <div style={ss({ position:"absolute",width:"100px",height:"14px",
-            background:"linear-gradient(to right,transparent,rgba(120,53,15,0.44),#92400e,#b45309)",
-            borderRadius:"4px",filter:"blur(2px)",opacity:.88 })} />
-          {[{x:22,y:-9,sz:9,r:0},{x:42,y:7,sz:8,r:22},{x:60,y:-7,sz:7,r:45},{x:76,y:6,sz:6,r:15}].map((c,i)=>(
-            <div key={i} style={ss({ position:"absolute",width:`${c.sz}px`,height:`${c.sz}px`,
-              background:"radial-gradient(circle,#d97706,#92400e)",
-              borderRadius:"2px",transform:`rotate(${c.r}deg)`,
-              left:`${c.x}px`,top:`${c.y}px`,opacity:.78-i*.1 })} />
-          ))}
-          <div style={ss({ width:"34px",height:"34px",flexShrink:0,borderRadius:"4px",
-            transform:"rotate(42deg)",
-            background:"radial-gradient(circle,#d97706 12%,#92400e 48%,#451a03 88%)",
-            boxShadow:"0 0 0 3px #7c2d12,0 0 22px 12px rgba(146,64,14,0.97),0 0 46px 20px rgba(120,53,15,0.56)" })} />
-        </div>
-      )
-
-      case "haos": case "light": case "lightness": return (
-        <div style={ss({ position:"absolute",left:0,top:"50%",marginTop:"-5px" })}>
-          {/* Diffuse light halo under beam */}
-          <div style={ss({ width:`${dist}px`,height:"22px",
-            background:"linear-gradient(to right,transparent,rgba(254,240,138,0.1),rgba(253,224,71,0.18),rgba(254,240,138,0.1),transparent)",
-            borderRadius:"9999px",position:"absolute",top:"-7px",filter:"blur(5px)",
-            animation:`a-laser ${T.STRIKE}ms ease-out forwards` })} />
-          <div style={ss({ width:`${dist}px`,height:"10px",
-            background:"linear-gradient(to right,rgba(254,240,138,0) 0%,rgba(253,224,71,0.52) 11%,white 45%,rgba(254,249,195,0.94) 78%,rgba(254,240,138,0) 100%)",
-            borderRadius:"9999px",
-            boxShadow:"0 0 20px 9px rgba(254,240,138,0.97),0 0 42px 18px rgba(253,224,71,0.66),0 0 75px 28px rgba(254,240,138,0.3)",
-            animation:`a-laser ${T.STRIKE}ms ease-out forwards` })} />
-          <div style={ss({ width:`${dist*.9}px`,height:"4px",
-            background:"linear-gradient(to right,transparent,rgba(254,249,195,0.68) 13%,white 52%,transparent)",
-            borderRadius:"9999px",position:"absolute",top:"-10px",left:`${dist*.04}px`,
-            boxShadow:"0 0 10px 3px rgba(254,240,138,0.78)",
-            animation:`a-laser ${T.STRIKE}ms ease-out 11ms forwards` })} />
-          <div style={ss({ position:"absolute",right:0,top:"-14px",width:"32px",height:"32px",
-            background:"white",borderRadius:"50%",
-            boxShadow:"0 0 34px 17px rgba(254,240,138,1),0 0 72px 30px rgba(253,224,71,0.74)" })} />
-        </div>
-      )
-
-      case "darkus": case "darkness": case "dark": return (
-        <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-          display:"flex",alignItems:"center",...mv}}>
-          {[-24,-12,0,12,24].map((y,i)=>(
-            <div key={`sl${i}`} style={{position:"fixed",left:0,top:`calc(50% + ${y*2}px)`,
-              width:"100vw",height:i===2?"3px":"1px",
-              background:`linear-gradient(to right,transparent,rgba(88,28,135,${0.18+Math.abs(i-2)*0.09}),transparent)`,
-              pointerEvents:"none",willChange:"opacity",
-              animation:`a-speed-line ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) ${i*7}ms forwards`}} />
-          ))}
-          <div style={{position:"absolute",width:"220px",height:"20px",
-            background:"linear-gradient(to right,transparent,rgba(49,10,73,0.25),rgba(88,28,135,0.55),#581c87,rgba(168,85,247,0.42))",
-            borderRadius:"9999px",filter:"blur(5px)",opacity:.9,willChange:"opacity",
-            animation:`a-trail-fade ${T.STRIKE}ms ease-in forwards`}} />
-          <div style={{position:"absolute",width:"170px",height:"10px",
-            background:"linear-gradient(to right,transparent,rgba(88,28,135,0.65),#7e22ce,rgba(168,85,247,0.5))",
-            borderRadius:"9999px",filter:"blur(2px)",opacity:.93}} />
-          <div style={{position:"absolute",width:"110px",height:"4px",
-            background:"linear-gradient(to right,transparent,#a855f7,rgba(192,132,252,0.5))",
-            borderRadius:"9999px",opacity:.88}} />
-          <div style={{position:"absolute",width:"100px",height:"3px",
-            background:"linear-gradient(to right,transparent,rgba(88,28,135,0.7),transparent)",
-            top:"-16px",left:"30px",borderRadius:"9999px",opacity:.65,transform:"rotate(-6deg)"}} />
-          <div style={{position:"absolute",width:"80px",height:"3px",
-            background:"linear-gradient(to right,transparent,rgba(88,28,135,0.7),transparent)",
-            top:"14px",left:"40px",borderRadius:"9999px",opacity:.65,transform:"rotate(6deg)"}} />
-          {[{x:45,y:-12,w:14,h:3},{x:70,y:9,w:10,h:3},{x:95,y:-8,w:8,h:2},{x:115,y:6,w:6,h:2}].map((s,i)=>(
-            <div key={i} style={{position:"absolute",width:`${s.w}px`,height:`${s.h}px`,
-              background:`rgba(168,85,247,${0.82-i*0.12})`,borderRadius:"2px",
-              boxShadow:`0 0 8px 3px rgba(88,28,135,0.86)`,
-              left:`${s.x}px`,top:`${s.y}px`,transform:`rotate(${i%2===0?-22:18}deg)`,
-              opacity:.78-i*.1}} />
-          ))}
-          <div style={{width:"38px",height:"38px",flexShrink:0,borderRadius:"50%",
-            background:"radial-gradient(circle,#1a0530 12%,#4c1d95 44%,#1a0530 72%,black 100%)",
-            boxShadow:"0 0 0 5px #581c87,0 0 28px 15px rgba(88,28,135,1),0 0 56px 24px rgba(88,28,135,0.65)"}} />
-          <div style={{position:"absolute",width:"14px",height:"14px",right:"-6px",
-            background:"#a855f7",borderRadius:"50%",
-            boxShadow:"0 0 20px 10px rgba(168,85,247,1)"}} />
-        </div>
-      )
-
-      case "ventus": case "wind":
-        if (isUller) return (
-          <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-            display:"flex",alignItems:"center",...mv })}>
-            <div style={ss({ position:"absolute",
-              width:`${Math.max(dist*.55,72)}px`,height:"3px",
-              background:"linear-gradient(to right,transparent,rgba(52,211,153,0.54),#34d399)",
-              borderRadius:"9999px",boxShadow:"0 0 7px 2px rgba(52,211,153,0.56)" })} />
-            <div style={ss({ position:"absolute",width:"23px",height:"2.5px",
-              background:"rgba(110,231,183,0.76)",borderRadius:"9999px",
-              left:"5px",top:"-6px",transformOrigin:"left center",transform:"rotate(-30deg)",
-              animation:"a-feather 0.19s ease-in-out infinite" })} />
-            <div style={ss({ position:"absolute",width:"23px",height:"2.5px",
-              background:"rgba(110,231,183,0.76)",borderRadius:"9999px",
-              left:"5px",top:"4px",transformOrigin:"left center",transform:"rotate(30deg)",
-              animation:"a-feather 0.19s ease-in-out 0.095s infinite" })} />
-            <div style={ss({ position:"absolute",width:"55px",height:"11px",
-              background:"linear-gradient(to right,transparent,rgba(52,211,153,0.32))",
-              top:"-5px",left:"20px",filter:"blur(3.5px)" })} />
-            <div style={ss({ width:0,height:0,flexShrink:0,
-              borderTop:"13px solid transparent",borderBottom:"13px solid transparent",
-              borderLeft:"28px solid #34d399",
-              filter:"drop-shadow(0 0 11px rgba(52,211,153,0.97)) drop-shadow(0 0 24px rgba(16,185,129,0.66))" })} />
-            <div style={ss({ position:"absolute",right:"-7px",width:"13px",height:"13px",
-              background:"white",borderRadius:"50%",
-              boxShadow:"0 0 17px 9px rgba(52,211,153,1)" })} />
-          </div>
-        )
-        return (
-          <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-            display:"flex",alignItems:"center",...mv })}>
-            <div style={ss({ position:"absolute",width:"120px",height:"30px",
-              background:"linear-gradient(to right,transparent,rgba(52,211,153,0.11),rgba(110,231,183,0.29))",
-              top:"-15px",borderRadius:"0 50% 50% 0",filter:"blur(5px)",opacity:.78,
-              animation:`a-trail-fade ${T.STRIKE}ms ease-in forwards` })} />
-            <div style={ss({ position:"absolute",width:"80px",height:"42px",
-              background:"linear-gradient(to right,transparent,rgba(52,211,153,0.2))",
-              top:"-21px",left:"17px",borderRadius:"0 50% 50% 0",filter:"blur(3px)",opacity:.6 })} />
-            <div style={ss({ width:"32px",height:"44px",flexShrink:0,borderRadius:"50%",
-              border:"3px solid #34d399",
-              boxShadow:"0 0 18px 9px rgba(52,211,153,0.94),0 0 40px 16px rgba(16,185,129,0.5)",
-              animation:"a-spin 0.09s linear infinite",filter:"blur(0.5px)" })} />
-            <div style={ss({ position:"absolute",right:"3px",width:"19px",height:"30px",
-              borderRadius:"50%",border:"2px solid #6ee7b7",opacity:.68,
-              animation:"a-spin 0.06s linear reverse infinite" })} />
-          </div>
-        )
-
-      case "void": return (
-        <div style={ss({ position:"absolute",left:0,top:"50%",marginTop:"-3px",...mv })}>
-          <div style={ss({ position:"absolute",
-            width:`${Math.min(dist*.66,125)}px`,height:"3px",
-            background:"linear-gradient(to right,transparent,rgba(203,213,225,0.34),rgba(255,255,255,0.99))",
-            borderRadius:"9999px",boxShadow:"0 0 9px 3px rgba(203,213,225,0.76)",
-            animation:`a-laser ${T.STRIKE}ms ease-out forwards` })} />
-          {[{x:26,y:-9,s:16,d:0},{x:48,y:7,s:13,d:26},{x:66,y:-6,s:10,d:50}].map((r,i)=>(
-            <div key={i} style={ss({ position:"absolute",width:`${r.s}px`,height:`${r.s}px`,
-              borderRadius:"50%",border:"1px solid rgba(203,213,225,0.54)",
-              left:`${r.x}%`,top:`${r.y}px`,opacity:.54,
-              animation:`a-burst 0.17s ease-out ${r.d}ms forwards` })} />
-          ))}
-          <div style={ss({ position:"absolute",right:0,top:"-14px",width:"30px",height:"30px",
-            background:"radial-gradient(circle,white 13%,#e2e8f0 49%,#94a3b8 87%)",
-            borderRadius:"50%",
-            boxShadow:"0 0 24px 12px rgba(203,213,225,0.97),0 0 54px 22px rgba(148,163,184,0.6)" })} />
-        </div>
-      )
-
-      default: return (
-        <div style={ss({ position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
-          display:"flex",alignItems:"center",...mv })}>
-          <div style={ss({ position:"absolute",width:"78px",height:"4px",
-            background:"linear-gradient(to right,transparent,rgba(255,255,255,0.9))",
-            borderRadius:"9999px",filter:"blur(1px)" })} />
-          <div style={ss({ width:"27px",height:"27px",flexShrink:0,borderRadius:"50%",
-            background:"white",boxShadow:"0 0 22px 11px rgba(255,255,255,0.84)" })} />
-        </div>
-      )
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  IMPACT — strong hero frame with element-colored compression
-  // ══════════════════════════════════════════════════════════════════════════
-  const Impact = () => {
-    const fc: Record<string,string> = {
-      pyrus:"rgba(255,115,0,0.72)",   fire:"rgba(255,115,0,0.72)",
-      aquos:"rgba(56,189,248,0.60)",  aquo:"rgba(56,189,248,0.60)",   water:"rgba(56,189,248,0.60)",
-      terra:"rgba(120,53,15,0.62)",   subterra:"rgba(120,53,15,0.62)",
-      haos:"rgba(255,255,175,0.76)",  light:"rgba(255,255,175,0.76)", lightness:"rgba(255,255,175,0.76)",
-      darkus:"rgba(88,28,135,0.70)",  darkness:"rgba(88,28,135,0.70)", dark:"rgba(88,28,135,0.70)",
-      ventus:"rgba(52,211,153,0.60)", wind:"rgba(52,211,153,0.60)",
-      void:"rgba(203,213,225,0.66)",
-    }
-    const gc: Record<string,string> = {
-      pyrus:"rgba(249,115,22,1)",     aquos:"rgba(56,189,248,1)",
-      aquos_fehnon:"rgba(56,189,248,1)", terra:"rgba(180,83,9,1)",
-      haos:"rgba(254,240,138,1)",     darkus:"rgba(88,28,135,1)",
-      ventus:"rgba(52,211,153,1)",    ventus_uller:"rgba(52,211,153,1)",
-      void:"rgba(203,213,225,1)",
-    }
-    // Chromatic aberration color pairs per element
-    const chroma: Record<string,[string,string]> = {
-      pyrus:    ["rgba(255,60,0,0.55)","rgba(255,180,0,0.55)"],
-      aquos:    ["rgba(0,120,255,0.50)","rgba(0,240,255,0.50)"],
-      terra:    ["rgba(180,80,0,0.50)","rgba(255,180,60,0.50)"],
-      haos:     ["rgba(255,255,80,0.55)","rgba(255,255,255,0.55)"],
-      darkus:   ["rgba(140,0,255,0.55)","rgba(80,0,180,0.55)"],
-      ventus:   ["rgba(0,200,120,0.50)","rgba(100,255,180,0.50)"],
-      void:     ["rgba(180,180,220,0.50)","rgba(255,255,255,0.50)"],
-    }
-    const rk = (e:string) => {
-      const m:{[k:string]:string}={fire:"pyrus",aquo:"aquos",water:"aquos",subterra:"terra",
-        light:"haos",lightness:"haos",darkness:"darkus",dark:"darkus",wind:"ventus"}
-      const b=m[e]??e
-      if(b==="aquos"&&isFehnon) return "aquos_fehnon"
-      if(b==="ventus"&&isUller) return "ventus_uller"
-      return b
-    }
-    const flash   = fc[el] ?? "rgba(255,255,255,0.60)"
-    const glow    = gc[rk(el)] ?? "rgba(255,255,255,1)"
-    const [cr, cb] = chroma[rk(el).replace("_fehnon","").replace("_uller","")] ?? ["rgba(255,0,0,0.44)","rgba(0,0,255,0.44)"]
-
-    return (
-      <div style={ss({ position:"absolute",left:0,top:0,width:0,height:0,
-        transform:`rotate(${-aDeg}deg)` })}>
-
-        {/* Screen vignette — edges darken on impact */}
-        <div style={{position:"fixed",left:0,top:0,width:"100vw",height:"100vh",
-          pointerEvents:"none",
-          background:"radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.72) 100%)",
-          animation:`a-vignette ${T.IMPACT}ms ease-out forwards`}} />
-
-        {/* Full-screen flash — brighter, faster peak */}
-        <div style={{position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
-          background:flash,animation:`a-hero-flash ${T.IMPACT}ms linear forwards`,pointerEvents:"none"}} />
-
-        {/* Chromatic aberration */}
-        <div style={{position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
-          background:cr,animation:`a-chroma-r ${T.IMPACT}ms ease-out forwards`,
-          pointerEvents:"none",mixBlendMode:"screen"}} />
-        <div style={{position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
-          background:cb,animation:`a-chroma-b ${T.IMPACT}ms ease-out forwards`,
-          pointerEvents:"none",mixBlendMode:"screen"}} />
-
-        {/* Compression orb */}
-        <div style={{position:"absolute",left:"-90px",top:"-90px",width:"180px",height:"180px",
-          borderRadius:"50%",background:glow,filter:"blur(28px)",
-          animation:`a-hero-compress ${T.IMPACT}ms ease-out forwards`}} />
-
-        {/* Triple outward shockwave rings — the main upgrade */}
-        <div style={{position:"absolute",left:"-70px",top:"-70px",width:"140px",height:"140px",
-          borderRadius:"50%",border:"7px solid white",
-          boxShadow:`0 0 34px 14px ${glow}`,
-          animation:`a-shockwave ${T.IMPACT*1.5}ms cubic-bezier(0.05,0,0.2,1) forwards`}} />
-        <div style={{position:"absolute",left:"-70px",top:"-70px",width:"140px",height:"140px",
-          borderRadius:"50%",border:"4px solid rgba(255,255,255,0.7)",
-          boxShadow:`0 0 20px 8px ${glow}`,opacity:.75,
-          animation:`a-shockwave ${T.IMPACT*1.8}ms cubic-bezier(0.05,0,0.2,1) 30ms forwards`}} />
-        <div style={{position:"absolute",left:"-70px",top:"-70px",width:"140px",height:"140px",
-          borderRadius:"50%",border:"2px solid rgba(255,255,255,0.4)",
-          opacity:.5,
-          animation:`a-shockwave ${T.IMPACT*2.2}ms cubic-bezier(0.05,0,0.2,1) 60ms forwards`}} />
-
-        {/* Impact freeze rings */}
-        <div style={{position:"absolute",left:"-48px",top:"-48px",width:"96px",height:"96px",
-          borderRadius:"50%",border:"5px solid white",
-          boxShadow:`0 0 28px 12px ${glow},inset 0 0 20px 8px ${glow}`,
-          animation:`a-hero-ring ${T.IMPACT}ms ease-out forwards`}} />
-        <div style={{position:"absolute",left:"-30px",top:"-30px",width:"60px",height:"60px",
-          borderRadius:"50%",border:"2px solid white",opacity:.7,
-          animation:`a-hero-ring ${T.IMPACT}ms ease-out 18ms forwards`}} />
-
-        {/* 8 impact ray lines radiating from center */}
-        {[0,45,90,135,180,225,270,315].map((a,i)=>(
-          <div key={i} style={{position:"absolute",width:"80px",height:"2px",
-            background:`linear-gradient(to right,white,${glow},transparent)`,
-            transformOrigin:"left center",transform:`rotate(${a}deg)`,
-            left:"0px",top:"-1px",opacity:0.65,
-            animation:`a-impact-ray ${T.IMPACT*1.1}ms ease-out ${i*6}ms forwards`,
-            willChange:"transform,opacity"}} />
-        ))}
-
-        {/* Ground shockwave + top shockwave */}
-        <div style={{position:"absolute",left:"-140px",top:"24px",width:"280px",height:"14px",
-          background:`linear-gradient(to right,transparent,${glow},transparent)`,
-          borderRadius:"9999px",filter:"blur(3px)",
-          animation:`a-ground-wave ${T.IMPACT*1.3}ms ease-out forwards`}} />
-        <div style={{position:"absolute",left:"-100px",top:"-28px",width:"200px",height:"10px",
-          background:`linear-gradient(to right,transparent,${glow},transparent)`,
-          borderRadius:"9999px",filter:"blur(3px)",opacity:.55,
-          animation:`a-ground-wave ${T.IMPACT*1.1}ms ease-out 20ms forwards`}} />
-
-        {/* Smoke puffs */}
-        {[{sx:-34,c:"rgba(190,190,190,0.48)"},{sx:0,c:"rgba(210,210,210,0.42)"},{sx:34,c:"rgba(170,170,170,0.46)"}].map((s,i)=>(
-          <div key={i} style={{
-            position:"absolute",left:"-24px",top:"-12px",
-            width:"48px",height:"48px",borderRadius:"50%",
-            background:`radial-gradient(circle,${s.c},transparent)`,
-            filter:"blur(6px)",
-            animation:`a-smoke ${T.AFTERMATH*.7}ms ease-out ${i*30}ms forwards`,
-            "--sx":`${s.sx}px`,
-          } as React.CSSProperties} />
-        ))}
-      </div>
-    )
-  }
-  // ══════════════════════════════════════════════════════════════════════════
-  const Aftermath = () => {
-    type C={r1:string;r2:string;r3:string;core:string;cg:string;gw:string;pc:string[];res:string}
-
-    const rk = (e:string): string => {
-      const m:{[k:string]:string}={fire:"pyrus",aquo:"aquos",water:"aquos",subterra:"terra",
-        light:"haos",lightness:"haos",darkness:"darkus",dark:"darkus",wind:"ventus"}
-      const b=m[e]??e
-      if(b==="aquos"&&isFehnon) return "aquos_fehnon"
-      if(b==="ventus"&&isUller) return "ventus_uller"
-      return b
-    }
-
-    const cfgs: Record<string,C> = {
-      pyrus:       {r1:"#f97316",r2:"#fbbf24",r3:"#ef4444",
-        core:"radial-gradient(circle,white 4%,#fb923c 24%,#dc2626 54%,#7f1d1d 86%)",
-        cg:"rgba(249,115,22,0.97)",gw:"rgba(220,38,38,0.58)",
-        pc:["#7f1d1d","#991b1b","#dc2626","#ea580c","#f97316","#fb923c","#fbbf24","#fef3c7","white"],
-        res:"rgba(220,38,38,0.2)"},
-      aquos:       {r1:"#38bdf8",r2:"#7dd3fc",r3:"#0ea5e9",
-        core:"radial-gradient(circle,white 4%,#38bdf8 28%,#0284c7 60%,#0c4a6e 89%)",
-        cg:"rgba(56,189,248,0.93)",gw:"rgba(14,165,233,0.48)",
-        pc:["#082f49","#0c4a6e","#0284c7","#0ea5e9","#38bdf8","#7dd3fc","#bae6fd","white"],
-        res:"rgba(56,189,248,0.15)"},
-      aquos_fehnon:{r1:"#38bdf8",r2:"white",r3:"#7dd3fc",
-        core:"radial-gradient(circle,white 6%,#bae6fd 21%,#38bdf8 44%,#0284c7 70%,#075985 92%)",
-        cg:"rgba(56,189,248,1)",gw:"rgba(14,165,233,0.74)",
-        pc:["white","#f0f9ff","#e0f2fe","#bae6fd","#7dd3fc","#38bdf8","#0ea5e9"],
-        res:"rgba(56,189,248,0.22)"},
-      terra:       {r1:"#b45309",r2:"#d97706",r3:"#92400e",
-        core:"radial-gradient(circle,#fbbf24 4%,#b45309 28%,#7c2d12 58%,#431407 89%)",
-        cg:"rgba(180,83,9,0.97)",gw:"rgba(120,53,15,0.58)",
-        pc:["#1c0a04","#431407","#7c2d12","#92400e","#b45309","#d97706","#fbbf24"],
-        res:"rgba(120,53,15,0.18)"},
-      haos:        {r1:"#fde047",r2:"white",r3:"#fef08a",
-        core:"radial-gradient(circle,white 7%,#fef9c3 26%,#fef08a 52%,#fde047 78%)",
-        cg:"rgba(254,240,138,1)",gw:"rgba(253,224,71,0.68)",
-        pc:["white","#fefce8","#fef9c3","#fef08a","#fde047","#fbbf24","#f59e0b","#ffd700"],
-        res:"rgba(253,224,71,0.24)"},
-      darkus:      {r1:"#7e22ce",r2:"#a855f7",r3:"#4c1d95",
-        core:"radial-gradient(circle,#e879f9 4%,#a855f7 24%,#7e22ce 48%,#1e1b4b 78%,#0f0a1e 94%)",
-        cg:"rgba(88,28,135,0.99)",gw:"rgba(88,28,135,0.68)",
-        pc:["#030712","#0f0a1e","#1e1b4b","#4c1d95","#7e22ce","#a855f7","#c084fc","#e879f9"],
-        res:"rgba(88,28,135,0.2)"},
-      ventus:      {r1:"#34d399",r2:"#6ee7b7",r3:"#059669",
-        core:"radial-gradient(circle,white 4%,#6ee7b7 26%,#10b981 54%,#064e3b 87%)",
-        cg:"rgba(52,211,153,0.97)",gw:"rgba(5,150,105,0.52)",
-        pc:["#022c22","#064e3b","#059669","#34d399","#6ee7b7","#a7f3d0","white"],
-        res:"rgba(52,211,153,0.15)"},
-      ventus_uller:{r1:"#34d399",r2:"white",r3:"#a7f3d0",
-        core:"radial-gradient(circle,white 8%,#a7f3d0 24%,#34d399 48%,#059669 76%)",
-        cg:"rgba(52,211,153,1)",gw:"rgba(16,185,129,0.58)",
-        pc:["white","#f0fdf4","#dcfce7","#a7f3d0","#6ee7b7","#34d399","#10b981"],
-        res:"rgba(52,211,153,0.18)"},
-      void:        {r1:"#cbd5e1",r2:"white",r3:"#94a3b8",
-        core:"radial-gradient(circle,white 8%,#f1f5f9 24%,#e2e8f0 48%,#94a3b8 74%)",
-        cg:"rgba(203,213,225,1)",gw:"rgba(148,163,184,0.58)",
-        pc:["white","#f8fafc","#f1f5f9","#e2e8f0","#cbd5e1","#94a3b8","#64748b"],
-        res:"rgba(148,163,184,0.18)"},
-    }
-
-    const c       = cfgs[rk(el)] ?? cfgs.void
-    const iBase   = aRad + Math.PI
-    const isTerra = el==="terra"||el==="subterra"
-    const isFeh   = isFehnon&&(el==="aquos"||el==="aquo"||el==="water")
-    const isDark  = el==="darkus"||el==="darkness"||el==="dark"
-    const isFire  = el==="pyrus"||el==="fire"
-    const isVoid  = el==="void"
-    const isHaos  = el==="haos"||el==="light"||el==="lightness"
-    const isVent  = (el==="ventus"||el==="wind")&&!isUller
-
-    return (
-      <div style={ss({ position:"absolute",left:0,top:0,width:0,height:0,
-        transform:`rotate(${-aDeg}deg)` })}>
-
-        <div style={ss({ position:"absolute",left:"-80px",top:"-80px",width:"160px",height:"160px",
-          animation:"a-local-shake 0.2s cubic-bezier(.36,.07,.19,.97) both" })}>
-
-          {/* 5 shockwave rings — extra outer one for punch */}
-          {[{s:200,bw:2,d:0,op:.52},{s:152,bw:3,d:0,op:1},{s:120,bw:2,d:24,op:.68},{s:86,bw:2,d:46,op:.48},{s:60,bw:1,d:0,op:.34}].map(({s,bw,d,op},i)=>(
-            <div key={i} style={ss({ position:"absolute",
-              left:`${80-s/2}px`,top:`${80-s/2}px`,width:s,height:s,
-              borderRadius:"50%",
-              border:`${bw}px solid ${i<=1?c.r1:i===2?c.r2:c.r3}`,
-              boxShadow: i===1?`0 0 30px 13px ${c.cg}`:undefined,
-              opacity:op,
-              animation:`a-ring ${T.AFTERMATH}ms ease-out ${d}ms forwards` })} />
-          ))}
-
-          {/* Core burst */}
-          <div style={ss({ position:"absolute",left:"18px",top:"18px",width:"124px",height:"124px",
-            borderRadius:"50%",background:c.core,
-            boxShadow:`0 0 70px 32px ${c.cg},0 0 140px 56px ${c.gw}`,
-            animation:`a-core ${T.AFTERMATH}ms cubic-bezier(0.03,0.94,0.10,1) forwards` })} />
-
-          {/* Second wave eruption */}
-          <div style={ss({ position:"absolute",left:"38px",top:"38px",width:"84px",height:"84px",
-            borderRadius:"50%",border:`2px solid ${c.r2}`,
-            boxShadow:`0 0 14px 5px ${c.cg}`,
-            animation:`a-ring ${T.AFTERMATH*.62}ms ease-out ${T.AFTERMATH*.28}ms forwards` })} />
-          <div style={ss({ position:"absolute",left:"46px",top:"46px",width:"68px",height:"68px",
-            borderRadius:"50%",background:c.res,filter:"blur(7px)",
-            animation:`a-second-wave ${T.AFTERMATH*.52}ms ease-out ${T.AFTERMATH*.27}ms forwards` })} />
-
-          {/* Residual glow */}
-          <div style={ss({ position:"absolute",left:"26px",top:"26px",width:"108px",height:"108px",
-            borderRadius:"50%",background:c.res,filter:"blur(11px)",
-            animation:`a-residual ${T.AFTERMATH}ms ease-out forwards` })} />
-
-          {/* FIRE: upward ember column — 3 trails + base glow */}
-          {isFire && <>
-            {[-16,0,16].map((ox,i)=>(
-              <div key={i} style={{position:"absolute",left:`${74+ox}px`,top:"-10px",
-                width:"10px",height:"70px",
-                background:"linear-gradient(to top,rgba(251,146,60,0.8),rgba(249,115,22,0.3),transparent)",
-                borderRadius:"9999px",filter:"blur(3px)",
-                animation:`a-fire-rise ${T.AFTERMATH*.72}ms ease-out ${i*40}ms forwards`,
-                willChange:"transform,opacity"}} />
-            ))}
-            {/* embers rising */}
-            {[{x:-20,r:8},{x:0,r:12},{x:22,r:6},{x:-8,r:16},{x:14,r:10}].map((e,i)=>(
-              <div key={i} style={({
-                position:"absolute",left:`${80+e.x}px`,top:"60px",
-                width:"5px",height:"5px",borderRadius:"50%",
-                background:"radial-gradient(circle,white,#fbbf24)",
-                boxShadow:"0 0 6px 3px rgba(251,191,36,0.9)",
-                animation:`a-particle ${T.AFTERMATH*.9}ms cubic-bezier(0.05,0.4,0.2,1) ${i*35}ms forwards`,
-                "--px":`${(e.r-8)*3}px`,"--py":`${-50-e.r*4}px`,
-              }) as React.CSSProperties} />
-            ))}
-          </>}
-
-          {/* TERRA: rock crack lines on ground */}
-          {isTerra && [0,72,144,216,288].map((a,i)=>(
-            <div key={i} style={ss({ position:"absolute",left:"80px",top:"80px",
-              width:`${50+i*8}px`,height:"2px",
-              background:`linear-gradient(to right,${c.r1},transparent)`,
-              borderRadius:"9999px",transformOrigin:"left center",
-              transform:`rotate(${a}deg)`,opacity:.7,
-              animation:`a-terra-crack ${T.AFTERMATH*.6}ms ease-out ${i*20}ms both` })} />
-          ))}
-
-          {/* HAOS: divine cross beams + starburst */}
-          {isHaos && <>
-            {[0,90,45,135].map((a,i)=>(
-              <div key={i} style={{position:"absolute",left:"80px",top:"80px",
-                width:`${80+i%2*20}px`,height:i<2?"3px":"2px",
-                background:"linear-gradient(to right,white,rgba(254,240,138,0.7),transparent)",
-                borderRadius:"9999px",transformOrigin:"left center",
-                transform:`rotate(${a}deg)`,opacity:.92,willChange:"transform,opacity",
-                animation:`a-terra-crack ${T.AFTERMATH*.55}ms ease-out ${i*12}ms both`}} />
-            ))}
-            {[0,90,45,135,180,270,225,315].map((a,i)=>(
-              <div key={`r${i}`} style={{position:"absolute",left:"80px",top:"80px",
-                width:"50px",height:"1px",
-                background:"linear-gradient(to right,rgba(254,240,138,0.8),transparent)",
-                borderRadius:"9999px",transformOrigin:"left center",
-                transform:`rotate(${a}deg)`,opacity:.65,
-                animation:`a-terra-crack ${T.AFTERMATH*.4}ms ease-out ${i*8}ms both`}} />
-            ))}
-          </>}
-
-          {/* VOID: reality crack lines */}
-          {isVoid && [52,74,96].map((s,i)=>(
-            <div key={i} style={{position:"absolute",
-              left:`${80-s/2}px`,top:`${80-s/2}px`,width:s,height:s,
-              borderRadius:"50%",border:"1px solid rgba(203,213,225,0.6)",
-              animation:`a-void-glitch ${T.AFTERMATH*.44}ms ease-out ${i*36}ms forwards`}} />
-          ))}
-
-          {/* VENTUS: expanding spiral rings */}
-          {isVent && <>
-            <div style={{position:"absolute",left:"36px",top:"36px",width:"88px",height:"88px",
-              borderRadius:"50%",border:"2px dashed rgba(52,211,153,0.6)",
-              animation:`a-spin 0.35s linear forwards,a-ring ${T.AFTERMATH*.7}ms ease-out forwards`}} />
-            <div style={{position:"absolute",left:"52px",top:"52px",width:"56px",height:"56px",
-              borderRadius:"50%",border:"1px dashed rgba(52,211,153,0.4)",
-              animation:`a-spin 0.25s linear reverse forwards,a-ring ${T.AFTERMATH*.55}ms ease-out 40ms forwards`}} />
-          </>}
-
-        </div>
-
-        {/* FEHNON: scar lines */}
-        {isFeh && [
-          {w:142,r:0,  t:-3,d:0 },{w:110,r:-19,t:-3,d:7},
-          {w:110,r:19, t:-3,d:7 },{w:82, r:-39,t:-2,d:17},
-          {w:82, r:39, t:-2,d:17},{w:58, r:-59,t:-1,d:28},
-          {w:58, r:59, t:-1,d:28},{w:40, r:-77,t:0, d:40},
-          {w:40, r:77, t:0, d:40},
-        ].map((s,i)=>(
-          <div key={i} style={ss({ position:"absolute",height:"2.5px",width:`${s.w}px`,
-            background:"linear-gradient(to right,transparent,rgba(255,255,255,0.97),rgba(125,211,252,0.79),transparent)",
-            borderRadius:"9999px",top:`${s.t}px`,left:0,
-            transform:`rotate(${s.r}deg)`,transformOrigin:"left center",
-            boxShadow:"0 0 10px 2px rgba(56,189,248,0.82)",
-            animation:`a-slash ${T.AFTERMATH*.66}ms cubic-bezier(0,0,0.12,1) ${s.d}ms forwards` })} />
-        ))}
-        {isFeh && [-22,-14,-7,0,7,14].map((y,i)=>(
-          <div key={`sc${i}`} style={ss({ position:"absolute",height:"1px",
-            width:`${92-Math.abs(y)*2}px`,
-            background:`linear-gradient(to right,transparent,rgba(186,230,253,${.4+Math.abs(i-2.5)*.1}),transparent)`,
-            borderRadius:"9999px",top:`${y}px`,left:"50%",transform:"translateX(-50%)",
-            animation:`a-slash ${T.AFTERMATH*.49}ms ease-out ${i*10}ms forwards` })} />
-        ))}
-
-        {/* DARKUS: inward void absorption + 3 rift tears */}
-        {isDark && <>
-          {[0,51,103,154,206,257,308].map((a,i)=>(
-            <div key={i} style={{position:"absolute",height:"2px",
-              width:"70px",borderRadius:"9999px",
-              background:"linear-gradient(to left,rgba(168,85,247,0.88),transparent)",
-              transformOrigin:"left center",transform:`rotate(${a}deg)`,
-              animation:`a-dark-abs ${T.AFTERMATH*.82}ms ease-out ${i*12}ms forwards`,
-              willChange:"transform,opacity"}} />
-          ))}
-          {/* void rift cracks */}
-          {[-24,0,24].map((x,i)=>(
-            <div key={`rift${i}`} style={{position:"absolute",
-              left:`${x}px`,top:"-30px",width:"2px",height:"60px",
-              background:`linear-gradient(to bottom,transparent,rgba(88,28,135,${0.9-i*0.2}),transparent)`,
-              borderRadius:"9999px",
-              boxShadow:`0 0 6px 2px rgba(88,28,135,0.7)`,
-              animation:`a-void-crack ${T.AFTERMATH*.65}ms ease-out ${i*40}ms forwards`,
-              willChange:"transform,opacity"}} />
-          ))}
-        </>}
-
-        {/* Particles — element-specific behavior */}
-        {pts.map(p => {
-          const a   = iBase + p.angle * .82
-          const d   = p.spd * p.life
-          // Fire particles rise (negative Y bias), dark particles absorbed (reduced distance)
-          const px  = Math.cos(a)*d*(isDark?.45:1) + p.jx
-          const py  = Math.sin(a)*d*(isDark?.45:1) + p.jy + (isFire?p.riseY*.4:0)
-          const col = c.pc[p.id % c.pc.length]
-          const rot = isFeh ? Math.atan2(py,px)*180/Math.PI : isDark ? p.spin : 0
-          return (
-            <div key={p.id} style={ss({
-              position:"absolute",
-              width:`${p.sz}px`,
-              height:`${isFeh?p.sz*.34:isTerra?p.sz*.65:isDark?p.sz*1.6:p.sz}px`,
-              borderRadius: isTerra||isFeh?"2px":isDark?"1px 5px 1px 5px":"50%",
-              background:col,
-              boxShadow:`0 0 6px 2px ${col}98`,
-              transform: rot?`rotate(${rot}deg)`:undefined,
-              animation:`a-particle ${T.AFTERMATH}ms cubic-bezier(0.02,0.56,0.11,1) ${p.del}ms forwards`,
-              "--px":`${px}px`,"--py":`${py}px`,opacity:0,
-            } as React.CSSProperties)} />
-          )
-        })}
-
-        {/* ── Shrapnel angular pieces — angular debris launched outward ── */}
-        {Array.from({length:8}).map((_,i) => {
-          const ang = iBase + (i / 8) * Math.PI * 2
-          const dist2 = 55 + (i % 3) * 22
-          const shx = Math.cos(ang) * dist2
-          const shy = Math.sin(ang) * dist2
-          const shr = (i * 47 + 30) % 360
-          const col = c.pc[(i*2) % c.pc.length]
-          return (
-            <div key={`sh${i}`} style={ss({
-              position:"absolute",
-              width:`${4 + (i%3)*2}px`,height:`${4 + (i%3)*2}px`,
-              background:col,
-              borderRadius:"1px",
-              boxShadow:`0 0 4px 1px ${col}`,
-              animation:`a-shrapnel ${T.AFTERMATH*.72}ms cubic-bezier(0.05,0.4,0.2,1) ${i*18}ms forwards`,
-              "--shx":`${shx}px`,"--shy":`${shy}px`,"--shr":`${shr}deg`,opacity:1,
-            } as React.CSSProperties)} />
-          )
-        })}
-
-        {/* ── Smoke column rising from impact point ── */}
-        {[{sx:-14,delay:0},{sx:0,delay:50},{sx:14,delay:90}].map((s,i)=>(
-          <div key={`smk${i}`} style={ss({
-            position:"absolute",left:"-14px",top:"-10px",
-            width:"28px",height:"28px",borderRadius:"50%",
-            background:"radial-gradient(circle,rgba(160,160,160,0.36),transparent)",
-            filter:"blur(5px)",
-            animation:`a-smoke ${T.AFTERMATH*.85}ms ease-out ${s.delay}ms forwards`,
-            "--sx":`${s.sx}px`,
-          } as React.CSSProperties)} />
-        ))}
-      </div>
-    )
-  }
-
-  let content: React.ReactNode = null
-  if      (phase==="charge")    content = <Charge />
-  else if (phase==="release")   content = <Release />
-  else if (phase==="strike")    content = <Strike />
-  else if (phase==="impact")    content = <Impact />
-  else if (phase==="aftermath") content = <Aftermath />
-
-  // Orbit keyframes for each element's orbs
-  const orbitKFs = `
-    @keyframes a-orbit-0 { from{transform:rotate(0deg) translateX(-46px)} to{transform:rotate(360deg) translateX(-46px)} }
-    @keyframes a-orbit-1 { from{transform:rotate(120deg) translateX(-40px)} to{transform:rotate(480deg) translateX(-40px)} }
-    @keyframes a-orbit-2 { from{transform:rotate(240deg) translateX(-44px)} to{transform:rotate(600deg) translateX(-44px)} }
-    @keyframes a-orbit-3 { from{transform:rotate(50deg) translateX(-42px)} to{transform:rotate(410deg) translateX(-42px)} }
-    @keyframes a-orbit-aq0 { from{transform:rotate(60deg) translateX(-42px)} to{transform:rotate(420deg) translateX(-42px)} }
-    @keyframes a-orbit-aq1 { from{transform:rotate(200deg) translateX(-38px)} to{transform:rotate(560deg) translateX(-38px)} }
-    @keyframes a-orbit-tr0 { from{transform:rotate(30deg) translateX(-44px)} to{transform:rotate(390deg) translateX(-44px)} }
-    @keyframes a-orbit-tr1 { from{transform:rotate(150deg) translateX(-40px)} to{transform:rotate(510deg) translateX(-40px)} }
-    @keyframes a-orbit-tr2 { from{transform:rotate(270deg) translateX(-46px)} to{transform:rotate(630deg) translateX(-46px)} }
-    @keyframes a-orbit-ha0 { from{transform:rotate(0deg) translateX(-52px)} to{transform:rotate(360deg) translateX(-52px)} }
-    @keyframes a-orbit-ha1 { from{transform:rotate(90deg) translateX(-48px)} to{transform:rotate(450deg) translateX(-48px)} }
-    @keyframes a-orbit-ha2 { from{transform:rotate(180deg) translateX(-52px)} to{transform:rotate(540deg) translateX(-52px)} }
-    @keyframes a-orbit-ha3 { from{transform:rotate(270deg) translateX(-48px)} to{transform:rotate(630deg) translateX(-48px)} }
-    @keyframes a-orbit-dk0 { from{transform:rotate(45deg) translateX(-48px)} to{transform:rotate(-315deg) translateX(-48px)} }
-    @keyframes a-orbit-dk1 { from{transform:rotate(165deg) translateX(-44px)} to{transform:rotate(-195deg) translateX(-44px)} }
-    @keyframes a-orbit-dk2 { from{transform:rotate(285deg) translateX(-48px)} to{transform:rotate(-75deg) translateX(-48px)} }
-    @keyframes a-orbit-vt0 { from{transform:rotate(0deg) translateX(-44px)} to{transform:rotate(360deg) translateX(-44px)} }
-    @keyframes a-orbit-vt1 { from{transform:rotate(130deg) translateX(-40px)} to{transform:rotate(490deg) translateX(-40px)} }
-    @keyframes a-orbit-vt2 { from{transform:rotate(250deg) translateX(-44px)} to{transform:rotate(610deg) translateX(-44px)} }
-    @keyframes a-orbit-vo0 { from{transform:rotate(20deg) translateX(-47px)} to{transform:rotate(380deg) translateX(-47px)} }
-    @keyframes a-orbit-vo1 { from{transform:rotate(140deg) translateX(-42px)} to{transform:rotate(500deg) translateX(-42px)} }
-    @keyframes a-orbit-vo2 { from{transform:rotate(260deg) translateX(-48px)} to{transform:rotate(620deg) translateX(-48px)} }
-    @keyframes a-orbit-vo3 { from{transform:rotate(80deg) translateX(-40px)} to{transform:rotate(440deg) translateX(-40px)} }
-  `
-
-  const output = (
-    <>
-      <style>{`
-        ${orbitKFs}
-        @keyframes a-spin           { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes a-burst          { 0%{transform:scale(.24);opacity:1} 100%{transform:scale(1.82);opacity:0} }
-        @keyframes a-fire-pulse     { 0%,100%{opacity:.76;transform:scale(1)} 50%{opacity:1;transform:scale(1.24)} }
-        @keyframes a-terra-pulse    { 0%,100%{opacity:.74;transform:scale(1) rotate(45deg)} 50%{opacity:1;transform:scale(1.22) rotate(45deg)} }
-        @keyframes a-haos-halo      { 0%,100%{opacity:.66;transform:scale(1)} 50%{opacity:1;transform:scale(1.38)} }
-        @keyframes a-haos-ray       { 0%,100%{opacity:.62;transform-origin:50% 100%;transform:scaleY(1)} 50%{opacity:1;transform:scaleY(1.44)} }
-        @keyframes a-dark-consume   { 0%{transform:scale(1.48);opacity:.88} 100%{transform:scale(.42);opacity:.2} }
-        @keyframes a-dark-tendril   { 0%,100%{opacity:.66;transform-origin:left center;transform:scaleX(1)} 50%{opacity:1;transform:scaleX(1.44)} }
-        @keyframes a-gather         { 0%{opacity:0;transform-origin:left center;transform:translateX(12px) scaleX(0)} 100%{opacity:.86;transform:translateX(12px) scaleX(1)} }
-        @keyframes a-terra-crack    { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 100%{opacity:.86;transform:scaleX(1)} }
-        @keyframes a-fehnon-contract{ 0%{transform:scale(1.6);opacity:0} 50%{opacity:1} 100%{transform:scale(.17);opacity:0} }
-        @keyframes a-fehnon-scan    { 0%{opacity:0;transform:translateX(-50%) scaleX(0)} 42%{opacity:1} 100%{opacity:0;transform:translateX(-50%) scaleX(1)} }
-        @keyframes a-release-burst  { 0%{transform:scale(.28);opacity:1;border-width:9px} 100%{transform:scale(2.5);opacity:0;border-width:1px} }
-        @keyframes a-release-core   { 0%{opacity:1;transform:scale(1.6)} 100%{opacity:0;transform:scale(3.2)} }
-        @keyframes a-move           { 0%{transform:translateX(0)} 100%{transform:translateX(${dist}px)} }
-        @keyframes a-trail-fade     { 0%{opacity:.9} 100%{opacity:.2} }
-        @keyframes a-laser          { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 6%{opacity:1} 70%{opacity:1} 100%{opacity:0;transform:scaleX(1)} }
-        @keyframes a-slash          { 0%{opacity:0;transform-origin:left center;transform:scaleX(0)} 5%{opacity:1} 64%{opacity:1} 100%{opacity:0;transform:scaleX(1)} }
-        @keyframes a-fehnon-tip     { 0%{transform:translateX(${-dist}px);opacity:0} 6%{opacity:1} 100%{transform:translateX(0);opacity:1} }
-        @keyframes a-feather        { 0%,100%{transform:rotate(-30deg);opacity:.76} 50%{transform:rotate(-21deg);opacity:1} }
-        @keyframes a-hero-flash     { 0%{opacity:1} 45%{opacity:.72} 100%{opacity:0} }
-        @keyframes a-hero-compress  { 0%{transform:scale(.08);opacity:1} 45%{transform:scale(1.5);opacity:.92} 100%{transform:scale(2.2);opacity:0} }
-        @keyframes a-hero-ring      { 0%{transform:scale(.18);opacity:1;border-width:7px} 100%{transform:scale(2.4);opacity:0;border-width:1px} }
-        @keyframes a-local-shake    { 0%{transform:translate(0,0)} 8%{transform:translate(-7px,-3px)} 18%{transform:translate(7px,4px)} 28%{transform:translate(-6px,2px)} 40%{transform:translate(5px,-3px)} 54%{transform:translate(-3px,2px)} 70%{transform:translate(2px,1px)} 100%{transform:translate(0,0)} }
-        @keyframes a-ring           { 0%{transform:scale(.06);opacity:1;border-width:9px} 42%{opacity:.65} 100%{transform:scale(3.0);opacity:0;border-width:1px} }
-        @keyframes a-core           { 0%{transform:scale(.02);opacity:1} 14%{transform:scale(1.42);opacity:1} 44%{transform:scale(1.08);opacity:.8} 100%{transform:scale(0);opacity:0} }
-        @keyframes a-second-wave    { 0%{transform:scale(.08);opacity:0} 18%{opacity:1} 58%{opacity:.6} 100%{transform:scale(1.9);opacity:0} }
-        @keyframes a-residual       { 0%{opacity:0} 14%{opacity:1} 56%{opacity:.54} 100%{opacity:0;transform:scale(1.6)} }
-        @keyframes a-particle       { 0%{transform:translate(0,0) scale(2.1);opacity:1} 100%{transform:translate(var(--px),var(--py)) scale(0);opacity:0} }
-        @keyframes a-dark-abs       { 0%{opacity:0;transform-origin:right center;transform:rotate(0deg) scaleX(0)} 26%{opacity:.76} 100%{opacity:0;transform:scaleX(1)} }
-        @keyframes a-void-glitch    { 0%{transform:scale(.18) skewX(0deg);opacity:.84} 38%{transform:scale(1.25) skewX(3deg);opacity:.52} 68%{transform:scale(1.7) skewX(-2deg);opacity:.22} 100%{transform:scale(2.3) skewX(0deg);opacity:0} }
-        @keyframes a-fire-rise      { 0%{transform:translateY(0) scaleY(0);opacity:0} 20%{opacity:.8} 100%{transform:translateY(-50px) scaleY(1.5);opacity:0} }
-        @keyframes afterimage-fade  { 0%{opacity:.28} 100%{opacity:0} }
-
-        /* ── NEW: speed lines across the field during strike ── */
-        @keyframes a-speed-line     { 0%{transform:translateX(-100%) scaleX(0);opacity:0} 4%{opacity:.7} 60%{opacity:.5} 100%{transform:translateX(0) scaleX(1);opacity:0} }
-        /* ── NEW: chromatic split on impact (R/B channel offset) ── */
-        @keyframes a-chroma-r       { 0%{opacity:.82;transform:translate(-8px,0)} 60%{opacity:.35} 100%{opacity:0;transform:translate(-18px,0)} }
-        @keyframes a-chroma-b       { 0%{opacity:.82;transform:translate(8px,0)} 60%{opacity:.35} 100%{opacity:0;transform:translate(18px,0)} }
-        /* ── NEW: impact shockwave — triple ring ── */
-        @keyframes a-shockwave      { 0%{transform:scale(0);opacity:1;border-width:8px} 70%{opacity:.4} 100%{transform:scale(5.5);opacity:0;border-width:0px} }
-        /* ── NEW: smoke puff rising after hit ── */
-        @keyframes a-smoke          { 0%{transform:translate(var(--sx),0) scale(0.3);opacity:.72;filter:blur(3px)} 100%{transform:translate(var(--sx),-54px) scale(2.4);opacity:0;filter:blur(14px)} }
-        /* ── NEW: shrapnel angular pieces ── */
-        @keyframes a-shrapnel       { 0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1} 100%{transform:translate(var(--shx),var(--shy)) rotate(var(--shr)) scale(0);opacity:0} }
-        /* ── NEW: attacker flash-in at charge start ── */
-        @keyframes a-charge-zoom    { 0%{transform:scale(1.22);opacity:0;filter:blur(5px)} 50%{opacity:.9;filter:blur(0)} 100%{transform:scale(1);opacity:1;filter:blur(0)} }
-        /* ── NEW: ground shockwave horizontal ── */
-        @keyframes a-ground-wave    { 0%{transform:scaleX(0) scaleY(1);opacity:.85} 100%{transform:scaleX(1) scaleY(0.15);opacity:0} }
-        /* ── NEW: fire charge flare spike ── */
-        @keyframes a-flare          { 0%{transform:scaleY(0);opacity:1} 35%{opacity:.8} 100%{transform:scaleY(1);opacity:0} }
-        /* ── NEW: corona spin charge ── */
-        @keyframes a-corona-spin    { to{transform:rotate(360deg) scale(1.1)} }
-        /* ── NEW: impact screen edge vignette ── */
-        @keyframes a-vignette       { 0%{opacity:.88} 100%{opacity:0} }
-        /* ── NEW: impact ray burst lines ── */
-        @keyframes a-impact-ray     { 0%{transform:rotate(var(--ra,0deg)) scaleX(0);opacity:1} 35%{transform:rotate(var(--ra,0deg)) scaleX(1.5);opacity:.85} 100%{transform:rotate(var(--ra,0deg)) scaleX(2.5);opacity:0} }
-        /* ── NEW: fire pulse charge ── */
-        @keyframes a-fire-pulse     { 0%,100%{transform:scale(1);opacity:.94} 50%{transform:scale(1.16);opacity:1} }
-        /* ── NEW: dark tendril reach ── */
-        @keyframes a-dark-tendril   { 0%,100%{transform:scaleX(1);opacity:.75} 50%{transform:scaleX(1.42);opacity:1} }
-        /* ── NEW: haos ray divine ── */
-        @keyframes a-haos-ray       { 0%,100%{opacity:.68;transform:scaleY(1)} 50%{opacity:1;transform:scaleY(1.38)} }
-        /* ── NEW: haos halo pulse ── */
-        @keyframes a-haos-halo      { 0%,100%{transform:scale(1);opacity:.62} 50%{transform:scale(1.22);opacity:.96} }
-      `}</style>
-
-      {attackerImage && inFlight && (
-        <>
-          {/* Attacker card ghost — fades as it launches */}
-          <div style={{position:"absolute",left:startX-40,top:startY-56,
-            width:"80px",height:"112px",
-            backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
-            borderRadius:"8px",opacity:.32,filter:"blur(3px) brightness(1.8)",
-            animation:"afterimage-fade 260ms ease-out forwards",
-            pointerEvents:"none",zIndex:5,willChange:"opacity"}} />
-          {/* Second ghost — delayed, more transparent */}
-          <div style={{position:"absolute",left:startX-40,top:startY-56,
-            width:"80px",height:"112px",
-            backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
-            borderRadius:"8px",opacity:.16,filter:"blur(7px) brightness(2.2)",
-            animation:"afterimage-fade 380ms ease-out 55ms forwards",
-            pointerEvents:"none",zIndex:4,willChange:"opacity"}} />
-        </>
-      )}
-
-      <div style={ctr} suppressHydrationWarning>{content}</div>
-    </>
+    </div>
   )
 
-  if (portalTarget) return createPortal(output, portalTarget)
-  if (typeof document !== "undefined") return createPortal(output, document.body)
+  const isFire=["pyrus","fire"].includes(el)
+  const isAquo=["aquos","aquo","water"].includes(el)
+  const isDark=["darkus","darkness","dark"].includes(el)
+  const isHaos=["haos","light","lightness"].includes(el)
+  const isVent=["ventus","wind"].includes(el)
+  const isVoid=el==="void"
+
+  // ─ FIRE ─────────────────────────────────────────────────────────────────
+  if(isFire) return hub(128,<>
+    {/* Outer unstable corona */}
+    <Ring d={122} bc="rgba(251,146,60,0.5)" bw="1px" anim="xa-spin .09s linear infinite" op={.65}/>
+    <Ring d={108} bc="#f97316" bw="2px" glow="0 0 32px 14px rgba(249,115,22,.9)" anim="xa-spin .11s linear infinite" op={.88}/>
+    <Ring d={84}  bc="#fbbf24" bw="3px" glow="0 0 20px 9px rgba(251,191,36,.82)" anim="xa-spin .07s linear reverse infinite" op={.82}/>
+    <Ring d={58}  bc="#ef4444" bw="2px" glow="0 0 16px 9px rgba(239,68,68,.88)"  anim="xa-spin .05s linear infinite" op={.72}/>
+    {/* 8 flame petals */}
+    {[0,45,90,135,180,225,270,315].map((a,i)=>(
+      <div key={i} style={abs({width:"14px",height:"38px",
+        background:"linear-gradient(to top,rgba(249,115,22,.95),rgba(251,191,36,.6),transparent)",
+        borderRadius:"50% 50% 40% 40%",transformOrigin:"50% 100%",
+        transform:`rotate(${a}deg) translateY(-52px)`,
+        animation:`xa-flare .08s ease-in-out ${i*20}ms infinite`})}/>
+    ))}
+    {/* 5 orbiting embers */}
+    {[{r:58,s:9,c:"rgba(251,191,36,.98)",dur:170},{r:52,s:7,c:"rgba(249,115,22,.9)",dur:135},
+      {r:60,s:6,c:"rgba(255,255,255,.85)",dur:155},{r:50,s:5,c:"rgba(254,100,10,.8)",dur:120},
+      {r:56,s:4,c:"rgba(255,200,50,.75)",dur:145}].map((o,i)=>(
+      <div key={i} style={abs({width:o.s,height:o.s,borderRadius:"50%",background:o.c,
+        boxShadow:`0 0 ${o.s*2}px ${o.s}px ${o.c}`,
+        animation:`xa-orbit-${i} ${o.dur}ms linear ${i*30}ms infinite`})}/>
+    ))}
+    {/* White-hot magma core */}
+    <div style={abs({width:44,height:44,borderRadius:"50%",
+      background:"radial-gradient(circle,white 8%,#fb923c 28%,#dc2626 62%,#7f1d1d 100%)",
+      boxShadow:"0 0 0 7px #f97316,0 0 40px 20px rgba(251,146,60,1),0 0 80px 34px rgba(220,38,38,.8)",
+      animation:"xa-pulse .06s ease-in-out infinite"})}/>
+    <Ring d={124} bg="radial-gradient(circle,rgba(251,146,60,.3) 0%,transparent 70%)" anim="xa-pulse .1s ease-in-out infinite"/>
+    <Ring d={120} bc="rgba(251,146,60,.45)" bw="1px" anim="xa-burst .09s ease-out infinite"/>
+    <Ring d={120} bc="rgba(251,146,60,.25)" bw="1px" anim="xa-burst .09s ease-out .045s infinite"/>
+    {/* Convergence lines from edges */}
+    {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,i)=>(
+      <div key={`cv${i}`} style={abs({width:"80px",height:"2px",
+        background:`linear-gradient(to left,transparent,${pal.b},.95,transparent)`,
+        borderRadius:"9999px",transformOrigin:"right center",
+        transform:`rotate(${a}deg) translateX(-100px)`,
+        animation:`xa-converge .155s ease-in ${i*10}ms forwards`,opacity:.6})}/>
+    ))}
+  </>)
+
+  // ─ AQUOS ────────────────────────────────────────────────────────────────
+  if(isAquo) return hub(118,<>
+    <Ring d={114} bc="rgba(14,165,233,.55)" bw="1px" anim="xa-spin .14s linear infinite" op={.6}/>
+    <Ring d={100} bc="#38bdf8" bw="2px" glow="0 0 28px 12px rgba(56,189,248,.82)" anim="xa-spin .18s linear reverse infinite" op={.82}/>
+    <Ring d={76}  bc="#7dd3fc" bw="2px" glow="0 0 16px 8px rgba(125,211,252,.75)" anim="xa-spin .12s linear infinite" op={.72}/>
+    <Ring d={52}  bc="#bae6fd" bw="1px" anim="xa-spin .09s linear reverse infinite" op={.55}/>
+    {[0,72,144,216,288].map((a,i)=>(
+      <div key={i} style={abs({width:"4px",height:"44px",
+        background:"linear-gradient(to top,rgba(14,165,233,.88),rgba(56,189,248,.4),transparent)",
+        borderRadius:"9999px",transformOrigin:"50% 100%",
+        transform:`rotate(${a}deg) translateY(-52px)`,
+        animation:`xa-aq-stream .22s ease-in-out ${i*40}ms infinite`,opacity:.8})}/>
+    ))}
+    {[{r:56,s:8,c:"rgba(56,189,248,.95)",dur:280},{r:50,s:6,c:"rgba(125,211,252,.85)",dur:240},
+      {r:58,s:5,c:"rgba(255,255,255,.8)",dur:260},{r:52,s:4,c:"rgba(14,165,233,.75)",dur:220}].map((o,i)=>(
+      <div key={i} style={abs({width:o.s,height:o.s,borderRadius:"50%",background:o.c,
+        boxShadow:`0 0 ${o.s*2}px ${o.s}px ${o.c}`,
+        animation:`xa-orbit-${i} ${o.dur}ms linear ${i*60}ms infinite`})}/>
+    ))}
+    <div style={abs({width:38,height:38,borderRadius:"50%",
+      background:"radial-gradient(circle,white 10%,#7dd3fc 32%,#0284c7 65%,#0c4a6e 100%)",
+      boxShadow:"0 0 0 6px #38bdf8,0 0 36px 18px rgba(56,189,248,1),0 0 72px 30px rgba(14,165,233,.75)",
+      animation:"xa-pulse .09s ease-in-out infinite"})}/>
+    <Ring d={110} bg="radial-gradient(circle,rgba(56,189,248,.28) 0%,transparent 70%)" anim="xa-pulse .12s ease-in-out infinite"/>
+    <Ring d={116} bc="rgba(56,189,248,.35)" bw="1px" anim="xa-burst .11s ease-out infinite"/>
+    {[0,36,72,108,144,180,216,252,288,324].map((a,i)=>(
+      <div key={`cv${i}`} style={abs({width:"64px",height:"1px",
+        background:`linear-gradient(to left,transparent,${pal.b},transparent)`,
+        borderRadius:"9999px",transformOrigin:"right center",
+        transform:`rotate(${a}deg) translateX(-80px)`,
+        animation:`xa-converge .155s ease-in ${i*12}ms forwards`,opacity:.5})}/>
+    ))}
+  </>)
+
+  // ─ DARKNESS ─────────────────────────────────────────────────────────────
+  if(isDark) return hub(116,<>
+    <Ring d={112} bc="rgba(76,29,149,.7)" bw="2px" glow="0 0 38px 16px rgba(88,28,135,.95)" anim="xa-dark-consume .16s ease-in infinite" op={.92}/>
+    <Ring d={88}  bc="#a855f7" bw="2px" glow="0 0 22px 10px rgba(168,85,247,.75)" anim="xa-spin .24s linear reverse infinite" op={.76}/>
+    <Ring d={64}  bc="#c084fc" bw="1px" anim="xa-spin .15s linear infinite" op={.58}/>
+    {[0,40,80,120,160,200,240,280,320].map((a,i)=>(
+      <div key={a} style={abs({width:"44px",height:"2px",
+        background:"linear-gradient(to right,rgba(88,28,135,.97),rgba(88,28,135,.3),transparent)",
+        borderRadius:"9999px",transformOrigin:"left center",
+        transform:`rotate(${a}deg) translateX(14px)`,
+        animation:`xa-dark-tendril .17s ease-in-out ${i*16}ms infinite`,opacity:.85})}/>
+    ))}
+    {[{r:56,s:7,c:"rgba(88,28,135,.82)",dur:660},{r:50,s:6,c:"rgba(168,85,247,.7)",dur:540},
+      {r:58,s:5,c:"rgba(192,132,252,.6)",dur:600},{r:52,s:4,c:"rgba(76,29,149,.55)",dur:480}].map((o,i)=>(
+      <div key={i} style={abs({width:o.s,height:o.s,borderRadius:"50%",background:o.c,
+        animation:`xa-orbit-dk${i} ${o.dur}ms linear ${i*150}ms infinite reverse`})}/>
+    ))}
+    <div style={abs({width:30,height:30,borderRadius:"50%",
+      background:"radial-gradient(circle,#0f0a1e 14%,black 55%)",
+      boxShadow:"0 0 0 5px #581c87,0 0 0 12px rgba(88,28,135,.6),0 0 52px 26px rgba(88,28,135,1),0 0 100px 44px rgba(88,28,135,.65)"})}/>
+    <Ring d={112} bg="radial-gradient(circle,rgba(88,28,135,.56) 0%,transparent 70%)" anim="xa-dark-consume .12s ease-in infinite"/>
+    <Ring d={110} bc="rgba(168,85,247,.32)" bw="1px" anim="xa-burst .15s ease-out infinite"/>
+    {[0,22,44,66,88,110,132,154,176,198,220,242,264,286,308,330].map((a,i)=>(
+      <div key={`cv${i}`} style={abs({width:"70px",height:"2px",
+        background:`linear-gradient(to left,transparent,${pal.c},transparent)`,
+        borderRadius:"9999px",transformOrigin:"right center",
+        transform:`rotate(${a}deg) translateX(-90px)`,
+        animation:`xa-converge .155s ease-in ${i*8}ms forwards`,opacity:.45})}/>
+    ))}
+  </>)
+
+  // ─ HAOS ─────────────────────────────────────────────────────────────────
+  if(isHaos) return hub(130,<>
+    {Array.from({length:32},(_,i)=>i*11.25).map((a,i)=>(
+      <div key={a} style={abs({width:"2px",
+        height:i%8===0?"52px":i%4===0?"34px":i%2===0?"22px":"14px",
+        background:"linear-gradient(to top,transparent,rgba(254,249,195,.9),white)",
+        borderRadius:"9999px",transformOrigin:"50% 100%",
+        transform:`rotate(${a}deg) translateY(-${i%8===0?50:i%4===0?32:i%2===0?20:12}px)`,
+        opacity:i%8===0?1:i%4===0?.82:i%2===0?.62:.42,
+        animation:`xa-haos-ray .065s ease-in-out ${i%4===0?0:i%4===1?16:i%4===2?32:48}ms infinite`})}/>
+    ))}
+    {[{r:62,s:9,c:"rgba(253,224,71,.99)",dur:130},{r:56,s:7,c:"rgba(255,255,255,.95)",dur:108},
+      {r:64,s:7,c:"rgba(254,240,138,.92)",dur:148},{r:58,s:6,c:"rgba(253,224,71,.86)",dur:122},
+      {r:62,s:5,c:"rgba(255,255,255,.78)",dur:136}].map((o,i)=>(
+      <div key={i} style={abs({width:o.s,height:o.s,borderRadius:"50%",background:o.c,
+        boxShadow:`0 0 ${o.s*3}px ${o.s}px ${o.c}`,
+        animation:`xa-orbit-ha${i} ${o.dur}ms linear ${i*25}ms infinite`})}/>
+    ))}
+    <div style={abs({width:46,height:46,borderRadius:"50%",background:"white",
+      boxShadow:"0 0 0 8px #fef08a,0 0 0 16px rgba(253,224,71,.55),0 0 72px 36px rgba(254,240,138,1),0 0 130px 56px rgba(253,224,71,.55)",
+      animation:"xa-pulse .055s ease-in-out infinite"})}/>
+    <Ring d={124} bg="radial-gradient(circle,rgba(254,240,138,.5) 0%,transparent 65%)" anim="xa-haos-halo .07s ease-in-out infinite"/>
+    <Ring d={128} bc="rgba(254,240,138,.58)" bw="1px" anim="xa-burst .085s ease-out infinite"/>
+    <Ring d={128} bc="rgba(254,240,138,.34)" bw="1px" anim="xa-burst .085s ease-out .042s infinite"/>
+    {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,i)=>(
+      <div key={`cv${i}`} style={abs({width:"75px",height:"2px",
+        background:`linear-gradient(to left,transparent,${pal.b},transparent)`,
+        borderRadius:"9999px",transformOrigin:"right center",
+        transform:`rotate(${a}deg) translateX(-95px)`,
+        animation:`xa-converge .155s ease-in ${i*10}ms forwards`,opacity:.55})}/>
+    ))}
+  </>)
+
+  // ─ VENTUS ───────────────────────────────────────────────────────────────
+  if(isVent) return hub(118,<>
+    <Ring d={114} bc="rgba(16,185,129,.55)" bw="1px" anim="xa-spin .12s linear infinite" op={.62}/>
+    <Ring d={98}  bc="#34d399" bw="2px" glow="0 0 26px 12px rgba(52,211,153,.82)" anim="xa-spin .09s linear reverse infinite" op={.82}/>
+    <Ring d={74}  bc="#6ee7b7" bw="2px" glow="0 0 14px 7px rgba(110,231,183,.75)" anim="xa-spin .07s linear infinite" op={.72}/>
+    <Ring d={50}  bc="#a7f3d0" bw="1px" anim="xa-spin .055s linear reverse infinite" op={.55}/>
+    {[0,60,120,180,240,300].map((a,i)=>(
+      <div key={i} style={abs({width:"28px",height:"3px",
+        background:`linear-gradient(to left,transparent,rgba(52,211,153,.9),transparent)`,
+        borderRadius:"9999px",transformOrigin:"center center",
+        transform:`rotate(${a}deg)`,
+        animation:`xa-vent-blade .08s ease-in-out ${i*13}ms infinite`,opacity:.85})}/>
+    ))}
+    {[{r:56,s:8,c:"rgba(52,211,153,.95)",dur:180},{r:50,s:6,c:"rgba(110,231,183,.85)",dur:145},
+      {r:58,s:5,c:"rgba(255,255,255,.8)",dur:160},{r:52,s:4,c:"rgba(16,185,129,.75)",dur:130}].map((o,i)=>(
+      <div key={i} style={abs({width:o.s,height:o.s,borderRadius:"50%",background:o.c,
+        boxShadow:`0 0 ${o.s*2}px ${o.s}px ${o.c}`,
+        animation:`xa-orbit-vt${i} ${o.dur}ms linear ${i*40}ms infinite`})}/>
+    ))}
+    <div style={abs({width:40,height:40,borderRadius:"50%",
+      background:"radial-gradient(circle,white 10%,#6ee7b7 30%,#059669 62%,#064e3b 100%)",
+      boxShadow:"0 0 0 6px #34d399,0 0 34px 18px rgba(52,211,153,1),0 0 68px 28px rgba(16,185,129,.75)",
+      animation:"xa-pulse .07s ease-in-out infinite"})}/>
+    <Ring d={110} bg="radial-gradient(circle,rgba(52,211,153,.28) 0%,transparent 70%)" anim="xa-pulse .1s ease-in-out infinite"/>
+  </>)
+
+  // ─ VOID ─────────────────────────────────────────────────────────────────
+  return hub(118,<>
+    <Ring d={114} bc="rgba(100,116,139,.5)" bw="1px" anim="xa-spin .35s linear infinite" op={.55}/>
+    <Ring d={96}  bc="#64748b" bw="2px" glow="0 0 24px 10px rgba(100,116,139,.78)" anim="xa-spin .22s linear reverse infinite" op={.72}/>
+    <Ring d={70}  bc="#94a3b8" bw="2px" anim="xa-spin .16s linear infinite" op={.62}/>
+    {[0,45,90,135,180,225,270,315].map((a,i)=>(
+      <div key={i} style={abs({width:"3px",height:"30px",
+        background:`linear-gradient(to top,transparent,rgba(148,163,184,.8),white)`,
+        borderRadius:"9999px",transformOrigin:"50% 100%",
+        transform:`rotate(${a}deg) translateY(-40px)`,
+        animation:`xa-void-static .06s step-end ${i*12}ms infinite`,opacity:.75})}/>
+    ))}
+    {[{r:52,s:6,c:"rgba(148,163,184,.85)",dur:480},{r:46,s:4,c:"rgba(203,213,225,.75)",dur:360},
+      {r:54,s:3,c:"rgba(248,250,252,.65)",dur:420}].map((o,i)=>(
+      <div key={i} style={abs({width:o.s,height:o.s,borderRadius:"50%",background:o.c,
+        animation:`xa-orbit-vd${i} ${o.dur}ms linear ${i*140}ms infinite`})}/>
+    ))}
+    <div style={abs({width:28,height:28,borderRadius:"50%",
+      background:"radial-gradient(circle,white 8%,#94a3b8 32%,#334155 62%,black 100%)",
+      boxShadow:"0 0 0 5px #64748b,0 0 30px 16px rgba(100,116,139,1),0 0 60px 24px rgba(51,65,85,.8)"})}/>
+    {[{w:110,op:.3},{w:86,op:.2},{w:64,op:.15}].map((r,i)=>(
+      <Ring key={i} d={r.w} bc={`rgba(148,163,184,${r.op})`} bw="1px" anim={`xa-spin ${.8+i*.3}s linear ${i%2===0?"":"reverse"} infinite`}/>
+    ))}
+  </>)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STRIKE — blazing fast projectile with deep trails
+// ═══════════════════════════════════════════════════════════════════════════
+function Strike({el,dist}:{el:string;dist:number}){
+  const pal=p(el)
+  const ease=EASE[el]||"cubic-bezier(0.06,0,0.04,1)"
+  const mv:S={animation:`xa-move ${T.STRIKE}ms ${ease} forwards`,willChange:"transform"}
+
+  const speedLines=(count:number,color:string,opacity:number)=>
+    Array.from({length:count},(_,i)=>i).map(i=>(
+      <div key={`sl${i}`} style={{position:"fixed",left:0,
+        top:`calc(50% + ${(i-(count-1)/2)*7}px)`,
+        width:"100vw",height:i===(count-1)/2?"3px":"1px",
+        background:`linear-gradient(to right,transparent,${color},transparent)`,
+        pointerEvents:"none",willChange:"opacity",
+        animation:`xa-speed-line ${T.STRIKE}ms cubic-bezier(0.03,0,0.07,1) ${i*5}ms forwards`,
+        opacity:opacity-Math.abs(i-(count-1)/2)*0.04}}/>
+    ))
+
+  // Full set of trails: outer glow → mid body → sharp core
+  const trail=(w1:number,h1:number,c1:string,w2:number,h2:number,c2:string,w3:number,h3:number,c3:string,nodes?:React.ReactNode)=>(
+    <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",
+      display:"flex",alignItems:"center",...mv}}>
+      {/* Wide outer glow trail */}
+      <div style={abs({width:w1,height:h1,background:c1,borderRadius:"9999px",
+        filter:"blur(6px)",opacity:.82,animation:`xa-trail-fade ${T.STRIKE}ms ease-in forwards`})}/>
+      {/* Mid body */}
+      <div style={abs({width:w2,height:h2,background:c2,borderRadius:"9999px",
+        filter:"blur(2px)",opacity:.9})}/>
+      {/* Sharp bright core */}
+      <div style={abs({width:w3,height:h3,background:c3,borderRadius:"9999px",opacity:.96})}/>
+      {nodes}
+      {/* Bright orb tip */}
+      <div style={{width:"44px",height:"44px",flexShrink:0,borderRadius:"50%",
+        background:`radial-gradient(circle,white 8%,${pal.b} 30%,${pal.a} 62%,${pal.a} 100%)`,
+        boxShadow:`0 0 0 5px ${pal.b},0 0 32px 16px ${pal.glow},0 0 64px 26px ${pal.a}`}}/>
+      {/* Nose flare */}
+      <div style={{position:"absolute",width:"18px",height:"18px",right:"-8px",
+        background:"white",borderRadius:"50%",
+        boxShadow:`0 0 26px 13px rgba(255,255,255,1)`}}/>
+    </div>
+  )
+
+  const isFire=["pyrus","fire"].includes(el)
+  const isAquo=["aquos","aquo","water"].includes(el)
+  const isDark=["darkus","darkness","dark"].includes(el)
+  const isHaos=["haos","light","lightness"].includes(el)
+  const isVent=["ventus","wind"].includes(el)
+  const isVoid=el==="void"
+
+  return <>
+    {speedLines(9,pal.b,.22)}
+    {isFire && trail(280,28,`linear-gradient(to right,transparent,rgba(127,29,29,.15),rgba(220,38,38,.42),#f97316,rgba(251,146,60,.45))`,220,14,`linear-gradient(to right,transparent,rgba(220,38,38,.55),#f97316,rgba(251,146,60,.6))`,150,6,`linear-gradient(to right,transparent,#fbbf24,rgba(255,255,255,.75),rgba(251,146,60,.35))`,<>
+      {[{x:50,y:-18,s:11},{x:82,y:14,s:9},{x:108,y:-13,s:8},{x:138,y:9,s:7},{x:162,y:-8,s:5}].map((e,i)=>(
+        <div key={i} style={abs({width:e.s,height:e.s,borderRadius:"50%",background:"radial-gradient(circle,white,#fbbf24)",boxShadow:"0 0 12px 6px rgba(251,191,36,.95)",left:e.x,top:e.y,opacity:.85-i*.1})}/>
+      ))}
+      <div style={abs({width:"140px",height:"5px",background:"linear-gradient(to right,transparent,rgba(251,191,36,.75),white,transparent)",top:"-17px",left:"32px",borderRadius:"9999px",opacity:.72})}/>
+      <div style={abs({width:"110px",height:"4px",background:"linear-gradient(to right,transparent,rgba(249,115,22,.55),transparent)",top:"14px",left:"52px",borderRadius:"9999px",opacity:.58})}/>
+    </>)}
+    {isAquo && trail(260,24,`linear-gradient(to right,transparent,rgba(7,89,133,.15),rgba(2,132,199,.4),#0ea5e9,rgba(56,189,248,.42))`,200,12,`linear-gradient(to right,transparent,rgba(2,132,199,.52),#0ea5e9,rgba(56,189,248,.58))`,140,5,`linear-gradient(to right,transparent,#7dd3fc,rgba(255,255,255,.7),rgba(56,189,248,.32))`,<>
+      {[{x:55,y:-15,s:10},{x:88,y:12,s:8},{x:116,y:-11,s:7},{x:142,y:8,s:6}].map((e,i)=>(
+        <div key={i} style={abs({width:e.s,height:e.s,borderRadius:"50%",background:"radial-gradient(circle,white,#7dd3fc)",boxShadow:"0 0 10px 5px rgba(56,189,248,.92)",left:e.x,top:e.y,opacity:.82-i*.1})}/>
+      ))}
+      {[{x:65,y:-20,w:5,h:18},{x:95,y:16,w:4,h:14},{x:125,y:-18,w:3,h:12}].map((d,i)=>(
+        <div key={i} style={abs({width:d.w,height:d.h,background:`linear-gradient(to top,${pal.a},rgba(255,255,255,.6),transparent)`,borderRadius:"9999px",left:d.x,top:d.y,opacity:.7-i*.15})}/>
+      ))}
+    </>)}
+    {isDark && trail(250,22,`linear-gradient(to right,transparent,rgba(49,10,73,.28),rgba(88,28,135,.58),#581c87,rgba(168,85,247,.44))`,190,12,`linear-gradient(to right,transparent,rgba(88,28,135,.68),#7e22ce,rgba(168,85,247,.52))`,120,5,`linear-gradient(to right,transparent,#a855f7,rgba(192,132,252,.55))`,<>
+      {[{x:48,y:-15,w:16,h:3},{x:75,y:11,w:12,h:3},{x:100,y:-11,w:9,h:2},{x:122,y:8,w:7,h:2}].map((s,i)=>(
+        <div key={i} style={abs({width:s.w,height:s.h,background:`rgba(168,85,247,${.85-i*.12})`,borderRadius:"2px",boxShadow:"0 0 9px 4px rgba(88,28,135,.88)",left:s.x,top:s.y,transform:`rotate(${i%2===0?-24:20}deg)`,opacity:.8-i*.1})}/>
+      ))}
+      <div style={abs({width:"108px",height:"3px",background:"linear-gradient(to right,transparent,rgba(88,28,135,.72),transparent)",top:"-18px",left:"32px",borderRadius:"9999px",opacity:.65,transform:"rotate(-7deg)"})}/>
+      <div style={abs({width:"88px",height:"3px",background:"linear-gradient(to right,transparent,rgba(88,28,135,.72),transparent)",top:"16px",left:"44px",borderRadius:"9999px",opacity:.65,transform:"rotate(7deg)"})}/>
+    </>)}
+    {isHaos && trail(300,30,`linear-gradient(to right,transparent,rgba(161,123,0,.18),rgba(234,179,8,.45),#fde047,rgba(254,240,138,.48))`,240,16,`linear-gradient(to right,transparent,rgba(234,179,8,.58),#fde047,rgba(254,240,138,.62))`,160,7,`linear-gradient(to right,transparent,#fef08a,rgba(255,255,255,.85),rgba(253,224,71,.4))`,<>
+      {[{x:60,y:-19,s:12},{x:95,y:15,s:10},{x:128,y:-14,s:9},{x:158,y:10,s:8},{x:185,y:-9,s:6}].map((e,i)=>(
+        <div key={i} style={abs({width:e.s,height:e.s,borderRadius:"50%",background:"radial-gradient(circle,white,#fde047)",boxShadow:"0 0 14px 7px rgba(253,224,71,.98)",left:e.x,top:e.y,opacity:.88-i*.1})}/>
+      ))}
+      {[0,45,90,135].map((a,i)=>(
+        <div key={i} style={{position:"absolute",width:"30px",height:"2px",
+          background:"linear-gradient(to right,white,rgba(254,240,138,.6),transparent)",
+          right:"-5px",top:"-1px",borderRadius:"9999px",
+          transformOrigin:"left center",transform:`rotate(${a}deg)`,opacity:.7}}/>
+      ))}
+    </>)}
+    {isVent && trail(270,26,`linear-gradient(to right,transparent,rgba(5,78,52,.15),rgba(4,120,87,.42),#10b981,rgba(52,211,153,.44))`,210,13,`linear-gradient(to right,transparent,rgba(4,120,87,.55),#10b981,rgba(52,211,153,.6))`,145,6,`linear-gradient(to right,transparent,#6ee7b7,rgba(255,255,255,.72),rgba(52,211,153,.36))`,<>
+      {[{x:55,y:-14,s:10},{x:84,y:12,s:8},{x:110,y:-12,s:7},{x:136,y:8,s:5}].map((e,i)=>(
+        <div key={i} style={abs({width:e.s,height:e.s,borderRadius:"50%",background:"radial-gradient(circle,white,#6ee7b7)",boxShadow:"0 0 11px 5px rgba(52,211,153,.92)",left:e.x,top:e.y,opacity:.82-i*.1})}/>
+      ))}
+      <div style={abs({width:"100px",height:"4px",background:"linear-gradient(to right,transparent,rgba(52,211,153,.7),transparent)",top:"-16px",left:"28px",borderRadius:"9999px",opacity:.65,transform:"rotate(-8deg)"})}/>
+    </>)}
+    {isVoid && <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",...mv}}>
+      {speedLines(5,"rgba(148,163,184,.3)",.12)}
+      <div style={abs({width:220,height:18,background:"linear-gradient(to right,transparent,rgba(51,65,85,.22),rgba(100,116,139,.5),#64748b,rgba(148,163,184,.38))",borderRadius:"9999px",filter:"blur(4px)",opacity:.82,animation:`xa-trail-fade ${T.STRIKE}ms ease-in forwards`})}/>
+      <div style={abs({width:170,height:9,background:"linear-gradient(to right,transparent,rgba(100,116,139,.6),#94a3b8",borderRadius:"9999px",filter:"blur(2px)",opacity:.88})}/>
+      {[0,30,60,90,120,150].map((a,i)=>(
+        <div key={i} style={abs({width:12,height:4,background:"rgba(203,213,225,.8)",borderRadius:"2px",transform:`rotate(${a}deg)`,left:40+i*22,top:-8+i%2*16,opacity:.7-i*.08})}/>
+      ))}
+      <div style={{width:"36px",height:"36px",flexShrink:0,borderRadius:"50%",background:"radial-gradient(circle,white 8%,#94a3b8 32%,#334155 62%,black 100%)",boxShadow:"0 0 0 5px #64748b,0 0 28px 14px rgba(148,163,184,1),0 0 56px 22px rgba(51,65,85,.7)"}}/>
+    </div>}
+  </>
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPACT — cinematic freeze frame
+// ═══════════════════════════════════════════════════════════════════════════
+function Impact({el}:{el:string}){
+  const pal=p(el)
+  const flash=`radial-gradient(circle at center,white 0%,${pal.d} 22%,${pal.b} 48%,transparent 72%)`
+  const glow=pal.glow
+  const cr=`radial-gradient(circle at center,rgba(255,30,30,0) 0%,rgba(255,30,30,.22) 100%)`
+  const cb=`radial-gradient(circle at center,rgba(30,30,255,0) 0%,rgba(30,30,255,.22) 100%)`
+  const screenTint=pal.screen
+  return(
+    <div style={{position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
+      pointerEvents:"none",contain:"layout style paint"}}>
+      {/* Screen-wide element tint */}
+      <div style={{position:"absolute",inset:0,background:screenTint,
+        animation:`xa-screen-tint ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
+      {/* Global vignette darkening */}
+      <div style={{position:"absolute",inset:0,
+        background:"radial-gradient(ellipse at center,transparent 25%,rgba(0,0,0,.78) 100%)",
+        animation:`xa-vignette ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
+      {/* Full-screen radial flash */}
+      <div style={{position:"absolute",inset:0,background:flash,
+        animation:`xa-hero-flash ${T.IMPACT}ms linear forwards`,willChange:"opacity"}}/>
+      {/* Chromatic aberration — red left */}
+      <div style={{position:"absolute",inset:0,background:cr,
+        animation:`xa-chroma-r ${T.IMPACT}ms ease-out forwards`,willChange:"opacity,transform",mixBlendMode:"screen"}}/>
+      {/* Chromatic aberration — blue right */}
+      <div style={{position:"absolute",inset:0,background:cb,
+        animation:`xa-chroma-b ${T.IMPACT}ms ease-out forwards`,willChange:"opacity,transform",mixBlendMode:"screen"}}/>
+      {/* Impact point */}
+      <div style={{position:"absolute",left:"50%",top:"50%",width:0,height:0}}>
+        {/* Compression orb */}
+        <div style={abs({width:200,height:200,marginLeft:-100,marginTop:-100,borderRadius:"50%",
+          background:glow,filter:"blur(32px)",
+          animation:`xa-hero-compress ${T.IMPACT}ms ease-out forwards`})}/>
+        {/* 6 shockwave rings — main spectacle */}
+        {[{sz:150,bw:"8px",d:0,spd:1.4},{sz:150,bw:"5px",d:30,spd:1.7},{sz:150,bw:"3px",d:60,spd:2.1},
+          {sz:150,bw:"2px",d:90,spd:2.6},{sz:150,bw:"2px",d:120,spd:3.2},{sz:150,bw:"1px",d:150,spd:4.0}].map((r,i)=>(
+          <div key={i} style={abs({width:r.sz,height:r.sz,marginLeft:-r.sz/2,marginTop:-r.sz/2,
+            borderRadius:"50%",border:`${r.bw} solid ${i<2?"white":`rgba(255,255,255,${.8-i*.12})`}`,
+            boxShadow:i<2?`0 0 34px 14px ${glow}`:undefined,
+            animation:`xa-shockwave ${T.IMPACT*r.spd}ms cubic-bezier(0.04,0,0.18,1) ${r.d}ms forwards`})}/>
+        ))}
+        {/* 12 impact burst rays */}
+        {Array.from({length:12},(_,i)=>i*30).map((a,i)=>(
+          <div key={i} style={abs({width:"110px",height:i%3===0?"3px":"1px",
+            background:`linear-gradient(to right,white,${glow},transparent)`,
+            borderRadius:"9999px",transformOrigin:"left center",
+            transform:`rotate(${a}deg)`,opacity:i%3===0?.85:.55,
+            animation:`xa-impact-ray ${T.IMPACT*1.2}ms ease-out ${i*4}ms forwards`})}/>
+        ))}
+        {/* Freeze ring cluster */}
+        <Ring d={100} bc="white" bw="5px" glow={`0 0 30px 14px ${glow},inset 0 0 22px 10px ${glow}`} anim={`xa-hero-ring ${T.IMPACT}ms ease-out forwards`}/>
+        <Ring d={62}  bc="white" bw="3px" op={.75} anim={`xa-hero-ring ${T.IMPACT}ms ease-out 16ms forwards`}/>
+        <Ring d={36}  bc="white" bw="2px" op={.55} anim={`xa-hero-ring ${T.IMPACT}ms ease-out 30ms forwards`}/>
+        {/* Horizontal + vertical ground waves */}
+        <div style={abs({width:"320px",height:"16px",marginLeft:-160,top:28,
+          background:`linear-gradient(to right,transparent,${glow},transparent)`,
+          borderRadius:"9999px",filter:"blur(4px)",
+          animation:`xa-ground-wave ${T.IMPACT*1.4}ms ease-out forwards`})}/>
+        <div style={abs({width:"240px",height:"12px",marginLeft:-120,top:-30,
+          background:`linear-gradient(to right,transparent,${glow},transparent)`,
+          borderRadius:"9999px",filter:"blur(3px)",opacity:.55,
+          animation:`xa-ground-wave ${T.IMPACT*1.2}ms ease-out 20ms forwards`})}/>
+        {/* Smoke puffs */}
+        {[{sx:-40,c:"rgba(200,200,200,.52)"},{sx:0,c:"rgba(220,220,220,.46)"},{sx:40,c:"rgba(180,180,180,.48)"}].map((s,i)=>(
+          <div key={i} style={({position:"absolute",left:"-28px",top:"-14px",
+            width:"56px",height:"56px",borderRadius:"50%",
+            background:`radial-gradient(circle,${s.c},transparent)`,filter:"blur(8px)",
+            animation:`xa-smoke ${T.AFTERMATH*.72}ms ease-out ${i*28}ms forwards`,
+            "--sx":`${s.sx}px`}) as React.CSSProperties}/>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AFTERMATH — epic element signatures
+// ═══════════════════════════════════════════════════════════════════════════
+function Aftermath({el,id,pts}:{el:string;id:string;pts:ReturnType<typeof mkP>}){
+  const pal=p(el)
+  const isFire=["pyrus","fire"].includes(el)
+  const isAquo=["aquos","aquo","water"].includes(el)
+  const isDark=["darkus","darkness","dark"].includes(el)
+  const isHaos=["haos","light","lightness"].includes(el)
+  const isVent=["ventus","wind"].includes(el)
+  const isVoid=el==="void"
+  const isTerra=["terra","subterra"].includes(el)
+
+  const EC:Record<string,{core:string;trail:string;glow:string}> = {
+    fire:   {core:"white",trail:"#fb923c",glow:"rgba(251,146,60,1)"},
+    pyrus:  {core:"white",trail:"#fb923c",glow:"rgba(251,146,60,1)"},
+    aquos:  {core:"white",trail:"#38bdf8",glow:"rgba(56,189,248,1)"},
+    aquo:   {core:"white",trail:"#38bdf8",glow:"rgba(56,189,248,1)"},
+    water:  {core:"white",trail:"#38bdf8",glow:"rgba(56,189,248,1)"},
+    haos:   {core:"white",trail:"#fde047",glow:"rgba(253,224,71,1)"},
+    light:  {core:"white",trail:"#fde047",glow:"rgba(253,224,71,1)"},
+    lightness:{core:"white",trail:"#fde047",glow:"rgba(253,224,71,1)"},
+    darkus: {core:"#c084fc",trail:"#581c87",glow:"rgba(88,28,135,1)"},
+    darkness:{core:"#c084fc",trail:"#581c87",glow:"rgba(88,28,135,1)"},
+    dark:   {core:"#c084fc",trail:"#581c87",glow:"rgba(88,28,135,1)"},
+    ventus: {core:"white",trail:"#34d399",glow:"rgba(52,211,153,1)"},
+    wind:   {core:"white",trail:"#34d399",glow:"rgba(52,211,153,1)"},
+    void:   {core:"#94a3b8",trail:"#334155",glow:"rgba(100,116,139,1)"},
+  }
+  const ec=EC[el]||{core:"white",trail:pal.b,glow:pal.glow}
+
+  return(
+    <div style={{position:"absolute",left:0,top:0,pointerEvents:"none"}}>
+      {/* ── PARTICLE BURST ──────────────────────────────────────────────── */}
+      {pts.map(pt=>{
+        const px=pt.spd*Math.cos(pt.angle)
+        const py=pt.spd*Math.sin(pt.angle)
+        const dur=T.AFTERMATH*pt.life
+        return(
+          <div key={pt.id} style={({
+            position:"absolute",left:"-3px",top:"-3px",
+            width:`${pt.sz}px`,height:`${pt.sz}px`,borderRadius:"50%",
+            background:`radial-gradient(circle,${ec.core},${ec.trail})`,
+            boxShadow:`0 0 ${pt.sz*2}px ${pt.sz}px ${ec.glow}`,
+            animation:`xa-particle ${dur}ms cubic-bezier(0.04,.35,.18,1) ${pt.del}ms forwards`,
+            willChange:"transform,opacity",
+            "--px":`${px}px`,"--py":`${py}px`,
+          }) as React.CSSProperties}/>
+        )
+      })}
+
+      {/* ── ELEMENT SIGNATURES ──────────────────────────────────────────── */}
+      {/* FIRE: 3 rising ember columns */}
+      {isFire && <>
+        {[-18,0,18].map((ox,i)=>(
+          <div key={i} style={abs({width:"12px",height:"80px",
+            background:"linear-gradient(to top,rgba(251,146,60,.88),rgba(249,115,22,.35),transparent)",
+            borderRadius:"9999px",filter:"blur(4px)",left:ox-6,top:-10,
+            animation:`xa-fire-rise ${T.AFTERMATH*.75}ms ease-out ${i*45}ms forwards`})}/>
+        ))}
+        {[{ox:-22,oy:-12},{ox:6,oy:-20},{ox:20,oy:-8},{ox:-8,oy:-18},{ox:14,oy:-14},{ox:-16,oy:-6}].map((e,i)=>(
+          <div key={i} style={abs({width:"5px",height:"5px",borderRadius:"50%",
+            background:"radial-gradient(circle,white,#fbbf24)",
+            boxShadow:"0 0 7px 3px rgba(251,191,36,.95)",
+            left:e.ox,top:e.oy,
+            animation:`xa-ember ${T.AFTERMATH*.85}ms ease-out ${i*40}ms forwards`,willChange:"transform,opacity"})}/>
+        ))}
+        <Ring d={90}  bc="rgba(249,115,22,.5)" bw="1px" anim={`xa-ring-out ${T.AFTERMATH*.5}ms ease-out forwards`}/>
+        <Ring d={140} bc="rgba(251,146,60,.3)" bw="1px" anim={`xa-ring-out ${T.AFTERMATH*.6}ms ease-out 40ms forwards`}/>
+      </>}
+
+      {/* AQUOS: expanding water ripple rings + splash drops */}
+      {isAquo && <>
+        {[{s:80,d:0},{s:140,d:60},{s:200,d:120},{s:260,d:190}].map((r,i)=>(
+          <Ring key={i} d={r.s} bc={`rgba(56,189,248,${.8-i*.15})`} bw={`${3-i*.5}px`}
+            glow={i<2?`0 0 14px 6px rgba(56,189,248,.55)`:undefined}
+            anim={`xa-ripple-out ${T.AFTERMATH*.72}ms cubic-bezier(.04,.4,.18,1) ${r.d}ms forwards`}/>
+        ))}
+        {Array.from({length:12},(_,i)=>i*30).map((a,i)=>(
+          <div key={i} style={abs({width:"8px",height:"8px",borderRadius:"50%",
+            background:"radial-gradient(circle,white,#7dd3fc)",
+            boxShadow:"0 0 8px 4px rgba(56,189,248,.9)",
+            animation:`xa-drop-out ${T.AFTERMATH*.62}ms ease-out ${i*18}ms forwards`,
+            "--da":`${a}deg`} as React.CSSProperties)}/>
+        ))}
+      </>}
+
+      {/* DARKNESS: void singularity absorption + rift tears */}
+      {isDark && <>
+        {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,i)=>(
+          <div key={i} style={abs({width:"80px",height:"2px",
+            background:"linear-gradient(to left,rgba(168,85,247,.9),rgba(88,28,135,.4),transparent)",
+            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${a}deg)`,
+            animation:`xa-dark-abs ${T.AFTERMATH*.8}ms ease-out ${i*10}ms forwards`})}/>
+        ))}
+        {[-28,-10,10,28].map((x,i)=>(
+          <div key={i} style={abs({width:"2px",height:"65px",marginLeft:x,top:-32,
+            background:`linear-gradient(to bottom,transparent,rgba(88,28,135,${.9-i*.1}),transparent)`,
+            borderRadius:"9999px",boxShadow:"0 0 8px 3px rgba(88,28,135,.75)",
+            animation:`xa-void-crack ${T.AFTERMATH*.65}ms ease-out ${i*36}ms forwards`})}/>
+        ))}
+        <Ring d={80}  bc="rgba(168,85,247,.55)" bw="2px" anim={`xa-ring-in ${T.AFTERMATH*.55}ms ease-out forwards`}/>
+        <Ring d={120} bc="rgba(88,28,135,.35)"  bw="1px" anim={`xa-ring-in ${T.AFTERMATH*.7}ms ease-out 40ms forwards`}/>
+      </>}
+
+      {/* HAOS: divine cross + starburst */}
+      {isHaos && <>
+        {[0,90,45,135].map((a,i)=>(
+          <div key={i} style={abs({width:i<2?"120px":"85px",height:i<2?"4px":"3px",
+            background:"linear-gradient(to right,white,rgba(254,240,138,.75),transparent)",
+            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${a}deg)`,
+            animation:`xa-haos-ray-out ${T.AFTERMATH*.55}ms ease-out ${i*14}ms forwards`})}/>
+        ))}
+        {Array.from({length:16},(_,i)=>i*22.5).map((a,i)=>(
+          <div key={i} style={abs({width:"55px",height:"1px",
+            background:"linear-gradient(to right,rgba(254,240,138,.8),transparent)",
+            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${a}deg)`,
+            animation:`xa-haos-ray-out ${T.AFTERMATH*.42}ms ease-out ${i*8}ms forwards`,opacity:.62})}/>
+        ))}
+        {[{s:80,d:0},{s:140,d:55},{s:200,d:115}].map((r,i)=>(
+          <Ring key={i} d={r.s} bc={`rgba(253,224,71,${.75-i*.18})`}
+            bw="1px" glow={i===0?"0 0 12px 6px rgba(253,224,71,.55)":undefined}
+            anim={`xa-ring-out ${T.AFTERMATH*.55}ms ease-out ${r.d}ms forwards`}/>
+        ))}
+      </>}
+
+      {/* VENTUS: tornadic rings + feather particles */}
+      {isVent && <>
+        {[{s:80,d:0},{s:140,d:50},{s:200,d:105},{s:260,d:168}].map((r,i)=>(
+          <div key={i} style={abs({width:r.s,height:r.s,marginLeft:-r.s/2,marginTop:-r.s/2,
+            borderRadius:"50%",border:`${2-i*.3}px dashed rgba(52,211,153,${.75-i*.14})`,
+            animation:`xa-spin ${.3+i*.1}s linear infinite,xa-ring-out ${T.AFTERMATH*.65}ms ease-out ${r.d}ms forwards`})}/>
+        ))}
+        {Array.from({length:10},(_,i)=>i*36).map((a,i)=>(
+          <div key={i} style={abs({width:"22px",height:"4px",
+            background:`linear-gradient(to right,rgba(52,211,153,.85),transparent)`,
+            borderRadius:"9999px",transformOrigin:"left center",
+            transform:`rotate(${a}deg)`,
+            animation:`xa-vent-shard ${T.AFTERMATH*.58}ms ease-out ${i*22}ms forwards`})}/>
+        ))}
+      </>}
+
+      {/* VOID: reality fragmentation */}
+      {isVoid && <>
+        {[[40,0,12,4],[60,45,9,3],[-40,0,8,4],[-55,30,10,3],[0,-40,11,4],[0,38,9,3],
+          [50,-25,7,3],[-45,-28,8,4],[30,50,7,3],[-30,-50,9,4]].map(([x,y,w,h],i)=>(
+          <div key={i} style={abs({width:w,height:h,background:`rgba(148,163,184,${.8-i*.04})`,
+            borderRadius:"2px",boxShadow:"0 0 6px 2px rgba(100,116,139,.7)",
+            animation:`xa-void-shard ${T.AFTERMATH*.72}ms cubic-bezier(.04,.35,.18,1) ${i*28}ms forwards`,
+            "--vx":`${x}px`,"--vy":`${y}px`} as React.CSSProperties)}/>
+        ))}
+        {[45,90,135,180,225,270,315].map((a,i)=>(
+          <div key={i} style={abs({width:"60px",height:"1px",
+            background:`linear-gradient(to right,rgba(148,163,184,.7),transparent)`,
+            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${a}deg)`,
+            animation:`xa-void-crack ${T.AFTERMATH*.5}ms ease-out ${i*15}ms forwards`,opacity:.65})}/>
+        ))}
+      </>}
+
+      {/* Residual core glow that lingers */}
+      <div style={abs({width:"40px",height:"40px",marginLeft:-20,marginTop:-20,borderRadius:"50%",
+        background:`radial-gradient(circle,${ec.glow},transparent)`,filter:"blur(10px)",
+        animation:`xa-core-linger ${T.AFTERMATH}ms ease-out forwards`})}/>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+export function ElementalAttackAnimation({
+  id,startX,startY,targetX,targetY,element,attackerImage,attackerName,
+  portalTarget,onImpact,onComplete,
+}:AttackAnimationProps){
+  const [phase,setPhase]=useState<Phase>("charge")
+  const [mounted,setMounted]=useState(false)
+  const dist=Math.hypot(targetX-startX,targetY-startY)
+  const aRad=Math.atan2(targetY-startY,targetX-startX)
+  const aDeg=aRad*(180/Math.PI)
+  const el=(element?.toLowerCase().trim()||"neutral")
+  const doneRef=useRef(onComplete)
+  useEffect(()=>{doneRef.current=onComplete},[onComplete])
+  useEffect(()=>{
+    setMounted(true)
+    const tm=[
+      setTimeout(()=>setPhase("release"),T.CHARGE),
+      setTimeout(()=>setPhase("strike"),T.CHARGE+T.RELEASE),
+      setTimeout(()=>{setPhase("impact");onImpact?.(id,targetX,targetY,el)},T.CHARGE+T.RELEASE+T.STRIKE),
+      setTimeout(()=>setPhase("aftermath"),T.CHARGE+T.RELEASE+T.STRIKE+T.IMPACT),
+      setTimeout(()=>doneRef.current(id),T.TOTAL),
+    ]
+    return()=>tm.forEach(clearTimeout)
+  },[id])
+  if(!mounted) return null
+
+  const tbl:Record<string,[number,number,number,number]>={
+    pyrus:[28,120,42,96],fire:[28,120,42,96],
+    aquos:[22,115,34,84],aquo:[22,115,34,84],water:[22,115,34,84],
+    haos:[32,170,38,90],light:[32,170,38,90],lightness:[32,170,38,90],
+    darkus:[24,115,24,66],darkness:[24,115,24,66],dark:[24,115,24,66],
+    ventus:[28,148,32,86],wind:[28,148,32,86],
+    void:[30,360,24,72],
+  }
+  const [n,sp,mn,mx]=tbl[el]??[18,115,32,82]
+  const pts=useMemo(()=>mkP(n,sp,mn,mx,id),[el,id])
+
+  const ease=EASE[el]||"cubic-bezier(0.06,0,0.04,1)"
+  const inFlight=phase==="charge"||phase==="release"||phase==="strike"
+  const ctr:S=inFlight
+    ?{position:"absolute",left:startX,top:startY,width:dist,height:60,marginTop:-30,
+       pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)`,
+       willChange:"transform",contain:"layout style paint"}
+    :{position:"absolute",left:targetX,top:targetY,width:0,height:60,marginTop:-30,
+       pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)`,
+       willChange:"transform",contain:"layout style paint"}
+
+  const orbitKFs=`
+    @keyframes xa-orbit-0{from{transform:rotate(0deg) translateX(-58px)}to{transform:rotate(360deg) translateX(-58px)}}
+    @keyframes xa-orbit-1{from{transform:rotate(120deg) translateX(-52px)}to{transform:rotate(480deg) translateX(-52px)}}
+    @keyframes xa-orbit-2{from{transform:rotate(240deg) translateX(-56px)}to{transform:rotate(600deg) translateX(-56px)}}
+    @keyframes xa-orbit-3{from{transform:rotate(60deg) translateX(-50px)}to{transform:rotate(420deg) translateX(-50px)}}
+    @keyframes xa-orbit-4{from{transform:rotate(180deg) translateX(-54px)}to{transform:rotate(540deg) translateX(-54px)}}
+    @keyframes xa-orbit-dk0{from{transform:rotate(45deg) translateX(-56px)}to{transform:rotate(405deg) translateX(-56px)}}
+    @keyframes xa-orbit-dk1{from{transform:rotate(165deg) translateX(-50px)}to{transform:rotate(525deg) translateX(-50px)}}
+    @keyframes xa-orbit-dk2{from{transform:rotate(285deg) translateX(-58px)}to{transform:rotate(645deg) translateX(-58px)}}
+    @keyframes xa-orbit-dk3{from{transform:rotate(15deg) translateX(-52px)}to{transform:rotate(375deg) translateX(-52px)}}
+    @keyframes xa-orbit-ha0{from{transform:rotate(0deg) translateX(-62px)}to{transform:rotate(360deg) translateX(-62px)}}
+    @keyframes xa-orbit-ha1{from{transform:rotate(72deg) translateX(-56px)}to{transform:rotate(432deg) translateX(-56px)}}
+    @keyframes xa-orbit-ha2{from{transform:rotate(144deg) translateX(-64px)}to{transform:rotate(504deg) translateX(-64px)}}
+    @keyframes xa-orbit-ha3{from{transform:rotate(216deg) translateX(-58px)}to{transform:rotate(576deg) translateX(-58px)}}
+    @keyframes xa-orbit-ha4{from{transform:rotate(288deg) translateX(-62px)}to{transform:rotate(648deg) translateX(-62px)}}
+    @keyframes xa-orbit-vt0{from{transform:rotate(0deg) translateX(-56px)}to{transform:rotate(360deg) translateX(-56px)}}
+    @keyframes xa-orbit-vt1{from{transform:rotate(90deg) translateX(-50px)}to{transform:rotate(450deg) translateX(-50px)}}
+    @keyframes xa-orbit-vt2{from{transform:rotate(180deg) translateX(-58px)}to{transform:rotate(540deg) translateX(-58px)}}
+    @keyframes xa-orbit-vt3{from{transform:rotate(270deg) translateX(-52px)}to{transform:rotate(630deg) translateX(-52px)}}
+    @keyframes xa-orbit-vd0{from{transform:rotate(60deg) translateX(-52px)}to{transform:rotate(420deg) translateX(-52px)}}
+    @keyframes xa-orbit-vd1{from{transform:rotate(180deg) translateX(-46px)}to{transform:rotate(540deg) translateX(-46px)}}
+    @keyframes xa-orbit-vd2{from{transform:rotate(300deg) translateX(-54px)}to{transform:rotate(660deg) translateX(-54px)}}
+  `
+
+  const globalKFs=`
+    @keyframes xa-spin{to{transform:rotate(360deg)}}
+    @keyframes xa-pulse{0%,100%{transform:scale(1);opacity:.94}50%{transform:scale(1.18);opacity:1}}
+    @keyframes xa-burst{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.28);opacity:0}}
+    @keyframes xa-flare{0%,100%{transform:scaleY(0);opacity:0}45%{transform:scaleY(1);opacity:.9}}
+    @keyframes xa-dark-consume{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(.88);opacity:1}}
+    @keyframes xa-dark-tendril{0%,100%{transform:scaleX(1);opacity:.78}50%{transform:scaleX(1.45);opacity:1}}
+    @keyframes xa-haos-ray{0%,100%{opacity:.72;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.42)}}
+    @keyframes xa-haos-halo{0%,100%{transform:scale(1);opacity:.65}50%{transform:scale(1.25);opacity:.98}}
+    @keyframes xa-aq-stream{0%,100%{transform:scaleY(0) rotate(var(--deg,0));opacity:0}45%{transform:scaleY(1) rotate(var(--deg,0));opacity:.9}}
+    @keyframes xa-vent-blade{0%,100%{transform:scaleX(.7) rotate(var(--a,0deg));opacity:.7}50%{transform:scaleX(1.3) rotate(var(--a,0deg));opacity:1}}
+    @keyframes xa-void-static{0%{opacity:.8}50%{opacity:.2}100%{opacity:.75}}
+    @keyframes xa-converge{0%{transform:rotate(var(--deg,0deg)) translateX(-100px);opacity:0}40%{opacity:.8}100%{transform:rotate(var(--deg,0deg)) translateX(0px);opacity:0}}
+    @keyframes xa-move{0%{transform:translateX(0)}100%{transform:translateX(${dist}px)}}
+    @keyframes xa-trail-fade{0%{opacity:.86}100%{opacity:0}}
+    @keyframes xa-speed-line{0%{transform:scaleX(0) translateX(-100%);opacity:0}5%{opacity:.75}70%{opacity:.5}100%{transform:scaleX(1) translateX(0);opacity:0}}
+    @keyframes xa-hero-flash{0%{opacity:.96}12%{opacity:1}100%{opacity:0}}
+    @keyframes xa-hero-compress{0%{transform:scale(0);opacity:1}50%{opacity:.82}100%{transform:scale(3.5);opacity:0}}
+    @keyframes xa-hero-ring{0%{transform:scale(0);opacity:1}100%{transform:scale(1.8);opacity:0}}
+    @keyframes xa-shockwave{0%{transform:scale(0);opacity:1}70%{opacity:.4}100%{transform:scale(6.5);opacity:0}}
+    @keyframes xa-impact-ray{0%{transform:rotate(var(--ra,0deg)) scaleX(0);opacity:1}38%{transform:rotate(var(--ra,0deg)) scaleX(1.6);opacity:.88}100%{transform:rotate(var(--ra,0deg)) scaleX(2.8);opacity:0}}
+    @keyframes xa-ground-wave{0%{transform:scaleX(0) scaleY(1);opacity:.88}100%{transform:scaleX(1) scaleY(.12);opacity:0}}
+    @keyframes xa-smoke{0%{transform:translate(var(--sx,0px),0) scale(.28);opacity:.74;filter:blur(4px)}100%{transform:translate(var(--sx,0px),-64px) scale(2.6);opacity:0;filter:blur(16px)}}
+    @keyframes xa-screen-tint{0%{opacity:.92}18%{opacity:1}100%{opacity:0}}
+    @keyframes xa-vignette{0%{opacity:.88}100%{opacity:0}}
+    @keyframes xa-chroma-r{0%{opacity:.85;transform:translate(-10px,0)}60%{opacity:.38}100%{opacity:0;transform:translate(-22px,0)}}
+    @keyframes xa-chroma-b{0%{opacity:.85;transform:translate(10px,0)}60%{opacity:.38}100%{opacity:0;transform:translate(22px,0)}}
+    @keyframes xa-particle{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--px,40px),var(--py,-40px)) scale(0);opacity:0}}
+    @keyframes xa-fire-rise{0%{transform:scaleY(0) scaleX(1);opacity:1}60%{opacity:.7}100%{transform:scaleY(1) scaleX(.4);opacity:0}}
+    @keyframes xa-ember{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--ex,10px),var(--ey,-60px)) scale(0);opacity:0}}
+    @keyframes xa-ripple-out{0%{transform:scale(.15);opacity:.92}100%{transform:scale(5);opacity:0}}
+    @keyframes xa-drop-out{0%{transform:rotate(var(--da,0deg)) translateX(0) scale(1);opacity:1}100%{transform:rotate(var(--da,0deg)) translateX(90px) scale(0);opacity:0}}
+    @keyframes xa-dark-abs{0%{transform:rotate(var(--a,0deg)) scaleX(1);opacity:.9}100%{transform:rotate(var(--a,0deg)) scaleX(0);opacity:0}}
+    @keyframes xa-void-crack{0%{transform:scaleY(0);opacity:.92}40%{transform:scaleY(1.1);opacity:.85}100%{transform:scaleY(.85);opacity:0}}
+    @keyframes xa-void-shard{0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1}100%{transform:translate(var(--vx,30px),var(--vy,-30px)) rotate(180deg) scale(0);opacity:0}}
+    @keyframes xa-haos-ray-out{0%{transform:rotate(var(--a,0deg)) scaleX(0);opacity:1}40%{opacity:.88}100%{transform:rotate(var(--a,0deg)) scaleX(1);opacity:0}}
+    @keyframes xa-vent-shard{0%{transform:rotate(var(--a,0deg)) scaleX(0);opacity:.9}50%{opacity:.75}100%{transform:rotate(var(--a,0deg)) scaleX(1.4);opacity:0}}
+    @keyframes xa-ring-out{0%{transform:scale(0);opacity:.9}100%{transform:scale(3.5);opacity:0}}
+    @keyframes xa-ring-in{0%{transform:scale(3);opacity:.7}100%{transform:scale(0);opacity:0}}
+    @keyframes xa-core-linger{0%{transform:scale(1);opacity:.88}60%{opacity:.55}100%{transform:scale(2.5);opacity:0}}
+    @keyframes xa-aq-wave{0%{transform:scale(0.1);opacity:.9}100%{transform:scale(4.2);opacity:0}}
+    @keyframes afterimage-fade{0%{opacity:.38;filter:blur(3px) brightness(1.8)}100%{opacity:0;filter:blur(8px) brightness(2.4)}}
+  `
+
+  const pal=p(el)
+  const output=(
+    <>
+      <style>{orbitKFs+globalKFs}</style>
+      {attackerImage&&(phase==="charge"||phase==="release")&&(<>
+        <div style={{position:"absolute",left:startX-40,top:startY-56,width:80,height:112,
+          backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
+          borderRadius:"8px",opacity:.38,filter:"blur(3px) brightness(2)",
+          animation:"afterimage-fade 240ms ease-out forwards",pointerEvents:"none",zIndex:5,willChange:"opacity"}}/>
+        <div style={{position:"absolute",left:startX-40,top:startY-56,width:80,height:112,
+          backgroundImage:`url(${attackerImage})`,backgroundSize:"cover",backgroundPosition:"center",
+          borderRadius:"8px",opacity:.18,filter:"blur(7px) brightness(2.4)",
+          animation:"afterimage-fade 380ms ease-out 50ms forwards",pointerEvents:"none",zIndex:4,willChange:"opacity"}}/>
+      </>)}
+      <div style={ctr} suppressHydrationWarning>
+        {(phase==="charge"||phase==="release")&&<Charge el={el} id={id}/>}
+        {phase==="strike"&&<Strike el={el} dist={dist}/>}
+        {phase==="impact"&&<Impact el={el}/>}
+        {phase==="aftermath"&&<Aftermath el={el} id={id} pts={pts}/>}
+      </div>
+    </>
+  )
+  if(portalTarget) return createPortal(output,portalTarget)
+  if(typeof document!=="undefined") return createPortal(output,document.body)
   return null
 }
