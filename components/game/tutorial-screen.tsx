@@ -143,39 +143,42 @@ function buildLoreSlides(playerName: string): LoreSlide[] {
 // OVERLAY TUTORIAL STEPS  (texto do balão sobre as telas REAIS)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// textTarget: texto do elemento real a destacar
+//  "__SIDEBAR__" = lógica especial para a coluna lateral direita do main menu
+//  null          = sem spotlight (só overlay de escurecimento)
 const MENU_STEPS = [
   { text: "Este é o botão JOGAR! Aqui você escolhe o modo de batalha e entra em combate com o seu deck!",
-    region: { left: 2, top: 27, w: 32, h: 31 } },
+    textTarget: "JOGAR" },
   { text: "Em COLEÇÃO você pode ver, organizar e gerenciar todas as cartas que você possui.",
-    region: { left: 2, top: 60, w: 17, h: 9 } },
+    textTarget: "COLEÇÃO" },
   { text: "E o GACHA! Aqui você abre packs para conseguir novas cartas poderosas. Logo te mostro como funciona!",
-    region: { left: 19, top: 60, w: 16, h: 9 } },
+    textTarget: "GACHA" },
   { text: "Esses botões te dão acesso ao Deck, Missões, Loja, Histórico e muito mais! Agora... vamos ao seu primeiro duelo!",
-    region: { left: 95, top: 21, w: 5, h: 73 } },
+    textTarget: "__SIDEBAR__" },
 ]
 
 const DUEL_STEPS = [
   { text: "Bem-vindo ao campo de batalha! Fique de olho nos LPs — quem chegar a zero perde o duelo.",
-    region: null },
+    textTarget: null },
   { text: "Estas são as cartas da sua mão. Arraste uma carta de Unidade para o campo e coloque-a em jogo!",
-    region: { left: 34, top: 83, w: 45, h: 13 } },
+    textTarget: null },
   { text: "Este é o TAP! A cada 3 turnos do jogador, uma carta extra aparece aqui — de graça. Não esqueça de pegar!",
-    region: { left: 27, top: 12, w: 9, h: 24 } },
+    textTarget: "TAP" },
   { text: "Sua Unidade está em campo! Selecione-a para iniciar um ataque contra uma carta do oponente.",
-    region: { left: 3, top: 47, w: 68, h: 33 } },
+    textTarget: null },
   { text: "Clique em IR PARA BATALHA! Destrua as cartas inimigas e ataque diretamente para vencer o duelo!",
-    region: { left: 79, top: 73, w: 15, h: 9 } },
+    textTarget: "Ir para Batalha" },
   { text: "INCRÍVEL! Você venceu seu primeiro duelo! Quanto mais você joga, mais forte e experiente você fica.",
-    region: null },
+    textTarget: null },
 ]
 
 const GACHA_STEPS = [
   { text: "Hora da recompensa! Este pack é especial — é de graça só porque é seu primeiro dia aqui. Vamos abrir!",
-    region: { left: 22, top: 14, w: 56, h: 46 } },
+    textTarget: null },
   { text: "Clique para abrir! Quem sabe que cartas raras vão aparecer para você...",
-    region: { left: 38, top: 62, w: 22, h: 11 } },
+    textTarget: "GACHA x1" },
   { text: "Parabéns! Você ganhou suas primeiras cartas! Continue jogando duelos e abrindo packs para montar um deck invencível!",
-    region: null },
+    textTarget: null },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -327,43 +330,129 @@ function MasterBubble({ masterId, text, onNext, nextLabel = "Continuar ►" }: {
 // COMPONENT: REGION SPOTLIGHT (spotlight baseado em coordenadas % da tela)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function RegionSpotlight({ region }: {
-  region: { left: number; top: number; w: number; h: number } | null
-}) {
-  const pad = 1 // % de padding ao redor da região
+// ─── Helpers de busca no DOM real ────────────────────────────────────────────
+type PixelRect = { x: number; y: number; w: number; h: number }
 
-  if (!region) return (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: "rgba(0,0,0,0.5)", zIndex: 400, pointerEvents: "none",
-    }} />
-  )
+/** Remove acentos e normaliza para comparação */
+const normText = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim()
 
-  const { left, top, w, h } = region
-  const x = `${left - pad}%`
-  const y = `${top - pad}%`
-  const rw = `${w + pad * 2}%`
-  const rh = `${h + pad * 2}%`
+/**
+ * Encontra o menor elemento que contém exatamente `target` como texto visível.
+ * Retorna o BoundingClientRect com padding.
+ */
+function findByText(target: string, pad = 10): PixelRect | null {
+  const tNorm = normText(target)
+  let best: Element | null = null
+  let bestArea = Infinity
+
+  document.querySelectorAll("button, a, div, span, p").forEach(el => {
+    const elText = normText(el.textContent ?? "")
+    // Contém o alvo e não é muito maior que ele (evita pegar container pai)
+    if (elText.includes(tNorm) && elText.length <= tNorm.length * 5) {
+      const r = el.getBoundingClientRect()
+      const area = r.width * r.height
+      if (r.width > 10 && r.height > 8 && r.top >= 0 && area < bestArea) {
+        best = el
+        bestArea = area
+      }
+    }
+  })
+
+  if (!best) return null
+  const r = (best as Element).getBoundingClientRect()
+  return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+}
+
+/**
+ * Caso especial "__SIDEBAR__": encontra todos os botões laterais pelo texto
+ * e retorna um rect que envolve todos eles.
+ */
+function findSidebar(pad = 6): PixelRect | null {
+  const LABELS = ["DECK", "MESTRE", "CONFIG", "CONF", "TEMA", "LOJA", "DIAR", "HISTO", "HISTÓ"]
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  let found = 0
+
+  document.querySelectorAll("div, span, button").forEach(el => {
+    const t = normText(el.textContent ?? "")
+    if (LABELS.some(l => t === l || t.startsWith(l)) ) {
+      const r = el.getBoundingClientRect()
+      // Apenas elementos pequenos (botões de sidebar, não containers)
+      if (r.width > 0 && r.width < 130 && r.height > 0 && r.height < 130) {
+        minX = Math.min(minX, r.left)
+        minY = Math.min(minY, r.top)
+        maxX = Math.max(maxX, r.right)
+        maxY = Math.max(maxY, r.bottom)
+        found++
+      }
+    }
+  })
+
+  if (found === 0) return null
+  return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 }
+}
+
+// ─── DynamicSpotlight ─────────────────────────────────────────────────────────
+/**
+ * Spotlight que encontra o elemento pelo texto no DOM real —
+ * funciona em qualquer resolução sem coordenadas hardcoded.
+ */
+function DynamicSpotlight({ textTarget }: { textTarget: string | null }) {
+  const [r, setR] = useState<PixelRect | null>(null)
+
+  useEffect(() => {
+    if (!textTarget) { setR(null); return }
+
+    const update = () => {
+      const found =
+        textTarget === "__SIDEBAR__" ? findSidebar() : findByText(textTarget)
+      setR(found)
+    }
+
+    update()
+    const t = setInterval(update, 350)
+    window.addEventListener("resize", update)
+    return () => { clearInterval(t); window.removeEventListener("resize", update) }
+  }, [textTarget])
+
+  // Sem alvo: escurece a tela inteira
+  if (!textTarget || !r) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0,
+        background: "rgba(0,0,0,0.62)", zIndex: 400, pointerEvents: "none",
+      }} />
+    )
+  }
+
+  const { x, y, w, h } = r
 
   return (
     <svg style={{
-      position: "fixed", inset: 0,
-      width: "100%", height: "100%",
+      position: "fixed", inset: 0, width: "100%", height: "100%",
       zIndex: 400, pointerEvents: "none", overflow: "visible",
     }}>
       <defs>
-        <mask id="reg-spl">
+        <mask id="dyn-spl">
           <rect width="100%" height="100%" fill="white" />
-          <rect x={x} y={y} width={rw} height={rh} rx="12" fill="black" />
+          {/* Buraco no overlay: coordenadas em px vindas do getBoundingClientRect */}
+          <rect x={x} y={y} width={w} height={h} rx={10} fill="black" />
         </mask>
       </defs>
-      <rect width="100%" height="100%" fill="rgba(0,0,0,0.7)" mask="url(#reg-spl)" />
-      {/* Anel pulsante */}
-      <rect x={`calc(${x} - 2px)`} y={`calc(${y} - 2px)`}
-        width={`calc(${rw} + 4px)`} height={`calc(${rh} + 4px)`}
-        rx="13" fill="none"
-        stroke="rgba(255,255,255,0.6)" strokeWidth="2.5"
+      {/* Overlay escuro com buraco */}
+      <rect width="100%" height="100%" fill="rgba(0,0,0,0.68)" mask="url(#dyn-spl)" />
+      {/* Anel pulsante ao redor do elemento */}
+      <rect
+        x={x - 3} y={y - 3} width={w + 6} height={h + 6}
+        rx={13} fill="none"
+        stroke="rgba(255,255,255,0.55)" strokeWidth="2.5"
         style={{ animation: "tutRingPulse 1.6s ease-in-out infinite" }}
+      />
+      <rect
+        x={x - 7} y={y - 7} width={w + 14} height={h + 14}
+        rx={16} fill="none"
+        stroke="rgba(255,255,255,0.12)" strokeWidth="1.5"
+        style={{ animation: "tutRingPulse 1.6s ease-in-out infinite 0.3s" }}
       />
     </svg>
   )
@@ -931,8 +1020,8 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
     }}>
       <style>{TUTORIAL_CSS}</style>
 
-      {/* Spotlight sobre a região da tela real */}
-      <RegionSpotlight region={currentStep?.region ?? null} />
+      {/* Spotlight dinâmico: encontra o elemento pelo texto no DOM real */}
+      <DynamicSpotlight textTarget={currentStep?.textTarget ?? null} />
 
       {/* Pontinhos de progresso — top center */}
       <div style={{
