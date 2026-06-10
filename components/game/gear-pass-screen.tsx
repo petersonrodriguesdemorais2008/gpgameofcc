@@ -839,45 +839,60 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       {/* ── HEADER ── */}
       <div style={{
         position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(2,6,16,0.92)", backdropFilter: "blur(16px)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        padding: "14px 16px 10px",
+        background: "rgba(2,6,16,0.94)", backdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(6,182,212,0.12)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
+        {/* Top bar */}
+        <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
           <button onClick={onBack} style={{
-            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 12, padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center",
-            color: "#94a3b8", transition: "all 0.2s",
+            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 10, width: 36, height: 36, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#64748b", transition: "all 0.2s", flexShrink: 0,
           }}>
-            <ArrowLeft size={18} />
+            <ArrowLeft size={17} />
           </button>
 
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Shield size={18} color="#06b6d4" />
-              <h1 style={{ fontWeight: 900, fontSize: 18, margin: 0, letterSpacing: "0.02em" }}>
-                Gear Pass
-              </h1>
-              {passData.hasPremium && (
-                <span style={{
-                  background: "linear-gradient(135deg,#d97706,#fbbf24)",
-                  borderRadius: 6, padding: "2px 8px", fontSize: 9,
-                  fontWeight: 900, color: "#000", letterSpacing: "0.06em",
-                }}>PREMIUM</span>
-              )}
+          {/* Title block */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+              background: "linear-gradient(135deg,rgba(6,182,212,0.25),rgba(6,182,212,0.08))",
+              border: "1px solid rgba(6,182,212,0.30)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 12px rgba(6,182,212,0.20)",
+            }}>
+              <Shield size={17} color="#06b6d4" />
             </div>
-            <p style={{ color: "#475569", fontSize: 11, margin: 0 }}>
-              Temporada 1 · Encerra em 29 dias
-            </p>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.01em", color: "#f1f5f9" }}>Gear Pass</span>
+                {passData.hasPremium && (
+                  <span style={{
+                    background: "linear-gradient(90deg,#b45309,#f59e0b)",
+                    borderRadius: 5, padding: "2px 7px",
+                    fontSize: 8, fontWeight: 900, color: "#000", letterSpacing: "0.08em",
+                  }}>PREMIUM</span>
+                )}
+              </div>
+              {/* Season pill */}
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "pulseGlow 2s ease-in-out infinite" }} />
+                <span style={{ fontSize: 10, color: "#475569" }}>Temporada 1</span>
+                <span style={{ fontSize: 10, color: "#1e293b" }}>·</span>
+                <span style={{ fontSize: 10, color: "#475569" }}>Encerra em 29 dias</span>
+              </div>
+            </div>
           </div>
 
           {!passData.hasPremium && (
             <button onClick={() => setShowPremiumModal(true)} style={{
-              background: "linear-gradient(135deg,#b45309,#d97706,#f59e0b)",
-              border: "none", borderRadius: 12, padding: "10px 22px",
-              color: "#fff", fontWeight: 900, fontSize: 11, cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(217,119,6,0.35)",
-              display: "flex", alignItems: "center", gap: 6,
+              background: "linear-gradient(135deg,#92400e,#d97706,#fbbf24)",
+              border: "none", borderRadius: 11, padding: "9px 18px",
+              color: "#000", fontWeight: 900, fontSize: 11, cursor: "pointer",
+              boxShadow: "0 4px 18px rgba(217,119,6,0.40)",
+              display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+              letterSpacing: "0.02em",
             }}>
               <Crown size={13} />
               {PREMIUM_PRICE}
@@ -887,21 +902,20 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
         {/* Tabs */}
         <div style={{
-          display: "flex", gap: 6, maxWidth: 700, margin: "12px auto 0",
-          background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4,
+          display: "flex", maxWidth: 700, margin: "10px auto 0",
+          borderTop: "1px solid rgba(255,255,255,0.04)",
         }}>
           {(["pass", "missions"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              flex: 1, padding: "8px 0", borderRadius: 9, border: "none",
-              cursor: "pointer", fontWeight: 800, fontSize: 12, letterSpacing: "0.04em",
-              transition: "all 0.2s",
-              background: activeTab === tab
-                ? "linear-gradient(135deg,rgba(6,182,212,0.25),rgba(139,92,246,0.20))"
-                : "transparent",
-              color: activeTab === tab ? "#e2e8f0" : "#475569",
-              boxShadow: activeTab === tab ? "0 2px 8px rgba(6,182,212,0.15)" : "none",
+              flex: 1, padding: "11px 0", border: "none",
+              cursor: "pointer", fontWeight: 800, fontSize: 12,
+              transition: "all 0.2s", background: "transparent",
+              color: activeTab === tab ? "#06b6d4" : "#334155",
+              borderBottom: `2px solid ${activeTab === tab ? "#06b6d4" : "transparent"}`,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}>
-              {tab === "pass" ? "🛡️ Passe" : "🎯 Missões"}
+              {tab === "pass" ? <Shield size={13} /> : <Star size={13} />}
+              {tab === "pass" ? "Passe" : "Missões"}
             </button>
           ))}
         </div>
@@ -914,75 +928,143 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {/* ── PASS TAB ── */}
           {activeTab === "pass" && (
             <>
-              {/* Progress overview */}
+              {/* ── PROGRESS HERO ── */}
               <div style={{
-                margin: "16px 16px 0",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 20, padding: "18px 20px",
+                margin: "16px 16px 0", borderRadius: 22,
+                position: "relative", overflow: "hidden",
+                background: "linear-gradient(145deg,rgba(6,182,212,0.10) 0%,rgba(5,13,26,0.97) 45%,rgba(139,92,246,0.08) 100%)",
+                border: "1px solid rgba(6,182,212,0.16)",
+                boxShadow: "0 8px 40px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.04)",
+                padding: "22px 22px 18px",
               }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                {/* Decorative radial orb */}
+                <div style={{
+                  position: "absolute", top: -60, left: -60, width: 240, height: 240,
+                  borderRadius: "50%", pointerEvents: "none",
+                  background: "radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 65%)",
+                }} />
+                {/* Corner accent */}
+                <div style={{
+                  position: "absolute", top: 0, right: 0, width: 120, height: 120,
+                  background: "radial-gradient(circle at top right,rgba(139,92,246,0.10),transparent 60%)",
+                  pointerEvents: "none",
+                }} />
+
+                {/* Level + pts */}
+                <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
                   <div>
-                    <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1 }}>
-                      Nível {passData.currentLevel}
-                      <span style={{ color: "#475569", fontWeight: 600, fontSize: 16 }}> / {MAX_LEVELS}</span>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#06b6d4", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
+                      Nível Atual
                     </div>
-                    <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, lineHeight: 1 }}>
+                      <span style={{ fontSize: 54, fontWeight: 900, color: "#f1f5f9", letterSpacing: "-0.04em" }}>
+                        {passData.currentLevel}
+                      </span>
+                      <span style={{ fontSize: 18, color: "#1e293b", fontWeight: 700 }}>/ {MAX_LEVELS}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#334155", marginTop: 5 }}>
                       {passData.currentPoints.toLocaleString()} pts acumulados
                     </div>
                   </div>
+
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ color: "#06b6d4", fontWeight: 800, fontSize: 13 }}>
-                      {passData.currentLevel >= MAX_LEVELS
-                        ? "MAX"
-                        : `${pointsInCurrentLevel} / ${nextLevelCost}`}
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 10 }}>pts p/ próx. nível</div>
+                    {passData.currentLevel >= MAX_LEVELS ? (
+                      <div style={{
+                        background: "linear-gradient(135deg,#d97706,#fbbf24)",
+                        borderRadius: 10, padding: "6px 14px",
+                        fontSize: 13, fontWeight: 900, color: "#000",
+                      }}>MAX</div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: "#06b6d4", lineHeight: 1, letterSpacing: "-0.02em" }}>
+                          {pointsInCurrentLevel}
+                          <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 600 }}> / {nextLevelCost}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: "#334155", marginTop: 3 }}>pts para o próx. nível</div>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                {/* XP bar */}
-                <div style={{
-                  height: 10, borderRadius: 99,
-                  background: "rgba(255,255,255,0.07)", overflow: "hidden",
-                }}>
+                {/* XP bar — taller with shimmer */}
+                <div style={{ position: "relative", height: 14, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 18 }}>
                   <div style={{
                     height: "100%", borderRadius: 99, width: `${progressPct}%`,
-                    background: "linear-gradient(90deg,#06b6d4,#8b5cf6)",
-                    boxShadow: "0 0 12px rgba(6,182,212,0.5)",
-                    transition: "width 0.6s cubic-bezier(.4,0,.2,1)",
-                  }} />
+                    background: "linear-gradient(90deg,#0369a1,#06b6d4,#22d3ee)",
+                    boxShadow: "0 0 18px rgba(6,182,212,0.65)",
+                    transition: "width 0.8s cubic-bezier(.4,0,.2,1)",
+                    position: "relative", overflow: "hidden",
+                  }}>
+                    {/* Shimmer sweep */}
+                    <div style={{
+                      position: "absolute", top: 0, bottom: 0, width: "40%",
+                      background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
+                      animation: "shimmer 2.2s ease-in-out infinite",
+                    }} />
+                  </div>
+                  {/* % label */}
+                  <div style={{
+                    position: "absolute", inset: 0, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    fontSize: 8, fontWeight: 900, letterSpacing: "0.06em",
+                    color: progressPct > 35 ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.25)",
+                  }}>{progressPct}%</div>
                 </div>
 
-                {/* Pass type badges */}
-                <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                {/* Pass type cards */}
+                <div style={{ display: "flex", gap: 10, position: "relative" }}>
+                  {/* Common */}
                   <div style={{
-                    flex: 1, background: "rgba(6,182,212,0.08)",
-                    border: "1px solid rgba(6,182,212,0.20)",
-                    borderRadius: 10, padding: "8px 12px",
-                    display: "flex", alignItems: "center", gap: 8,
+                    flex: 1, borderRadius: 14, padding: "11px 14px",
+                    background: "linear-gradient(135deg,rgba(6,182,212,0.10),rgba(6,182,212,0.04))",
+                    border: "1.5px solid rgba(6,182,212,0.22)",
+                    display: "flex", alignItems: "center", gap: 10,
                   }}>
-                    <Shield size={16} color="#06b6d4" />
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 12, color: "#06b6d4" }}>Passe Comum</div>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                      background: "rgba(6,182,212,0.14)", border: "1px solid rgba(6,182,212,0.22)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Shield size={16} color="#06b6d4" />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 900, fontSize: 12, color: "#06b6d4" }}>Passe Comum</div>
                       <div style={{ fontSize: 10, color: "#334155" }}>Grátis · Sempre ativo</div>
                     </div>
-                    <Check size={14} color="#22c55e" style={{ marginLeft: "auto" }} />
+                    <div style={{ marginLeft: "auto", flexShrink: 0 }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%",
+                        background: "rgba(34,197,94,0.14)", border: "1.5px solid rgba(34,197,94,0.35)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Check size={11} color="#22c55e" strokeWidth={3} />
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={{
-                    flex: 1,
-                    background: passData.hasPremium
-                      ? "rgba(217,119,6,0.12)"
-                      : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${passData.hasPremium ? "rgba(217,119,6,0.35)" : "rgba(255,255,255,0.08)"}`,
-                    borderRadius: 10, padding: "8px 12px",
-                    display: "flex", alignItems: "center", gap: 8,
-                    cursor: passData.hasPremium ? "default" : "pointer",
-                  }} onClick={passData.hasPremium ? undefined : () => setShowPremiumModal(true)}>
-                    <Crown size={16} color={passData.hasPremium ? "#f59e0b" : "#475569"} />
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 12, color: passData.hasPremium ? "#f59e0b" : "#475569" }}>
+                  {/* Premium */}
+                  <div
+                    onClick={passData.hasPremium ? undefined : () => setShowPremiumModal(true)}
+                    style={{
+                      flex: 1, borderRadius: 14, padding: "11px 14px",
+                      background: passData.hasPremium
+                        ? "linear-gradient(135deg,rgba(217,119,6,0.14),rgba(217,119,6,0.05))"
+                        : "linear-gradient(135deg,rgba(92,40,10,0.14),rgba(40,15,5,0.10))",
+                      border: `1.5px solid ${passData.hasPremium ? "rgba(251,191,36,0.35)" : "rgba(92,40,10,0.30)"}`,
+                      display: "flex", alignItems: "center", gap: 10,
+                      cursor: passData.hasPremium ? "default" : "pointer",
+                      transition: "border-color 0.2s",
+                    }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                      background: passData.hasPremium ? "rgba(245,158,11,0.16)" : "rgba(92,40,10,0.20)",
+                      border: `1px solid ${passData.hasPremium ? "rgba(245,158,11,0.28)" : "rgba(92,40,10,0.25)"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Crown size={16} color={passData.hasPremium ? "#f59e0b" : "#78350f"} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 900, fontSize: 12, color: passData.hasPremium ? "#f59e0b" : "#78350f" }}>
                         Passe Premium
                       </div>
                       <div style={{ fontSize: 10, color: "#334155" }}>
@@ -990,21 +1072,34 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       </div>
                     </div>
                     {!passData.hasPremium && (
-                      <Lock size={13} color="#475569" style={{ marginLeft: "auto" }} />
+                      <div style={{
+                        marginLeft: "auto", flexShrink: 0,
+                        background: "linear-gradient(135deg,#92400e,#d97706)",
+                        borderRadius: 7, padding: "3px 9px",
+                        fontSize: 9, fontWeight: 900, color: "#fff", letterSpacing: "0.04em",
+                      }}>Desbloquear</div>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* ── REWARD TRACK ── */}
-              <div style={{ marginTop: 20, paddingBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 10px" }}>
-                  <h2 style={{ fontWeight: 900, fontSize: 14, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", margin: 0 }}>
+              <div style={{ marginTop: 22, paddingBottom: 8 }}>
+                {/* Elegant section header */}
+                <div style={{ padding: "0 16px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                     Trilha de Recompensas
-                  </h2>
-                  <span style={{ fontSize: 11, color: "#334155" }}>
-                    Nível atual: <strong style={{ color: "#06b6d4" }}>{passData.currentLevel}</strong>
                   </span>
+                  <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.25),transparent)" }} />
+                  <div style={{
+                    flexShrink: 0, background: "rgba(6,182,212,0.10)",
+                    border: "1px solid rgba(6,182,212,0.22)", borderRadius: 8,
+                    padding: "3px 10px", display: "flex", alignItems: "center", gap: 5,
+                  }}>
+                    <Zap size={10} color="#06b6d4" />
+                    <span style={{ fontSize: 11, fontWeight: 900, color: "#06b6d4" }}>Lv.{passData.currentLevel}</span>
+                  </div>
                 </div>
 
                 {/* Wrapper com setas e trilha scrollável */}
@@ -1047,13 +1142,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     onMouseUp={handleTrackMouseUp}
                     onMouseLeave={handleTrackMouseUp}
                   >
-                    {/* Oculta scrollbar no Chrome/Safari — aplicado no elemento com overflow */}
-                    <style>{`
-                      .gp-track::-webkit-scrollbar { display: none; }
-                    `}</style>
-
-                    <div
-                      style={{
+                    <div style={{
                         display: "flex",
                         alignItems: "stretch",
                         paddingLeft: 8,
@@ -1517,8 +1606,21 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       <style>{`
         @keyframes fadeInDown {
           from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
+        @keyframes shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+        @keyframes pulseGlow {
+          0%,100% { opacity: 0.6; }
+          50%      { opacity: 1; }
+        }
+        @keyframes orbitSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .gp-track::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   )
