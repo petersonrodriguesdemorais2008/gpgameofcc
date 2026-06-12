@@ -98,7 +98,7 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
             animation:`xc-petal ${60+i*5}ms ease-in-out ${i*12}ms infinite`,willChange:"transform,opacity"}}/>
         ))}
         {/* 12 orbiting embers */}
-        {[72,9,"rgba(251,191,36,.98)",130,0],[66,8,"rgba(249,115,22,.9)",105,28],[70,9,"#fff7ed",122,55],
+        {[[72,9,"rgba(251,191,36,.98)",130,0],[66,8,"rgba(249,115,22,.9)",105,28],[70,9,"#fff7ed",122,55],
           [62,7,"rgba(239,68,68,.88)",96,82],[68,6,"rgba(254,200,50,.85)",115,18],[64,8,"rgba(255,255,255,.92)",100,63],
           [70,6,"rgba(251,146,60,.9)",118,40],[58,5,"rgba(249,115,22,.78)",88,75],[66,7,"rgba(251,191,36,.82)",108,110],
           [62,5,"rgba(255,200,80,.75)",92,135],[68,8,"rgba(239,68,68,.8)",112,155],[60,5,"rgba(254,240,138,.7)",85,95]
@@ -129,7 +129,7 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
             borderRadius:"9999px",transformOrigin:"50% 100%",transform:`rotate(${i*36}deg) translateY(-68px)`,
             animation:`xc-stream .18s ease-in-out ${i*18}ms infinite`,willChange:"transform,opacity"}}/>
         ))}
-        {[66,8,"rgba(56,189,248,.95)",215,0],[60,6,"rgba(125,211,252,.85)",180,42],[68,8,"rgba(255,255,255,.9)",200,84],
+        {[[66,8,"rgba(56,189,248,.95)",215,0],[60,6,"rgba(125,211,252,.85)",180,42],[68,8,"rgba(255,255,255,.9)",200,84],
           [62,6,"rgba(14,165,233,.8)",165,126],[66,5,"rgba(186,230,253,.72)",190,168],[58,5,"rgba(56,189,248,.78)",152,55],[64,7,"rgba(255,255,255,.82)",178,100]
         ].map(([r,s,c,dur,del],i)=><Orb key={i} r={r as number} sz={s as number} c={c as string} dur={dur as number} del={del as number}/>)}
         <div style={{position:"absolute",left:-25,top:-25,width:50,height:50,borderRadius:"50%",
@@ -158,7 +158,7 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
             transform:`rotate(${i*20}deg) translateX(80px)`,
             animation:`xc-converge .20s ease-in ${i*11}ms infinite`,willChange:"transform,opacity"}}/>
         ))}
-        {[62,8,"rgba(88,28,135,.82)",600,0,true],[56,6,"rgba(168,85,247,.7)",490,150,false],
+        {[[62,8,"rgba(88,28,135,.82)",600,0,true],[56,6,"rgba(168,85,247,.7)",490,150,false],
           [64,7,"rgba(196,181,253,.62)",540,300,true],[58,5,"rgba(76,29,149,.58)",440,90,false],
           [66,6,"rgba(139,92,246,.68)",570,225,true]
         ].map(([r,s,c,dur,del,rv],i)=><Orb key={i} r={r as number} sz={s as number} c={c as string} dur={dur as number} del={del as number} rev={rv as boolean}/>)}
@@ -183,7 +183,7 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
             animation:`xc-ray ${55+i%3*8}ms ease-in-out ${i%6===0?0:i%6===1?12:i%6===2?24:i%6===3?36:i%6===4?48:60}ms infinite`,
             willChange:"transform,opacity"}}/>
         })}
-        {[76,11,"rgba(253,224,71,.99)",112,0],[70,9,"rgba(255,255,255,.95)",92,32],
+        {[[76,11,"rgba(253,224,71,.99)",112,0],[70,9,"rgba(255,255,255,.95)",92,32],
           [78,10,"rgba(254,240,138,.93)",126,64],[72,8,"rgba(253,224,71,.88)",102,96],
           [76,7,"rgba(255,255,255,.82)",118,128],[68,6,"rgba(254,240,138,.76)",88,160],
           [74,8,"rgba(253,224,71,.86)",108,44],[70,5,"rgba(255,255,255,.7)",84,115]
@@ -212,7 +212,7 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
             borderRadius:"9999px",transformOrigin:"center center",transform:`rotate(${i*36}deg)`,
             animation:`xc-blade ${70+i*6}ms ease-in-out ${i*9}ms infinite`,willChange:"transform,opacity"}}/>
         ))}
-        {[62,9,"rgba(52,211,153,.95)",160,0],[56,7,"rgba(110,231,183,.85)",132,40],
+        {[[62,9,"rgba(52,211,153,.95)",160,0],[56,7,"rgba(110,231,183,.85)",132,40],
           [64,8,"rgba(255,255,255,.9)",148,80],[58,6,"rgba(16,185,129,.78)",118,120],
           [62,5,"rgba(167,243,208,.72)",136,160],[56,7,"rgba(255,255,255,.82)",124,55]
         ].map(([r,s,c,dur,del],i)=><Orb key={i} r={r as number} sz={s as number} c={c as string} dur={dur as number} del={del as number}/>)}
@@ -233,7 +233,7 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
             transformOrigin:"center center",transform:`rotate(${i*36}deg)`,
             animation:`xc-glitch .05s step-end ${i*6}ms infinite`}}/>
         ))}
-        {[54,7,"rgba(148,163,184,.85)",470,0],[48,5,"rgba(203,213,225,.75)",355,160],[56,6,"rgba(248,250,252,.65)",415,320]
+        {[[54,7,"rgba(148,163,184,.85)",470,0],[48,5,"rgba(203,213,225,.75)",355,160],[56,6,"rgba(248,250,252,.65)",415,320]
         ].map(([r,s,c,dur,del],i)=><Orb key={i} r={r as number} sz={s as number} c={c as string} dur={dur as number} del={del as number}/>)}
         <div style={{position:"absolute",left:-22,top:-22,width:44,height:44,borderRadius:"50%",
           background:"radial-gradient(circle,white 6%,#94a3b8 28%,#334155 60%,black 100%)",
