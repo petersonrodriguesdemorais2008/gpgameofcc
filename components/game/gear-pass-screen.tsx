@@ -822,17 +822,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         position: "absolute", inset: 0, zIndex: 0,
         backgroundImage: `url(${wallpaperUrl})`,
         backgroundSize: "cover", backgroundPosition: "center top",
-        filter: "brightness(0.28) saturate(0.7) blur(0px)",
-        transform: "scale(1.04)", // evita borda branca do blur
+        filter: "brightness(0.55) saturate(0.85)",
+        transform: "scale(1.04)",
       }} />
-      {/* Overlay gradiente — mais escuro à esquerda, deixa o wallpaper aparecer sutilmente à direita */}
+      {/* Overlay gradiente — menos opaco para o wallpaper respirar */}
       <div style={{
         position: "absolute", inset: 0, zIndex: 1,
-        background: "linear-gradient(120deg,rgba(2,6,16,0.96) 0%,rgba(2,6,16,0.82) 55%,rgba(2,6,16,0.70) 100%)",
+        background: "linear-gradient(120deg,rgba(2,6,16,0.60) 0%,rgba(2,6,16,0.42) 55%,rgba(2,6,16,0.32) 100%)",
       }} />
       {/* Vinheta ciano no topo */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
-        background: "radial-gradient(ellipse 80% 35% at 50% 0%,rgba(6,182,212,0.08),transparent 65%)" }} />
+        background: "radial-gradient(ellipse 80% 35% at 50% 0%,rgba(6,182,212,0.07),transparent 65%)" }} />
 
       {/* Feedback toast */}
       {claimFeedback && (
@@ -854,8 +854,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       <div style={{
         flexShrink: 0,
         position: "relative",
-        background: "rgba(2,6,16,0.75)", backdropFilter: "blur(24px)",
-        borderBottom: "1px solid rgba(6,182,212,0.14)",
+        background: "rgba(2,6,16,0.18)",
+        backdropFilter: "blur(22px)",
+        WebkitBackdropFilter: "blur(22px)",
+        borderBottom: "1px solid rgba(6,182,212,0.10)",
       }}>
         {/* Top bar */}
         <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
