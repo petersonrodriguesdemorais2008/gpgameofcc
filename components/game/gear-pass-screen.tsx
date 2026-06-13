@@ -632,7 +632,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   }
 
   // Largura de cada coluna de nível (px) — usada nas setas para scroll por página
-  const COL_WIDTH = 88  // 80px coluna + 8px conector
+  const COL_WIDTH = 96  // 82px coluna + 14px conector
 
   // Desloca a trilha para a esquerda ou direita por VISIBLE colunas
   const scrollTrack = (dir: 1 | -1) => {
@@ -822,17 +822,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         position: "absolute", inset: 0, zIndex: 0,
         backgroundImage: `url(${wallpaperUrl})`,
         backgroundSize: "cover", backgroundPosition: "center top",
-        filter: "brightness(0.55) saturate(0.85)",
+        filter: "brightness(0.42) saturate(0.80)",
         transform: "scale(1.04)",
       }} />
-      {/* Overlay gradiente — menos opaco para o wallpaper respirar */}
+      {/* Overlay: gradiente escuro suave — mais forte no topo para legibilidade do header */}
       <div style={{
         position: "absolute", inset: 0, zIndex: 1,
-        background: "linear-gradient(120deg,rgba(2,6,16,0.60) 0%,rgba(2,6,16,0.42) 55%,rgba(2,6,16,0.32) 100%)",
+        background: "linear-gradient(180deg,rgba(2,6,16,0.70) 0%,rgba(2,6,16,0.30) 20%,rgba(2,6,16,0.18) 60%,rgba(2,6,16,0.35) 100%)",
       }} />
-      {/* Vinheta ciano no topo */}
-      <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
-        background: "radial-gradient(ellipse 80% 35% at 50% 0%,rgba(6,182,212,0.07),transparent 65%)" }} />
 
       {/* Feedback toast */}
       {claimFeedback && (
@@ -850,14 +847,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       {/* ── EVERYTHING ABOVE WALLPAPER ── */}
       <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
 
-      {/* ── HEADER ── */}
+      {/* ── HEADER — sem fundo, sem blur, flutua sobre o wallpaper ── */}
       <div style={{
         flexShrink: 0,
         position: "relative",
-        background: "rgba(2,6,16,0.18)",
-        backdropFilter: "blur(22px)",
-        WebkitBackdropFilter: "blur(22px)",
-        borderBottom: "1px solid rgba(6,182,212,0.10)",
+        background: "transparent",
+        borderBottom: "none",
       }}>
         {/* Top bar */}
         <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
@@ -950,10 +945,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               <div style={{
                 margin: "10px 14px 0", borderRadius: 18, flexShrink: 0,
                 position: "relative", overflow: "hidden",
-                background: "rgba(5,13,26,0.65)",
+                background: "rgba(3,8,22,0.93)",
                 backdropFilter: "blur(20px)",
-                border: "1px solid rgba(6,182,212,0.18)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: "1px solid rgba(6,182,212,0.32)",
+                boxShadow: "0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(6,182,212,0.08) inset",
                 padding: "14px 18px 12px",
               }}>
                 {/* Decorative orb */}
@@ -1045,7 +1041,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               </div>
 
               {/* ── REWARD TRACK ── */}
-              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginTop: 8 }}>
+              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginTop: 8,
+                background: "rgba(3,8,22,0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                borderRadius: "14px", margin: "8px 14px 0", border: "1px solid rgba(255,255,255,0.07)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.60)",
+              }}>
                 {/* Elegant section header */}
                 <div style={{ padding: "0 14px 8px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
@@ -1120,14 +1120,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                             data-level={lg.level}
                             style={{ display: "flex", alignItems: "center" }}
                           >
-                            {/* Coluna do nível — largura fixa para manter ritmo visual */}
-                            <div style={{ width: 70, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                            {/* Coluna do nível */}
+                            <div style={{ width: 82, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
 
                               {/* ── PREMIUM reward (topo) ── */}
                               <button
                                 onClick={() => { if (isPast) handleClaimPassReward(lg.level, true) }}
                                 style={{
-                                  width: 46, height: 46, borderRadius: 11,
+                                  width: 54, height: 54, borderRadius: 13,
                                   display: "flex", flexDirection: "column", alignItems: "center",
                                   justifyContent: "center", gap: 1,
                                   cursor: isPast && passData.hasPremium ? "pointer" : "default",
@@ -1187,7 +1187,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               <button
                                 onClick={() => { if (isPast) handleClaimPassReward(lg.level, false) }}
                                 style={{
-                                  width: 46, height: 46, borderRadius: 11,
+                                  width: 54, height: 54, borderRadius: 13,
                                   display: "flex", flexDirection: "column", alignItems: "center",
                                   justifyContent: "center", gap: 1,
                                   cursor: isPast ? "pointer" : "default",
@@ -1272,8 +1272,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 </div>
               </div>
 
-              {/* ── MARCOS ESPECIAIS — strip compacto ── */}
-              <div style={{ padding: "6px 14px 8px", flexShrink: 0 }}>
+              {/* ── MARCOS ESPECIAIS ── */}
+              <div style={{ padding: "6px 14px 8px", flexShrink: 0,
+                background: "rgba(3,8,22,0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                borderRadius: "14px", margin: "8px 14px 6px", border: "1px solid rgba(255,255,255,0.07)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.60)",
+              }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.12em", textTransform: "uppercase" }}>🏆 Marcos</span>
                   <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(255,255,255,0.06),transparent)" }} />
@@ -1303,7 +1307,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
           {/* ── MISSIONS TAB ── */}
           {activeTab === "missions" && (
-            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "10px 14px 0" }}>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column",
+              padding: "10px 14px 0",
+              background: "rgba(3,8,22,0.88)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              margin: "8px 14px 6px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.65)",
+            }}>
               {/* Filter pills + Coletar Tudo */}
               <div style={{ flexShrink: 0, display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", alignItems: "center" }}>
                 {(["all", "daily", "weekly", "limited"] as const).map(f => (
