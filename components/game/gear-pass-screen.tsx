@@ -429,6 +429,10 @@ function MissionCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GearPassScreen({ onBack }: GearPassScreenProps) {
+  // Lê o wallpaper ativo do jogador (mesmo sistema do main menu)
+  const wallpaperUrl = typeof window !== "undefined"
+    ? `/images/wallpapers/${localStorage.getItem("gpgame_selected_wallpaper") ?? "fehnon_wallpaper"}.png`
+    : "/images/wallpapers/fehnon_wallpaper.png"
   const { coins, setCoins, playerId } = useGame()
 
   // ── Verificar premium no servidor ao abrir a tela ─────────────────────────
@@ -806,22 +810,29 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   return (
     <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      background: "linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
+      height: "100dvh", maxHeight: "100dvh",
+      display: "flex", flexDirection: "column",
       color: "#f1f5f9",
       fontFamily: "'Segoe UI',system-ui,sans-serif",
-      position: "relative",
-      overflow: "hidden",
+      position: "relative", overflow: "hidden",
     }}>
 
-      {/* Background glows */}
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 40% at 50% 0%,rgba(6,182,212,0.09) 0%,transparent 60%)" }} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 60% 40% at 85% 80%,rgba(168,85,247,0.07) 0%,transparent 55%)" }} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 50% 30% at 10% 70%,rgba(251,191,36,0.05) 0%,transparent 50%)" }} />
-      </div>
+      {/* ── WALLPAPER BACKGROUND ── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 0,
+        backgroundImage: `url(${wallpaperUrl})`,
+        backgroundSize: "cover", backgroundPosition: "center top",
+        filter: "brightness(0.28) saturate(0.7) blur(0px)",
+        transform: "scale(1.04)", // evita borda branca do blur
+      }} />
+      {/* Overlay gradiente — mais escuro à esquerda, deixa o wallpaper aparecer sutilmente à direita */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 1,
+        background: "linear-gradient(120deg,rgba(2,6,16,0.96) 0%,rgba(2,6,16,0.82) 55%,rgba(2,6,16,0.70) 100%)",
+      }} />
+      {/* Vinheta ciano no topo */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+        background: "radial-gradient(ellipse 80% 35% at 50% 0%,rgba(6,182,212,0.08),transparent 65%)" }} />
 
       {/* Feedback toast */}
       {claimFeedback && (
@@ -836,11 +847,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         </div>
       )}
 
+      {/* ── EVERYTHING ABOVE WALLPAPER ── */}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
+
       {/* ── HEADER ── */}
       <div style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(2,6,16,0.94)", backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(6,182,212,0.12)",
+        flexShrink: 0,
+        position: "relative",
+        background: "rgba(2,6,16,0.75)", backdropFilter: "blur(24px)",
+        borderBottom: "1px solid rgba(6,182,212,0.14)",
       }}>
         {/* Top bar */}
         <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
@@ -922,183 +937,125 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       </div>
 
       {/* ── CONTENT ── */}
-      <div style={{ flex: 1, overflowY: "auto", position: "relative", zIndex: 1 }}>
-        <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 0 100px" }}>
+      {/* ── CONTENT (flex:1, sem scroll de página) ── */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 700, margin: "0 auto", width: "100%" }}>
 
           {/* ── PASS TAB ── */}
           {activeTab === "pass" && (
-            <>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               {/* ── PROGRESS HERO ── */}
               <div style={{
-                margin: "16px 16px 0", borderRadius: 22,
+                margin: "10px 14px 0", borderRadius: 18, flexShrink: 0,
                 position: "relative", overflow: "hidden",
-                background: "linear-gradient(145deg,rgba(6,182,212,0.10) 0%,rgba(5,13,26,0.97) 45%,rgba(139,92,246,0.08) 100%)",
-                border: "1px solid rgba(6,182,212,0.16)",
-                boxShadow: "0 8px 40px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.04)",
-                padding: "22px 22px 18px",
+                background: "rgba(5,13,26,0.65)",
+                backdropFilter: "blur(20px)",
+                border: "1px solid rgba(6,182,212,0.18)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
+                padding: "14px 18px 12px",
               }}>
-                {/* Decorative radial orb */}
-                <div style={{
-                  position: "absolute", top: -60, left: -60, width: 240, height: 240,
-                  borderRadius: "50%", pointerEvents: "none",
-                  background: "radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 65%)",
-                }} />
-                {/* Corner accent */}
-                <div style={{
-                  position: "absolute", top: 0, right: 0, width: 120, height: 120,
-                  background: "radial-gradient(circle at top right,rgba(139,92,246,0.10),transparent 60%)",
-                  pointerEvents: "none",
-                }} />
+                {/* Decorative orb */}
+                <div style={{ position:"absolute",top:-50,left:-50,width:180,height:180,borderRadius:"50%",pointerEvents:"none",
+                  background:"radial-gradient(circle,rgba(6,182,212,0.10) 0%,transparent 65%)" }} />
+                <div style={{ position:"absolute",top:0,right:0,width:100,height:100,pointerEvents:"none",
+                  background:"radial-gradient(circle at top right,rgba(139,92,246,0.08),transparent 60%)" }} />
 
-                {/* Level + pts */}
-                <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#06b6d4", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
-                      Nível Atual
-                    </div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, lineHeight: 1 }}>
-                      <span style={{ fontSize: 54, fontWeight: 900, color: "#f1f5f9", letterSpacing: "-0.04em" }}>
-                        {passData.currentLevel}
-                      </span>
-                      <span style={{ fontSize: 18, color: "#1e293b", fontWeight: 700 }}>/ {MAX_LEVELS}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#334155", marginTop: 5 }}>
-                      {passData.currentPoints.toLocaleString()} pts acumulados
-                    </div>
+                {/* Level + XP row */}
+                <div style={{ position:"relative", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:6, lineHeight:1 }}>
+                    <span style={{ fontSize:42, fontWeight:900, color:"#f1f5f9", letterSpacing:"-0.04em" }}>{passData.currentLevel}</span>
+                    <span style={{ fontSize:14, color:"#1e293b", fontWeight:700 }}>/ {MAX_LEVELS}</span>
                   </div>
-
-                  <div style={{ textAlign: "right" }}>
+                  <div style={{ textAlign:"right" }}>
                     {passData.currentLevel >= MAX_LEVELS ? (
-                      <div style={{
-                        background: "linear-gradient(135deg,#d97706,#fbbf24)",
-                        borderRadius: 10, padding: "6px 14px",
-                        fontSize: 13, fontWeight: 900, color: "#000",
-                      }}>MAX</div>
+                      <div style={{ background:"linear-gradient(135deg,#d97706,#fbbf24)",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:900,color:"#000" }}>MAX</div>
                     ) : (
                       <>
-                        <div style={{ fontSize: 26, fontWeight: 900, color: "#06b6d4", lineHeight: 1, letterSpacing: "-0.02em" }}>
-                          {pointsInCurrentLevel}
-                          <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 600 }}> / {nextLevelCost}</span>
+                        <div style={{ fontSize:20,fontWeight:900,color:"#06b6d4",letterSpacing:"-0.02em",lineHeight:1 }}>
+                          {pointsInCurrentLevel}<span style={{ fontSize:11,color:"#1e293b",fontWeight:600 }}> / {nextLevelCost} pts</span>
                         </div>
-                        <div style={{ fontSize: 10, color: "#334155", marginTop: 3 }}>pts para o próx. nível</div>
+                        <div style={{ fontSize:9,color:"#334155",marginTop:2 }}>para o próximo nível</div>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* XP bar — taller with shimmer */}
-                <div style={{ position: "relative", height: 14, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 18 }}>
-                  <div style={{
-                    height: "100%", borderRadius: 99, width: `${progressPct}%`,
-                    background: "linear-gradient(90deg,#0369a1,#06b6d4,#22d3ee)",
-                    boxShadow: "0 0 18px rgba(6,182,212,0.65)",
-                    transition: "width 0.8s cubic-bezier(.4,0,.2,1)",
-                    position: "relative", overflow: "hidden",
-                  }}>
-                    {/* Shimmer sweep */}
-                    <div style={{
-                      position: "absolute", top: 0, bottom: 0, width: "40%",
-                      background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
-                      animation: "shimmer 2.2s ease-in-out infinite",
-                    }} />
+                {/* XP bar shimmer */}
+                <div style={{ position:"relative",height:10,borderRadius:99,background:"rgba(255,255,255,0.06)",overflow:"hidden",marginBottom:10 }}>
+                  <div style={{ height:"100%",borderRadius:99,width:`${progressPct}%`,
+                    background:"linear-gradient(90deg,#0369a1,#06b6d4,#22d3ee)",
+                    boxShadow:"0 0 14px rgba(6,182,212,0.60)",
+                    transition:"width 0.8s cubic-bezier(.4,0,.2,1)",position:"relative",overflow:"hidden" }}>
+                    <div style={{ position:"absolute",top:0,bottom:0,width:"40%",
+                      background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
+                      animation:"shimmer 2.2s ease-in-out infinite" }} />
                   </div>
-                  {/* % label */}
-                  <div style={{
-                    position: "absolute", inset: 0, display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    fontSize: 8, fontWeight: 900, letterSpacing: "0.06em",
-                    color: progressPct > 35 ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.25)",
-                  }}>{progressPct}%</div>
+                  <div style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:7,fontWeight:900,letterSpacing:"0.06em",
+                    color: progressPct > 35 ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.22)" }}>{progressPct}%</div>
                 </div>
 
                 {/* Pass type cards */}
-                <div style={{ display: "flex", gap: 10, position: "relative" }}>
+                <div style={{ display:"flex", gap:8, position:"relative" }}>
                   {/* Common */}
-                  <div style={{
-                    flex: 1, borderRadius: 14, padding: "11px 14px",
-                    background: "linear-gradient(135deg,rgba(6,182,212,0.10),rgba(6,182,212,0.04))",
-                    border: "1.5px solid rgba(6,182,212,0.22)",
-                    display: "flex", alignItems: "center", gap: 10,
-                  }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: "rgba(6,182,212,0.14)", border: "1px solid rgba(6,182,212,0.22)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Shield size={16} color="#06b6d4" />
+                  <div style={{ flex:1,borderRadius:10,padding:"8px 12px",
+                    background:"rgba(6,182,212,0.08)",backdropFilter:"blur(8px)",
+                    border:"1px solid rgba(6,182,212,0.20)",
+                    display:"flex",alignItems:"center",gap:8 }}>
+                    <div style={{ width:28,height:28,borderRadius:7,flexShrink:0,
+                      background:"rgba(6,182,212,0.14)",border:"1px solid rgba(6,182,212,0.20)",
+                      display:"flex",alignItems:"center",justifyContent:"center" }}>
+                      <Shield size={13} color="#06b6d4" />
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, fontSize: 12, color: "#06b6d4" }}>Passe Comum</div>
-                      <div style={{ fontSize: 10, color: "#334155" }}>Grátis · Sempre ativo</div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontWeight:900,fontSize:11,color:"#06b6d4" }}>Passe Comum</div>
+                      <div style={{ fontSize:9,color:"#334155" }}>Grátis · Sempre ativo</div>
                     </div>
-                    <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: "50%",
-                        background: "rgba(34,197,94,0.14)", border: "1.5px solid rgba(34,197,94,0.35)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <Check size={11} color="#22c55e" strokeWidth={3} />
-                      </div>
+                    <div style={{ marginLeft:"auto",flexShrink:0,width:16,height:16,borderRadius:"50%",
+                      background:"rgba(34,197,94,0.14)",border:"1.5px solid rgba(34,197,94,0.35)",
+                      display:"flex",alignItems:"center",justifyContent:"center" }}>
+                      <Check size={9} color="#22c55e" strokeWidth={3} />
                     </div>
                   </div>
-
                   {/* Premium */}
-                  <div
-                    onClick={passData.hasPremium ? undefined : () => setShowPremiumModal(true)}
-                    style={{
-                      flex: 1, borderRadius: 14, padding: "11px 14px",
-                      background: passData.hasPremium
-                        ? "linear-gradient(135deg,rgba(217,119,6,0.14),rgba(217,119,6,0.05))"
-                        : "linear-gradient(135deg,rgba(92,40,10,0.14),rgba(40,15,5,0.10))",
-                      border: `1.5px solid ${passData.hasPremium ? "rgba(251,191,36,0.35)" : "rgba(92,40,10,0.30)"}`,
-                      display: "flex", alignItems: "center", gap: 10,
-                      cursor: passData.hasPremium ? "default" : "pointer",
-                      transition: "border-color 0.2s",
-                    }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: passData.hasPremium ? "rgba(245,158,11,0.16)" : "rgba(92,40,10,0.20)",
-                      border: `1px solid ${passData.hasPremium ? "rgba(245,158,11,0.28)" : "rgba(92,40,10,0.25)"}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Crown size={16} color={passData.hasPremium ? "#f59e0b" : "#78350f"} />
+                  <div onClick={passData.hasPremium ? undefined : () => setShowPremiumModal(true)} style={{
+                    flex:1,borderRadius:10,padding:"8px 12px",
+                    background: passData.hasPremium ? "rgba(217,119,6,0.12)" : "rgba(92,40,10,0.10)",
+                    backdropFilter:"blur(8px)",
+                    border:`1px solid ${passData.hasPremium ? "rgba(251,191,36,0.30)" : "rgba(92,40,10,0.25)"}`,
+                    display:"flex",alignItems:"center",gap:8,cursor:passData.hasPremium?"default":"pointer" }}>
+                    <div style={{ width:28,height:28,borderRadius:7,flexShrink:0,
+                      background:passData.hasPremium?"rgba(245,158,11,0.14)":"rgba(92,40,10,0.18)",
+                      border:`1px solid ${passData.hasPremium?"rgba(245,158,11,0.25)":"rgba(92,40,10,0.22)"}`,
+                      display:"flex",alignItems:"center",justifyContent:"center" }}>
+                      <Crown size={13} color={passData.hasPremium?"#f59e0b":"#78350f"} />
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, fontSize: 12, color: passData.hasPremium ? "#f59e0b" : "#78350f" }}>
-                        Passe Premium
-                      </div>
-                      <div style={{ fontSize: 10, color: "#334155" }}>
-                        {passData.hasPremium ? "Ativo ✓" : PREMIUM_PRICE}
-                      </div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontWeight:900,fontSize:11,color:passData.hasPremium?"#f59e0b":"#78350f" }}>Passe Premium</div>
+                      <div style={{ fontSize:9,color:"#334155" }}>{passData.hasPremium?"Ativo ✓":PREMIUM_PRICE}</div>
                     </div>
                     {!passData.hasPremium && (
-                      <div style={{
-                        marginLeft: "auto", flexShrink: 0,
-                        background: "linear-gradient(135deg,#92400e,#d97706)",
-                        borderRadius: 7, padding: "3px 9px",
-                        fontSize: 9, fontWeight: 900, color: "#fff", letterSpacing: "0.04em",
-                      }}>Desbloquear</div>
+                      <div style={{ marginLeft:"auto",flexShrink:0,background:"linear-gradient(135deg,#92400e,#d97706)",
+                        borderRadius:5,padding:"2px 7px",fontSize:8,fontWeight:900,color:"#fff" }}>Desbloquear</div>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* ── REWARD TRACK ── */}
-              <div style={{ marginTop: 22, paddingBottom: 8 }}>
+              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginTop: 8 }}>
                 {/* Elegant section header */}
-                <div style={{ padding: "0 16px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ padding: "0 14px 8px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                     Trilha de Recompensas
                   </span>
                   <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.25),transparent)" }} />
-                  <div style={{
-                    flexShrink: 0, background: "rgba(6,182,212,0.10)",
+                  <div style={{ flexShrink: 0, background: "rgba(6,182,212,0.10)",
                     border: "1px solid rgba(6,182,212,0.22)", borderRadius: 8,
-                    padding: "3px 10px", display: "flex", alignItems: "center", gap: 5,
-                  }}>
-                    <Zap size={10} color="#06b6d4" />
-                    <span style={{ fontSize: 11, fontWeight: 900, color: "#06b6d4" }}>Lv.{passData.currentLevel}</span>
+                    padding: "2px 9px", display: "flex", alignItems: "center", gap: 5 }}>
+                    <Zap size={9} color="#06b6d4" />
+                    <span style={{ fontSize: 10, fontWeight: 900, color: "#06b6d4" }}>Lv.{passData.currentLevel}</span>
                   </div>
                 </div>
 
@@ -1162,13 +1119,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                             style={{ display: "flex", alignItems: "center" }}
                           >
                             {/* Coluna do nível — largura fixa para manter ritmo visual */}
-                            <div style={{ width: 80, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                            <div style={{ width: 70, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
 
                               {/* ── PREMIUM reward (topo) ── */}
                               <button
                                 onClick={() => { if (isPast) handleClaimPassReward(lg.level, true) }}
                                 style={{
-                                  width: 56, height: 56, borderRadius: 14,
+                                  width: 46, height: 46, borderRadius: 11,
                                   display: "flex", flexDirection: "column", alignItems: "center",
                                   justifyContent: "center", gap: 1,
                                   cursor: isPast && passData.hasPremium ? "pointer" : "default",
@@ -1228,7 +1185,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               <button
                                 onClick={() => { if (isPast) handleClaimPassReward(lg.level, false) }}
                                 style={{
-                                  width: 56, height: 56, borderRadius: 14,
+                                  width: 46, height: 46, borderRadius: 11,
                                   display: "flex", flexDirection: "column", alignItems: "center",
                                   justifyContent: "center", gap: 1,
                                   cursor: isPast ? "pointer" : "default",
@@ -1313,49 +1270,43 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 </div>
               </div>
 
-              {/* Notable milestones */}
-              <div style={{ margin: "20px 16px 0" }}>
-                <h3 style={{ fontWeight: 900, fontSize: 13, color: "#64748b", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>
-                  🏆 Marcos Especiais
-                </h3>
-                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+              {/* ── MARCOS ESPECIAIS — strip compacto ── */}
+              <div style={{ padding: "6px 14px 8px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.12em", textTransform: "uppercase" }}>🏆 Marcos</span>
+                  <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(255,255,255,0.06),transparent)" }} />
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
                   {[10, 25, 50, 75, 100].map(milestone => {
                     const unlocked = milestone <= passData.currentLevel
+                    const icons: Record<number, string> = { 100: "👑", 50: "⚔️", 75: "🎁", 25: "🎁", 10: "🎁" }
+                    const labels: Record<number, string> = { 100: "Carta LR", 75: "Pack SR", 50: "Playmat", 25: "Pack UR", 10: "Pack SR" }
                     return (
                       <div key={milestone} style={{
-                        minWidth: 110, borderRadius: 14, padding: "12px 10px",
+                        flex: 1, borderRadius: 10, padding: "7px 6px",
                         background: unlocked ? "rgba(6,182,212,0.08)" : "rgba(255,255,255,0.03)",
-                        border: `1px solid ${unlocked ? "rgba(6,182,212,0.25)" : "rgba(255,255,255,0.07)"}`,
-                        textAlign: "center", flexShrink: 0,
+                        border: `1px solid ${unlocked ? "rgba(6,182,212,0.22)" : "rgba(255,255,255,0.06)"}`,
+                        textAlign: "center",
                       }}>
-                        <div style={{ fontSize: 20, marginBottom: 4 }}>
-                          {milestone === 100 ? "👑" : milestone === 50 ? "⚔️" : "🎁"}
-                        </div>
-                        <div style={{ fontWeight: 900, fontSize: 11, color: unlocked ? "#06b6d4" : "#334155" }}>
-                          Nível {milestone}
-                        </div>
-                        <div style={{ fontSize: 9, color: "#475569", marginTop: 2 }}>
-                          {milestone === 100 ? "Carta LR Exclusiva" :
-                           milestone === 50 ? "Playmat Premium" :
-                           milestone === 25 ? "Pack UR" :
-                           "Pack SR"}
-                        </div>
+                        <div style={{ fontSize: 14, lineHeight: 1, marginBottom: 3 }}>{icons[milestone]}</div>
+                        <div style={{ fontWeight: 900, fontSize: 9, color: unlocked ? "#06b6d4" : "#334155" }}>Lv.{milestone}</div>
+                        <div style={{ fontSize: 8, color: "#1e293b", marginTop: 1 }}>{labels[milestone]}</div>
                       </div>
                     )
                   })}
                 </div>
               </div>
-            </>
+            </div>   {/* end pass tab flex column */}
           )}
 
           {/* ── MISSIONS TAB ── */}
           {activeTab === "missions" && (
-            <div style={{ padding: "16px 16px 0" }}>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "10px 14px 0" }}>
               {/* Filter pills + Coletar Tudo */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", alignItems: "center" }}>
+              <div style={{ flexShrink: 0, display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", alignItems: "center" }}>
                 {(["all", "daily", "weekly", "limited"] as const).map(f => (
                   <button key={f} onClick={() => setMissionFilter(f)} style={{
-                    padding: "6px 14px", borderRadius: 20, border: "none",
+                    padding: "5px 12px", borderRadius: 20, border: "none",
                     cursor: "pointer", fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
                     transition: "all 0.2s",
                     background: missionFilter === f
@@ -1367,7 +1318,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     {f === "all" ? "Todas" : f === "daily" ? "Diárias" : f === "weekly" ? "Semanais" : "Limitadas"}
                   </button>
                 ))}
-                {/* Spacer */}
                 <div style={{ flex: 1 }} />
                 {/* Coletar Tudo */}
                 <button
@@ -1406,8 +1356,8 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 </div>
               </div>
 
-              {/* Mission list */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* Mission list — scrolls internally so page never scrolls */}
+              <div style={{ flex: 1, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 8, paddingBottom: 8 }}>
                 {filteredMissions.map(mission => (
                   <MissionCard key={mission.id} mission={mission} onClaim={handleClaimMission} />
                 ))}
@@ -1621,7 +1571,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           to   { transform: rotate(360deg); }
         }
         .gp-track::-webkit-scrollbar { display: none; }
+        .mission-scroll::-webkit-scrollbar { display: none; }
       `}</style>
+      </div>{/* end EVERYTHING ABOVE WALLPAPER */}
     </div>
   )
 }
