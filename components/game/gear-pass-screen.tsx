@@ -1296,7 +1296,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   })}
                 </div>
               </div>
-            </div>   {/* end pass tab flex column */}
+            </div>
           )}
 
           {/* ── MISSIONS TAB ── */}
