@@ -65,6 +65,97 @@ const MASTERS: Record<TutorialMasterId, {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DECK INICIAL — preview das cartas que cada Mestre entrega ao ser escolhido
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface DeckCard {
+  name: string
+  rarity: "UR" | "SR" | "R" | "C"
+  qty: number
+  icon: string
+  color: string
+}
+
+interface StarterDeck { main: DeckCard[]; tap: DeckCard[] }
+
+// Cartas neutras compartilhadas pelos 3 decks iniciais (mesmas em todos)
+const SHARED_CARDS: Record<string, Omit<DeckCard, "name" | "qty">> = {
+  "Chamado da Távola":        { rarity: "R", icon: "📯", color: "#fbbf24" },
+  "Ruínas Abandonadas":       { rarity: "C", icon: "🏯", color: "#f97316" },
+  "Dados do Destino":         { rarity: "C", icon: "🎲", color: "#ef4444" },
+  "Amplificador de Poder":    { rarity: "C", icon: "📡", color: "#ef4444" },
+  "Bandagem Restaurada":      { rarity: "C", icon: "🩹", color: "#4ade80" },
+  "Brincadeira de Mau Gosto": { rarity: "C", icon: "🎭", color: "#ec4899" },
+  "A Grande Ordem":           { rarity: "R", icon: "⭐", color: "#fbbf24" },
+  "Laços da Ordem":           { rarity: "R", icon: "🔗", color: "#38bdf8" },
+}
+/** Helper: monta uma carta compartilhada com a quantidade desejada */
+const sc = (name: string, qty: number): DeckCard => ({ name, qty, ...SHARED_CARDS[name] })
+
+const STARTER_DECKS: Record<TutorialMasterId, StarterDeck> = {
+  fehnon: {
+    main: [
+      { name: "Fehnon Hoskie", rarity: "SR", qty: 4, icon: "⚔️", color: "#38bdf8" },
+      { name: "Fehnon Hoskie", rarity: "UR", qty: 1, icon: "⚔️", color: "#38bdf8" },
+      sc("Chamado da Távola", 2),
+      { name: "O Lorde Penguim, Mr. P", rarity: "R", qty: 1, icon: "🐧", color: "#38bdf8" },
+      { name: "Vivian, A Dama do Lago", rarity: "R", qty: 1, icon: "🧚", color: "#38bdf8" },
+      sc("Ruínas Abandonadas", 1),
+      sc("Dados do Destino", 2),
+      sc("Amplificador de Poder", 2),
+      sc("Bandagem Restaurada", 2),
+      sc("Brincadeira de Mau Gosto", 2),
+      sc("A Grande Ordem", 1),
+      sc("Laços da Ordem", 1),
+    ],
+    tap: [
+      { name: "Protonix Sword", rarity: "UR", qty: 1, icon: "⚔️", color: "#38bdf8" },
+      { name: "Ordem de Laceração", rarity: "SR", qty: 1, icon: "🌀", color: "#38bdf8" },
+    ],
+  },
+  morgana: {
+    main: [
+      { name: "Morgana Pendragon", rarity: "SR", qty: 4, icon: "🎸", color: "#a855f7" },
+      { name: "Morgana Pendragon", rarity: "UR", qty: 1, icon: "🎸", color: "#a855f7" },
+      sc("Chamado da Távola", 2),
+      { name: "Oeiste, O Comerciante", rarity: "R", qty: 1, icon: "🎒", color: "#a855f7" },
+      { name: "Merlin, O Mago do Destino", rarity: "R", qty: 1, icon: "🔮", color: "#a855f7" },
+      sc("Ruínas Abandonadas", 1),
+      sc("Dados do Destino", 2),
+      sc("Amplificador de Poder", 2),
+      sc("Bandagem Restaurada", 2),
+      sc("Brincadeira de Mau Gosto", 2),
+      sc("A Grande Ordem", 1),
+      sc("Laços da Ordem", 1),
+    ],
+    tap: [
+      { name: "Twilight Avalon", rarity: "UR", qty: 1, icon: "🎸", color: "#a855f7" },
+      { name: "Sinfonia Relâmpago", rarity: "SR", qty: 1, icon: "⚡", color: "#a855f7" },
+    ],
+  },
+  calem: {
+    main: [
+      { name: "Calem Hidenori", rarity: "SR", qty: 4, icon: "✊", color: "#94a3b8" },
+      { name: "Calem Hidenori", rarity: "UR", qty: 1, icon: "✊", color: "#94a3b8" },
+      sc("Chamado da Távola", 2),
+      { name: "Balin, O Sentinela das Sombras", rarity: "R", qty: 1, icon: "🛡️", color: "#94a3b8" },
+      { name: "Lancelot, O Herdeiro Sagrado", rarity: "R", qty: 1, icon: "🗡️", color: "#94a3b8" },
+      sc("Ruínas Abandonadas", 1),
+      sc("Dados do Destino", 2),
+      sc("Amplificador de Poder", 2),
+      sc("Bandagem Restaurada", 2),
+      sc("Brincadeira de Mau Gosto", 2),
+      sc("A Grande Ordem", 1),
+      sc("Laços da Ordem", 1),
+    ],
+    tap: [
+      { name: "Ultimate Guardian Miguel Arcanjo", rarity: "UR", qty: 1, icon: "👼", color: "#94a3b8" },
+      { name: "Julgamento do Vazio Eterno", rarity: "SR", qty: 1, icon: "🌌", color: "#94a3b8" },
+    ],
+  },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // LORE SLIDES  (breves + humanizados)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -626,12 +717,201 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
 // COMPONENT: MASTER SELECT PHASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPONENT: DECK CARD TILE  (representação visual compacta de uma carta)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const RARITY_COLORS: Record<DeckCard["rarity"], string> = {
+  UR: "#fbbf24", SR: "#c084fc", R: "#60a5fa", C: "#94a3b8",
+}
+
+function DeckCardTile({ card }: { card: DeckCard }) {
+  const rc = RARITY_COLORS[card.rarity]
+  return (
+    <div style={{
+      position: "relative", aspectRatio: "0.72", borderRadius: 9,
+      overflow: "hidden", display: "flex", flexDirection: "column",
+      border: `1.5px solid ${rc}50`,
+      background: `linear-gradient(160deg, ${card.color}26 0%, rgba(8,8,14,0.92) 75%)`,
+      boxShadow: card.rarity === "UR" || card.rarity === "SR" ? `0 0 12px ${rc}25` : "none",
+    }}>
+      {/* Faixa de raridade no topo */}
+      <div style={{
+        height: 3, width: "100%",
+        background: `linear-gradient(90deg, transparent, ${rc}, transparent)`,
+      }} />
+      {/* Badge de raridade */}
+      <div style={{
+        position: "absolute", top: 6, left: 6,
+        fontSize: "clamp(7px, 0.7vw, 9px)", fontWeight: 800,
+        color: rc, background: `${rc}1c`,
+        border: `1px solid ${rc}55`,
+        padding: "1px 6px", borderRadius: 4, letterSpacing: "0.05em",
+      }}>
+        {card.rarity}
+      </div>
+      {/* Badge de quantidade */}
+      {card.qty > 1 && (
+        <div style={{
+          position: "absolute", top: 6, right: 6,
+          fontSize: "clamp(8px, 0.75vw, 10px)", fontWeight: 800, color: "#fff",
+          background: "rgba(0,0,0,0.55)", padding: "1px 6px", borderRadius: 4,
+        }}>
+          ×{card.qty}
+        </div>
+      )}
+      {/* Ícone central representando a arte da carta */}
+      <div style={{
+        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: "clamp(22px, 3.6vw, 34px)",
+        filter: `drop-shadow(0 0 10px ${card.color}50)`,
+      }}>
+        {card.icon}
+      </div>
+      {/* Nome da carta */}
+      <div style={{
+        padding: "4px 5px 6px", textAlign: "center",
+        fontSize: "clamp(7px, 0.72vw, 9px)", fontWeight: 600,
+        color: "rgba(255,255,255,0.78)", lineHeight: 1.28,
+        background: "rgba(0,0,0,0.38)",
+        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+      }}>
+        {card.name}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPONENT: STARTER DECK MODAL  (preview do Deck Inicial de um Mestre)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function StarterDeckModal({ masterId, onClose }: { masterId: TutorialMasterId; onClose: () => void }) {
+  const m = MASTERS[masterId]
+  const deck = STARTER_DECKS[masterId]
+  const totalMain = deck.main.reduce((s, c) => s + c.qty, 0)
+  const totalTap = deck.tap.reduce((s, c) => s + c.qty, 0)
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(2,2,6,0.82)", backdropFilter: "blur(6px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "clamp(10px, 3vh, 30px)",
+        animation: "tutFadeIn 0.22s ease both",
+        fontFamily: "'Segoe UI', sans-serif",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: "#0a0a12", borderRadius: 18,
+          border: `1px solid ${m.color}35`,
+          width: "100%", maxWidth: 760, maxHeight: "88vh",
+          overflowY: "auto", overflowX: "hidden",
+          boxShadow: `0 0 70px ${m.color}22, 0 24px 70px rgba(0,0,0,0.65)`,
+          animation: "msDeckModalIn 0.32s cubic-bezier(0.22,1,0.36,1) both",
+        }}
+      >
+        {/* ── Header ── */}
+        <div style={{
+          position: "sticky", top: 0, zIndex: 5,
+          background: `linear-gradient(135deg, ${m.color}1c 0%, #0a0a12 85%)`,
+          borderBottom: `1px solid ${m.color}28`,
+          padding: "clamp(14px, 2.6vw, 22px) clamp(16px, 3vw, 26px)",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <div>
+            <div style={{
+              fontSize: "clamp(8px, 0.85vw, 10px)", color: `${m.color}dd`,
+              letterSpacing: "0.24em", fontWeight: 800, textTransform: "uppercase", marginBottom: 5,
+            }}>
+              {m.name} · {m.deckName}
+            </div>
+            <div style={{ fontSize: "clamp(17px, 2.4vw, 24px)", fontWeight: 900, color: "#fff" }}>
+              🃏 Deck Inicial
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+            color: "rgba(255,255,255,0.65)", fontSize: 15, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "background 0.2s ease, color 0.2s ease",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#fff" }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.65)" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* ── Corpo ── */}
+        <div style={{ padding: "clamp(14px, 2.6vw, 24px)" }}>
+          {/* Deck Principal */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "clamp(10px, 1.8vh, 14px)" }}>
+            <span style={{ fontSize: 15 }}>⚔️</span>
+            <span style={{ fontSize: "clamp(12px, 1.4vw, 15px)", fontWeight: 800, color: "#fff", letterSpacing: "0.02em" }}>
+              Deck Principal
+            </span>
+            <span style={{ fontSize: "clamp(10px, 1.1vw, 12px)", color: "rgba(255,255,255,0.32)", fontWeight: 600 }}>
+              ({totalMain} cartas)
+            </span>
+          </div>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
+            gap: "clamp(6px, 1vw, 10px)",
+          }}>
+            {deck.main.map((card, i) => <DeckCardTile key={i} card={card} />)}
+          </div>
+
+          {/* TAP — Extra Deck */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "clamp(16px, 2.8vh, 24px) 0 clamp(10px, 1.8vh, 14px)" }}>
+            <span style={{ fontSize: 15 }}>🌀</span>
+            <span style={{ fontSize: "clamp(12px, 1.4vw, 15px)", fontWeight: 800, color: "#fff", letterSpacing: "0.02em" }}>
+              TAP — Extra Deck
+            </span>
+            <span style={{ fontSize: "clamp(10px, 1.1vw, 12px)", color: "rgba(255,255,255,0.32)", fontWeight: 600 }}>
+              ({totalTap} cartas)
+            </span>
+          </div>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
+            gap: "clamp(6px, 1vw, 10px)",
+            maxWidth: 280,
+          }}>
+            {deck.tap.map((card, i) => <DeckCardTile key={i} card={card} />)}
+          </div>
+
+          {/* Nota explicativa */}
+          <div style={{
+            marginTop: "clamp(16px, 2.8vh, 22px)",
+            padding: "clamp(11px, 1.8vh, 15px) clamp(13px, 2.2vw, 18px)",
+            background: `${m.color}0e`, border: `1px solid ${m.color}28`,
+            borderRadius: 11, textAlign: "center",
+            fontSize: "clamp(10px, 1vw, 12px)", color: "rgba(255,255,255,0.55)", lineHeight: 1.65,
+          }}>
+            ✨ Ao escolher <strong style={{ color: m.color }}>{m.name}</strong> como seu Mestre, este deck completo
+            ({totalMain + totalTap} cartas) será adicionado automaticamente à sua conta como{" "}
+            <strong style={{ color: "#fff" }}>"Deck Inicial"</strong> e já estará pronto pra batalha no Main Menu.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: {
   playerName: string; onSelect: (id: TutorialMasterId) => void
   selectedMaster: TutorialMasterId | null; confirmed: boolean
 }) {
   const [hovered, setHovered] = useState<TutorialMasterId | null>(null)
   const [entered, setEntered] = useState(false)
+  const [viewingDeck, setViewingDeck] = useState<TutorialMasterId | null>(null)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useTutorialAudio("/audio/Big Memory.mp3", 0.5)
 
@@ -773,19 +1053,19 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
                 <div style={{ position: "absolute", top: 0, right: 0, width: 2, height: "100%", background: m.color, borderRadius: 1 }} />
               </div>
               {/* Canto inferior esquerdo */}
-              <div style={{ position: "absolute", bottom: "clamp(152px, 22.5vh, 205px)", left: 8, width: 14, height: 14, pointerEvents: "none", opacity: isActive ? 0.7 : 0.15, transition: "opacity 0.4s ease" }}>
+              <div style={{ position: "absolute", bottom: "clamp(178px, 26vh, 231px)", left: 8, width: 14, height: 14, pointerEvents: "none", opacity: isActive ? 0.7 : 0.15, transition: "opacity 0.4s ease" }}>
                 <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 1.5, background: m.color }} />
                 <div style={{ position: "absolute", bottom: 0, left: 0, width: 1.5, height: "100%", background: m.color }} />
               </div>
               {/* Canto inferior direito */}
-              <div style={{ position: "absolute", bottom: "clamp(152px, 22.5vh, 205px)", right: 8, width: 14, height: 14, pointerEvents: "none", opacity: isActive ? 0.7 : 0.15, transition: "opacity 0.4s ease" }}>
+              <div style={{ position: "absolute", bottom: "clamp(178px, 26vh, 231px)", right: 8, width: 14, height: 14, pointerEvents: "none", opacity: isActive ? 0.7 : 0.15, transition: "opacity 0.4s ease" }}>
                 <div style={{ position: "absolute", bottom: 0, right: 0, width: "100%", height: 1.5, background: m.color }} />
                 <div style={{ position: "absolute", bottom: 0, right: 0, width: 1.5, height: "100%", background: m.color }} />
               </div>
 
               {/* ── Pilar de luz vertical (coluna central, bottom-up) */}
               <div style={{
-                position: "absolute", bottom: "clamp(150px, 22vh, 204px)", left: "50%",
+                position: "absolute", bottom: "clamp(176px, 25.5vh, 230px)", left: "50%",
                 transform: "translateX(-50%)", width: "40%", height: "68%",
                 background: `radial-gradient(ellipse at 50% 100%, ${m.color}${isActive ? "1e" : "08"} 0%, transparent 70%)`,
                 pointerEvents: "none", willChange: "opacity",
@@ -795,7 +1075,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
               {/* ── Halo elíptico atrás do personagem */}
               <div style={{
                 position: "absolute",
-                bottom: "clamp(155px, 23vh, 210px)",
+                bottom: "clamp(181px, 26.5vh, 236px)",
                 left: "50%", transform: "translateX(-50%)",
                 width: "clamp(160px, 22vw, 280px)",
                 height: "clamp(160px, 22vw, 280px)",
@@ -809,7 +1089,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
               {/* ── Brilho no chão sob os pés */}
               <div style={{
                 position: "absolute",
-                bottom: "clamp(150px, 22vh, 204px)", left: "50%",
+                bottom: "clamp(176px, 25.5vh, 230px)", left: "50%",
                 transform: "translateX(-50%)",
                 width: "90px", height: "16px",
                 background: `radial-gradient(ellipse, ${m.color}60 0%, transparent 70%)`,
@@ -822,9 +1102,9 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
               {/* ── ARTE DO PERSONAGEM — transform + filter apenas (GPU puro) */}
               <div style={{
                 position: "absolute",
-                bottom: "clamp(155px, 23vh, 210px)", left: "50%",
+                bottom: "clamp(181px, 26.5vh, 236px)", left: "50%",
                 transform: `translateX(-50%) translateY(${isActive ? "-10px" : "0px"}) scale(${isActive ? (isCenter ? 1.06 : 1.05) : (isCenter ? 1.02 : 1)})`,
-                height: isCenter ? "clamp(320px, 67vh, 585px)" : "clamp(290px, 63vh, 545px)",
+                height: isCenter ? "clamp(300px, 64vh, 560px)" : "clamp(270px, 60vh, 520px)",
                 transformOrigin: "bottom center",
                 willChange: "transform",
                 transition: "transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
@@ -842,7 +1122,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
               {/* ── ÁREA DE INFO — altura fixa, zero layout shift ─────────── */}
               <div style={{
                 position: "absolute", bottom: 0, left: 0, right: 0,
-                height: "clamp(152px, 22.5vh, 207px)",
+                height: "clamp(178px, 26vh, 233px)",
                 background: "linear-gradient(to top, rgba(6,6,8,0.99) 0%, rgba(6,6,8,0.90) 58%, transparent 100%)",
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "flex-end",
@@ -923,6 +1203,37 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
                   </p>
                 </div>
 
+                {/* Botão DECK INICIAL — abre preview do deck que será adicionado à conta */}
+                <button
+                  onClick={e => { e.stopPropagation(); setViewingDeck(id) }}
+                  style={{
+                    width: "clamp(88px, 74%, 160px)",
+                    padding: "clamp(5px, 0.85vh, 7px) 0",
+                    marginBottom: 6,
+                    background: "transparent",
+                    border: `1px solid ${m.color}${isActive ? "4a" : "1c"}`,
+                    borderRadius: 7,
+                    color: `${m.color}${isActive ? "ee" : "70"}`,
+                    fontSize: "clamp(8px, 0.85vw, 10px)", fontWeight: 700,
+                    textAlign: "center", letterSpacing: "0.12em", textTransform: "uppercase",
+                    cursor: "pointer", fontFamily: "'Segoe UI', sans-serif",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    transition: "background 0.3s ease, border-color 0.3s ease, color 0.3s ease",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = `${m.color}16`
+                    e.currentTarget.style.borderColor = `${m.color}80`
+                    e.currentTarget.style.color = m.color
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = "transparent"
+                    e.currentTarget.style.borderColor = `${m.color}${isActive ? "4a" : "1c"}`
+                    e.currentTarget.style.color = `${m.color}${isActive ? "ee" : "70"}`
+                  }}
+                >
+                  <span style={{ fontSize: 11 }}>🃏</span> Deck Inicial
+                </button>
+
                 {/* Botão ESCOLHER */}
                 <div style={{
                   width: "clamp(88px, 74%, 160px)",
@@ -965,6 +1276,11 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
       <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", zIndex: 30, pointerEvents: "none", animation: "tutFadeIn 1s ease 0.9s both" }}>
         <span style={{ fontSize: 9, color: "rgba(255,255,255,0.14)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Passe o mouse para ver mais detalhes</span>
       </div>
+
+      {/* Modal de preview do Deck Inicial */}
+      {viewingDeck && (
+        <StarterDeckModal masterId={viewingDeck} onClose={() => setViewingDeck(null)} />
+      )}
     </div>
   )
 }
@@ -1068,6 +1384,10 @@ const TUTORIAL_CSS = `
   @keyframes msRays {
     0%   { opacity: 0; transform: translateX(-50%) rotate(-8deg); }
     100% { opacity: 1; transform: translateX(-50%) rotate(0deg); }
+  }
+  @keyframes msDeckModalIn {
+    0%   { opacity: 0; transform: translateY(18px) scale(0.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
   }
   /* ── Shared ──────────────────────────── */
   @keyframes tutFadeIn {
