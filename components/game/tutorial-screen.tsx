@@ -72,22 +72,21 @@ interface DeckCard {
   name: string
   rarity: "UR" | "SR" | "R" | "C"
   qty: number
-  icon: string
-  color: string
+  img: string    // caminho real da imagem da carta em /public
 }
 
 interface StarterDeck { main: DeckCard[]; tap: DeckCard[] }
 
 // Cartas neutras compartilhadas pelos 3 decks iniciais (mesmas em todos)
 const SHARED_CARDS: Record<string, Omit<DeckCard, "name" | "qty">> = {
-  "Chamado da Távola":        { rarity: "R", icon: "📯", color: "#fbbf24" },
-  "Ruínas Abandonadas":       { rarity: "C", icon: "🏯", color: "#f97316" },
-  "Dados do Destino":         { rarity: "C", icon: "🎲", color: "#ef4444" },
-  "Amplificador de Poder":    { rarity: "C", icon: "📡", color: "#ef4444" },
-  "Bandagem Restaurada":      { rarity: "C", icon: "🩹", color: "#4ade80" },
-  "Brincadeira de Mau Gosto": { rarity: "C", icon: "🎭", color: "#ec4899" },
-  "A Grande Ordem":           { rarity: "R", icon: "⭐", color: "#fbbf24" },
-  "Laços da Ordem":           { rarity: "R", icon: "🔗", color: "#38bdf8" },
+  "Chamado da Távola":        { rarity: "R",  img: "/images/cards/Chamado_da_Távola.png" },
+  "Ruínas Abandonadas":       { rarity: "C",  img: "/images/ruinas-abandonadas.png" },
+  "Dados do Destino":         { rarity: "C",  img: "/images/cards/dados-do-destino-gentil.png" },
+  "Amplificador de Poder":    { rarity: "C",  img: "/images/amplificador-de-poder.png" },
+  "Bandagem Restaurada":      { rarity: "C",  img: "/images/bandagem-restauradora.png" },
+  "Brincadeira de Mau Gosto": { rarity: "C",  img: "/images/cards/brincadeira-de-mau-gosto.png" },
+  "A Grande Ordem":           { rarity: "R",  img: "/images/cards/a-grande-ordem.jpg" },
+  "Laços da Ordem":           { rarity: "R",  img: "/images/cards/lacos-da-ordem.png" },
 }
 /** Helper: monta uma carta compartilhada com a quantidade desejada */
 const sc = (name: string, qty: number): DeckCard => ({ name, qty, ...SHARED_CARDS[name] })
@@ -95,11 +94,11 @@ const sc = (name: string, qty: number): DeckCard => ({ name, qty, ...SHARED_CARD
 const STARTER_DECKS: Record<TutorialMasterId, StarterDeck> = {
   fehnon: {
     main: [
-      { name: "Fehnon Hoskie", rarity: "SR", qty: 4, icon: "⚔️", color: "#38bdf8" },
-      { name: "Fehnon Hoskie", rarity: "UR", qty: 1, icon: "⚔️", color: "#38bdf8" },
+      { name: "Fehnon Hoskie",          rarity: "SR", qty: 4, img: "/images/fehnon-20sr.png" },
+      { name: "Fehnon Hoskie",          rarity: "UR", qty: 1, img: "/images/fehnon-20ur.png" },
       sc("Chamado da Távola", 2),
-      { name: "O Lorde Penguim, Mr. P", rarity: "R", qty: 1, icon: "🐧", color: "#38bdf8" },
-      { name: "Vivian, A Dama do Lago", rarity: "R", qty: 1, icon: "🧚", color: "#38bdf8" },
+      { name: "O Lorde Penguim, Mr. P", rarity: "R",  qty: 1, img: "/images/mr.png" },
+      { name: "Vivian, A Dama do Lago", rarity: "R",  qty: 1, img: "/images/vivian-20r.png" },
       sc("Ruínas Abandonadas", 1),
       sc("Dados do Destino", 2),
       sc("Amplificador de Poder", 2),
@@ -109,17 +108,17 @@ const STARTER_DECKS: Record<TutorialMasterId, StarterDeck> = {
       sc("Laços da Ordem", 1),
     ],
     tap: [
-      { name: "Protonix Sword", rarity: "UR", qty: 1, icon: "⚔️", color: "#38bdf8" },
-      { name: "Ordem de Laceração", rarity: "SR", qty: 1, icon: "🌀", color: "#38bdf8" },
+      { name: "Protonix Sword",    rarity: "UR", qty: 1, img: "/images/protonix-20sword.png" },
+      { name: "Ordem de Laceração", rarity: "SR", qty: 1, img: "/images/cards/ordem-de-laceracao.png" },
     ],
   },
   morgana: {
     main: [
-      { name: "Morgana Pendragon", rarity: "SR", qty: 4, icon: "🎸", color: "#a855f7" },
-      { name: "Morgana Pendragon", rarity: "UR", qty: 1, icon: "🎸", color: "#a855f7" },
+      { name: "Morgana Pendragon",        rarity: "SR", qty: 4, img: "/images/morgana-20sr.png" },
+      { name: "Morgana Pendragon",        rarity: "UR", qty: 1, img: "/images/morgana-20ur.png" },
       sc("Chamado da Távola", 2),
-      { name: "Oeiste, O Comerciante", rarity: "R", qty: 1, icon: "🎒", color: "#a855f7" },
-      { name: "Merlin, O Mago do Destino", rarity: "R", qty: 1, icon: "🔮", color: "#a855f7" },
+      { name: "Oeiste, O Comerciante",    rarity: "R",  qty: 1, img: "/images/oswin-20r.png" },
+      { name: "Merlin, O Mago do Destino",rarity: "R",  qty: 1, img: "/images/merlin-20r.png" },
       sc("Ruínas Abandonadas", 1),
       sc("Dados do Destino", 2),
       sc("Amplificador de Poder", 2),
@@ -129,17 +128,17 @@ const STARTER_DECKS: Record<TutorialMasterId, StarterDeck> = {
       sc("Laços da Ordem", 1),
     ],
     tap: [
-      { name: "Twilight Avalon", rarity: "UR", qty: 1, icon: "🎸", color: "#a855f7" },
-      { name: "Sinfonia Relâmpago", rarity: "SR", qty: 1, icon: "⚡", color: "#a855f7" },
+      { name: "Twilight Avalon",   rarity: "UR", qty: 1, img: "/images/twiligh-20avalon.png" },
+      { name: "Sinfonia Relâmpago",rarity: "SR", qty: 1, img: "/images/cards/sinfonia-relampago.png" },
     ],
   },
   calem: {
     main: [
-      { name: "Calem Hidenori", rarity: "SR", qty: 4, icon: "✊", color: "#94a3b8" },
-      { name: "Calem Hidenori", rarity: "UR", qty: 1, icon: "✊", color: "#94a3b8" },
+      { name: "Calem Hidenori",               rarity: "SR", qty: 4, img: "/images/cards/calem-sr.png" },
+      { name: "Calem Hidenori",               rarity: "UR", qty: 1, img: "/images/cards/calem-ur.png" },
       sc("Chamado da Távola", 2),
-      { name: "Balin, O Sentinela das Sombras", rarity: "R", qty: 1, icon: "🛡️", color: "#94a3b8" },
-      { name: "Lancelot, O Herdeiro Sagrado", rarity: "R", qty: 1, icon: "🗡️", color: "#94a3b8" },
+      { name: "Balin, O Sentinela das Sombras",rarity: "R", qty: 1, img: "/images/cards/Balin_R.png" },
+      { name: "Lancelot, O Herdeiro Sagrado",  rarity: "R", qty: 1, img: "/images/cards/Lancelot_R.png" },
       sc("Ruínas Abandonadas", 1),
       sc("Dados do Destino", 2),
       sc("Amplificador de Poder", 2),
@@ -149,8 +148,8 @@ const STARTER_DECKS: Record<TutorialMasterId, StarterDeck> = {
       sc("Laços da Ordem", 1),
     ],
     tap: [
-      { name: "Ultimate Guardian Miguel Arcanjo", rarity: "UR", qty: 1, icon: "👼", color: "#94a3b8" },
-      { name: "Julgamento do Vazio Eterno", rarity: "SR", qty: 1, icon: "🌌", color: "#94a3b8" },
+      { name: "Ultimate Guardian Miguel Arcanjo", rarity: "UR", qty: 1, img: "/images/cards/miguel-arcanjo.png" },
+      { name: "Julgamento do Vazio Eterno",       rarity: "SR", qty: 1, img: "/images/cards/Julgamento_do_Vazio_Eterno.png" },
     ],
   },
 }
@@ -727,57 +726,78 @@ const RARITY_COLORS: Record<DeckCard["rarity"], string> = {
 
 function DeckCardTile({ card }: { card: DeckCard }) {
   const rc = RARITY_COLORS[card.rarity]
+  const isShiny = card.rarity === "UR" || card.rarity === "SR"
   return (
     <div style={{
-      position: "relative", aspectRatio: "0.72", borderRadius: 9,
-      overflow: "hidden", display: "flex", flexDirection: "column",
-      border: `1.5px solid ${rc}50`,
-      background: `linear-gradient(160deg, ${card.color}26 0%, rgba(8,8,14,0.92) 75%)`,
-      boxShadow: card.rarity === "UR" || card.rarity === "SR" ? `0 0 12px ${rc}25` : "none",
+      position: "relative",
+      aspectRatio: "0.72",
+      borderRadius: 9,
+      overflow: "hidden",
+      background: "#0a0a14",
+      border: `1.5px solid ${rc}${isShiny ? "70" : "38"}`,
+      boxShadow: isShiny ? `0 0 14px ${rc}28, 0 4px 10px rgba(0,0,0,0.6)` : "0 2px 8px rgba(0,0,0,0.5)",
+      cursor: "default",
     }}>
-      {/* Faixa de raridade no topo */}
+      {/* Arte real da carta */}
+      <img
+        src={card.img}
+        alt={card.name}
+        loading="lazy"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "top center",
+          display: "block",
+        }}
+      />
+
+      {/* Gradiente sutil na base para legibilidade dos badges */}
       <div style={{
-        height: 3, width: "100%",
-        background: `linear-gradient(90deg, transparent, ${rc}, transparent)`,
+        position: "absolute", inset: 0,
+        background: "linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, transparent 30%, transparent 65%, rgba(0,0,0,0.1) 100%)",
+        pointerEvents: "none",
       }} />
-      {/* Badge de raridade */}
+
+      {/* Badge de raridade — canto superior esquerdo */}
       <div style={{
-        position: "absolute", top: 6, left: 6,
-        fontSize: "clamp(7px, 0.7vw, 9px)", fontWeight: 800,
-        color: rc, background: `${rc}1c`,
-        border: `1px solid ${rc}55`,
-        padding: "1px 6px", borderRadius: 4, letterSpacing: "0.05em",
+        position: "absolute", top: 4, left: 4,
+        fontSize: "clamp(6px, 0.68vw, 8px)", fontWeight: 800,
+        color: rc,
+        background: "rgba(4,4,10,0.82)",
+        border: `1px solid ${rc}60`,
+        padding: "1px 5px", borderRadius: 4,
+        letterSpacing: "0.04em",
+        backdropFilter: "blur(3px)",
+        lineHeight: "1.6",
       }}>
         {card.rarity}
       </div>
-      {/* Badge de quantidade */}
+
+      {/* Badge de quantidade — canto superior direito */}
       {card.qty > 1 && (
         <div style={{
-          position: "absolute", top: 6, right: 6,
-          fontSize: "clamp(8px, 0.75vw, 10px)", fontWeight: 800, color: "#fff",
-          background: "rgba(0,0,0,0.55)", padding: "1px 6px", borderRadius: 4,
+          position: "absolute", top: 4, right: 4,
+          fontSize: "clamp(7px, 0.72vw, 9px)", fontWeight: 800,
+          color: "#fff",
+          background: "rgba(4,4,10,0.82)",
+          padding: "1px 5px", borderRadius: 4,
+          backdropFilter: "blur(3px)",
+          lineHeight: "1.6",
         }}>
           ×{card.qty}
         </div>
       )}
-      {/* Ícone central representando a arte da carta */}
-      <div style={{
-        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: "clamp(22px, 3.6vw, 34px)",
-        filter: `drop-shadow(0 0 10px ${card.color}50)`,
-      }}>
-        {card.icon}
-      </div>
-      {/* Nome da carta */}
-      <div style={{
-        padding: "4px 5px 6px", textAlign: "center",
-        fontSize: "clamp(7px, 0.72vw, 9px)", fontWeight: 600,
-        color: "rgba(255,255,255,0.78)", lineHeight: 1.28,
-        background: "rgba(0,0,0,0.38)",
-        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-      }}>
-        {card.name}
-      </div>
+
+      {/* Anel brilhante para UR */}
+      {card.rarity === "UR" && (
+        <div style={{
+          position: "absolute", inset: 0,
+          borderRadius: 8,
+          boxShadow: `inset 0 0 0 1.5px ${rc}55`,
+          pointerEvents: "none",
+        }} />
+      )}
     </div>
   )
 }
@@ -862,7 +882,7 @@ function StarterDeckModal({ masterId, onClose }: { masterId: TutorialMasterId; o
           </div>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))",
             gap: "clamp(6px, 1vw, 10px)",
           }}>
             {deck.main.map((card, i) => <DeckCardTile key={i} card={card} />)}
@@ -880,9 +900,9 @@ function StarterDeckModal({ masterId, onClose }: { masterId: TutorialMasterId; o
           </div>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))",
             gap: "clamp(6px, 1vw, 10px)",
-            maxWidth: 280,
+            maxWidth: 320,
           }}>
             {deck.tap.map((card, i) => <DeckCardTile key={i} card={card} />)}
           </div>
