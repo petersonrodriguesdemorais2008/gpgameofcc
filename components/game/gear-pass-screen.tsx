@@ -356,16 +356,22 @@ function MissionCard({
   }
   const col = typeColors[mission.type]
   const pct = Math.min(100, Math.round((mission.progress / mission.goal) * 100))
+  // "Pronto pra coletar" — mesmo estado que dá glow pulsante na trilha
+  const readyToClaim = mission.completed && !mission.claimed
 
   return (
     <div style={{
-      background: col.bg,
-      border: `1px solid ${col.border}`,
+      background: readyToClaim ? "rgba(34,197,94,0.08)" : col.bg,
+      border: `1.5px solid ${readyToClaim ? "rgba(34,197,94,0.55)" : col.border}`,
       borderRadius: 16,
       padding: "14px 16px",
       display: "flex",
       flexDirection: "column",
       gap: 8,
+      position: "relative",
+      // Glow pulsante — consistente com claimPulseCyan/Amber da trilha
+      animation: readyToClaim ? "claimPulseGreen 2s ease-in-out infinite" : "none",
+      transition: "background 0.3s, border-color 0.3s",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         <div style={{ flex: 1 }}>
@@ -378,18 +384,30 @@ function MissionCard({
             {mission.expiresIn && (
               <span style={{ fontSize: 9, color: "#f59e0b", fontWeight: 700 }}>⏰ {mission.expiresIn}</span>
             )}
+            {readyToClaim && (
+              <span style={{
+                fontSize: 9, fontWeight: 900, color: "#4ade80",
+                background: "rgba(34,197,94,0.16)", padding: "2px 7px", borderRadius: 6,
+                letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 3,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: 99, background: "#4ade80", boxShadow: "0 0 6px rgba(74,222,128,0.9)" }} />
+                Pronto!
+              </span>
+            )}
           </div>
           <p style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 13, marginBottom: 2 }}>{mission.title}</p>
           <p style={{ color: "#94a3b8", fontSize: 11 }}>{mission.description}</p>
         </div>
 
-        {/* Points badge */}
+        {/* Points badge — ganha glow verde quando pronta */}
         <div style={{
-          background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.25)",
+          background: readyToClaim ? "rgba(34,197,94,0.14)" : "rgba(251,191,36,0.12)",
+          border: `1px solid ${readyToClaim ? "rgba(34,197,94,0.35)" : "rgba(251,191,36,0.25)"}`,
           borderRadius: 10, padding: "4px 10px", textAlign: "center", flexShrink: 0,
+          boxShadow: readyToClaim ? "0 0 12px rgba(34,197,94,0.25)" : "none",
         }}>
-          <div style={{ color: "#fbbf24", fontWeight: 900, fontSize: 15, lineHeight: 1 }}>+{mission.points}</div>
-          <div style={{ color: "#d97706", fontSize: 9, fontWeight: 700 }}>pts</div>
+          <div style={{ color: readyToClaim ? "#4ade80" : "#fbbf24", fontWeight: 900, fontSize: 15, lineHeight: 1 }}>+{mission.points}</div>
+          <div style={{ color: readyToClaim ? "#16a34a" : "#d97706", fontSize: 9, fontWeight: 700 }}>pts</div>
         </div>
       </div>
 
@@ -409,7 +427,7 @@ function MissionCard({
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
           <span style={{ fontSize: 10, color: "#64748b" }}>{mission.progress}/{mission.goal}</span>
-          {mission.completed && !mission.claimed && (
+          {readyToClaim && (
             <button
               onClick={() => onClaim(mission.id)}
               style={{
@@ -856,6 +874,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // Teaser: próxima recompensa comum ainda não desbloqueada
   const nextRewardEntry = levelGroups.find(lg => !lg.commonClaimed && lg.level > passData.currentLevel)
 
+  // ── Teaser de premium retroativo ──────────────────────────────────────────
+  // Conta níveis já alcançados cuja recompensa premium nunca foi coletada,
+  // INDEPENDENTE de hasPremium — é exatamente o que o jogador resgataria de uma
+  // vez se comprasse agora. Usado no modal de upsell.
+  const retroactivePremiumLevels = levelGroups.filter(lg => lg.isUnlocked && lg.premium && !lg.premiumClaimed)
+  const retroactivePremiumCount  = retroactivePremiumLevels.length
+
   // ── Coletar todos os pendentes da trilha de uma vez ──────────────────────────
   const handleClaimAllTrack = () => {
     const newCommon   = [...passData.claimedCommon]
@@ -1119,13 +1144,23 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       <Check size={9} color="#22c55e" strokeWidth={3} />
                     </div>
                   </div>
-                  {/* Premium */}
+                  {/* Premium — badge com contagem retroativa reforça o teaser antes mesmo de abrir o modal */}
                   <div onClick={passData.hasPremium ? undefined : () => setShowPremiumModal(true)} style={{
-                    flex:1,borderRadius:10,padding:"8px 12px",
+                    flex:1,borderRadius:10,padding:"8px 12px",position:"relative",
                     background: passData.hasPremium ? "rgba(217,119,6,0.12)" : "rgba(92,40,10,0.10)",
                     backdropFilter:"blur(8px)",
                     border:`1px solid ${passData.hasPremium ? "rgba(251,191,36,0.30)" : "rgba(92,40,10,0.25)"}`,
                     display:"flex",alignItems:"center",gap:8,cursor:passData.hasPremium?"default":"pointer" }}>
+                    {/* Badge "N esperando" */}
+                    {!passData.hasPremium && retroactivePremiumCount > 0 && (
+                      <div style={{
+                        position:"absolute", top:-7, right:-6,
+                        minWidth:18, height:18, borderRadius:99, padding:"0 5px",
+                        background:"#ef4444", color:"#fff", fontSize:9, fontWeight:900,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        boxShadow:"0 0 10px rgba(239,68,68,0.60)", border:"2px solid rgba(3,8,22,0.93)",
+                      }}>{retroactivePremiumCount > 9 ? "9+" : retroactivePremiumCount}</div>
+                    )}
                     <div style={{ width:28,height:28,borderRadius:7,flexShrink:0,
                       background:passData.hasPremium?"rgba(245,158,11,0.14)":"rgba(92,40,10,0.18)",
                       border:`1px solid ${passData.hasPremium?"rgba(245,158,11,0.25)":"rgba(92,40,10,0.22)"}`,
@@ -1671,6 +1706,32 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               </p>
             </div>
 
+            {/* ── TEASER DE PREMIUM RETROATIVO ── gatilho de compra mais forte:
+                mostra exatamente quanto o jogador já "deixou na mesa" */}
+            {retroactivePremiumCount > 0 && (
+              <div style={{
+                background: "linear-gradient(135deg,rgba(245,158,11,0.16),rgba(245,158,11,0.05))",
+                border: "1.5px solid rgba(245,158,11,0.45)",
+                borderRadius: 14, padding: "12px 14px", marginBottom: 16,
+                display: "flex", alignItems: "center", gap: 12,
+                boxShadow: "0 0 20px rgba(245,158,11,0.12)",
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                  background: "rgba(245,158,11,0.20)", border: "1px solid rgba(245,158,11,0.35)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+                }}>🎁</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24", lineHeight: 1.3 }}>
+                    {retroactivePremiumCount} recompensa{retroactivePremiumCount !== 1 ? "s" : ""} esperando por você
+                  </div>
+                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 2 }}>
+                    Você já passou desses níveis — compre agora e resgate tudo de uma vez, instantaneamente.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Benefits */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
               {[
@@ -1747,6 +1808,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         @keyframes claimPulseAmber {
           0%,100% { box-shadow: 0 0 8px rgba(251,191,36,0.28); }
           50%      { box-shadow: 0 0 22px rgba(251,191,36,0.65); }
+        }
+        /* Glow das missões prontas pra coletar — mesma família dos pulses da trilha */
+        @keyframes claimPulseGreen {
+          0%,100% { box-shadow: 0 0 8px rgba(34,197,94,0.22); }
+          50%      { box-shadow: 0 0 20px rgba(34,197,94,0.50); }
         }
         /* Level-up celebration */
         @keyframes burstRay {
