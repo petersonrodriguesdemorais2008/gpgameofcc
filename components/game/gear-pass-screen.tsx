@@ -571,6 +571,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [claimFeedback, setClaimFeedback] = useState<string | null>(null)
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
+  const [levelUpAnim, setLevelUpAnim] = useState<number | null>(null)
+  const prevLevelRef = useRef(0)
+  const [resetCountdown, setResetCountdown] = useState("")
   // Rastreia scrollLeft para saber se as setas estão nos limites
   const [scrollLeft, setScrollLeft] = useState(0)
   const [scrollMax,  setScrollMax]  = useState(1)
@@ -661,7 +664,33 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     return () => el.removeEventListener("scroll", onScroll)
   }, [activeTab])
 
-  // Centraliza no nível atual ao montar / quando o nível muda
+  // ── Detecta level-up e dispara celebração visual ────────────────────────────
+  useEffect(() => {
+    if (passData.currentLevel > prevLevelRef.current && prevLevelRef.current > 0) {
+      setLevelUpAnim(passData.currentLevel)
+      setTimeout(() => setLevelUpAnim(null), 2800)
+    }
+    prevLevelRef.current = passData.currentLevel
+  }, [passData.currentLevel])
+
+  // ── Countdown até reset diário (atualiza a cada minuto) ──────────────────────
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date()
+      const tomorrow = new Date(now)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      tomorrow.setHours(0, 0, 0, 0)
+      const diff = tomorrow.getTime() - now.getTime()
+      const h = Math.floor(diff / 3_600_000)
+      const m = Math.floor((diff % 3_600_000) / 60_000)
+      setResetCountdown(`${h}h ${String(m).padStart(2, "0")}m`)
+    }
+    tick()
+    const id = setInterval(tick, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Centraliza no nível atual ao montar / quando o nível muda ────────────────
   useEffect(() => {
     if (!passRowRef.current) return
     const targetX = Math.max(0, (passData.currentLevel - Math.floor(VISIBLE / 2)) * COL_WIDTH)
@@ -817,6 +846,39 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Badges de notificação — contam itens prontos pra coletar por área
+  const trackPendingCount = levelGroups.filter(lg =>
+    lg.isUnlocked && (!lg.commonClaimed || (passData.hasPremium && !lg.premiumClaimed))
+  ).length
+
+  const missionPendingCount = missions.filter(m => m.completed && !m.claimed).length
+
+  // Teaser: próxima recompensa comum ainda não desbloqueada
+  const nextRewardEntry = levelGroups.find(lg => !lg.commonClaimed && lg.level > passData.currentLevel)
+
+  // ── Coletar todos os pendentes da trilha de uma vez ──────────────────────────
+  const handleClaimAllTrack = () => {
+    const newCommon   = [...passData.claimedCommon]
+    const newPremium  = [...passData.claimedPremium]
+    let totalCoins = 0
+    levelGroups.filter(lg => lg.isUnlocked).forEach(lg => {
+      if (!lg.commonClaimed) {
+        newCommon.push(lg.level)
+        if (lg.common?.type === "coins" && lg.common.amount) totalCoins += lg.common.amount
+      }
+      if (passData.hasPremium && !lg.premiumClaimed) {
+        newPremium.push(lg.level)
+        if (lg.premium?.type === "coins" && lg.premium.amount) totalCoins += lg.premium.amount
+      }
+    })
+    if (totalCoins > 0) setCoins((c: number) => c + totalCoins)
+    setPassData(pd => ({ ...pd, claimedCommon: newCommon, claimedPremium: newPremium }))
+    setClaimFeedback(`Tudo coletado!${totalCoins > 0 ? ` +${totalCoins} Coins` : ""}`)
+    setTimeout(() => setClaimFeedback(null), 2500)
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div style={{
       height: "100dvh", maxHeight: "100dvh",
@@ -840,7 +902,40 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         background: "linear-gradient(180deg,rgba(2,6,16,0.70) 0%,rgba(2,6,16,0.30) 20%,rgba(2,6,16,0.18) 60%,rgba(2,6,16,0.35) 100%)",
       }} />
 
-      {/* Feedback toast */}
+      {/* ── LEVEL-UP CELEBRATION ── */}
+      {levelUpAnim !== null && (
+        <div style={{ position:"fixed",inset:0,zIndex:9998,pointerEvents:"none",
+          display:"flex",alignItems:"center",justifyContent:"center" }}>
+          {[...Array(8)].map((_,i) => {
+            const rayStyle: any = {
+              position:"absolute",width:3,height:100,borderRadius:99,
+              background:`linear-gradient(to top,${i%2===0?"#06b6d4":"#f59e0b"},transparent)`,
+              transformOrigin:"50% 100%",
+              "--r": `${i*45}deg`,
+              animation:"burstRay 0.7s ease-out forwards",opacity:0,
+              animationDelay:`${i*30}ms`,
+            }
+            return <div key={i} style={rayStyle} />
+          })}
+          <div style={{
+            background:"rgba(3,8,22,0.92)",backdropFilter:"blur(20px)",
+            border:"2px solid rgba(6,182,212,0.55)",borderRadius:24,
+            padding:"22px 44px",textAlign:"center",
+            boxShadow:"0 0 60px rgba(6,182,212,0.35),0 0 100px rgba(245,158,11,0.15)",
+            animation:"levelUpCard 2.8s ease forwards",
+          }}>
+            <div style={{fontSize:10,fontWeight:700,color:"#06b6d4",letterSpacing:"0.18em",
+              textTransform:"uppercase",marginBottom:6}}>Subiu de Nível</div>
+            <div style={{fontSize:60,fontWeight:900,color:"#fff",lineHeight:1,
+              letterSpacing:"-0.04em"}}>{levelUpAnim}</div>
+            <div style={{fontSize:12,color:"#64748b",marginTop:6}}>
+              Lv.{levelUpAnim-1} → Lv.{levelUpAnim}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FEEDBACK TOAST ── */}
       {claimFeedback && (
         <div style={{
           position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)",
@@ -921,24 +1016,32 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           )}
         </div>
 
-        {/* Tabs */}
-        <div style={{
-          display: "flex", maxWidth: 700, margin: "10px auto 0",
-          borderTop: "1px solid rgba(255,255,255,0.04)",
-        }}>
-          {(["pass", "missions"] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              flex: 1, padding: "11px 0", border: "none",
-              cursor: "pointer", fontWeight: 800, fontSize: 12,
-              transition: "all 0.2s", background: "transparent",
-              color: activeTab === tab ? "#06b6d4" : "#334155",
-              borderBottom: `2px solid ${activeTab === tab ? "#06b6d4" : "transparent"}`,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            }}>
-              {tab === "pass" ? <Shield size={13} /> : <Star size={13} />}
-              {tab === "pass" ? "Passe" : "Missões"}
-            </button>
-          ))}
+        {/* Tabs com badges de notificação */}
+        <div style={{ display:"flex",maxWidth:700,margin:"10px auto 0",borderTop:"1px solid rgba(255,255,255,0.04)" }}>
+          {(["pass","missions"] as const).map(tab => {
+            const badge = tab==="pass" ? trackPendingCount : missionPendingCount
+            const active = activeTab===tab
+            return (
+              <button key={tab} onClick={()=>setActiveTab(tab)} style={{
+                flex:1,padding:"11px 0",border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
+                transition:"all 0.2s",background:"transparent",
+                color:active?"#06b6d4":"#334155",
+                borderBottom:`2px solid ${active?"#06b6d4":"transparent"}`,
+                display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+              }}>
+                {tab==="pass"?<Shield size={13}/>:<Star size={13}/>}
+                {tab==="pass"?"Passe":"Missões"}
+                {badge>0 && (
+                  <div style={{
+                    minWidth:16,height:16,borderRadius:99,padding:"0 4px",
+                    background:"#ef4444",color:"#fff",fontSize:9,fontWeight:900,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    boxShadow:"0 0 8px rgba(239,68,68,0.55)",
+                  }}>{badge>9?"9+":badge}</div>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -950,39 +1053,46 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {/* ── PASS TAB ── */}
           {activeTab === "pass" && (
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              {/* ── PROGRESS HERO ── */}
+              {/* ── PROGRESS HERO — borda dourada quando premium ativo ── */}
               <div style={{
                 margin: "10px 14px 0", borderRadius: 18, flexShrink: 0,
                 position: "relative", overflow: "hidden",
                 background: "rgba(3,8,22,0.93)",
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
-                border: "1px solid rgba(6,182,212,0.32)",
-                boxShadow: "0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(6,182,212,0.08) inset",
+                border: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                boxShadow: passData.hasPremium
+                  ? "0 8px 48px rgba(0,0,0,0.75), 0 0 30px rgba(245,158,11,0.08) inset"
+                  : "0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(6,182,212,0.08) inset",
                 padding: "14px 18px 12px",
               }}>
                 {/* Decorative orb */}
                 <div style={{ position:"absolute",top:-50,left:-50,width:180,height:180,borderRadius:"50%",pointerEvents:"none",
                   background:"radial-gradient(circle,rgba(6,182,212,0.10) 0%,transparent 65%)" }} />
                 <div style={{ position:"absolute",top:0,right:0,width:100,height:100,pointerEvents:"none",
-                  background:"radial-gradient(circle at top right,rgba(139,92,246,0.08),transparent 60%)" }} />
+                  background:`radial-gradient(circle at top right,${passData.hasPremium?"rgba(245,158,11,0.09)":"rgba(139,92,246,0.08)"},transparent 60%)` }} />
 
-                {/* Level + pts row */}
+                {/* Level + teaser de próxima recompensa (sem repetir pts, que já está na barra abaixo) */}
                 <div style={{ position:"relative", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                   <div style={{ display:"flex", alignItems:"baseline", gap:6, lineHeight:1 }}>
                     <span style={{ fontSize:42, fontWeight:900, color:"#f1f5f9", letterSpacing:"-0.04em" }}>{passData.currentLevel}</span>
                     <span style={{ fontSize:14, color:"#1e293b", fontWeight:700 }}>/ {MAX_LEVELS}</span>
                   </div>
-                  <div style={{ textAlign:"right" }}>
+                  <div style={{ textAlign:"right", maxWidth:180 }}>
                     {passData.currentLevel >= MAX_LEVELS ? (
                       <div style={{ background:"linear-gradient(135deg,#d97706,#fbbf24)",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:900,color:"#000" }}>MAX</div>
-                    ) : (
+                    ) : nextRewardEntry ? (
                       <>
-                        <div style={{ fontSize:20,fontWeight:900,color:"#06b6d4",letterSpacing:"-0.02em",lineHeight:1 }}>
-                          {pointsInCurrentLevel}<span style={{ fontSize:11,color:"#1e293b",fontWeight:600 }}> / {nextLevelCost} pts</span>
+                        <div style={{ fontSize:9,color:"#475569",marginBottom:2 }}>próxima recompensa</div>
+                        <div style={{ fontSize:12,fontWeight:800,color:"#f1f5f9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                          {nextRewardEntry.common?.label ?? "Recompensa"} · Lv.{nextRewardEntry.level}
                         </div>
-                        <div style={{ fontSize:9,color:"#334155",marginTop:2 }}>para o próximo nível</div>
+                        <div style={{ fontSize:10,color:"#06b6d4",marginTop:1 }}>
+                          {nextRewardEntry.level - passData.currentLevel} nível{nextRewardEntry.level - passData.currentLevel !== 1 ? "s" : ""} restante{nextRewardEntry.level - passData.currentLevel !== 1 ? "s" : ""}
+                        </div>
                       </>
+                    ) : (
+                      <div style={{ fontSize:11,color:"#22c55e",fontWeight:700 }}>✓ Tudo coletado!</div>
                     )}
                   </div>
                 </div>
@@ -1066,13 +1176,25 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   </span>
                 </div>
 
-                {/* Elegant section header */}
+                {/* Elegant section header + Coletar Pendentes */}
                 <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
                   <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                     Trilha de Recompensas
                   </span>
                   <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.25),transparent)" }} />
+                  {trackPendingCount > 0 && (
+                    <button onClick={handleClaimAllTrack} style={{
+                      flexShrink: 0, padding: "4px 12px", borderRadius: 20,
+                      border: "1px solid rgba(6,182,212,0.45)", background: "rgba(6,182,212,0.12)",
+                      color: "#06b6d4", fontSize: 10, fontWeight: 800, cursor: "pointer",
+                      boxShadow: "0 0 12px rgba(6,182,212,0.20)",
+                      display: "flex", alignItems: "center", gap: 5,
+                      animation: "pulseGlow 2s ease-in-out infinite",
+                    }}>
+                      <Gift size={11} /> Coletar Pendentes ({trackPendingCount})
+                    </button>
+                  )}
                 </div>
 
                 {/* Wrapper com setas e trilha scrollável */}
@@ -1228,7 +1350,18 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               </div>
 
                               {/* Conector vertical inferior */}
-                              <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
+                              <div style={{ width: 2, height: isMilestone ? 6 : 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
+
+                              {/* Label do marco — nome da recompensa, visível à primeira vista */}
+                              {isMilestone && lg.common?.label && (
+                                <div style={{
+                                  fontSize: 7, fontWeight: 900, color: "#fbbf24",
+                                  letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2,
+                                  maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                }}>
+                                  {lg.common.label.toUpperCase()}
+                                </div>
+                              )}
 
                               {/* ── COMMON reward (baixo) — TRILHA ATIVA ── */}
                               <button
@@ -1364,6 +1497,16 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   ✓ Coletar Tudo{claimableCount > 0 ? ` (${claimableCount})` : ""}
                 </button>
               </div>
+
+              {/* Countdown de reset — diárias e semanais */}
+              {(missionFilter === "daily" || missionFilter === "all") && resetCountdown && (
+                <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, marginBottom: 10, marginTop: -4 }}>
+                  <RefreshCw size={10} color="#475569" />
+                  <span style={{ fontSize: 10, color: "#475569" }}>
+                    Missões diárias resetam em <span style={{ color: "#06b6d4", fontWeight: 700, fontFamily: "monospace" }}>{resetCountdown}</span>
+                  </span>
+                </div>
+              )}
 
               {/* Info banner */}
               <div style={{
@@ -1604,6 +1747,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         @keyframes claimPulseAmber {
           0%,100% { box-shadow: 0 0 8px rgba(251,191,36,0.28); }
           50%      { box-shadow: 0 0 22px rgba(251,191,36,0.65); }
+        }
+        /* Level-up celebration */
+        @keyframes burstRay {
+          0%   { opacity: 0; transform: rotate(var(--r,0deg)) translateY(-90px) scaleY(0.2); }
+          40%  { opacity: 1; }
+          100% { opacity: 0; transform: rotate(var(--r,0deg)) translateY(-190px) scaleY(1); }
+        }
+        @keyframes levelUpCard {
+          0%   { opacity: 0; transform: scale(0.7); }
+          15%  { opacity: 1; transform: scale(1.06); }
+          25%  { transform: scale(1); }
+          75%  { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(0.92) translateY(-16px); }
         }
         .gp-track::-webkit-scrollbar { display: none; }
         .mission-scroll::-webkit-scrollbar { display: none; }
