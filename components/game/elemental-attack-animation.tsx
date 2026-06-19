@@ -496,7 +496,7 @@ function Impact({el}:{el:string}){
 }
 
 // ════════════════════════════════════════════════════════════════════
-// AFTERMATH — 80 particles + epic element signatures
+// AFTERMATH — each element has a UNIQUE signature explosion shape
 // ════════════════════════════════════════════════════════════════════
 function Aftermath({el,pts}:{el:string;pts:ReturnType<typeof mkP>}){
   const P=pal(el)
@@ -512,13 +512,16 @@ function Aftermath({el,pts}:{el:string;pts:ReturnType<typeof mkP>}){
     void:{c:"#94a3b8",t:"#334155",g:"rgba(100,116,139,1)"},
   }
   const ec=EC[el]||{c:"white",t:P.b,g:P.gl}
+  const RR=[44,52,60,68,46,54,62,70,48,56,64,72]
+
   return(
     <div style={{position:"absolute",left:0,top:0,pointerEvents:"none"}}>
       {/* Residual epicenter glow */}
       <div style={{position:"absolute",left:"-36px",top:"-36px",width:"72px",height:"72px",
         borderRadius:"50%",background:`radial-gradient(circle,${ec.g},transparent)`,filter:"blur(16px)",
         animation:`xa-linger ${T.AFTERMATH}ms ease-out forwards`,willChange:"transform,opacity"}}/>
-      {/* ── Particles */}
+
+      {/* ── Generic particle field (count varies per element) ── */}
       {pts.map(pt=>(
         <div key={pt.id} style={({position:"absolute",left:"-4px",top:"-4px",
           width:`${pt.size}px`,height:`${pt.size}px`,borderRadius:"50%",
@@ -528,131 +531,243 @@ function Aftermath({el,pts}:{el:string;pts:ReturnType<typeof mkP>}){
           willChange:"transform,opacity","--px":`${pt.px}px`,"--py":`${pt.py}px`}) as React.CSSProperties}/>
       ))}
 
-      {/* ── FIRE: 5 ember columns + 5 expanding rings + 8 embers */}
+      {/* ═══ FIRE — FIREBALL EXPLODING INTO FLAMES ═══ */}
       {iF && <>
-        {[-32,-16,0,16,32].map((ox,i)=>(
-          <div key={i} style={{position:"absolute",width:"13px",height:"100px",
-            background:"linear-gradient(to top,rgba(251,146,60,.92),rgba(249,115,22,.42),transparent)",
-            borderRadius:"9999px",filter:"blur(5px)",left:ox-6,top:-18,
-            animation:`xa-fcol ${T.AFTERMATH*.75}ms ease-out ${i*32}ms forwards`,willChange:"transform,opacity"}}/>
-        ))}
-        {[85,140,200,265,340].map((d,i)=>(
+        {/* Core fireball: pops bright then expands & fades */}
+        <div style={{position:"absolute",left:-34,top:-34,width:68,height:68,borderRadius:"50%",
+          background:"radial-gradient(circle,white 8%,#fde047 24%,#fb923c 48%,#dc2626 76%,#7f1d1d 100%)",
+          boxShadow:"0 0 50px 26px rgba(251,146,60,1),0 0 100px 46px rgba(220,38,38,.8)",
+          animation:`xa-fireball ${T.AFTERMATH*.62}ms cubic-bezier(.1,.6,.25,1) forwards`,willChange:"transform,opacity,filter"}}/>
+        {/* 12 flame tongues bursting outward from the core */}
+        {Array.from({length:12},(_,i)=>{
+          const a=i*30, w=14+((i%3)*3), L=44+((i%4)*8)
+          return <div key={i} style={({position:"absolute",left:-w/2,top:-L,width:w,height:L,
+            background:`linear-gradient(to top,${P.a},${P.b} 45%,${P.c} 78%,transparent)`,
+            borderRadius:"50% 50% 50% 6px / 60% 60% 35% 35%",
+            transformOrigin:"50% 100%",boxShadow:`0 0 14px 5px ${P.gl}`,
+            animation:`xa-flame ${T.AFTERMATH*(.62+(i%3)*.08)}ms cubic-bezier(.15,.7,.25,1) ${i*8}ms both`,
+            willChange:"transform,opacity","--fa":`${a}deg`}) as React.CSSProperties}/>
+        })}
+        {/* 3 shockwave rings from the blast */}
+        {[90,150,220].map((d,i)=>(
           <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
-            borderRadius:"50%",border:`${2.5-i*.4}px solid rgba(249,115,22,${.75-i*.12})`,
-            animation:`xa-rout ${T.AFTERMATH*.62}ms ease-out ${i*35}ms forwards`,willChange:"transform,opacity"}}/>
+            borderRadius:"50%",border:`${2.5-i*.5}px solid rgba(249,115,22,${.72-i*.14})`,
+            animation:`xa-rout ${T.AFTERMATH*.6}ms ease-out ${i*40}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
-        {Array.from({length:8},(_,i)=>(
-          <div key={i} style={{position:"absolute",left:"-3px",top:"-3px",width:"6px",height:"6px",borderRadius:"50%",
+        {/* Ember rain falling */}
+        {Array.from({length:9},(_,i)=>(
+          <div key={i} style={({position:"absolute",left:"-3px",top:"-3px",width:"6px",height:"6px",borderRadius:"50%",
             background:"radial-gradient(circle,white,#fbbf24)",boxShadow:"0 0 8px 4px rgba(251,191,36,.98)",
-            animation:`xa-ember ${T.AFTERMATH*.88}ms ease-out ${i*38}ms both`,
-            willChange:"transform,opacity"} as React.CSSProperties}/>
+            animation:`xa-ember ${T.AFTERMATH*.86}ms ease-out ${220+i*36}ms both`,
+            willChange:"transform,opacity"}) as React.CSSProperties}/>
         ))}
       </>}
 
-      {/* ── AQUOS: 6 ripple rings + 22 droplets + water column */}
+      {/* ═══ AQUOS — AQUATIC EXPLOSION WITH WHIRLPOOL ═══ */}
       {iA && <>
-        {[62,108,158,214,276,345].map((d,i)=>(
+        {/* 3 spiral vortex discs: drain inward then burst outward */}
+        {[0,1,2].map(i=>{
+          const sz=116+i*40
+          const dur=T.AFTERMATH*(.92+i*.16)
+          return <div key={i} style={{position:"absolute",left:-sz/2,top:-sz/2,width:sz,height:sz,borderRadius:"50%",
+            background:`conic-gradient(from ${i*38}deg,transparent 0deg 9deg,${P.b} 9deg 23deg,transparent 23deg 45deg,${P.c} 45deg 59deg,transparent 59deg 81deg,${P.b} 81deg 95deg,transparent 95deg 117deg,${P.c} 117deg 131deg,transparent 131deg 153deg,${P.b} 153deg 167deg,transparent 167deg 189deg,${P.c} 189deg 203deg,transparent 203deg 225deg,${P.b} 225deg 239deg,transparent 239deg 261deg,${P.c} 261deg 275deg,transparent 275deg 297deg,${P.b} 297deg 311deg,transparent 311deg 333deg,${P.c} 333deg 347deg,transparent 347deg 360deg)`,
+            filter:"blur(1.5px)",mixBlendMode:"screen",opacity:.82-i*.14,
+            animation:`xa-vortex ${dur}ms cubic-bezier(.32,0,.18,1) ${i*22}ms both`,willChange:"transform,opacity"}}/>
+        })}
+        {/* Dark drain center that collapses then pops */}
+        <div style={{position:"absolute",left:-15,top:-15,width:30,height:30,borderRadius:"50%",
+          background:"radial-gradient(circle,#0c4a6e 28%,#082f49 64%,#020617 100%)",
+          boxShadow:`inset 0 0 16px 7px rgba(2,8,23,.92),0 0 26px 12px ${P.gl}`,
+          animation:`xa-drain ${T.AFTERMATH*.6}ms cubic-bezier(.32,0,.18,1) forwards`,willChange:"transform,opacity"}}/>
+        {/* 4 ripple rings expanding outward (splash) */}
+        {[70,128,196,272].map((d,i)=>(
           <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
-            borderRadius:"50%",border:`${2.8-i*.35}px solid rgba(56,189,248,${.88-i*.12})`,
+            borderRadius:"50%",border:`${2.6-i*.4}px solid rgba(56,189,248,${.85-i*.14})`,
             boxShadow:i<2?`0 0 14px 6px rgba(56,189,248,.58)`:undefined,
-            animation:`xa-ripple ${T.AFTERMATH*.72}ms cubic-bezier(.04,.4,.18,1) ${i*38}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xa-ripple ${T.AFTERMATH*.66}ms cubic-bezier(.04,.4,.18,1) ${T.AFTERMATH*.28+i*34}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
-        {Array.from({length:22},(_,i)=>(
+        {/* 20 splash droplets bursting out after the drain */}
+        {Array.from({length:20},(_,i)=>(
           <div key={i} style={({position:"absolute",width:"8px",height:"8px",borderRadius:"50%",
             background:"radial-gradient(circle,white,#7dd3fc)",boxShadow:"0 0 9px 4px rgba(56,189,248,.95)",
             left:"-4px",top:"-4px",
-            animation:`xa-drop ${T.AFTERMATH*.62}ms ease-out ${i*12}ms both`,"--da":`${i*16.36}deg`}) as React.CSSProperties}/>
+            animation:`xa-drop ${T.AFTERMATH*.5}ms ease-out ${T.AFTERMATH*.32+i*11}ms both`,"--da":`${i*18}deg`}) as React.CSSProperties}/>
         ))}
-        {/* Water column */}
+        {/* Rising water column */}
         <div style={{position:"absolute",left:"-8px",top:"-60px",width:"16px",height:"70px",
           background:"linear-gradient(to top,rgba(56,189,248,.85),rgba(125,211,252,.4),transparent)",
           borderRadius:"9999px",filter:"blur(4px)",
-          animation:`xa-wcol ${T.AFTERMATH*.68}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+          animation:`xa-wcol ${T.AFTERMATH*.62}ms ease-out forwards`,willChange:"transform,opacity"}}/>
       </>}
 
-      {/* ── DARKNESS: 16-line absorption vortex + 5 rift tears + imploding rings */}
+      {/* ═══ DARKNESS — VOID IMPLOSION WITH SHADOW CLAWS ═══ */}
       {iD && <>
-        {Array.from({length:16},(_,i)=>(
-          <div key={i} style={{position:"absolute",width:"100px",height:"2px",
-            background:"linear-gradient(to left,rgba(167,139,250,.94),rgba(88,28,135,.42),transparent)",
-            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*22.5}deg)`,
-            animation:`xa-dabs ${T.AFTERMATH*.8}ms ease-in ${i*7}ms forwards`,willChange:"transform,opacity"}}/>
+        {/* 10 absorption lines pulling everything INWARD */}
+        {Array.from({length:10},(_,i)=>(
+          <div key={i} style={({position:"absolute",width:"100px",height:"2px",
+            background:"linear-gradient(to left,rgba(167,139,250,.95),rgba(88,28,135,.42),transparent)",
+            borderRadius:"9999px",transformOrigin:"left center",
+            animation:`xa-dabs ${T.AFTERMATH*.42}ms ease-in ${i*8}ms forwards`,willChange:"transform,opacity",
+            "--r":`${i*36}deg`}) as React.CSSProperties}/>
         ))}
-        {[-36,-14,0,14,36].map((x,i)=>(
+        {/* 2 collapsing rings (implosion) */}
+        {[150,220].map((d,i)=>(
+          <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
+            borderRadius:"50%",border:`${2-i*.5}px solid rgba(167,139,250,${.62-i*.18})`,
+            animation:`xa-rin ${T.AFTERMATH*.4}ms ease-in ${i*30}ms forwards`,willChange:"transform,opacity"}}/>
+        ))}
+        {/* 6 shadow claws snapping outward after the implosion */}
+        {Array.from({length:6},(_,i)=>{
+          const base=i*60
+          const a0=base, a1=base+(i%2===0?32:-32), a2=base+(i%2===0?16:-16)
+          return <div key={i} style={({position:"absolute",left:0,top:-4,width:68,height:8,
+            background:`linear-gradient(to right,${P.a},${P.b},rgba(167,139,250,.35),transparent)`,
+            borderRadius:"0 50% 60% 30% / 0 100% 90% 60%",
+            transformOrigin:"0 50%",boxShadow:`0 0 12px 5px ${P.gl}`,
+            animation:`xa-claw ${T.AFTERMATH*.58}ms cubic-bezier(.18,.82,.22,1) ${T.AFTERMATH*.34+i*8}ms both`,
+            willChange:"transform,opacity","--a0":`${a0}deg`,"--a1":`${a1}deg`,"--a2":`${a2}deg`}) as React.CSSProperties}/>
+        })}
+        {/* 4 reality rift tears */}
+        {[-34,-12,12,34].map((x,i)=>(
           <div key={i} style={{position:"absolute",width:"2px",height:"82px",left:x,top:-40,
-            background:`linear-gradient(to bottom,transparent,rgba(88,28,135,${.94-i*.05}),transparent)`,
+            background:`linear-gradient(to bottom,transparent,rgba(88,28,135,${.94-i*.06}),transparent)`,
             borderRadius:"9999px",boxShadow:"0 0 9px 4px rgba(88,28,135,.78)",
-            animation:`xa-vrift ${T.AFTERMATH*.64}ms ease-out ${i*30}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xa-vrift ${T.AFTERMATH*.6}ms ease-out ${T.AFTERMATH*.3+i*26}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
-        {[88,148,218].map((d,i)=>(
-          <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
-            borderRadius:"50%",border:`${2-i*.4}px solid rgba(167,139,250,${.68-i*.16})`,
-            animation:`xa-rin ${T.AFTERMATH*.75}ms ease-out ${i*38}ms forwards`,willChange:"transform,opacity"}}/>
-        ))}
+        {/* Final burst ring as the claws release */}
+        <div style={{position:"absolute",left:-90,top:-90,width:180,height:180,borderRadius:"50%",
+          border:"2px solid rgba(167,139,250,.5)",
+          animation:`xa-rout ${T.AFTERMATH*.5}ms ease-out ${T.AFTERMATH*.34}ms forwards`,willChange:"transform,opacity"}}/>
       </>}
 
-      {/* ── HAOS: 24-point starburst + 6 rings + divine pillar */}
+      {/* ═══ HAOS — RADIANT HOLY EXPLOSION ═══ */}
       {iH && <>
-        {Array.from({length:24},(_,i)=>(
-          <div key={i} style={{position:"absolute",left:0,top:0,
-            width:i%6===0?"155px":i%3===0?"105px":i%2===0?"70px":"45px",
-            height:i%6===0?"6px":i%3===0?"4px":"2px",
+        {/* Cross-shaped divine flash */}
+        {[0,90].map(a=>(
+          <div key={a} style={({position:"absolute",left:-95,top:-4,width:190,height:8,
+            background:"linear-gradient(to right,transparent,white,rgba(254,240,138,.95),white,transparent)",
+            borderRadius:"9999px",boxShadow:"0 0 28px 13px rgba(253,224,71,.85)",
+            animation:`xa-cross ${T.AFTERMATH*.3}ms ease-out forwards`,willChange:"transform,opacity",
+            "--r":`${a}deg`}) as React.CSSProperties}/>
+        ))}
+        {/* 16-point starburst */}
+        {Array.from({length:16},(_,i)=>(
+          <div key={i} style={({position:"absolute",left:0,top:0,
+            width:i%4===0?"150px":i%2===0?"100px":"62px",height:i%4===0?"6px":i%2===0?"4px":"2px",
             background:"linear-gradient(to right,white,rgba(254,240,138,.82),transparent)",
-            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*15}deg)`,
-            animation:`xa-dout ${T.AFTERMATH*.52}ms ease-out ${i*8}ms forwards`,
-            opacity:i%6===0?1:i%3===0?.88:i%2===0?.72:.52,willChange:"transform,opacity"}}/>
+            borderRadius:"9999px",transformOrigin:"left center",
+            animation:`xa-dout ${T.AFTERMATH*.5}ms ease-out ${i*9}ms forwards`,
+            opacity:i%4===0?1:i%2===0?.82:.56,willChange:"transform,opacity",
+            "--r":`${i*22.5}deg`}) as React.CSSProperties}/>
         ))}
-        {[68,115,168,228,295,368].map((d,i)=>(
+        {/* 4 expanding rings */}
+        {[72,128,192,268].map((d,i)=>(
           <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
-            borderRadius:"50%",border:`${2.2-i*.32}px solid rgba(253,224,71,${.85-i*.12})`,
+            borderRadius:"50%",border:`${2.2-i*.4}px solid rgba(253,224,71,${.84-i*.15})`,
             boxShadow:i<2?`0 0 14px 6px rgba(253,224,71,.58)`:undefined,
-            animation:`xa-rout ${T.AFTERMATH*.6}ms ease-out ${i*35}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xa-rout ${T.AFTERMATH*.58}ms ease-out ${i*36}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
-        {/* Divine light pillar */}
-        <div style={{position:"absolute",left:"-12px",top:"-120px",width:"24px",height:"130px",
-          background:"linear-gradient(to top,white,rgba(254,240,138,.7),rgba(253,224,71,.3),transparent)",
+        {/* Divine pillar with ground flash disc */}
+        <div style={{position:"absolute",left:"-13px",top:"-130px",width:"26px",height:"140px",
+          background:"linear-gradient(to top,white,rgba(254,240,138,.72),rgba(253,224,71,.3),transparent)",
           borderRadius:"9999px",filter:"blur(6px)",
-          animation:`xa-pillar ${T.AFTERMATH*.72}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+          animation:`xa-pillar ${T.AFTERMATH*.66}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+        <div style={{position:"absolute",left:"-46px",top:"-7px",width:"92px",height:"14px",
+          background:"radial-gradient(ellipse,white,rgba(254,240,138,.7),transparent)",
+          borderRadius:"9999px",filter:"blur(3px)",
+          animation:`xa-gflash ${T.AFTERMATH*.4}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+        {/* Halo ring + 8 bursting light orbs */}
+        <div style={{position:"absolute",left:-85,top:-85,width:170,height:170,borderRadius:"50%",
+          border:"3px solid rgba(253,224,71,.55)",boxShadow:"0 0 24px 10px rgba(253,224,71,.45)",
+          animation:`ks 2.6s linear infinite,xa-rout ${T.AFTERMATH*.7}ms ease-out 50ms forwards`,willChange:"transform,opacity"}}/>
+        {Array.from({length:8},(_,i)=>(
+          <div key={i} style={{position:"absolute",left:0,top:0,transform:`rotate(${i*45}deg)`}}>
+            <div style={{width:9,height:9,borderRadius:"50%",background:"white",
+              boxShadow:"0 0 14px 7px rgba(254,240,138,1)",
+              animation:`xa-halodot ${T.AFTERMATH*.58}ms ease-out 60ms forwards`,willChange:"transform,opacity"}}/>
+          </div>
+        ))}
       </>}
 
-      {/* ── VENTUS: 5 spinning dashed rings + 14 wind slashes + feathers */}
+      {/* ═══ VENTUS — TORNADO WHIRLWIND ═══ */}
       {iV && <>
-        {[72,125,182,245,315].map((d,i)=>(
-          <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
-            borderRadius:"50%",border:`${2.2-i*.35}px dashed rgba(52,211,153,${.82-i*.13})`,
-            animation:`${i%2===0?"ks":"kr"} ${.25+i*.07}s linear infinite, xa-rout ${T.AFTERMATH*.7}ms ease-out ${i*38}ms forwards`,
-            willChange:"transform,opacity"}}/>
-        ))}
-        {Array.from({length:14},(_,i)=>(
-          <div key={i} style={{position:"absolute",left:0,top:0,width:"72px",height:"3px",
+        {/* Swaying tornado funnel made of 7 spinning rings (wide base → narrow top) */}
+        <div style={{position:"absolute",left:0,top:0,
+          animation:`xa-sway ${T.AFTERMATH*.9}ms ease-in-out forwards`,willChange:"transform,opacity"}}>
+          {Array.from({length:7},(_,i)=>{
+            const w=152-i*18, hy=46-i*23, bw=3-i*.32
+            const spinDur=540-i*52
+            return <div key={i} style={{position:"absolute",left:-w/2,top:hy-w*.17,width:w,height:w*.34,
+              borderRadius:"50%",border:`${bw}px dashed ${i%2===0?P.b:P.c}`,
+              opacity:.9-i*.06,boxShadow:i<2?`0 0 12px 4px ${P.gl}`:undefined,
+              animation:`${i%2===0?"ks":"kr"} ${spinDur}ms linear infinite`,willChange:"transform"}}/>
+          })}
+          {/* Ground dust ring at funnel base */}
+          <div style={{position:"absolute",left:-80,top:18,width:160,height:160,borderRadius:"50%",
+            border:`2px dashed rgba(52,211,153,.5)`,opacity:.7,
+            animation:"ks 1.4s linear infinite"}}/>
+        </div>
+        {/* 10 debris particles spiraling up around the funnel */}
+        {Array.from({length:10},(_,i)=>{
+          const R=RR[i]
+          const spinDur=300+i*24
+          return <div key={i} style={{position:"absolute",left:0,top:0,
+            animation:`xa-rise ${T.AFTERMATH*.82}ms ease-out ${i*26}ms forwards`,willChange:"transform,opacity"}}>
+            <div style={{width:6,height:11,borderRadius:"2px",
+              background:`linear-gradient(${ec.t},rgba(255,255,255,.6))`,boxShadow:`0 0 6px 2px ${ec.g}`,
+              animation:`ko${R} ${spinDur}ms linear ${i%2===0?"":"reverse"} infinite`,willChange:"transform"}}/>
+          </div>
+        })}
+        {/* 8 wind slash streaks */}
+        {Array.from({length:8},(_,i)=>(
+          <div key={i} style={({position:"absolute",left:0,top:0,width:"74px",height:"3px",
             background:`linear-gradient(to right,rgba(52,211,153,.9),transparent)`,
-            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*25.7}deg)`,
-            animation:`xa-vslash ${T.AFTERMATH*.57}ms ease-out ${i*14}ms forwards`,willChange:"transform,opacity"}}/>
+            borderRadius:"9999px",transformOrigin:"left center",
+            animation:`xa-vslash ${T.AFTERMATH*.55}ms ease-out ${i*14}ms forwards`,willChange:"transform,opacity",
+            "--r":`${i*45}deg`}) as React.CSSProperties}/>
         ))}
       </>}
 
-      {/* ── VOID: 14 shards + 10 cracks + desaturate rings */}
+      {/* ═══ VOID — REALITY GLITCH FRAGMENTATION ═══ */}
       {iVo && <>
+        {/* 10 fragment shards flying outward */}
         {[[48,0,13,5],[65,50,10,4],[-48,0,11,4],[-60,35,9,4],[0,-46,12,5],[0,44,10,4],
-          [52,-30,9,3],[-50,-32,10,4],[34,56,8,3],[-32,-58,11,4],[58,24,8,3],[-24,60,9,4],
-          [44,-52,7,4],[38,50,7,3]
+          [52,-30,9,3],[-50,-32,10,4],[34,56,8,3],[-32,-58,11,4]
         ].map(([x,y,w,h],i)=>(
           <div key={i} style={({position:"absolute",width:w,height:h,
-            background:`rgba(148,163,184,${.86-i*.02})`,borderRadius:"2px",
+            background:`rgba(148,163,184,${.86-i*.03})`,borderRadius:"2px",
             boxShadow:"0 0 8px 3px rgba(100,116,139,.74)",
-            animation:`xa-vshard ${T.AFTERMATH*.74}ms cubic-bezier(.04,.38,.18,1) ${i*18}ms both`,
+            animation:`xa-vshard ${T.AFTERMATH*.7}ms cubic-bezier(.04,.38,.18,1) ${i*18}ms both`,
             willChange:"transform,opacity","--vx":`${x}px`,"--vy":`${y}px`}) as React.CSSProperties}/>
         ))}
-        {Array.from({length:10},(_,i)=>(
-          <div key={i} style={{position:"absolute",left:0,top:0,width:"68px",height:"1px",
-            background:`linear-gradient(to right,rgba(148,163,184,.78),transparent)`,
-            borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*18+9}deg)`,
-            animation:`xa-vslash ${T.AFTERMATH*.52}ms ease-out ${i*16}ms forwards`,willChange:"transform,opacity"}}/>
+        {/* 4 horizontal scan-line glitch bars */}
+        {Array.from({length:4},(_,i)=>(
+          <div key={i} style={({position:"absolute",left:-95,top:-26+i*17,width:190,height:3,
+            background:"rgba(203,213,225,.55)",
+            animation:`xa-glitchpos 90ms steps(3) ${i*23}ms 6,xa-fadeout ${T.AFTERMATH*.5}ms ease-out ${i*25}ms forwards`,
+            willChange:"transform,opacity"}) as React.CSSProperties}/>
         ))}
-        {[90,150,220].map((d,i)=>(
+        {/* 6-cell static grid flicker */}
+        {Array.from({length:6},(_,i)=>{
+          const gx=(i%3-1)*16, gy=(Math.floor(i/3)-.5)*16
+          return <div key={i} style={({position:"absolute",left:gx-3,top:gy-3,width:6,height:6,borderRadius:"1px",
+            background:"rgba(148,163,184,.85)",
+            animation:`xa-static 90ms steps(1) ${i*14}ms 5,xa-fadeout ${T.AFTERMATH*.4}ms ease-out ${i*14}ms forwards`,
+            willChange:"opacity"}) as React.CSSProperties}/>
+        })}
+        {/* 6 reality cracks */}
+        {Array.from({length:6},(_,i)=>(
+          <div key={i} style={({position:"absolute",left:0,top:0,width:"68px",height:"1px",
+            background:"linear-gradient(to right,rgba(148,163,184,.78),transparent)",
+            borderRadius:"9999px",transformOrigin:"left center",
+            animation:`xa-vslash ${T.AFTERMATH*.5}ms ease-out ${i*16}ms forwards`,willChange:"transform,opacity",
+            "--r":`${i*30+9}deg`}) as React.CSSProperties}/>
+        ))}
+        {/* 2 desaturate rings */}
+        {[100,170].map((d,i)=>(
           <div key={i} style={{position:"absolute",left:-d/2,top:-d/2,width:d,height:d,
-            borderRadius:"50%",border:`1px solid rgba(148,163,184,${.32-i*.08})`,
-            animation:`xa-rout ${T.AFTERMATH*.58}ms ease-out ${i*45}ms forwards`,willChange:"transform,opacity"}}/>
+            borderRadius:"50%",border:`1px solid rgba(148,163,184,${.3-i*.1})`,
+            animation:`xa-rout ${T.AFTERMATH*.56}ms ease-out ${i*42}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
       </>}
     </div>
@@ -674,9 +789,9 @@ export function ElementalAttackAnimation({
   const doneRef=useRef(onComplete)
   useEffect(()=>{doneRef.current=onComplete},[onComplete])
 
-  const nPts:{[k:string]:number}={fire:72,pyrus:72,aquos:64,aquo:64,water:64,
-    haos:80,light:80,lightness:80,darkus:68,darkness:68,dark:68,ventus:60,wind:60,void:54}
-  const pts=useMemo(()=>mkP(nPts[el]??54,el,id),[el,id])
+  const nPts:{[k:string]:number}={fire:26,pyrus:26,aquos:24,aquo:24,water:24,
+    haos:26,light:26,lightness:26,darkus:20,darkness:20,dark:20,ventus:18,wind:18,void:16}
+  const pts=useMemo(()=>mkP(nPts[el]??16,el,id),[el,id])
 
   useEffect(()=>{
     setMounted(true)
@@ -752,6 +867,31 @@ export function ElementalAttackAnimation({
     @keyframes xa-vslash{0%{transform:rotate(var(--r,0deg)) scaleX(0);opacity:.92}54%{opacity:.76}100%{transform:rotate(var(--r,0deg)) scaleX(1.7);opacity:0}}
     @keyframes xa-vshard{0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1}100%{transform:translate(var(--vx,30px),var(--vy,-30px)) rotate(210deg) scale(0);opacity:0}}
     @keyframes afterimage-fade{0%{opacity:.44;filter:blur(4px) brightness(2)}100%{opacity:0;filter:blur(10px) brightness(2.8)}}
+
+    /* ── FIRE: fireball pop + flame tongues ── */
+    @keyframes xa-fireball{0%{transform:scale(.7);opacity:1;filter:brightness(2.4)}16%{transform:scale(1.35);opacity:1;filter:brightness(1.7)}100%{transform:scale(2.6);opacity:0;filter:brightness(1)}}
+    @keyframes xa-flame{0%{transform:rotate(var(--fa,0deg)) translateY(0) scaleY(.2) scaleX(.7);opacity:.95}22%{transform:rotate(var(--fa,0deg)) translateY(-10px) scaleY(1) scaleX(1);opacity:1}60%{transform:rotate(calc(var(--fa,0deg) + 5deg)) translateY(-38px) scaleY(1.28) scaleX(.8);opacity:.8}100%{transform:rotate(calc(var(--fa,0deg) - 4deg)) translateY(-74px) scaleY(1.5) scaleX(.35);opacity:0}}
+
+    /* ── AQUOS: whirlpool drain → splash burst ── */
+    @keyframes xa-vortex{0%{transform:rotate(0deg) scale(1);opacity:.85}38%{transform:rotate(480deg) scale(.2);opacity:1}44%{transform:rotate(508deg) scale(.16);opacity:1}72%{transform:rotate(700deg) scale(2.1);opacity:.5}100%{transform:rotate(860deg) scale(3.6);opacity:0}}
+    @keyframes xa-drain{0%{transform:scale(.55);opacity:.85}40%{transform:scale(1.7);opacity:1}48%{transform:scale(.25);opacity:1}100%{transform:scale(0);opacity:0}}
+
+    /* ── DARKNESS: shadow claw sweep (3-stage angle via CSS vars) ── */
+    @keyframes xa-claw{0%{transform:rotate(var(--a0,0deg)) scaleX(.15);opacity:.45}38%{transform:rotate(var(--a0,0deg)) scaleX(.2);opacity:.55}64%{transform:rotate(var(--a1,0deg)) scaleX(1.4);opacity:1}100%{transform:rotate(var(--a2,0deg)) scaleX(.85);opacity:0}}
+
+    /* ── HAOS: divine cross flash + ground flash disc + halo burst dots ── */
+    @keyframes xa-cross{0%{transform:rotate(var(--r,0deg)) scaleX(0);opacity:1}30%{transform:rotate(var(--r,0deg)) scaleX(1.65);opacity:1}100%{transform:rotate(var(--r,0deg)) scaleX(2.1);opacity:0}}
+    @keyframes xa-gflash{0%{transform:scale(.2);opacity:1}30%{transform:scale(1.3);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+    @keyframes xa-halodot{0%{transform:translateX(0) scale(1.7);opacity:1}100%{transform:translateX(98px) scale(.15);opacity:0}}
+
+    /* ── VENTUS: tornado funnel sway + rising debris ── */
+    @keyframes xa-sway{0%{transform:translate(0,0) rotate(0deg);opacity:1}30%{transform:translate(9px,-16px) rotate(2deg);opacity:1}60%{transform:translate(-7px,-34px) rotate(-2deg);opacity:.85}100%{transform:translate(4px,-58px) rotate(1deg);opacity:0}}
+    @keyframes xa-rise{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-155px);opacity:0}}
+
+    /* ── VOID: glitch stutter + static flicker + fade ── */
+    @keyframes xa-glitchpos{0%,100%{transform:translateX(0)}20%{transform:translateX(11px)}40%{transform:translateX(-8px)}60%{transform:translateX(6px)}80%{transform:translateX(-4px)}}
+    @keyframes xa-static{0%,49%{opacity:.9}50%,100%{opacity:.08}}
+    @keyframes xa-fadeout{0%{opacity:1}100%{opacity:0}}
   `
 
   const out=(
