@@ -43,6 +43,20 @@ const PALS:Record<string,P>={
   void:    {a:"#0f172a",b:"#475569",c:"#94a3b8",w:"#f8fafc",gl:"rgba(71,85,105,1)",sc:"rgba(0,0,0,.42)",rgb:"71,85,105"},
 }
 const pal=(e:string):P=>PALS[e]||{a:"#3730a3",b:"#6366f1",c:"#a5b4fc",w:"#eef2ff",gl:"rgba(99,102,241,1)",sc:"rgba(99,102,241,.2)",rgb:"99,102,241"}
+export type ElementPalette=P
+/** Reusable element palette lookup — also used by duel-screen.tsx for the targeting aim line */
+export const getElementPalette=(e:string):P=>pal((e||"neutral").toLowerCase().trim())
+/** Normalizes any element string variant into one of: fire|aquos|darkness|haos|ventus|void */
+export const normalizeElement=(e:string):string=>{
+  const x=(e||"").toLowerCase().trim()
+  if(["pyrus","fire"].includes(x)) return "fire"
+  if(["aquos","aquo","water"].includes(x)) return "aquos"
+  if(["darkus","darkness","dark"].includes(x)) return "darkness"
+  if(["haos","light","lightness"].includes(x)) return "haos"
+  if(["ventus","wind"].includes(x)) return "ventus"
+  if(x==="void") return "void"
+  return "neutral"
+}
 
 type S=React.CSSProperties
 
