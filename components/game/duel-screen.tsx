@@ -6778,31 +6778,30 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 const freshAttackerDp = attacker.currentDp ?? attacker.dp
                 const freshDefenderDp = freshDefender.currentDp ?? freshDefender.dp
                 const freshNewDefenderDp = freshDefenderDp - freshAttackerDp
-                const isProtectedByProtonix = prev.ultimateZone &&
-                  prev.ultimateZone.ability === "PROTONIX SWORD" &&
-                  prev.ultimateZone.requiresUnit === freshDefender.name
+                let newUltimateZone = prev.ultimateZone
 
                 if (freshNewDefenderDp <= 0) {
-                  if (isProtectedByProtonix) {
-                    newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
-                    showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
-                  } else {
-                    if (targetRect) {
-                      showDestructionAnimation(
-                        defender,
+                  if (targetRect) {
+                    showDestructionAnimation(
+                      defender,
+                      targetRect.left + targetRect.width / 2,
+                      targetRect.top + targetRect.height / 2
+                    )
+                    setTimeout(() => {
+                      triggerExplosion(
                         targetRect.left + targetRect.width / 2,
-                        targetRect.top + targetRect.height / 2
+                        targetRect.top + targetRect.height / 2,
+                        attacker.element || "neutral",
                       )
-                      setTimeout(() => {
-                        triggerExplosion(
-                          targetRect.left + targetRect.width / 2,
-                          targetRect.top + targetRect.height / 2,
-                          attacker.element || "neutral",
-                        )
-                      }, 400)
-                    }
-                    newGraveyard.push(defender)
-                    newUnitZone[targetIndex] = null
+                    }, 400)
+                  }
+                  newGraveyard.push(defender)
+                  newUnitZone[targetIndex] = null
+                  // ── Equipped Ultimate Gear is destroyed together with its unit ──
+                  if (newUltimateZone && newUltimateZone.requiresUnit === defender.name) {
+                    newGraveyard.push(newUltimateZone)
+                    showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
+                    newUltimateZone = null
                   }
                 } else {
                   newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
@@ -6814,7 +6813,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     )
                   }
                 }
-                return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+                return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard, ultimateZone: newUltimateZone }
               })
 
 
@@ -8193,36 +8192,37 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 setPlayerField((prevPlayer) => {
                   const newUnitZone = [...prevPlayer.unitZone]
                   const newGrave = [...prevPlayer.graveyard]
-                  const isProtonix = prevPlayer.ultimateZone?.ability === "PROTONIX SWORD" && prevPlayer.ultimateZone?.requiresUnit === defender.name
+                  let newUltimateZone = prevPlayer.ultimateZone
                   if (newDefenderDp <= 0) {
-                    if (isProtonix) {
-                      newUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
-                      showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
-                    } else {
-                      markDestroyed(defender)
-                      newGrave.push(defender)
-                      newUnitZone[playerUnitIndex] = null
-                      triggerExplosion(targetX, targetY, unit.element || "neutral")
-                      if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
-                        setTimeout(() => { setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) })); showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning") }, 400)
-                      }
-                      if (defender.name.toLowerCase().includes("lancelot")) {
-                        setTimeout(() => {
-                          setPlayerField(prevP => {
-                            const funcs = prevP.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
-                            if (funcs.length === 0) { showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info"); return prevP }
-                            if (funcs.length === 1) { showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcs[0].name} recuperada!`, "success"); return { ...prevP, hand: [...prevP.hand, funcs[0]], graveyard: prevP.graveyard.filter(gc => gc.id !== funcs[0].id) } }
-                            setChoiceModal({ visible:true, cardName:"Virtude do Cavaleiro — Recuperar 1 Function", options: funcs.slice(0,6).map((gc,i)=>({id:String(i),label:gc.name,description:gc.type+" · "+(gc.element||"Neutro")})), onChoose:(optId)=>{ setChoiceModal(null); const ch=funcs[parseInt(optId)]; if(!ch)return; setPlayerField(p2=>({...p2,hand:[...p2.hand,ch],graveyard:p2.graveyard.filter(gc=>gc.id!==ch.id)})); showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${ch.name} recuperada!`,"success") } })
-                            return prevP
-                          })
-                        }, 500)
-                      }
+                    markDestroyed(defender)
+                    newGrave.push(defender)
+                    newUnitZone[playerUnitIndex] = null
+                    triggerExplosion(targetX, targetY, unit.element || "neutral")
+                    // ── Equipped Ultimate Gear is destroyed together with its unit ──
+                    if (newUltimateZone && newUltimateZone.requiresUnit === defender.name) {
+                      newGrave.push(newUltimateZone)
+                      showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
+                      newUltimateZone = null
+                    }
+                    if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
+                      setTimeout(() => { setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) })); showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning") }, 400)
+                    }
+                    if (defender.name.toLowerCase().includes("lancelot")) {
+                      setTimeout(() => {
+                        setPlayerField(prevP => {
+                          const funcs = prevP.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                          if (funcs.length === 0) { showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info"); return prevP }
+                          if (funcs.length === 1) { showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcs[0].name} recuperada!`, "success"); return { ...prevP, hand: [...prevP.hand, funcs[0]], graveyard: prevP.graveyard.filter(gc => gc.id !== funcs[0].id) } }
+                          setChoiceModal({ visible:true, cardName:"Virtude do Cavaleiro — Recuperar 1 Function", options: funcs.slice(0,6).map((gc,i)=>({id:String(i),label:gc.name,description:gc.type+" · "+(gc.element||"Neutro")})), onChoose:(optId)=>{ setChoiceModal(null); const ch=funcs[parseInt(optId)]; if(!ch)return; setPlayerField(p2=>({...p2,hand:[...p2.hand,ch],graveyard:p2.graveyard.filter(gc=>gc.id!==ch.id)})); showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${ch.name} recuperada!`,"success") } })
+                          return prevP
+                        })
+                      }, 500)
                     }
                   } else {
                     newUnitZone[playerUnitIndex] = { ...defender, currentDp: newDefenderDp }
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                   }
-                  return { ...prevPlayer, unitZone: newUnitZone, graveyard: newGrave }
+                  return { ...prevPlayer, unitZone: newUnitZone, graveyard: newGrave, ultimateZone: newUltimateZone }
                 })
 
                 // Mark this unit as attacked
