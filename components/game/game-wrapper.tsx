@@ -83,6 +83,29 @@ export function GameWrapper() {
     return () => html.classList.remove("mobile-mode")
   }, [mobileMode])
 
+  // ── TUTORIAL: defende contra a música do menu "ressuscitando" sozinha ──────
+  // O main-menu.tsx mantém seu áudio em um objeto fora do ciclo de vida do
+  // componente (por isso pauseMenuMusic()/resumeMenuMusic() funcionam mesmo
+  // com <MainMenu/> desmontado). Se ele tiver sua própria lógica de
+  // pausar/retomar ao trocar de aba (visibilitychange), essa lógica continua
+  // ativa mesmo estando nós numa tela PRÉ-jogo (Title/Setup/Tutorial) — então
+  // voltar pra aba pode "ressuscitar" a OST do menu bem no meio do Tutorial.
+  // Aqui a gente reforça a pausa logo depois, só nessas telas pré-jogo.
+  useEffect(() => {
+    const isPreGameScreen = showTitle || showSetup || showTutorial
+    if (!isPreGameScreen) return
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        // pequeno atraso pra rodar DEPOIS de qualquer auto-resume interno
+        setTimeout(() => pauseMenuMusic(), 60)
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => document.removeEventListener("visibilitychange", handleVisibility)
+  }, [showTitle, showSetup, showTutorial])
+  // ─────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     // Wait for profile to load from localStorage
     const timer = setTimeout(() => {
