@@ -85,9 +85,14 @@ export function GameWrapper() {
       setIsLoaded(true)
       if (!playerProfile.hasCompletedSetup) {
         setShowSetup(true)
-      } else {
-        // ── TUTORIAL: jogador já tem setup → verifica se precisa do tutorial ─
-        const tutorialDone = !!localStorage.getItem("gpgame_tutorial_done")
+      } else if (playerProfile.id) {
+        // ── TUTORIAL: conta já tinha setup ANTES desta feature existir →
+        // mostra o tutorial uma única vez "com efeito retroativo".
+        // Escopado por playerProfile.id: cada conta (inclusive múltiplas
+        // contas no mesmo navegador) tem sua própria chave independente.
+        // Aguarda playerProfile.id ficar disponível (pode estar vazio por
+        // uma fração de segundo enquanto o contexto hidrata do localStorage).
+        const tutorialDone = !!localStorage.getItem(`gpgame_tutorial_done_${playerProfile.id}`)
         if (!tutorialDone) setShowTutorial(true)
         // ─────────────────────────────────────────────────────────────────────
       }
@@ -95,7 +100,7 @@ export function GameWrapper() {
       trackDailyLogin()
     }, 100)
     return () => clearTimeout(timer)
-  }, [playerProfile.hasCompletedSetup])
+  }, [playerProfile.hasCompletedSetup, playerProfile.id])
 
   const navigateTo = (screen: GameScreen) => {
     // Resume menu music when returning to menu from duel
@@ -122,9 +127,14 @@ export function GameWrapper() {
 
   const handleSetupComplete = () => {
     setShowSetup(false)
-    // ── TUTORIAL: novo jogador → inicia tutorial se ainda não completou ───────
-    const tutorialDone = !!localStorage.getItem("gpgame_tutorial_done")
-    if (!tutorialDone) setShowTutorial(true)
+    // ── TUTORIAL: este callback SÓ dispara em duas situações: (a) conta
+    // totalmente nova fazendo setup pela primeira vez, ou (b) conta que teve
+    // os dados apagados (deleteAccountData zera hasCompletedSetup, então o
+    // jogador refaz o setup). Em AMBOS os casos o tutorial deve aparecer —
+    // por isso aqui não há checagem de flag, ele sempre dispara. Isso resolve
+    // automaticamente o "tutorial não volta após apagar dados da conta",
+    // sem precisar mexer no deleteAccountData() do game-context.
+    setShowTutorial(true)
     // ─────────────────────────────────────────────────────────────────────────
   }
 
@@ -169,18 +179,19 @@ export function GameWrapper() {
     navigateTo("menu")
   }
 
-  // ── TUTORIAL: overlay concluído → marca tutorial como feito definitivamente ─
+  // ── TUTORIAL: overlay concluído → marca esta CONTA como tendo visto o
+  //    tutorial. Escopado por playerProfile.id — então funciona corretamente
+  //    com múltiplas contas no mesmo navegador, e se a conta for resetada
+  //    (Configurações → Apagar Dados), o tutorial reaparece automaticamente
+  //    via handleSetupComplete acima (que não depende desta flag), mesmo que
+  //    esta flag antiga continue salva sob o id antigo.
   const handleTutorialOverlayComplete = () => {
-    localStorage.setItem("gpgame_tutorial_done", "1")
-    localStorage.removeItem("gpgame_tutorial_v1") // limpa progresso parcial
+    if (playerProfile.id) {
+      localStorage.setItem(`gpgame_tutorial_done_${playerProfile.id}`, "1")
+    }
     setTutorialOverlayActive(false)
     setTutorialOverlayMaster(null)
     navigateTo("menu")
-    // NOTA PARA O DESENVOLVEDOR: quando o jogador resetar a conta (delete data
-    // em Configurações), adicione estas duas linhas ao seu reset handler:
-    //   localStorage.removeItem("gpgame_tutorial_done")
-    //   localStorage.removeItem("gpgame_tutorial_v1")
-    // Isso garante que o tutorial se repita após o reset.
   }
   // ─────────────────────────────────────────────────────────────────────────
 
