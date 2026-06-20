@@ -66,6 +66,7 @@ const NORMAL_COL_WIDTH    = 96   // 82px coluna + 14px gap
 const MILESTONE_COL_WIDTH = 112  // coluna de marco, mais espaçosa
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
+const SEASON_DURATION_DAYS = 30  // duração total da temporada — usado pro countdown real
 const STRIPE_PAYMENT_URL = "https://buy.stripe.com/aFafZj1lMfdqdRV5Pk4gg01"
 const STRIPE_SUCCESS_URL = "/gear-pass/success"
 
@@ -485,16 +486,20 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     hasPremium: boolean
     claimedCommon: number[]
     claimedPremium: number[]
+    seasonStartedAt: number
   }>(() => {
-    if (typeof window === "undefined") return {
-      currentPoints: 0, currentLevel: 0, hasPremium: false,
-      claimedCommon: [], claimedPremium: [],
-    }
+    const fresh = { currentPoints: 0, currentLevel: 0, hasPremium: false, claimedCommon: [], claimedPremium: [], seasonStartedAt: Date.now() }
+    if (typeof window === "undefined") return fresh
     try {
       const saved = localStorage.getItem(LS_PASS_KEY)
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Migração: dados antigos sem seasonStartedAt ganham "agora" como início
+        if (!parsed.seasonStartedAt) parsed.seasonStartedAt = Date.now()
+        return parsed
+      }
     } catch {}
-    return { currentPoints: 0, currentLevel: 0, hasPremium: false, claimedCommon: [], claimedPremium: [] }
+    return fresh
   })
 
   // ── Helpers para reset de missões ───────────────────────────────────────────
@@ -591,6 +596,27 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
   const [levelUpAnim, setLevelUpAnim] = useState<number | null>(null)
   const prevLevelRef = useRef(0)
+  // ── Clicar e segurar numa recompensa já coletada mostra os detalhes dela ─────
+  const [peekedReward, setPeekedReward] = useState<{ level: number; isPremium: boolean } | null>(null)
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const LONG_PRESS_MS = 420
+
+  const handlePressStart = (level: number, isPremium: boolean, claimed: boolean) => {
+    if (!claimed) return // só funciona em recompensas já coletadas
+    pressTimerRef.current = setTimeout(() => {
+      setPeekedReward({ level, isPremium })
+      pressTimerRef.current = null
+    }, LONG_PRESS_MS)
+  }
+  const handlePressEnd = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current)
+      pressTimerRef.current = null
+    }
+  }
+  // ── Dias restantes da temporada — countdown real, não mais hardcoded ─────────
+  const seasonDaysLeft = Math.max(0, SEASON_DURATION_DAYS - Math.floor((Date.now() - passData.seasonStartedAt) / 86_400_000))
+
   const [resetCountdown, setResetCountdown] = useState("")
   // Rastreia scrollLeft para saber se as setas estão nos limites
   const [scrollLeft, setScrollLeft] = useState(0)
@@ -669,6 +695,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     passRowRef.current?.scrollBy({ left: dir * COL_WIDTH * VISIBLE, behavior: "smooth" })
   }
 
+  // Posição X onde o nível atual fica centralizado — usada tanto no auto-center quanto no botão "voltar"
+  const currentLevelTargetX = Math.max(0, (passData.currentLevel - Math.floor(VISIBLE / 2)) * COL_WIDTH)
+
+  // Volta a trilha pro nível atual (botão flutuante)
+  const scrollToCurrentLevel = () => {
+    passRowRef.current?.scrollTo({ left: currentLevelTargetX, behavior: "smooth" })
+  }
+
+  // Jogador se afastou o suficiente do nível atual? (mais de ~1.5 colunas de distância)
+  const isAwayFromCurrent = Math.abs(scrollLeft - currentLevelTargetX) > COL_WIDTH * 1.5
+
   // Atualiza scrollLeft/scrollMax enquanto o usuário arrasta ou usa as setas
   useEffect(() => {
     const el = passRowRef.current
@@ -711,8 +748,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // ── Centraliza no nível atual ao montar / quando o nível muda ────────────────
   useEffect(() => {
     if (!passRowRef.current) return
-    const targetX = Math.max(0, (passData.currentLevel - Math.floor(VISIBLE / 2)) * COL_WIDTH)
-    passRowRef.current.scrollTo({ left: targetX, behavior: "smooth" })
+    passRowRef.current.scrollTo({ left: currentLevelTargetX, behavior: "smooth" })
   }, [passData.currentLevel])
 
   // Persist passData
@@ -960,6 +996,64 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         </div>
       )}
 
+      {/* ── PEEK: ver detalhes de recompensa já coletada (clicar e segurar) ── */}
+      {peekedReward && (() => {
+        const lg = levelGroups.find(g => g.level === peekedReward.level)
+        const reward = lg ? (peekedReward.isPremium ? lg.premium : lg.common) : null
+        if (!reward) return null
+        const accent = peekedReward.isPremium ? "#f59e0b" : "#06b6d4"
+        const rarityColors: Record<string, string> = { R: "#60a5fa", SR: "#a855f7", UR: "#38bdf8", LR: "#ef4444" }
+        return (
+          <div onClick={() => setPeekedReward(null)} style={{
+            position: "fixed", inset: 0, zIndex: 9990,
+            background: "rgba(0,0,0,0.60)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, animation: "fadeInDown 0.2s ease",
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: "rgba(3,8,22,0.97)",
+              border: `1.5px solid ${accent}55`,
+              borderRadius: 20, padding: "24px 28px", textAlign: "center",
+              maxWidth: 260, boxShadow: `0 0 50px ${accent}30`,
+            }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: 16,
+                  background: "rgba(34,197,94,0.12)", border: "1.5px solid rgba(34,197,94,0.40)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <RewardIcon reward={reward} />
+                </div>
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: accent, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
+                {peekedReward.isPremium ? "Recompensa Premium" : "Recompensa Comum"} · Lv.{peekedReward.level}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#f1f5f9", marginBottom: 8 }}>
+                {reward.label}
+              </div>
+              {reward.rarity && (
+                <div style={{
+                  display: "inline-block", fontSize: 10, fontWeight: 800, padding: "3px 11px", borderRadius: 8,
+                  background: `${rarityColors[reward.rarity]}20`, color: rarityColors[reward.rarity], marginBottom: 4,
+                }}>
+                  {reward.rarity}
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 10, color: "#4ade80", fontSize: 11, fontWeight: 700 }}>
+                <Check size={13} strokeWidth={3} /> Já coletado
+              </div>
+              <button onClick={() => setPeekedReward(null)} style={{
+                marginTop: 18, width: "100%", padding: "9px 0", borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)",
+                color: "#94a3b8", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── FEEDBACK TOAST ── */}
       {claimFeedback && (
         <div style={{
@@ -1021,7 +1115,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "pulseGlow 2s ease-in-out infinite" }} />
                 <span style={{ fontSize: 10, color: "#475569" }}>Temporada 1</span>
                 <span style={{ fontSize: 10, color: "#1e293b" }}>·</span>
-                <span style={{ fontSize: 10, color: "#475569" }}>Encerra em 29 dias</span>
+                <span style={{ fontSize: 10, color: "#475569" }}>
+                  {seasonDaysLeft > 0 ? `Encerra em ${seasonDaysLeft} dia${seasonDaysLeft !== 1 ? "s" : ""}` : "Temporada encerrada"}
+                </span>
               </div>
             </div>
           </div>
@@ -1235,6 +1331,21 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 {/* Wrapper com setas e trilha scrollável */}
                 <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8 }}>
 
+                  {/* 📍 Botão flutuante "voltar pro nível atual" — só aparece quando o jogador se afasta */}
+                  {isAwayFromCurrent && (
+                    <button onClick={scrollToCurrentLevel} style={{
+                      position: "absolute", top: -34, right: 8, zIndex: 20,
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "5px 11px", borderRadius: 20,
+                      background: "rgba(6,182,212,0.16)", border: "1px solid rgba(6,182,212,0.45)",
+                      color: "#06b6d4", fontSize: 10, fontWeight: 800, cursor: "pointer",
+                      boxShadow: "0 4px 16px rgba(6,182,212,0.25)",
+                      animation: "fadeInDown 0.25s ease",
+                    }}>
+                      📍 Lv.{passData.currentLevel}
+                    </button>
+                  )}
+
                   {/* ← Seta anterior */}
                   <button
                     onClick={() => scrollTrack(-1)}
@@ -1318,6 +1429,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               {/* ── PREMIUM reward (topo) ── */}
                               <button
                                 onClick={() => { if (isPast) handleClaimPassReward(lg.level, true) }}
+                                onMouseDown={() => handlePressStart(lg.level, true, lg.premiumClaimed)}
+                                onMouseUp={handlePressEnd}
+                                onMouseLeave={handlePressEnd}
+                                onTouchStart={() => handlePressStart(lg.level, true, lg.premiumClaimed)}
+                                onTouchEnd={handlePressEnd}
+                                title={lg.premiumClaimed ? "Segure para ver detalhes" : undefined}
                                 style={{
                                   width: boxSz, height: boxSz, borderRadius: 13,
                                   display: "flex", flexDirection: "column", alignItems: "center",
@@ -1401,6 +1518,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               {/* ── COMMON reward (baixo) — TRILHA ATIVA ── */}
                               <button
                                 onClick={() => { if (isPast) handleClaimPassReward(lg.level, false) }}
+                                onMouseDown={() => handlePressStart(lg.level, false, lg.commonClaimed)}
+                                onMouseUp={handlePressEnd}
+                                onMouseLeave={handlePressEnd}
+                                onTouchStart={() => handlePressStart(lg.level, false, lg.commonClaimed)}
+                                onTouchEnd={handlePressEnd}
+                                title={lg.commonClaimed ? "Segure para ver detalhes" : undefined}
                                 style={{
                                   width: boxSz, height: boxSz, borderRadius: 13,
                                   display: "flex", flexDirection: "column", alignItems: "center",
@@ -1500,7 +1623,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               <div style={{ flexShrink: 0, display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", alignItems: "center" }}>
                 {(["all", "daily", "weekly", "limited"] as const).map(f => (
                   <button key={f} onClick={() => setMissionFilter(f)} style={{
-                    padding: "5px 12px", borderRadius: 20, border: "none",
+                    padding: "5px 12px", borderRadius: 20,
                     cursor: "pointer", fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
                     transition: "all 0.2s",
                     background: missionFilter === f
@@ -1562,9 +1685,31 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
               {/* Mission list — scrolls internally so page never scrolls */}
               <div style={{ flex: 1, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 8, paddingBottom: 8 }}>
-                {filteredMissions.map(mission => (
-                  <MissionCard key={mission.id} mission={mission} onClaim={handleClaimMission} />
-                ))}
+                {filteredMissions.length === 0 ? (
+                  // Estado vazio — evita lista em branco sem explicação
+                  <div style={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    gap: 8, padding: "40px 20px", textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: 32, opacity: 0.35 }}>
+                      {missionFilter === "limited" ? "⏳" : missionFilter === "weekly" ? "📅" : "☀️"}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>
+                      {missionFilter === "limited"
+                        ? "Nenhuma missão limitada disponível"
+                        : missionFilter === "weekly"
+                        ? "Nenhuma missão semanal disponível"
+                        : "Nenhuma missão diária disponível"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#334155" }}>
+                      {missionFilter === "limited" ? "Volte mais tarde para novos eventos especiais." : "Volte mais tarde para novas missões."}
+                    </div>
+                  </div>
+                ) : (
+                  filteredMissions.map(mission => (
+                    <MissionCard key={mission.id} mission={mission} onClaim={handleClaimMission} />
+                  ))
+                )}
               </div>
 
               {/* ── Bônus de Conclusão — aparece nas abas Diárias e Semanais ── */}
@@ -1829,6 +1974,16 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         }
         .gp-track::-webkit-scrollbar { display: none; }
         .mission-scroll::-webkit-scrollbar { display: none; }
+
+        /* Acessibilidade — respeita a preferência do sistema de reduzir movimento */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
       `}</style>
       </div>{/* end EVERYTHING ABOVE WALLPAPER */}
     </div>
