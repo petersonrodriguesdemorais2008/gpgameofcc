@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useGame } from "@/contexts/game-context"
 import { PlayerSetupScreen } from "./player-setup-screen"
 import MainMenu, { pauseMenuMusic, resumeMenuMusic } from "./main-menu"
@@ -67,6 +67,10 @@ export function GameWrapper() {
   const [tutorialOverlayActive, setTutorialOverlayActive] = useState(false)
   const [tutorialOverlayMaster, setTutorialOverlayMaster] = useState<TutorialMasterId | null>(null)
   // ─────────────────────────────────────────────────────────────────────────
+  // ── RESET DE CONTA: detecta quando hasCompletedSetup vai de true → false
+  //    NA MESMA sessão (ou seja, não é o boot normal de uma conta nova, é um
+  //    "Apagar Dados" no meio do jogo) para mandar de volta pra Title Screen.
+  const sawCompletedSetupRef = useRef(false)
 
   // Toggle mobile-mode class on html element
   useEffect(() => {
@@ -83,19 +87,36 @@ export function GameWrapper() {
     // Wait for profile to load from localStorage
     const timer = setTimeout(() => {
       setIsLoaded(true)
-      if (!playerProfile.hasCompletedSetup) {
-        setShowSetup(true)
-      } else if (playerProfile.id) {
+
+      if (playerProfile.hasCompletedSetup) {
+        // Conta com setup completo — lembra disso pra detectar um possível
+        // reset mais tarde nesta mesma sessão.
+        sawCompletedSetupRef.current = true
+
         // ── TUTORIAL: conta já tinha setup ANTES desta feature existir →
         // mostra o tutorial uma única vez "com efeito retroativo".
         // Escopado por playerProfile.id: cada conta (inclusive múltiplas
         // contas no mesmo navegador) tem sua própria chave independente.
-        // Aguarda playerProfile.id ficar disponível (pode estar vazio por
-        // uma fração de segundo enquanto o contexto hidrata do localStorage).
-        const tutorialDone = !!localStorage.getItem(`gpgame_tutorial_done_${playerProfile.id}`)
-        if (!tutorialDone) setShowTutorial(true)
-        // ─────────────────────────────────────────────────────────────────────
+        if (playerProfile.id) {
+          const tutorialDone = !!localStorage.getItem(`gpgame_tutorial_done_${playerProfile.id}`)
+          if (!tutorialDone) setShowTutorial(true)
+        }
+      } else if (sawCompletedSetupRef.current) {
+        // ── RESET DE CONTA: hasCompletedSetup acabou de virar false DEPOIS de
+        // já ter sido true nesta sessão → o jogador apagou os dados da conta
+        // agora mesmo (Configurações → Apagar Dados). Volta pra Title Screen
+        // (não direto pro formulário de nome) e silencia a música do menu,
+        // que continuaria tocando em segundo plano sem isso.
+        sawCompletedSetupRef.current = false
+        pauseMenuMusic()
+        setShowSetup(true)   // fica pronto, mas só aparece depois da Title Screen
+        setShowTitle(true)   // Title Screen tem prioridade de renderização
+      } else {
+        // Conta totalmente nova, primeiro boot — o jogador já passou pela
+        // Title Screen no início desta sessão, então vai direto pro formulário.
+        setShowSetup(true)
       }
+
       // Registra login diário para missões
       trackDailyLogin()
     }, 100)
