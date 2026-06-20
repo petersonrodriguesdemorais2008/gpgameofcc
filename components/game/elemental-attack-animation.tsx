@@ -11,8 +11,8 @@ export interface AttackAnimationProps {
 }
 type Phase="charge"|"release"|"strike"|"impact"|"aftermath"
 
-// ── Timing ──────────────────────────────────────────────────────────────────
-const T={CHARGE:130,RELEASE:25,STRIKE:185,IMPACT:230,AFTERMATH:820,
+// ── Timing — longer & weightier for real emotional/cinematic impact ──────────
+const T={CHARGE:320,RELEASE:45,STRIKE:260,IMPACT:320,AFTERMATH:950,HITSTOP:95,
   get TOTAL(){return this.CHARGE+this.RELEASE+this.STRIKE+this.IMPACT+this.AFTERMATH}}
 
 // ── RNG ─────────────────────────────────────────────────────────────────────
@@ -304,7 +304,12 @@ function Strike({el,dist}:{el:string;dist:number}){
 
   return <>
     {speedLines}
-    <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",...mv}}>
+    <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",...mv}}>
+      {/* Inner wave wrapper — gives each element a UNIQUE flight trajectory, not a straight line */}
+      <div style={{display:"flex",alignItems:"center",
+        animation:`${
+          iF ? "xs-wave-fire" : iA ? "xs-wave-aquos" : iD ? "xs-wave-darkness" : iH ? "xs-wave-haos" : iV ? "xs-wave-ventus" : "xs-wave-void"
+        } ${T.STRIKE}ms ease-in-out forwards`,willChange:"transform"}}>
 
       {/* ═══ FIRE — TUMBLING METEOR WITH FLAME TRAIL ═══ */}
       {iF && <>
@@ -449,6 +454,7 @@ function Strike({el,dist}:{el:string;dist:number}){
       {/* Sonic boom cone (shared) */}
       <div style={{position:"absolute",width:"0",height:"0",right:"42px",top:"-28px",
         borderLeft:`60px solid ${P.sc}`,borderTop:"28px solid transparent",borderBottom:"28px solid transparent"}}/>
+      </div>
     </div>
   </>
 }
@@ -461,11 +467,12 @@ function Impact({el}:{el:string}){
   const iF=["pyrus","fire"].includes(el), iA=["aquos","aquo","water"].includes(el)
   const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
   const iV=["ventus","wind"].includes(el)
+  const HS=T.HITSTOP // hitstop offset — everything "explosive" waits this long after the freeze-flash
 
   return(
     // Screen shake wrapper
     <div style={{position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
-      pointerEvents:"none",animation:`xi-shake ${T.IMPACT*.7}ms ease-out forwards`,contain:"layout"}}>
+      pointerEvents:"none",animation:`xi-shake ${T.IMPACT*.8}ms ease-out ${HS}ms forwards`,contain:"layout"}}>
       {/* Element screen tint */}
       <div style={{position:"absolute",inset:0,background:P.sc,
         animation:`xi-tint ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
@@ -473,25 +480,50 @@ function Impact({el}:{el:string}){
       <div style={{position:"absolute",inset:0,
         background:"radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.88) 100%)",
         animation:`xi-vign ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
-      {/* Blinding flash */}
+      {/* Blinding flash — HOLDS bright during hitstop, then releases */}
       <div style={{position:"absolute",inset:0,
         background:`radial-gradient(circle at center,white 0%,${P.w} 16%,${P.c} 40%,transparent 66%)`,
-        animation:`xi-flash ${T.IMPACT}ms linear forwards`,willChange:"opacity"}}/>
+        animation:`xi-flash-hold ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
       {/* Chromatic split R */}
       <div style={{position:"absolute",inset:0,
         background:"radial-gradient(circle at center,rgba(255,30,30,0) 0%,rgba(255,30,30,.26) 100%)",
-        animation:`xi-chr ${T.IMPACT}ms ease-out forwards`,mixBlendMode:"screen",willChange:"transform,opacity"}}/>
+        animation:`xi-chr ${T.IMPACT}ms ease-out ${HS}ms forwards`,mixBlendMode:"screen",willChange:"transform,opacity"}}/>
       {/* Chromatic split B */}
       <div style={{position:"absolute",inset:0,
         background:"radial-gradient(circle at center,rgba(30,30,255,0) 0%,rgba(30,30,255,.26) 100%)",
-        animation:`xi-chb ${T.IMPACT}ms ease-out forwards`,mixBlendMode:"screen",willChange:"transform,opacity"}}/>
+        animation:`xi-chb ${T.IMPACT}ms ease-out ${HS}ms forwards`,mixBlendMode:"screen",willChange:"transform,opacity"}}/>
+
+      {/* ── ELEMENT-SPECIFIC FULL-SCREEN FINISHING FLOURISH (the "ultimate move" beat) ── */}
+      {iF && <div style={{position:"absolute",inset:0,
+        animation:`xi-fire-border ${T.IMPACT*1.05}ms ease-out ${HS}ms forwards`,willChange:"box-shadow"}}/>}
+      {iA && <div style={{position:"absolute",inset:0,
+        background:"radial-gradient(circle at center,transparent 0%,rgba(56,189,248,.16) 48%,transparent 72%)",
+        animation:`xi-aqua-ripple ${T.IMPACT*1.3}ms ease-out ${HS}ms forwards`,willChange:"transform,opacity"}}/>}
+      {iD && <div style={{position:"absolute",inset:0,background:"black",
+        animation:`xi-void-flash ${T.IMPACT*.5}ms ease-out ${HS}ms forwards`,willChange:"opacity"}}/>}
+      {iH && <>
+        <div style={{position:"absolute",inset:0,
+          background:"linear-gradient(105deg,transparent 40%,rgba(255,255,255,.92) 50%,transparent 60%)",
+          animation:`xi-lens-flare ${T.IMPACT*.85}ms ease-out ${HS}ms forwards`,willChange:"transform,opacity"}}/>
+        <div style={{position:"absolute",inset:0,
+          background:"linear-gradient(15deg,transparent 44%,rgba(254,240,138,.7) 50%,transparent 56%)",
+          animation:`xi-lens-flare ${T.IMPACT*.95}ms ease-out ${HS+35}ms forwards`,willChange:"transform,opacity"}}/>
+      </>}
+      {iV && Array.from({length:6},(_,i)=>(
+        <div key={i} style={{position:"absolute",left:0,top:`${8+i*16}%`,width:"100%",height:"2px",
+          background:"linear-gradient(to right,transparent,rgba(52,211,153,.75),transparent)",
+          animation:`xi-debris-sweep ${T.IMPACT*.7}ms ease-out ${HS+i*16}ms forwards`,willChange:"transform,opacity"}}/>
+      ))}
+      {!iF&&!iA&&!iD&&!iH&&!iV && <div style={{position:"absolute",inset:0,
+        background:"repeating-linear-gradient(0deg,rgba(148,163,184,.10) 0px,transparent 2px,transparent 5px)",
+        animation:`xi-void-scan ${T.IMPACT*.65}ms steps(7) ${HS}ms forwards`,willChange:"transform,opacity"}}/>}
 
       {/* Impact epicenter */}
       <div style={{position:"absolute",left:"50%",top:"50%",width:0,height:0}}>
         {/* Compression sphere */}
         <div style={{position:"absolute",left:"-125px",top:"-125px",width:"250px",height:"250px",
           borderRadius:"50%",background:P.gl,filter:"blur(40px)",
-          animation:`xi-compress ${T.IMPACT}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+          animation:`xi-compress ${T.IMPACT}ms ease-out ${HS}ms forwards`,willChange:"transform,opacity"}}/>
         {/* 8 shockwave rings */}
         {[{bw:"10px",d:0,spd:1.25,op:1},{bw:"7px",d:22,spd:1.55,op:.92},{bw:"5px",d:46,spd:1.9,op:.82},
           {bw:"4px",d:72,spd:2.4,op:.70},{bw:"3px",d:102,spd:3.1,op:.57},{bw:"2px",d:136,spd:4.0,op:.44},
@@ -500,7 +532,7 @@ function Impact({el}:{el:string}){
           <div key={i} style={{position:"absolute",left:"-90px",top:"-90px",width:"180px",height:"180px",
             borderRadius:"50%",border:`${r.bw} solid ${i<3?"white":`rgba(255,255,255,${r.op})`}`,
             boxShadow:i<3?`0 0 44px 18px ${P.gl}`:undefined,opacity:r.op,
-            animation:`xi-wave ${T.IMPACT*r.spd}ms cubic-bezier(.03,0,.14,1) ${r.d}ms forwards`,
+            animation:`xi-wave ${T.IMPACT*r.spd}ms cubic-bezier(.03,0,.14,1) ${HS+r.d}ms forwards`,
             willChange:"transform,opacity"}}/>
         ))}
         {/* 20 impact rays */}
@@ -510,21 +542,21 @@ function Impact({el}:{el:string}){
             background:`linear-gradient(to right,white,${P.gl},transparent)`,
             borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*18}deg)`,
             opacity:i%5===0?.92:i%2===0?.68:.48,
-            animation:`xi-ray ${T.IMPACT*1.35}ms ease-out ${i*3}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-ray ${T.IMPACT*1.35}ms ease-out ${HS+i*3}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
         {/* 3 freeze rings */}
         {[{d:120,bw:"7px",del:0},{d:74,bw:"4px",del:12},{d:40,bw:"2px",del:24}].map((r,i)=>(
           <div key={i} style={{position:"absolute",left:-r.d/2,top:-r.d/2,width:r.d,height:r.d,
             borderRadius:"50%",border:`${r.bw} solid white`,
             boxShadow:`0 0 36px 16px ${P.gl},inset 0 0 28px 12px ${P.gl}`,
-            animation:`xi-ring ${T.IMPACT}ms ease-out ${r.del}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-ring ${T.IMPACT}ms ease-out ${HS+r.del}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
         {/* 4 ground waves */}
         {[{w:400,y:36,del:0,op:.92},{w:300,y:-40,del:18,op:.68},{w:220,y:62,del:36,op:.48},{w:160,y:-64,del:55,op:.32}].map((g,i)=>(
           <div key={i} style={{position:"absolute",left:-g.w/2,top:g.y,width:g.w,height:"20px",
             background:`linear-gradient(to right,transparent,${P.gl},transparent)`,
             borderRadius:"9999px",filter:"blur(6px)",opacity:g.op,
-            animation:`xi-gwave ${T.IMPACT*1.5}ms ease-out ${g.del}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-gwave ${T.IMPACT*1.5}ms ease-out ${HS+g.del}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
 
         {/* Element-specific impact bursts */}
@@ -532,19 +564,19 @@ function Impact({el}:{el:string}){
           <div key={i} style={{position:"absolute",left:"-5px",top:"-5px",width:"10px",height:"75px",
             background:"linear-gradient(to top,rgba(239,68,68,.88),rgba(249,115,22,.55),transparent)",
             borderRadius:"9999px",transformOrigin:"50% 100%",transform:`rotate(${i*36}deg)`,
-            animation:`xi-fjet ${T.IMPACT*.88}ms ease-out ${i*7}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-fjet ${T.IMPACT*.88}ms ease-out ${HS+i*7}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
         {iA && [80,135,195,260,330].map((s,i)=>(
           <div key={i} style={{position:"absolute",left:-s/2,top:-s/2,width:s,height:s,
             borderRadius:"50%",border:`${3-i*.5}px solid rgba(56,189,248,${.88-i*.14})`,
             boxShadow:i<2?`0 0 16px 7px rgba(56,189,248,.58)`:undefined,
-            animation:`xi-wring ${T.IMPACT*1.7}ms cubic-bezier(.03,.4,.16,1) ${i*32}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-wring ${T.IMPACT*1.7}ms cubic-bezier(.03,.4,.16,1) ${HS+i*32}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
         {iD && Array.from({length:14},(_,i)=>(
           <div key={i} style={{position:"absolute",width:"95px",height:"2px",
             background:"linear-gradient(to right,rgba(167,139,250,.92),rgba(88,28,135,.4),transparent)",
             borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*25.7}deg)`,
-            animation:`xi-dray ${T.IMPACT*.88}ms ease-out ${i*7}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-dray ${T.IMPACT*.88}ms ease-out ${HS+i*7}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
         {iH && <>
           {[0,45,90,135].map((a,i)=>(
@@ -552,26 +584,26 @@ function Impact({el}:{el:string}){
               width:i<2?"160px":"110px",height:i<2?"6px":"4px",
               background:"linear-gradient(to right,white,rgba(254,240,138,.8),transparent)",
               borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${a}deg)`,
-              animation:`xi-ray ${T.IMPACT*1.15}ms ease-out ${i*10}ms forwards`,opacity:.94,willChange:"transform,opacity"}}/>
+              animation:`xi-ray ${T.IMPACT*1.15}ms ease-out ${HS+i*10}ms forwards`,opacity:.94,willChange:"transform,opacity"}}/>
           ))}
           {[65,118,175].map((s,i)=>(
             <div key={i} style={{position:"absolute",left:-s/2,top:-s/2,width:s,height:s,
               borderRadius:"50%",border:`${2-i*.45}px solid rgba(253,224,71,${.84-i*.18})`,
-              animation:`xi-wave ${T.IMPACT*1.6}ms cubic-bezier(.04,.4,.16,1) ${i*26}ms forwards`,willChange:"transform,opacity"}}/>
+              animation:`xi-wave ${T.IMPACT*1.6}ms cubic-bezier(.04,.4,.16,1) ${HS+i*26}ms forwards`,willChange:"transform,opacity"}}/>
           ))}
         </>}
         {iV && Array.from({length:8},(_,i)=>(
           <div key={i} style={{position:"absolute",width:"78px",height:"3px",
             background:`linear-gradient(to right,rgba(52,211,153,.9),transparent)`,
             borderRadius:"9999px",transformOrigin:"left center",transform:`rotate(${i*22.5+11}deg)`,
-            animation:`xi-vslash ${T.IMPACT*.82}ms ease-out ${i*9}ms forwards`,willChange:"transform,opacity"}}/>
+            animation:`xi-vslash ${T.IMPACT*.82}ms ease-out ${HS+i*9}ms forwards`,willChange:"transform,opacity"}}/>
         ))}
         {/* Smoke puffs ×4 */}
         {[{sx:-52,c:"rgba(210,210,210,.56)"},{sx:-18,c:"rgba(230,230,230,.50)"},{sx:18,c:"rgba(220,220,220,.52)"},{sx:52,c:"rgba(200,200,200,.48)"}].map((s,i)=>(
           <div key={i} style={({position:"absolute",left:"-36px",top:"-18px",
             width:"72px",height:"72px",borderRadius:"50%",
             background:`radial-gradient(circle,${s.c},transparent)`,filter:"blur(11px)",
-            animation:`xi-smoke ${T.AFTERMATH*.7}ms ease-out ${i*20}ms forwards`,"--sx":`${s.sx}px`}) as React.CSSProperties}/>
+            animation:`xi-smoke ${T.AFTERMATH*.7}ms ease-out ${HS+i*20}ms forwards`,"--sx":`${s.sx}px`}) as React.CSSProperties}/>
         ))}
       </div>
     </div>
@@ -921,7 +953,23 @@ export function ElementalAttackAnimation({
     @keyframes xi-shake{0%{transform:translate(0,0)}8%{transform:translate(-10px,-7px)}16%{transform:translate(10px,9px)}24%{transform:translate(-12px,5px)}32%{transform:translate(12px,-9px)}42%{transform:translate(-7px,7px)}52%{transform:translate(7px,-5px)}62%{transform:translate(-4px,3px)}74%{transform:translate(4px,-2px)}86%{transform:translate(-2px,1px)}100%{transform:translate(0,0)}}
     @keyframes xi-tint{0%{opacity:.98}12%{opacity:1}100%{opacity:0}}
     @keyframes xi-vign{0%{opacity:.92}100%{opacity:0}}
-    @keyframes xi-flash{0%{opacity:1}6%{opacity:1}100%{opacity:0}}
+    @keyframes xi-flash-hold{0%{opacity:1}28%{opacity:1}45%{opacity:.92}100%{opacity:0}}
+
+    /* ── STRIKE trajectory waves — each element flies differently, not a straight line ── */
+    @keyframes xs-wave-fire{0%{transform:translateY(0) rotate(0deg)}30%{transform:translateY(-30px) rotate(-5deg)}65%{transform:translateY(-10px) rotate(2deg)}100%{transform:translateY(8px) rotate(6deg)}}
+    @keyframes xs-wave-aquos{0%{transform:translateY(0)}20%{transform:translateY(-18px)}40%{transform:translateY(15px)}60%{transform:translateY(-13px)}80%{transform:translateY(9px)}100%{transform:translateY(0)}}
+    @keyframes xs-wave-ventus{0%{transform:translateY(0) rotate(0deg)}14%{transform:translateY(-15px) rotate(8deg)}28%{transform:translateY(11px) rotate(-8deg)}42%{transform:translateY(-13px) rotate(9deg)}57%{transform:translateY(10px) rotate(-8deg)}71%{transform:translateY(-9px) rotate(6deg)}85%{transform:translateY(6px) rotate(-4deg)}100%{transform:translateY(0) rotate(0deg)}}
+    @keyframes xs-wave-darkness{0%,100%{transform:translateY(0)}10%{transform:translateY(-6px)}22%{transform:translateY(4px)}35%{transform:translateY(-5px)}48%{transform:translateY(7px)}60%{transform:translateY(-4px)}74%{transform:translateY(5px)}88%{transform:translateY(-3px)}}
+    @keyframes xs-wave-haos{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+    @keyframes xs-wave-void{0%{transform:translate(0,0)}12%{transform:translate(4px,-10px)}25%{transform:translate(-5px,7px)}37%{transform:translate(6px,-5px)}50%{transform:translate(-7px,9px)}62%{transform:translate(5px,-7px)}75%{transform:translate(-4px,6px)}87%{transform:translate(3px,-4px)}100%{transform:translate(0,0)}}
+
+    /* ── IMPACT full-screen finishing flourishes ── */
+    @keyframes xi-fire-border{0%{box-shadow:inset 0 0 70px 35px rgba(249,115,22,.85),inset 0 0 160px 80px rgba(220,38,38,.5)}100%{box-shadow:inset 0 0 0px 0px rgba(249,115,22,0)}}
+    @keyframes xi-aqua-ripple{0%{transform:scale(.25);opacity:.95}100%{transform:scale(2.8);opacity:0}}
+    @keyframes xi-void-flash{0%{opacity:.88}100%{opacity:0}}
+    @keyframes xi-lens-flare{0%{opacity:0;transform:translateX(-32%)}32%{opacity:1}100%{opacity:0;transform:translateX(32%)}}
+    @keyframes xi-debris-sweep{0%{transform:translateX(-110%);opacity:0}30%{opacity:1}100%{transform:translateX(110%);opacity:0}}
+    @keyframes xi-void-scan{0%{opacity:.92;transform:translateY(0)}100%{opacity:0;transform:translateY(34px)}}
     @keyframes xi-chr{0%{opacity:.9;transform:translate(-14px,0)}68%{opacity:.42}100%{opacity:0;transform:translate(-30px,0)}}
     @keyframes xi-chb{0%{opacity:.9;transform:translate(14px,0)}68%{opacity:.42}100%{opacity:0;transform:translate(30px,0)}}
     @keyframes xi-compress{0%{transform:scale(0);opacity:1}58%{opacity:.88}100%{transform:scale(4.5);opacity:0}}
