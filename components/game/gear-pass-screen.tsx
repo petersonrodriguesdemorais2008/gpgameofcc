@@ -1523,8 +1523,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   </span>
                 </div>
 
-                {/* Elegant section header + Coletar Pendentes */}
-                <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                {/* Elegant section header + Coletar Pendentes — minHeight fixo evita
+                    que o header "pule" de tamanho quando o FAB 📍 ou o botão
+                    "Coletar Pendentes" aparecem/somem durante o arrasto da trilha */}
+                <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10, minHeight: 38 }}>
                   <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
                   <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                     Trilha de Recompensas
