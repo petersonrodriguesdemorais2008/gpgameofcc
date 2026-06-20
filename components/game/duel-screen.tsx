@@ -9559,7 +9559,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <path d="M16 8 C14 4,9 2,3 3 C7 5,7 6,5 8 C7 10,7 11,3 13 C9 14,14 12,16 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
             <marker id="aim-head-haos" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
-              <path d="M16 8 L9 6 L10 0 L6 7 L0 8 L6 9 L10 16 L9 10 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+              <path d="M16 8 L9 3 L11 7 L2 7 L2 9 L11 9 L9 13 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
             <marker id="aim-head-darkness" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
               <path d="M16 8 L8 3 L9 6 L2 5 L7 8 L2 11 L9 10 L8 13 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
