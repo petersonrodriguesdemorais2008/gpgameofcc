@@ -346,9 +346,11 @@ function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) 
 function MissionCard({
   mission,
   onClaim,
+  cascadeDelay,
 }: {
   mission: PassMission
   onClaim: (id: string) => void
+  cascadeDelay?: number | null
 }) {
   const typeColors = {
     daily: { bg: "rgba(6,182,212,0.10)", border: "rgba(6,182,212,0.25)", label: "Diária", labelColor: "#22d3ee" },
@@ -359,6 +361,7 @@ function MissionCard({
   const pct = Math.min(100, Math.round((mission.progress / mission.goal) * 100))
   // "Pronto pra coletar" — mesmo estado que dá glow pulsante na trilha
   const readyToClaim = mission.completed && !mission.claimed
+  const isCascading = cascadeDelay !== null && cascadeDelay !== undefined
 
   return (
     <div style={{
@@ -370,8 +373,10 @@ function MissionCard({
       flexDirection: "column",
       gap: 8,
       position: "relative",
-      // Glow pulsante — consistente com claimPulseCyan/Amber da trilha
-      animation: readyToClaim ? "claimPulseGreen 2s ease-in-out infinite" : "none",
+      // Cascata tem prioridade (flash sequencial); senão, o pulso normal de "pronto pra coletar"
+      animation: isCascading
+        ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
+        : readyToClaim ? "claimPulseGreen 2s ease-in-out infinite" : "none",
       transition: "background 0.3s, border-color 0.3s",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -616,6 +621,29 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       pressTimerRef.current = null
     }
   }
+
+  // ── Haptic feedback (vibração) — silenciosamente ignorado em devices sem suporte ──
+  const vibrate = (pattern: number | number[]) => {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try { navigator.vibrate(pattern) } catch {}
+    }
+  }
+
+  // ── Animação em cascata: marca quais níveis/missões "piscam" em sequência
+  // após um claim em massa (Coletar Pendentes / Coletar Tudo). O dado já muda
+  // de uma vez — isso só controla o efeito visual escalonado por cima.
+  const [cascadeTrackLevels, setCascadeTrackLevels] = useState<number[]>([])
+  const [cascadeMissionIds, setCascadeMissionIds] = useState<string[]>([])
+  const CASCADE_STEP_MS = 70
+
+  // ── Resumo de temporada — exibido no exato momento do reset, antes de zerar ──
+  const [seasonRecap, setSeasonRecap] = useState<{
+    seasonNumber: number
+    finalLevel: number
+    totalClaimed: number
+    autoCollectedCoins: number
+  } | null>(null)
+
   // ── Dias restantes da temporada — countdown real, não mais hardcoded ─────────
   const seasonDaysLeft = Math.max(0, SEASON_DURATION_DAYS - Math.floor((Date.now() - passData.seasonStartedAt) / 86_400_000))
 
@@ -721,10 +749,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     return () => el.removeEventListener("scroll", onScroll)
   }, [activeTab])
 
-  // ── Detecta level-up e dispara celebração visual ────────────────────────────
+  // ── Detecta level-up e dispara celebração visual + vibração festiva ──────────
   useEffect(() => {
     if (passData.currentLevel > prevLevelRef.current && prevLevelRef.current > 0) {
       setLevelUpAnim(passData.currentLevel)
+      vibrate([40, 50, 40, 50, 90]) // padrão mais longo — diferencia de um claim comum
       setTimeout(() => setLevelUpAnim(null), 2800)
     }
     prevLevelRef.current = passData.currentLevel
@@ -751,13 +780,16 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const passDataRef = useRef(passData)
   useEffect(() => { passDataRef.current = passData }, [passData])
 
-  // ── Fim de temporada: reset completo do Passe ────────────────────────────────
+  // ── Fim de temporada: reset completo do Passe, COM rede de segurança ─────────
   // Quando o tempo desde seasonStartedAt ultrapassa SEASON_DURATION_DAYS:
+  //  • Toda recompensa ALCANÇADA mas nunca coletada é resgatada automaticamente
+  //    antes de zerar — o jogador nunca perde progresso por esquecimento
   //  • Pontos e nível voltam a 0
-  //  • Todas as recompensas coletadas (comum E premium) são limpas
+  //  • Todas as recompensas (agora todas marcadas como coletadas) são limpas
   //  • hasPremium volta a false — a compra do Premium vale só para a temporada
   //    em que foi feita, então o jogador precisa comprar de novo na próxima
   //  • Uma nova temporada começa imediatamente (seasonStartedAt = agora)
+  //  • Um resumo da temporada que terminou fica visível até o jogador fechar
   // A checagem roda no mount (cobre reabrir o app depois do fim) e a cada 60s.
   useEffect(() => {
     const checkSeasonEnd = () => {
@@ -765,7 +797,33 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       const elapsed = Date.now() - pd.seasonStartedAt
       if (elapsed < SEASON_DURATION_DAYS * 86_400_000) return
 
-      const endedSeason = pd.seasonNumber
+      // Auto-coleta de segurança: varre todos os níveis alcançados e resgata
+      // qualquer recompensa esquecida antes de zerar o progresso.
+      let autoCollectedCoins = 0
+      const finalClaimedCommon  = [...pd.claimedCommon]
+      const finalClaimedPremium = [...pd.claimedPremium]
+      for (let lvl = 1; lvl <= pd.currentLevel; lvl++) {
+        if (!finalClaimedCommon.includes(lvl)) {
+          const r = ALL_REWARDS.find(x => x.level === lvl && !x.isPremium)
+          if (r) {
+            finalClaimedCommon.push(lvl)
+            if (r.type === "coins" && r.amount) autoCollectedCoins += r.amount
+          }
+        }
+        if (pd.hasPremium && !finalClaimedPremium.includes(lvl)) {
+          const r = ALL_REWARDS.find(x => x.level === lvl && x.isPremium)
+          if (r) {
+            finalClaimedPremium.push(lvl)
+            if (r.type === "coins" && r.amount) autoCollectedCoins += r.amount
+          }
+        }
+      }
+
+      const endedSeason  = pd.seasonNumber
+      const totalClaimed = finalClaimedCommon.length + finalClaimedPremium.length
+
+      if (autoCollectedCoins > 0) setCoins((c: number) => c + autoCollectedCoins)
+
       setPassData({
         currentPoints: 0,
         currentLevel: 0,
@@ -775,8 +833,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         seasonStartedAt: Date.now(),
         seasonNumber: endedSeason + 1,
       })
-      setClaimFeedback(`🎉 Temporada ${endedSeason} encerrada! Bem-vindo à Temporada ${endedSeason + 1}`)
-      setTimeout(() => setClaimFeedback(null), 4500)
+
+      // Resumo rico substitui o toast simples — dá fechamento real ao jogador
+      setSeasonRecap({
+        seasonNumber: endedSeason,
+        finalLevel: pd.currentLevel,
+        totalClaimed,
+        autoCollectedCoins,
+      })
+      vibrate([50, 40, 50, 40, 120])
     }
     checkSeasonEnd()
     const id = setInterval(checkSeasonEnd, 60_000)
@@ -843,6 +908,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
     setClaimFeedback(`+${totalPoints} pontos do Passe!`)
     setTimeout(() => setClaimFeedback(null), 2500)
+
+    // Vibração escalonada — um "tap" leve por item, dá a sensação de resgate em série
+    const vibePattern1: number[] = []
+    claimable.forEach(() => vibePattern1.push(25, 30))
+    vibrate(vibePattern1)
+
+    // Cascata visual — cada card "pisca" em sequência, não tudo de uma vez
+    setCascadeMissionIds(claimable.map(m => m.id))
+    setTimeout(() => setCascadeMissionIds([]), claimable.length * CASCADE_STEP_MS + 500)
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -856,6 +930,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     const newLevel = Math.min(MAX_LEVELS, levelFromPts(newPoints))
     setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
     claimMission(missionId, mission.type)
+    vibrate(35)
     setClaimFeedback(`+${mission.points} pontos do Passe!`)
     setTimeout(() => setClaimFeedback(null), 2000)
   }
@@ -879,6 +954,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     const newLevel  = Math.min(MAX_LEVELS, levelFromPts(newPoints))
     setPassData(pd => ({ ...pd, currentPoints: newPoints, currentLevel: newLevel }))
     claimMission(bonusId, type)
+    vibrate([30, 30, 50])
     setClaimFeedback(`+${pts} pts — Bônus de Conclusão!`)
     setTimeout(() => setClaimFeedback(null), 2800)
   }
@@ -905,6 +981,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       [key]: [...pd[key], level],
     }))
 
+    vibrate(isPremium ? [30, 25, 40] : 35)
     setClaimFeedback(
       reward.type === "coins"
         ? `+${reward.amount} Coins!`
@@ -959,21 +1036,33 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const handleClaimAllTrack = () => {
     const newCommon   = [...passData.claimedCommon]
     const newPremium  = [...passData.claimedPremium]
+    const touchedLevels: number[] = [] // ordem de cascata — usada só pro efeito visual
     let totalCoins = 0
     levelGroups.filter(lg => lg.isUnlocked).forEach(lg => {
+      let touched = false
       if (!lg.commonClaimed) {
         newCommon.push(lg.level)
         if (lg.common?.type === "coins" && lg.common.amount) totalCoins += lg.common.amount
+        touched = true
       }
       if (passData.hasPremium && !lg.premiumClaimed) {
         newPremium.push(lg.level)
         if (lg.premium?.type === "coins" && lg.premium.amount) totalCoins += lg.premium.amount
+        touched = true
       }
+      if (touched) touchedLevels.push(lg.level)
     })
     if (totalCoins > 0) setCoins((c: number) => c + totalCoins)
     setPassData(pd => ({ ...pd, claimedCommon: newCommon, claimedPremium: newPremium }))
     setClaimFeedback(`Tudo coletado!${totalCoins > 0 ? ` +${totalCoins} Coins` : ""}`)
     setTimeout(() => setClaimFeedback(null), 2500)
+
+    // Vibração escalonada + cascata visual nas caixinhas, na mesma ordem da trilha
+    const vibePattern2: number[] = []
+    touchedLevels.forEach(() => vibePattern2.push(22, 28))
+    vibrate(vibePattern2)
+    setCascadeTrackLevels(touchedLevels)
+    setTimeout(() => setCascadeTrackLevels([]), touchedLevels.length * CASCADE_STEP_MS + 500)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1000,6 +1089,65 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         position: "absolute", inset: 0, zIndex: 1,
         background: "linear-gradient(180deg,rgba(2,6,16,0.70) 0%,rgba(2,6,16,0.30) 20%,rgba(2,6,16,0.18) 60%,rgba(2,6,16,0.35) 100%)",
       }} />
+
+      {/* ── RESUMO DE TEMPORADA ── aparece no exato momento do reset, dá fechamento */}
+      {seasonRecap && (
+        <div onClick={() => setSeasonRecap(null)} style={{
+          position: "fixed", inset: 0, zIndex: 9997,
+          background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 20, animation: "fadeIn 0.2s ease",
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "linear-gradient(160deg,rgba(6,182,212,0.10),rgba(3,8,22,0.97) 40%)",
+            border: "1.5px solid rgba(6,182,212,0.40)",
+            borderRadius: 22, padding: "28px 26px", textAlign: "center",
+            maxWidth: 320, width: "100%",
+            boxShadow: "0 0 60px rgba(6,182,212,0.20)",
+            animation: "popIn 0.28s cubic-bezier(.2,1.3,.4,1)",
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 6 }}>🏁</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#06b6d4", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
+              Temporada {seasonRecap.seasonNumber} Encerrada
+            </div>
+            <div style={{ fontSize: 19, fontWeight: 900, color: "#f1f5f9", marginBottom: 18 }}>
+              Bem-vindo à Temporada {seasonRecap.seasonNumber + 1}!
+            </div>
+
+            {/* Stats da temporada que terminou */}
+            <div style={{ display: "flex", gap: 10, marginBottom: seasonRecap.autoCollectedCoins > 0 ? 12 : 18 }}>
+              <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 8px" }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#f1f5f9" }}>{seasonRecap.finalLevel}</div>
+                <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Nível Final</div>
+              </div>
+              <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 8px" }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#22c55e" }}>{seasonRecap.totalClaimed}</div>
+                <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Recompensas</div>
+              </div>
+            </div>
+
+            {/* Aviso de auto-coleta — só aparece se algo foi resgatado automaticamente */}
+            {seasonRecap.autoCollectedCoins > 0 && (
+              <div style={{
+                background: "rgba(34,197,94,0.10)", border: "1px solid rgba(34,197,94,0.30)",
+                borderRadius: 10, padding: "8px 12px", marginBottom: 18,
+                fontSize: 11, color: "#4ade80", display: "flex", alignItems: "center", gap: 6, justifyContent: "center",
+              }}>
+                <Gift size={13} /> +{seasonRecap.autoCollectedCoins} Coins resgatados automaticamente
+              </div>
+            )}
+
+            <button onClick={() => setSeasonRecap(null)} style={{
+              width: "100%", padding: "11px 0", borderRadius: 12,
+              border: "none", background: "linear-gradient(135deg,#0e7490,#06b6d4)",
+              color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(6,182,212,0.30)",
+            }}>
+              Começar Temporada {seasonRecap.seasonNumber + 1}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── LEVEL-UP CELEBRATION ── */}
       {levelUpAnim !== null && (
@@ -1046,13 +1194,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             position: "fixed", inset: 0, zIndex: 9990,
             background: "rgba(0,0,0,0.60)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20, animation: "fadeInDown 0.2s ease",
+            padding: 20, animation: "fadeIn 0.15s ease",
           }}>
             <div onClick={e => e.stopPropagation()} style={{
               background: "rgba(3,8,22,0.97)",
               border: `1.5px solid ${accent}55`,
               borderRadius: 20, padding: "24px 28px", textAlign: "center",
               maxWidth: 260, boxShadow: `0 0 50px ${accent}30`,
+              animation: "popIn 0.22s cubic-bezier(.2,1.4,.4,1)",
             }}>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
                 <div style={{
@@ -1204,6 +1353,35 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         </div>
       </div>
 
+      {/* ── AVISO DE TEMPORADA ENCERRANDO ── últimos 3 dias, lembra de coletar tudo */}
+      {seasonDaysLeft > 0 && seasonDaysLeft <= 3 && (
+        <div
+          onClick={() => setActiveTab("pass")}
+          style={{
+            position: "relative", zIndex: 1, flexShrink: 0, cursor: "pointer",
+            maxWidth: 700, margin: "0 auto", width: "100%",
+            background: "rgba(245,158,11,0.12)", borderBottom: "1px solid rgba(245,158,11,0.30)",
+            padding: "7px 16px", display: "flex", alignItems: "center", gap: 8,
+          }}>
+          <span style={{ fontSize: 13 }}>⚠️</span>
+          <span style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700 }}>
+            Temporada encerra em {seasonDaysLeft} dia{seasonDaysLeft !== 1 ? "s" : ""}
+          </span>
+          <span style={{ fontSize: 11, color: "#cbd5e1" }}>
+            — não esqueça de coletar suas recompensas!
+          </span>
+          {trackPendingCount > 0 && (
+            <span style={{
+              marginLeft: "auto", flexShrink: 0, fontSize: 10, fontWeight: 800,
+              color: "#fbbf24", background: "rgba(245,158,11,0.18)",
+              padding: "2px 8px", borderRadius: 99,
+            }}>
+              {trackPendingCount} pendente{trackPendingCount !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── CONTENT ── */}
       {/* ── CONTENT (flex:1, sem scroll de página) ── */}
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
@@ -1352,6 +1530,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     Trilha de Recompensas
                   </span>
                   <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.25),transparent)" }} />
+                  {/* 📍 Voltar pro nível atual — agora vive na mesma flex row que "Coletar Pendentes", nunca sobrepõe */}
+                  {isAwayFromCurrent && (
+                    <button onClick={scrollToCurrentLevel} style={{
+                      flexShrink: 0, display: "flex", alignItems: "center", gap: 4,
+                      padding: "4px 10px", borderRadius: 20,
+                      background: "rgba(6,182,212,0.16)", border: "1px solid rgba(6,182,212,0.45)",
+                      color: "#06b6d4", fontSize: 10, fontWeight: 800, cursor: "pointer",
+                      boxShadow: "0 0 10px rgba(6,182,212,0.20)",
+                      animation: "fabIn 0.2s ease",
+                    }}>
+                      📍 Lv.{passData.currentLevel}
+                    </button>
+                  )}
                   {trackPendingCount > 0 && (
                     <button onClick={handleClaimAllTrack} style={{
                       flexShrink: 0, padding: "4px 12px", borderRadius: 20,
@@ -1368,21 +1559,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
                 {/* Wrapper com setas e trilha scrollável */}
                 <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8 }}>
-
-                  {/* 📍 Botão flutuante "voltar pro nível atual" — só aparece quando o jogador se afasta */}
-                  {isAwayFromCurrent && (
-                    <button onClick={scrollToCurrentLevel} style={{
-                      position: "absolute", top: -34, right: 8, zIndex: 20,
-                      display: "flex", alignItems: "center", gap: 5,
-                      padding: "5px 11px", borderRadius: 20,
-                      background: "rgba(6,182,212,0.16)", border: "1px solid rgba(6,182,212,0.45)",
-                      color: "#06b6d4", fontSize: 10, fontWeight: 800, cursor: "pointer",
-                      boxShadow: "0 4px 16px rgba(6,182,212,0.25)",
-                      animation: "fadeInDown 0.25s ease",
-                    }}>
-                      📍 Lv.{passData.currentLevel}
-                    </button>
-                  )}
 
                   {/* ← Seta anterior */}
                   <button
@@ -1446,6 +1622,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                         // Estados "pronto para coletar" — alimentam o glow pulsante
                         const commonClaimable  = isPast && !lg.commonClaimed
                         const premiumClaimable = isPast && !lg.premiumClaimed && passData.hasPremium
+                        // Cascata: se este nível foi tocado num "Coletar Pendentes", calcula o delay
+                        // sequencial pra animação de flash em cima das duas caixinhas
+                        const cascadeIdx   = cascadeTrackLevels.indexOf(lg.level)
+                        const cascadeDelay = cascadeIdx === -1 ? 0 : cascadeIdx * CASCADE_STEP_MS
 
                         return (
                           <div
@@ -1496,8 +1676,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     : !isPast
                                     ? "inset 0 0 14px rgba(251,191,36,0.06)"
                                     : "none",
-                                  // "Pronto pra coletar" — glow âmbar pulsante (só se tiver premium)
-                                  animation: premiumClaimable ? "claimPulseAmber 2s ease-in-out infinite" : "none",
+                                  // Cascata tem prioridade (flash sequencial); senão, o pulso normal de "pronto pra coletar"
+                                  animation: cascadeIdx !== -1
+                                    ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
+                                    : premiumClaimable ? "claimPulseAmber 2s ease-in-out infinite" : "none",
                                   position: "relative", transition: "all 0.2s",
                                   transform: isCurrent ? "scale(1.08)" : "scale(1)",
                                 }}>
@@ -1584,8 +1766,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10)"
                                     : isCurrent ? "0 0 10px rgba(6,182,212,0.22)"
                                     : "none",
-                                  // "Pronto pra coletar" — glow ciano pulsante
-                                  animation: commonClaimable ? "claimPulseCyan 2s ease-in-out infinite" : "none",
+                                  // Cascata tem prioridade (flash sequencial); senão, o pulso normal de "pronto pra coletar"
+                                  animation: cascadeIdx !== -1
+                                    ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
+                                    : commonClaimable ? "claimPulseCyan 2s ease-in-out infinite" : "none",
                                   transition: "all 0.2s",
                                   transform: isCurrent ? "scale(1.08)" : "scale(1)",
                                   opacity: lg.commonClaimed ? 0.85 : 1,
@@ -1744,9 +1928,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     </div>
                   </div>
                 ) : (
-                  filteredMissions.map(mission => (
-                    <MissionCard key={mission.id} mission={mission} onClaim={handleClaimMission} />
-                  ))
+                  filteredMissions.map(mission => {
+                    const cIdx = cascadeMissionIds.indexOf(mission.id)
+                    return (
+                      <MissionCard
+                        key={mission.id}
+                        mission={mission}
+                        onClaim={handleClaimMission}
+                        cascadeDelay={cIdx === -1 ? null : cIdx * CASCADE_STEP_MS}
+                      />
+                    )
+                  })
                 )}
               </div>
 
@@ -1971,6 +2163,21 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
           to   { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
+        /* Pra elementos centralizados via flexbox (sem left:50%) — popup de peek */
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.92) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        /* Backdrop full-screen — só fade, sem transform (evita deslocar a tela inteira) */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        /* Pra elementos ancorados (right/left) sem deslocamento de centralização */
+        @keyframes fabIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         @keyframes shimmer {
           0%   { transform: translateX(-100%); }
           100% { transform: translateX(200%); }
@@ -1996,6 +2203,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         @keyframes claimPulseGreen {
           0%,100% { box-shadow: 0 0 8px rgba(34,197,94,0.22); }
           50%      { box-shadow: 0 0 20px rgba(34,197,94,0.50); }
+        }
+        /* Flash sequencial usado no "Coletar Pendentes"/"Coletar Tudo" — cada item
+           pisca em sua vez, na ordem certa, dando a sensação de resgate em série */
+        @keyframes cascadeFlash {
+          0%   { box-shadow: 0 0 0px rgba(34,197,94,0); transform: scale(1); }
+          35%  { box-shadow: 0 0 24px rgba(34,197,94,0.75); transform: scale(1.10); }
+          100% { box-shadow: 0 0 0px rgba(34,197,94,0); transform: scale(1); }
         }
         /* Level-up celebration */
         @keyframes burstRay {
