@@ -25,7 +25,7 @@ import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
 import CatastropheScreen from "./catastrophe-screen"
 // ── TUTORIAL ──────────────────────────────────────────────────────────────────
-import TutorialScreen, { TutorialGameOverlay, type TutorialMasterId } from "./tutorial-screen"
+import TutorialScreen, { TutorialGameOverlay, buildStarterDeckGrant, type TutorialMasterId } from "./tutorial-screen"
 import { loadMastersFromStorage, saveMastersToStorage } from "@/lib/masters-data"
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ export type GameScreen =
   | "masters"
 
 export function GameWrapper() {
-  const { playerProfile, mobileMode } = useGame()
+  const { playerProfile, mobileMode, addToCollection, saveDeck } = useGame()
   const [currentScreen, setCurrentScreen] = useState<GameScreen>("menu")
   const [duelMode, setDuelMode] = useState<"bot" | "player">("bot")
   const [showSetup, setShowSetup] = useState(false)
@@ -128,7 +128,8 @@ export function GameWrapper() {
     // ─────────────────────────────────────────────────────────────────────────
   }
 
-  // ── TUTORIAL: master foi escolhido → define master ativo e inicia overlay ──
+  // ── TUTORIAL: master foi escolhido → define master ativo, concede o Deck
+  //    Inicial de verdade (cartas na Coleção + Deck salvo) e inicia o overlay ──
   const handleTutorialComplete = (selectedMasterId: TutorialMasterId) => {
     // 1. Define o Mestre escolhido como ativo
     try {
@@ -144,7 +145,24 @@ export function GameWrapper() {
       console.warn("Erro ao definir mestre ativo:", err)
     }
 
-    // 2. Fecha tutorial standalone e abre overlay sobre o main menu real
+    // 2. Concede o Deck Inicial de verdade: as 22 cartas vão para a Coleção do
+    //    jogador, e um Deck "Deck Inicial" (20 principais + 2 TAP) é salvo e
+    //    automaticamente vira o deck ativo exibido no Main Menu (decks[0]).
+    try {
+      const { collectionCards, mainDeckCards, tapDeckCards } = buildStarterDeckGrant(selectedMasterId)
+      addToCollection(collectionCards)
+      saveDeck({
+        id: "starter-deck",
+        name: "Deck Inicial",
+        cards: mainDeckCards,
+        tapCards: tapDeckCards.length > 0 ? tapDeckCards : undefined,
+        useGlobalPlaymat: true,
+      })
+    } catch (err) {
+      console.warn("Erro ao conceder o Deck Inicial:", err)
+    }
+
+    // 3. Fecha tutorial standalone e abre overlay sobre o main menu real
     setShowTutorial(false)
     setTutorialOverlayMaster(selectedMasterId)
     setTutorialOverlayActive(true)
