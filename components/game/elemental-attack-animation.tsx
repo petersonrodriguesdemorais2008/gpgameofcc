@@ -278,6 +278,26 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
 }
 
 // ════════════════════════════════════════════════════════════════════
+// STRIKE SPEED LINES — TRUE full-viewport overlay, rendered OUTSIDE the
+// rotated/positioned flight container (ctr) so position:fixed actually
+// spans the real screen instead of being trapped by ctr's transform.
+// ════════════════════════════════════════════════════════════════════
+function StrikeSpeedLines({el}:{el:string}){
+  const P=pal(el)
+  return <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:10001}}>
+    {Array.from({length:13},(_,i)=>{
+      const off=(i-6)*9
+      return <div key={i} style={{position:"absolute",left:0,top:`calc(50% + ${off}px)`,
+        width:"100vw",height:Math.abs(i-6)<=1?"4px":"1.5px",
+        background:`linear-gradient(to right,transparent 0%,${P.b} 35%,${P.b} 65%,transparent 100%)`,
+        willChange:"opacity",
+        animation:`xs-sline ${T.STRIKE}ms cubic-bezier(.02,0,.05,1) ${i*3}ms forwards`,
+        opacity:.28-Math.abs(i-6)*.03}}/>
+    })}
+  </div>
+}
+
+// ════════════════════════════════════════════════════════════════════
 // STRIKE — each element travels as a STRUCTURALLY UNIQUE projectile
 // ════════════════════════════════════════════════════════════════════
 function Strike({el,dist}:{el:string;dist:number}){
@@ -292,18 +312,7 @@ function Strike({el,dist}:{el:string;dist:number}){
   const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
   const iV=["ventus","wind"].includes(el)
 
-  const speedLines=Array.from({length:13},(_,i)=>{
-    const off=(i-6)*9
-    return <div key={i} style={{position:"fixed",left:0,top:`calc(50% + ${off}px)`,
-      width:"100vw",height:Math.abs(i-6)<=1?"4px":"1.5px",
-      background:`linear-gradient(to right,transparent 0%,${P.b} 35%,${P.b} 65%,transparent 100%)`,
-      pointerEvents:"none",willChange:"opacity",
-      animation:`xs-sline ${T.STRIKE}ms cubic-bezier(.02,0,.05,1) ${i*3}ms forwards`,
-      opacity:.28-Math.abs(i-6)*.03}}/>
-  })
-
   return <>
-    {speedLines}
     <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",...mv}}>
       {/* Inner wave wrapper — gives each element a UNIQUE flight trajectory, not a straight line */}
       <div style={{display:"flex",alignItems:"center",
@@ -462,38 +471,35 @@ function Strike({el,dist}:{el:string;dist:number}){
 // ════════════════════════════════════════════════════════════════════
 // IMPACT — screen shake wrapper + 8 shockwaves + element bursts
 // ════════════════════════════════════════════════════════════════════
-function Impact({el}:{el:string}){
+// ════════════════════════════════════════════════════════════════════
+// IMPACT SCREEN FX — TRUE full-screen overlay, rendered OUTSIDE the
+// rotated/positioned flight container so it always covers the full
+// viewport correctly, no matter where on the field the hit lands.
+// ════════════════════════════════════════════════════════════════════
+function ImpactScreenFX({el}:{el:string}){
   const P=pal(el)
   const iF=["pyrus","fire"].includes(el), iA=["aquos","aquo","water"].includes(el)
   const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
   const iV=["ventus","wind"].includes(el)
-  const HS=T.HITSTOP // hitstop offset — everything "explosive" waits this long after the freeze-flash
-
-  return(
-    // Screen shake wrapper
-    <div style={{position:"absolute",left:"-50vw",top:"-50vh",width:"100vw",height:"100vh",
-      pointerEvents:"none",animation:`xi-shake ${T.IMPACT*.8}ms ease-out ${HS}ms forwards`,contain:"layout"}}>
-      {/* Element screen tint */}
+  const HS=T.HITSTOP
+  return (
+    <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:10001,
+      animation:`xi-shake ${T.IMPACT*.8}ms ease-out ${HS}ms forwards`}}>
       <div style={{position:"absolute",inset:0,background:P.sc,
         animation:`xi-tint ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
-      {/* Global vignette */}
       <div style={{position:"absolute",inset:0,
         background:"radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.88) 100%)",
         animation:`xi-vign ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
-      {/* Blinding flash — HOLDS bright during hitstop, then releases */}
       <div style={{position:"absolute",inset:0,
         background:`radial-gradient(circle at center,white 0%,${P.w} 16%,${P.c} 40%,transparent 66%)`,
         animation:`xi-flash-hold ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
-      {/* Chromatic split R */}
       <div style={{position:"absolute",inset:0,
         background:"radial-gradient(circle at center,rgba(255,30,30,0) 0%,rgba(255,30,30,.26) 100%)",
         animation:`xi-chr ${T.IMPACT}ms ease-out ${HS}ms forwards`,mixBlendMode:"screen",willChange:"transform,opacity"}}/>
-      {/* Chromatic split B */}
       <div style={{position:"absolute",inset:0,
         background:"radial-gradient(circle at center,rgba(30,30,255,0) 0%,rgba(30,30,255,.26) 100%)",
         animation:`xi-chb ${T.IMPACT}ms ease-out ${HS}ms forwards`,mixBlendMode:"screen",willChange:"transform,opacity"}}/>
 
-      {/* ── ELEMENT-SPECIFIC FULL-SCREEN FINISHING FLOURISH (the "ultimate move" beat) ── */}
       {iF && <div style={{position:"absolute",inset:0,
         animation:`xi-fire-border ${T.IMPACT*1.05}ms ease-out ${HS}ms forwards`,willChange:"box-shadow"}}/>}
       {iA && <div style={{position:"absolute",inset:0,
@@ -517,9 +523,25 @@ function Impact({el}:{el:string}){
       {!iF&&!iA&&!iD&&!iH&&!iV && <div style={{position:"absolute",inset:0,
         background:"repeating-linear-gradient(0deg,rgba(148,163,184,.10) 0px,transparent 2px,transparent 5px)",
         animation:`xi-void-scan ${T.IMPACT*.65}ms steps(7) ${HS}ms forwards`,willChange:"transform,opacity"}}/>}
+    </div>
+  )
+}
 
-      {/* Impact epicenter */}
-      <div style={{position:"absolute",left:"50%",top:"50%",width:0,height:0}}>
+// ════════════════════════════════════════════════════════════════════
+// IMPACT — localized epicenter burst, anchored at the exact hit point.
+// Rendered un-rotated (counter-rotates ctr's angle) so rings/rays
+// always look upright no matter which direction the attack came from.
+// ════════════════════════════════════════════════════════════════════
+function Impact({el,counterRotate=0}:{el:string;counterRotate?:number}){
+  const P=pal(el)
+  const iF=["pyrus","fire"].includes(el), iA=["aquos","aquo","water"].includes(el)
+  const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
+  const iV=["ventus","wind"].includes(el)
+  const HS=T.HITSTOP
+
+  return(
+      <div style={{position:"absolute",left:0,top:0,width:0,height:0,
+        transform:`rotate(${counterRotate}deg)`,willChange:"transform"}}>
         {/* Compression sphere */}
         <div style={{position:"absolute",left:"-125px",top:"-125px",width:"250px",height:"250px",
           borderRadius:"50%",background:P.gl,filter:"blur(40px)",
@@ -606,14 +628,13 @@ function Impact({el}:{el:string}){
             animation:`xi-smoke ${T.AFTERMATH*.7}ms ease-out ${HS+i*20}ms forwards`,"--sx":`${s.sx}px`}) as React.CSSProperties}/>
         ))}
       </div>
-    </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════
 // AFTERMATH — each element has a UNIQUE signature explosion shape
 // ════════════════════════════════════════════════════════════════════
-function Aftermath({el,pts}:{el:string;pts:ReturnType<typeof mkP>}){
+function Aftermath({el,pts,counterRotate=0}:{el:string;pts:ReturnType<typeof mkP>;counterRotate?:number}){
   const P=pal(el)
   const iF=["pyrus","fire"].includes(el), iA=["aquos","aquo","water"].includes(el)
   const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
@@ -630,7 +651,10 @@ function Aftermath({el,pts}:{el:string;pts:ReturnType<typeof mkP>}){
   const RR=[44,52,60,68,46,54,62,70,48,56,64,72]
 
   return(
-    <div style={{position:"absolute",left:0,top:0,pointerEvents:"none"}}>
+    // counterRotate cancels ctr's flight-angle rotation so "rises upward" / cross-shaped
+    // effects (fire embers, haos cross, ventus funnel) always stay visually upright.
+    <div style={{position:"absolute",left:0,top:0,pointerEvents:"none",
+      transform:`rotate(${counterRotate}deg)`,willChange:"transform"}}>
       {/* Residual epicenter glow */}
       <div style={{position:"absolute",left:"-36px",top:"-36px",width:"72px",height:"72px",
         borderRadius:"50%",background:`radial-gradient(circle,${ec.g},transparent)`,filter:"blur(16px)",
@@ -925,10 +949,10 @@ export function ElementalAttackAnimation({
   const ctr:S=inFlight
     ?{position:"absolute",left:startX,top:startY,width:dist,height:60,marginTop:-30,
        pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)`,
-       willChange:"transform",contain:"layout style paint"}
+       willChange:"transform",overflow:"visible"}
     :{position:"absolute",left:targetX,top:targetY,width:0,height:60,marginTop:-30,
        pointerEvents:"none",zIndex:10000,transformOrigin:"0 50%",transform:`rotate(${aDeg}deg)`,
-       willChange:"transform",contain:"layout style paint"}
+       willChange:"transform",overflow:"visible"}
 
   const kfs=`
     ${orbKFs}
@@ -1067,9 +1091,13 @@ export function ElementalAttackAnimation({
       <div style={ctr} suppressHydrationWarning>
         {(phase==="charge"||phase==="release")&&<Charge el={el} sx={startX} sy={startY}/>}
         {phase==="strike"&&<Strike el={el} dist={dist}/>}
-        {phase==="impact"&&<Impact el={el}/>}
-        {phase==="aftermath"&&<Aftermath el={el} pts={pts}/>}
+        {phase==="impact"&&<Impact el={el} counterRotate={-aDeg}/>}
+        {phase==="aftermath"&&<Aftermath el={el} pts={pts} counterRotate={-aDeg}/>}
       </div>
+      {/* Rendered as SIBLINGS (not nested in the rotated ctr) so they're TRUE full-viewport overlays
+          and unaffected by ctr's transform creating a new containing block for fixed descendants */}
+      {phase==="strike"&&<StrikeSpeedLines el={el}/>}
+      {phase==="impact"&&<ImpactScreenFX el={el}/>}
     </>
   )
   if(portalTarget) return createPortal(out,portalTarget)
