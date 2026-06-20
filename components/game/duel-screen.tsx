@@ -18,7 +18,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import { trackDuelResult } from "@/lib/mission-tracker"
 import { loadMastersFromStorage, saveMastersToStorage, calcMasterXP, xpRequiredForLevel } from "@/lib/masters-data"
 import { MultiplayerLobby } from "./multiplayer-lobby"
-import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
+import { ElementalAttackAnimation, type AttackAnimationProps, getElementPalette, normalizeElement } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
@@ -9533,71 +9533,88 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         />
       )}
 
-      {attackState.isAttacking && (
+      {attackState.isAttacking && (() => {
+        const aimUnit = attackState.attackerIndex !== null ? playerField.unitZone[attackState.attackerIndex] : null
+        const aimEl = normalizeElement(aimUnit?.element || "neutral")
+        const aimPal = getElementPalette(aimEl)
+        const spineD = `M ${arrowPos.x1} ${arrowPos.y1} L ${arrowPos.x2} ${arrowPos.y2}`
+        const sparkColors = [aimPal.c, "white", aimPal.b, aimPal.c]
+        return (
         <svg className="fixed inset-0 pointer-events-none z-50" style={{ width: "100vw", height: "100vh" }}>
           <defs>
             <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#dc2626" />
-              <stop offset="50%" stopColor="#ef4444" />
-              <stop offset="100%" stopColor="#f87171" />
+              <stop offset="0%" stopColor={aimPal.a} />
+              <stop offset="55%" stopColor={aimPal.b} />
+              <stop offset="100%" stopColor={aimPal.c} />
             </linearGradient>
-            <marker id="arrowhead" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto">
-              <path d="M 0 0 L 12 5 L 0 10 L 3 5 Z" fill="#f87171" stroke="#dc2626" strokeWidth="0.5" />
-            </marker>
-            <filter id="professionalGlow">
-              <feGaussianBlur stdDeviation="2.5" result="blur" />
-              <feColorMatrix
-                in="blur"
-                type="matrix"
-                values="1 0 0 0 0  0 0.3 0 0 0  0 0 0.3 0 0  0 0 0 0.5 0"
-                result="redBlur"
-              />
-              <feMerge>
-                <feMergeNode in="redBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
+            <filter id="aimGlowBlur" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="3.2" />
             </filter>
+
+            {/* ── Element-specific arrowhead silhouettes ── */}
+            <marker id="aim-head-fire" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
+              <path d="M0 8 C4 2,9 0,15 1 C11 3,9 6,9 8 C9 10,11 13,15 15 C9 16,4 14,0 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            </marker>
+            <marker id="aim-head-aquos" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
+              <path d="M14 8 C14 3,9 0,7 0 C9 3,8 5,5 6 C2 7,0 7,0 8 C0 9,2 9,5 10 C8 11,9 13,7 16 C9 16,14 13,14 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            </marker>
+            <marker id="aim-head-haos" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
+              <path d="M0 8 L8 2 L7 7 L17 8 L7 9 L8 14 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            </marker>
+            <marker id="aim-head-darkness" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
+              <path d="M0 8 L10 2 L9 5 L15 4 L8 8 L15 12 L9 11 L10 14 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            </marker>
+            <marker id="aim-head-ventus" markerWidth="17" markerHeight="16" refX="13" refY="8" orient="auto">
+              <path d="M0 8 C5 1,12 0,16 2 C12 4,10 6,9 8 C10 10,12 12,16 14 C12 16,5 15,0 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            </marker>
+            <marker id="aim-head-void" markerWidth="15" markerHeight="15" refX="12" refY="7.5" orient="auto">
+              <path d="M0 7.5 L6 2 L13 5 L11 7.5 L13 10 L6 13 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            </marker>
+            <marker id="aim-head-neutral" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto">
+              <path d="M 0 0 L 12 5 L 0 10 L 3 5 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.5" />
+            </marker>
           </defs>
 
-          {/* Outer glow */}
-          <line
-            x1={arrowPos.x1}
-            y1={arrowPos.y1}
-            x2={arrowPos.x2}
-            y2={arrowPos.y2}
-            stroke="#f87171"
-            strokeWidth="8"
-            opacity="0.18"
-            strokeLinecap="round"
-          />
+          {/* Hidden spine path — used as the motion guide for traveling sparks */}
+          <path id="aimSpine" d={spineD} fill="none" stroke="none" />
 
-          {/* Main arrow with border effect */}
-          <line
-            x1={arrowPos.x1}
-            y1={arrowPos.y1}
-            x2={arrowPos.x2}
-            y2={arrowPos.y2}
-            stroke="#b91c1c"
-            strokeWidth="5"
-            strokeLinecap="round"
-            opacity="0.7"
-          />
+          {/* Outer soft glow */}
+          <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
+            stroke={aimPal.gl} strokeWidth="16" opacity="0.22" strokeLinecap="round" filter="url(#aimGlowBlur)" />
+          {/* Mid energy band — pulses */}
+          <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
+            stroke={aimPal.b} strokeWidth="7" strokeLinecap="round" opacity="0.55"
+            style={{ animation: "aimPulse 0.5s ease-in-out infinite" }} />
+          {/* Core beam with flowing energy dashes */}
+          <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
+            stroke="url(#arrowGradient)" strokeWidth="3.5" strokeLinecap="round"
+            strokeDasharray="10 7"
+            markerEnd={`url(#aim-head-${aimEl})`}
+            style={{ animation: "aimFlow 0.45s linear infinite" }} />
 
-          {/* Main arrow */}
-          <line
-            ref={arrowRef}
-            x1={arrowPos.x1}
-            y1={arrowPos.y1}
-            x2={arrowPos.x2}
-            y2={arrowPos.y2}
-            stroke="url(#arrowGradient)"
-            strokeWidth="4"
-            markerEnd="url(#arrowhead)"
-            filter="url(#professionalGlow)"
-            strokeLinecap="round"
-          />
+          {/* 4 traveling spark particles riding the beam */}
+          {sparkColors.map((c, i) => (
+            <circle key={i} r={i === 1 ? 3.6 : 2.6} fill={c} opacity="0.95">
+              <animateMotion dur="0.55s" repeatCount="indefinite" begin={`-${i * 0.13}s`}>
+                <mpath href="#aimSpine" />
+              </animateMotion>
+            </circle>
+          ))}
+
+          {/* Target reticle pulsing at cursor end, themed by element */}
+          <circle cx={arrowPos.x2} cy={arrowPos.y2} r="14" fill="none" stroke={aimPal.c} strokeWidth="2"
+            opacity="0.8" style={{ animation: "aimReticle 0.6s ease-out infinite", transformOrigin: `${arrowPos.x2}px ${arrowPos.y2}px` }} />
+          <circle cx={arrowPos.x2} cy={arrowPos.y2} r="4" fill={aimPal.c} opacity="0.9"
+            style={{ filter: `drop-shadow(0 0 6px ${aimPal.gl})` }} />
         </svg>
-      )}
+        )
+      })()}
+
+      <style>{`
+        @keyframes aimPulse { 0%,100% { opacity: 0.4; stroke-width: 6; } 50% { opacity: 0.75; stroke-width: 9; } }
+        @keyframes aimFlow { from { stroke-dashoffset: 34; } to { stroke-dashoffset: 0; } }
+        @keyframes aimReticle { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(1.6); opacity: 0; } }
+      `}</style>
 
       {/* Top HUD - Turn info (LP do oponente movido para fixed abaixo) */}
       <div className="relative z-20 flex items-center justify-end px-4 py-2 bg-gradient-to-b from-black/80 to-transparent gap-3">
