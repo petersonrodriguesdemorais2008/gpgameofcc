@@ -487,15 +487,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     claimedCommon: number[]
     claimedPremium: number[]
     seasonStartedAt: number
+    seasonNumber: number
   }>(() => {
-    const fresh = { currentPoints: 0, currentLevel: 0, hasPremium: false, claimedCommon: [], claimedPremium: [], seasonStartedAt: Date.now() }
+    const fresh = { currentPoints: 0, currentLevel: 0, hasPremium: false, claimedCommon: [], claimedPremium: [], seasonStartedAt: Date.now(), seasonNumber: 1 }
     if (typeof window === "undefined") return fresh
     try {
       const saved = localStorage.getItem(LS_PASS_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
-        // Migração: dados antigos sem seasonStartedAt ganham "agora" como início
+        // Migração: dados antigos sem esses campos ganham valores padrão
         if (!parsed.seasonStartedAt) parsed.seasonStartedAt = Date.now()
+        if (!parsed.seasonNumber) parsed.seasonNumber = 1
         return parsed
       }
     } catch {}
@@ -742,6 +744,42 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     }
     tick()
     const id = setInterval(tick, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Ref espelhando passData — leitura segura dentro do interval sem stale closure ──
+  const passDataRef = useRef(passData)
+  useEffect(() => { passDataRef.current = passData }, [passData])
+
+  // ── Fim de temporada: reset completo do Passe ────────────────────────────────
+  // Quando o tempo desde seasonStartedAt ultrapassa SEASON_DURATION_DAYS:
+  //  • Pontos e nível voltam a 0
+  //  • Todas as recompensas coletadas (comum E premium) são limpas
+  //  • hasPremium volta a false — a compra do Premium vale só para a temporada
+  //    em que foi feita, então o jogador precisa comprar de novo na próxima
+  //  • Uma nova temporada começa imediatamente (seasonStartedAt = agora)
+  // A checagem roda no mount (cobre reabrir o app depois do fim) e a cada 60s.
+  useEffect(() => {
+    const checkSeasonEnd = () => {
+      const pd = passDataRef.current
+      const elapsed = Date.now() - pd.seasonStartedAt
+      if (elapsed < SEASON_DURATION_DAYS * 86_400_000) return
+
+      const endedSeason = pd.seasonNumber
+      setPassData({
+        currentPoints: 0,
+        currentLevel: 0,
+        hasPremium: false,
+        claimedCommon: [],
+        claimedPremium: [],
+        seasonStartedAt: Date.now(),
+        seasonNumber: endedSeason + 1,
+      })
+      setClaimFeedback(`🎉 Temporada ${endedSeason} encerrada! Bem-vindo à Temporada ${endedSeason + 1}`)
+      setTimeout(() => setClaimFeedback(null), 4500)
+    }
+    checkSeasonEnd()
+    const id = setInterval(checkSeasonEnd, 60_000)
     return () => clearInterval(id)
   }, [])
 
@@ -1113,7 +1151,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               {/* Season pill */}
               <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "pulseGlow 2s ease-in-out infinite" }} />
-                <span style={{ fontSize: 10, color: "#475569" }}>Temporada 1</span>
+                <span style={{ fontSize: 10, color: "#475569" }}>Temporada {passData.seasonNumber}</span>
                 <span style={{ fontSize: 10, color: "#1e293b" }}>·</span>
                 <span style={{ fontSize: 10, color: "#475569" }}>
                   {seasonDaysLeft > 0 ? `Encerra em ${seasonDaysLeft} dia${seasonDaysLeft !== 1 ? "s" : ""}` : "Temporada encerrada"}
@@ -1885,7 +1923,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 { icon: "🖼️", text: "4 Playmats exclusivos do Passe" },
                 { icon: "💎", text: "Packs UR e SR em marcos especiais" },
                 { icon: "⚡", text: "Bônus de coins dobrado nas recompensas" },
-                { icon: "🔓", text: "Válido por toda a Temporada 1 (30 dias)" },
+                { icon: "🔓", text: `Válido por toda a Temporada ${passData.seasonNumber} (${SEASON_DURATION_DAYS} dias)` },
               ].map((b, i) => (
                 <div key={i} style={{
                   display: "flex", alignItems: "center", gap: 10,
