@@ -10883,7 +10883,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* Effect Feedback Toast */}
       {effectFeedback && (
-        <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${effectFeedback.type === "success"
+        <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${effectFeedback.type === "success"
           ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
           : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
           }`}>
