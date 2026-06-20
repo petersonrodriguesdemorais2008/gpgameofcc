@@ -76,27 +76,38 @@ const Ring=({d,c,bw="2px",glow,an,op=1}:{d:number;c?:string;bw?:string;glow?:str
 // ════════════════════════════════════════════════════════════════════
 // CHARGE — each element builds power in a STRUCTURALLY UNIQUE shape
 // ════════════════════════════════════════════════════════════════════
-function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
+// ════════════════════════════════════════════════════════════════════
+// CHARGE FIELD AURA — TRUE full-viewport ambient tint/vignette, rendered
+// OUTSIDE the rotated ctr so position:fixed actually spans the real
+// screen (same containing-block fix applied to Strike/Impact).
+// ════════════════════════════════════════════════════════════════════
+function ChargeFieldAura({el,sx,sy}:{el:string;sx:number;sy:number}){
+  const P=pal(el)
+  return (
+    <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:9999}}>
+      <div style={{position:"absolute",inset:0,
+        background:`radial-gradient(circle 280px at ${sx}px ${sy}px, ${P.sc} 0%, transparent 100%)`,
+        animation:`xc-field-build ${T.CHARGE}ms ease-in forwards`,willChange:"opacity"}}/>
+      <div style={{position:"absolute",inset:0,
+        background:"radial-gradient(ellipse at center,transparent 22%,rgba(0,0,0,.55) 100%)",
+        animation:`xc-vign-build ${T.CHARGE}ms ease-in forwards`,willChange:"opacity"}}/>
+    </div>
+  )
+}
+
+function Charge({el,sx,sy,counterRotate=0}:{el:string;sx:number;sy:number;counterRotate?:number}){
   const P=pal(el)
   const iF=["pyrus","fire"].includes(el), iA=["aquos","aquo","water"].includes(el)
   const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
   const iV=["ventus","wind"].includes(el)
 
-  const fieldAura=(
-    <>
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",
-        background:`radial-gradient(circle 280px at ${sx}px ${sy}px, ${P.sc} 0%, transparent 100%)`,
-        animation:`xc-field-build ${T.CHARGE}ms ease-in forwards`,willChange:"opacity"}}/>
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",
-        background:"radial-gradient(ellipse at center,transparent 22%,rgba(0,0,0,.55) 100%)",
-        animation:`xc-vign-build ${T.CHARGE}ms ease-in forwards`,willChange:"opacity"}}/>
-    </>
-  )
-
   return <>
-    {fieldAura}
+    {/* counterRotate cancels ctr's flight-angle rotation so asymmetric shapes
+        (Haos pillar+halo, Ventus funnel) always stay visually upright,
+        no matter which direction the attacker is aiming. */}
     <div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)"}}>
-      <div style={{position:"absolute",left:0,top:0,width:0,height:0}}>
+      <div style={{position:"absolute",left:0,top:0,width:0,height:0,
+        transform:`rotate(${counterRotate}deg)`,willChange:"transform"}}>
 
       {/* ═══ FIRE — PULSING FIREBALL WITH CHAOTIC FLAME LICKS ═══ */}
       {iF && <>
@@ -203,15 +214,15 @@ function Charge({el,sx,sy}:{el:string;sx:number;sy:number}){
           animation:"xc-halo-spin .9s linear infinite",willChange:"transform"}}/>
         <div style={{position:"absolute",left:-50,top:-15,width:100,height:30,borderRadius:"50%",
           border:"2px solid rgba(255,255,255,.7)",animation:"xc-halo-spin .6s linear infinite reverse"}}/>
-        {/* 24 divine rays */}
-        {Array.from({length:24},(_,i)=>{
-          const l=i%6===0?56:i%3===0?38:i%2===0?24:14
+        {/* 16 divine rays (trimmed from 24 — Haos was the heaviest element, causing visible jank) */}
+        {Array.from({length:16},(_,i)=>{
+          const l=i%4===0?56:i%2===0?34:18
           return <div key={i} style={({position:"absolute",left:0,top:0,width:"2px",height:`${l}px`,
             background:"linear-gradient(to top,transparent,rgba(254,249,195,.92),white)",
             borderRadius:"9999px",transformOrigin:"50% 100%",
-            opacity:i%6===0?1:i%3===0?.82:i%2===0?.62:.42,
+            opacity:i%4===0?1:i%2===0?.78:.5,
             animation:`xc-ray .065s ease-in-out ${i%4*12}ms infinite`,willChange:"transform,opacity",
-            "--r":`${i*15}deg`,"--ty":`-${l}px`}) as React.CSSProperties}/>
+            "--r":`${i*22.5}deg`,"--ty":`-${l}px`}) as React.CSSProperties}/>
         })}
         {/* White-hot core */}
         <div style={{position:"absolute",left:-26,top:-26,width:52,height:52,borderRadius:"50%",background:"white",
@@ -869,15 +880,15 @@ function Aftermath({el,pts,counterRotate=0}:{el:string;pts:ReturnType<typeof mkP
             animation:`xa-cross ${T.AFTERMATH*.3}ms ease-out forwards`,willChange:"transform,opacity",
             "--r":`${a}deg`}) as React.CSSProperties}/>
         ))}
-        {/* 16-point starburst */}
-        {Array.from({length:16},(_,i)=>(
+        {/* 10-point starburst (trimmed from 16) */}
+        {Array.from({length:10},(_,i)=>(
           <div key={i} style={({position:"absolute",left:0,top:0,
-            width:i%4===0?"150px":i%2===0?"100px":"62px",height:i%4===0?"6px":i%2===0?"4px":"2px",
+            width:i%5===0?"150px":i%2===0?"95px":"60px",height:i%5===0?"6px":i%2===0?"4px":"2px",
             background:"linear-gradient(to right,white,rgba(254,240,138,.82),transparent)",
             borderRadius:"9999px",transformOrigin:"left center",
             animation:`xa-dout ${T.AFTERMATH*.5}ms ease-out ${i*9}ms forwards`,
-            opacity:i%4===0?1:i%2===0?.82:.56,willChange:"transform,opacity",
-            "--r":`${i*22.5}deg`}) as React.CSSProperties}/>
+            opacity:i%5===0?1:i%2===0?.82:.56,willChange:"transform,opacity",
+            "--r":`${i*36}deg`}) as React.CSSProperties}/>
         ))}
         {/* 4 expanding rings */}
         {[72,128,192,268].map((d,i)=>(
@@ -895,12 +906,12 @@ function Aftermath({el,pts,counterRotate=0}:{el:string;pts:ReturnType<typeof mkP
           background:"radial-gradient(ellipse,white,rgba(254,240,138,.7),transparent)",
           borderRadius:"9999px",filter:"blur(3px)",
           animation:`xa-gflash ${T.AFTERMATH*.4}ms ease-out forwards`,willChange:"transform,opacity"}}/>
-        {/* Halo ring + 8 bursting light orbs */}
+        {/* Halo ring + 6 bursting light orbs (trimmed from 8) */}
         <div style={{position:"absolute",left:-85,top:-85,width:170,height:170,borderRadius:"50%",
           border:"3px solid rgba(253,224,71,.55)",boxShadow:"0 0 24px 10px rgba(253,224,71,.45)",
           animation:`ks 2.6s linear infinite,xa-rout ${T.AFTERMATH*.7}ms ease-out 50ms forwards`,willChange:"transform,opacity"}}/>
-        {Array.from({length:8},(_,i)=>(
-          <div key={i} style={{position:"absolute",left:0,top:0,transform:`rotate(${i*45}deg)`}}>
+        {Array.from({length:6},(_,i)=>(
+          <div key={i} style={{position:"absolute",left:0,top:0,transform:`rotate(${i*60}deg)`}}>
             <div style={{width:9,height:9,borderRadius:"50%",background:"white",
               boxShadow:"0 0 14px 7px rgba(254,240,138,1)",
               animation:`xa-halodot ${T.AFTERMATH*.58}ms ease-out 60ms forwards`,willChange:"transform,opacity"}}/>
@@ -1009,7 +1020,7 @@ export function ElementalAttackAnimation({
   useEffect(()=>{doneRef.current=onComplete},[onComplete])
 
   const nPts:{[k:string]:number}={fire:40,pyrus:40,aquos:36,aquo:36,water:36,
-    haos:42,light:42,lightness:42,darkus:32,darkness:32,dark:32,ventus:28,wind:28,void:24}
+    haos:32,light:32,lightness:32,darkus:32,darkness:32,dark:32,ventus:28,wind:28,void:24}
   const pts=useMemo(()=>mkP(nPts[el]??24,el,id),[el,id])
 
   useEffect(()=>{
@@ -1182,13 +1193,14 @@ export function ElementalAttackAnimation({
           animation:"afterimage-fade 395ms ease-out 58ms forwards",pointerEvents:"none",zIndex:4,willChange:"opacity"}}/>
       </>)}
       <div style={ctr} suppressHydrationWarning>
-        {(phase==="charge"||phase==="release")&&<Charge el={el} sx={startX} sy={startY}/>}
+        {(phase==="charge"||phase==="release")&&<Charge el={el} sx={startX} sy={startY} counterRotate={-aDeg}/>}
         {phase==="strike"&&<Strike el={el} dist={dist}/>}
         {phase==="impact"&&<Impact el={el} counterRotate={-aDeg}/>}
         {phase==="aftermath"&&<Aftermath el={el} pts={pts} counterRotate={-aDeg}/>}
       </div>
       {/* Rendered as SIBLINGS (not nested in the rotated ctr) so they're TRUE full-viewport overlays
           and unaffected by ctr's transform creating a new containing block for fixed descendants */}
+      {(phase==="charge"||phase==="release")&&<ChargeFieldAura el={el} sx={startX} sy={startY}/>}
       {phase==="strike"&&<StrikeSpeedLines el={el}/>}
       {phase==="impact"&&<ImpactScreenFX el={el}/>}
       {phase==="impact"&&<ImpactSigil el={el} x={targetX} y={targetY}/>}
