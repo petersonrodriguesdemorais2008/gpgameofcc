@@ -6645,11 +6645,19 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             targetY = targetRect.top + targetRect.height / 2
           }
         } else if (attackState.targetInfo.type === "direct") {
-          const directZone = document.querySelector("[data-direct-attack]")
-          const directRect = directZone?.getBoundingClientRect()
-          if (directRect) {
-            targetX = directRect.left + directRect.width / 2
-            targetY = directRect.top + directRect.height / 2
+          // Use the exact point where the player released the drag (arrowPos),
+          // instead of a fixed zone element — the impact now lands exactly
+          // where the arrow tip was pointing, not at the field's MAIN divider.
+          if (arrowPos.x2 && arrowPos.y2) {
+            targetX = arrowPos.x2
+            targetY = arrowPos.y2
+          } else {
+            const directZone = document.querySelector("[data-direct-attack]")
+            const directRect = directZone?.getBoundingClientRect()
+            if (directRect) {
+              targetX = directRect.left + directRect.width / 2
+              targetY = directRect.top + directRect.height / 2
+            }
           }
         }
 
@@ -6958,15 +6966,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) { setFehnonLrDouble(false) }
             }
           } else if (attackState.targetInfo!.type === "direct") {
-            const directZone = document.querySelector("[data-direct-attack]")
-            const directRect = directZone?.getBoundingClientRect()
-            if (directRect) {
-              triggerExplosion(
-                directRect.left + directRect.width / 2,
-                directRect.top + directRect.height / 2,
-                attacker.element || "neutral",
-              )
-            }
+            // Reuse the already-computed targetX/targetY (the exact arrow-release point)
+            // instead of re-querying the fixed [data-direct-attack] zone — keeps the
+            // explosion landing exactly where the projectile actually traveled to.
+            triggerExplosion(targetX, targetY, attacker.element || "neutral")
             setEnemyField((prev) => ({
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
