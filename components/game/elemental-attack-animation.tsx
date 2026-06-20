@@ -485,6 +485,11 @@ function ImpactScreenFX({el}:{el:string}){
   return (
     <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:10001,
       animation:`xi-shake ${T.IMPACT*.8}ms ease-out ${HS}ms forwards`}}>
+      {/* Zoom-punch — a hard radial pulse simulating a camera-hit jolt */}
+      <div style={{position:"absolute",inset:0,
+        background:`radial-gradient(circle at center,${P.gl} 0%,transparent 38%)`,
+        animation:`xi-zoom-punch ${T.IMPACT*.42}ms cubic-bezier(.1,.8,.2,1) ${HS}ms forwards`,
+        mixBlendMode:"screen",willChange:"transform,opacity"}}/>
       <div style={{position:"absolute",inset:0,background:P.sc,
         animation:`xi-tint ${T.IMPACT}ms ease-out forwards`,willChange:"opacity"}}/>
       <div style={{position:"absolute",inset:0,
@@ -528,6 +533,67 @@ function ImpactScreenFX({el}:{el:string}){
 }
 
 // ════════════════════════════════════════════════════════════════════
+// IMPACT SIGIL — giant elemental magic-circle that flashes at the hit
+// point, the "ability activate!" anime moment. Anchored at real screen
+// pixel coords (fixed), unaffected by ctr's rotation/clipping.
+// ════════════════════════════════════════════════════════════════════
+function ImpactSigil({el,x,y}:{el:string;x:number;y:number}){
+  const P=pal(el)
+  const iF=["pyrus","fire"].includes(el), iA=["aquos","aquo","water"].includes(el)
+  const iD=["darkus","darkness","dark"].includes(el), iH=["haos","light","lightness"].includes(el)
+  const iV=["ventus","wind"].includes(el)
+  const HS=T.HITSTOP
+
+  // Outer rune ring — segmented arc pattern unique per element (conic-gradient stripes)
+  const ringPattern = iF
+    ? "conic-gradient(from 0deg,transparent 0deg 8deg,#fb923c 8deg 22deg,transparent 22deg 38deg,#fbbf24 38deg 52deg,transparent 52deg 68deg,#fb923c 68deg 82deg,transparent 82deg 98deg,#fbbf24 98deg 112deg,transparent 112deg 128deg,#fb923c 128deg 142deg,transparent 142deg 158deg,#fbbf24 158deg 172deg,transparent 172deg 188deg,#fb923c 188deg 202deg,transparent 202deg 218deg,#fbbf24 218deg 232deg,transparent 232deg 248deg,#fb923c 248deg 262deg,transparent 262deg 278deg,#fbbf24 278deg 292deg,transparent 292deg 308deg,#fb923c 308deg 322deg,transparent 322deg 338deg,#fbbf24 338deg 352deg,transparent 352deg 360deg)"
+    : iA ? "conic-gradient(from 0deg,transparent 0deg 10deg,#38bdf8 10deg 26deg,transparent 26deg 46deg,#7dd3fc 46deg 62deg,transparent 62deg 82deg,#38bdf8 82deg 98deg,transparent 98deg 118deg,#7dd3fc 118deg 134deg,transparent 134deg 154deg,#38bdf8 154deg 170deg,transparent 170deg 190deg,#7dd3fc 190deg 206deg,transparent 206deg 226deg,#38bdf8 226deg 242deg,transparent 242deg 262deg,#7dd3fc 262deg 278deg,transparent 278deg 298deg,#38bdf8 298deg 314deg,transparent 314deg 334deg,#7dd3fc 334deg 350deg,transparent 350deg 360deg)"
+    : iD ? "conic-gradient(from 0deg,transparent 0deg 12deg,#a78bfa 12deg 30deg,transparent 30deg 48deg,#7c3aed 48deg 66deg,transparent 66deg 84deg,#a78bfa 84deg 102deg,transparent 102deg 120deg,#7c3aed 120deg 138deg,transparent 138deg 156deg,#a78bfa 156deg 174deg,transparent 174deg 192deg,#7c3aed 192deg 210deg,transparent 210deg 228deg,#a78bfa 228deg 246deg,transparent 246deg 264deg,#7c3aed 264deg 282deg,transparent 282deg 300deg,#a78bfa 300deg 318deg,transparent 318deg 336deg,#7c3aed 336deg 354deg,transparent 354deg 360deg)"
+    : iH ? "conic-gradient(from 0deg,transparent 0deg 6deg,#fde047 6deg 18deg,transparent 18deg 30deg,white 30deg 42deg,transparent 42deg 54deg,#fde047 54deg 66deg,transparent 66deg 78deg,white 78deg 90deg,transparent 90deg 102deg,#fde047 102deg 114deg,transparent 114deg 126deg,white 126deg 138deg,transparent 138deg 150deg,#fde047 150deg 162deg,transparent 162deg 174deg,white 174deg 186deg,transparent 186deg 198deg,#fde047 198deg 210deg,transparent 210deg 222deg,white 222deg 234deg,transparent 234deg 246deg,#fde047 246deg 258deg,transparent 258deg 270deg,white 270deg 282deg,transparent 282deg 294deg,#fde047 294deg 306deg,transparent 306deg 318deg,white 318deg 330deg,transparent 330deg 342deg,#fde047 342deg 354deg,transparent 354deg 360deg)"
+    : iV ? "conic-gradient(from 0deg,transparent 0deg 14deg,#34d399 14deg 34deg,transparent 34deg 54deg,#6ee7b7 54deg 74deg,transparent 74deg 94deg,#34d399 94deg 114deg,transparent 114deg 134deg,#6ee7b7 134deg 154deg,transparent 154deg 174deg,#34d399 174deg 194deg,transparent 194deg 214deg,#6ee7b7 214deg 234deg,transparent 234deg 254deg,#34d399 254deg 274deg,transparent 274deg 294deg,#6ee7b7 294deg 314deg,transparent 314deg 334deg,#34d399 334deg 354deg,transparent 354deg 360deg)"
+    : "conic-gradient(from 0deg,transparent 0deg 5deg,#94a3b8 5deg 13deg,transparent 13deg 28deg,transparent 28deg 41deg,#64748b 41deg 49deg,transparent 49deg 70deg,#94a3b8 70deg 78deg,transparent 78deg 95deg,transparent 95deg 110deg,#64748b 110deg 118deg,transparent 118deg 138deg,#94a3b8 138deg 146deg,transparent 146deg 165deg,transparent 165deg 178deg,#64748b 178deg 186deg,transparent 186deg 205deg,#94a3b8 205deg 213deg,transparent 213deg 230deg,transparent 230deg 245deg,#64748b 245deg 253deg,transparent 253deg 272deg,#94a3b8 272deg 280deg,transparent 280deg 298deg,transparent 298deg 312deg,#64748b 312deg 320deg,transparent 320deg 340deg,#94a3b8 340deg 348deg,transparent 348deg 360deg)"
+
+  // Inner core glyph silhouette per element (clip-path polygon — a recognizable geometric icon)
+  const glyphClip = iF
+    ? "polygon(50% 0%,61% 30%,90% 20%,70% 45%,100% 55%,68% 60%,80% 92%,50% 70%,20% 92%,32% 60%,0% 55%,30% 45%,10% 20%,39% 30%)" // blazing star/flame
+    : iA ? "polygon(50% 0%,68% 22%,95% 30%,78% 50%,95% 70%,68% 78%,50% 100%,32% 78%,5% 70%,22% 50%,5% 30%,32% 22%)" // hexagonal droplet
+    : iD ? "polygon(50% 2%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)" // pentagram fang
+    : iH ? "polygon(50% 0%,57% 38%,93% 25%,62% 50%,93% 75%,57% 62%,50% 100%,43% 62%,7% 75%,38% 50%,7% 25%,43% 38%)" // radiant cross-star
+    : iV ? "polygon(50% 0%,55% 25%,80% 10%,65% 35%,100% 40%,68% 50%,100% 60%,65% 65%,80% 90%,55% 75%,50% 100%,45% 75%,20% 90%,35% 65%,0% 60%,32% 50%,0% 40%,35% 35%,20% 10%,45% 25%)" // spiral pinwheel
+    : "polygon(50% 5%,75% 20%,75% 20%,95% 45%,80% 45%,90% 70%,65% 60%,55% 90%,45% 65%,20% 80%,30% 55%,5% 50%,25% 35%,15% 15%,40% 30%)" // fractured shard
+
+  return (
+    <div style={{position:"fixed",left:x,top:y,width:0,height:0,pointerEvents:"none",zIndex:10002}}>
+      {/* Outer segmented rune ring — spins in, holds during hitstop, fades */}
+      <div style={{position:"absolute",left:-160,top:-160,width:320,height:320,borderRadius:"50%",
+        background:ringPattern,filter:"blur(.4px)",
+        boxShadow:`0 0 50px 6px ${P.gl}`,
+        animation:`xg-ring-in ${T.IMPACT*1.05}ms cubic-bezier(.16,.85,.2,1) forwards, xg-ring-spin ${T.IMPACT*2.4}ms linear forwards`,
+        willChange:"transform,opacity"}}/>
+      {/* Mid ring — counter-spinning, smaller, double border */}
+      <div style={{position:"absolute",left:-118,top:-118,width:236,height:236,borderRadius:"50%",
+        border:`2px solid ${P.c}`,opacity:.8,boxShadow:`0 0 30px 6px ${P.gl}`,
+        animation:`xg-ring-in ${T.IMPACT*.92}ms cubic-bezier(.16,.85,.2,1) ${HS*.3}ms forwards, xg-ring-spin-rev ${T.IMPACT*1.7}ms linear forwards`,
+        willChange:"transform,opacity"}}/>
+      <div style={{position:"absolute",left:-100,top:-100,width:200,height:200,borderRadius:"50%",
+        border:`1px solid rgba(255,255,255,.6)`,
+        animation:`xg-ring-in ${T.IMPACT*.85}ms cubic-bezier(.16,.85,.2,1) ${HS*.5}ms forwards`,
+        willChange:"transform,opacity"}}/>
+      {/* Central glyph — the elemental "rune" icon, big bright flash */}
+      <div style={{position:"absolute",left:-72,top:-72,width:144,height:144,
+        background:`linear-gradient(135deg,white,${P.c} 35%,${P.b} 70%)`,
+        clipPath:glyphClip,filter:`drop-shadow(0 0 20px ${P.gl})`,
+        animation:`xg-glyph-flash ${T.IMPACT*.85}ms cubic-bezier(.1,.7,.15,1) ${HS*.4}ms forwards`,
+        willChange:"transform,opacity"}}/>
+      {/* Bright core burst behind the glyph */}
+      <div style={{position:"absolute",left:-50,top:-50,width:100,height:100,borderRadius:"50%",
+        background:"radial-gradient(circle,white,transparent 70%)",
+        animation:`xg-core-burst ${T.IMPACT*.6}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
 // IMPACT — localized epicenter burst, anchored at the exact hit point.
 // Rendered un-rotated (counter-rotates ctr's angle) so rings/rays
 // always look upright no matter which direction the attack came from.
@@ -546,14 +612,15 @@ function Impact({el,counterRotate=0}:{el:string;counterRotate?:number}){
         <div style={{position:"absolute",left:"-125px",top:"-125px",width:"250px",height:"250px",
           borderRadius:"50%",background:P.gl,filter:"blur(40px)",
           animation:`xi-compress ${T.IMPACT}ms ease-out ${HS}ms forwards`,willChange:"transform,opacity"}}/>
-        {/* 8 shockwave rings */}
-        {[{bw:"10px",d:0,spd:1.25,op:1},{bw:"7px",d:22,spd:1.55,op:.92},{bw:"5px",d:46,spd:1.9,op:.82},
-          {bw:"4px",d:72,spd:2.4,op:.70},{bw:"3px",d:102,spd:3.1,op:.57},{bw:"2px",d:136,spd:4.0,op:.44},
-          {bw:"2px",d:176,spd:5.2,op:.30},{bw:"1px",d:222,spd:7.0,op:.18}
+        {/* 11 shockwave rings — bigger, more layered, more spectacular */}
+        {[{bw:"12px",d:0,spd:1.2,op:1},{bw:"9px",d:18,spd:1.45,op:.95},{bw:"7px",d:38,spd:1.7,op:.88},
+          {bw:"5px",d:60,spd:2.05,op:.78},{bw:"4px",d:86,spd:2.5,op:.66},{bw:"3px",d:114,spd:3.1,op:.55},
+          {bw:"3px",d:146,spd:3.9,op:.44},{bw:"2px",d:182,spd:5.0,op:.34},{bw:"2px",d:222,spd:6.4,op:.25},
+          {bw:"1px",d:266,spd:8.2,op:.16},{bw:"1px",d:316,spd:10.5,op:.09}
         ].map((r,i)=>(
           <div key={i} style={{position:"absolute",left:"-90px",top:"-90px",width:"180px",height:"180px",
-            borderRadius:"50%",border:`${r.bw} solid ${i<3?"white":`rgba(255,255,255,${r.op})`}`,
-            boxShadow:i<3?`0 0 44px 18px ${P.gl}`:undefined,opacity:r.op,
+            borderRadius:"50%",border:`${r.bw} solid ${i<4?"white":`rgba(255,255,255,${r.op})`}`,
+            boxShadow:i<4?`0 0 50px 20px ${P.gl}`:undefined,opacity:r.op,
             animation:`xi-wave ${T.IMPACT*r.spd}ms cubic-bezier(.03,0,.14,1) ${HS+r.d}ms forwards`,
             willChange:"transform,opacity"}}/>
         ))}
@@ -659,6 +726,19 @@ function Aftermath({el,pts,counterRotate=0}:{el:string;pts:ReturnType<typeof mkP
       <div style={{position:"absolute",left:"-36px",top:"-36px",width:"72px",height:"72px",
         borderRadius:"50%",background:`radial-gradient(circle,${ec.g},transparent)`,filter:"blur(16px)",
         animation:`xa-linger ${T.AFTERMATH}ms ease-out forwards`,willChange:"transform,opacity"}}/>
+
+      {/* ── Victory glimmer — 9 slow-drifting sparkles that linger long after the burst,
+          giving the finishing blow a lasting emotional "glow" instead of cutting off abruptly ── */}
+      {Array.from({length:9},(_,i)=>{
+        const a = i * 40
+        const r = 70 + (i % 3) * 35
+        return <div key={i} style={({position:"absolute",left:"-2px",top:"-2px",
+          width:`${3+(i%3)}px`,height:`${3+(i%3)}px`,borderRadius:"50%",
+          background:ec.c,boxShadow:`0 0 8px 3px ${ec.g}`,
+          animation:`xa-glimmer ${T.AFTERMATH*(.78+(i%4)*.06)}ms ease-out ${280+i*55}ms both`,
+          willChange:"transform,opacity",
+          "--gx":`${r*Math.cos(a*Math.PI/180)}px`,"--gy":`${r*Math.sin(a*Math.PI/180)-50}px`}) as React.CSSProperties}/>
+      })}
 
       {/* ── Generic particle field (count varies per element) ── */}
       {pts.map(pt=>(
@@ -928,9 +1008,9 @@ export function ElementalAttackAnimation({
   const doneRef=useRef(onComplete)
   useEffect(()=>{doneRef.current=onComplete},[onComplete])
 
-  const nPts:{[k:string]:number}={fire:26,pyrus:26,aquos:24,aquo:24,water:24,
-    haos:26,light:26,lightness:26,darkus:20,darkness:20,dark:20,ventus:18,wind:18,void:16}
-  const pts=useMemo(()=>mkP(nPts[el]??16,el,id),[el,id])
+  const nPts:{[k:string]:number}={fire:40,pyrus:40,aquos:36,aquo:36,water:36,
+    haos:42,light:42,lightness:42,darkus:32,darkness:32,dark:32,ventus:28,wind:28,void:24}
+  const pts=useMemo(()=>mkP(nPts[el]??24,el,id),[el,id])
 
   useEffect(()=>{
     setMounted(true)
@@ -1023,6 +1103,19 @@ export function ElementalAttackAnimation({
     @keyframes xa-vshard{0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1}100%{transform:translate(var(--vx,30px),var(--vy,-30px)) rotate(210deg) scale(0);opacity:0}}
     @keyframes afterimage-fade{0%{opacity:.44;filter:blur(4px) brightness(2)}100%{opacity:0;filter:blur(10px) brightness(2.8)}}
 
+    /* ── Zoom-punch — camera-hit jolt at the moment of impact ── */
+    @keyframes xi-zoom-punch{0%{transform:scale(.15);opacity:0}22%{transform:scale(1);opacity:.95}55%{opacity:.5}100%{transform:scale(2.4);opacity:0}}
+
+    /* ── Impact Sigil — the "ability activate!" magic-circle moment ── */
+    @keyframes xg-ring-in{0%{transform:scale(.05);opacity:0}26%{transform:scale(1.12);opacity:1}42%{transform:scale(1);opacity:1}78%{opacity:.7}100%{transform:scale(1.3);opacity:0}}
+    @keyframes xg-ring-spin{0%{transform:rotate(0deg) scale(.05)}26%{transform:rotate(95deg) scale(1.12)}42%{transform:rotate(130deg) scale(1)}100%{transform:rotate(340deg) scale(1.3)}}
+    @keyframes xg-ring-spin-rev{0%{transform:rotate(0deg) scale(.05)}26%{transform:rotate(-80deg) scale(1.12)}42%{transform:rotate(-110deg) scale(1)}100%{transform:rotate(-300deg) scale(1.3)}}
+    @keyframes xg-glyph-flash{0%{transform:scale(0) rotate(-25deg);opacity:0}30%{transform:scale(1.25) rotate(6deg);opacity:1}48%{transform:scale(1) rotate(0deg);opacity:1}80%{opacity:.55}100%{transform:scale(1.4) rotate(8deg);opacity:0}}
+    @keyframes xg-core-burst{0%{transform:scale(0);opacity:1}35%{transform:scale(1.6);opacity:.9}100%{transform:scale(3.2);opacity:0}}
+
+    /* ── Victory glimmer — slow drifting sparkles that linger after the burst ── */
+    @keyframes xa-glimmer{0%{transform:translate(0,0) scale(0);opacity:0}15%{opacity:1;transform:translate(calc(var(--gx,40px)*.3),calc(var(--gy,-40px)*.3)) scale(1.2)}100%{transform:translate(var(--gx,40px),var(--gy,-40px)) scale(.2);opacity:0}}
+
     /* ── FIRE charge/strike: wobbling core + licking flames + turbulent embers ── */
     @keyframes xc-fire-wobble{0%,100%{transform:scale(1) translate(0,0);opacity:.95}25%{transform:scale(1.12) translate(2px,-1px);opacity:1}50%{transform:scale(.94) translate(-1px,2px);opacity:.9}75%{transform:scale(1.08) translate(1px,1px);opacity:1}}
     @keyframes xc-lick{0%,100%{transform:rotate(var(--la,0deg)) translateY(0) scaleY(.3) scaleX(.6);opacity:.5}40%{transform:rotate(var(--la,0deg)) translateY(-6px) scaleY(1) scaleX(1);opacity:1}70%{transform:rotate(calc(var(--la,0deg) + 4deg)) translateY(-10px) scaleY(1.15) scaleX(.85);opacity:.85}}
@@ -1098,6 +1191,7 @@ export function ElementalAttackAnimation({
           and unaffected by ctr's transform creating a new containing block for fixed descendants */}
       {phase==="strike"&&<StrikeSpeedLines el={el}/>}
       {phase==="impact"&&<ImpactScreenFX el={el}/>}
+      {phase==="impact"&&<ImpactSigil el={el} x={targetX} y={targetY}/>}
     </>
   )
   if(portalTarget) return createPortal(out,portalTarget)
