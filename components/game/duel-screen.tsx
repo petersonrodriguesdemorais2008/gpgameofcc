@@ -9551,24 +9551,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <feGaussianBlur stdDeviation="3.2" />
             </filter>
 
-            {/* ── Element-specific arrowhead silhouettes ── */}
-            <marker id="aim-head-fire" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
-              <path d="M0 8 C4 2,9 0,15 1 C11 3,9 6,9 8 C9 10,11 13,15 15 C9 16,4 14,0 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            {/* ── Element-specific arrowhead silhouettes (tip always at max-X, near refX) ── */}
+            <marker id="aim-head-fire" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
+              <path d="M16 8 C13 4,9 2,6 1 C9 5,10 7,8 8 C10 9,9 11,6 15 C9 14,13 12,16 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
-            <marker id="aim-head-aquos" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
-              <path d="M14 8 C14 3,9 0,7 0 C9 3,8 5,5 6 C2 7,0 7,0 8 C0 9,2 9,5 10 C8 11,9 13,7 16 C9 16,14 13,14 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            <marker id="aim-head-aquos" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
+              <path d="M16 8 C14 4,9 2,3 3 C7 5,7 6,5 8 C7 10,7 11,3 13 C9 14,14 12,16 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
             <marker id="aim-head-haos" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
-              <path d="M0 8 L8 2 L7 7 L17 8 L7 9 L8 14 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+              <path d="M16 8 L9 6 L10 0 L6 7 L0 8 L6 9 L10 16 L9 10 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
-            <marker id="aim-head-darkness" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
-              <path d="M0 8 L10 2 L9 5 L15 4 L8 8 L15 12 L9 11 L10 14 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            <marker id="aim-head-darkness" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
+              <path d="M16 8 L8 3 L9 6 L2 5 L7 8 L2 11 L9 10 L8 13 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
-            <marker id="aim-head-ventus" markerWidth="17" markerHeight="16" refX="13" refY="8" orient="auto">
-              <path d="M0 8 C5 1,12 0,16 2 C12 4,10 6,9 8 C10 10,12 12,16 14 C12 16,5 15,0 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            <marker id="aim-head-ventus" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
+              <path d="M16 8 C12 3,7 1,1 2 C6 4,8 6,6 8 C8 10,6 12,1 14 C7 15,12 13,16 8 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
-            <marker id="aim-head-void" markerWidth="15" markerHeight="15" refX="12" refY="7.5" orient="auto">
-              <path d="M0 7.5 L6 2 L13 5 L11 7.5 L13 10 L6 13 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
+            <marker id="aim-head-void" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
+              <path d="M16 8 L10 4 L11 7.5 L5 6 L8 8 L5 10 L11 8.5 L10 12 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.6"/>
             </marker>
             <marker id="aim-head-neutral" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto">
               <path d="M 0 0 L 12 5 L 0 10 L 3 5 Z" fill={aimPal.c} stroke={aimPal.a} strokeWidth="0.5" />
