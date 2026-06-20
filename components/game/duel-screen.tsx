@@ -3183,7 +3183,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const activeParticlesRef = useRef<Map<string, { particles: Particle[], startTime: number, element: string, x: number, y: number }>>(new Map())
   const [impactFlash, setImpactFlash] = useState<{ active: boolean; color: string }>({ active: false, color: "#ffffff" })
   const [screenShake, setScreenShake] = useState({ active: false, intensity: 0 })
-  const positionRef = useRef({ startX: 0, startY: 0, currentX: 0, currentY: 0, lastTargetCheck: 0 })
+  const positionRef = useRef({ startX: 0, startY: 0, currentX: 0, currentY: 0, lastTargetCheck: 0, rafId: 0 })
   const arrowRef = useRef<SVGLineElement>(null)
   const rafRef = useRef<number | null>(null)
   const fieldRef = useRef<HTMLDivElement>(null)
@@ -6047,8 +6047,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
-      // Direct state update for immediate response
-      setArrowPos((prev) => ({ ...prev, x2: clientX, y2: clientY }))
+      // RAF-throttled state update — mousemove/touchmove can fire far faster than
+      // 60fps (especially touch on some devices), and each setArrowPos call forces
+      // a full SVG re-render. Capping to one update per animation frame removes
+      // redundant renders without making the line feel disconnected from the cursor.
+      if (positionRef.current.rafId) cancelAnimationFrame(positionRef.current.rafId)
+      positionRef.current.rafId = requestAnimationFrame(() => {
+        setArrowPos((prev) => ({ ...prev, x2: clientX, y2: clientY }))
+      })
 
       // Throttled target detection
       const now = Date.now()
@@ -9537,8 +9543,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const aimUnit = attackState.attackerIndex !== null ? playerField.unitZone[attackState.attackerIndex] : null
         const aimEl = normalizeElement(aimUnit?.element || "neutral")
         const aimPal = getElementPalette(aimEl)
-        const spineD = `M ${arrowPos.x1} ${arrowPos.y1} L ${arrowPos.x2} ${arrowPos.y2}`
-        const sparkColors = [aimPal.c, "white", aimPal.b, aimPal.c]
         return (
         <svg className="fixed inset-0 pointer-events-none z-50" style={{ width: "100vw", height: "100vh" }}>
           <defs>
@@ -9547,9 +9551,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <stop offset="55%" stopColor={aimPal.b} />
               <stop offset="100%" stopColor={aimPal.c} />
             </linearGradient>
-            <filter id="aimGlowBlur" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="3.2" />
-            </filter>
 
             {/* ── Element-specific arrowhead silhouettes (tip always at max-X, near refX) ── */}
             <marker id="aim-head-fire" markerWidth="18" markerHeight="16" refX="14" refY="8" orient="auto">
@@ -9575,37 +9576,30 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             </marker>
           </defs>
 
-          {/* Hidden spine path — used as the motion guide for traveling sparks */}
-          <path id="aimSpine" d={spineD} fill="none" stroke="none" />
-
-          {/* Outer soft glow */}
+          {/* Outer soft glow — layered opacity strokes instead of feGaussianBlur.
+              A blur filter must be re-rasterized every time the line's geometry
+              changes, which happens on every single mousemove during drag and
+              was the main cause of lag. Layered plain strokes are nearly free. */}
           <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
-            stroke={aimPal.gl} strokeWidth="16" opacity="0.22" strokeLinecap="round" filter="url(#aimGlowBlur)" />
+            stroke={aimPal.gl} strokeWidth="18" opacity="0.10" strokeLinecap="round" />
+          <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
+            stroke={aimPal.gl} strokeWidth="11" opacity="0.16" strokeLinecap="round" />
           {/* Mid energy band — pulses */}
           <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
             stroke={aimPal.b} strokeWidth="7" strokeLinecap="round" opacity="0.55"
             style={{ animation: "aimPulse 0.5s ease-in-out infinite" }} />
-          {/* Core beam with flowing energy dashes */}
+          {/* Core beam with flowing energy dashes — the dash-offset animation alone
+              reads as "traveling energy" at near-zero cost (no SMIL motion-path). */}
           <line x1={arrowPos.x1} y1={arrowPos.y1} x2={arrowPos.x2} y2={arrowPos.y2}
             stroke="url(#arrowGradient)" strokeWidth="3.5" strokeLinecap="round"
             strokeDasharray="10 7"
             markerEnd={`url(#aim-head-${aimEl})`}
             style={{ animation: "aimFlow 0.45s linear infinite" }} />
 
-          {/* 4 traveling spark particles riding the beam */}
-          {sparkColors.map((c, i) => (
-            <circle key={i} r={i === 1 ? 3.6 : 2.6} fill={c} opacity="0.95">
-              <animateMotion dur="0.55s" repeatCount="indefinite" begin={`-${i * 0.13}s`}>
-                <mpath href="#aimSpine" />
-              </animateMotion>
-            </circle>
-          ))}
-
           {/* Target reticle pulsing at cursor end, themed by element */}
           <circle cx={arrowPos.x2} cy={arrowPos.y2} r="14" fill="none" stroke={aimPal.c} strokeWidth="2"
             opacity="0.8" style={{ animation: "aimReticle 0.6s ease-out infinite", transformOrigin: `${arrowPos.x2}px ${arrowPos.y2}px` }} />
-          <circle cx={arrowPos.x2} cy={arrowPos.y2} r="4" fill={aimPal.c} opacity="0.9"
-            style={{ filter: `drop-shadow(0 0 6px ${aimPal.gl})` }} />
+          <circle cx={arrowPos.x2} cy={arrowPos.y2} r="4" fill={aimPal.c} opacity="0.9" />
         </svg>
         )
       })()}
