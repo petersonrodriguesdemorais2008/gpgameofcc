@@ -736,17 +736,29 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // Jogador se afastou o suficiente do nível atual? (mais de ~1.5 colunas de distância)
   const isAwayFromCurrent = Math.abs(scrollLeft - currentLevelTargetX) > COL_WIDTH * 1.5
 
-  // Atualiza scrollLeft/scrollMax enquanto o usuário arrasta ou usa as setas
+  // Atualiza scrollLeft/scrollMax enquanto o usuário arrasta ou usa as setas.
+  // Throttled via requestAnimationFrame: o evento "scroll" nativo pode disparar
+  // dezenas de vezes por segundo, e sem throttle isso causava um setState (e um
+  // re-render de TODA a árvore, incluindo as 100 colunas da trilha) por pixel
+  // movido — exatamente o que causava o jank/oscilação visual durante o arrasto.
   useEffect(() => {
     const el = passRowRef.current
     if (!el) return
+    let rafId: number | null = null
     const onScroll = () => {
-      setScrollLeft(el.scrollLeft)
-      setScrollMax(el.scrollWidth - el.clientWidth)
+      if (rafId !== null) return // já tem uma atualização agendada pro próximo frame
+      rafId = requestAnimationFrame(() => {
+        setScrollLeft(el.scrollLeft)
+        setScrollMax(el.scrollWidth - el.clientWidth)
+        rafId = null
+      })
     }
     el.addEventListener("scroll", onScroll, { passive: true })
     onScroll()   // leitura inicial
-    return () => el.removeEventListener("scroll", onScroll)
+    return () => {
+      el.removeEventListener("scroll", onScroll)
+      if (rafId !== null) cancelAnimationFrame(rafId)
+    }
   }, [activeTab])
 
   // ── Detecta level-up e dispara celebração visual + vibração festiva ──────────
@@ -1562,8 +1574,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   )}
                 </div>
 
-                {/* Wrapper com setas e trilha scrollável */}
-                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8 }}>
+                {/* Wrapper com setas e trilha scrollável — height FIXO explícito.
+                    Sem isso, a altura era calculada a partir do conteúdo da trilha,
+                    e qualquer variação durante os re-renders do drag (mesmo sutil)
+                    causava a sensação de "tela subindo/oscilando" */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8, height: 196, flexShrink: 0 }}>
 
                   {/* ← Seta anterior */}
                   <button
@@ -1587,6 +1602,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     className="gp-track"
                     style={{
                       flex: 1,
+                      height: "100%",
                       overflowX: "scroll",
                       overflowY: "hidden",
                       // Oculta scrollbar no Firefox
