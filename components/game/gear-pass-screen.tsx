@@ -1074,6 +1074,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       color: "#f1f5f9",
       fontFamily: "'Segoe UI',system-ui,sans-serif",
       position: "relative", overflow: "hidden",
+      // Impede que gestos de touch (ex: arrastar a trilha) "vazem" pro bounce
+      // vertical nativo do navegador, causando a sensação de tela oscilando
+      overscrollBehavior: "none",
     }}>
 
       {/* ── WALLPAPER BACKGROUND ── */}
@@ -1526,7 +1529,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 {/* Elegant section header + Coletar Pendentes — minHeight fixo evita
                     que o header "pule" de tamanho quando o FAB 📍 ou o botão
                     "Coletar Pendentes" aparecem/somem durante o arrasto da trilha */}
-                <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10, minHeight: 38 }}>
+                <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 10, minHeight: 38 }}>
                   <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
                   <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                     Trilha de Recompensas
@@ -1585,12 +1588,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     style={{
                       flex: 1,
                       overflowX: "scroll",
+                      overflowY: "hidden",
                       // Oculta scrollbar no Firefox
                       scrollbarWidth: "none",
                       // Cursor de "agarrar"
                       cursor: "grab",
                       // Permite pan horizontal no touch sem interferir no scroll vertical da página
                       touchAction: "pan-x",
+                      // Trava o bounce/rubber-band — sem isso, o gesto de arrastar
+                      // horizontal "vaza" verticalmente em alguns navegadores (Safari/iOS),
+                      // causando a sensação de tela subindo/oscilando durante o drag
+                      overscrollBehavior: "contain",
                       // Evita seleção de texto enquanto arrasta
                       userSelect: "none",
                     }}
@@ -2161,6 +2169,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       )}
 
       <style>{`
+        /* Trava o bounce/rubber-band do documento inteiro — terceira camada de
+           proteção contra o gesto de arrastar a trilha "vazar" verticalmente */
+        html, body {
+          overscroll-behavior: none;
+          height: 100%;
+          overflow: hidden;
+        }
         @keyframes fadeInDown {
           from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
           to   { opacity: 1; transform: translateX(-50%) translateY(0); }
