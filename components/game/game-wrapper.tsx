@@ -354,8 +354,9 @@ export function GameWrapper() {
         <TutorialGameOverlay
           masterId={tutorialOverlayMaster}
           onNavigate={(screen) => {
-            if (screen === "duel-bot") { setDuelMode("bot"); setCurrentScreen("duel-bot") }
-            else if (screen === "gacha") navigateTo("gacha")
+            // O duelo do tutorial é 100% roteirizado dentro do TutorialDuelSim
+            // (em tutorial-screen.tsx) — não há navegação pra "duel-bot" mais.
+            if (screen === "gacha") navigateTo("gacha")
             else if (screen === "menu") navigateTo("menu")
           }}
           onComplete={handleTutorialOverlayComplete}
