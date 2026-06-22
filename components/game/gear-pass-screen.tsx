@@ -1712,7 +1712,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
                                     : premiumClaimable ? "claimPulseAmber 2s ease-in-out infinite" : "none",
                                   position: "relative", transition: "all 0.2s",
-                                  transform: isCurrent ? "scale(1.08)" : "scale(1)",
+                                  // Sem scale — substitui por borda mais intensa no nível atual
+                                  // (scale muda a posição visual da caixa sem mudar o layout, causando o "subir")
+                                  outline: isCurrent ? "1.5px solid rgba(251,191,36,0.50)" : "none",
+                                  outlineOffset: 2,
                                 }}>
                                 {lg.premiumClaimed ? (
                                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1784,15 +1787,16 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     : "rgba(255,255,255,0.03)",
                                   boxShadow: lg.commonClaimed
                                     ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10)"
-                                    : isCurrent ? "0 0 10px rgba(6,182,212,0.22)"
+                                    : isCurrent ? "0 0 16px rgba(6,182,212,0.45)"
                                     : "none",
                                   animation: cascadeIdx !== -1
                                     ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
                                     : commonClaimable ? "claimPulseCyan 2s ease-in-out infinite" : "none",
                                   transition: "all 0.2s",
-                                  transform: isCurrent ? "scale(1.08)" : "scale(1)",
                                   opacity: lg.commonClaimed ? 0.85 : 1,
                                   position: "relative",
+                                  outline: isCurrent ? "1.5px solid rgba(6,182,212,0.55)" : "none",
+                                  outlineOffset: 2,
                                 }}>
                                 {lg.commonClaimed ? (
                                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
