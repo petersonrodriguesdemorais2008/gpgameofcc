@@ -5538,8 +5538,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Helper: find index of a unit by name in a unit zone
+  const normalizeCardName = (n: string | undefined | null): string =>
+    (n || "").trim().toLowerCase().replace(/\s+/g, " ")
+
   const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number => {
-    return unitZone.findIndex((u) => u && u.name === unitName)
+    const target = normalizeCardName(unitName)
+    if (!target) return -1
+    // Exact normalized match first
+    const exact = unitZone.findIndex((u) => u && normalizeCardName(u.name) === target)
+    if (exact !== -1) return exact
+    // Fallback: tolerate minor data inconsistencies (e.g. "Mordred: O Usurpador" vs "Mordred")
+    return unitZone.findIndex((u) => u && (normalizeCardName(u.name).includes(target) || target.includes(normalizeCardName(u.name))))
   }
 
   // Helper: count fire element units in graveyard + field (already used)
@@ -5717,6 +5726,142 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "julgamento_divino" })
       showEffectFeedback("JULGAMENTO DIVINO: Selecione uma Unidade inimiga para -1DP!", "success")
+    }
+  }
+
+  // ── Manual Trap activation ──────────────────────────────────────────────
+  // Previously, face-down Trap Function cards had NO way to be activated by
+  // the player at all (only 2 specific traps had hardcoded auto-triggers
+  // elsewhere). This adds a generic "ATIVAR" action for ANY face-down trap
+  // sitting in the function zone, reusing the same FUNCTION_CARD_EFFECTS
+  // registry already used when playing Action/Magic cards from hand.
+  const activateTrapCard = (slotIndex: number) => {
+    if (!isPlayerTurn) {
+      showEffectFeedback("Só é possível ativar Traps no seu turno!", "error")
+      return
+    }
+    const card = playerField.functionZone[slotIndex]
+    if (!card || !card.isFaceDown) return
+
+    const effect = getFunctionCardEffect(card)
+    if (!effect) {
+      showEffectFeedback(`${card.name}: efeito não encontrado!`, "error")
+      return
+    }
+
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField }
+    const { canActivate, reason } = effect.canActivate(effectContext)
+    if (!canActivate) {
+      showEffectFeedback(`${card.name}: ${reason}`, "error")
+      return
+    }
+
+    // Reveal the trap face-up immediately for visual feedback
+    setPlayerField((prev) => {
+      const nz = [...prev.functionZone]
+      if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isFaceDown: false }
+      return { ...prev, functionZone: nz }
+    })
+
+    const result = effect.resolve(effectContext)
+
+    if (result.success && result.message === "PEDRA_AFIAR_SEARCH") {
+      const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
+      if (ugCardsInDeck.length === 0) {
+        showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
+        return
+      }
+      setPlayerField((prev) => {
+        const nz = [...prev.functionZone]
+        const ng = [...prev.graveyard, card]
+        nz[slotIndex] = null
+        return { ...prev, functionZone: nz, graveyard: ng }
+      })
+      setDeckSearchModal({
+        visible: true,
+        title: "Pedra de Afiar — Escolha uma Ultimate Gear",
+        cards: ugCardsInDeck,
+        onSelect: (chosenCard) => {
+          setDeckSearchModal(null)
+          setPlayerField((prev) => {
+            const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+            for (let i = newDeck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+            }
+            return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
+          })
+          showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+        },
+        onCancel: () => setDeckSearchModal(null),
+      })
+      return
+    }
+
+    if (result.success && result.message === "JULGAMENTO_VAZIO_CHOOSE") {
+      setPlayerField((prev) => {
+        const nz = [...prev.functionZone]
+        const ng = [...prev.graveyard, card]
+        nz[slotIndex] = null
+        return { ...prev, functionZone: nz, graveyard: ng }
+      })
+      setChoiceModal({
+        visible: true,
+        cardName: "Julgamento do Vazio Eterno — Escolha o alvo (5DP)",
+        options: [
+          ...enemyField.unitZone
+            .map((u, i) => u ? { id: `unit-${i}`, label: u.name, description: `Unidade ${i+1}: ${u.currentDp ?? u.dp}DP` } : null)
+            .filter(Boolean) as {id:string;label:string;description:string}[],
+          { id: "direct", label: "Ataque Direto ao LP", description: "Causa 5DP diretamente nos LP do oponente" },
+        ],
+        onChoose: (choice) => {
+          setChoiceModal(null)
+          if (choice === "direct") {
+            setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 5) }))
+            showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: 5DP direto ao oponente!", "warning")
+          } else {
+            const idx = parseInt(choice.replace("unit-", ""))
+            setEnemyField(prev => {
+              const newZone = [...prev.unitZone] as (FieldCard | null)[]
+              const target = newZone[idx]
+              if (!target) return prev
+              const newDp = (target.currentDp ?? target.dp) - 5
+              if (newDp <= 0) {
+                const newGrave = [...prev.graveyard, target]
+                newZone[idx] = null
+                showEffectFeedback(`JULGAMENTO DO VAZIO ETERNO: ${target.name} destruída!`, "success")
+                return { ...prev, unitZone: newZone, graveyard: newGrave }
+              }
+              newZone[idx] = { ...target, currentDp: newDp }
+              showEffectFeedback(`JULGAMENTO DO VAZIO ETERNO: ${target.name} recebeu 5DP de dano!`, "success")
+              return { ...prev, unitZone: newZone }
+            })
+          }
+        },
+      })
+      return
+    }
+
+    // Standard case — show feedback, then move the spent trap to the graveyard
+    showEffectFeedback(result.message || `${card.name} ativada!`, result.success ? "success" : "error")
+    if (result.success) {
+      setTimeout(() => {
+        setPlayerField((prev) => {
+          const nz = [...prev.functionZone]
+          const stillThere = nz[slotIndex]
+          if (!stillThere) return prev
+          const ng = [...prev.graveyard, stillThere]
+          nz[slotIndex] = null
+          return { ...prev, functionZone: nz, graveyard: ng }
+        })
+      }, 900)
+    } else {
+      // Activation failed after reveal — flip back face-down
+      setPlayerField((prev) => {
+        const nz = [...prev.functionZone]
+        if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isFaceDown: true }
+        return { ...prev, functionZone: nz }
+      })
     }
   }
 
@@ -6812,7 +6957,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   newGraveyard.push(defender)
                   newUnitZone[targetIndex] = null
                   // ── Equipped Ultimate Gear is destroyed together with its unit ──
-                  if (newUltimateZone && newUltimateZone.requiresUnit === defender.name) {
+                  if (newUltimateZone && normalizeCardName(newUltimateZone.requiresUnit) === normalizeCardName(defender.name)) {
                     newGraveyard.push(newUltimateZone)
                     showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
                     newUltimateZone = null
@@ -8208,7 +8353,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     newUnitZone[playerUnitIndex] = null
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                     // ── Equipped Ultimate Gear is destroyed together with its unit ──
-                    if (newUltimateZone && newUltimateZone.requiresUnit === defender.name) {
+                    if (newUltimateZone && normalizeCardName(newUltimateZone.requiresUnit) === normalizeCardName(defender.name)) {
                       newGrave.push(newUltimateZone)
                       showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
                       newUltimateZone = null
@@ -10297,6 +10442,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         )}
                         {!card && isDropTarget && (
                           <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
+                        )}
+                        {/* Manual activation button for face-down Trap cards */}
+                        {card && card.isFaceDown && card.type === "trap" && isPlayerTurn && phase === "main" && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); activateTrapCard(i) }}
+                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-500 hover:bg-red-400 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-red-500/50 animate-pulse whitespace-nowrap z-10"
+                          >
+                            ATIVAR
+                          </button>
                         )}
                       </div>
                     )
