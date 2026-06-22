@@ -18,7 +18,7 @@ import type { Card as GameCard } from "@/contexts/game-context"
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type TutorialMasterId = "fehnon" | "morgana" | "calem"
-type OverlayPhase = "menu" | "duel" | "gacha"
+type OverlayPhase = "menu" | "duel-sim" | "gacha"
 
 export interface TutorialScreenProps {
   playerName: string
@@ -28,8 +28,9 @@ export interface TutorialScreenProps {
 
 export interface TutorialGameOverlayProps {
   masterId: TutorialMasterId
-  /** game-wrapper navega para a tela certa */
-  onNavigate: (screen: "menu" | "duel-bot" | "gacha") => void
+  /** game-wrapper navega para a tela certa — o duelo do tutorial é 100%
+   *  roteirizado/fake (não usa navegação real), só "menu" e "gacha" precisam */
+  onNavigate: (screen: "menu" | "gacha") => void
   /** Chamado quando TODO o tutorial (overlay) é concluído */
   onComplete: () => void
 }
@@ -451,9 +452,12 @@ function buildLoreSlides(playerName: string): LoreSlide[] {
 // textTarget: texto do elemento real a destacar
 //  "__SIDEBAR__" = lógica especial para a coluna lateral direita do main menu
 //  null          = sem spotlight (só overlay de escurecimento)
+// interceptClick: quando true, o clique no alvo NÃO é repassado pro botão
+//  real por baixo — em vez disso, dispara onIntercept() (usado pra pular a
+//  navegação real do JOGAR e ir direto pro duelo roteirizado do tutorial)
 const MENU_STEPS = [
-  { text: "Este é o botão JOGAR! Aqui você escolhe o modo de batalha e entra em combate com o seu deck!",
-    textTarget: "JOGAR" },
+  { text: "Este é o botão JOGAR! Vamos fazer seu primeiro duelo — clique nele para começar!",
+    textTarget: "JOGAR", interceptClick: true },
   { text: "Em COLEÇÃO você pode ver, organizar e gerenciar todas as cartas que você possui.",
     textTarget: "COLEÇÃO" },
   { text: "E o GACHA! Aqui você abre packs para conseguir novas cartas poderosas. Logo te mostro como funciona!",
@@ -462,27 +466,16 @@ const MENU_STEPS = [
     textTarget: "__SIDEBAR__" },
 ]
 
-const DUEL_STEPS = [
-  { text: "Bem-vindo ao campo de batalha! Fique de olho nos LPs — quem chegar a zero perde o duelo.",
-    textTarget: null },
-  { text: "Estas são as cartas da sua mão. Arraste uma carta de Unidade para o campo e coloque-a em jogo!",
-    textTarget: null },
-  { text: "Este é o TAP! A cada 3 turnos do jogador, uma carta extra aparece aqui — de graça. Não esqueça de pegar!",
-    textTarget: "TAP" },
-  { text: "Sua Unidade está em campo! Selecione-a para iniciar um ataque contra uma carta do oponente.",
-    textTarget: null },
-  { text: "Clique em IR PARA BATALHA! Destrua as cartas inimigas e ataque diretamente para vencer o duelo!",
-    textTarget: "Ir para Batalha" },
-  { text: "INCRÍVEL! Você venceu seu primeiro duelo! Quanto mais você joga, mais forte e experiente você fica.",
-    textTarget: null },
-]
-
 const GACHA_STEPS = [
   { text: "Hora da recompensa! Este pack é especial — é de graça só porque é seu primeiro dia aqui. Vamos abrir!",
     textTarget: null },
   { text: "Clique para abrir! Quem sabe que cartas raras vão aparecer para você...",
     textTarget: "GACHA x1" },
-  { text: "Parabéns! Você ganhou suas primeiras cartas! Continue jogando duelos e abrindo packs para montar um deck invencível!",
+  // Passo "fantasma": sem balão, sem escurecimento — deixa a animação real
+  // de abertura do pack rodar limpa, sem nenhuma interferência visual do
+  // tutorial. Avança sozinho depois de alguns segundos.
+  { text: "", textTarget: null, hidden: true, autoAdvanceMs: 4200 },
+  { text: "Parabéns pelas cartas que você adquiriu! Continue jogando duelos e abrindo packs para montar um deck invencível!",
     textTarget: null },
 ]
 
@@ -702,7 +695,13 @@ function findSidebar(pad = 6): PixelRect | null {
  * Spotlight que encontra o elemento pelo texto no DOM real —
  * funciona em qualquer resolução sem coordenadas hardcoded.
  */
-function DynamicSpotlight({ textTarget }: { textTarget: string | null }) {
+function DynamicSpotlight({ textTarget, onInterceptClick }: {
+  textTarget: string | null
+  /** Quando definido, captura o clique sobre o alvo ANTES que ele chegue no
+   *  botão real por baixo — usado pro JOGAR pular a navegação real do jogo
+   *  e ir direto pro duelo roteirizado do tutorial. */
+  onInterceptClick?: () => void
+}) {
   const [r, setR] = useState<PixelRect | null>(null)
 
   useEffect(() => {
@@ -733,33 +732,46 @@ function DynamicSpotlight({ textTarget }: { textTarget: string | null }) {
   const { x, y, w, h } = r
 
   return (
-    <svg style={{
-      position: "fixed", inset: 0, width: "100%", height: "100%",
-      zIndex: 400, pointerEvents: "none", overflow: "visible",
-    }}>
-      <defs>
-        <mask id="dyn-spl">
-          <rect width="100%" height="100%" fill="white" />
-          {/* Buraco no overlay: coordenadas em px vindas do getBoundingClientRect */}
-          <rect x={x} y={y} width={w} height={h} rx={10} fill="black" />
-        </mask>
-      </defs>
-      {/* Overlay escuro com buraco */}
-      <rect width="100%" height="100%" fill="rgba(0,0,0,0.68)" mask="url(#dyn-spl)" />
-      {/* Anel pulsante ao redor do elemento */}
-      <rect
-        x={x - 3} y={y - 3} width={w + 6} height={h + 6}
-        rx={13} fill="none"
-        stroke="rgba(255,255,255,0.55)" strokeWidth="2.5"
-        style={{ animation: "tutRingPulse 1.6s ease-in-out infinite" }}
-      />
-      <rect
-        x={x - 7} y={y - 7} width={w + 14} height={h + 14}
-        rx={16} fill="none"
-        stroke="rgba(255,255,255,0.12)" strokeWidth="1.5"
-        style={{ animation: "tutRingPulse 1.6s ease-in-out infinite 0.3s" }}
-      />
-    </svg>
+    <>
+      <svg style={{
+        position: "fixed", inset: 0, width: "100%", height: "100%",
+        zIndex: 400, pointerEvents: "none", overflow: "visible",
+      }}>
+        <defs>
+          <mask id="dyn-spl">
+            <rect width="100%" height="100%" fill="white" />
+            {/* Buraco no overlay: coordenadas em px vindas do getBoundingClientRect */}
+            <rect x={x} y={y} width={w} height={h} rx={10} fill="black" />
+          </mask>
+        </defs>
+        {/* Overlay escuro com buraco */}
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.68)" mask="url(#dyn-spl)" />
+        {/* Anel pulsante ao redor do elemento */}
+        <rect
+          x={x - 3} y={y - 3} width={w + 6} height={h + 6}
+          rx={13} fill="none"
+          stroke="rgba(255,255,255,0.55)" strokeWidth="2.5"
+          style={{ animation: "tutRingPulse 1.6s ease-in-out infinite" }}
+        />
+        <rect
+          x={x - 7} y={y - 7} width={w + 14} height={h + 14}
+          rx={16} fill="none"
+          stroke="rgba(255,255,255,0.12)" strokeWidth="1.5"
+          style={{ animation: "tutRingPulse 1.6s ease-in-out infinite 0.3s" }}
+        />
+      </svg>
+      {/* Captador de clique transparente — fica ACIMA do botão real, então o
+          clique nunca chega nele. Só existe quando onInterceptClick é dado. */}
+      {onInterceptClick && (
+        <div
+          onClick={onInterceptClick}
+          style={{
+            position: "fixed", left: x, top: y, width: w, height: h,
+            zIndex: 401, cursor: "pointer", borderRadius: 10,
+          }}
+        />
+      )}
+    </>
   )
 }
 
@@ -1368,6 +1380,475 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TUTORIAL DUEL SIM — duelo 100% roteirizado e determinístico, NÃO é a
+// DuelScreen real. Construído à parte porque o roteiro exige comportamento
+// exato do "bot" (LP fixo em 5, ele baixa 2 Traps sem ativar, etc.) que um
+// bot de verdade nunca reproduziria de forma confiável. Visualmente segue o
+// mesmo estilo da tela de duelo real, mas cada passo é 100% controlado aqui.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type DuelSimStepId =
+  | "deck-select" | "intro-lp" | "intro-hand" | "intro-tap"
+  | "explain-unit" | "explain-troops" | "explain-action" | "explain-trap"
+  | "explain-scenario" | "explain-ultimate"
+  | "play-unit" | "end-turn" | "opponent-turn"
+  | "tap-pickup" | "equip-ultimate" | "attack-win" | "victory"
+
+interface DuelSimStep {
+  id: DuelSimStepId
+  text: string
+  /** qual elemento da mesa fica em destaque (estilizado localmente, sem
+   *  precisar de getBoundingClientRect já que é tudo JSX nosso) */
+  highlight: "hand-unit" | "hand-troops" | "hand-action" | "hand-trap" | "hand-scenario"
+           | "tap-card" | "field-unit" | "end-turn-btn" | "attack-btn" | "menu-btn" | null
+  /** precisa de clique no alvo destacado pra avançar (senão é só o balão) */
+  requiresTargetClick?: boolean
+  /** passo "fantasma" sem balão nem escurecimento — usado no turno do bot */
+  noBubble?: boolean
+  autoAdvanceMs?: number
+}
+
+function buildDuelScript(masterId: TutorialMasterId): DuelSimStep[] {
+  const m = MASTERS[masterId]
+  const unitName = `${m.name.split(" ")[0]} 3DP`
+  const deck = STARTER_DECKS[masterId]
+  const ultName = deck.tap[0].card.name
+
+  return [
+    { id: "deck-select", highlight: null,
+      text: "Primeiro, selecione o seu Deck Inicial para entrar em batalha!" },
+    { id: "intro-lp", highlight: null,
+      text: "Bem-vindo à mesa de duelo! Você e seu oponente começam com 5 LP — Pontos de Vida. Quem chegar a zero primeiro, perde!" },
+    { id: "intro-hand", highlight: null,
+      text: "Estas são as cartas da sua mão. Vou te explicar rapidinho cada tipo delas." },
+    { id: "intro-tap", highlight: null,
+      text: "E ali está o TAP! Guarda esse nome — daqui a pouco eu te explico melhor como ele funciona." },
+    { id: "explain-unit", highlight: "hand-unit",
+      text: "Esta é uma carta de Unidade — seus personagens principais, como eu! Quanto maior o DP, mais forte ela é." },
+    { id: "explain-troops", highlight: "hand-troops",
+      text: "Esta é uma Unidade de Tropas — aliados menores, mas que também lutam ao seu lado com habilidades próprias." },
+    { id: "explain-action", highlight: "hand-action",
+      text: "Cartas de Action Funcion têm efeitos poderosos assim que são ativadas." },
+    { id: "explain-trap", highlight: "hand-trap",
+      text: "As Trap Funcions ficam viradas pra baixo no campo, prontas pra surpreender o oponente quando ele menos esperar." },
+    { id: "explain-scenario", highlight: "hand-scenario",
+      text: "E as cartas de Scenario mudam as regras do campo de batalha inteiro enquanto estão ativas!" },
+    { id: "explain-ultimate", highlight: "tap-card",
+      text: `E por último, os Ultimates — equipamentos lendários, como a minha! Olha ali no TAP: ${ultName}. Você vai pegar um desses já já.` },
+    { id: "play-unit", highlight: "hand-unit", requiresTargetClick: true,
+      text: `Agora é sua vez! Jogue ${unitName} no campo — clique na carta dele(a) na sua mão!` },
+    { id: "end-turn", highlight: "end-turn-btn", requiresTargetClick: true,
+      text: "Muito bem! Agora passe o turno para o oponente." },
+    { id: "opponent-turn", highlight: null, noBubble: true, autoAdvanceMs: 2600,
+      text: "" },
+    { id: "tap-pickup", highlight: "tap-card", requiresTargetClick: true,
+      text: `Chegou o TAP! A cada 3 turnos uma carta surge aqui de graça. Pegue ${ultName} — ela está brilhando!` },
+    { id: "equip-ultimate", highlight: "field-unit", requiresTargetClick: true,
+      text: `Perfeito! Agora equipe essa Ultimate Gear em ${unitName} para deixá-lo(a) ainda mais forte!` },
+    { id: "attack-win", highlight: "attack-btn", requiresTargetClick: true,
+      text: "Hora de atacar! Vá direto no seu oponente e vença este duelo!" },
+    { id: "victory", highlight: "menu-btn", requiresTargetClick: true,
+      text: "VOCÊ VENCEU! Muito bem mesmo! Agora clique em Voltar ao Main Menu." },
+  ]
+}
+
+/** Busca a primeira carta de um certo `type` no Deck Principal do Mestre */
+function findCardByType(masterId: TutorialMasterId, type: string): GameCard {
+  const deck = STARTER_DECKS[masterId]
+  const entry = deck.main.find(e => e.card.type === type)
+  return entry ? entry.card : deck.main[0].card
+}
+
+/** Mão inicial fixa do duelo-tutorial: 1 de cada tipo relevante */
+function buildTutorialHand(masterId: TutorialMasterId): Record<string, GameCard> {
+  const deck = STARTER_DECKS[masterId]
+  const masterUnitUR = deck.main.find(e => e.card.type === "unit" && e.card.rarity === "UR")?.card
+    ?? deck.main[1].card
+  return {
+    unit: masterUnitUR,
+    troops: findCardByType(masterId, "troops"),
+    action: findCardByType(masterId, "action"),
+    trap: findCardByType(masterId, "trap"),
+    scenario: findCardByType(masterId, "scenario"),
+  }
+}
+
+function TutorialDuelSim({ masterId, onFinish }: {
+  masterId: TutorialMasterId
+  onFinish: () => void
+}) {
+  const m = MASTERS[masterId]
+  const deck = STARTER_DECKS[masterId]
+  const ultimateCard = deck.tap[0].card
+  const hand = useMemo(() => buildTutorialHand(masterId), [masterId])
+  const script = useMemo(() => buildDuelScript(masterId), [masterId])
+
+  const [stepIdx, setStepIdx] = useState(0)
+  const step = script[stepIdx]
+
+  // ── Estado da mesa (tudo fake/controlado por nós) ──────────────────────────
+  const [deckPicked, setDeckPicked] = useState(false)
+  const [unitInHand, setUnitInHand] = useState(true)
+  const [unitInField, setUnitInField] = useState(false)
+  const [equipped, setEquipped] = useState(false)
+  const [turn, setTurn] = useState(1)
+  const [opponentTrapsVisible, setOpponentTrapsVisible] = useState(0) // 0,1,2
+  const [tapCardTaken, setTapCardTaken] = useState(false)
+  const [attacking, setAttacking] = useState(false)
+  const [opponentLP, setOpponentLP] = useState(5)
+  const [entered, setEntered] = useState(false)
+
+  useEffect(() => { const t = setTimeout(() => setEntered(true), 60); return () => clearTimeout(t) }, [])
+
+  const advance = useCallback(() => setStepIdx(i => Math.min(i + 1, script.length - 1)), [script.length])
+
+  // ── Passo "fantasma" do turno do oponente: anima 2 traps e auto-avança ────
+  useEffect(() => {
+    if (step.id !== "opponent-turn") return
+    setTurn(2)
+    const t1 = setTimeout(() => setOpponentTrapsVisible(1), 500)
+    const t2 = setTimeout(() => setOpponentTrapsVisible(2), 1000)
+    const t3 = setTimeout(() => { setTurn(3); advance() }, step.autoAdvanceMs ?? 2600)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, [step.id, step.autoAdvanceMs, advance])
+
+  // ── Ações disparadas pelos cliques nos alvos destacados ────────────────────
+  const handleDeckClick = () => { setDeckPicked(true); setTimeout(advance, 350) }
+  const handlePlayUnit = () => { setUnitInHand(false); setUnitInField(true); setTimeout(advance, 280) }
+  const handleEndTurn = () => advance()
+  const handleTapPickup = () => { setTapCardTaken(true); setTimeout(advance, 350) }
+  const handleEquip = () => { setEquipped(true); setTimeout(advance, 350) }
+  const handleAttack = () => {
+    setAttacking(true)
+    setTimeout(() => setOpponentLP(0), 550)
+    setTimeout(advance, 1400)
+  }
+  const handleBackToMenu = () => onFinish()
+
+  // ── Clique genérico no elemento destacado, despachado pro handler certo ───
+  const onTargetClick = () => {
+    switch (step.id) {
+      case "play-unit": handlePlayUnit(); break
+      case "end-turn": handleEndTurn(); break
+      case "tap-pickup": handleTapPickup(); break
+      case "equip-ultimate": handleEquip(); break
+      case "attack-win": handleAttack(); break
+      case "victory": handleBackToMenu(); break
+    }
+  }
+
+  const isHighlighted = (key: NonNullable<DuelSimStep["highlight"]>) => step.highlight === key
+
+  // ── Estilo de destaque reutilizável ────────────────────────────────────────
+  const glow = (active: boolean, color: string) => active ? {
+    boxShadow: `0 0 0 3px ${color}, 0 0 22px ${color}99`,
+    transform: "scale(1.08) translateY(-4px)",
+    zIndex: 10,
+    cursor: "pointer",
+    animation: "tutRingPulse 1.4s ease-in-out infinite",
+  } : { opacity: (step.highlight && !active) ? 0.35 : 1, filter: (step.highlight && !active) ? "saturate(0.4)" : "none" }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SUB-TELA: SELEÇÃO DE DECK (antes de entrar na mesa)
+  // ═══════════════════════════════════════════════════════════════════════
+  if (!deckPicked) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 700, background: "#04060d",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        fontFamily: "'Segoe UI', sans-serif",
+        opacity: entered ? 1 : 0, transition: "opacity 0.4s ease",
+      }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: `radial-gradient(ellipse at 50% 40%, ${m.bgGlow} 0%, transparent 65%)`,
+          pointerEvents: "none",
+        }} />
+        <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10, zIndex: 1 }}>
+          Escolha seu Deck
+        </span>
+        <button
+          onClick={handleDeckClick}
+          style={{
+            zIndex: 1, width: "clamp(220px, 30vw, 320px)", padding: "22px 24px",
+            background: `linear-gradient(135deg, ${m.bgGlow} 0%, rgba(10,10,18,0.95) 100%)`,
+            border: `2px solid ${m.color}`, borderRadius: 16, cursor: "pointer",
+            boxShadow: `0 0 30px ${m.bgGlow}, 0 0 0 4px ${m.color}30`,
+            animation: "tutRingPulse 1.5s ease-in-out infinite",
+            display: "flex", alignItems: "center", gap: 14, textAlign: "left",
+          }}
+        >
+          <span style={{ fontSize: 28 }}>🃏</span>
+          <div>
+            <div style={{ color: m.color, fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", marginBottom: 3 }}>DECK ATIVO</div>
+            <div style={{ color: "#fff", fontSize: 17, fontWeight: 800 }}>Deck Inicial</div>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 2 }}>20 cartas</div>
+          </div>
+        </button>
+        <MasterBubble masterId={masterId} text={step.text} onNext={handleDeckClick} nextLabel="Selecionar ►" />
+      </div>
+    )
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MESA DE DUELO
+  // ═══════════════════════════════════════════════════════════════════════
+  const handCardDefs: { key: "unit" | "troops" | "action" | "trap" | "scenario"; highlightKey: DuelSimStep["highlight"] }[] = [
+    { key: "unit", highlightKey: "hand-unit" },
+    { key: "troops", highlightKey: "hand-troops" },
+    { key: "action", highlightKey: "hand-action" },
+    { key: "trap", highlightKey: "hand-trap" },
+    { key: "scenario", highlightKey: "hand-scenario" },
+  ]
+  const visibleHandCards = handCardDefs.filter(c => !(c.key === "unit" && !unitInHand))
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 700,
+      background: "linear-gradient(180deg, #02050d 0%, #050b18 100%)",
+      fontFamily: "'Segoe UI', sans-serif",
+      display: "flex", flexDirection: "column", overflow: "hidden",
+      opacity: entered ? 1 : 0, transition: "opacity 0.4s ease",
+    }}>
+      <style>{`
+        @keyframes tutAttackDash {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(120px); }
+          55%  { transform: translateX(120px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes tutTrapDrop {
+          from { opacity: 0; transform: translateY(-14px) scale(0.8); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes tutCardToField {
+          from { opacity: 0.4; transform: scale(0.7) translateY(40px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+
+      {/* Estrelas de fundo */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage:
+          "radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.55) 0%, transparent 100%)," +
+          "radial-gradient(1px 1px at 82% 14%, rgba(255,255,255,0.45) 0%, transparent 100%)," +
+          "radial-gradient(1.5px 1.5px at 55% 68%, rgba(255,255,255,0.5) 0%, transparent 100%)," +
+          "radial-gradient(1px 1px at 91% 78%, rgba(255,255,255,0.38) 0%, transparent 100%)," +
+          "radial-gradient(1px 1px at 30% 42%, rgba(255,255,255,0.32) 0%, transparent 100%)",
+      }} />
+
+      {/* ── Barra superior ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", flexShrink: 0, gap: 10, zIndex: 2 }}>
+        <div style={{
+          background: "rgba(220,38,38,0.22)", border: "2px solid #ef4444", borderRadius: 12,
+          padding: "8px 18px", color: "white", fontWeight: 800, fontSize: "clamp(13px, 1.7vw, 18px)",
+          transition: "all 0.3s ease",
+        }}>
+          Oponente — <span style={{ color: opponentLP <= 0 ? "#86efac" : "#fca5a5" }}>LP: {opponentLP}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "6px 14px", color: "#fbbf24", fontWeight: 800, fontSize: "clamp(12px, 1.5vw, 16px)" }}>
+            TURNO {turn}
+          </div>
+          <div style={{
+            background: turn === 2 ? "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)" : "linear-gradient(135deg, #14532d 0%, #15803d 100%)",
+            border: `1px solid ${turn === 2 ? "#ef4444" : "#22c55e"}`, borderRadius: 10,
+            padding: "8px 16px", color: "white", fontWeight: 800, fontSize: "clamp(11px, 1.4vw, 15px)", letterSpacing: "0.05em",
+            transition: "all 0.3s ease",
+          }}>
+            {turn === 2 ? "TURNO DO OPONENTE" : "SEU TURNO"}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Campo ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, padding: "0 10px", zIndex: 2, position: "relative" }}>
+        {/* Zona oponente */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          {[0, 1].map(i => (
+            <div key={i} style={{
+              width: "clamp(58px, 7.5vw, 86px)", aspectRatio: "0.7", borderRadius: 10,
+              background: opponentTrapsVisible > i ? "linear-gradient(160deg, #7c2d1226 0%, rgba(0,0,0,0.88) 100%)" : "rgba(255,255,255,0.02)",
+              border: opponentTrapsVisible > i ? "1px solid #f9731650" : "1px dashed rgba(255,255,255,0.06)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              animation: opponentTrapsVisible > i ? "tutTrapDrop 0.4s ease both" : "none",
+              fontSize: 22, color: "#f97316",
+            }}>
+              {opponentTrapsVisible > i ? "🂠" : ""}
+            </div>
+          ))}
+          {opponentLP <= 0 && attacking === false && (
+            <div style={{
+              position: "absolute", color: "#86efac", fontWeight: 900, fontSize: "clamp(20px,3vw,32px)",
+              textShadow: "0 0 24px rgba(134,239,172,0.8)", animation: "tutFadeIn 0.4s ease both",
+            }}>
+              ✦ VITÓRIA! ✦
+            </div>
+          )}
+        </div>
+
+        {/* Divisor */}
+        <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)", flexShrink: 0 }} />
+
+        {/* Zona jogador */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          {/* TAP — 2 slots */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>TAP</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[ultimateCard, null].map((card, i) => {
+                const isThisHighlighted = i === 0 && isHighlighted("tap-card") && !tapCardTaken
+                const taken = i === 0 && tapCardTaken
+                return (
+                  <div key={i}
+                    onClick={isThisHighlighted ? onTargetClick : undefined}
+                    style={{
+                      width: "clamp(48px, 6vw, 68px)", aspectRatio: "0.72", borderRadius: 8,
+                      background: taken ? "rgba(255,255,255,0.02)" : i === 0
+                        ? `linear-gradient(160deg, ${m.color}30 0%, rgba(0,0,0,0.85) 100%)`
+                        : "rgba(255,255,255,0.04)",
+                      border: i === 0 ? `1px solid ${m.color}60` : "1px dashed rgba(255,255,255,0.1)",
+                      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
+                      position: "relative", transition: "all 0.3s ease",
+                      opacity: taken ? 0.15 : 1,
+                      ...(isThisHighlighted ? glow(true, m.color) : {}),
+                    }}
+                  >
+                    {i === 0 && !taken && (
+                      <img src={card!.image} alt={card!.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Carta de unidade em campo */}
+          <div
+            onClick={isHighlighted("field-unit") ? onTargetClick : undefined}
+            style={{
+              width: "clamp(64px, 8vw, 96px)", aspectRatio: "0.7", borderRadius: 10,
+              background: unitInField ? `linear-gradient(160deg, ${m.color}30 0%, rgba(0,0,0,0.88) 100%)` : "rgba(255,255,255,0.02)",
+              border: unitInField ? `1.5px solid ${m.color}70` : "1px dashed rgba(255,255,255,0.08)",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+              overflow: "hidden", position: "relative", transition: "all 0.3s ease",
+              animation: unitInField ? "tutCardToField 0.4s ease both" : "none",
+              ...(isHighlighted("field-unit") ? glow(true, m.color) : {}),
+            }}
+          >
+            {unitInField && (
+              <>
+                <img src={hand.unit.image} alt={hand.unit.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }} />
+                {equipped && (
+                  <div style={{
+                    position: "absolute", top: 3, right: 3, background: "rgba(0,0,0,0.7)",
+                    border: `1px solid ${m.color}`, borderRadius: 5, padding: "1px 4px",
+                    fontSize: 8, color: m.color, fontWeight: 800, zIndex: 2,
+                  }}>
+                    ⚔️
+                  </div>
+                )}
+                {attacking && (
+                  <div style={{ position: "absolute", inset: 0, animation: "tutAttackDash 0.6s ease both", background: "transparent" }} />
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Botão de batalha */}
+          <button
+            onClick={isHighlighted("attack-btn") ? onTargetClick : undefined}
+            disabled={!isHighlighted("attack-btn")}
+            style={{
+              background: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
+              border: "1px solid #22c55e", borderRadius: 12, padding: "12px 18px",
+              color: "white", fontWeight: 800, fontSize: 12, letterSpacing: "0.04em",
+              fontFamily: "'Segoe UI', sans-serif",
+              ...(isHighlighted("attack-btn") ? glow(true, "#22c55e") : { opacity: step.highlight ? 0.3 : 0.55, cursor: "default" }),
+            }}
+          >
+            ⚔️ Ir para Batalha
+          </button>
+        </div>
+      </div>
+
+      {/* ── Mão do jogador ── */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.65)", padding: "8px 10px 12px", flexShrink: 0, zIndex: 2 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <button
+            onClick={isHighlighted("end-turn-btn") ? onTargetClick : undefined}
+            disabled={!isHighlighted("end-turn-btn")}
+            style={{
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 9, padding: "6px 16px", color: "#fff", fontWeight: 700, fontSize: 11,
+              fontFamily: "'Segoe UI', sans-serif",
+              ...(isHighlighted("end-turn-btn") ? glow(true, "#60a5fa") : { opacity: step.highlight ? 0.3 : 0.6, cursor: "default" }),
+            }}
+          >
+            Passar Turno ►
+          </button>
+          <div style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 20, padding: "5px 16px", color: "white", fontWeight: 800, fontSize: "clamp(11px, 1.35vw, 15px)" }}>
+            Você — <span style={{ color: "#93c5fd" }}>LP: 5</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "clamp(5px, 1vw, 10px)", justifyContent: "center" }}>
+          {visibleHandCards.map(({ key, highlightKey }) => {
+            const card = hand[key]
+            const active = isHighlighted(highlightKey)
+            const clickable = active && step.requiresTargetClick && key === "unit"
+            return (
+              <div key={key}
+                onClick={clickable ? onTargetClick : undefined}
+                style={{
+                  width: "clamp(50px, 6.6vw, 80px)", aspectRatio: "0.7", borderRadius: 9,
+                  overflow: "hidden", position: "relative",
+                  border: `1px solid ${RARITY_COLORS[card.rarity] ?? "#94a3b8"}55`,
+                  transition: "all 0.3s ease",
+                  ...glow(active, RARITY_COLORS[card.rarity] ?? m.color),
+                }}
+              >
+                <img src={card.image} alt={card.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Botão "Voltar ao Main Menu" — só aparece/clicável no passo de vitória */}
+      {step.id === "victory" && (
+        <button
+          onClick={onTargetClick}
+          style={{
+            position: "fixed", bottom: "clamp(120px, 18vh, 165px)", left: "50%", transform: "translateX(-50%)",
+            background: `linear-gradient(135deg, ${m.color}cc, ${m.color})`, border: "none", borderRadius: 12,
+            padding: "12px 28px", color: "white", fontWeight: 800, fontSize: 13,
+            letterSpacing: "0.05em", cursor: "pointer", zIndex: 5,
+            boxShadow: `0 4px 22px ${m.shadowGlow}`,
+            fontFamily: "'Segoe UI', sans-serif",
+            animation: "tutRingPulse 1.4s ease-in-out infinite",
+          }}
+        >
+          🏠 Voltar ao Main Menu
+        </button>
+      )}
+
+      {/* Balão do Mestre — escondido durante o turno do oponente */}
+      {!step.noBubble && (
+        <MasterBubble
+          masterId={masterId}
+          text={step.text}
+          onNext={step.requiresTargetClick ? onTargetClick : advance}
+          nextLabel={step.requiresTargetClick ? "👆 Faça isso na mesa" : "Entendido ►"}
+        />
+      )}
+    </div>
+  )
+}
+
+
 export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: TutorialGameOverlayProps) {
   const [phase, setPhase] = useState<OverlayPhase>("menu")
   const [step, setStep] = useState(0)
@@ -1375,28 +1856,46 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
 
   useEffect(() => { setTimeout(() => setVisible(true), 80) }, [])
 
-  const currentSteps = phase === "menu" ? MENU_STEPS : phase === "duel" ? DUEL_STEPS : GACHA_STEPS
+  // ── Fase duel-sim: renderiza o simulador de duelo no lugar do overlay ──────
+  if (phase === "duel-sim") {
+    return (
+      <>
+        <style>{TUTORIAL_CSS}</style>
+        <TutorialDuelSim
+          masterId={masterId}
+          onFinish={() => {
+            // Duelo terminado → volta pro menu real e inicia fase gacha
+            onNavigate("menu")
+            setTimeout(() => {
+              setPhase("gacha")
+              setStep(0)
+              onNavigate("gacha")
+            }, 800)
+          }}
+        />
+      </>
+    )
+  }
+
+  const currentSteps = phase === "menu" ? MENU_STEPS : GACHA_STEPS
   const currentStep = currentSteps[step]
   const isLastStep = step === currentSteps.length - 1
-  const isLastPhase = phase === "gacha"
 
-  const nextLabel = () => {
-    if (isLastPhase && isLastStep) return "Finalizar Tutorial ►"
-    if (isLastStep && phase === "menu") return "Ir para o Duelo! ►"
-    if (isLastStep && phase === "duel") return "Ir para o GACHA! ►"
-    return "Entendido ►"
-  }
+  // ── Auto-avança em passos "fantasma" (ex: animação de abertura do pack) ───
+  useEffect(() => {
+    if (!currentStep?.autoAdvanceMs) return
+    const t = setTimeout(() => {
+      if (isLastStep) onComplete()
+      else setStep(s => s + 1)
+    }, currentStep.autoAdvanceMs)
+    return () => clearTimeout(t)
+  }, [step, phase, currentStep, isLastStep, onComplete])
 
   const handleNext = () => {
     if (isLastStep) {
       if (phase === "menu") {
-        setPhase("duel")
-        setStep(0)
-        onNavigate("duel-bot")
-      } else if (phase === "duel") {
-        setPhase("gacha")
-        setStep(0)
-        onNavigate("gacha")
+        // JOGAR interceptado: vai direto pro duelo roteirizado
+        setPhase("duel-sim")
       } else {
         onComplete()
       }
@@ -1405,23 +1904,47 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
     }
   }
 
-  // Progresso total do overlay para os pontinhos
-  const totalSteps = MENU_STEPS.length + DUEL_STEPS.length + GACHA_STEPS.length
-  const globalStep =
-    (phase === "menu" ? 0 : phase === "duel" ? MENU_STEPS.length : MENU_STEPS.length + DUEL_STEPS.length) + step
+  // ── Clique interceptado no botão JOGAR ─────────────────────────────────────
+  const handleJogarIntercept = () => {
+    // Avança só se o step atual é justamente o JOGAR (interceptClick=true)
+    if (currentStep && "interceptClick" in currentStep && (currentStep as any).interceptClick) {
+      setPhase("duel-sim")
+    }
+  }
+
+  // Passos fantasma (hidden): nem spotlight nem balão
+  const isHidden = !!(currentStep as any)?.hidden
+
+  // Progresso total para os pontinhos (menu + gacha, sem duel — o duelo tem
+  // o seu próprio indicador interno na barra de turno)
+  const totalSteps = MENU_STEPS.length + GACHA_STEPS.length
+  const globalStep = (phase === "menu" ? 0 : MENU_STEPS.length) + step
+
+  const nextLabel = () => {
+    if (phase === "menu" && (currentStep as any)?.interceptClick) return "👆 Clique no JOGAR!"
+    if (isLastStep) return "Finalizar Tutorial ►"
+    return "Entendido ►"
+  }
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 400,
       opacity: visible ? 1 : 0, transition: "opacity 0.5s ease",
-      pointerEvents: "none", // deixa o jogo receber eventos (apenas o bubble é clicável)
+      pointerEvents: "none",
     }}>
       <style>{TUTORIAL_CSS}</style>
 
-      {/* Spotlight dinâmico: encontra o elemento pelo texto no DOM real */}
-      <DynamicSpotlight textTarget={currentStep?.textTarget ?? null} />
+      {/* Spotlight dinâmico — passa o interceptor pro JOGAR */}
+      {!isHidden && (
+        <DynamicSpotlight
+          textTarget={currentStep?.textTarget ?? null}
+          onInterceptClick={
+            (currentStep as any)?.interceptClick ? handleJogarIntercept : undefined
+          }
+        />
+      )}
 
-      {/* Pontinhos de progresso — top center */}
+      {/* Pontinhos de progresso */}
       <div style={{
         position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)",
         display: "flex", gap: 5, zIndex: 500, pointerEvents: "none",
@@ -1435,15 +1958,17 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
         ))}
       </div>
 
-      {/* Balão do Mestre (é clicável) */}
-      <div style={{ pointerEvents: "all" }}>
-        <MasterBubble
-          masterId={masterId}
-          text={currentStep?.text ?? ""}
-          onNext={handleNext}
-          nextLabel={nextLabel()}
-        />
-      </div>
+      {/* Balão do Mestre — oculto em passos fantasma */}
+      {!isHidden && (
+        <div style={{ pointerEvents: "all" }}>
+          <MasterBubble
+            masterId={masterId}
+            text={currentStep?.text ?? ""}
+            onNext={handleNext}
+            nextLabel={nextLabel()}
+          />
+        </div>
+      )}
     </div>
   )
 }
