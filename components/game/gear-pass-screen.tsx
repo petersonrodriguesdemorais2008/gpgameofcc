@@ -63,7 +63,12 @@ const VISIBLE = 7          // Número de níveis visíveis por vez na trilha
 // Níveis-marco — recebem coluna mais larga e destaque dourado na trilha
 const MILESTONE_LEVELS = new Set([10, 25, 50, 75, 100])
 const NORMAL_COL_WIDTH    = 96   // 82px coluna + 14px gap
-const MILESTONE_COL_WIDTH = 112  // coluna de marco, mais espaçosa
+// Marcos usam a MESMA largura/altura que colunas normais — só mudam de cor/borda.
+// Antes, marcos tinham boxSz=60 e largura=112 (vs 54/96 normal); essa diferença
+// dimensional entre tipos de coluna causava uma instabilidade visual perceptível
+// ao arrastar passando por elas (mais notável a partir do 2º marco em diante,
+// nível 25). Igualar as dimensões elimina a causa raiz por completo.
+const MILESTONE_COL_WIDTH = NORMAL_COL_WIDTH
 const PREMIUM_PRICE = "R$22,99"
 const PREMIUM_PRICE_LABEL = "Gear Pass Premium"
 const SEASON_DURATION_DAYS = 30  // duração total da temporada — usado pro countdown real
@@ -1644,7 +1649,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                         const isPast      = lg.level <= passData.currentLevel
                         const isMilestone = MILESTONE_LEVELS.has(lg.level)
                         const colW   = isMilestone ? MILESTONE_COL_WIDTH : NORMAL_COL_WIDTH
-                        const boxSz  = isMilestone ? 60 : 54
+                        const boxSz  = 54  // mesma altura para marcos e colunas normais
                         // Estados "pronto para coletar" — alimentam o glow pulsante
                         const commonClaimable  = isPast && !lg.commonClaimed
                         const premiumClaimable = isPast && !lg.premiumClaimed && passData.hasPremium
@@ -1748,18 +1753,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               </div>
 
                               {/* Conector vertical inferior */}
-                              <div style={{ width: 2, height: isMilestone ? 6 : 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
-
-                              {/* Label do marco — nome da recompensa, visível à primeira vista */}
-                              {isMilestone && lg.common?.label && (
-                                <div style={{
-                                  fontSize: 7, fontWeight: 900, color: "#fbbf24",
-                                  letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2,
-                                  maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                }}>
-                                  {lg.common.label.toUpperCase()}
-                                </div>
-                              )}
+                              <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
 
                               {/* ── COMMON reward (baixo) — TRILHA ATIVA ── */}
                               <button
@@ -1792,13 +1786,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10)"
                                     : isCurrent ? "0 0 10px rgba(6,182,212,0.22)"
                                     : "none",
-                                  // Cascata tem prioridade (flash sequencial); senão, o pulso normal de "pronto pra coletar"
                                   animation: cascadeIdx !== -1
                                     ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
                                     : commonClaimable ? "claimPulseCyan 2s ease-in-out infinite" : "none",
                                   transition: "all 0.2s",
                                   transform: isCurrent ? "scale(1.08)" : "scale(1)",
                                   opacity: lg.commonClaimed ? 0.85 : 1,
+                                  position: "relative",
                                 }}>
                                 {lg.commonClaimed ? (
                                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1809,6 +1803,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                 ) : lg.common ? (
                                   <RewardIcon reward={lg.common} />
                                 ) : null}
+                                {/* Label do marco — absolutamente posicionado dentro da
+                                    caixinha, sem afetar o height do fluxo da coluna */}
+                                {isMilestone && lg.common?.label && !lg.commonClaimed && !isPast && (
+                                  <div style={{
+                                    position: "absolute", bottom: 3, left: 0, right: 0,
+                                    textAlign: "center", fontSize: 6, fontWeight: 900,
+                                    color: "#fbbf24", letterSpacing: "0.04em",
+                                    overflow: "hidden", textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap", padding: "0 3px",
+                                  }}>
+                                    {lg.common.label.toUpperCase()}
+                                  </div>
+                                )}
                               </button>
 
                             </div>
