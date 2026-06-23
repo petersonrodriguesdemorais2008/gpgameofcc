@@ -1664,10 +1664,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                             data-level={lg.level}
                             style={{ display: "flex", alignItems: "center" }}
                           >
-                            {/* Coluna do nível — marcos ficam mais largos, com fundo/borda dourados */}
+                            {/* Coluna do nível — height fixo + overflow:hidden garante que
+                                nenhum elemento (glow, sombra) cause percepção de "levanta"
+                                ao cruzar o viewport durante o arrasto */}
                             <div style={{
-                              width: colW, flexShrink: 0, display: "flex", flexDirection: "column",
-                              alignItems: "center", gap: 3,
+                              width: colW, flexShrink: 0,
+                              height: 190, overflow: "hidden",
+                              display: "flex", flexDirection: "column",
+                              alignItems: "center", justifyContent: "center", gap: 3,
                               ...(isMilestone ? {
                                 background: "linear-gradient(160deg,rgba(245,158,11,0.10),rgba(6,182,212,0.05))",
                                 borderLeft: "2px solid rgba(245,158,11,0.32)",
@@ -1712,10 +1716,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
                                     : premiumClaimable ? "claimPulseAmber 2s ease-in-out infinite" : "none",
                                   position: "relative", transition: "all 0.2s",
-                                  // Sem scale — substitui por borda mais intensa no nível atual
-                                  // (scale muda a posição visual da caixa sem mudar o layout, causando o "subir")
-                                  outline: isCurrent ? "1.5px solid rgba(251,191,36,0.50)" : "none",
-                                  outlineOffset: 2,
                                 }}>
                                 {lg.premiumClaimed ? (
                                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1732,19 +1732,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               {/* Conector vertical superior */}
                               <div style={{ width: 2, height: 12, background: isPast ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.06)", borderRadius: 99 }} />
 
-                              {/* Badge do nível — marcos ganham acento dourado + 🏆 */}
+                              {/* Badge do nível — sem boxShadow (o glow vazava pra fora dos bounds
+                                  do elemento e criava percepção de "levanta" durante o drag) */}
                               <div style={{
                                 width: isMilestone ? 46 : 36, height: 22, borderRadius: 8, zIndex: 1,
                                 background: isMilestone
                                   ? (isCurrent ? "linear-gradient(135deg,#92400e,#d97706)" : isPast ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.06)")
                                   : (isCurrent ? "linear-gradient(135deg,#0e7490,#0369a1)" : isPast ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.05)"),
                                 display: "flex", alignItems: "center", justifyContent: "center",
-                                border: `1px solid ${
+                                border: `1.5px solid ${
                                   isMilestone
-                                    ? (isCurrent ? "rgba(245,158,11,0.70)" : isPast ? "rgba(245,158,11,0.32)" : "rgba(245,158,11,0.16)")
-                                    : (isCurrent ? "rgba(6,182,212,0.6)" : isPast ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)")
+                                    ? (isCurrent ? "rgba(245,158,11,0.80)" : isPast ? "rgba(245,158,11,0.32)" : "rgba(245,158,11,0.16)")
+                                    : (isCurrent ? "rgba(6,182,212,0.80)" : isPast ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)")
                                 }`,
-                                boxShadow: isCurrent ? `0 0 10px ${isMilestone ? "rgba(245,158,11,0.45)" : "rgba(6,182,212,0.35)"}` : "none",
                               }}>
                                 <span style={{ fontSize: 9, fontWeight: 900, color:
                                   isMilestone
@@ -1795,8 +1795,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   transition: "all 0.2s",
                                   opacity: lg.commonClaimed ? 0.85 : 1,
                                   position: "relative",
-                                  outline: isCurrent ? "1.5px solid rgba(6,182,212,0.55)" : "none",
-                                  outlineOffset: 2,
                                 }}>
                                 {lg.commonClaimed ? (
                                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
