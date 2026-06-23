@@ -18,7 +18,7 @@ import type { Card as GameCard } from "@/contexts/game-context"
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type TutorialMasterId = "fehnon" | "morgana" | "calem"
-type OverlayPhase = "menu" | "duel-sim" | "gacha"
+type OverlayPhase = "menu" | "duel-sim" | "post-duel-menu" | "gacha"
 
 export interface TutorialScreenProps {
   playerName: string
@@ -449,33 +449,29 @@ function buildLoreSlides(playerName: string): LoreSlide[] {
 // OVERLAY TUTORIAL STEPS  (texto do balão sobre as telas REAIS)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// textTarget: texto do elemento real a destacar
-//  "__SIDEBAR__" = lógica especial para a coluna lateral direita do main menu
-//  null          = sem spotlight (só overlay de escurecimento)
-// interceptClick: quando true, o clique no alvo NÃO é repassado pro botão
-//  real por baixo — em vez disso, dispara onIntercept() (usado pra pular a
-//  navegação real do JOGAR e ir direto pro duelo roteirizado do tutorial)
+// ── MENU pré-duelo: apenas o JOGAR (clique obrigatório no botão real)
+// interceptClick: true → o clique só avança via DynamicSpotlight interceptor,
+// o botão do balão fica visualmente desabilitado e não faz nada.
 const MENU_STEPS = [
-  { text: "Este é o botão JOGAR! Vamos fazer seu primeiro duelo — clique nele para começar!",
+  { text: "Este é o botão JOGAR! Para começar sua primeira batalha, clique diretamente nele!",
     textTarget: "JOGAR", interceptClick: true },
-  { text: "Em COLEÇÃO você pode ver, organizar e gerenciar todas as cartas que você possui.",
-    textTarget: "COLEÇÃO" },
-  { text: "E o GACHA! Aqui você abre packs para conseguir novas cartas poderosas. Logo te mostro como funciona!",
-    textTarget: "GACHA" },
-  { text: "Esses botões te dão acesso ao Deck, Missões, Loja, Histórico e muito mais! Agora... vamos ao seu primeiro duelo!",
-    textTarget: "__SIDEBAR__" },
+]
+
+// ── Pós-duelo: volta ao menu e obriga a clicar no GACHA
+const POST_DUEL_STEPS = [
+  { text: "Parabéns pelo duelo! Agora clique em GACHA para abrir seu primeiro pack de cartas!",
+    textTarget: "GACHA", interceptClick: true },
 ]
 
 const GACHA_STEPS = [
-  { text: "Hora da recompensa! Este pack é especial — é de graça só porque é seu primeiro dia aqui. Vamos abrir!",
+  { text: "Hora da recompensa! Este pack veio de graça só por ser seu primeiro dia aqui. Vamos abrir!",
     textTarget: null },
   { text: "Clique para abrir! Quem sabe que cartas raras vão aparecer para você...",
     textTarget: "GACHA x1" },
-  // Passo "fantasma": sem balão, sem escurecimento — deixa a animação real
-  // de abertura do pack rodar limpa, sem nenhuma interferência visual do
-  // tutorial. Avança sozinho depois de alguns segundos.
+  // Passo "fantasma": sem balão, sem escurecimento — a animação real do pack
+  // roda limpa, sem nenhuma interferência visual do tutorial.
   { text: "", textTarget: null, hidden: true, autoAdvanceMs: 4200 },
-  { text: "Parabéns pelas cartas que você adquiriu! Continue jogando duelos e abrindo packs para montar um deck invencível!",
+  { text: "Incrível! Você conseguiu suas primeiras cartas! Continue jogando e abrindo packs — há muito mais pela frente. Obrigado(a) por me deixar te ensinar como tudo funciona. Agora... divirta-se e aproveite tudo que o jogo tem para te oferecer!",
     textTarget: null },
 ]
 
@@ -1568,6 +1564,7 @@ function TutorialDuelSim({ masterId, onFinish }: {
         <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10, zIndex: 1 }}>
           Escolha seu Deck
         </span>
+        {/* O clique no card é o ÚNICO jeito de avançar */}
         <button
           onClick={handleDeckClick}
           style={{
@@ -1586,7 +1583,13 @@ function TutorialDuelSim({ masterId, onFinish }: {
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 2 }}>20 cartas</div>
           </div>
         </button>
-        <MasterBubble masterId={masterId} text={step.text} onNext={handleDeckClick} nextLabel="Selecionar ►" />
+        {/* Balão: botão é visual-only, clique obrigatório no deck acima */}
+        <MasterBubble
+          masterId={masterId}
+          text="Selecione o Deck Inicial para entrar em batalha!"
+          onNext={() => {/* no-op: clique no deck acima é obrigatório */}}
+          nextLabel="👆 Clique no Deck acima"
+        />
       </div>
     )
   }
@@ -1856,7 +1859,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
 
   useEffect(() => { setTimeout(() => setVisible(true), 80) }, [])
 
-  // ── Fase duel-sim: renderiza o simulador de duelo no lugar do overlay ──────
+  // ── Fase duel-sim: renderiza o simulador de duelo em tela cheia ─────────────
   if (phase === "duel-sim") {
     return (
       <>
@@ -1864,67 +1867,66 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
         <TutorialDuelSim
           masterId={masterId}
           onFinish={() => {
-            // Duelo terminado → volta pro menu real e inicia fase gacha
+            // Duelo terminou → volta ao menu real; mestre vai pedir GACHA lá
             onNavigate("menu")
-            setTimeout(() => {
-              setPhase("gacha")
-              setStep(0)
-              onNavigate("gacha")
-            }, 800)
+            setPhase("post-duel-menu")
+            setStep(0)
           }}
         />
       </>
     )
   }
 
-  const currentSteps = phase === "menu" ? MENU_STEPS : GACHA_STEPS
-  const currentStep = currentSteps[step]
-  const isLastStep = step === currentSteps.length - 1
+  // ── Seleciona o array de passos correto para a fase atual ───────────────────
+  const currentSteps =
+    phase === "menu"           ? MENU_STEPS       :
+    phase === "post-duel-menu" ? POST_DUEL_STEPS  :
+    GACHA_STEPS
 
-  // ── Auto-avança em passos "fantasma" (ex: animação de abertura do pack) ───
+  const currentStep = currentSteps[step]
+  const isLastStep  = step === currentSteps.length - 1
+  const isInterceptStep = !!(currentStep as any)?.interceptClick
+  const isHidden        = !!(currentStep as any)?.hidden
+
+  // ── Auto-avança em passos "fantasma" (animação de abertura do pack) ────────
   useEffect(() => {
-    if (!currentStep?.autoAdvanceMs) return
+    const ms = (currentStep as any)?.autoAdvanceMs
+    if (!ms) return
     const t = setTimeout(() => {
       if (isLastStep) onComplete()
       else setStep(s => s + 1)
-    }, currentStep.autoAdvanceMs)
+    }, ms)
     return () => clearTimeout(t)
   }, [step, phase, currentStep, isLastStep, onComplete])
 
-  const handleNext = () => {
-    if (isLastStep) {
-      if (phase === "menu") {
-        // JOGAR interceptado: vai direto pro duelo roteirizado
-        setPhase("duel-sim")
-      } else {
-        onComplete()
-      }
-    } else {
-      setStep(s => s + 1)
-    }
-  }
-
-  // ── Clique interceptado no botão JOGAR ─────────────────────────────────────
-  const handleJogarIntercept = () => {
-    // Avança só se o step atual é justamente o JOGAR (interceptClick=true)
-    if (currentStep && "interceptClick" in currentStep && (currentStep as any).interceptClick) {
+  // ── Clique interceptado no alvo real (JOGAR ou GACHA no menu) ──────────────
+  // Este é o ÚNICO caminho para avançar quando interceptClick = true.
+  // O botão do balão fica visualmente presente mas completamente sem efeito.
+  const handleInterceptClick = () => {
+    if (phase === "menu") {
       setPhase("duel-sim")
+    } else if (phase === "post-duel-menu") {
+      // Navega pra tela de gacha real e muda a fase
+      onNavigate("gacha")
+      setPhase("gacha")
+      setStep(0)
     }
   }
 
-  // Passos fantasma (hidden): nem spotlight nem balão
-  const isHidden = !!(currentStep as any)?.hidden
-
-  // Progresso total para os pontinhos (menu + gacha, sem duel — o duelo tem
-  // o seu próprio indicador interno na barra de turno)
-  const totalSteps = MENU_STEPS.length + GACHA_STEPS.length
-  const globalStep = (phase === "menu" ? 0 : MENU_STEPS.length) + step
-
-  const nextLabel = () => {
-    if (phase === "menu" && (currentStep as any)?.interceptClick) return "👆 Clique no JOGAR!"
-    if (isLastStep) return "Finalizar Tutorial ►"
-    return "Entendido ►"
+  // ── Avança o balão (só para passos SEM interceptClick) ─────────────────────
+  const handleBubbleNext = () => {
+    // Se este passo exige clique no elemento real, ignora o botão do balão
+    if (isInterceptStep) return
+    if (isLastStep) onComplete()
+    else setStep(s => s + 1)
   }
+
+  // Pontinhos de progresso (visíveis nas fases de menu/gacha, não durante o duelo)
+  const totalDots = MENU_STEPS.length + POST_DUEL_STEPS.length + GACHA_STEPS.length
+  const globalDot =
+    phase === "menu"           ? step :
+    phase === "post-duel-menu" ? MENU_STEPS.length + step :
+    MENU_STEPS.length + POST_DUEL_STEPS.length + step
 
   return (
     <div style={{
@@ -1934,13 +1936,11 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
     }}>
       <style>{TUTORIAL_CSS}</style>
 
-      {/* Spotlight dinâmico — passa o interceptor pro JOGAR */}
+      {/* Spotlight dinâmico — passa o interceptor nos passos obrigatórios */}
       {!isHidden && (
         <DynamicSpotlight
           textTarget={currentStep?.textTarget ?? null}
-          onInterceptClick={
-            (currentStep as any)?.interceptClick ? handleJogarIntercept : undefined
-          }
+          onInterceptClick={isInterceptStep ? handleInterceptClick : undefined}
         />
       )}
 
@@ -1949,10 +1949,10 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
         position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)",
         display: "flex", gap: 5, zIndex: 500, pointerEvents: "none",
       }}>
-        {Array.from({ length: totalSteps }).map((_, i) => (
+        {Array.from({ length: totalDots }).map((_, i) => (
           <div key={i} style={{
-            width: i === globalStep ? 16 : 5, height: 5, borderRadius: 3,
-            background: i <= globalStep ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+            width: i === globalDot ? 16 : 5, height: 5, borderRadius: 3,
+            background: i <= globalDot ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
             transition: "all 0.3s ease",
           }} />
         ))}
@@ -1964,8 +1964,18 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
           <MasterBubble
             masterId={masterId}
             text={currentStep?.text ?? ""}
-            onNext={handleNext}
-            nextLabel={nextLabel()}
+            onNext={handleBubbleNext}
+            // interceptClick: botão do balão fica visível mas NÃO avança —
+            // serve apenas de indicação visual de onde clicar
+            nextLabel={
+              isInterceptStep
+                ? phase === "menu"
+                  ? "👆 Clique no botão JOGAR acima"
+                  : "👆 Clique no botão GACHA acima"
+                : isLastStep
+                ? "Finalizar Tutorial ►"
+                : "Entendido ►"
+            }
           />
         </div>
       )}
