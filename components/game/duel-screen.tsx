@@ -5685,7 +5685,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return
     }
 
-    if (ug.ability === "ODEN SWORD") {
+    const ugAbilityUpper = (ug.ability || "").toUpperCase()
+    const ugNameLower = (ug.name || "").toLowerCase()
+    const isOdenSword     = ugAbilityUpper.includes("ODEN SWORD") || ugNameLower.includes("oden sword")
+    const isTwilighAvalon = ugAbilityUpper.includes("TWILIGH") || ugNameLower.includes("twiligh") || ugNameLower.includes("twilight avalon")
+    const isMefisto       = ugAbilityUpper.includes("MEFISTO") || ugNameLower.includes("mefisto")
+    const isMiguelArcanjo = ugAbilityUpper.includes("MIGUEL ARCANJO") || ugNameLower.includes("miguel arcanjo")
+
+    if (isOdenSword) {
       // Check if opponent has function cards
       const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
@@ -5694,7 +5701,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "oden_sword" })
       showEffectFeedback("Selecione uma Function inimiga para destruir!", "success")
-    } else if (ug.ability === "TWILIGH AVALON") {
+    } else if (isTwilighAvalon) {
       // Check if opponent has any cards on field (units or functions)
       const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
@@ -5703,7 +5710,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "twiligh_avalon" })
       showEffectFeedback("Selecione uma carta inimiga para devolver a mao!", "success")
-    } else if (ug.ability === "MEFISTO") {
+    } else if (isMefisto) {
       // Once per duel: destroy any 1 card on opponent's field
       if (playerUgAbilityUsed) return
       const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
@@ -5713,7 +5720,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
-    } else if (ug.ability === "MIGUEL ARCANJO") {
+    } else if (isMiguelArcanjo) {
       // Julgamento Divino: once per turn, select enemy unit and reduce -1DP
       if (julgamentoDivinoUsedThisTurn) {
         showEffectFeedback("Julgamento Divino ja foi usado neste turno!", "error")
@@ -10519,28 +10526,45 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {/* Ultimate cards have no DP — don't show badge */}
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO") &&
-                          playerField.ultimateZone.requiresUnit &&
-                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                              className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
-                            >
-                              ATIVAR
-                            </button>
-                          )}
+                          (() => {
+                            const ugName = (playerField.ultimateZone.name || "").toLowerCase()
+                            const ugAbility = (playerField.ultimateZone.ability || "").toUpperCase()
+                            const isActivatable =
+                              ugAbility.includes("ODEN SWORD") || ugName.includes("oden sword") ||
+                              ugAbility.includes("TWILIGH") || ugName.includes("twiligh") || ugName.includes("twilight") ||
+                              ugAbility.includes("MEFISTO") || ugName.includes("mefisto")
+                            if (!isActivatable) return null
+                            const requiresUnit = playerField.ultimateZone.requiresUnit
+                            if (requiresUnit && findUnitByName(playerField.unitZone, requiresUnit) === -1) return null
+                            return (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
+                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
+                              >
+                                ATIVAR
+                              </button>
+                            )
+                          })()
+                        }
                         {/* Activate button for Julgamento Divino (MIGUEL ARCANJO - once per turn) */}
                         {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active &&
-                          playerField.ultimateZone.ability === "MIGUEL ARCANJO" &&
-                          playerField.ultimateZone.requiresUnit &&
-                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                              className="absolute -top-8 left-1/2 -translate-x-1/2 bg-purple-600 hover:bg-purple-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-purple-500/50 animate-pulse whitespace-nowrap z-10"
-                            >
-                              JULGAMENTO
-                            </button>
-                          )}
+                          (() => {
+                            const ugName = (playerField.ultimateZone.name || "").toLowerCase()
+                            const ugAbility = (playerField.ultimateZone.ability || "").toUpperCase()
+                            const isMiguel = ugAbility.includes("MIGUEL ARCANJO") || ugName.includes("miguel arcanjo")
+                            if (!isMiguel) return null
+                            const requiresUnit = playerField.ultimateZone.requiresUnit
+                            if (requiresUnit && findUnitByName(playerField.unitZone, requiresUnit) === -1) return null
+                            return (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
+                                className="absolute -top-7 left-1/2 -translate-x-1/2 bg-blue-500 hover:bg-blue-400 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-blue-500/50 animate-pulse whitespace-nowrap z-10"
+                              >
+                                JULGAMENTO
+                              </button>
+                            )
+                          })()
+                        }
                       </>
                     ) : null}
                     {!playerField.ultimateZone && dropTarget?.type === "ultimate" && (
