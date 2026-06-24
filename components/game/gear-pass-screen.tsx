@@ -564,7 +564,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [currentDayKey, setCurrentDayKey] = useState(() => getDayKey())
 
   // Login diário — apenas no mount, não a cada claim
-  useEffect(() => { trackDailyLogin() }, [])
+  useEffect(() => {
+    trackDailyLogin()
+    // Mostra toast de "+30 pts" só uma vez por dia
+    const todayKey = getDayKey()
+    const seenKey  = `gpgame_login_toast_${todayKey}`
+    if (typeof window !== "undefined" && !localStorage.getItem(seenKey)) {
+      localStorage.setItem(seenKey, "1")
+      setTimeout(() => {
+        setShowLoginToast(true)
+        setTimeout(() => setShowLoginToast(false), 2800)
+      }, 900)
+    }
+  }, [])
 
   // Detecta virada de dia a cada 60s e atualiza currentDayKey
   useEffect(() => {
@@ -608,6 +620,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [focusedLevel, setFocusedLevel] = useState<number | null>(null)
   const [levelUpAnim, setLevelUpAnim] = useState<number | null>(null)
   const prevLevelRef = useRef(0)
+  // Pop do checkmark no claim individual — limpo após 600ms
+  const [justClaimed, setJustClaimed] = useState<{ level: number; isPremium: boolean } | null>(null)
+  // Toast de login diário — mostrado só uma vez por dia
+  const [showLoginToast, setShowLoginToast] = useState(false)
   // ── Clicar e segurar numa recompensa já coletada mostra os detalhes dela ─────
   const [peekedReward, setPeekedReward] = useState<{ level: number; isPremium: boolean } | null>(null)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -912,6 +928,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   const claimableCount = filteredMissions.filter(m => m.completed && !m.claimed).length
 
+  // Progresso por tipo — usado no indicador "X/Y completadas" no header de missões
+  const missionProgress = (type: PassMission["type"]) => {
+    const ofType = missions.filter(m => m.type === type)
+    const done   = ofType.filter(m => m.completed || m.claimed).length
+    return { done, total: ofType.length }
+  }
+
   const handleClaimAll = () => {
     const claimable = filteredMissions.filter(m => m.completed && !m.claimed)
     if (claimable.length === 0) return
@@ -999,6 +1022,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     }))
 
     vibrate(isPremium ? [30, 25, 40] : 35)
+    // Pop do checkmark — marca qual caixinha animar, limpa após 600ms
+    setJustClaimed({ level, isPremium })
+    setTimeout(() => setJustClaimed(null), 600)
     setClaimFeedback(
       reward.type === "coins"
         ? `+${reward.amount} Coins!`
@@ -1041,6 +1067,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   // Teaser: próxima recompensa comum ainda não desbloqueada
   const nextRewardEntry = levelGroups.find(lg => !lg.commonClaimed && lg.level > passData.currentLevel)
+
+  // Passe 100% completo — nível máximo atingido E todas as recompensas coletadas
+  const isPassComplete = passData.currentLevel >= MAX_LEVELS && trackPendingCount === 0
 
   // ── Teaser de premium retroativo ──────────────────────────────────────────
   // Conta níveis já alcançados cuja recompensa premium nunca foi coletada,
@@ -1274,6 +1303,21 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         </div>
       )}
 
+      {/* ── TOAST DE LOGIN DIÁRIO — aparece na primeira abertura do dia ── */}
+      {showLoginToast && (
+        <div style={{
+          position: "fixed", top: 120, left: "50%", transform: "translateX(-50%)",
+          zIndex: 9998, background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.35)",
+          borderRadius: 14, padding: "8px 20px", color: "#22d3ee", fontWeight: 800, fontSize: 13,
+          backdropFilter: "blur(12px)", boxShadow: "0 4px 20px rgba(6,182,212,0.18)",
+          animation: "fadeInDown 0.3s ease", display: "flex", alignItems: "center", gap: 8,
+          whiteSpace: "nowrap",
+        }}>
+          <Zap size={14} color="#22d3ee" />
+          +30 pts por login diário
+        </div>
+      )}
+
       {/* ── EVERYTHING ABOVE WALLPAPER ── */}
       <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
 
@@ -1429,7 +1473,22 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 <div style={{ position:"absolute",top:0,right:0,width:100,height:100,pointerEvents:"none",
                   background:`radial-gradient(circle at top right,${passData.hasPremium?"rgba(245,158,11,0.09)":"rgba(139,92,246,0.08)"},transparent 60%)` }} />
 
-                {/* Level + teaser de próxima recompensa (sem repetir pts, que já está na barra abaixo) */}
+                {/* Passe 100% completo — substitui a linha de nível + teaser */}
+                {isPassComplete ? (
+                  <div style={{
+                    position: "relative", textAlign: "center", padding: "8px 0 10px",
+                    marginBottom: 12,
+                  }}>
+                    <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#fbbf24", letterSpacing: "-0.01em" }}>
+                      Passe Completo!
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                      Você coletou todas as recompensas da Temporada {passData.seasonNumber}
+                    </div>
+                  </div>
+                ) : (
+                /* Level + teaser de próxima recompensa (sem repetir pts, que já está na barra abaixo) */
                 <div style={{ position:"relative", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                   <div style={{ display:"flex", alignItems:"baseline", gap:6, lineHeight:1 }}>
                     <span style={{ fontSize:42, fontWeight:900, color:"#f1f5f9", letterSpacing:"-0.04em" }}>{passData.currentLevel}</span>
@@ -1453,6 +1512,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     )}
                   </div>
                 </div>
+                )}
 
                 {/* Pass type cards */}
                 <div style={{ display:"flex", gap:8, position:"relative" }}>
@@ -1718,7 +1778,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   position: "relative", transition: "all 0.2s",
                                 }}>
                                 {lg.premiumClaimed ? (
-                                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <div style={{
+                                    width: 30, height: 30, borderRadius: "50%",
+                                    background: "rgba(34,197,94,0.22)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    // Pop do checkmark — só anima no claim que acabou de acontecer
+                                    animation: justClaimed?.level === lg.level && justClaimed.isPremium
+                                      ? "claimPop 0.5s cubic-bezier(.2,1.4,.4,1)"
+                                      : "none",
+                                  }}>
                                     <Check size={16} color="#22c55e" strokeWidth={3} />
                                   </div>
                                 ) : !isPast ? (
@@ -1797,7 +1865,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   position: "relative",
                                 }}>
                                 {lg.commonClaimed ? (
-                                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(34,197,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <div style={{
+                                    width: 30, height: 30, borderRadius: "50%",
+                                    background: "rgba(34,197,94,0.22)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    animation: justClaimed?.level === lg.level && !justClaimed.isPremium
+                                      ? "claimPop 0.5s cubic-bezier(.2,1.4,.4,1)"
+                                      : "none",
+                                  }}>
                                     <Check size={16} color="#22c55e" strokeWidth={3} />
                                   </div>
                                 ) : !isPast ? (
@@ -1878,20 +1953,38 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             }}>
               {/* Filter pills + Coletar Tudo */}
               <div style={{ flexShrink: 0, display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", alignItems: "center" }}>
-                {(["all", "daily", "weekly", "limited"] as const).map(f => (
-                  <button key={f} onClick={() => setMissionFilter(f)} style={{
-                    padding: "5px 12px", borderRadius: 20,
-                    cursor: "pointer", fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                    background: missionFilter === f
-                      ? "linear-gradient(135deg,rgba(6,182,212,0.25),rgba(139,92,246,0.20))"
-                      : "rgba(255,255,255,0.05)",
-                    color: missionFilter === f ? "#e2e8f0" : "#475569",
-                    border: `1px solid ${missionFilter === f ? "rgba(6,182,212,0.30)" : "rgba(255,255,255,0.07)"}`,
-                  }}>
-                    {f === "all" ? "Todas" : f === "daily" ? "Diárias" : f === "weekly" ? "Semanais" : "Limitadas"}
-                  </button>
-                ))}
+                {(["all", "daily", "weekly", "limited"] as const).map(f => {
+                  const isActive = missionFilter === f
+                  // Progresso por tipo visível no próprio botão de filtro
+                  const prog = f !== "all" ? missionProgress(f as PassMission["type"]) : null
+                  const allDoneHere = prog && prog.total > 0 && prog.done === prog.total
+                  return (
+                    <button key={f} onClick={() => setMissionFilter(f)} style={{
+                      padding: "5px 12px", borderRadius: 20,
+                      cursor: "pointer", fontWeight: 800, fontSize: 11, whiteSpace: "nowrap",
+                      transition: "all 0.2s",
+                      background: isActive
+                        ? "linear-gradient(135deg,rgba(6,182,212,0.25),rgba(139,92,246,0.20))"
+                        : "rgba(255,255,255,0.05)",
+                      color: isActive ? "#e2e8f0" : "#475569",
+                      border: `1px solid ${isActive ? "rgba(6,182,212,0.30)" : "rgba(255,255,255,0.07)"}`,
+                      display: "flex", alignItems: "center", gap: 5,
+                    }}>
+                      {f === "all" ? "Todas" : f === "daily" ? "Diárias" : f === "weekly" ? "Semanais" : "Limitadas"}
+                      {/* Indicador "X/Y" no próprio filtro */}
+                      {prog && prog.total > 0 && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 900, lineHeight: 1,
+                          color: allDoneHere ? "#4ade80" : isActive ? "#06b6d4" : "#334155",
+                          background: allDoneHere ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.08)",
+                          borderRadius: 99, padding: "1px 5px",
+                        }}>
+                          {allDoneHere ? "✓" : `${prog.done}/${prog.total}`}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
                 <div style={{ flex: 1 }} />
                 {/* Coletar Tudo */}
                 <button
@@ -2248,6 +2341,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         }
         /* Flash sequencial usado no "Coletar Pendentes"/"Coletar Tudo" — cada item
            pisca em sua vez, na ordem certa, dando a sensação de resgate em série */
+        /* Pop do checkmark no claim individual — aparece com scale elástico */
+        @keyframes claimPop {
+          0%   { opacity: 0; transform: scale(0.3); }
+          60%  { opacity: 1; transform: scale(1.25); }
+          80%  { transform: scale(0.92); }
+          100% { opacity: 1; transform: scale(1); }
+        }
         @keyframes cascadeFlash {
           0%   { box-shadow: 0 0 0px rgba(34,197,94,0); transform: scale(1); }
           35%  { box-shadow: 0 0 24px rgba(34,197,94,0.75); transform: scale(1.10); }
