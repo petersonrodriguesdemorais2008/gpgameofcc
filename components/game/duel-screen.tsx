@@ -10501,7 +10501,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <div
                     data-player-ultimate-slot
                     onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                    className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
+                    className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative transition-all duration-75 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
                         ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
@@ -10512,6 +10512,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   >
                     {playerField.ultimateZone ? (
                       <>
+                        <div className="absolute inset-0 overflow-hidden rounded">
                         <Image
                           src={playerField.ultimateZone.image || "/placeholder.svg"}
                           alt={playerField.ultimateZone.name}
@@ -10523,6 +10524,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           onTouchStart={() => handleCardPressStart(playerField.ultimateZone!)}
                           onTouchEnd={handleCardPressEnd}
                         />
+                        </div>
                         {/* Ultimate cards have no DP — don't show badge */}
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
@@ -10539,9 +10541,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             return (
                               <button
                                 onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                                className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
+                                className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t shadow-lg animate-pulse whitespace-nowrap z-20 text-center"
                               >
-                                ATIVAR
+                                ⚡ ATIVAR
                               </button>
                             )
                           })()
@@ -10558,9 +10560,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             return (
                               <button
                                 onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                                className="absolute -top-7 left-1/2 -translate-x-1/2 bg-blue-500 hover:bg-blue-400 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-blue-500/50 animate-pulse whitespace-nowrap z-10"
+                                className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b shadow-lg animate-pulse whitespace-nowrap z-20 text-center"
                               >
-                                JULGAMENTO
+                                ✦ JULGAMENTO
                               </button>
                             )
                           })()
