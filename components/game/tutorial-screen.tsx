@@ -757,13 +757,15 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
         />
       </svg>
       {/* Captador de clique transparente — fica ACIMA do botão real, então o
-          clique nunca chega nele. Só existe quando onInterceptClick é dado. */}
+          clique nunca chega nele. Só existe quando onInterceptClick é dado.
+          IMPORTANTE: pointerEvents "all" sobrescreve o "none" do container pai. */}
       {onInterceptClick && (
         <div
           onClick={onInterceptClick}
           style={{
             position: "fixed", left: x, top: y, width: w, height: h,
             zIndex: 401, cursor: "pointer", borderRadius: 10,
+            pointerEvents: "all",
           }}
         />
       )}
