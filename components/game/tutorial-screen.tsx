@@ -965,3 +965,20 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
     </>
   )
 }
+
+// ─── Exports required by game-wrapper.tsx ─────────────────────────────────────
+// These were previously expected but did not exist in this file.
+// Stub exports keep the build working without breaking game-wrapper.tsx.
+
+/** Stub overlay — game-wrapper renders nothing here until a real tutorial overlay is built. */
+export function TutorialGameOverlay(): null {
+  return null
+}
+
+/** Type for tutorial master IDs used in game-wrapper progress tracking. */
+export type TutorialMasterId = string
+
+/** Stub deck grant — returns an empty array until starter-deck logic is implemented. */
+export function buildStarterDeckGrant(_masterId: TutorialMasterId): unknown[] {
+  return []
+}
