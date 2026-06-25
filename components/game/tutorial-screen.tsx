@@ -2095,23 +2095,15 @@ export default function TutorialScreen({ playerName, onComplete }: TutorialScree
     </div>
   )
 }
-// ─── PATCH: add these exports to the bottom of tutorial-screen.tsx ───────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  PATCH — cole estes 3 exports no FINAL do seu tutorial-screen.tsx,
+//  logo abaixo da linha "export default TutorialScreen".
 //
-//  game-wrapper.tsx imports TutorialGameOverlay, buildStarterDeckGrant, and
-//  the type TutorialMasterId from this module.  If those exports are missing,
-//  Turbopack refuses to build.  Add everything below to your existing
-//  tutorial-screen.tsx (after the default export).
-//
-//  Once your real TutorialGameOverlay / buildStarterDeckGrant implementations
-//  are ready, replace these stubs with the real code.  The type definition
-//  at the top must match the master IDs used in your masters-data library.
+//  NÃO adicione nenhum `import` novo — as tipagens abaixo são
+//  auto-contidas e não precisam de imports extras.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Card } from "@/contexts/game-context"
-
-// The string union that identifies which starter master the player chose.
-// Must match the prefix of the master IDs produced by loadMastersFromStorage()
-// (e.g. a master with id "fehnon-silver" has prefix "fehnon").
+// 1 ── Tipo usado por game-wrapper para o master selecionado no tutorial
 export type TutorialMasterId =
   | "fehnon"
   | "hrotti"
@@ -2120,26 +2112,13 @@ export type TutorialMasterId =
   | "uller"
   | "tsubasa"
 
-// ---------------------------------------------------------------------------
-// buildStarterDeckGrant
-// ---------------------------------------------------------------------------
-// Returns the 22 cards that make up the starter deck for the chosen master:
-//   • collectionCards — all 22 cards added to the player's collection
-//   • mainDeckCards   — 20 cards that go into the saved Deck
-//   • tapDeckCards    — 2 TAP cards (can be empty if the master has none)
-//
-// Replace the stub below with real card data once it is ready.
-// The ids / images below are placeholders — swap them for the actual card
-// objects from your ALL_CARDS constant in game-context.tsx.
-// ---------------------------------------------------------------------------
-export function buildStarterDeckGrant(masterId: TutorialMasterId): {
-  collectionCards: Card[]
-  mainDeckCards: Card[]
-  tapDeckCards: Card[]
+// 2 ── Retorna as cartas do deck inicial do master escolhido
+//      Substitua os arrays vazios pelas cartas reais quando estiver pronto.
+export function buildStarterDeckGrant(_masterId: TutorialMasterId): {
+  collectionCards: any[]
+  mainDeckCards: any[]
+  tapDeckCards: any[]
 } {
-  // TODO: return the real starter cards for each master.
-  // For now we return empty arrays so the build passes and the app does not
-  // crash — the player will just start with an empty "Deck Inicial".
   return {
     collectionCards: [],
     mainDeckCards: [],
@@ -2147,32 +2126,16 @@ export function buildStarterDeckGrant(masterId: TutorialMasterId): {
   }
 }
 
-// ---------------------------------------------------------------------------
-// TutorialGameOverlay
-// ---------------------------------------------------------------------------
-// Shown on top of the game screens (menu, gacha, duel) right after the
-// player finishes the tutorial and picks their master.  It walks them through
-// their first steps in the real game (open a pack, try the deck, etc.).
-//
-// Props:
-//   masterId   — which master was selected, so the overlay can personalise
-//   onNavigate — tells the parent GameWrapper to switch screens
-//   onComplete — called when the overlay is dismissed; the wrapper then
-//                saves the "tutorial done" flag and returns to the menu
-// ---------------------------------------------------------------------------
+// 3 ── Overlay mostrado sobre as telas do jogo após o tutorial
+//      Por enquanto chama onComplete() imediatamente e não renderiza nada.
+//      Substitua por um componente real quando quiser implementar.
 export function TutorialGameOverlay({
-  masterId,
-  onNavigate,
   onComplete,
 }: {
   masterId: TutorialMasterId
   onNavigate: (screen: "gacha" | "menu") => void
   onComplete: () => void
-}) {
-  // TODO: replace with real guided-overlay UI.
-  // Returning null for now skips the overlay entirely and marks the
-  // tutorial as complete so the player lands straight in the main menu.
-  // The "tutorial done" localStorage flag is still written by the wrapper.
-  onComplete()
+}): null {
+  if (typeof onComplete === "function") onComplete()
   return null
 }
