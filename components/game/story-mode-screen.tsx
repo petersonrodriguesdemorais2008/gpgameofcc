@@ -566,9 +566,23 @@ function StoryMapView({
 
       {/* ── World background ── */}
       {/* Drop the Gear Perks world panorama at /public/images/gearperks-world.png */}
-      <div style={{ position:"absolute", inset:0,
-        backgroundImage:"url(/images/gearperks-world.png)",
-        backgroundSize:"cover", backgroundPosition:"center top" }}/>
+      <img
+        src="/images/gearperks-world.png"
+        alt=""
+        aria-hidden="true"
+        onError={(e) => {
+          const t = e.currentTarget
+          if (t.dataset.fallback) return
+          t.dataset.fallback = "1"
+          t.src = "/images/gearperks-word.png"  // try without the 'l' as fallback
+        }}
+        style={{
+          position:"absolute", inset:0,
+          width:"100%", height:"100%",
+          objectFit:"cover", objectPosition:"center top",
+          pointerEvents:"none",
+        }}
+      />
 
       {/* Subtle darkening so nodes and text remain readable */}
       <div style={{ position:"absolute", inset:0,
