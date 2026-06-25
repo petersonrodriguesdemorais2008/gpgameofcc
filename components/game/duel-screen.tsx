@@ -5235,7 +5235,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
           // ── JULGAMENTO DO VAZIO ETERNO: choose target (unit or direct LP) ──
           if (result.message === "JULGAMENTO_VAZIO_CHOOSE") {
-            const enemyUnits = playerField.unitZone // already removed from hand below
+            // Remove card from hand and send to graveyard FIRST,
+            // before opening the choice modal — prevents the card from
+            // remaining in hand and being played again (the reported bug).
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
+              graveyard: [...prev.graveyard, cardToPlace],
+            }))
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
             setChoiceModal({
               visible: true,
               cardName: "Julgamento do Vazio Eterno — Escolha o alvo (5DP)",
