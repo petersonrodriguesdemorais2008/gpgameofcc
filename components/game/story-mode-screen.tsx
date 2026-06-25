@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { ArrowLeft, BookOpen, Lock, ChevronRight, SkipForward } from "lucide-react"
+import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Emotion = "normal" | "happy" | "rage"
 type CharacterId = "fehnon" | "calem" | "arthur" | "guard1" | "guard2"
@@ -45,6 +47,8 @@ interface StoryModeScreenProps {
   onStartBattle: (mode: "story-normal" | "story-boss", stageId: string) => void
 }
 
+// ─── Assets ───────────────────────────────────────────────────────────────────
+
 const BG = {
   house_ext:   "/images/calemhouse1_scene.png",
   house_int:   "/images/calemhouse2_scene.png",
@@ -54,28 +58,24 @@ const BG = {
   camelot:     "/images/camelot_scene.png",
 }
 
-// Left character always faces RIGHT (scaleX(-1) to flip so they face inward)
-// Right character always faces LEFT (default, already facing left since they're mirrored)
-// Rule: left char → scaleX(-1), right char → default (no flip)
 function charImg(id: CharacterId, emotion: Emotion) {
   return `/images/${id}_${emotion}_scene.png`
 }
 
-// Collect all unique images from all scenes for preloading
 function getAllSceneImages(stages: Stage[]): string[] {
   const imgs = new Set<string>()
   stages.forEach(s => {
     if (s.sceneData) {
       s.sceneData.panels.forEach(p => {
         imgs.add(p.bg)
-        p.characters.forEach(c => {
-          imgs.add(charImg(c.id, c.emotion))
-        })
+        p.characters.forEach(c => imgs.add(charImg(c.id, c.emotion)))
       })
     }
   })
   return Array.from(imgs)
 }
+
+// ─── Stage Data ───────────────────────────────────────────────────────────────
 
 const CHAPTER1_STAGES: Stage[] = [
   {
@@ -173,7 +173,7 @@ function usePreloadImages(urls: string[]) {
   useEffect(() => {
     urls.forEach(url => {
       if (loaded.current.has(url)) return
-      const img = new Image()
+      const img = new window.Image()
       img.src = url
       img.onload = () => loaded.current.add(url)
     })
@@ -212,7 +212,6 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
     return "linear-gradient(135deg,#1f2937,#374151)"
   }
 
-  // Character filter: speaker = normal, non-speaker = dimmed, no drop-shadow on speaker
   const charFilter = (isSpeaking: boolean) => {
     if (isNarrator) return "none"
     return isSpeaking ? "none" : "brightness(0.40) saturate(0.3)"
@@ -221,24 +220,13 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
   return (
     <div
       onClick={advance}
-      style={{
-        position:"fixed", inset:0, zIndex:200,
-        background:"#000", userSelect:"none", cursor:"pointer",
-        fontFamily:"'Segoe UI',system-ui,sans-serif",
-        overflow:"hidden",
-      }}
+      style={{ position:"fixed", inset:0, zIndex:200, background:"#000",
+        userSelect:"none", cursor:"pointer", fontFamily:"'Segoe UI',system-ui,sans-serif", overflow:"hidden" }}
     >
-      {/* BG — no transition, instant swap */}
-      <div style={{
-        position:"absolute", inset:0,
-        backgroundImage:`url(${panel.bg})`,
-        backgroundSize:"cover", backgroundPosition:"center",
-        filter:"brightness(0.70)",
-      }}/>
-      <div style={{
-        position:"absolute", inset:0,
-        background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.0) 42%, rgba(0,0,0,0.10) 100%)",
-      }}/>
+      <div style={{ position:"absolute", inset:0, backgroundImage:`url(${panel.bg})`,
+        backgroundSize:"cover", backgroundPosition:"center", filter:"brightness(0.70)" }}/>
+      <div style={{ position:"absolute", inset:0,
+        background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.0) 42%, rgba(0,0,0,0.10) 100%)" }}/>
 
       {/* Top HUD */}
       <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:30,
@@ -250,11 +238,9 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ display:"flex", gap:4 }}>
             {scene.panels.map((_,i) => (
-              <div key={i} style={{
-                width: i===idx ? 16 : 5, height:4, borderRadius:99,
+              <div key={i} style={{ width: i===idx ? 16 : 5, height:4, borderRadius:99,
                 background: i===idx ? "#8b5cf6" : i<idx ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.18)",
-                transition:"width 0.3s",
-              }}/>
+                transition:"width 0.3s" }}/>
             ))}
           </div>
           <button onClick={e=>{ e.stopPropagation(); onComplete() }}
@@ -266,7 +252,6 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       </div>
 
-      {/* Location caption */}
       {panel.overlayCaption && (
         <div style={{ position:"absolute", top:52, left:20, zIndex:30,
           background:"rgba(0,0,0,0.72)", borderLeft:"3px solid #8b5cf6", padding:"5px 14px" }}>
@@ -274,94 +259,50 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         </div>
       )}
 
-      {/* LEFT character — asset naturally faces RIGHT, so NO flip needed */}
       {left && (
-        <img
-          src={charImg(left.id, left.emotion)}
-          alt={left.name}
-          style={{
-            position: "absolute",
-            bottom: 126,
-            left: 0,
-            height: "calc(100vh - 174px)",
-            width: "auto",
-            maxWidth: "48%",
-            objectFit: "contain",
-            objectPosition: "bottom",
-            pointerEvents: "none",
-            opacity: fading ? 0 : 1,
-            transition: "opacity 0.14s ease",
-            filter: charFilter(isLeftSpeaking),
-            zIndex: 10,
-            display: "block",
-          }}
-        />
+        <img src={charImg(left.id, left.emotion)} alt={left.name}
+          style={{ position:"absolute", bottom:126, left:0,
+            height:"calc(100vh - 174px)", width:"auto", maxWidth:"48%",
+            objectFit:"contain", objectPosition:"bottom", pointerEvents:"none",
+            opacity: fading ? 0 : 1, transition:"opacity 0.14s ease",
+            filter: charFilter(isLeftSpeaking), zIndex:10, display:"block" }}/>
       )}
 
-      {/* RIGHT character — asset faces RIGHT, flip to face LEFT (inward) */}
       {right && (
-        <img
-          src={charImg(right.id, right.emotion)}
-          alt={right.name}
-          style={{
-            position: "absolute",
-            bottom: 126,
-            right: 0,
-            height: "calc(100vh - 174px)",
-            width: "auto",
-            maxWidth: "48%",
-            objectFit: "contain",
-            objectPosition: "bottom",
-            transform: "scaleX(-1)",
-            pointerEvents: "none",
-            opacity: fading ? 0 : 1,
-            transition: "opacity 0.14s ease",
-            filter: charFilter(isRightSpeaking),
-            zIndex: 10,
-            display: "block",
-          }}
-        />
+        <img src={charImg(right.id, right.emotion)} alt={right.name}
+          style={{ position:"absolute", bottom:126, right:0,
+            height:"calc(100vh - 174px)", width:"auto", maxWidth:"48%",
+            objectFit:"contain", objectPosition:"bottom", transform:"scaleX(-1)",
+            pointerEvents:"none", opacity: fading ? 0 : 1, transition:"opacity 0.14s ease",
+            filter: charFilter(isRightSpeaking), zIndex:10, display:"block" }}/>
       )}
 
       {/* Dialogue box */}
-      <div style={{
-        position:"absolute", bottom:0, left:0, right:0, zIndex:40,
-        opacity: fading ? 0 : 1, transition:"opacity 0.14s ease",
-      }}>
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, zIndex:40,
+        opacity: fading ? 0 : 1, transition:"opacity 0.14s ease" }}>
         {isNarrator ? (
-          <div style={{
-            margin:"0 14px 18px",
+          <div style={{ margin:"0 14px 18px",
             background:"rgba(0,0,0,0.82)", border:"1px solid rgba(139,92,246,0.35)",
             borderLeft:"4px solid #8b5cf6", borderRadius:10, padding:"14px 18px",
-            backdropFilter:"blur(10px)",
-          }}>
+            backdropFilter:"blur(10px)" }}>
             <p style={{ color:"#d1d5db", fontSize:14, fontStyle:"italic", lineHeight:1.75, margin:0 }}>
               {panel.text}
             </p>
           </div>
         ) : (
-          <div style={{
-            background:"rgba(4,8,18,0.92)", borderTop:"1px solid rgba(255,255,255,0.12)",
-            borderRadius:"14px 14px 0 0", backdropFilter:"blur(14px)",
-            minHeight:120,
-          }}>
+          <div style={{ background:"rgba(4,8,18,0.92)", borderTop:"1px solid rgba(255,255,255,0.12)",
+            borderRadius:"14px 14px 0 0", backdropFilter:"blur(14px)", minHeight:120 }}>
             {panel.speakerName && (
-              <div style={{
-                display:"inline-block", marginLeft:20, marginTop:-1,
-                background: nameBg(panel.speaker),
-                padding:"5px 18px 6px", borderRadius:"0 0 9px 9px",
-              }}>
+              <div style={{ display:"inline-block", marginLeft:20, marginTop:-1,
+                background: nameBg(panel.speaker), padding:"5px 18px 6px", borderRadius:"0 0 9px 9px" }}>
                 <span style={{ color:"#fff", fontWeight:900, fontSize:13, letterSpacing:"0.04em" }}>
                   {panel.speakerName}
                 </span>
               </div>
             )}
             <div style={{ padding:"10px 22px 0" }}>
-              <p style={{
-                color:"#f1f5f9", fontSize:15, lineHeight:1.8, margin:0,
-                fontStyle: panel.textType==="thought" ? "italic" : undefined,
-                letterSpacing:"0.01em",
-              }}>
+              <p style={{ color:"#f1f5f9", fontSize:15, lineHeight:1.8, margin:0,
+                fontStyle: panel.textType==="thought" ? "italic" : undefined, letterSpacing:"0.01em" }}>
                 {panel.textType==="thought" && <span style={{color:"#93c5fd"}}>‟ </span>}
                 {panel.text}
                 {panel.textType==="thought" && <span style={{color:"#93c5fd"}}> „</span>}
@@ -416,8 +357,6 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
           {isBoss ? "Boss Battle" : "Batalha"}
         </div>
         <h1 style={{ fontWeight:900, fontSize:22, margin:"8px 0 16px" }}>{stage.title}</h1>
-
-        {/* Battle info */}
         <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
           borderRadius:14, padding:"14px 20px", marginBottom:16, maxWidth:300 }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
@@ -431,51 +370,36 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
             </span>
           </div>
         </div>
-
-        {/* Stamina cost box */}
         <div style={{
           background: hasEnoughStamina ? "rgba(3,20,10,0.80)" : "rgba(40,0,0,0.60)",
           border: `1px solid ${hasEnoughStamina ? "rgba(16,185,129,0.30)" : "rgba(239,68,68,0.40)"}`,
-          borderRadius:14, padding:"14px 20px", marginBottom:24, maxWidth:300,
-        }}>
-          {/* Stamina cost */}
+          borderRadius:14, padding:"14px 20px", marginBottom:24, maxWidth:300 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
             <span style={{ color:"#64748b", fontSize:12 }}>Custo de Stamina</span>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{
-                color: hasEnoughStamina ? "#34d399" : "#f87171",
-                fontWeight:900, fontSize:16,
-              }}>-{staminaCost}</span>
+              <span style={{ color: hasEnoughStamina ? "#34d399" : "#f87171", fontWeight:900, fontSize:16 }}>
+                -{staminaCost}
+              </span>
               <span style={{ color:"#475569", fontSize:11 }}>STAMINA</span>
             </div>
           </div>
-
-          {/* Current stamina bar */}
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
             <span style={{ color:"#64748b", fontSize:11 }}>Sua Stamina</span>
-            <span style={{
-              color: hasEnoughStamina ? "#6ee7b7" : "#f87171",
-              fontWeight:700, fontSize:12,
-            }}>{stamina}/{maxStamina}</span>
+            <span style={{ color: hasEnoughStamina ? "#6ee7b7" : "#f87171", fontWeight:700, fontSize:12 }}>
+              {stamina}/{maxStamina}
+            </span>
           </div>
           <div style={{ height:6, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
-            <div style={{
-              height:"100%", borderRadius:99,
-              width:`${staminaPct}%`,
+            <div style={{ height:"100%", borderRadius:99, width:`${staminaPct}%`,
               background: hasEnoughStamina
                 ? "linear-gradient(90deg,#059669,#10b981)"
                 : "linear-gradient(90deg,#dc2626,#ef4444)",
               boxShadow: hasEnoughStamina ? "0 0 6px rgba(16,185,129,0.5)" : "0 0 6px rgba(239,68,68,0.5)",
-              transition:"width 0.5s",
-            }}/>
+              transition:"width 0.5s" }}/>
           </div>
-
-          {/* Not enough stamina warning */}
           {!hasEnoughStamina && (
-            <div style={{
-              marginTop:10, padding:"8px 12px", borderRadius:8,
-              background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)",
-            }}>
+            <div style={{ marginTop:10, padding:"8px 12px", borderRadius:8,
+              background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)" }}>
               <p style={{ color:"#fca5a5", fontSize:11, margin:0, fontWeight:700 }}>
                 ⚡ Stamina insuficiente!{" "}
                 {staminaNextTickSeconds > 0
@@ -485,34 +409,24 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
             </div>
           )}
         </div>
-
         <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
           <button onClick={onBack} style={{ padding:"11px 22px", borderRadius:11,
             background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)",
             color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Voltar</button>
-          <button
-            onClick={handleStart}
-            disabled={!hasEnoughStamina}
+          <button onClick={handleStart} disabled={!hasEnoughStamina}
             style={{ padding:"11px 28px", borderRadius:11, border:"none",
-              background: !hasEnoughStamina
-                ? "rgba(255,255,255,0.06)"
-                : isBoss
-                ? "linear-gradient(135deg,#7f1d1d,#dc2626)"
+              background: !hasEnoughStamina ? "rgba(255,255,255,0.06)"
+                : isBoss ? "linear-gradient(135deg,#7f1d1d,#dc2626)"
                 : "linear-gradient(135deg,#1e3a8a,#3b82f6)",
               color: hasEnoughStamina ? "#fff" : "#475569",
               fontWeight:900, fontSize:14,
               cursor: hasEnoughStamina ? "pointer" : "not-allowed",
-              boxShadow: !hasEnoughStamina
-                ? "none"
-                : isBoss
-                ? "0 6px 20px rgba(220,38,38,0.35)"
+              boxShadow: !hasEnoughStamina ? "none"
+                : isBoss ? "0 6px 20px rgba(220,38,38,0.35)"
                 : "0 6px 20px rgba(59,130,246,0.35)",
-              transition:"all 0.2s",
-            }}>
-            {!hasEnoughStamina
-              ? "⚡ Sem Stamina"
-              : isBoss
-              ? "⚔️ Batalha Final!"
+              transition:"all 0.2s" }}>
+            {!hasEnoughStamina ? "⚡ Sem Stamina"
+              : isBoss ? "⚔️ Batalha Final!"
               : "⚔️ Iniciar Batalha!"}
           </button>
         </div>
@@ -521,17 +435,11 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
   )
 }
 
-// ─── Post-Battle Result Screen ────────────────────────────────────────────────
+// ─── Post-Battle Result ────────────────────────────────────────────────────────
 
 function PostBattleScreen({
-  won,
-  onReturnStory,
-  onContinue,
-}: {
-  won: boolean
-  onReturnStory: () => void
-  onContinue: () => void
-}) {
+  won, onReturnStory, onContinue,
+}: { won:boolean; onReturnStory:()=>void; onContinue:()=>void }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:200,
       background:"rgba(0,0,0,0.92)", backdropFilter:"blur(16px)",
@@ -539,28 +447,22 @@ function PostBattleScreen({
       fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9" }}>
       <div style={{ textAlign:"center", padding:"0 24px" }}>
         <div style={{ fontSize:56, marginBottom:16 }}>{won ? "🏆" : "💀"}</div>
-        <h2 style={{ fontWeight:900, fontSize:24, margin:"0 0 8px" }}>
-          {won ? "Vitória!" : "Derrota..."}
-        </h2>
+        <h2 style={{ fontWeight:900, fontSize:24, margin:"0 0 8px" }}>{won ? "Vitória!" : "Derrota..."}</h2>
         <p style={{ color:"#64748b", fontSize:14, margin:"0 0 32px" }}>
           {won ? "Batalha concluída com sucesso." : "Você foi derrotado. Tente novamente."}
         </p>
         <div style={{ display:"flex", flexDirection:"column", gap:12, alignItems:"center" }}>
           {won && (
-            <button onClick={onContinue} style={{
-              width:260, padding:"15px 0", borderRadius:14, border:"none",
-              background:"linear-gradient(135deg,#4c1d95,#7c3aed)",
-              color:"#fff", fontWeight:900, fontSize:15, cursor:"pointer",
-              boxShadow:"0 6px 24px rgba(124,58,237,0.40)",
-            }}>
+            <button onClick={onContinue} style={{ width:260, padding:"15px 0", borderRadius:14, border:"none",
+              background:"linear-gradient(135deg,#4c1d95,#7c3aed)", color:"#fff",
+              fontWeight:900, fontSize:15, cursor:"pointer",
+              boxShadow:"0 6px 24px rgba(124,58,237,0.40)" }}>
               ▶ Continuar História
             </button>
           )}
-          <button onClick={onReturnStory} style={{
-            width:260, padding:"13px 0", borderRadius:14,
+          <button onClick={onReturnStory} style={{ width:260, padding:"13px 0", borderRadius:14,
             background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
-            color:"#94a3b8", fontWeight:800, fontSize:14, cursor:"pointer",
-          }}>
+            color:"#94a3b8", fontWeight:800, fontSize:14, cursor:"pointer" }}>
             ← Voltar ao Story Mode
           </button>
         </div>
@@ -569,77 +471,420 @@ function PostBattleScreen({
   )
 }
 
-// ─── Stage Card ───────────────────────────────────────────────────────────────
+// ─── Board Map: Node Definitions ──────────────────────────────────────────────
+//
+//  Positions (x, y) are percentages of the viewport.
+//  They trace a path from Calem's house (bottom-left of the world image)
+//  through the forest and ruins, into the walled city of Camelot,
+//  up to the floating colosseum at the top.
+//
+//  WORLD IMAGE path: /images/gearperks-world.png
+//  → Place the Gear Perks world panorama at that path in your /public folder.
 
-function StageCard({ stage, onPress, completedIds }: { stage:Stage; onPress:()=>void; completedIds:Set<string> }) {
-  const isCompleted = completedIds.has(stage.id)
-  const prevIdx = CHAPTER1_STAGES.findIndex(s=>s.id===stage.id) - 1
-  const prevStage = prevIdx >= 0 ? CHAPTER1_STAGES[prevIdx] : null
-  const isLocked = prevStage !== null && !completedIds.has(prevStage.id)
-  const accent = stage.type==="boss" ? "#f87171" : stage.type==="battle" ? "#60a5fa" : "#a78bfa"
-  const bg = stage.type==="boss" ? "linear-gradient(135deg,rgba(220,38,38,0.14),rgba(127,29,29,0.07))"
-    : stage.type==="battle" ? "linear-gradient(135deg,rgba(37,99,235,0.14),rgba(29,78,216,0.07))"
-    : "linear-gradient(135deg,rgba(91,33,182,0.11),rgba(55,48,163,0.05))"
-  const icon = stage.type==="boss" ? "💀" : stage.type==="battle" ? "⚔️" : "📖"
+interface MapNodeDef {
+  stageId:  string | null   // null = START node (no stage)
+  type:     "start" | "scene" | "battle" | "boss"
+  label:    string
+  sublabel: string | null
+  x: number   // % from left
+  y: number   // % from top
+}
+
+const MAP_NODES: MapNodeDef[] = [
+  //  START — Calem's house, bottom-left of world image
+  { stageId: null,      type: "start",  label: "Início",             sublabel: null,          x: 22,  y: 83 },
+  //  Chapter 1 stages in story order
+  { stageId: "c1s1",   type: "scene",  label: "O Encontro",         sublabel: "Cena 1",      x: 20,  y: 71 },
+  { stageId: "c1s2",   type: "scene",  label: "A Fuga",             sublabel: "Cena 2",      x: 16,  y: 59 },
+  { stageId: "c1s3",   type: "scene",  label: "As Ruínas",          sublabel: "Cena 3",      x: 26,  y: 47 },
+  { stageId: "c1s4",   type: "scene",  label: "A Rachadura",        sublabel: "Cena 4",      x: 38,  y: 53 },
+  { stageId: "c1b1",   type: "battle", label: "Portões de Camelot", sublabel: "Batalha",     x: 50,  y: 66 },
+  { stageId: "c1s5",   type: "scene",  label: "O Refém",            sublabel: "Cena 5",      x: 56,  y: 54 },
+  { stageId: "c1s6",   type: "scene",  label: "Recusa e Confronto", sublabel: "Cena 6",      x: 60,  y: 41 },
+  { stageId: "c1s7",   type: "scene",  label: "Nos Telhados",       sublabel: "Cena 7",      x: 61,  y: 29 },
+  { stageId: "c1boss", type: "boss",   label: "Mefisto",            sublabel: "Boss Battle", x: 59,  y: 17 },
+  { stageId: "c1s8",   type: "scene",  label: "A Revelação",        sublabel: "Cena Final",  x: 55,  y: 6  },
+]
+
+// ─── Board Map View ───────────────────────────────────────────────────────────
+
+function StoryMapView({
+  stages, completedIds, onPress, onBack, stamina, maxStamina, staminaNextTickSeconds,
+}: {
+  stages: Stage[]
+  completedIds: Set<string>
+  onPress: (stage: Stage) => void
+  onBack: () => void
+  stamina: number
+  maxStamina: number
+  staminaNextTickSeconds: number
+}) {
+  // Window pixel dimensions so SVG path lines render correctly
+  const [vw, setVw] = useState(() => typeof window !== "undefined" ? window.innerWidth  : 1024)
+  const [vh, setVh] = useState(() => typeof window !== "undefined" ? window.innerHeight : 768)
+
+  useEffect(() => {
+    const handle = () => { setVw(window.innerWidth); setVh(window.innerHeight) }
+    window.addEventListener("resize", handle)
+    return () => window.removeEventListener("resize", handle)
+  }, [])
+
+  const px = (pct: number) => (pct / 100) * vw
+  const py = (pct: number) => (pct / 100) * vh
+
+  const done  = stages.filter(s => completedIds.has(s.id)).length
+  const total = stages.length
+  const pct   = Math.round((done / total) * 100)
+  const isChapterDone = done === total
+
+  // First uncompleted accessible stage
+  const nextStageId = (() => {
+    for (let i = 0; i < stages.length; i++) {
+      if (completedIds.has(stages[i].id)) continue
+      if (i === 0 || completedIds.has(stages[i - 1].id)) return stages[i].id
+      break
+    }
+    return null
+  })()
+
+  // Player sits at the last completed stage, or at START if none
+  const lastCompletedId = (() => {
+    for (let i = stages.length - 1; i >= 0; i--) {
+      if (completedIds.has(stages[i].id)) return stages[i].id
+    }
+    return null
+  })()
+  const playerNodeId = lastCompletedId ?? null  // null → START node
+
+  const isAccessible = (stageId: string) => {
+    const idx = stages.findIndex(s => s.id === stageId)
+    return idx === 0 || (idx > 0 && completedIds.has(stages[idx - 1].id))
+  }
+
   return (
-    <button onClick={isLocked?undefined:onPress} disabled={isLocked} style={{
-      width:"100%", background:isLocked?"rgba(255,255,255,0.02)":bg,
-      border:`1px solid ${isLocked?"rgba(255,255,255,0.05)":isCompleted?accent+"50":accent+"28"}`,
-      borderRadius:14, padding:"13px 14px",
-      display:"flex", alignItems:"center", gap:12,
-      cursor:isLocked?"not-allowed":"pointer",
-      opacity:isLocked?0.45:1, transition:"all 0.2s", textAlign:"left",
-    }}>
-      <div style={{ width:44, height:44, borderRadius:11, flexShrink:0,
-        background:isCompleted?"rgba(34,197,94,0.15)":isLocked?"rgba(255,255,255,0.04)":stage.type==="boss"?"rgba(220,38,38,0.18)":stage.type==="battle"?"rgba(37,99,235,0.18)":"rgba(91,33,182,0.18)",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        border:`1px solid ${isCompleted?"rgba(34,197,94,0.3)":"rgba(255,255,255,0.07)"}`, fontSize:20 }}>
-        {isLocked ? <Lock size={15} color="#334155"/> : isCompleted ? <span style={{color:"#22c55e",fontSize:17}}>✓</span> : icon}
-      </div>
-      <div style={{ flex:1 }}>
-        <div style={{ display:"flex", gap:5, marginBottom:3, flexWrap:"wrap" }}>
-          <span style={{ fontSize:9, fontWeight:800, color:accent, background:`${accent}18`, padding:"2px 7px", borderRadius:5, letterSpacing:"0.08em", textTransform:"uppercase" }}>{stage.subtitle}</span>
-          {isCompleted && <span style={{ fontSize:9, color:"#22c55e", fontWeight:700, background:"rgba(34,197,94,0.1)", padding:"2px 7px", borderRadius:5 }}>✓ Concluído</span>}
+    <div style={{ position:"fixed", inset:0, overflow:"hidden", fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
+
+      {/* ── World background ── */}
+      {/* Drop the Gear Perks world panorama at /public/images/gearperks-world.png */}
+      <div style={{ position:"absolute", inset:0,
+        backgroundImage:"url(/images/gearperks-world.png)",
+        backgroundSize:"cover", backgroundPosition:"center top" }}/>
+
+      {/* Subtle darkening so nodes and text remain readable */}
+      <div style={{ position:"absolute", inset:0,
+        background:"linear-gradient(160deg,rgba(3,6,14,0.42) 0%,rgba(3,6,14,0.18) 50%,rgba(3,6,14,0.50) 100%)" }}/>
+
+      {/* ── SVG path lines ── */}
+      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+        pointerEvents:"none", zIndex:5, overflow:"visible" }}>
+        {MAP_NODES.slice(0, -1).map((node, i) => {
+          const next = MAP_NODES[i + 1]
+          // A segment is "lit" (completed) when the origin node is done (or it's the START)
+          const segLit = node.stageId === null
+            ? true
+            : completedIds.has(node.stageId)
+          return (
+            <g key={`path-${i}`}>
+              {/* Dark navy border — thicker */}
+              <line
+                x1={px(node.x)} y1={py(node.y)} x2={px(next.x)} y2={py(next.y)}
+                stroke="#0c1a30" strokeWidth={8} strokeLinecap="round"
+                strokeDasharray={segLit ? undefined : "18 10"}
+                opacity={segLit ? 1 : 0.55}
+              />
+              {/* Purple foreground */}
+              <line
+                x1={px(node.x)} y1={py(node.y)} x2={px(next.x)} y2={py(next.y)}
+                stroke={segLit ? "#7c3aed" : "#3b0764"}
+                strokeWidth={4} strokeLinecap="round"
+                strokeDasharray={segLit ? undefined : "18 10"}
+                opacity={segLit ? 0.92 : 0.45}
+              />
+              {/* Faint glow on lit segments */}
+              {segLit && (
+                <line
+                  x1={px(node.x)} y1={py(node.y)} x2={px(next.x)} y2={py(next.y)}
+                  stroke="#a855f7" strokeWidth={2} strokeLinecap="round" opacity={0.35}
+                  style={{ filter:"blur(1px)" }}
+                />
+              )}
+            </g>
+          )
+        })}
+      </svg>
+
+      {/* ── Map Nodes ── */}
+      {MAP_NODES.map((nodeDef) => {
+        const isStart     = nodeDef.stageId === null
+        const stage       = isStart ? null : stages.find(s => s.id === nodeDef.stageId)
+        const isCompleted = !isStart && !!stage && completedIds.has(nodeDef.stageId!)
+        const accessible  = !isStart && isAccessible(nodeDef.stageId!)
+        const isNext      = nodeDef.stageId === nextStageId
+        const isPlayer    = isStart ? playerNodeId === null : nodeDef.stageId === playerNodeId
+
+        // Colour palette per type
+        const palette = {
+          start:  { bg:"#1e293b",                                      border:"#475569",  glow:"rgba(148,163,184,0.4)" },
+          scene:  { bg:"linear-gradient(145deg,#3b0764,#5b21b6)",      border:"#7c3aed",  glow:"rgba(124,58,237,0.6)" },
+          battle: { bg:"linear-gradient(145deg,#172554,#1d4ed8)",      border:"#2563eb",  glow:"rgba(59,130,246,0.6)" },
+          boss:   { bg:"linear-gradient(145deg,#450a0a,#991b1b)",      border:"#dc2626",  glow:"rgba(220,38,38,0.6)" },
+        }[nodeDef.type]
+
+        const nodeBg     = isCompleted ? "linear-gradient(145deg,#14532d,#166534)" : !accessible && !isStart ? "#0f172a" : palette.bg
+        const nodeBorder = isPlayer ? "#38bdf8" : isNext ? "#22c55e" : isCompleted ? "#22c55e" : !accessible && !isStart ? "#1e293b" : palette.border
+        const nodeGlow   = isPlayer ? "0 0 20px rgba(56,189,248,0.7),0 6px 16px rgba(0,0,0,0.6)"
+                         : isNext   ? "0 0 20px rgba(34,197,94,0.7),0 6px 16px rgba(0,0,0,0.6)"
+                         : isCompleted ? "0 0 14px rgba(34,197,94,0.4),0 4px 12px rgba(0,0,0,0.5)"
+                         : `0 0 14px ${palette.glow},0 4px 12px rgba(0,0,0,0.5)`
+
+        return (
+          <div key={nodeDef.stageId ?? "start"} style={{
+            position:"absolute",
+            left:`${nodeDef.x}%`, top:`${nodeDef.y}%`,
+            transform:"translate(-50%,-50%)",
+            zIndex:10,
+            display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+          }}>
+
+            {/* ▶ PRÓXIMO badge */}
+            {isNext && (
+              <div style={{
+                background:"#16a34a", borderRadius:8, padding:"2px 8px",
+                fontSize:8, fontWeight:900, color:"#fff", letterSpacing:"0.06em",
+                whiteSpace:"nowrap", marginBottom:2,
+                boxShadow:"0 2px 10px rgba(22,163,74,0.65)",
+                animation:"storyBounce 1.6s ease-in-out infinite",
+              }}>▶ PRÓXIMO</div>
+            )}
+
+            {/* Outer pulse ring for player position */}
+            {isPlayer && (
+              <div style={{
+                position:"absolute", top:"50%", left:"50%",
+                transform:"translate(-50%,-50%)",
+                width:66, height:66, borderRadius:"50%",
+                border:"2px solid #38bdf8",
+                animation:"storyPulseRing 1.8s ease-out infinite",
+                pointerEvents:"none",
+              }}/>
+            )}
+
+            {/* Node circle */}
+            <button
+              onClick={() => accessible && !isStart && stage ? onPress(stage) : undefined}
+              disabled={!accessible || isStart}
+              style={{
+                width:50, height:50, borderRadius:"50%",
+                background: nodeBg,
+                border:`3px solid ${nodeBorder}`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                cursor: accessible && !isStart ? "pointer" : "default",
+                boxShadow: nodeGlow,
+                opacity: !accessible && !isStart ? 0.42 : 1,
+                transition:"transform 0.15s, box-shadow 0.15s",
+                position:"relative",
+                // Extra interactive feel
+              }}
+              onMouseEnter={e => { if (accessible && !isStart) (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.10)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)" }}
+              onMouseDown={e  => { if (accessible && !isStart) (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.95)" }}
+              onMouseUp={e    => { if (accessible && !isStart) (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.10)" }}
+            >
+              {/* Player blue highlight ring (on top of border) */}
+              {isPlayer && (
+                <div style={{
+                  position:"absolute", inset:-4, borderRadius:"50%",
+                  border:"2px solid #38bdf8",
+                  boxShadow:"0 0 12px rgba(56,189,248,0.9)",
+                  pointerEvents:"none",
+                }}/>
+              )}
+
+              {/* Icon */}
+              {isStart ? (
+                <span style={{fontSize:22}}>🏠</span>
+              ) : isCompleted ? (
+                <span style={{color:"#4ade80", fontSize:22, fontWeight:900}}>✓</span>
+              ) : !accessible ? (
+                <Lock size={17} color="#334155"/>
+              ) : nodeDef.type === "scene" ? (
+                <BookOpen size={19} color="#c4b5fd"/>
+              ) : nodeDef.type === "boss" ? (
+                <Swords size={19} color="#fca5a5"/>
+              ) : (
+                <Swords size={19} color="#93c5fd"/>
+              )}
+            </button>
+
+            {/* Label card */}
+            <div style={{
+              background:"rgba(2,6,16,0.82)",
+              border:"1px solid rgba(255,255,255,0.09)",
+              borderRadius:7, padding:"2px 7px",
+              backdropFilter:"blur(8px)",
+              textAlign:"center", maxWidth:96,
+            }}>
+              {nodeDef.sublabel && (
+                <div style={{
+                  fontSize:7, fontWeight:900, textTransform:"uppercase", letterSpacing:"0.08em",
+                  color: nodeDef.type==="boss" ? "#fca5a5"
+                       : nodeDef.type==="battle" ? "#93c5fd"
+                       : "#c4b5fd",
+                  lineHeight:1.4,
+                }}>{nodeDef.sublabel}</div>
+              )}
+              <div style={{
+                fontSize:9, fontWeight:700, lineHeight:1.35,
+                color: accessible || isStart ? "#e2e8f0" : "#334155",
+                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:90,
+              }}>{nodeDef.label}</div>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* ── Top header ── */}
+      <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:50,
+        background:"rgba(2,6,16,0.88)", backdropFilter:"blur(16px)",
+        borderBottom:"1px solid rgba(255,255,255,0.07)",
+        padding:"11px 16px", display:"flex", alignItems:"center", gap:12 }}>
+
+        <button onClick={onBack} style={{
+          background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.10)",
+          borderRadius:10, padding:"7px 10px", cursor:"pointer", color:"#94a3b8",
+          display:"flex", alignItems:"center" }}>
+          <ArrowLeft size={17}/>
+        </button>
+
+        <div style={{flex:1}}>
+          <div style={{display:"flex", alignItems:"center", gap:7}}>
+            <BookOpen size={15} color="#8b5cf6"/>
+            <span style={{fontWeight:900, fontSize:15, color:"#e2e8f0"}}>Campanha</span>
+          </div>
+          <p style={{color:"#475569", fontSize:10, margin:0}}>
+            Capítulo 1 — A Lenda da Estrela
+          </p>
         </div>
-        <p style={{ color:isLocked?"#334155":"#e2e8f0", fontWeight:900, fontSize:14, margin:0 }}>{stage.title}</p>
+
+        {/* Stamina indicator */}
+        <div style={{ display:"flex", alignItems:"center", gap:5,
+          background:"rgba(3,20,10,0.82)", border:"1px solid rgba(16,185,129,0.22)",
+          borderRadius:9, padding:"5px 11px" }}>
+          <span style={{fontSize:11, color:"#34d399"}}>⚡</span>
+          <span style={{fontWeight:900, fontSize:13, color:"#6ee7b7"}}>
+            {stamina}<span style={{color:"#065f46", fontWeight:600, fontSize:10}}>/{maxStamina}</span>
+          </span>
+          {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+            <span style={{fontSize:9, color:"rgba(52,211,153,0.55)", fontVariantNumeric:"tabular-nums"}}>
+              {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
+            </span>
+          )}
+        </div>
+
+        {/* Chapter progress pill */}
+        <div style={{textAlign:"right"}}>
+          <div style={{fontSize:11, fontWeight:900, color:"#a78bfa", marginBottom:3}}>
+            {done}/{total}
+          </div>
+          <div style={{width:44, height:4, borderRadius:99, background:"rgba(255,255,255,0.08)", overflow:"hidden"}}>
+            <div style={{height:"100%", width:`${pct}%`, borderRadius:99,
+              background:"linear-gradient(90deg,#7c3aed,#a855f7)",
+              boxShadow:"0 0 8px rgba(168,85,247,0.5)", transition:"width 0.6s"}}/>
+          </div>
+        </div>
       </div>
-      {!isLocked && <ChevronRight size={15} color="#475569"/>}
-    </button>
+
+      {/* ── Chapter-complete banner ── */}
+      {isChapterDone && (
+        <div style={{ position:"fixed", top:64, left:"50%", transform:"translateX(-50%)",
+          zIndex:60, background:"rgba(234,179,8,0.12)", border:"1px solid rgba(234,179,8,0.30)",
+          borderRadius:14, padding:"10px 22px", display:"flex", alignItems:"center", gap:10,
+          backdropFilter:"blur(12px)", boxShadow:"0 6px 24px rgba(0,0,0,0.4)" }}>
+          <span style={{fontSize:22}}>🏆</span>
+          <div>
+            <p style={{fontWeight:900, fontSize:13, color:"#fbbf24", margin:0}}>Capítulo 1 Concluído!</p>
+            <p style={{color:"#78716c", fontSize:10, margin:0}}>Capítulo 2 em breve...</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Legend ── */}
+      <div style={{ position:"fixed", left:12, bottom:72, zIndex:50,
+        background:"rgba(2,6,16,0.82)", border:"1px solid rgba(255,255,255,0.07)",
+        borderRadius:10, padding:"8px 10px", backdropFilter:"blur(10px)",
+        display:"flex", flexDirection:"column", gap:5 }}>
+        {[
+          { color:"#93c5fd", icon:<Swords size={11} color="#93c5fd"/>, label:"Batalha" },
+          { color:"#c4b5fd", icon:<BookOpen size={11} color="#c4b5fd"/>, label:"Cena" },
+          { color:"#fca5a5", icon:<Swords size={11} color="#fca5a5"/>, label:"Boss" },
+        ].map(item => (
+          <div key={item.label} style={{display:"flex", alignItems:"center", gap:5}}>
+            {item.icon}
+            <span style={{fontSize:9, color:"rgba(255,255,255,0.55)", fontWeight:600}}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Bottom nav button ── */}
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:50,
+        padding:"0 0 18px", display:"flex", justifyContent:"center",
+        background:"linear-gradient(to top, rgba(2,6,16,0.90) 0%, transparent 100%)" }}>
+        <button onClick={onBack} style={{
+          display:"flex", alignItems:"center", gap:8,
+          background:"rgba(2,6,16,0.90)", border:"1px solid rgba(255,255,255,0.12)",
+          borderRadius:16, padding:"11px 24px",
+          color:"#94a3b8", fontWeight:800, fontSize:13,
+          cursor:"pointer", backdropFilter:"blur(12px)",
+          boxShadow:"0 4px 20px rgba(0,0,0,0.4)",
+        }}>
+          <Home size={14}/> Menu Principal
+        </button>
+      </div>
+
+      {/* ── Keyframes ── */}
+      <style>{`
+        @keyframes storyPulseRing {
+          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.80; }
+          100% { transform: translate(-50%,-50%) scale(1.70); opacity: 0;    }
+        }
+        @keyframes storyBounce {
+          0%, 100% { transform: translateY(0);   }
+          50%       { transform: translateY(-4px); }
+        }
+      `}</style>
+    </div>
   )
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const LS_KEY = "gpgame_story_progress"
+const LS_KEY        = "gpgame_story_progress"
 const LS_BATTLE_KEY = "gpgame_story_battle_pending"
 
 export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScreenProps) {
   const { stamina, maxStamina, staminaNextTickSeconds } = useGame()
+
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try { const s = localStorage.getItem(LS_KEY); return s ? new Set(JSON.parse(s)) : new Set() } catch { return new Set() }
   })
-  const [activeScene, setActiveScene] = useState<Scene|null>(null)
-  const [battleStage, setBattleStage] = useState<Stage|null>(null)
-  const [pendingId, setPendingId] = useState<string|null>(null)
-  const [postBattle, setPostBattle] = useState<{ won: boolean; stageId: string } | null>(null)
+  const [activeScene,  setActiveScene]  = useState<Scene  | null>(null)
+  const [battleStage,  setBattleStage]  = useState<Stage  | null>(null)
+  const [pendingId,    setPendingId]    = useState<string | null>(null)
+  const [postBattle,   setPostBattle]   = useState<{ won:boolean; stageId:string } | null>(null)
 
-  // Preload all images on mount
   usePreloadImages(getAllSceneImages(CHAPTER1_STAGES))
 
-  // Check if we returned from a battle
+  // Pick up battle result when returning from the duel screen
   useEffect(() => {
     const pending = localStorage.getItem(LS_BATTLE_KEY)
-    if (pending) {
-      localStorage.removeItem(LS_BATTLE_KEY)
-      try {
-        const { stageId, won } = JSON.parse(pending)
-        if (won) {
-          setCompletedIds(prev => new Set([...prev, stageId]))
-        }
-        setPostBattle({ won, stageId })
-      } catch {}
-    }
+    if (!pending) return
+    localStorage.removeItem(LS_BATTLE_KEY)
+    try {
+      const { stageId, won } = JSON.parse(pending)
+      if (won) setCompletedIds(prev => new Set([...prev, stageId]))
+      setPostBattle({ won, stageId })
+    } catch {}
   }, [])
 
   useEffect(() => {
@@ -661,14 +906,12 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   const handleBattleStart = () => {
     if (!battleStage) return
     const isBoss = battleStage.type === "boss"
-    const lp = isBoss ? 30 : 20
-    localStorage.setItem(LS_BATTLE_KEY, JSON.stringify({ stageId: battleStage.id, won: false, lp }))
+    localStorage.setItem(LS_BATTLE_KEY, JSON.stringify({ stageId: battleStage.id, won: false, lp: isBoss ? 30 : 20 }))
     setBattleStage(null)
     setPendingId(null)
     onStartBattle(isBoss ? "story-boss" : "story-normal", battleStage.id)
   }
 
-  // Get next stage after a completed one
   const getNextStage = (stageId: string): Stage | null => {
     const idx = CHAPTER1_STAGES.findIndex(s => s.id === stageId)
     return idx >= 0 && idx + 1 < CHAPTER1_STAGES.length ? CHAPTER1_STAGES[idx + 1] : null
@@ -681,11 +924,6 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
     if (next) handlePress(next)
   }
 
-  const total = CHAPTER1_STAGES.length
-  const done  = CHAPTER1_STAGES.filter(s => completedIds.has(s.id)).length
-  const pct   = Math.round((done/total)*100)
-  const reversed = [...CHAPTER1_STAGES].reverse()
-
   return (
     <>
       {activeScene && (
@@ -695,12 +933,15 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
           setActiveScene(null)
         }}/>
       )}
+
       {battleStage && (
-        <BattleIntroScreen stage={battleStage}
+        <BattleIntroScreen
+          stage={battleStage}
           onBack={() => { setBattleStage(null); setPendingId(null) }}
           onStart={handleBattleStart}
         />
       )}
+
       {postBattle && (
         <PostBattleScreen
           won={postBattle.won}
@@ -709,120 +950,18 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
         />
       )}
 
-      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
-        color:"#f1f5f9", fontFamily:"'Segoe UI',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
-        <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0,
-          background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(91,33,182,0.12) 0%,transparent 60%)" }}/>
-
-        {/* Header */}
-        <div style={{ position:"sticky", top:0, zIndex:50,
-          background:"rgba(2,6,16,0.92)", backdropFilter:"blur(16px)",
-          borderBottom:"1px solid rgba(255,255,255,0.07)", padding:"14px 16px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12, maxWidth:600, margin:"0 auto" }}>
-            <button onClick={onBack} style={{ background:"rgba(255,255,255,0.06)",
-              border:"1px solid rgba(255,255,255,0.10)", borderRadius:12, padding:"8px 10px",
-              cursor:"pointer", color:"#94a3b8", display:"flex", alignItems:"center" }}>
-              <ArrowLeft size={18}/>
-            </button>
-            <div style={{ flex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <BookOpen size={18} color="#8b5cf6"/>
-                <h1 style={{ fontWeight:900, fontSize:18, margin:0 }}>Campanha</h1>
-              </div>
-              <p style={{ color:"#475569", fontSize:11, margin:0 }}>Gear Perks — A Lenda da Estrela</p>
-            </div>
-            {/* Stamina */}
-            <div style={{
-              display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3,
-              background:"rgba(3,20,10,0.80)", border:"1px solid rgba(16,185,129,0.25)",
-              borderRadius:10, padding:"6px 12px",
-            }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ fontSize:9, fontWeight:800, color:"#34d399", letterSpacing:"0.08em", textTransform:"uppercase" }}>Stamina</span>
-                <span style={{ fontWeight:900, fontSize:13, color:"#6ee7b7" }}>
-                  {stamina}<span style={{ color:"#065f46", fontWeight:600, fontSize:11 }}>/{maxStamina}</span>
-                </span>
-                {stamina < maxStamina && staminaNextTickSeconds > 0 && (
-                  <span style={{ fontSize:9, fontWeight:700, color:"rgba(52,211,153,0.55)", fontVariantNumeric:"tabular-nums" }}>
-                    {String(Math.floor(staminaNextTickSeconds / 60)).padStart(1,"0")}:{String(staminaNextTickSeconds % 60).padStart(2,"0")}
-                  </span>
-                )}
-              </div>
-              <div style={{ width:90, height:5, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
-                <div style={{
-                  height:"100%", borderRadius:99,
-                  width:`${Math.min(100,(stamina/maxStamina)*100)}%`,
-                  background: stamina === maxStamina
-                    ? "linear-gradient(90deg,#10b981,#34d399)"
-                    : stamina < maxStamina * 0.3
-                    ? "linear-gradient(90deg,#ef4444,#f87171)"
-                    : "linear-gradient(90deg,#059669,#10b981)",
-                  boxShadow:"0 0 6px rgba(16,185,129,0.5)",
-                  transition:"width 0.5s",
-                }}/>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div style={{ flex:1, overflowY:"auto", position:"relative", zIndex:1 }}>
-          <div style={{ maxWidth:600, margin:"0 auto", padding:"16px 16px 100px" }}>
-
-            {/* Chapter card */}
-            <div style={{ background:"linear-gradient(135deg,rgba(91,33,182,0.20),rgba(55,48,163,0.12))",
-              border:"1px solid rgba(91,33,182,0.30)", borderRadius:20, padding:"20px", marginBottom:20 }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:14 }}>
-                <div style={{ width:54, height:54, borderRadius:14, flexShrink:0,
-                  background:"linear-gradient(145deg,#4c1d95,#7c3aed)", display:"flex",
-                  alignItems:"center", justifyContent:"center",
-                  boxShadow:"0 8px 24px rgba(124,58,237,0.35)", fontSize:24 }}>⭐</div>
-                <div style={{ flex:1 }}>
-                  <span style={{ fontSize:9, fontWeight:800, color:"#a78bfa",
-                    background:"rgba(91,33,182,0.2)", padding:"2px 8px", borderRadius:6,
-                    letterSpacing:"0.08em", textTransform:"uppercase", display:"inline-block", marginBottom:6 }}>
-                    Capítulo 1
-                  </span>
-                  <h2 style={{ fontWeight:900, fontSize:17, margin:"0 0 4px", color:"#e2e8f0" }}>A Lenda da Estrela</h2>
-                  <p style={{ color:"#64748b", fontSize:12, margin:0, lineHeight:1.5 }}>
-                    Um encontro inesperado, um reino em alerta e um segredo que mudará dois mundos.
-                  </p>
-                </div>
-              </div>
-              <div style={{ marginTop:16 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                  <span style={{ fontSize:11, color:"#64748b" }}>Progresso</span>
-                  <span style={{ fontSize:11, color:"#a78bfa", fontWeight:800 }}>{done}/{total} · {pct}%</span>
-                </div>
-                <div style={{ height:6, borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
-                  <div style={{ height:"100%", borderRadius:99, width:`${pct}%`,
-                    background:"linear-gradient(90deg,#7c3aed,#a855f7)",
-                    boxShadow:"0 0 12px rgba(168,85,247,0.5)", transition:"width 0.6s" }}/>
-                </div>
-              </div>
-            </div>
-
-            <p style={{ color:"#334155", fontSize:11, textAlign:"center", marginBottom:14, fontStyle:"italic" }}>
-              ↑ As fases avançam de baixo para cima ↑
-            </p>
-
-            <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-              {reversed.map(stage => (
-                <StageCard key={stage.id} stage={stage} onPress={()=>handlePress(stage)} completedIds={completedIds}/>
-              ))}
-            </div>
-
-            {pct === 100 && (
-              <div style={{ marginTop:24, background:"rgba(234,179,8,0.10)",
-                border:"1px solid rgba(234,179,8,0.25)", borderRadius:16, padding:"20px", textAlign:"center" }}>
-                <div style={{ fontSize:36, marginBottom:8 }}>🏆</div>
-                <p style={{ fontWeight:900, fontSize:15, color:"#fbbf24", margin:"0 0 4px" }}>Capítulo 1 Concluído!</p>
-                <p style={{ color:"#78716c", fontSize:12, margin:0 }}>Capítulo 2 em breve...</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Board map — hidden when a scene/battle overlay is active */}
+      {!activeScene && !battleStage && !postBattle && (
+        <StoryMapView
+          stages={CHAPTER1_STAGES}
+          completedIds={completedIds}
+          onPress={handlePress}
+          onBack={onBack}
+          stamina={stamina}
+          maxStamina={maxStamina}
+          staminaNextTickSeconds={staminaNextTickSeconds}
+        />
+      )}
     </>
   )
 }
