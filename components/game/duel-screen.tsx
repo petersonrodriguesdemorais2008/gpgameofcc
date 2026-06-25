@@ -5960,81 +5960,53 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Handle UG target selection for any enemy card (TWILIGH AVALON / MEFISTO)
-  const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) => {
+  // Supports: unit | function | scenario | ultimate
+  const handleUgTargetEnemyCard = (type: "unit" | "function" | "scenario" | "ultimate", index: number) => {
     if (!ugTargetMode.active) return
 
+    // Resolve target card
+    const targetCard: FieldCard | null =
+      type === "unit" ? enemyField.unitZone[index] ?? null :
+      type === "function" ? (enemyField.functionZone[index] ?? null) as FieldCard | null :
+      type === "scenario" ? (enemyField.scenarioZone as FieldCard | null) :
+      type === "ultimate" ? (enemyField.ultimateZone as FieldCard | null) : null
+    if (!targetCard) return
+
     if (ugTargetMode.type === "twiligh_avalon") {
-      if (type === "unit") {
-        const unit = enemyField.unitZone[index]
-        if (!unit) return
-
-        setEnemyField((prev) => {
-          const newUnits = [...prev.unitZone]
-          const returned = newUnits[index]
-          newUnits[index] = null
-          return {
-            ...prev,
-            unitZone: newUnits as (FieldCard | null)[],
-            hand: returned ? [...prev.hand, returned] : prev.hand,
-          }
-        })
-        // If returned card is a unit, deal 3 DP to opponent
-        setEnemyField((prev) => ({
-          ...prev,
-          life: Math.max(0, prev.life - 3),
-        }))
-        showEffectFeedback(`TWILIGH AVALON: ${unit.name} devolvida! -3 LP no oponente!`, "success")
-      } else {
-        const func = enemyField.functionZone[index]
-        if (!func) return
-
-        setEnemyField((prev) => {
-          const newFuncs = [...prev.functionZone]
-          const returned = newFuncs[index]
-          newFuncs[index] = null
-          return {
-            ...prev,
-            functionZone: newFuncs,
-            hand: returned ? [...prev.hand, returned] : prev.hand,
-          }
-        })
-        showEffectFeedback(`TWILIGH AVALON: ${func.name} devolvida a mao!`, "success")
-      }
+      // Return card to opponent's hand; if it was a unit, deal 3 LP damage
+      setEnemyField((prev) => {
+        let updated = { ...prev }
+        if (type === "unit") {
+          const newUnits = [...prev.unitZone]; newUnits[index] = null
+          updated = { ...updated, unitZone: newUnits as (FieldCard | null)[], hand: [...prev.hand, targetCard] }
+        } else if (type === "function") {
+          const newFuncs = [...prev.functionZone]; newFuncs[index] = null
+          updated = { ...updated, functionZone: newFuncs, hand: [...prev.hand, targetCard] }
+        } else if (type === "scenario") {
+          updated = { ...updated, scenarioZone: null, hand: [...prev.hand, targetCard] }
+        } else if (type === "ultimate") {
+          updated = { ...updated, ultimateZone: null, hand: [...prev.hand, targetCard] }
+        }
+        if (type === "unit") updated = { ...updated, life: Math.max(0, updated.life - 3) }
+        return updated
+      })
+      const dmgMsg = type === "unit" ? " -3 LP no oponente!" : ""
+      showEffectFeedback(`TWILIGH AVALON: ${targetCard.name} devolvida!${dmgMsg}`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
+
     } else if (ugTargetMode.type === "mefisto") {
-      // MEFISTO: destroy any card on opponent's field
-      if (type === "unit") {
-        const unit = enemyField.unitZone[index]
-        if (!unit) return
-        markDestroyed(unit)
-        setEnemyField((prev) => {
-          const newUnits = [...prev.unitZone]
-          const destroyed = newUnits[index]
-          newUnits[index] = null
-          return {
-            ...prev,
-            unitZone: newUnits as (FieldCard | null)[],
-            graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
-          }
-        })
-        showEffectFeedback(`MEFISTO FOLES: ${unit.name} destruida!`, "success")
-      } else {
-        const func = enemyField.functionZone[index]
-        if (!func) return
-        markDestroyed(func)
-        setEnemyField((prev) => {
-          const newFuncs = [...prev.functionZone]
-          const destroyed = newFuncs[index]
-          newFuncs[index] = null
-          return {
-            ...prev,
-            functionZone: newFuncs,
-            graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
-          }
-        })
-        showEffectFeedback(`MEFISTO FOLES: ${func.name} destruida!`, "success")
-      }
+      // Destroy any card on opponent's field
+      markDestroyed(targetCard)
+      setEnemyField((prev) => {
+        let updated = { ...prev, graveyard: [...prev.graveyard, targetCard] }
+        if (type === "unit") { const z = [...prev.unitZone]; z[index] = null; updated = { ...updated, unitZone: z as (FieldCard | null)[] } }
+        else if (type === "function") { const z = [...prev.functionZone]; z[index] = null; updated = { ...updated, functionZone: z } }
+        else if (type === "scenario") updated = { ...updated, scenarioZone: null }
+        else if (type === "ultimate") updated = { ...updated, ultimateZone: null }
+        return updated
+      })
+      showEffectFeedback(`MEFISTO FOLES: ${targetCard.name} destruida!`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     }
@@ -6050,7 +6022,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const newUnits = [...prev.unitZone]
       const target = newUnits[unitIndex]
       if (!target) return prev
-      const newDp = target.currentDp - 1
+      const newDp = (target.currentDp ?? target.dp) - 1
       if (newDp <= 0) {
         markDestroyed(target)
         newUnits[unitIndex] = null
@@ -10087,7 +10059,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
-                  <div className="h-16 w-24 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                  <div
+                    className={`h-16 w-24 bg-amber-900/40 border rounded flex items-center justify-center relative overflow-hidden transition-all ${
+                      ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                        : "border-amber-600/40"
+                    }`}
+                    onClick={() => {
+                      if (ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")) {
+                        handleUgTargetEnemyCard("scenario", 0)
+                      }
+                    }}
+                  >
                     {enemyField.scenarioZone ? (
                       <Image
                         src={enemyField.scenarioZone.image || "/placeholder.svg"}
@@ -10105,7 +10088,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     )}
                   </div>
                   {/* Enemy Ultimate Zone - single slot, green */}
-                  <div className="w-16 h-24 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                  <div
+                    className={`w-16 h-24 bg-emerald-900/40 border rounded flex items-center justify-center relative overflow-hidden transition-all ${
+                      ugTargetMode.active && enemyField.ultimateZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                        : "border-emerald-600/40"
+                    }`}
+                    onClick={() => {
+                      if (ugTargetMode.active && enemyField.ultimateZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")) {
+                        handleUgTargetEnemyCard("ultimate", 0)
+                      }
+                    }}
+                  >
                     {enemyField.ultimateZone ? (
                       <Image
                         src={enemyField.ultimateZone.image || "/placeholder.svg"}
@@ -10136,9 +10130,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <div
                         key={i}
                         onClick={() => {
-                          if (ugTargetMode.active && (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") && card) {
+                          if (ugTargetMode.active && ugTargetMode.type === "oden_sword" && card) {
+                            // Oden Sword destroys function cards only
                             handleUgTargetEnemyFunction(i)
                           } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                            // Twiligh Avalon (return to hand) and Mefisto (destroy) handle all card types
                             handleUgTargetEnemyCard("function", i)
                           } else if (julgamentoVazioTargetMode.active && card) {
                             handleJulgamentoVazioTarget("function", i)
