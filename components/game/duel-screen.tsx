@@ -4006,7 +4006,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
     prevUnitZoneRef.current = currentNames
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerField.unitZone, JSON.stringify(playerField.ultimateZones)])
+  }, [playerField.unitZone, playerField.ultimateZones])
 
   const handleAnimationComplete = useCallback((id: string) => { setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)) }, [])
   const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
