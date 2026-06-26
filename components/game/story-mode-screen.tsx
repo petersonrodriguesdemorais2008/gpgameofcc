@@ -509,7 +509,7 @@ type MapAction =
   | { type: "PAN";  dx: number; dy: number }
   | { type: "RESET" }
 
-const MIN_ZOOM = 0.35
+const MIN_ZOOM = 1.0
 const MAX_ZOOM = 2.5
 
 function mapReducer(s: MapState, a: MapAction): MapState {
@@ -563,7 +563,8 @@ function StoryMapView({
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const rect   = el.getBoundingClientRect()
-      const factor = e.deltaY < 0 ? 1.12 : 0.88   // scroll forward = zoom in
+      if (e.deltaY > 0) return  // block zoom-out (image distorts below 100%)
+      const factor = 1.12  // scroll forward = zoom in only
       dispatch({ type: "ZOOM", mx: e.clientX - rect.left, my: e.clientY - rect.top, factor })
     }
     el.addEventListener("wheel", onWheel, { passive: false })
@@ -976,7 +977,6 @@ function StoryMapView({
         {([
           { label: "+", title: "Zoom in",      act: () => btnZoom(1.2) },
           { label: "⌖", title: "Resetar visão", act: () => dispatch({ type: "RESET" }) },
-          { label: "−", title: "Zoom out",     act: () => btnZoom(0.83) },
         ] as const).map(btn => (
           <button
             key={btn.label}
