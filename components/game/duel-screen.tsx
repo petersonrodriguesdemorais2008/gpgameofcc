@@ -146,7 +146,7 @@ interface FieldState {
   functionZone: (FunctionZoneCard | null)[]
   equipZone: GameCard | null
   scenarioZone: GameCard | null
-  ultimateZone: FieldCard | null
+  ultimateZones: (FieldCard | null)[]
   hand: GameCard[]
   deck: GameCard[]
   graveyard: GameCard[]
@@ -1763,7 +1763,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { canActivate: true }
     },
     resolve: (context) => {
-      const hasUltimateGear = context.playerField.ultimateZone !== null
+      const hasUltimateGear = context.playerField.ultimateZones.some(z=>z !== null)
 
       if (hasUltimateGear) {
         // Already has UG equipped: deal -1DP direct to enemy LP
@@ -3115,7 +3115,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
-    ultimateZone: null,
+    ultimateZones: [null, null, null],
     hand: [],
     deck: [],
     graveyard: [],
@@ -3127,7 +3127,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
-    ultimateZone: null,
+    ultimateZones: [null, null, null],
     hand: [],
     deck: [],
     graveyard: [],
@@ -3725,7 +3725,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // ── 5. Equipa Ultimate Gear se há unidade no campo ──
         const hasUnit = playerFieldRef.current.unitZone.some(u => u !== null)
-        if (hasUnit && !playerFieldRef.current.ultimateZone) {
+        if (hasUnit && playerFieldRef.current.ultimateZones?.some((z:FieldCard|null)=>z===null)) {
           const ugCard = pf.hand
             .map((c, i) => ({ c, i }))
             .filter(({ c }) => isUltimateCard(c))[0]
@@ -3734,7 +3734,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const { c: card, i: handIdx } = ugCard
             setPlayerField(prev => {
               const newHand = prev.hand.filter((_, i) => i !== handIdx)
-              return { ...prev, hand: newHand, ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turnRef2.current } as FieldCard }
+              return (() => {
+              const nextSlot = prev.ultimateZones.findIndex(z => z === null)
+              if (nextSlot === -1) return prev
+              const newZones = [...prev.ultimateZones] as (FieldCard|null)[]
+              newZones[nextSlot] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turnRef2.current } as FieldCard
+              return { ...prev, hand: newHand, ultimateZones: newZones }
+            })()
             })
             showEffectFeedback(`AUTO: ${card.name} equipado!`, "success")
           }
@@ -3970,10 +3976,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
 
   useEffect(() => {
-    if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
+    if (!playerField.ultimateZones.some(z=>z?.requiresUnit)) {
       prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null); return
     }
-    const ug = playerField.ultimateZone; const requiredUnit = ug.requiresUnit!; const ability = ug.ability
+    for (const ug of playerField.ultimateZones.filter(z=>z?.requiresUnit)) { const requiredUnit = ug!.requiresUnit!; const ability = ug!.ability
     const prevNames = prevUnitZoneRef.current; const currentNames = playerField.unitZone.map((u) => u?.name || null)
     const wasPresent = prevNames.some((n) => n === requiredUnit); const isNowPresent = currentNames.some((n) => n === requiredUnit)
     if (!wasPresent && isNowPresent) {
@@ -4000,7 +4006,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
     prevUnitZoneRef.current = currentNames
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerField.unitZone, playerField.ultimateZone])
+  }, [playerField.unitZone, JSON.stringify(playerField.ultimateZones)])
 
   const handleAnimationComplete = useCallback((id: string) => { setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)) }, [])
   const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
@@ -4552,7 +4558,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
-      ultimateZone: null,
+      ultimateZones: [null, null, null],
       graveyard: [],
     }))
 
@@ -4569,7 +4575,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
-      ultimateZone: null,
+      ultimateZones: [null, null, null],
       graveyard: [],
     }))
 
@@ -4625,7 +4631,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         unitZone: [null, null, null, null],
         functionZone: [null, null, null, null],
         scenarioZone: null,
-        ultimateZone: null,
+        ultimateZones: [null, null, null],
         graveyard: [],
       }))
     }
@@ -4813,7 +4819,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
       if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
         setTimeout(() => {
-          const hasMefisto = playerField.ultimateZone?.ability === "MEFISTO"
+          const hasMefisto = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MEFISTO"))
           if (hasMefisto && playerField.deck.length > 0) {
             setChoiceModal({
               visible: true,
@@ -5580,9 +5586,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace || !isUltimateCard(cardToPlace)) return
     // Allow stacking ultimates: new ultimate replaces old one (old goes to graveyard)
-    if (playerField.ultimateZone !== null) {
+    if (playerField.ultimateZones.some(z=>z !== null)) {
       // Send current ultimate to graveyard before placing new one
-      const oldUg = playerField.ultimateZone
+      const oldUg = playerField.ultimateZones.find(z=>z!==null) ?? null
       setPlayerField(prev => ({ ...prev, graveyard: [...prev.graveyard, oldUg] }))
     }
 
@@ -5651,7 +5657,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       return {
         ...prev,
-        ultimateZone: fieldCard,
+        ultimateZones: (() => {
+              const nz = [...prev.ultimateZones] as (FieldCard|null)[]
+              const slot = nz.findIndex(z=>z===null)
+              if (slot !== -1) nz[slot] = fieldCard
+              return nz
+            })(),
         unitZone: newUnitZone as (FieldCard | null)[],
         hand: newHand,
       }
@@ -5681,9 +5692,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const activateUgAbility = () => {
     if (!isPlayerTurn || phase !== "main") return
     if (playerUgAbilityUsed) return
-    if (!playerField.ultimateZone) return
-
-    const ug = playerField.ultimateZone
+    const __allUgs = playerField.ultimateZones.filter(z=>z!==null) as FieldCard[]
+    if (!__allUgs.length) return
+    const ug = __allUgs[0]  // activateUgAbility operates on the first non-null UG
     const requiredUnit = ug.requiresUnit
     if (!requiredUnit) return
 
@@ -5924,7 +5935,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (zone === "unit" && playerField.unitZone[targetIndex!] !== null) return
     if (zone === "function" && playerField.functionZone[targetIndex!] !== null) return
     if (zone === "scenario" && playerField.scenarioZone !== null) return
-    if (zone === "ultimate" && playerField.ultimateZone !== null) return
+    if (zone === "ultimate" && playerField.ultimateZones.every(z=>z !== null)) return
 
     setPlayerField((prev) => {
       const newTap = prev.tap.filter((_, i) => i !== cardIndex)
@@ -5952,7 +5963,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       } else if (zone === "ultimate") {
         return {
           ...prev,
-          ultimateZone: {
+          ultimateZones: (() => {
+              const nz3 = [...prev.ultimateZones] as (FieldCard|null)[]
+              const slot3 = nz3.findIndex(z=>z===null)
+              if (slot3 !== -1) nz3[slot3] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: currentTurn }
+              return nz3
+            })(),
             ...card,
             currentDp: card.dp,
             canAttack: false,
@@ -5978,7 +5994,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       type === "unit" ? enemyField.unitZone[index] ?? null :
       type === "function" ? (enemyField.functionZone[index] ?? null) as FieldCard | null :
       type === "scenario" ? (enemyField.scenarioZone as FieldCard | null) :
-      type === "ultimate" ? (enemyField.ultimateZone as FieldCard | null) : null
+      type === "ultimate" ? (enemyField.ultimateZones.find(z=>z!==null) ?? null) : null
     if (!targetCard) return
 
     if (ugTargetMode.type === "twiligh_avalon") {
@@ -5994,7 +6010,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         } else if (type === "scenario") {
           updated = { ...updated, scenarioZone: null, hand: [...prev.hand, targetCard] }
         } else if (type === "ultimate") {
-          updated = { ...updated, ultimateZone: null, hand: [...prev.hand, targetCard] }
+          updated = { ...updated, ultimateZones: [null, null, null], hand: [...prev.hand, targetCard] }
         }
         if (type === "unit") updated = { ...updated, life: Math.max(0, updated.life - 3) }
         return updated
@@ -6012,7 +6028,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (type === "unit") { const z = [...prev.unitZone]; z[index] = null; updated = { ...updated, unitZone: z as (FieldCard | null)[] } }
         else if (type === "function") { const z = [...prev.functionZone]; z[index] = null; updated = { ...updated, functionZone: z } }
         else if (type === "scenario") updated = { ...updated, scenarioZone: null }
-        else if (type === "ultimate") updated = { ...updated, ultimateZone: null }
+        else if (type === "ultimate") updated = { ...updated, ultimateZones: updated.ultimateZones.map((z:FieldCard|null)=>z?.id === targetCard.id ? null : z) as (FieldCard|null)[] }
         return updated
       })
       showEffectFeedback(`MEFISTO FOLES: ${targetCard.name} destruida!`, "success")
@@ -6116,8 +6132,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setPhase("main")
     } else if (phase === "main") {
       // ULLRBOGI: +3 DP to Ullr when entering battle phase
-      if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
-        const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+      for (const __ugz of playerField.ultimateZones.filter(z=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
+        const ullrIdx = findUnitByName(playerField.unitZone, __ugz!.requiresUnit!)
         if (ullrIdx !== -1) {
           setPlayerField((prev) => {
             const newUnits = [...prev.unitZone]
@@ -6263,8 +6279,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             showDrawAnimation(drawn)
             // Only grant double attack if Protonix Sword is equipped (Singularidade Zero condition)
             const hasProtonixSword =
-              playerField.ultimateZone?.ability === "PROTONIX SWORD" &&
-              playerField.ultimateZone?.requiresUnit?.toLowerCase().includes("fehnon")
+              playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("PROTONIX SWORD") && z?.requiresUnit?.toLowerCase().includes("fehnon"))
             if (isUnit && !fehnonUrUsedDoubleThisTurn && hasProtonixSword) {
               setFehnonUrDouble(true)
               showEffectFeedback("ORDEM DE LACERAÇÃO: Carta Unidade + Protonix Sword! Fehnon ataca novamente (traps ignorados)!", "success")
@@ -6288,8 +6303,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             showDrawAnimation(drawn)
             // Check ODEN SWORD is equipped on Fehnon LR (Laceração do Mundo requirement)
             const hasOdenSword =
-              playerField.ultimateZone?.ability === "ODEN SWORD" &&
-              playerField.ultimateZone?.requiresUnit?.toLowerCase().includes("fehnon")
+              playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("ODEN SWORD") && z?.requiresUnit?.toLowerCase().includes("fehnon"))
             if (isUnitOrAction && hasOdenSword) {
               setFehnonLrDouble(true)
               setFehnonLrBonusDp(3)
@@ -6726,7 +6740,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // Requires Miguel Arcanjo equipped. Fires BEFORE the normal attack.
         // Check attacker by name (dp===4 = base dp, always true for LR regardless of buffs)
         const _isCalemLr = attacker.name.toLowerCase().includes("calem") && attacker.dp === 4
-        const _miguelEquipped = !!(playerField.ultimateZone && playerField.ultimateZone.ability === "MIGUEL ARCANJO")
+        const _miguelEquipped = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
         if (_isCalemLr && _miguelEquipped) {
           const grave = playerField.graveyard
           const lastCard = grave.length > 0 ? grave[grave.length - 1] : null
@@ -6925,7 +6939,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 const freshAttackerDp = attacker.currentDp ?? attacker.dp
                 const freshDefenderDp = freshDefender.currentDp ?? freshDefender.dp
                 const freshNewDefenderDp = freshDefenderDp - freshAttackerDp
-                let newUltimateZone = prev.ultimateZone
+                let newUltimateZones = [...(prev.ultimateZones||[null,null,null])] as (FieldCard|null)[]
 
                 if (freshNewDefenderDp <= 0) {
                   if (targetRect) {
@@ -6945,10 +6959,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   newGraveyard.push(defender)
                   newUnitZone[targetIndex] = null
                   // ── Equipped Ultimate Gear is destroyed together with its unit ──
-                  if (newUltimateZone && normalizeCardName(newUltimateZone.requiresUnit) === normalizeCardName(defender.name)) {
-                    newGraveyard.push(newUltimateZone)
-                    showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
-                    newUltimateZone = null
+                  const __ugDestroyIdx = newUltimateZones.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
+                  if (__ugDestroyIdx !== -1) {
+                    newGraveyard.push(newUltimateZones[__ugDestroyIdx]!)
+                    showEffectFeedback(`${newUltimateZones[__ugDestroyIdx]!.name} foi destruída junto com ${defender.name}!`, "error")
+                    newUltimateZones[__ugDestroyIdx] = null
                   }
                 } else {
                   newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
@@ -6960,7 +6975,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     )
                   }
                 }
-                return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard, ultimateZone: newUltimateZone }
+                return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard, ultimateZones: newUltimateZones }
               })
 
 
@@ -7025,7 +7040,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 4) {
                 // Legião do Guardião Alado requires Miguel Arcanjo equipped
-                const hasMiguelArcanjo = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
+                const hasMiguelArcanjo = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
                 if (hasMiguelArcanjo) {
                   setPlayerField((prev) => {
                     const newUnitZone = [...prev.unitZone]
@@ -7466,8 +7481,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
     if (playerField.scenarioZone)
       fieldOptions.push({ id: 'scenario', label: playerField.scenarioZone.name, description: 'Cenário' })
-    if (playerField.ultimateZone)
-      fieldOptions.push({ id: 'ultimate', label: playerField.ultimateZone.name, description: 'Ultimate Zone' })
+    playerField.ultimateZones.forEach((uz,uzi)=>{ if(uz) fieldOptions.push({ id: `ultimate-${uzi}`, label: uz.name, description: `Ultimate Zone ${uzi+1}` }) })
 
     if (fieldOptions.length === 0) { showEffectFeedback("Nenhuma carta no campo para descartar!", "error"); return }
 
@@ -7480,7 +7494,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const newUnitZone = [...prev.unitZone]
           const newFuncZone = [...prev.functionZone]
           let newScenario = prev.scenarioZone
-          let newUltimate = prev.ultimateZone
+          let newUltimateArr = [...prev.ultimateZones] as (FieldCard|null)[]
           const newGrave = [...prev.graveyard]
           selected.forEach(sel => {
             if (sel.startsWith('unit-')) {
@@ -7501,7 +7515,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const h = newUnitZone[hrottiIdx]!
             newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
           }
-          return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, ultimateZone: newUltimate, graveyard: newGrave }
+          return { ...prev, unitZone: newUnitZone as (FieldCard|null)[], functionZone: newFuncZone, scenarioZone: newScenario, ultimateZones: newUltimateArr, graveyard: newGrave }
         })
         mpBroadcast("ability_used", { ability: "hrottiSr" })
         setHrottiSrLastTurn(turn)
@@ -7611,7 +7625,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (ullrUrJuramentoLastTurn !== null && turn - ullrUrJuramentoLastTurn < 4) {
       showEffectFeedback(`Juramento Eterno disponível no turno ${ullrUrJuramentoLastTurn + 4}!`, "error"); return
     }
-    const hasUllrbogi = playerField.ultimateZone?.ability === "ULLRBOGI"
+    const hasUllrbogi = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("ULLRBOGI"))
     const bonus = hasUllrbogi ? 3 : 2
     setPlayerField(prev => {
       const newUnits = prev.unitZone.map(u => {
@@ -7692,7 +7706,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const ultimateSlot = el.closest("[data-player-ultimate-slot]")
 
         if (ultimateSlot && isUltimateCard(draggedHandCard.card)) {
-          if (!playerField.ultimateZone) {
+          if (!playerField.ultimateZones.some(z=>z)) {
             foundTarget = { type: "ultimate", index: 0 }
             break
           }
@@ -7877,7 +7891,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const newUnitZone = [...prev.unitZone]
         const newFunctionZone = [...prev.functionZone]
         let newScenarioZone = prev.scenarioZone
-        let newUltimateZone = prev.ultimateZone
+        let newUltimateZones = [...(prev.ultimateZones||[null,null,null])] as (FieldCard|null)[]
 
         // Bot plays Scenario cards ONLY in Scenario zone
         for (let i = newHand.length - 1; i >= 0; i--) {
@@ -8119,7 +8133,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           unitZone: newUnitZone as (FieldCard | null)[],
           functionZone: newFunctionZone as FunctionZoneCard[],
           scenarioZone: newScenarioZone,
-          ultimateZone: newUltimateZone,
+          ultimateZones: newUltimateZones,
         }
       })
 
@@ -8128,8 +8142,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // Bot ULLRBOGI: +3 DP to Ullr during battle phase
         setEnemyField((prevEnemy) => {
-          if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
-            const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+          for (const __eugz of (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
+            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null) => u && u.name === __eugz!.requiresUnit)
             if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
               const newUnits = [...prevEnemy.unitZone]
               newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: newUnits[ullrIdx]!.currentDp + 3 }
@@ -8141,8 +8155,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // Bot also uses one-time UG abilities (ODEN SWORD and TWILIGH AVALON)
         setEnemyField((prevEnemy) => {
-          if (!prevEnemy.ultimateZone || enemyUgAbilityUsed) return prevEnemy
-          const ug = prevEnemy.ultimateZone
+          const __eugs = (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z!==null) as FieldCard[]
+          if (!__eugs.length || enemyUgAbilityUsed) return prevEnemy
+          const ug = __eugs[0]
           const requiredUnit = ug.requiresUnit
           if (!requiredUnit) return prevEnemy
           const hasUnit = prevEnemy.unitZone.some((u) => u && u.name === requiredUnit)
@@ -8164,7 +8179,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else if (ug.ability === "TWILIGH AVALON") {
             // Return a player unit to hand and deal 3 damage
             // MIGUEL ARCANJO protection: skip Calem Hidenori
-            const isCalemProtected = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
+            const isCalemProtected = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
             const unitIdx = playerField.unitZone.findIndex((u) => u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
             if (unitIdx !== -1) {
               const unit = playerField.unitZone[unitIdx]
@@ -8190,7 +8205,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else if (ug.ability === "MEFISTO") {
             // Destroy any player card (unit or function) - once per duel
             // MIGUEL ARCANJO protection: skip Calem Hidenori
-            const isCalemProtected = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
+            const isCalemProtected = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
             const unitIdx = playerField.unitZone.findIndex((u) => u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
             const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
             const targetIdx = unitIdx !== -1 ? unitIdx : -1
@@ -8334,14 +8349,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 setPlayerField((prevPlayer) => {
                   const newUnitZone = [...prevPlayer.unitZone]
                   const newGrave = [...prevPlayer.graveyard]
-                  let newUltimateZone = prevPlayer.ultimateZone
+                  let newUltimateZonesP = [...(prevPlayer.ultimateZones||[null,null,null])] as (FieldCard|null)[]
                   if (newDefenderDp <= 0) {
                     markDestroyed(defender)
                     newGrave.push(defender)
                     newUnitZone[playerUnitIndex] = null
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                     // ── Equipped Ultimate Gear is destroyed together with its unit ──
-                    if (newUltimateZone && normalizeCardName(newUltimateZone.requiresUnit) === normalizeCardName(defender.name)) {
+                    const __ugDestroyIdx = newUltimateZones.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
+                  if (__ugDestroyIdx !== -1) {
                       newGrave.push(newUltimateZone)
                       showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
                       newUltimateZone = null
@@ -8364,7 +8380,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     newUnitZone[playerUnitIndex] = { ...defender, currentDp: newDefenderDp }
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                   }
-                  return { ...prevPlayer, unitZone: newUnitZone, graveyard: newGrave, ultimateZone: newUltimateZone }
+                  return { ...prevPlayer, unitZone: newUnitZone, graveyard: newGrave, ultimateZones: newUltimateZonesP }
                 })
 
                 // Mark this unit as attacked
@@ -8414,8 +8430,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // Bot ULLRBOGI: remove +3 DP when leaving battle phase
         setEnemyField((prevEnemy) => {
-          if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
-            const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+          for (const __eugz of (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
+            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null) => u && u.name === __eugz!.requiresUnit)
             if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
               const newUnits = [...prevEnemy.unitZone]
               newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: Math.max(0, newUnits[ullrIdx]!.currentDp - 3) }
@@ -8436,17 +8452,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             unitZone: prev.unitZone.map((unit) =>
               unit ? { ...unit, hasAttacked: false, canAttack: turn > unit.canAttackTurn } : null,
             ),
-            ultimateZone: prev.ultimateZone
-              ? { ...prev.ultimateZone, hasAttacked: false, canAttack: turn > prev.ultimateZone.canAttackTurn }
-              : null,
+            ultimateZones: prev.ultimateZones.map(uz => uz ? { ...uz, hasAttacked: false, canAttack: turn > (uz.canAttackTurn ?? 0) } : null) as (FieldCard|null)[],
           }))
           setEnemyField((prev) => ({
             // Also reset enemy units for the next turn if it becomes their turn
             ...prev,
             unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false, canAttack: true } : null)),
-            ultimateZone: prev.ultimateZone
-              ? { ...prev.ultimateZone, hasAttacked: false, canAttack: true }
-              : null,
+            ultimateZones: prev.ultimateZones.map(uz => uz ? { ...uz, hasAttacked: false, canAttack: true } : null) as (FieldCard|null)[],
           }))
         }, 500)
       }, 800)
@@ -8458,8 +8470,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // ── ULLRBOGI: remove +3 DP from Ullr when leaving battle phase ──
     // This runs regardless of whether endTurn was called from advancePhase or directly
-    if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
-      const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+    for (const __ugRR of playerField.ultimateZones.filter(z=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
+        const ullrIdx = findUnitByName(playerField.unitZone, __ugRR!.requiresUnit!)
       if (ullrIdx !== -1) {
         setPlayerField((prev) => {
           const newUnits = [...prev.unitZone]
@@ -8637,7 +8649,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           setTurn(currentTurn => {
             setEnemyField(prev => ({
               ...prev,
-              ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: currentTurn },
+              ultimateZones: (() => { const nz4=[...prev.ultimateZones]as(FieldCard|null)[]; const s4=nz4.findIndex(z=>z===null); if(s4!==-1)nz4[s4]={...card,currentDp:card.dp,canAttack:false,hasAttacked:false,canAttackTurn:currentTurn}; return nz4 })(),
               hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
               tap: rmCard(prev),
             }))
@@ -8718,9 +8730,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           unitZone: prev.unitZone.map(u =>
             u ? { ...u, canAttack: true, hasAttacked: false } : null
           ),
-          ultimateZone: prev.ultimateZone
-            ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false }
-            : null,
+          ultimateZones: prev.ultimateZones.map(uz => uz ? { ...uz, canAttack: true, hasAttacked: false } : null) as (FieldCard|null)[],
         }))
         setEnemyField(prev => ({
           ...prev,
@@ -8835,7 +8845,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (d.myUnits     !== undefined) upd.unitZone     = d.myUnits
           if (d.myFuncs     !== undefined) upd.functionZone = d.myFuncs
           if (d.myScenario  !== undefined) upd.scenarioZone = d.myScenario
-          if (d.myUltimate  !== undefined) upd.ultimateZone = d.myUltimate
+          if (d.myUltimate !== undefined) upd.ultimateZones = Array.isArray(d.myUltimate) ? d.myUltimate : [d.myUltimate, null, null]
           if (d.myGraveyard !== undefined) upd.graveyard    = d.myGraveyard
           if (d.myHandLen      !== undefined) upd.hand         = Array(d.myHandLen).fill(null)
           if (d.myDeckLen      !== undefined) upd.deck         = Array(d.myDeckLen).fill(null)
@@ -9003,7 +9013,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       myUnits: playerField.unitZone.map(u => u ? { id: u.id, dp: u.currentDp ?? u.dp, hasAttacked: u.hasAttacked } : null),
       myFuncs: playerField.functionZone.map(f => f ? { id: f.id, isFaceDown: (f as any).isFaceDown } : null),
       myScenario: playerField.scenarioZone?.id,
-      myUltimate: playerField.ultimateZone?.id,
+      myUltimate: playerField.ultimateZones.map(z=>z?.id ?? null),
       myGravLen: playerField.graveyard.length,
       myHandLen: playerField.hand.length,
       myDeckLen: playerField.deck.length,
@@ -9020,7 +9030,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         myUnits:        playerField.unitZone,
         myFuncs:        playerField.functionZone,
         myScenario:     playerField.scenarioZone,
-        myUltimate:     playerField.ultimateZone,
+        myUltimate:     playerField.ultimateZones,
         myGraveyard:    playerField.graveyard,
         myHandLen:      playerField.hand.length,
         myDeckLen:      playerField.deck.length,
@@ -9034,7 +9044,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     playerField.unitZone,
     playerField.functionZone,
     playerField.scenarioZone,
-    playerField.ultimateZone,
+    JSON.stringify(playerField.ultimateZones),
     playerField.graveyard.length,
     playerField.hand.length,
   ])
@@ -9049,8 +9059,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // Bot ULLRBOGI: remove +3 DP from Ullr when ending turn (leaving battle phase)
     setEnemyField((prevEnemy) => {
-      if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
-        const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+      for (const __eugRR of (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
+            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null)=>u&&u.name===__eugRR!.requiresUnit)
         if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
           const newUnits = [...prevEnemy.unitZone]
           newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: Math.max(0, newUnits[ullrIdx]!.currentDp - 3) }
@@ -9073,9 +9083,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         unitZone: prev.unitZone.map((unit) =>
           unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
-        ultimateZone: prev.ultimateZone
-          ? { ...prev.ultimateZone, hasAttacked: false, canAttack: nextTurn > prev.ultimateZone.canAttackTurn }
-          : null,
+        ultimateZones: (prev.ultimateZones||[null,null,null]).map((uz:FieldCard|null)=>uz?{...uz,hasAttacked:false,canAttack:nextTurn>(uz.canAttackTurn??0)}:null)as(FieldCard|null)[],
       }))
     }, 500)
   }
@@ -10096,33 +10104,32 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Enemy Ultimate Zone - single slot, green */}
-                  <div
-                    className={`w-16 h-24 bg-emerald-900/40 border rounded flex items-center justify-center relative overflow-hidden transition-all ${
-                      ugTargetMode.active && enemyField.ultimateZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
-                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
-                        : "border-emerald-600/40"
-                    }`}
-                    onClick={() => {
-                      if (ugTargetMode.active && enemyField.ultimateZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")) {
-                        handleUgTargetEnemyCard("ultimate", 0)
-                      }
-                    }}
-                  >
-                    {enemyField.ultimateZone ? (
-                      <Image
-                        src={enemyField.ultimateZone.image || "/placeholder.svg"}
-                        alt={enemyField.ultimateZone.name}
-                        fill
-                        className="object-cover rounded"
-                        onMouseDown={() => handleCardPressStart(enemyField.ultimateZone!)}
-                        onMouseUp={handleCardPressEnd}
-                        onMouseLeave={handleCardPressEnd}
-                        onTouchStart={() => handleCardPressStart(enemyField.ultimateZone!)}
-                        onTouchEnd={handleCardPressEnd}
-                      />
-                    ) : null}
-                    {/* Ultimate cards have no DP — don't show badge */}
+                  {/* Enemy Ultimate Zone — 3 independent slots */}
+                  <div className="flex gap-1">
+                    {([0,1,2] as const).map(ugi => {
+                      const uz = enemyField.ultimateZones[ugi] ?? null
+                      const isTarget = ugTargetMode.active && uz && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                      return (
+                        <div key={ugi}
+                          className={`w-14 h-20 bg-emerald-900/40 border rounded flex items-center justify-center relative overflow-hidden transition-all ${
+                            isTarget ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                            : "border-emerald-600/40"
+                          }`}
+                          onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", ugi) }}
+                        >
+                          {uz && (
+                            <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill
+                              className="object-cover rounded"
+                              onMouseDown={() => handleCardPressStart(uz)}
+                              onMouseUp={handleCardPressEnd}
+                              onMouseLeave={handleCardPressEnd}
+                              onTouchStart={() => handleCardPressStart(uz)}
+                              onTouchEnd={handleCardPressEnd}
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -10502,81 +10509,56 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Player Ultimate Zone - single green slot below scenario */}
-                  <div
-                    data-player-ultimate-slot
-                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                    className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative transition-all duration-75 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
-                      ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                      : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
-                        ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
-                        : draggedHandCard && isUltimateCard(draggedHandCard.card)
-                          ? "border-emerald-400/50 bg-emerald-500/20"
-                          : "border-emerald-600/40"
-                      }`}
-                  >
-                    {playerField.ultimateZone ? (
-                      <>
-                        <div className="absolute inset-0 overflow-hidden rounded">
-                        <Image
-                          src={playerField.ultimateZone.image || "/placeholder.svg"}
-                          alt={playerField.ultimateZone.name}
-                          fill
-                          className="object-cover rounded"
-                          onMouseDown={() => handleCardPressStart(playerField.ultimateZone!)}
-                          onMouseUp={handleCardPressEnd}
-                          onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() => handleCardPressStart(playerField.ultimateZone!)}
-                          onTouchEnd={handleCardPressEnd}
-                        />
+                  {/* Player Ultimate Zone — 3 independent slots */}
+                  <div className="flex gap-1">
+                    {([0,1,2] as const).map(puzi => {
+                      const puz = playerField.ultimateZones[puzi] ?? null
+                      const slotEmpty = puz === null
+                      const canDrop = slotEmpty && (dropTarget?.type === "ultimate" || (selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])))
+                      return (
+                        <div key={puzi}
+                          data-player-ultimate-slot={puzi}
+                          onClick={() => slotEmpty && selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
+                          className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative transition-all duration-75 ${
+                            canDrop ? "border-green-400 bg-green-500/60 scale-105 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                            : draggedHandCard && isUltimateCard(draggedHandCard.card) && slotEmpty ? "border-emerald-400/50 bg-emerald-500/20"
+                            : puz ? "border-emerald-500/60" : "border-emerald-600/40"
+                          }`}
+                        >
+                          {puz ? (
+                            <>
+                              <div className="absolute inset-0 overflow-hidden rounded">
+                                <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill
+                                  className="object-cover rounded"
+                                  onMouseDown={() => handleCardPressStart(puz)}
+                                  onMouseUp={handleCardPressEnd}
+                                  onMouseLeave={handleCardPressEnd}
+                                  onTouchStart={() => handleCardPressStart(puz)}
+                                  onTouchEnd={handleCardPressEnd}
+                                />
+                              </div>
+                              {/* ATIVAR button (Oden Sword / Twiligh Avalon / Mefisto) */}
+                              {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && (() => {
+                                const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
+                                const ok=a.includes("ODEN SWORD")||n.includes("oden sword")||a.includes("TWILIGH")||n.includes("twiligh")||a.includes("MEFISTO")||n.includes("mefisto")
+                                if(!ok) return null
+                                if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
+                                return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-20 text-center">⚡ ATIVAR</button>
+                              })()}
+                              {/* JULGAMENTO button (Miguel Arcanjo) */}
+                              {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && (() => {
+                                const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
+                                if(!a.includes("MIGUEL ARCANJO")&&!n.includes("miguel arcanjo")) return null
+                                if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
+                                return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-20 text-center">✦ JULGAMENTO</button>
+                              })()}
+                            </>
+                          ) : (
+                            dropTarget?.type === "ultimate" && <span className="text-green-400 text-[9px] font-bold animate-pulse text-center">SOLTAR</span>
+                          )}
                         </div>
-                        {/* Ultimate cards have no DP — don't show badge */}
-                        {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
-                        {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (() => {
-                            const ugName = (playerField.ultimateZone.name || "").toLowerCase()
-                            const ugAbility = (playerField.ultimateZone.ability || "").toUpperCase()
-                            const isActivatable =
-                              ugAbility.includes("ODEN SWORD") || ugName.includes("oden sword") ||
-                              ugAbility.includes("TWILIGH") || ugName.includes("twiligh") || ugName.includes("twilight") ||
-                              ugAbility.includes("MEFISTO") || ugName.includes("mefisto")
-                            if (!isActivatable) return null
-                            const requiresUnit = playerField.ultimateZone.requiresUnit
-                            if (requiresUnit && findUnitByName(playerField.unitZone, requiresUnit) === -1) return null
-                            return (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                                className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t shadow-lg animate-pulse whitespace-nowrap z-20 text-center"
-                              >
-                                ⚡ ATIVAR
-                              </button>
-                            )
-                          })()
-                        }
-                        {/* Activate button for Julgamento Divino (MIGUEL ARCANJO - once per turn) */}
-                        {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active &&
-                          (() => {
-                            const ugName = (playerField.ultimateZone.name || "").toLowerCase()
-                            const ugAbility = (playerField.ultimateZone.ability || "").toUpperCase()
-                            const isMiguel = ugAbility.includes("MIGUEL ARCANJO") || ugName.includes("miguel arcanjo")
-                            if (!isMiguel) return null
-                            const requiresUnit = playerField.ultimateZone.requiresUnit
-                            if (requiresUnit && findUnitByName(playerField.unitZone, requiresUnit) === -1) return null
-                            return (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                                className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b shadow-lg animate-pulse whitespace-nowrap z-20 text-center"
-                              >
-                                ✦ JULGAMENTO
-                              </button>
-                            )
-                          })()
-                        }
-                      </>
-                    ) : null}
-                    {!playerField.ultimateZone && dropTarget?.type === "ultimate" && (
-                      <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
-                    )}
+                      )
+                    })}
                   </div>
                 </div>
                 <div className="flex gap-1.5">
@@ -10693,7 +10675,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               // Check if card can be played: must be player turn, main phase, and have space in appropriate zone
               const hasSpaceInZone = isUltimateCard(card)
-                ? playerField.ultimateZone === null
+                ? playerField.ultimateZones.some(z=>z===null)
                 : card.type === "scenario"
                   ? playerField.scenarioZone === null
                   : isUnitCard(card)
