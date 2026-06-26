@@ -5965,17 +5965,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         return {
           ...prev,
           ultimateZones: (() => {
-              const nz3 = [...prev.ultimateZones] as (FieldCard|null)[]
-              const slot3 = nz3.findIndex(z=>z===null)
-              if (slot3 !== -1) nz3[slot3] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: currentTurn }
-              return nz3
-            })(),
-            ...card,
-            currentDp: card.dp,
-            canAttack: false,
-            hasAttacked: false,
-            canAttackTurn: turn,
-          },
+            const nz3 = [...prev.ultimateZones] as (FieldCard|null)[]
+            const slot3 = nz3.findIndex(z => z === null)
+            if (slot3 !== -1) nz3[slot3] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn }
+            return nz3
+          })(),
           tap: newTap,
         }
       }
