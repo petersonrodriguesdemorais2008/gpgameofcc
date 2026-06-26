@@ -4005,6 +4005,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
     }
     prevUnitZoneRef.current = currentNames
+  }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerField.unitZone, playerField.ultimateZones])
 
