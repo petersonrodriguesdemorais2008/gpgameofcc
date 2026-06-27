@@ -306,6 +306,79 @@ function buildMissions(): PassMission[] {
       claimed: false,
       expiresIn: "29d",
     },
+    // ── Novas limitadas ──
+    {
+      id: "limited_wins_50",
+      title: "Lenda da Arena",
+      description: "Vença 50 duelos durante este Passe",
+      type: "limited",
+      points: 500,
+      progress: Math.min(g.winsTotal, 50),
+      goal: 50,
+      completed: g.winsTotal >= 50,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_duels_100",
+      title: "Centenário",
+      description: "Dispute 100 duelos durante este Passe",
+      type: "limited",
+      points: 400,
+      progress: Math.min(g.duelsTotal, 100),
+      goal: 100,
+      completed: g.duelsTotal >= 100,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_gacha_50",
+      title: "Viciado no Gacha",
+      description: "Faça 50 pulls no Gacha durante este Passe",
+      type: "limited",
+      points: 500,
+      progress: Math.min(g.gachaTotal, 50),
+      goal: 50,
+      completed: g.gachaTotal >= 50,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_sr_5",
+      title: "Colecionador de Élite",
+      description: "Obtenha 5 cartas SR ou superior",
+      type: "limited",
+      points: 400,
+      progress: Math.min(g.srTotal, 5),
+      goal: 5,
+      completed: g.srTotal >= 5,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_wins_100",
+      title: "O Grande Campeão",
+      description: "Vença 100 duelos durante este Passe",
+      type: "limited",
+      points: 750,
+      progress: Math.min(g.winsTotal, 100),
+      goal: 100,
+      completed: g.winsTotal >= 100,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_deck_3",
+      title: "Arquiteto de Decks",
+      description: "Edite ou crie decks 3 vezes neste Passe",
+      type: "limited",
+      points: 250,
+      progress: Math.min(g.deckEditWeek * 1, 3),
+      goal: 3,
+      completed: (g.deckEditWeek * 1) >= 3,
+      claimed: false,
+      expiresIn: "29d",
+    },
   ]
 }
 
@@ -756,6 +829,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   // Jogador se afastou o suficiente do nível atual? (mais de ~1.5 colunas de distância)
   const isAwayFromCurrent = Math.abs(scrollLeft - currentLevelTargetX) > COL_WIDTH * 1.5
+
+  // Próximo marco não alcançado — botão de atalho na trilha
+  const nextMilestone = [10, 25, 50, 75, 100].find(ml => ml > passData.currentLevel)
+  const scrollToNextMilestone = () => {
+    if (!nextMilestone || !passRowRef.current) return
+    const targetX = Math.max(0, (nextMilestone - Math.floor(VISIBLE / 2)) * COL_WIDTH)
+    passRowRef.current.scrollTo({ left: targetX, behavior: "smooth" })
+  }
 
   // Atualiza scrollLeft/scrollMax enquanto o usuário arrasta ou usa as setas.
   // Throttled via requestAnimationFrame: o evento "scroll" nativo pode disparar
@@ -1587,7 +1668,8 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     <span style={{ fontSize: 13, fontWeight: 900, color: "#06b6d4" }}>Lv.{passData.currentLevel}</span>
                   </div>
 
-                  <div style={{ flex: 1, position: "relative", height: 10, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                  <div style={{ flex: 1, position: "relative", height: 10, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible" }}>
+                    {/* Fill */}
                     <div style={{ height: "100%", borderRadius: 99, width: `${progressPct}%`,
                       background: "linear-gradient(90deg,#0369a1,#06b6d4,#22d3ee)",
                       boxShadow: "0 0 14px rgba(6,182,212,0.60)",
@@ -1596,6 +1678,24 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                         background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
                         animation: "shimmer 2.2s ease-in-out infinite" }} />
                     </div>
+                    {/* Marcadores dos marcos — posicionados pela % de pts acumulados */}
+                    {[10, 25, 50, 75, 100].map(ml => {
+                      const markerPct = Math.round((totalPtsToReachLevel(ml) / totalPtsToReachLevel(MAX_LEVELS)) * 100)
+                      const reached   = passData.currentLevel >= ml
+                      return (
+                        <div key={ml} style={{
+                          position: "absolute", top: -3, bottom: -3,
+                          left: `${markerPct}%`, width: 2,
+                          background: reached ? "#fbbf24" : "rgba(255,255,255,0.25)",
+                          borderRadius: 99, zIndex: 2,
+                          boxShadow: reached ? "0 0 6px rgba(251,191,36,0.70)" : "none",
+                          transform: "translateX(-50%)",
+                        }}>
+                          {/* Tooltip do marco — visível ao hover via title */}
+                          <div title={`Lv.${ml}`} style={{ position: "absolute", inset: "-6px -4px" }} />
+                        </div>
+                      )
+                    })}
                   </div>
 
                   <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "#64748b", fontFamily: "monospace" }}>
@@ -1623,6 +1723,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       animation: "fabIn 0.2s ease",
                     }}>
                       📍 Lv.{passData.currentLevel}
+                    </button>
+                  )}
+                  {/* Atalho pro próximo marco não alcançado */}
+                  {nextMilestone && (
+                    <button onClick={scrollToNextMilestone} style={{
+                      flexShrink: 0, display: "flex", alignItems: "center", gap: 4,
+                      padding: "4px 10px", borderRadius: 20,
+                      background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)",
+                      color: "#fbbf24", fontSize: 10, fontWeight: 800, cursor: "pointer",
+                    }}>
+                      🏆 Lv.{nextMilestone} ›
                     </button>
                   )}
                   {trackPendingCount > 0 && (
@@ -1795,6 +1906,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   <RewardIcon reward={lg.premium} />
                                 ) : null}
                                 <Crown size={8} color="#f59e0b" style={{ position: "absolute", top: 3, right: 3 }} />
+                                {/* Ponto de raridade — card_pack com rarity definida */}
+                                {lg.premium?.type === "card_pack" && lg.premium.rarity && (
+                                  <div style={{
+                                    position: "absolute", top: 3, left: 3, width: 6, height: 6, borderRadius: "50%",
+                                    background: { R:"#60a5fa", SR:"#a855f7", UR:"#fbbf24", LR:"#ef4444" }[lg.premium.rarity] ?? "#94a3b8",
+                                    boxShadow: `0 0 4px ${{ R:"rgba(96,165,250,0.8)", SR:"rgba(168,85,247,0.8)", UR:"rgba(251,191,36,0.8)", LR:"rgba(239,68,68,0.8)" }[lg.premium.rarity] ?? "none"}`,
+                                  }} />
+                                )}
                               </button>
 
                               {/* Conector vertical superior */}
@@ -1893,6 +2012,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     {lg.common.label.toUpperCase()}
                                   </div>
                                 )}
+                                {/* Ponto de raridade — card_pack com rarity definida */}
+                                {lg.common?.type === "card_pack" && lg.common.rarity && (
+                                  <div style={{
+                                    position: "absolute", top: 3, left: 3, width: 6, height: 6, borderRadius: "50%",
+                                    background: { R:"#60a5fa", SR:"#a855f7", UR:"#fbbf24", LR:"#ef4444" }[lg.common.rarity] ?? "#94a3b8",
+                                    boxShadow: `0 0 4px ${{ R:"rgba(96,165,250,0.8)", SR:"rgba(168,85,247,0.8)", UR:"rgba(251,191,36,0.8)", LR:"rgba(239,68,68,0.8)" }[lg.common.rarity] ?? "none"}`,
+                                  }} />
+                                )}
                               </button>
 
                             </div>
@@ -1939,6 +2066,55 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     <span style={{ fontSize: 10, color: "#64748b" }}>Pronto p/ coletar</span>
                   </div>
                 </div>
+
+                {/* ── HISTÓRICO DE RECOMPENSAS COLETADAS ── */}
+                {(() => {
+                  const claimed = levelGroups.filter(lg => lg.commonClaimed || lg.premiumClaimed)
+                  if (claimed.length === 0) return null
+                  return (
+                    <div style={{
+                      margin: "0 14px 10px",
+                      background: "rgba(3,8,22,0.70)", backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      borderRadius: 12, padding: "10px 14px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.10em", textTransform: "uppercase" }}>
+                          ✓ Recompensas coletadas ({claimed.length})
+                        </span>
+                        <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(255,255,255,0.06),transparent)" }} />
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {claimed.map(lg => {
+                          const rewards: { reward: PassReward; isPrem: boolean }[] = []
+                          if (lg.commonClaimed && lg.common)   rewards.push({ reward: lg.common,   isPrem: false })
+                          if (lg.premiumClaimed && lg.premium) rewards.push({ reward: lg.premium,  isPrem: true  })
+                          return rewards.map(({ reward, isPrem }) => {
+                            const rarityColors: Record<string, string> = { R: "#60a5fa", SR: "#a855f7", UR: "#fbbf24", LR: "#ef4444" }
+                            const accent = isPrem ? "#f59e0b" : "#06b6d4"
+                            return (
+                              <div key={`${lg.level}-${isPrem}`} style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                background: `${accent}10`, border: `1px solid ${accent}28`,
+                                borderRadius: 8, padding: "4px 8px",
+                              }}>
+                                {/* Tiny rarity dot for card packs */}
+                                {reward.type === "card_pack" && reward.rarity && (
+                                  <div style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
+                                    background: rarityColors[reward.rarity] ?? "#94a3b8" }} />
+                                )}
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8" }}>
+                                  {reward.label}
+                                </span>
+                                <span style={{ fontSize: 9, color: "#334155" }}>Lv.{lg.level}</span>
+                              </div>
+                            )
+                          })
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )}
@@ -2055,6 +2231,39 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       {missionFilter === "limited" ? "Volte mais tarde para novos eventos especiais." : "Volte mais tarde para novas missões."}
                     </div>
                   </div>
+                ) : missionFilter === "all" ? (
+                  // Filtro "Todas": agrupa por tipo com cabeçalho de seção
+                  (["daily", "weekly", "limited"] as const).map(type => {
+                    const group = missions.filter(m => m.type === type)
+                    if (group.length === 0) return null
+                    const labels = { daily: "☀️ Diárias", weekly: "📅 Semanais", limited: "⏳ Limitadas" }
+                    const colors = { daily: "#22d3ee", weekly: "#c084fc", limited: "#fbbf24" }
+                    return (
+                      <div key={type}>
+                        {/* Cabeçalho de grupo */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, marginTop: type === "daily" ? 0 : 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: colors[type], letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                            {labels[type]}
+                          </span>
+                          <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg,${colors[type]}40,transparent)` }} />
+                        </div>
+                        {/* Missões do grupo */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {group.map(mission => {
+                            const cIdx = cascadeMissionIds.indexOf(mission.id)
+                            return (
+                              <MissionCard
+                                key={mission.id}
+                                mission={mission}
+                                onClaim={handleClaimMission}
+                                cascadeDelay={cIdx === -1 ? null : cIdx * CASCADE_STEP_MS}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
                 ) : (
                   filteredMissions.map(mission => {
                     const cIdx = cascadeMissionIds.indexOf(mission.id)
