@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame, type Card, type Deck, isTroopUnit } from "@/contexts/game-context"
+import { useGame, type Card, type Deck } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -234,7 +234,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
 
   const getDeckTypeCounts = (cards: Card[]) => ({
     unit:    cards.filter(c => c.type === "unit").length,
-    trooper: cards.filter(c => c.type === "trooper" || c.type === "troops" || isTroopUnit?.(c)).length,
+    trooper: cards.filter(c => c.type === "trooper" || c.type === "troops" || c.category?.toLowerCase().includes("troop")).length,
     function: cards.filter(c => ["magic","action","trap","item","scenario","brotherhood"].includes(c.type)).length,
     ultimate: cards.filter(c => ["ultimateGear","ultimateGuardian","ultimateElemental"].includes(c.type)).length,
   })
