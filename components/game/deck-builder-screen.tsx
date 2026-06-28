@@ -113,6 +113,8 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRarity, setFilterRarity] = useState<string>("all")
   const [filterType, setFilterType] = useState<string>("all")
+  const [filterElement, setFilterElement] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<"name" | "dp" | "type" | "element">("name")
   const [isCreating, setIsCreating] = useState(false)
   const [selectedPlaymatId, setSelectedPlaymatId] = useState<string | null>(null)
   const [useGlobalPlaymat, setUseGlobalPlaymat] = useState(true)
@@ -186,16 +188,74 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const filteredCards = availableCards.filter((card) => {
     const matchesSearch = card.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRarity = filterRarity === "all" || card.rarity === filterRarity
-    // Filter by card type - "troops" is for Unidades de Tropas, "brotherhood" for Brotherhood Function Cards
     const matchesType = filterType === "all" ||
       (filterType === "brotherhood" ? card.category === "Brotherhood Function Card" : card.type === filterType)
-    return matchesSearch && matchesRarity && matchesType
+    const matchesElement = filterElement === "all" || (card.element || "").toLowerCase() === filterElement.toLowerCase()
+    return matchesSearch && matchesRarity && matchesType && matchesElement
+  }).sort((a, b) => {
+    if (sortBy === "dp") return ((b.dp ?? 0) - (a.dp ?? 0))
+    if (sortBy === "type") return (a.type || "").localeCompare(b.type || "")
+    if (sortBy === "element") return (a.element || "").localeCompare(b.element || "")
+    return a.name.localeCompare(b.name)
   })
 
   // Count copies in deck by name + rarity
   const getCardCopiesInDeck = (card: Card) => {
     return deckCards.filter((c) => c.name === card.name && c.rarity === card.rarity).length
   }
+
+  // ── Deck analytics ──────────────────────────────────────────────────────────
+  const ELEMENT_META: Record<string, { label: string; color: string; bg: string; emoji: string }> = {
+    fire:      { label:"Fire",      color:"text-orange-400",  bg:"bg-orange-500/20 border-orange-500/40",   emoji:"🔥" },
+    pyrus:     { label:"Fire",      color:"text-orange-400",  bg:"bg-orange-500/20 border-orange-500/40",   emoji:"🔥" },
+    aquos:     { label:"Aquos",     color:"text-blue-400",    bg:"bg-blue-500/20 border-blue-500/40",       emoji:"🌊" },
+    aquo:      { label:"Aquos",     color:"text-blue-400",    bg:"bg-blue-500/20 border-blue-500/40",       emoji:"🌊" },
+    water:     { label:"Aquos",     color:"text-blue-400",    bg:"bg-blue-500/20 border-blue-500/40",       emoji:"🌊" },
+    haos:      { label:"Lightness", color:"text-yellow-300",  bg:"bg-yellow-500/20 border-yellow-500/40",   emoji:"✨" },
+    light:     { label:"Lightness", color:"text-yellow-300",  bg:"bg-yellow-500/20 border-yellow-500/40",   emoji:"✨" },
+    lightness: { label:"Lightness", color:"text-yellow-300",  bg:"bg-yellow-500/20 border-yellow-500/40",   emoji:"✨" },
+    darkus:    { label:"Darkness",  color:"text-purple-400",  bg:"bg-purple-500/20 border-purple-500/40",   emoji:"🌑" },
+    darkness:  { label:"Darkness",  color:"text-purple-400",  bg:"bg-purple-500/20 border-purple-500/40",   emoji:"🌑" },
+    dark:      { label:"Darkness",  color:"text-purple-400",  bg:"bg-purple-500/20 border-purple-500/40",   emoji:"🌑" },
+    ventus:    { label:"Ventus",    color:"text-green-400",   bg:"bg-green-500/20 border-green-500/40",     emoji:"🌪️" },
+    wind:      { label:"Ventus",    color:"text-green-400",   bg:"bg-green-500/20 border-green-500/40",     emoji:"🌪️" },
+    void:      { label:"Void",      color:"text-slate-300",   bg:"bg-slate-500/20 border-slate-500/40",     emoji:"⬛" },
+  }
+
+  const getDominantElement = (cards: Card[]) => {
+    const counts: Record<string, number> = {}
+    cards.forEach(c => {
+      const el = (c.element || "").toLowerCase()
+      if (el) counts[el] = (counts[el] || 0) + 1
+    })
+    if (!Object.keys(counts).length) return null
+    return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0]
+  }
+
+  const getDeckTypeCounts = (cards: Card[]) => ({
+    unit:    cards.filter(c => c.type === "unit").length,
+    trooper: cards.filter(c => c.type === "trooper" || c.type === "troops" || isTroopUnit?.(c)).length,
+    function: cards.filter(c => ["magic","action","trap","item","scenario","brotherhood"].includes(c.type)).length,
+    ultimate: cards.filter(c => ["ultimateGear","ultimateGuardian","ultimateElemental"].includes(c.type)).length,
+  })
+
+  const getDeckValidation = (cards: Card[]) => {
+    const errors: string[] = []
+    const warnings: string[] = []
+    if (cards.length < MIN_CARDS) errors.push(`Mínimo ${MIN_CARDS} cartas (faltam ${MIN_CARDS - cards.length})`)
+    if (cards.length > MAX_CARDS) errors.push(`Máximo ${MAX_CARDS} cartas`)
+    // check per-card limits
+    const nameCounts: Record<string,number> = {}
+    cards.forEach(c => { const k = `${c.name}-${c.rarity}`; nameCounts[k] = (nameCounts[k]||0)+1 })
+    Object.entries(nameCounts).forEach(([k,n]) => { if (n > MAX_COPIES_PER_CARD) errors.push(`"${k.split("-")[0]}" tem ${n} cópias (max ${MAX_COPIES_PER_CARD})`) })
+    if (cards.length >= MIN_CARDS && cards.length <= MAX_CARDS && !errors.length) warnings.push("Deck válido! ✓")
+    return { errors, warnings, isValid: !errors.length && cards.length >= MIN_CARDS }
+  }
+
+  const dominantEl = getDominantElement(deckCards)
+  const elMeta = dominantEl ? ELEMENT_META[dominantEl] : null
+  const typeCounts = getDeckTypeCounts(deckCards)
+  const deckValidation = getDeckValidation(deckCards)
 
   // Get the maximum allowed copies for a card (minimum between deck limit and owned count)
   const getMaxAllowedCopies = (card: Card) => {
@@ -414,10 +474,12 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
         <div className="relative z-10 flex-1 p-4 max-w-3xl mx-auto w-full">
           <Button
             onClick={startNewDeck}
-            className="w-full mb-6 h-16 text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 border-2 border-green-400/50 shadow-lg shadow-green-500/30 transition-all hover:scale-[1.02]"
+            className="w-full mb-6 h-16 text-lg font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:via-purple-500 hover:to-indigo-500 border-2 border-violet-400/60 shadow-lg shadow-violet-500/40 transition-all hover:scale-[1.02] hover:shadow-violet-500/60 relative overflow-hidden group"
           >
-            <Plus className="mr-2 h-6 w-6" />
-            {t("newDeck")}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+            <Plus className="mr-3 h-7 w-7 drop-shadow" />
+            <span className="drop-shadow">{t("newDeck")}</span>
+            <Sparkles className="ml-3 h-5 w-5 opacity-70 group-hover:opacity-100 transition-opacity" />
           </Button>
 
           {decks.length === 0 ? (
@@ -428,41 +490,55 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
             </div>
           ) : (
             <div className="grid gap-4">
-              {decks.map((deck) => (
+              {decks.map((deck) => {
+                const domEl = getDominantElement(deck.cards || [])
+                const domMeta = domEl ? ELEMENT_META[domEl] : null
+                const counts = getDeckTypeCounts(deck.cards || [])
+                const previewCards = (deck.cards || []).slice(0, 6)
+                return (
                 <div
                   key={deck.id}
                   className="bg-gradient-to-r from-slate-800/80 to-indigo-900/50 rounded-2xl p-5 flex items-center justify-between border border-indigo-500/30 backdrop-blur-sm hover:border-indigo-400/50 transition-all group"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-                      <Layers className="w-6 h-6 text-white" />
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    {/* Dominant element badge or default icon */}
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 text-2xl border ${domMeta ? domMeta.bg : "bg-gradient-to-br from-indigo-500 to-purple-600 border-transparent"}`}>
+                      {domMeta ? domMeta.emoji : <Layers className="w-6 h-6 text-white" />}
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
-                        {deck.name}
-                      </h3>
-                      <p className="text-slate-400">
-                        {deck.cards.length} {t("cards")}
-                      </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors truncate">{deck.name}</h3>
+                        {domMeta && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${domMeta.bg} ${domMeta.color}`}>{domMeta.label}</span>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <p className="text-slate-400 text-sm">{deck.cards.length} cartas</p>
+                        <div className="flex gap-2 text-[10px] text-slate-500">
+                          {counts.unit > 0 && <span className="text-blue-400">{counts.unit}U</span>}
+                          {counts.trooper > 0 && <span className="text-cyan-400">{counts.trooper}T</span>}
+                          {counts.function > 0 && <span className="text-amber-400">{counts.function}F</span>}
+                          {counts.ultimate > 0 && <span className="text-emerald-400">{counts.ultimate}UG</span>}
+                        </div>
+                      </div>
+                      {/* Mini card previews */}
+                      {previewCards.length > 0 && (
+                        <div className="flex gap-1 mt-2">
+                          {previewCards.map((c, i) => (
+                            <div key={i} className="w-7 h-9 rounded overflow-hidden border border-slate-600/40 flex-shrink-0">
+                              <Image src={c.image || "/placeholder.svg"} alt={c.name} width={28} height={36} className="object-cover w-full h-full" />
+                            </div>
+                          ))}
+                          {deck.cards.length > 6 && <div className="w-7 h-9 rounded bg-slate-700/80 flex items-center justify-center text-[9px] text-slate-400 border border-slate-600/40">+{deck.cards.length-6}</div>}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleEditDeck(deck)}
-                      className="bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/50"
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      onClick={() => handleDeleteDeck(deck.id)}
-                      variant="destructive"
-                      className="border border-red-400/50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex gap-2 flex-shrink-0 ml-3">
+                    <Button onClick={() => handleEditDeck(deck)} className="bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/50">Editar</Button>
+                    <Button onClick={() => handleDeleteDeck(deck.id)} variant="destructive" className="border border-red-400/50"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -594,7 +670,38 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                 <SelectItem value="brotherhood">Irmandade</SelectItem>
               </SelectContent>
             </Select>
+            {/* ── NEW: Elemento filter ── */}
+            <Select value={filterElement} onValueChange={setFilterElement}>
+              <SelectTrigger className="w-36 bg-slate-900/80 border-indigo-500/30 text-white text-sm">
+                <SelectValue placeholder="Elemento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Elem.</SelectItem>
+                <SelectItem value="fire">🔥 Fire</SelectItem>
+                <SelectItem value="aquos">🌊 Aquos</SelectItem>
+                <SelectItem value="lightness">✨ Lightness</SelectItem>
+                <SelectItem value="darkness">🌑 Darkness</SelectItem>
+                <SelectItem value="ventus">🌪️ Ventus</SelectItem>
+                <SelectItem value="void">⬛ Void</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+          {/* ── NEW: Sort buttons ── */}
+          <div className="flex gap-1.5 px-3 pb-2">
+            <span className="text-[10px] text-slate-500 self-center mr-1">Ordenar:</span>
+            {([
+              { key: "name",    label: "A–Z" },
+              { key: "dp",      label: "DP ↓" },
+              { key: "type",    label: "Tipo" },
+              { key: "element", label: "Elem." },
+            ] as const).map(s => (
+              <button key={s.key} onClick={() => setSortBy(s.key)}
+                className={`px-2.5 py-1 rounded text-[10px] font-bold border transition-all ${
+                  sortBy === s.key
+                    ? "bg-indigo-600 border-indigo-400 text-white shadow-sm shadow-indigo-500/40"
+                    : "bg-slate-800/60 border-slate-600/40 text-slate-400 hover:border-indigo-500/40 hover:text-white"
+                }`}>{s.label}</button>
+            ))}
 
           {/* Card grid */}
           <div className="flex-1 p-3 overflow-y-auto">
@@ -702,27 +809,66 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
             <div className="flex items-center gap-2 mb-2">
               <Layers className="w-5 h-5 text-indigo-400" />
               <h3 className="text-lg font-bold text-white">{deckName || t("newDeck")}</h3>
+              {/* Dominant element badge */}
+              {elMeta && (
+                <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${elMeta.bg} ${elMeta.color}`}>
+                  {elMeta.emoji} {elMeta.label}
+                </span>
+              )}
             </div>
-            <div className="flex items-center justify-between">
+
+            {/* Card count + progress */}
+            <div className="flex items-center justify-between mb-1">
               <p className="text-sm text-slate-400">
-                <span className={deckCards.length >= MIN_CARDS ? "text-green-400" : "text-amber-400"}>
+                <span className={deckCards.length >= MIN_CARDS ? "text-green-400 font-bold" : "text-amber-400 font-bold"}>
                   {deckCards.length}
                 </span>
-                /{MAX_CARDS} {t("cards")}
+                <span className="text-slate-500">/{MAX_CARDS} cartas</span>
               </p>
-              {deckCards.length < MIN_CARDS && <p className="text-xs text-amber-400">Min: {MIN_CARDS}</p>}
+              {deckCards.length < MIN_CARDS && (
+                <p className="text-xs text-amber-400">Faltam {MIN_CARDS - deckCards.length}</p>
+              )}
             </div>
-            {/* Progress bar */}
-            <div className="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-3">
               <div
-                className={`h-full transition-all ${
-                  deckCards.length >= MIN_CARDS
-                    ? "bg-gradient-to-r from-green-500 to-emerald-400"
-                    : "bg-gradient-to-r from-amber-500 to-yellow-400"
-                }`}
-                style={{ width: `${(deckCards.length / MAX_CARDS) * 100}%` }}
+                className={`h-full transition-all ${deckCards.length >= MIN_CARDS ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-amber-500 to-yellow-400"}`}
+                style={{ width: `${Math.min((deckCards.length / MAX_CARDS) * 100, 100)}%` }}
               />
             </div>
+
+            {/* Type counters */}
+            {deckCards.length > 0 && (
+              <div className="grid grid-cols-4 gap-1 mb-3">
+                {[
+                  { label:"Unid.", count: typeCounts.unit,     color:"text-blue-400",    bg:"bg-blue-900/30 border-blue-500/30" },
+                  { label:"Trop.", count: typeCounts.trooper,  color:"text-cyan-400",    bg:"bg-cyan-900/30 border-cyan-500/30" },
+                  { label:"Func.", count: typeCounts.function, color:"text-amber-400",   bg:"bg-amber-900/30 border-amber-500/30" },
+                  { label:"UG",    count: typeCounts.ultimate, color:"text-emerald-400", bg:"bg-emerald-900/30 border-emerald-500/30" },
+                ].map(t => (
+                  <div key={t.label} className={`flex flex-col items-center py-1 px-0.5 rounded border text-center ${t.bg}`}>
+                    <span className={`text-base font-bold leading-none ${t.color}`}>{t.count}</span>
+                    <span className="text-[9px] text-slate-500 mt-0.5">{t.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Validation feedback */}
+            {deckValidation.errors.length > 0 ? (
+              <div className="space-y-1">
+                {deckValidation.errors.map((e, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-[10px] text-red-400 bg-red-900/20 border border-red-500/30 rounded px-2 py-1">
+                    <X className="w-3 h-3 flex-shrink-0" />
+                    {e}
+                  </div>
+                ))}
+              </div>
+            ) : deckCards.length >= MIN_CARDS ? (
+              <div className="flex items-center gap-1.5 text-[10px] text-green-400 bg-green-900/20 border border-green-500/30 rounded px-2 py-1">
+                <Check className="w-3 h-3" />
+                Deck válido e pronto para duelo!
+              </div>
+            ) : null}
           </div>
 
           {/* TAP Section */}
