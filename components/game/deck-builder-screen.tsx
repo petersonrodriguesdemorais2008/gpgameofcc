@@ -203,7 +203,10 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     const matchesType = filterType === "all" ||
       (filterType === "brotherhood" ? card.category === "Brotherhood Function Card" : card.type === filterType)
     const isUnitCard = card.type === "unit" || card.type === "trooper" || card.type === "troops" || card.category?.toLowerCase().includes("troop")
-    const matchesElement = filterElement === "all" || !isUnitCard || normalizeElGroup(card.element || "") === filterElement
+    // When an element filter is active: hide all non-unit cards AND only show
+    // unit/troop cards whose element matches the selected element.
+    const matchesElement = filterElement === "all"
+      || (isUnitCard && normalizeElGroup(card.element || "") === filterElement)
     return matchesSearch && matchesRarity && matchesType && matchesElement
   }).sort((a, b) => {
     if (sortBy === "dp") return ((b.dp ?? 0) - (a.dp ?? 0))
