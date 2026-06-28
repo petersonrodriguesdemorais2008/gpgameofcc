@@ -702,6 +702,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                     : "bg-slate-800/60 border-slate-600/40 text-slate-400 hover:border-indigo-500/40 hover:text-white"
                 }`}>{s.label}</button>
             ))}
+          </div>
 
           {/* Card grid */}
           <div className="flex-1 p-3 overflow-y-auto">
