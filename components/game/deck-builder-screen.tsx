@@ -185,12 +185,24 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
 
   const availableCards = Object.values(uniqueCards)
 
+  // Normalize element names to canonical group for filtering
+  const normalizeElGroup = (el: string): string => {
+    const e = (el || "").toLowerCase().trim()
+    if (["fire","pyrus"].includes(e)) return "fire"
+    if (["aquos","aquo","water"].includes(e)) return "aquos"
+    if (["haos","light","lightness"].includes(e)) return "lightness"
+    if (["darkus","darkness","dark"].includes(e)) return "darkness"
+    if (["ventus","wind"].includes(e)) return "ventus"
+    if (e === "void") return "void"
+    return e
+  }
+
   const filteredCards = availableCards.filter((card) => {
     const matchesSearch = card.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRarity = filterRarity === "all" || card.rarity === filterRarity
     const matchesType = filterType === "all" ||
       (filterType === "brotherhood" ? card.category === "Brotherhood Function Card" : card.type === filterType)
-    const matchesElement = filterElement === "all" || (card.element || "").toLowerCase() === filterElement.toLowerCase()
+    const matchesElement = filterElement === "all" || normalizeElGroup(card.element || "") === filterElement
     return matchesSearch && matchesRarity && matchesType && matchesElement
   }).sort((a, b) => {
     if (sortBy === "dp") return ((b.dp ?? 0) - (a.dp ?? 0))
@@ -225,7 +237,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const getDominantElement = (cards: Card[]) => {
     const counts: Record<string, number> = {}
     cards.forEach(c => {
-      const el = (c.element || "").toLowerCase()
+      const el = normalizeElGroup((c.element || "").toLowerCase())
       if (el) counts[el] = (counts[el] || 0) + 1
     })
     if (!Object.keys(counts).length) return null
@@ -501,9 +513,9 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                   className="bg-gradient-to-r from-slate-800/80 to-indigo-900/50 rounded-2xl p-5 flex items-center justify-between border border-indigo-500/30 backdrop-blur-sm hover:border-indigo-400/50 transition-all group"
                 >
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    {/* Dominant element badge or default icon */}
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 text-2xl border ${domMeta ? domMeta.bg : "bg-gradient-to-br from-indigo-500 to-purple-600 border-transparent"}`}>
-                      {domMeta ? domMeta.emoji : <Layers className="w-6 h-6 text-white" />}
+                    {/* Element color indicator — no emoji, just colored icon */}
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 border ${domMeta ? domMeta.bg : "bg-gradient-to-br from-indigo-500/30 to-purple-600/30 border-indigo-500/40"}`}>
+                      <Layers className={`w-6 h-6 ${domMeta ? domMeta.color : "text-indigo-400"}`} />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
