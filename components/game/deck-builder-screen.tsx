@@ -202,7 +202,8 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     const matchesRarity = filterRarity === "all" || card.rarity === filterRarity
     const matchesType = filterType === "all" ||
       (filterType === "brotherhood" ? card.category === "Brotherhood Function Card" : card.type === filterType)
-    const matchesElement = filterElement === "all" || normalizeElGroup(card.element || "") === filterElement
+    const isUnitCard = card.type === "unit" || card.type === "trooper" || card.type === "troops" || card.category?.toLowerCase().includes("troop")
+    const matchesElement = filterElement === "all" || !isUnitCard || normalizeElGroup(card.element || "") === filterElement
     return matchesSearch && matchesRarity && matchesType && matchesElement
   }).sort((a, b) => {
     if (sortBy === "dp") return ((b.dp ?? 0) - (a.dp ?? 0))
