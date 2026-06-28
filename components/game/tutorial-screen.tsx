@@ -10,7 +10,7 @@
  * Fluxo: TitleScreen → TutorialScreen → (game-wrapper navega p/ MainMenu) → TutorialGameOverlay
  */
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type { Card as GameCard } from "@/contexts/game-context"
 
 // ═══════════════════════════════════════════════════════════════════════════════
