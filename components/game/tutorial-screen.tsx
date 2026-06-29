@@ -28,11 +28,16 @@ export interface TutorialScreenProps {
 
 export interface TutorialGameOverlayProps {
   masterId: TutorialMasterId
-  /** game-wrapper navega para a tela certa — o duelo do tutorial é 100%
-   *  roteirizado/fake (não usa navegação real), só "menu" e "gacha" precisam */
-  onNavigate: (screen: "menu" | "gacha") => void
+  /** game-wrapper navega para a tela certa quando solicitado pelo overlay */
+  onNavigate: (screen: "menu" | "gacha" | "duel") => void
   /** Chamado quando TODO o tutorial (overlay) é concluído */
   onComplete: () => void
+  /**
+   * Sinalizado como true pelo game-wrapper quando o duelo real do tutorial
+   * terminou (jogador clicou em Voltar no DuelScreen). Quando true enquanto
+   * phase === "duel-sim", o overlay avança para post-duel-menu.
+   */
+  postDuelReady?: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1854,7 +1859,7 @@ function TutorialDuelSim({ masterId, onFinish }: {
 }
 
 
-export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: TutorialGameOverlayProps) {
+export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuelReady }: TutorialGameOverlayProps) {
   const [phase, setPhase] = useState<OverlayPhase>("menu")
   const [step, setStep] = useState(0)
   const [visible, setVisible] = useState(false)
@@ -1887,6 +1892,20 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
     return () => clearTimeout(t)
   }, [step, phase, currentStep, isLastStep, onComplete])
 
+  // ── Ao entrar em duel-sim: sinaliza game-wrapper para navegar ao duelo real ──────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (phase === "duel-sim") onNavigate("duel")
+  }, [phase]) // omitimos onNavigate das deps — dispara só uma vez ao entrar na fase
+
+  // ── Quando duelo real termina, game-wrapper seta postDuelReady=true ──────────
+  useEffect(() => {
+    if (phase === "duel-sim" && postDuelReady) {
+      setPhase("post-duel-menu")
+      setStep(0)
+    }
+  }, [phase, postDuelReady])
+
   // ── Handlers (definidos antes de qualquer return) ───────────────────────────
   const handleInterceptClick = () => {
     if (phase === "menu") {
@@ -1910,22 +1929,14 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete }: Tutori
     phase === "post-duel-menu"  ? MENU_STEPS.length + step :
     MENU_STEPS.length + POST_DUEL_STEPS.length + step
 
-  // ── Fase duel-sim: renderiza o simulador em tela cheia ──────────────────────
-  // IMPORTANTE: este return só acontece DEPOIS de todos os hooks acima.
-  // Colocar um return antes de um hook viola as Regras dos Hooks do React
-  // e causa crash de runtime ("Rendered more hooks than during previous render").
+  // ── Fase duel-sim: o duelo real está sendo renderizado pelo game-wrapper ─────
+  // O overlay retorna null aqui; o componente permanece montado com seu estado
+  // intacto. Quando postDuelReady=true, o useEffect acima avança para post-duel-menu.
   if (phase === "duel-sim") {
     return (
       <>
+        {/* overlay oculto — game-wrapper exibe o DuelScreen real neste momento */}
         <style>{TUTORIAL_CSS}</style>
-        <TutorialDuelSim
-          masterId={masterId}
-          onFinish={() => {
-            onNavigate("menu")
-            setPhase("post-duel-menu")
-            setStep(0)
-          }}
-        />
       </>
     )
   }
