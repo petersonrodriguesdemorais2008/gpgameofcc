@@ -330,14 +330,11 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
   const isBoss = stage.type === "boss"
   const lp = isBoss ? 30 : 20
   const staminaCost = isBoss ? 10 : 5
-  const hasEnoughStamina = stamina >= staminaCost
+  const hasEnoughStamina = stamina >= staminaCost  // display-only, never blocks launch
   const staminaPct = Math.min(100, (stamina / maxStamina) * 100)
 
   const handleStart = () => {
-    if (!hasEnoughStamina) return
-    // spendStamina is called by the parent (StoryModeScreen) to avoid
-    // triggering a context state update mid-navigation
-    onStart()
+    onStart()  // always allowed — stamina is informational only in story mode
   }
 
   return (
@@ -398,37 +395,21 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
               boxShadow: hasEnoughStamina ? "0 0 6px rgba(16,185,129,0.5)" : "0 0 6px rgba(239,68,68,0.5)",
               transition:"width 0.5s" }}/>
           </div>
-          {!hasEnoughStamina && (
-            <div style={{ marginTop:10, padding:"8px 12px", borderRadius:8,
-              background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)" }}>
-              <p style={{ color:"#fca5a5", fontSize:11, margin:0, fontWeight:700 }}>
-                ⚡ Stamina insuficiente!{" "}
-                {staminaNextTickSeconds > 0
-                  ? `Próximo ponto em ${String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:${String(staminaNextTickSeconds%60).padStart(2,"0")}`
-                  : "Aguarde a recuperação."}
-              </p>
-            </div>
-          )}
+
         </div>
         <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
           <button onClick={onBack} style={{ padding:"11px 22px", borderRadius:11,
             background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)",
             color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Voltar</button>
-          <button onClick={handleStart} disabled={!hasEnoughStamina}
+          <button onClick={handleStart} disabled={false}
             style={{ padding:"11px 28px", borderRadius:11, border:"none",
-              background: !hasEnoughStamina ? "rgba(255,255,255,0.06)"
-                : isBoss ? "linear-gradient(135deg,#7f1d1d,#dc2626)"
-                : "linear-gradient(135deg,#1e3a8a,#3b82f6)",
-              color: hasEnoughStamina ? "#fff" : "#475569",
+               background: isBoss ? "linear-gradient(135deg,#7f1d1d,#dc2626)" : "linear-gradient(135deg,#1e3a8a,#3b82f6)",
+               color: "#fff",
               fontWeight:900, fontSize:14,
-              cursor: hasEnoughStamina ? "pointer" : "not-allowed",
-              boxShadow: !hasEnoughStamina ? "none"
-                : isBoss ? "0 6px 20px rgba(220,38,38,0.35)"
-                : "0 6px 20px rgba(59,130,246,0.35)",
+              cursor: "pointer",
+               boxShadow: isBoss ? "0 6px 20px rgba(220,38,38,0.35)" : "0 6px 20px rgba(59,130,246,0.35)",
               transition:"all 0.2s" }}>
-            {!hasEnoughStamina ? "⚡ Sem Stamina"
-              : isBoss ? "⚔️ Batalha Final!"
-              : "⚔️ Iniciar Batalha!"}
+            {isBoss ? "⚔️ Batalha Final!" : "⚔️ Iniciar Batalha!"}
           </button>
         </div>
       </div>
@@ -1081,10 +1062,8 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   const handleBattleStart = () => {
     if (!battleStage) return
     const isBoss = battleStage.type === "boss"
-    const staminaCost = isBoss ? 10 : 5
     const stageId = battleStage.id
     const mode = isBoss ? "story-boss" as const : "story-normal" as const
-    spendStamina(staminaCost)
     setBattleStage(null)
     setPendingId(null)
     onStartBattle(mode, stageId)
