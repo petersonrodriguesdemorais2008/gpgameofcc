@@ -224,6 +224,28 @@ function buildMissions(): PassMission[] {
       completed: g.loginToday,
       claimed: false,
     },
+    {
+      id: "daily_wins_3",
+      title: "Domínio Total",
+      description: "Vença 3 duelos hoje",
+      type: "daily",
+      points: 80,
+      progress: Math.min(g.winsToday, 3),
+      goal: 3,
+      completed: g.winsToday >= 3,
+      claimed: false,
+    },
+    {
+      id: "daily_gacha_3",
+      title: "Sortudo do Dia",
+      description: "Faça 3 pulls no Gacha hoje",
+      type: "daily",
+      points: 60,
+      progress: Math.min(g.gachaToday, 3),
+      goal: 3,
+      completed: g.gachaToday >= 3,
+      claimed: false,
+    },
     // ── Semanais ──
     {
       id: "weekly_wins_5",
@@ -376,6 +398,66 @@ function buildMissions(): PassMission[] {
       progress: Math.min(g.deckEditWeek * 1, 3),
       goal: 3,
       completed: (g.deckEditWeek * 1) >= 3,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_duels_50",
+      title: "Veterano da Arena",
+      description: "Dispute 50 duelos durante este Passe",
+      type: "limited",
+      points: 350,
+      progress: Math.min(g.duelsTotal, 50),
+      goal: 50,
+      completed: g.duelsTotal >= 50,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_wins_30",
+      title: "Invicto",
+      description: "Vença 30 duelos durante este Passe",
+      type: "limited",
+      points: 350,
+      progress: Math.min(g.winsTotal, 30),
+      goal: 30,
+      completed: g.winsTotal >= 30,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_gacha_10",
+      title: "Sortudo do Passe",
+      description: "Faça 10 pulls no Gacha durante este Passe",
+      type: "limited",
+      points: 200,
+      progress: Math.min(g.gachaTotal, 10),
+      goal: 10,
+      completed: g.gachaTotal >= 10,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_sr_10",
+      title: "Mestre das Raridades",
+      description: "Obtenha 10 cartas SR ou superior neste Passe",
+      type: "limited",
+      points: 600,
+      progress: Math.min(g.srTotal, 10),
+      goal: 10,
+      completed: g.srTotal >= 10,
+      claimed: false,
+      expiresIn: "29d",
+    },
+    {
+      id: "limited_deck_10",
+      title: "Mestre das Estratégias",
+      description: "Edite ou crie decks 10 vezes neste Passe",
+      type: "limited",
+      points: 450,
+      progress: Math.min(g.deckEditWeek * 1, 10),
+      goal: 10,
+      completed: (g.deckEditWeek * 1) >= 10,
       claimed: false,
       expiresIn: "29d",
     },
@@ -2066,55 +2148,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     <span style={{ fontSize: 10, color: "#64748b" }}>Pronto p/ coletar</span>
                   </div>
                 </div>
-
-                {/* ── HISTÓRICO DE RECOMPENSAS COLETADAS ── */}
-                {(() => {
-                  const claimed = levelGroups.filter(lg => lg.commonClaimed || lg.premiumClaimed)
-                  if (claimed.length === 0) return null
-                  return (
-                    <div style={{
-                      margin: "0 14px 10px",
-                      background: "rgba(3,8,22,0.70)", backdropFilter: "blur(8px)",
-                      border: "1px solid rgba(255,255,255,0.07)",
-                      borderRadius: 12, padding: "10px 14px",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.10em", textTransform: "uppercase" }}>
-                          ✓ Recompensas coletadas ({claimed.length})
-                        </span>
-                        <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(255,255,255,0.06),transparent)" }} />
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {claimed.map(lg => {
-                          const rewards: { reward: PassReward; isPrem: boolean }[] = []
-                          if (lg.commonClaimed && lg.common)   rewards.push({ reward: lg.common,   isPrem: false })
-                          if (lg.premiumClaimed && lg.premium) rewards.push({ reward: lg.premium,  isPrem: true  })
-                          return rewards.map(({ reward, isPrem }) => {
-                            const rarityColors: Record<string, string> = { R: "#60a5fa", SR: "#a855f7", UR: "#fbbf24", LR: "#ef4444" }
-                            const accent = isPrem ? "#f59e0b" : "#06b6d4"
-                            return (
-                              <div key={`${lg.level}-${isPrem}`} style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                background: `${accent}10`, border: `1px solid ${accent}28`,
-                                borderRadius: 8, padding: "4px 8px",
-                              }}>
-                                {/* Tiny rarity dot for card packs */}
-                                {reward.type === "card_pack" && reward.rarity && (
-                                  <div style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-                                    background: rarityColors[reward.rarity] ?? "#94a3b8" }} />
-                                )}
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8" }}>
-                                  {reward.label}
-                                </span>
-                                <span style={{ fontSize: 9, color: "#334155" }}>Lv.{lg.level}</span>
-                              </div>
-                            )
-                          })
-                        })}
-                      </div>
-                    </div>
-                  )
-                })()}
               </div>
             </div>
           )}
