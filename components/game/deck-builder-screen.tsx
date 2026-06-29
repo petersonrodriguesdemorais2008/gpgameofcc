@@ -202,11 +202,32 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     const matchesRarity = filterRarity === "all" || card.rarity === filterRarity
     const matchesType = filterType === "all" ||
       (filterType === "brotherhood" ? card.category === "Brotherhood Function Card" : card.type === filterType)
-    const isUnitCard = card.type === "unit" || card.type === "trooper" || card.type === "troops" || card.category?.toLowerCase().includes("troop")
-    // When an element filter is active: hide all non-unit cards AND only show
-    // unit/troop cards whose element matches the selected element.
+
+    // Element filter: ONLY unit and troop cards qualify.
+    // Any other card type is unconditionally hidden when an element is active.
+    const cardTypeLower = (card.type || "").toLowerCase()
+    const cardCatLower  = (card.category || "").toLowerCase()
+    const isUnitOrTroop =
+      cardTypeLower === "unit" ||
+      cardTypeLower === "trooper" ||
+      cardTypeLower === "troops" ||
+      cardTypeLower === "troop" ||
+      cardCatLower.includes("troop") ||
+      cardCatLower.includes("unidade")
+
+    // Non-unit types that must NEVER appear in element filter results
+    const isNonUnitType =
+      cardTypeLower === "magic" || cardTypeLower === "action" ||
+      cardTypeLower === "trap" || cardTypeLower === "item" ||
+      cardTypeLower === "scenario" || cardTypeLower === "brotherhood" ||
+      cardTypeLower === "ultimategear" || cardTypeLower === "ultimateguardian" ||
+      cardTypeLower === "ultimateelemental" || cardTypeLower === "function" ||
+      cardCatLower.includes("brotherhood function")
+
     const matchesElement = filterElement === "all"
-      || (isUnitCard && normalizeElGroup(card.element || "") === filterElement)
+      ? true
+      : (!isNonUnitType && isUnitOrTroop && normalizeElGroup(card.element || "") === filterElement)
+
     return matchesSearch && matchesRarity && matchesType && matchesElement
   }).sort((a, b) => {
     if (sortBy === "dp") return ((b.dp ?? 0) - (a.dp ?? 0))
