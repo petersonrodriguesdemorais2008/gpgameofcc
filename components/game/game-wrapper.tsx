@@ -66,6 +66,10 @@ export function GameWrapper() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialOverlayActive, setTutorialOverlayActive] = useState(false)
   const [tutorialOverlayMaster, setTutorialOverlayMaster] = useState<TutorialMasterId | null>(null)
+  /** true quando o overlay do tutorial navegou para o duelo real (duel-sim phase) */
+  const [tutorialInDuel, setTutorialInDuel] = useState(false)
+  /** true quando o jogador volta do duelo real — sinaliza o overlay para avançar para post-duel-menu */
+  const [tutorialPostDuel, setTutorialPostDuel] = useState(false)
   // ─────────────────────────────────────────────────────────────────────────
   // ── RESET DE CONTA: detecta quando hasCompletedSetup vai de true → false
   //    NA MESMA sessão (ou seja, não é o boot normal de uma conta nova, é um
@@ -291,6 +295,13 @@ export function GameWrapper() {
       {currentScreen === "deck-builder" && <DeckBuilderScreen onBack={() => navigateTo("menu")} />}
       {(currentScreen === "duel-bot" || currentScreen === "duel-player") && (
         <DuelScreen mode={duelMode} onBattleStart={() => pauseMenuMusic()} onBack={() => {
+          // Se estamos no duelo do tutorial, avança o overlay para post-duel-menu
+          if (tutorialOverlayActive && tutorialInDuel) {
+            setTutorialInDuel(false)
+            setTutorialPostDuel(true)
+            navigateTo("menu")
+            return
+          }
           // If returning from a story battle, go back to story screen
           const storyBattle = (() => {
             try { const r = localStorage.getItem("gpgame_story_battle_pending"); return r ? JSON.parse(r) : null } catch { return null }
@@ -354,11 +365,21 @@ export function GameWrapper() {
         <TutorialGameOverlay
           masterId={tutorialOverlayMaster}
           onNavigate={(screen) => {
-            // O duelo do tutorial é 100% roteirizado dentro do TutorialDuelSim
-            // (em tutorial-screen.tsx) — não há navegação pra "duel-bot" mais.
-            if (screen === "gacha") navigateTo("gacha")
-            else if (screen === "menu") navigateTo("menu")
+            // Roteia a navegação solicitada pelo overlay do tutorial
+            if (screen === "duel") {
+              // Inicia o duelo real (duel-screen.tsx) no modo bot
+              setTutorialInDuel(true)
+              setTutorialPostDuel(false)
+              pauseMenuMusic()
+              setDuelMode("bot")
+              navigateTo("duel-bot")
+            } else if (screen === "gacha") {
+              navigateTo("gacha")
+            } else if (screen === "menu") {
+              navigateTo("menu")
+            }
           }}
+          postDuelReady={tutorialPostDuel}
           onComplete={handleTutorialOverlayComplete}
         />
       )}
