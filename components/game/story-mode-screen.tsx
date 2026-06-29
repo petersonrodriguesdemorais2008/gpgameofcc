@@ -326,7 +326,7 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
 // ─── Battle Intro ─────────────────────────────────────────────────────────────
 
 function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()=>void; onBack:()=>void }) {
-  const { stamina, maxStamina, spendStamina, staminaNextTickSeconds } = useGame()
+  const { stamina, maxStamina, staminaNextTickSeconds } = useGame()
   const isBoss = stage.type === "boss"
   const lp = isBoss ? 30 : 20
   const staminaCost = isBoss ? 10 : 5
@@ -335,7 +335,8 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
 
   const handleStart = () => {
     if (!hasEnoughStamina) return
-    spendStamina(staminaCost)
+    // spendStamina is called by the parent (StoryModeScreen) to avoid
+    // triggering a context state update mid-navigation
     onStart()
   }
 
@@ -1080,10 +1081,13 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   const handleBattleStart = () => {
     if (!battleStage) return
     const isBoss = battleStage.type === "boss"
-    localStorage.setItem(LS_BATTLE_KEY, JSON.stringify({ stageId: battleStage.id, won: false, lp: isBoss ? 30 : 20 }))
+    const staminaCost = isBoss ? 10 : 5
+    const stageId = battleStage.id
+    const mode = isBoss ? "story-boss" as const : "story-normal" as const
+    spendStamina(staminaCost)
     setBattleStage(null)
     setPendingId(null)
-    onStartBattle(isBoss ? "story-boss" : "story-normal", battleStage.id)
+    onStartBattle(mode, stageId)
   }
 
   const getNextStage = (stageId: string): Stage | null => {
