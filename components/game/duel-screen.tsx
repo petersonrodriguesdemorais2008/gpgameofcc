@@ -5586,11 +5586,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace || !isUltimateCard(cardToPlace)) return
-    // Allow stacking ultimates: new ultimate replaces old one (old goes to graveyard)
-    if (playerField.ultimateZones.some(z=>z !== null)) {
-      // Send current ultimate to graveyard before placing new one
-      const oldUg = playerField.ultimateZones.find(z=>z!==null) ?? null
-      setPlayerField(prev => ({ ...prev, graveyard: [...prev.graveyard, oldUg] }))
+    // Up to 3 ultimates can be active at once. Only when ALL 3 slots are
+    // full does placing a new one discard the oldest (slot 0) to make room.
+    if (playerField.ultimateZones.every(z=>z !== null)) {
+      const oldUg = playerField.ultimateZones[0]
+      setPlayerField(prev => ({
+        ...prev,
+        graveyard: oldUg ? [...prev.graveyard, oldUg] : prev.graveyard,
+        ultimateZones: [null, ...prev.ultimateZones.slice(1)] as (FieldCard|null)[],
+      }))
     }
 
     const fieldCard: FieldCard = {
@@ -10108,13 +10112,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   </div>
                   {/* Enemy Ultimate Zone — vertical peek stack */}
                   {(() => {
-                    const PEEK = 12, CARD_H = 80, NUM = 3
+                    const PEEK = 20, CARD_H = 80, NUM = 3
                     const containerH = CARD_H + (NUM - 1) * PEEK
                     return (
                       <div className="relative flex-shrink-0" style={{ width: 56, height: containerH }}>
                         {([0,1,2] as const).map(i => (
                           <div key={`bg-${i}`}
-                            className="absolute w-14 rounded border border-emerald-600/40 bg-emerald-900/40"
+                            className="absolute w-14 rounded-md border border-dashed border-emerald-500/35 bg-emerald-950/30"
                             style={{ top: (NUM - 1 - i) * PEEK, height: CARD_H, zIndex: i + 1 }}
                           />
                         ))}
@@ -10124,11 +10128,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           const isTarget = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
                           return (
                             <div key={ugi}
-                              className={`absolute w-14 h-20 rounded overflow-hidden transition-all border ${
+                              className={`absolute w-14 h-20 rounded-md overflow-hidden transition-all border-2 shadow-lg ${
                                 isTarget ? "border-yellow-400 cursor-pointer ring-2 ring-yellow-400/50 animate-pulse"
-                                : "border-emerald-600/40"
+                                : "border-emerald-500/70"
                               }`}
-                              style={{ top: (NUM - 1 - ugi) * PEEK, zIndex: ugi + 4 }}
+                              style={{ top: (NUM - 1 - ugi) * PEEK, zIndex: ugi + 4, boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}
                               onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", ugi) }}
                             >
                               <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill
@@ -10525,7 +10529,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   </div>
                   {/* Player Ultimate Zone — vertical peek stack */}
                   {(() => {
-                    const PEEK = 12, CARD_H = 80, NUM = 3
+                    const PEEK = 20, CARD_H = 80, NUM = 3
                     const containerH = CARD_H + (NUM - 1) * PEEK
                     const firstEmpty = playerField.ultimateZones.findIndex(z => z === null)
                     const canDropCard = firstEmpty !== -1 && (
@@ -10545,10 +10549,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           return (
                             <div key={`bg-${i}`}
                               data-player-ultimate-slot={i}
-                              className={`absolute w-14 rounded border-2 transition-all duration-75 ${
+                              className={`absolute w-14 rounded-md border-2 transition-all duration-75 ${
                                 canDropCard && empty ? "border-green-400 bg-green-500/40 shadow-lg shadow-green-500/40 animate-pulse"
                                 : isDraggingUltimate && empty ? "border-emerald-400/50 bg-emerald-500/20"
-                                : "border-emerald-600/40 bg-emerald-900/30"
+                                : "border-dashed border-emerald-500/35 bg-emerald-950/30"
                               }`}
                               style={{ top: (NUM - 1 - i) * PEEK, height: CARD_H, zIndex: i + 1 }}
                             />
@@ -10560,8 +10564,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           if (!puz) return null
                           return (
                             <div key={puzi}
-                              className="absolute w-14 h-20 rounded border-2 border-emerald-500/60 overflow-hidden"
-                              style={{ top: (NUM - 1 - puzi) * PEEK, zIndex: puzi + 4 }}
+                              className="absolute w-14 h-20 rounded-md border-2 border-emerald-500/70 overflow-hidden shadow-lg"
+                              style={{ top: (NUM - 1 - puzi) * PEEK, zIndex: puzi + 4, boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}
                             >
                               <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill
                                 className="object-cover rounded"
