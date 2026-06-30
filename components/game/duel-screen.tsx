@@ -7887,6 +7887,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const newFunctionZone = [...prev.functionZone]
         let newScenarioZone = prev.scenarioZone
         let newUltimateZones = [...(prev.ultimateZones||[null,null,null])] as (FieldCard|null)[]
+        let newUltimateZone: FieldCard | null = null
 
         // Bot plays Scenario cards ONLY in Scenario zone
         for (let i = newHand.length - 1; i >= 0; i--) {
@@ -8122,6 +8123,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
         }
 
+        // Place the newly created ultimate card (from hand or TAP) into the first empty slot
+        if (newUltimateZone) {
+          const emptyUgSlot = newUltimateZones.findIndex(z => z === null)
+          if (emptyUgSlot !== -1) newUltimateZones[emptyUgSlot] = newUltimateZone
+        }
+
         return {
           ...prev,
           hand: newHand,
@@ -8351,11 +8358,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     newUnitZone[playerUnitIndex] = null
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                     // ── Equipped Ultimate Gear is destroyed together with its unit ──
-                    const __ugDestroyIdx = newUltimateZones.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
+                    const __ugDestroyIdx = newUltimateZonesP.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
                   if (__ugDestroyIdx !== -1) {
-                      newGrave.push(newUltimateZone)
-                      showEffectFeedback(`${newUltimateZone.name} foi destruída junto com ${defender.name}!`, "error")
-                      newUltimateZone = null
+                      newGrave.push(newUltimateZonesP[__ugDestroyIdx]!)
+                      showEffectFeedback(`${newUltimateZonesP[__ugDestroyIdx]!.name} foi destruída junto com ${defender.name}!`, "error")
+                      newUltimateZonesP[__ugDestroyIdx] = null
                     }
                     if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
                       setTimeout(() => { setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) })); showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning") }, 400)
