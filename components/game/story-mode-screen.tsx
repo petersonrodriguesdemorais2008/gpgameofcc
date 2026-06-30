@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, useReducer } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 
@@ -483,32 +483,8 @@ const MAP_NODES: MapNodeDef[] = [
   { stageId: "c1s8",   type: "scene",  label: "A Revelação",        sublabel: "Cena Final",  x: 55,  y: 6  },
 ]
 
-// ─── Map State (zoom + pan via useReducer) ────────────────────────────────────
 
-type MapState  = { zoom: number; pan: { x: number; y: number } }
-type MapAction =
-  | { type: "ZOOM"; mx: number; my: number; factor: number }
-  | { type: "PAN";  dx: number; dy: number }
-  | { type: "RESET" }
-
-const MIN_ZOOM = 1.0
-const MAX_ZOOM = 2.5
-
-function mapReducer(s: MapState, a: MapAction): MapState {
-  if (a.type === "RESET") return { zoom: 1, pan: { x: 0, y: 0 } }
-  if (a.type === "PAN")   return { ...s, pan: { x: s.pan.x + a.dx, y: s.pan.y + a.dy } }
-  if (a.type === "ZOOM") {
-    const nz = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, s.zoom * a.factor))
-    const r  = nz / s.zoom
-    return {
-      zoom: nz,
-      pan:  { x: a.mx - (a.mx - s.pan.x) * r, y: a.my - (a.my - s.pan.y) * r },
-    }
-  }
-  return s
-}
-
-// ─── Board Map View ───────────────────────────────────────────────────────────
+// ─── Board Map View (static — no zoom/pan) ───────────────────────────────────
 
 function StoryMapView({
   stages, completedIds, onPress, onBack, stamina, maxStamina, staminaNextTickSeconds,
@@ -521,14 +497,6 @@ function StoryMapView({
   maxStamina: number
   staminaNextTickSeconds: number
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [mapState, dispatch] = useReducer(mapReducer, { zoom: 1, pan: { x: 0, y: 0 } })
-  const { zoom, pan } = mapState
-
-  const dragging    = useRef(false)
-  const lastMouse   = useRef({ x: 0, y: 0 })
-  const lastPinch   = useRef<number | null>(null)
-
   const [vw, setVw] = useState(() => typeof window !== "undefined" ? window.innerWidth  : 1024)
   const [vh, setVh] = useState(() => typeof window !== "undefined" ? window.innerHeight : 768)
 
@@ -536,81 +504,6 @@ function StoryMapView({
     const h = () => { setVw(window.innerWidth); setVh(window.innerHeight) }
     window.addEventListener("resize", h)
     return () => window.removeEventListener("resize", h)
-  }, [])
-
-  // ── Mouse-wheel zoom toward cursor ──
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const rect   = el.getBoundingClientRect()
-      if (e.deltaY > 0) return  // block zoom-out (image distorts below 100%)
-      const factor = 1.12  // scroll forward = zoom in only
-      dispatch({ type: "ZOOM", mx: e.clientX - rect.left, my: e.clientY - rect.top, factor })
-    }
-    el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
-  }, [])
-
-  // ── Mouse drag ──
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return
-    dragging.current = true
-    lastMouse.current = { x: e.clientX, y: e.clientY }
-    if (containerRef.current) containerRef.current.style.cursor = "grabbing"
-  }, [])
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragging.current) return
-    dispatch({ type: "PAN", dx: e.clientX - lastMouse.current.x, dy: e.clientY - lastMouse.current.y })
-    lastMouse.current = { x: e.clientX, y: e.clientY }
-  }, [])
-  const onMouseUp = useCallback(() => {
-    dragging.current = false
-    if (containerRef.current) containerRef.current.style.cursor = "grab"
-  }, [])
-
-  // ── Touch drag + pinch zoom ──
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX
-      const dy = e.touches[0].clientY - e.touches[1].clientY
-      lastPinch.current = Math.sqrt(dx * dx + dy * dy)
-      dragging.current  = false
-    } else {
-      dragging.current  = true
-      lastPinch.current = null
-      lastMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    }
-  }, [])
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastPinch.current != null) {
-      const dx   = e.touches[0].clientX - e.touches[1].clientX
-      const dy   = e.touches[0].clientY - e.touches[1].clientY
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (rect) {
-        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left
-        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top
-        dispatch({ type: "ZOOM", mx, my, factor: dist / lastPinch.current })
-      }
-      lastPinch.current = dist
-    } else if (e.touches.length === 1 && dragging.current) {
-      dispatch({ type: "PAN", dx: e.touches[0].clientX - lastMouse.current.x, dy: e.touches[0].clientY - lastMouse.current.y })
-      lastMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    }
-  }, [])
-  const onTouchEnd = useCallback(() => {
-    dragging.current  = false
-    lastPinch.current = null
-  }, [])
-
-  // ── Button zoom (centered on screen) ──
-  const btnZoom = useCallback((factor: number) => {
-    const el = containerRef.current
-    if (!el) return
-    const { width, height } = el.getBoundingClientRect()
-    dispatch({ type: "ZOOM", mx: width / 2, my: height / 2, factor })
   }, [])
 
   const px = (pct: number) => (pct / 100) * vw
@@ -643,361 +536,228 @@ function StoryMapView({
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "fixed", inset: 0, overflow: "hidden",
-        cursor: "grab", userSelect: "none", touchAction: "none",
-        fontFamily: "'Segoe UI',system-ui,sans-serif",
-      }}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* ══ Transformable map world ══════════════════════════════════════════ */}
-      <div style={{
-        position: "absolute", inset: 0,
-        transform: `translate(${pan.x}px,${pan.y}px) scale(${zoom})`,
-        transformOrigin: "0 0",
-        willChange: "transform",
-      }}>
-        {/* Background world image */}
-        <img
-          src="/images/gearperks-world.png"
-          alt="" aria-hidden="true"
-          onError={(e) => {
-            const t = e.currentTarget
-            if (t.dataset.fallback) return
-            t.dataset.fallback = "1"
-            t.src = "/images/gearperks-word.png"
-          }}
-          style={{
-            position: "absolute", inset: 0,
-            width: "100%", height: "100%",
-            objectFit: "cover", objectPosition: "center top",
-            pointerEvents: "none",
-          }}
-        />
+    <div style={{ position:"fixed", inset:0, overflow:"hidden",
+      fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
 
-        {/* Subtle dark overlay for readability */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          background: "linear-gradient(160deg,rgba(3,6,14,0.38) 0%,rgba(3,6,14,0.14) 50%,rgba(3,6,14,0.46) 100%)",
-        }} />
+      {/* ── World background ── */}
+      <img
+        src="/images/gearperks-world.png"
+        alt="" aria-hidden="true"
+        onError={(e) => {
+          const t = e.currentTarget
+          if (t.dataset.fallback) return
+          t.dataset.fallback = "1"
+          t.src = "/images/gearperks-word.png"
+        }}
+        style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+          objectFit:"cover", objectPosition:"center top", pointerEvents:"none" }}
+      />
 
-        {/* ── SVG path lines ── */}
-        <svg style={{
-          position: "absolute", inset: 0, width: "100%", height: "100%",
-          pointerEvents: "none", zIndex: 5, overflow: "visible",
-        }}>
-          {MAP_NODES.slice(0, -1).map((node, i) => {
-            const next = MAP_NODES[i + 1]
-            const lit  = node.stageId === null ? true : completedIds.has(node.stageId)
-            const x1 = px(node.x), y1 = py(node.y)
-            const x2 = px(next.x), y2 = py(next.y)
-            return (
-              <g key={`seg-${i}`}>
-                {/* Dark shadow line */}
-                <line
-                  x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke="rgba(0,0,0,0.60)" strokeWidth={7} strokeLinecap="round"
-                  strokeDasharray={lit ? undefined : "16 9"}
-                  opacity={lit ? 1 : 0.5}
-                />
-                {/* Colored line */}
-                <line
-                  x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke={lit ? "#8b5cf6" : "#3b0764"}
-                  strokeWidth={3} strokeLinecap="round"
-                  strokeDasharray={lit ? undefined : "16 9"}
-                  opacity={lit ? 0.95 : 0.40}
-                />
-              </g>
-            )
-          })}
-        </svg>
+      {/* Overlay */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+        background:"linear-gradient(160deg,rgba(3,6,14,0.38) 0%,rgba(3,6,14,0.14) 50%,rgba(3,6,14,0.46) 100%)" }}/>
 
-        {/* ── Map Nodes ── */}
-        {MAP_NODES.map((nodeDef) => {
-          const isStart     = nodeDef.stageId === null
-          const stage       = isStart ? null : stages.find(s => s.id === nodeDef.stageId)
-          const isCompleted = !isStart && !!stage && completedIds.has(nodeDef.stageId!)
-          const accessible  = !isStart && isAccessible(nodeDef.stageId!)
-          const isNext      = nodeDef.stageId === nextStageId
-          const isPlayer    = isStart ? playerNodeId === null : nodeDef.stageId === playerNodeId
-
-          const palette = {
-            start:  { bg: "#1e293b",                                 border: "#475569" },
-            scene:  { bg: "linear-gradient(145deg,#3b0764,#5b21b6)", border: "#7c3aed" },
-            battle: { bg: "linear-gradient(145deg,#172554,#1d4ed8)", border: "#2563eb" },
-            boss:   { bg: "linear-gradient(145deg,#450a0a,#991b1b)", border: "#dc2626" },
-          }[nodeDef.type]
-
-          const nodeBg = isCompleted
-            ? "linear-gradient(145deg,#14532d,#166534)"
-            : (!accessible && !isStart) ? "rgba(12,16,28,0.92)" : palette.bg
-
-          const nodeBd = isPlayer    ? "#38bdf8"
-                       : isNext      ? "#22c55e"
-                       : isCompleted ? "#22c55e"
-                       : (!accessible && !isStart) ? "#1e293b"
-                       : palette.border
-
-          const nodeGlow = isPlayer
-            ? "0 0 24px rgba(56,189,248,0.75), 0 6px 18px rgba(0,0,0,0.6)"
-            : isNext
-            ? "0 0 24px rgba(34,197,94,0.75), 0 6px 18px rgba(0,0,0,0.6)"
-            : "0 4px 14px rgba(0,0,0,0.55)"
-
-          const subColor = {
-            boss: "#fca5a5", battle: "#93c5fd", scene: "#c4b5fd", start: "#94a3b8",
-          }[nodeDef.type]
-
+      {/* ── SVG path lines ── */}
+      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+        pointerEvents:"none", zIndex:5, overflow:"visible" }}>
+        {MAP_NODES.slice(0, -1).map((node, i) => {
+          const next = MAP_NODES[i + 1]
+          const lit  = node.stageId === null ? true : completedIds.has(node.stageId)
+          const x1=px(node.x), y1=py(node.y), x2=px(next.x), y2=py(next.y)
           return (
-            <div
-              key={nodeDef.stageId ?? "start"}
-              style={{
-                position: "absolute",
-                left: `${nodeDef.x}%`, top: `${nodeDef.y}%`,
-                transform: "translate(-50%,-50%)",
-                zIndex: 10,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-              }}
-            >
-              {/* ▶ PRÓXIMO badge */}
-              {isNext && (
-                <div style={{
-                  background: "#16a34a", borderRadius: 8, padding: "3px 9px",
-                  fontSize: 10, fontWeight: 900, color: "#fff", letterSpacing: ".06em",
-                  whiteSpace: "nowrap", marginBottom: 2,
-                  boxShadow: "0 2px 10px rgba(22,163,74,0.65)",
-                  animation: "storyBounce 1.6s ease-in-out infinite",
-                }}>▶ PRÓXIMO</div>
-              )}
-
-              {/* Pulse ring at player position */}
-              {isPlayer && (
-                <div style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: "translate(-50%,-50%)",
-                  width: 84, height: 84, borderRadius: "50%",
-                  border: "2px solid #38bdf8",
-                  animation: "storyPulseRing 1.8s ease-out infinite",
-                  pointerEvents: "none",
-                }} />
-              )}
-
-              {/* Node circle — 64 px */}
-              <button
-                onClick={() => accessible && !isStart && stage ? onPress(stage) : undefined}
-                disabled={!accessible || isStart}
-                style={{
-                  width: 64, height: 64, borderRadius: "50%",
-                  background: nodeBg, border: `3px solid ${nodeBd}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: accessible && !isStart ? "pointer" : "default",
-                  boxShadow: nodeGlow,
-                  opacity: !accessible && !isStart ? 0.42 : 1,
-                  transition: "transform .15s",
-                  position: "relative", flexShrink: 0,
-                  outline: "none",
-                }}
-                onMouseEnter={e => { if (accessible && !isStart) (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.10)" }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)" }}
-                onMouseDown={e => e.stopPropagation()}
-              >
-                {/* Player highlight ring */}
-                {isPlayer && (
-                  <div style={{
-                    position: "absolute", inset: -5, borderRadius: "50%",
-                    border: "2px solid #38bdf8",
-                    boxShadow: "0 0 12px rgba(56,189,248,0.9)",
-                    pointerEvents: "none",
-                  }} />
-                )}
-
-                {/* Icon */}
-                {isStart ? (
-                  <Home size={26} color="#94a3b8" />
-                ) : isCompleted ? (
-                  <span style={{ color: "#4ade80", fontSize: 26, fontWeight: 900, lineHeight: 1 }}>✓</span>
-                ) : !accessible ? (
-                  <Lock size={22} color="#334155" />
-                ) : nodeDef.type === "scene" ? (
-                  <BookOpen size={24} color="#c4b5fd" />
-                ) : nodeDef.type === "boss" ? (
-                  <Swords size={24} color="#fca5a5" />
-                ) : (
-                  <Swords size={24} color="#93c5fd" />
-                )}
-              </button>
-
-              {/* Label */}
-              <div style={{
-                background: "rgba(2,6,16,0.88)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 8, padding: "3px 8px",
-                textAlign: "center", maxWidth: 112,
-              }}>
-                {nodeDef.sublabel && (
-                  <div style={{
-                    fontSize: 8, fontWeight: 900, textTransform: "uppercase",
-                    letterSpacing: ".08em", lineHeight: 1.4, color: subColor,
-                  }}>{nodeDef.sublabel}</div>
-                )}
-                <div style={{
-                  fontSize: 10, fontWeight: 700, lineHeight: 1.35,
-                  color: accessible || isStart ? "#e2e8f0" : "#334155",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 108,
-                }}>{nodeDef.label}</div>
-              </div>
-            </div>
+            <g key={`seg-${i}`}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="rgba(0,0,0,0.55)" strokeWidth={7} strokeLinecap="round"
+                strokeDasharray={lit ? undefined : "16 9"} opacity={lit ? 1 : 0.5}/>
+              <line x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke={lit ? "#8b5cf6" : "#3b0764"}
+                strokeWidth={3} strokeLinecap="round"
+                strokeDasharray={lit ? undefined : "16 9"} opacity={lit ? 0.95 : 0.4}/>
+            </g>
           )
         })}
-      </div>
-      {/* ══ End of transformable world ══════════════════════════════════════ */}
+      </svg>
 
-      {/* ── Top header (fixed, outside transform) ── */}
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, zIndex: 50,
-        background: "rgba(2,6,16,0.90)", backdropFilter: "blur(16px)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        padding: "11px 16px", display: "flex", alignItems: "center", gap: 12,
-      }}>
-        <button onClick={onBack} style={{
-          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 10, padding: "7px 10px", cursor: "pointer", color: "#94a3b8",
-          display: "flex", alignItems: "center",
-        }}>
-          <ArrowLeft size={17} />
-        </button>
+      {/* ── Map Nodes ── */}
+      {MAP_NODES.map((nodeDef) => {
+        const isStart     = nodeDef.stageId === null
+        const stage       = isStart ? null : stages.find(s => s.id === nodeDef.stageId)
+        const isCompleted = !isStart && !!stage && completedIds.has(nodeDef.stageId!)
+        const accessible  = !isStart && isAccessible(nodeDef.stageId!)
+        const isNext      = nodeDef.stageId === nextStageId
+        const isPlayer    = isStart ? playerNodeId === null : nodeDef.stageId === playerNodeId
 
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <BookOpen size={15} color="#8b5cf6" />
-            <span style={{ fontWeight: 900, fontSize: 15, color: "#e2e8f0" }}>Campanha</span>
+        const palette = {
+          start:  { bg:"#1e293b",                                 border:"#475569" },
+          scene:  { bg:"linear-gradient(145deg,#3b0764,#5b21b6)", border:"#7c3aed" },
+          battle: { bg:"linear-gradient(145deg,#172554,#1d4ed8)", border:"#2563eb" },
+          boss:   { bg:"linear-gradient(145deg,#450a0a,#991b1b)", border:"#dc2626" },
+        }[nodeDef.type]
+
+        const nodeBg = isCompleted
+          ? "linear-gradient(145deg,#14532d,#166534)"
+          : (!accessible && !isStart) ? "rgba(12,16,28,0.92)" : palette.bg
+        const nodeBd = isPlayer ? "#38bdf8" : isNext ? "#22c55e" : isCompleted ? "#22c55e"
+          : (!accessible && !isStart) ? "#1e293b" : palette.border
+        const nodeGlow = isPlayer
+          ? "0 0 24px rgba(56,189,248,0.7),0 6px 16px rgba(0,0,0,0.6)"
+          : isNext
+          ? "0 0 24px rgba(34,197,94,0.7),0 6px 16px rgba(0,0,0,0.6)"
+          : "0 4px 14px rgba(0,0,0,0.55)"
+        const subColor = { boss:"#fca5a5", battle:"#93c5fd", scene:"#c4b5fd", start:"#94a3b8" }[nodeDef.type]
+
+        return (
+          <div key={nodeDef.stageId ?? "start"} style={{
+            position:"absolute", left:`${nodeDef.x}%`, top:`${nodeDef.y}%`,
+            transform:"translate(-50%,-50%)", zIndex:10,
+            display:"flex", flexDirection:"column", alignItems:"center", gap:5,
+          }}>
+            {isNext && (
+              <div style={{ background:"#16a34a", borderRadius:8, padding:"3px 9px",
+                fontSize:10, fontWeight:900, color:"#fff", letterSpacing:".06em",
+                whiteSpace:"nowrap", marginBottom:2,
+                boxShadow:"0 2px 10px rgba(22,163,74,0.65)",
+                animation:"storyBounce 1.6s ease-in-out infinite" }}>▶ PRÓXIMO</div>
+            )}
+            {isPlayer && (
+              <div style={{ position:"absolute", top:"50%", left:"50%",
+                transform:"translate(-50%,-50%)",
+                width:84, height:84, borderRadius:"50%",
+                border:"2px solid #38bdf8",
+                animation:"storyPulseRing 1.8s ease-out infinite",
+                pointerEvents:"none" }}/>
+            )}
+            <button
+              onClick={() => accessible && !isStart && stage ? onPress(stage) : undefined}
+              disabled={!accessible || isStart}
+              style={{
+                width:64, height:64, borderRadius:"50%",
+                background:nodeBg, border:`3px solid ${nodeBd}`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                cursor:accessible && !isStart ? "pointer" : "default",
+                boxShadow:nodeGlow,
+                opacity:!accessible && !isStart ? 0.42 : 1,
+                transition:"transform .15s", position:"relative", flexShrink:0, outline:"none",
+              }}
+              onMouseEnter={e=>{ if(accessible&&!isStart)(e.currentTarget as HTMLButtonElement).style.transform="scale(1.10)" }}
+              onMouseLeave={e=>{ (e.currentTarget as HTMLButtonElement).style.transform="scale(1)" }}
+            >
+              {isPlayer && (
+                <div style={{ position:"absolute", inset:-5, borderRadius:"50%",
+                  border:"2px solid #38bdf8", boxShadow:"0 0 12px rgba(56,189,248,0.9)",
+                  pointerEvents:"none" }}/>
+              )}
+              {isStart ? (
+                <Home size={26} color="#94a3b8"/>
+              ) : isCompleted ? (
+                <span style={{color:"#4ade80",fontSize:26,fontWeight:900,lineHeight:1}}>✓</span>
+              ) : !accessible ? (
+                <Lock size={22} color="#334155"/>
+              ) : nodeDef.type==="scene" ? (
+                <BookOpen size={24} color="#c4b5fd"/>
+              ) : nodeDef.type==="boss" ? (
+                <Swords size={24} color="#fca5a5"/>
+              ) : (
+                <Swords size={24} color="#93c5fd"/>
+              )}
+            </button>
+            <div style={{ background:"rgba(2,6,16,0.88)", border:"1px solid rgba(255,255,255,0.10)",
+              borderRadius:8, padding:"3px 8px", textAlign:"center", maxWidth:112 }}>
+              {nodeDef.sublabel && (
+                <div style={{ fontSize:8, fontWeight:900, textTransform:"uppercase",
+                  letterSpacing:".08em", lineHeight:1.4, color:subColor }}>{nodeDef.sublabel}</div>
+              )}
+              <div style={{ fontSize:10, fontWeight:700, lineHeight:1.35,
+                color:accessible||isStart?"#e2e8f0":"#334155",
+                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:108
+              }}>{nodeDef.label}</div>
+            </div>
           </div>
-          <p style={{ color: "#475569", fontSize: 10, margin: 0 }}>
+        )
+      })}
+
+      {/* ── Top header ── */}
+      <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:50,
+        background:"rgba(2,6,16,0.90)", backdropFilter:"blur(16px)",
+        borderBottom:"1px solid rgba(255,255,255,0.07)",
+        padding:"11px 16px", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"rgba(255,255,255,0.06)",
+          border:"1px solid rgba(255,255,255,0.10)", borderRadius:10, padding:"7px 10px",
+          cursor:"pointer", color:"#94a3b8", display:"flex", alignItems:"center" }}>
+          <ArrowLeft size={17}/>
+        </button>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:7}}>
+            <BookOpen size={15} color="#8b5cf6"/>
+            <span style={{fontWeight:900,fontSize:15,color:"#e2e8f0"}}>Campanha</span>
+          </div>
+          <p style={{color:"#475569",fontSize:10,margin:0}}>
             Capítulo 1 — A Lenda da Estrela
           </p>
         </div>
-
-        {/* Stamina */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 5,
-          background: "rgba(3,20,10,0.85)", border: "1px solid rgba(16,185,129,0.22)",
-          borderRadius: 9, padding: "5px 11px",
-        }}>
-          <span style={{ fontSize: 11, color: "#34d399" }}>⚡</span>
-          <span style={{ fontWeight: 900, fontSize: 13, color: "#6ee7b7" }}>
-            {stamina}<span style={{ color: "#065f46", fontWeight: 600, fontSize: 10 }}>/{maxStamina}</span>
+        <div style={{ display:"flex",alignItems:"center",gap:5,
+          background:"rgba(3,20,10,0.85)", border:"1px solid rgba(16,185,129,0.22)",
+          borderRadius:9, padding:"5px 11px" }}>
+          <span style={{fontSize:11,color:"#34d399"}}>⚡</span>
+          <span style={{fontWeight:900,fontSize:13,color:"#6ee7b7"}}>
+            {stamina}<span style={{color:"#065f46",fontWeight:600,fontSize:10}}>/{maxStamina}</span>
           </span>
           {stamina < maxStamina && staminaNextTickSeconds > 0 && (
-            <span style={{ fontSize: 9, color: "rgba(52,211,153,0.55)", fontVariantNumeric: "tabular-nums" }}>
-              {String(Math.floor(staminaNextTickSeconds / 60)).padStart(1, "0")}:{String(staminaNextTickSeconds % 60).padStart(2, "0")}
+            <span style={{fontSize:9,color:"rgba(52,211,153,0.55)",fontVariantNumeric:"tabular-nums"}}>
+              {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
             </span>
           )}
         </div>
-
-        {/* Chapter progress */}
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "#a78bfa", marginBottom: 3 }}>{done}/{total}</div>
-          <div style={{ width: 44, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-            <div style={{
-              height: "100%", width: `${progPct}%`, borderRadius: 99,
-              background: "linear-gradient(90deg,#7c3aed,#a855f7)",
-              transition: "width 0.6s",
-            }} />
+        <div style={{textAlign:"right"}}>
+          <div style={{fontSize:11,fontWeight:900,color:"#a78bfa",marginBottom:3}}>{done}/{total}</div>
+          <div style={{width:44,height:4,borderRadius:99,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${progPct}%`,borderRadius:99,
+              background:"linear-gradient(90deg,#7c3aed,#a855f7)",transition:"width 0.6s"}}/>
           </div>
         </div>
       </div>
 
-      {/* ── Chapter-complete banner ── */}
       {isChapterDone && (
-        <div style={{
-          position: "absolute", top: 64, left: "50%", transform: "translateX(-50%)",
-          zIndex: 60, background: "rgba(234,179,8,0.12)", border: "1px solid rgba(234,179,8,0.30)",
-          borderRadius: 14, padding: "10px 22px", display: "flex", alignItems: "center", gap: 10,
-          backdropFilter: "blur(12px)", whiteSpace: "nowrap",
-        }}>
-          <Trophy size={20} color="#fbbf24" />
+        <div style={{ position:"absolute",top:64,left:"50%",transform:"translateX(-50%)",
+          zIndex:60,background:"rgba(234,179,8,0.12)",border:"1px solid rgba(234,179,8,0.30)",
+          borderRadius:14,padding:"10px 22px",display:"flex",alignItems:"center",gap:10,
+          backdropFilter:"blur(12px)",whiteSpace:"nowrap" }}>
+          <Trophy size={20} color="#fbbf24"/>
           <div>
-            <p style={{ fontWeight: 900, fontSize: 13, color: "#fbbf24", margin: 0 }}>Capítulo 1 Concluído!</p>
-            <p style={{ color: "#78716c", fontSize: 10, margin: 0 }}>Capítulo 2 em breve...</p>
+            <p style={{fontWeight:900,fontSize:13,color:"#fbbf24",margin:0}}>Capítulo 1 Concluído!</p>
+            <p style={{color:"#78716c",fontSize:10,margin:0}}>Capítulo 2 em breve...</p>
           </div>
         </div>
       )}
 
-      {/* ── Legend (bottom-left) ── */}
-      <div style={{
-        position: "absolute", left: 12, bottom: 76, zIndex: 50,
-        background: "rgba(2,6,16,0.85)", border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 10, padding: "8px 10px",
-        display: "flex", flexDirection: "column", gap: 5,
-      }}>
+      {/* ── Legend ── */}
+      <div style={{ position:"absolute",left:12,bottom:72,zIndex:50,
+        background:"rgba(2,6,16,0.82)",border:"1px solid rgba(255,255,255,0.07)",
+        borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",gap:5 }}>
         {([
-          { icon: <Swords size={11} color="#93c5fd" />, label: "Batalha" },
-          { icon: <BookOpen size={11} color="#c4b5fd" />, label: "Cena" },
-          { icon: <Swords size={11} color="#fca5a5" />, label: "Boss" },
-        ] as const).map(item => (
-          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          { icon:<Swords size={11} color="#93c5fd"/>, label:"Batalha" },
+          { icon:<BookOpen size={11} color="#c4b5fd"/>, label:"Cena" },
+          { icon:<Swords size={11} color="#fca5a5"/>, label:"Boss" },
+        ] as const).map(item=>(
+          <div key={item.label} style={{display:"flex",alignItems:"center",gap:5}}>
             {item.icon}
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.50)", fontWeight: 600 }}>{item.label}</span>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.50)",fontWeight:600}}>{item.label}</span>
           </div>
         ))}
       </div>
 
-      {/* ── Zoom controls (bottom-right) ── */}
-      <div style={{
-        position: "absolute", right: 12, bottom: 76, zIndex: 50,
-        display: "flex", flexDirection: "column", gap: 6,
-      }}>
-        {([
-          { label: "+", title: "Zoom in",      act: () => btnZoom(1.2) },
-          { label: "⌖", title: "Resetar visão", act: () => dispatch({ type: "RESET" }) },
-        ] as const).map(btn => (
-          <button
-            key={btn.label}
-            title={btn.title}
-            onClick={btn.act}
-            onMouseDown={e => e.stopPropagation()}
-            style={{
-              width: 34, height: 34, borderRadius: 9,
-              background: "rgba(2,6,16,0.92)",
-              border: "1px solid rgba(255,255,255,0.13)",
-              color: "#94a3b8", fontWeight: 900, fontSize: 17,
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >{btn.label}</button>
-        ))}
-      </div>
-
       {/* ── Bottom nav ── */}
-      <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50,
-        padding: "0 0 18px", display: "flex", justifyContent: "center",
-        background: "linear-gradient(to top, rgba(2,6,16,0.92) 0%, transparent 100%)",
-      }}>
-        <button
-          onClick={onBack}
-          onMouseDown={e => e.stopPropagation()}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            background: "rgba(2,6,16,0.92)", border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 16, padding: "11px 24px",
-            color: "#94a3b8", fontWeight: 800, fontSize: 13,
-            cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-          }}
-        >
-          <Home size={14} /> Menu Principal
+      <div style={{ position:"absolute",bottom:0,left:0,right:0,zIndex:50,
+        padding:"0 0 18px",display:"flex",justifyContent:"center",
+        background:"linear-gradient(to top,rgba(2,6,16,0.92) 0%,transparent 100%)" }}>
+        <button onClick={onBack} style={{ display:"flex",alignItems:"center",gap:8,
+          background:"rgba(2,6,16,0.92)",border:"1px solid rgba(255,255,255,0.12)",
+          borderRadius:16,padding:"11px 24px",color:"#94a3b8",fontWeight:800,fontSize:13,
+          cursor:"pointer",boxShadow:"0 4px 20px rgba(0,0,0,0.4)" }}>
+          <Home size={14}/> Menu Principal
         </button>
       </div>
 
-      {/* Keyframe animations */}
       <style>{`
         @keyframes storyPulseRing {
           0%   { transform: translate(-50%,-50%) scale(1);    opacity: 0.80; }
