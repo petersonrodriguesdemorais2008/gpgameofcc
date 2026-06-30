@@ -462,6 +462,30 @@ const MENU_STEPS = [
     textTarget: "JOGAR", interceptClick: true },
 ]
 
+// ── Dentro do DUELO REAL: guia não-intrusivo sobre a tela de verdade do jogo.
+// NUNCA intercepta cliques (diferente do MENU_STEPS) — o jogador interage
+// normalmente com o duelo de verdade enquanto os balões só explicam o que
+// está na tela. textTarget mira em textos ESTÁVEIS do duel-screen.tsx real
+// (headings de setup, "TAP"). advanceWhenVisible faz o passo avançar sozinho
+// assim que o texto do PRÓXIMO passo aparecer no DOM (ex: o jogador clicou
+// no próprio deck de verdade) — sem isso, "Entendido ►" avança manualmente.
+const DUEL_STEPS: { text: string; textTarget: string | null; advanceWhenVisible?: string }[] = [
+  { text: "Primeiro, escolha o seu Deck Inicial para entrar em batalha!",
+    textTarget: "Escolha seu Deck", advanceWhenVisible: "Dificuldade" },
+  { text: "Agora escolha a dificuldade do oponente. Recomendamos Fácil para o seu primeiro duelo!",
+    textTarget: "Dificuldade", advanceWhenVisible: "Deck do Oponente" },
+  { text: "Por último, escolha qual deck o oponente vai usar. Aleatório é uma ótima pedida!",
+    textTarget: "Deck do Oponente", advanceWhenVisible: "TAP" },
+  { text: "Bem-vindo à mesa de duelo! Você e seu oponente começam com a mesma quantidade de LP — Pontos de Vida. Quem chegar a zero primeiro, perde!",
+    textTarget: null },
+  { text: "Estas são as cartas da sua mão. Cada tipo — Unidade, Tropas, Action Funcion, Trap Funcion e Scenario — tem um papel diferente na batalha!",
+    textTarget: null },
+  { text: "Esse é o TAP! A cada poucos turnos, uma carta surge ali de graça — fique de olho!",
+    textTarget: "TAP" },
+  { text: "No seu turno, siga o botão de ação: primeiro compre uma carta, depois avance para a Fase de Batalha e ataque o oponente para vencer o duelo!",
+    textTarget: null },
+]
+
 // ── Pós-duelo: volta ao menu e obriga a clicar no GACHA
 const POST_DUEL_STEPS = [
   { text: "Parabéns pelo duelo! Agora clique em GACHA para abrir seu primeiro pack de cartas!",
@@ -1394,6 +1418,9 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   const [phase, setPhase] = useState<OverlayPhase>("menu")
   const [step, setStep] = useState(0)
   const [visible, setVisible] = useState(false)
+  /** true quando o jogador já passou por todos os DUEL_STEPS — a partir daí
+   *  o duelo real roda 100% livre, sem nenhuma interferência visual do tutorial */
+  const [duelStepsDone, setDuelStepsDone] = useState(false)
 
   useEffect(() => { setTimeout(() => setVisible(true), 80) }, [])
 
@@ -1437,10 +1464,28 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     }
   }, [phase, postDuelReady])
 
+  // ── Avanço automático dos DUEL_STEPS: assim que o texto do PRÓXIMO passo
+  //    aparecer no duelo real (ex: jogador clicou no próprio deck de verdade
+  //    e a tela de Dificuldade apareceu), o balão acompanha sozinho. Roda só
+  //    enquanto estivermos em duel-sim e ainda houver passos pendentes.
+  useEffect(() => {
+    if (phase !== "duel-sim" || duelStepsDone) return
+    const target = DUEL_STEPS[step]?.advanceWhenVisible
+    if (!target) return
+    const poll = setInterval(() => {
+      if (findByText(target)) {
+        setStep(s => (s < DUEL_STEPS.length - 1 ? s + 1 : s))
+      }
+    }, 350)
+    return () => clearInterval(poll)
+  }, [phase, step, duelStepsDone])
+
   // ── Handlers (definidos antes de qualquer return) ───────────────────────────
   const handleInterceptClick = () => {
     if (phase === "menu") {
       setPhase("duel-sim")
+      setStep(0)
+      setDuelStepsDone(false)
     } else if (phase === "post-duel-menu") {
       onNavigate("gacha")
       setPhase("gacha")
@@ -1461,13 +1506,31 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     MENU_STEPS.length + POST_DUEL_STEPS.length + step
 
   // ── Fase duel-sim: o duelo real está sendo renderizado pelo game-wrapper ─────
-  // O overlay retorna null aqui; o componente permanece montado com seu estado
-  // intacto. Quando postDuelReady=true, o useEffect acima avança para post-duel-menu.
+  // O overlay continua montado por cima do DuelScreen de verdade. Enquanto
+  // duelStepsDone for false, mostramos o guia (spotlight + balão) apontando
+  // pra elementos REAIS da tela — sem nunca interceptar cliques, então o
+  // jogador interage normalmente com o duelo de verdade. Quando os passos
+  // acabam (ou quando postDuelReady chega, o que vier primeiro), o overlay
+  // some e o duelo roda livre até o jogador clicar em Voltar de verdade.
   if (phase === "duel-sim") {
+    const duelStep = DUEL_STEPS[step]
     return (
       <>
-        {/* overlay oculto — game-wrapper exibe o DuelScreen real neste momento */}
         <style>{TUTORIAL_CSS}</style>
+        {!duelStepsDone && duelStep && (
+          <>
+            <DynamicSpotlight textTarget={duelStep.textTarget} />
+            <MasterBubble
+              masterId={masterId}
+              text={duelStep.text}
+              onNext={() => {
+                if (step >= DUEL_STEPS.length - 1) setDuelStepsDone(true)
+                else setStep(s => s + 1)
+              }}
+              nextLabel={step >= DUEL_STEPS.length - 1 ? "Entendido, vamos duelar! ►" : "Entendido ►"}
+            />
+          </>
+        )}
       </>
     )
   }
