@@ -246,6 +246,28 @@ function buildMissions(): PassMission[] {
       completed: g.gachaToday >= 3,
       claimed: false,
     },
+    {
+      id: "daily_deck_edit",
+      title: "Ajuste Fino",
+      description: "Edite um deck hoje",
+      type: "daily",
+      points: 40,
+      progress: g.deckEditWeek >= 1 ? 1 : 0,
+      goal: 1,
+      completed: g.deckEditWeek >= 1,
+      claimed: false,
+    },
+    {
+      id: "daily_duels_5",
+      title: "Maratonista",
+      description: "Dispute 5 duelos hoje (vitória ou derrota)",
+      type: "daily",
+      points: 70,
+      progress: Math.min(g.duelsToday, 5),
+      goal: 5,
+      completed: g.duelsToday >= 5,
+      claimed: false,
+    },
     // ── Semanais ──
     {
       id: "weekly_wins_5",
