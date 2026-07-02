@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 
@@ -185,8 +185,18 @@ function usePreloadImages(urls: string[]) {
 function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => void }) {
   const [idx, setIdx] = useState(0)
   const [fading, setFading] = useState(false)
-  const panel = scene.panels[idx]
-  const isLast = idx >= scene.panels.length - 1
+
+  // Guard: clamp idx so panel is never undefined
+  const safeIdx = Math.min(idx, scene.panels.length - 1)
+  const panel   = scene.panels[safeIdx]
+  const isLast  = safeIdx >= scene.panels.length - 1
+
+  useEffect(() => {
+    if (idx >= scene.panels.length) { onComplete() }
+  }, [idx, scene.panels.length, onComplete])
+
+  if (!panel) return null
+
   const isNarrator = panel.speaker === "narrator" || panel.textType === "narrator"
   const left  = panel.characters.find(c => c.side === "left")
   const right = panel.characters.find(c => c.side === "right")
