@@ -10110,39 +10110,45 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Enemy Ultimate Zone — vertical peek stack */}
+                  {/* Enemy Ultimate Zone — vertical peek stack (flex column + negative margin) */}
                   {(() => {
-                    const PEEK = 20, CARD_H = 80, NUM = 3
-                    const containerH = CARD_H + (NUM - 1) * PEEK
+                    const PEEK_SHOW = 20   // px visible of each card below the top
+                    const CARD_W = 56, CARD_H = 80
+                    const zones = enemyField.ultimateZones
                     return (
-                      <div className="relative flex-shrink-0" style={{ width: 56, height: containerH }}>
-                        {([0,1,2] as const).map(i => (
-                          <div key={`bg-${i}`}
-                            className="absolute w-14 rounded-md border border-dashed border-emerald-500/35 bg-emerald-950/30"
-                            style={{ top: (NUM - 1 - i) * PEEK, height: CARD_H, zIndex: i + 1 }}
-                          />
-                        ))}
+                      <div className="flex-shrink-0 flex flex-col" style={{ width: CARD_W }}>
                         {([0,1,2] as const).map(ugi => {
-                          const uz = enemyField.ultimateZones[ugi] ?? null
-                          if (!uz) return null
-                          const isTarget = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                          const uz = zones[ugi] ?? null
+                          const isTarget = ugTargetMode.active && uz && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
                           return (
                             <div key={ugi}
-                              className={`absolute w-14 h-20 rounded-md overflow-hidden transition-all border-2 shadow-lg ${
-                                isTarget ? "border-yellow-400 cursor-pointer ring-2 ring-yellow-400/50 animate-pulse"
-                                : "border-emerald-500/70"
-                              }`}
-                              style={{ top: (NUM - 1 - ugi) * PEEK, zIndex: ugi + 4, boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}
                               onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", ugi) }}
+                              style={{
+                                width: CARD_W, height: CARD_H,
+                                marginTop: ugi === 0 ? 0 : -(CARD_H - PEEK_SHOW),
+                                borderRadius: 6, overflow: "hidden", flexShrink: 0,
+                                border: `2px solid ${isTarget ? "#facc15" : uz ? "rgba(52,211,153,0.7)" : "rgba(52,211,153,0.2)"}`,
+                                background: uz ? "transparent" : "rgba(6,30,20,0.55)",
+                                borderStyle: uz ? "solid" : "dashed",
+                                boxShadow: uz ? "0 3px 10px rgba(0,0,0,0.6)" : "none",
+                                cursor: isTarget ? "pointer" : "default",
+                                position: "relative",
+                                zIndex: ugi === 2 ? 3 : ugi === 1 ? 2 : 1,
+                              }}
                             >
-                              <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill
-                                className="object-cover rounded"
-                                onMouseDown={() => handleCardPressStart(uz)}
-                                onMouseUp={handleCardPressEnd}
-                                onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() => handleCardPressStart(uz)}
-                                onTouchEnd={handleCardPressEnd}
-                              />
+                              {uz ? (
+                                <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill
+                                  className="object-cover"
+                                  onMouseDown={() => handleCardPressStart(uz)}
+                                  onMouseUp={handleCardPressEnd}
+                                  onMouseLeave={handleCardPressEnd}
+                                  onTouchStart={() => handleCardPressStart(uz)}
+                                  onTouchEnd={handleCardPressEnd}
+                                />
+                              ) : null}
+                              {isTarget && (
+                                <div className="absolute inset-0 ring-2 ring-yellow-400/50 animate-pulse rounded" />
+                              )}
                             </div>
                           )
                         })}
@@ -10527,78 +10533,89 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Player Ultimate Zone — vertical peek stack */}
+                  {/* Player Ultimate Zone — vertical peek stack (flex column + negative margin) */}
                   {(() => {
-                    const PEEK = 20, CARD_H = 80, NUM = 3
-                    const containerH = CARD_H + (NUM - 1) * PEEK
-                    const firstEmpty = playerField.ultimateZones.findIndex(z => z === null)
-                    const canDropCard = firstEmpty !== -1 && (
+                    const PEEK_SHOW = 20   // px visible of each card below the top
+                    const CARD_W = 56, CARD_H = 80
+                    const zones = playerField.ultimateZones
+                    const firstEmpty = zones.findIndex(z => z === null)
+                    const canDrop = firstEmpty !== -1 && (
                       dropTarget?.type === "ultimate" ||
                       (selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]))
                     )
-                    const isDraggingUltimate = !!(draggedHandCard && isUltimateCard(draggedHandCard.card))
+                    const isDraggingUg = !!(draggedHandCard && isUltimateCard(draggedHandCard.card))
                     return (
                       <div
-                        className="relative flex-shrink-0 cursor-pointer"
-                        style={{ width: 56, height: containerH }}
-                        onClick={() => firstEmpty !== -1 && selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
+                        className="flex-shrink-0 flex flex-col cursor-pointer"
+                        style={{ width: CARD_W }}
+                        onClick={() => {
+                          if (firstEmpty !== -1 && selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]))
+                            placeUltimateCard()
+                        }}
                       >
-                        {/* Background slots */}
-                        {([0,1,2] as const).map(i => {
-                          const empty = playerField.ultimateZones[i] === null
-                          return (
-                            <div key={`bg-${i}`}
-                              data-player-ultimate-slot={i}
-                              className={`absolute w-14 rounded-md border-2 transition-all duration-75 ${
-                                canDropCard && empty ? "border-green-400 bg-green-500/40 shadow-lg shadow-green-500/40 animate-pulse"
-                                : isDraggingUltimate && empty ? "border-emerald-400/50 bg-emerald-500/20"
-                                : "border-dashed border-emerald-500/35 bg-emerald-950/30"
-                              }`}
-                              style={{ top: (NUM - 1 - i) * PEEK, height: CARD_H, zIndex: i + 1 }}
-                            />
-                          )
-                        })}
-                        {/* Filled cards */}
                         {([0,1,2] as const).map(puzi => {
-                          const puz = playerField.ultimateZones[puzi] ?? null
-                          if (!puz) return null
+                          const puz = zones[puzi] ?? null
+                          const isEmpty = puz === null
+                          const slotCanDrop = canDrop && isEmpty
+                          const slotIsDragging = isDraggingUg && isEmpty
                           return (
                             <div key={puzi}
-                              className="absolute w-14 h-20 rounded-md border-2 border-emerald-500/70 overflow-hidden shadow-lg"
-                              style={{ top: (NUM - 1 - puzi) * PEEK, zIndex: puzi + 4, boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}
+                              data-player-ultimate-slot={puzi}
+                              style={{
+                                width: CARD_W, height: CARD_H,
+                                marginTop: puzi === 0 ? 0 : -(CARD_H - PEEK_SHOW),
+                                borderRadius: 6, overflow: "hidden", flexShrink: 0,
+                                border: `2px ${isEmpty ? "dashed" : "solid"} ${
+                                  slotCanDrop ? "#4ade80"
+                                  : slotIsDragging ? "rgba(52,211,153,0.5)"
+                                  : puz ? "rgba(52,211,153,0.7)"
+                                  : "rgba(52,211,153,0.2)"
+                                }`,
+                                background: slotCanDrop ? "rgba(74,222,128,0.15)"
+                                  : puz ? "transparent"
+                                  : "rgba(6,30,20,0.55)",
+                                boxShadow: puz ? "0 3px 10px rgba(0,0,0,0.6)" : "none",
+                                position: "relative",
+                                zIndex: puzi === 2 ? 3 : puzi === 1 ? 2 : 1,
+                                animation: slotCanDrop ? "pulse 1.5s ease-in-out infinite" : undefined,
+                              }}
                             >
-                              <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill
-                                className="object-cover rounded"
-                                onMouseDown={() => handleCardPressStart(puz)}
-                                onMouseUp={handleCardPressEnd}
-                                onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() => handleCardPressStart(puz)}
-                                onTouchEnd={handleCardPressEnd}
-                              />
-                              {/* ATIVAR button */}
-                              {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && (() => {
-                                const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
-                                const ok=a.includes("ODEN SWORD")||n.includes("oden sword")||a.includes("TWILIGH")||n.includes("twiligh")||a.includes("MEFISTO")||n.includes("mefisto")
-                                if(!ok) return null
-                                if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
-                                return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-20 text-center">⚡ ATIVAR</button>
-                              })()}
-                              {/* JULGAMENTO button */}
-                              {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && (() => {
-                                const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
-                                if(!a.includes("MIGUEL ARCANJO")&&!n.includes("miguel arcanjo")) return null
-                                if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
-                                return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-20 text-center">✦ JULGAMENTO</button>
-                              })()}
+                              {puz ? (
+                                <>
+                                  <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill
+                                    className="object-cover"
+                                    onMouseDown={() => handleCardPressStart(puz)}
+                                    onMouseUp={handleCardPressEnd}
+                                    onMouseLeave={handleCardPressEnd}
+                                    onTouchStart={() => handleCardPressStart(puz)}
+                                    onTouchEnd={handleCardPressEnd}
+                                  />
+                                  {/* ATIVAR button */}
+                                  {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && (() => {
+                                    const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
+                                    const ok=a.includes("ODEN SWORD")||n.includes("oden sword")||a.includes("TWILIGH")||n.includes("twiligh")||a.includes("MEFISTO")||n.includes("mefisto")
+                                    if(!ok) return null
+                                    if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
+                                    return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-20 text-center">⚡ ATIVAR</button>
+                                  })()}
+                                  {/* JULGAMENTO button */}
+                                  {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && (() => {
+                                    const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
+                                    if(!a.includes("MIGUEL ARCANJO")&&!n.includes("miguel arcanjo")) return null
+                                    if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
+                                    return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-20 text-center">✦ JULGAMENTO</button>
+                                  })()}
+                                </>
+                              ) : (
+                                slotCanDrop && puzi === firstEmpty ? (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-green-400 text-[9px] font-bold animate-pulse">SOLTAR</span>
+                                  </div>
+                                ) : null
+                              )}
                             </div>
                           )
                         })}
-                        {/* Empty drop label */}
-                        {firstEmpty === 0 && dropTarget?.type === "ultimate" && (
-                          <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 20 }}>
-                            <span className="text-green-400 text-[9px] font-bold animate-pulse text-center">SOLTAR</span>
-                          </div>
-                        )}
                       </div>
                     )
                   })()}
