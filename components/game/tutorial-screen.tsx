@@ -467,32 +467,33 @@ const MENU_STEPS = [
     textTarget: "JOGAR", interceptClick: true },
 ]
 
-// ── Dentro do DUELO REAL: guia exibido por cima do DuelScreen de verdade.
-// Dividido em dois grupos separados por 'battleStarted':
-//   steps 0-2 = setup (deck, dificuldade, deck do bot) → avanço manual
-//   steps 3-6 = mesa de batalha → ativados via prop battleStarted do game-wrapper
-// Nenhum passo usa DOM polling (sem setInterval, sem querySelectorAll).
-const DUEL_SETUP_STEP_COUNT = 3  // quantos passos são de setup (antes da batalha)
+// ── Guia do DUELO REAL (por cima do DuelScreen verdadeiro) ──────────────────────
+// Steps 0-2 = setup obrigatório (DynamicSpotlight intercepta o clique e
+// clica programaticamente no DuelScreen, avançando tanto o DuelScreen quanto
+// o overlay). Step 2 não avança manualmente — espera battleStarted.
+// Steps 3-6 = mesa de batalha: overlay escuro bloqueante até 'Entendido ►'.
+const DUEL_SETUP_STEP_COUNT = 3
 const DUEL_STEPS: { text: string; textTarget: string | null }[] = [
-  // ── Setup ──
-  { text: "Escolha o Deck Inicial para entrar em batalha! É o único deck disponível agora.",
+  // ── Setup (clicks obrigatórios nos elementos reais do DuelScreen) ────────────
+  { text: "Selecione o Deck Inicial para entrar em batalha! Clique no deck em destaque.",
+    textTarget: "Deck Inicial" },
+  { text: "Agora escolha a dificuldade Fácil para começar! Clique em Fácil.",
+    textTarget: "Fácil" },
+  { text: "Por último, selecione o deck Aleatório para o oponente — isso inicia o duelo!",
+    textTarget: "Aleatório" },
+  // ── Batalha (overlay escuro bloqueia o duelo até o jogador confirmar) ─────────
+  { text: "Bem-vindo à mesa de duelo! Você e o oponente começam com a mesma quantidade de LP — Pontos de Vida. Quem chegar a zero primeiro, perde!",
     textTarget: null },
-  { text: "Escolha a dificuldade do oponente. Recomendamos Fácil para o seu primeiro duelo!",
+  { text: "Essas são as cartas da sua mão. Cada tipo tem um papel: Unidades atacam, Tropas dão suporte, Action Funcions ativam poderes, Trap Funcions emboscam e Scenarios criam terrenos!",
     textTarget: null },
-  { text: "Escolha o deck que o oponente vai usar e clique em Ir para Batalha!",
+  { text: "O TAP é uma zona especial: a cada poucos turnos, uma carta extra aparece lá de graça! Fique de olho.",
     textTarget: null },
-  // ── Batalha ──
-  { text: "Bem-vindo à mesa de duelo! Você e o oponente começam com a mesma quantidade de LP. Quem chegar a zero primeiro, perde!",
-    textTarget: null },
-  { text: "Essas são as cartas da sua mão. Unidades, Tropas, Action e Trap Funcions, Scenarios — cada tipo tem um papel diferente na batalha!",
-    textTarget: null },
-  { text: "Cada turno, siga o botão de ação: compre uma carta, avance para a Fase de Batalha e ataque o oponente!",
-    textTarget: null },
-  { text: "Tudo pronto! Jogue à vontade — quando quiser encerrar o duelo, use o botão de sair na tela.",
+  { text: "No seu turno, siga o botão principal de ação: compre uma carta, avance para a Fase de Batalha e ataque! Boa sorte, duelista!",
     textTarget: null },
 ]
 
 const POST_DUEL_STEPS = [
+
 
   { text: "Parabéns pelo duelo! Agora clique em GACHA para abrir seu primeiro pack de cartas!",
     textTarget: "GACHA", interceptClick: true },
@@ -587,8 +588,8 @@ function useTutorialAudio(src: string, volume = 0.5) {
 // COMPONENT: MASTER BUBBLE (balão de fala branco — fiel ao in-game)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function MasterBubble({ masterId, text, onNext, nextLabel = "Continuar ►" }: {
-  masterId: TutorialMasterId; text: string; onNext: () => void; nextLabel?: string
+function MasterBubble({ masterId, text, onNext, nextLabel = "Continuar ►", noButton }: {
+  masterId: TutorialMasterId; text: string; onNext: () => void; nextLabel?: string; noButton?: boolean
 }) {
   const m = MASTERS[masterId]
   return (
@@ -633,16 +634,18 @@ function MasterBubble({ masterId, text, onNext, nextLabel = "Continuar ►" }: {
         }}>
           {text}
         </p>
-        <button onClick={onNext} style={{
-          display: "block", marginLeft: "auto",
-          background: m.color, color: "white", border: "none",
-          borderRadius: 8, padding: "6px 16px",
-          fontSize: 12, fontWeight: 700, cursor: "pointer",
-          letterSpacing: "0.04em", fontFamily: "'Segoe UI', sans-serif",
-          boxShadow: `0 2px 10px ${m.shadowGlow}`,
-        }}>
-          {nextLabel}
-        </button>
+        {!noButton && (
+          <button onClick={onNext} style={{
+            display: "block", marginLeft: "auto",
+            background: m.color, color: "white", border: "none",
+            borderRadius: 8, padding: "6px 16px",
+            fontSize: 12, fontWeight: 700, cursor: "pointer",
+            letterSpacing: "0.04em", fontFamily: "'Segoe UI', sans-serif",
+            boxShadow: `0 2px 10px ${m.shadowGlow}`,
+          }}>
+            {nextLabel}
+          </button>
+        )}
       </div>
       {/* Arte do Mestre */}
       <img src={m.art} alt={m.name} style={{
@@ -1492,6 +1495,32 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     }
   }
 
+
+  // ── Setup obrigatório: click no DuelScreen real + avanço do overlay ───────────────
+  const handleSetupInterceptClick = () => {
+    const target = DUEL_STEPS[step]?.textTarget
+    if (!target) return
+    // Encontra e clica no elemento real do DuelScreen
+    const tNorm = normText(target)
+    let found: HTMLElement | null = null
+    let foundArea = Infinity
+    document.querySelectorAll("button, a, li, [role='button'], div, span, p").forEach(el => {
+      const elText = normText(el.textContent ?? "")
+      if (elText.includes(tNorm) && elText.length > 0 && elText.length <= tNorm.length * 6) {
+        const r = el.getBoundingClientRect()
+        const area = r.width * r.height
+        if (r.width > 10 && r.height > 8 && r.top >= 0 && area < foundArea) {
+          found = el as HTMLElement; foundArea = area
+        }
+      }
+    })
+    if (found) (found as HTMLElement).click()
+    // Último passo de setup (step 2 = Aleatório) não avança manualmente:
+    // battleStarted dispara quando o DuelScreen inicia a batalha e aí
+    // o useEffect acima pula para DUEL_SETUP_STEP_COUNT
+    if (step < DUEL_SETUP_STEP_COUNT - 1) setStep(s => s + 1)
+  }
+
   const handleBubbleNext = () => {
     if (isInterceptStep) return   // botão do balão é no-op nos passos forçados
     if (isLastStep) onComplete()
@@ -1504,27 +1533,52 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     phase === "post-duel-menu"  ? MENU_STEPS.length + step :
     MENU_STEPS.length + POST_DUEL_STEPS.length + step
 
-  // ── Fase duel-sim: o duelo real está sendo renderizado pelo game-wrapper ─────
-  // O overlay fica por cima do DuelScreen mostrando apenas o balão do mestre.
-  // SEM DynamicSpotlight e SEM setInterval — zero interferência com a inicialização
-  // da mesa de batalha. O passo avança manualmente ("Entendido ►") ou via o
-  // useEffect do battleStarted acima.
+  // ── Fase duel-sim: guia por cima do DuelScreen real ────────────────────────────
+  // • Setup (steps 0-2): DynamicSpotlight + intercept obrigatório.
+  //   O overlay captura o clique, clica no elemento real do DuelScreen
+  //   programaticamente, e avança o passo (exceto o último que espera battleStarted).
+  // • Batalha (steps 3+): div escuro bloqueante (pointerEvents:all) até Entendido ►.
   if (phase === "duel-sim") {
     const duelStep = DUEL_STEPS[step]
+    const isSetupStep = step < DUEL_SETUP_STEP_COUNT
     const isLastDuelStep = step >= DUEL_STEPS.length - 1
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
         {!duelStepsDone && duelStep && (
-          <MasterBubble
-            masterId={masterId}
-            text={duelStep.text}
-            onNext={() => {
-              if (isLastDuelStep) setDuelStepsDone(true)
-              else setStep(s => s + 1)
-            }}
-            nextLabel={isLastDuelStep ? "Entendido, vamos duelar! ►" : "Entendido ►"}
-          />
+          isSetupStep ? (
+            // ── Setup: spotlight + intercept obrigatório (sem botão no balão) ─────────
+            <>
+              <DynamicSpotlight
+                textTarget={duelStep.textTarget}
+                onInterceptClick={handleSetupInterceptClick}
+              />
+              <MasterBubble
+                masterId={masterId}
+                text={duelStep.text}
+                onNext={() => {}}
+                noButton
+              />
+            </>
+          ) : (
+            // ── Batalha: overlay escuro bloqueia o duelo até o jogador confirmar ──
+            <>
+              <div style={{
+                position: "fixed", inset: 0,
+                background: "rgba(0,0,0,0.72)",
+                zIndex: 399, pointerEvents: "all",
+              }} />
+              <MasterBubble
+                masterId={masterId}
+                text={duelStep.text}
+                onNext={() => {
+                  if (isLastDuelStep) setDuelStepsDone(true)
+                  else setStep(s => s + 1)
+                }}
+                nextLabel={isLastDuelStep ? "Entendido, vamos duelar! ►" : "Entendido ►"}
+              />
+            </>
+          )
         )}
       </>
     )
