@@ -10110,54 +10110,49 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Enemy Ultimate Zone — peek stack, newest card on top */}
+                  {/* Enemy Ultimate Zone — peek stack with absolute positioning */}
                   {(() => {
-                    const PEEK_SHOW = 22  // px of each older card visible below the active one
-                    const CARD_W = 56, CARD_H = 80
+                    const PEEK = 22, CARD_H = 80, CARD_W = 56
+                    const H = CARD_H + 2 * PEEK   // 124px total container height
                     const zones = enemyField.ultimateZones
-                    // Newest = highest filled index. Render 2→1→0 so newest is first (visually on top).
-                    const lastFilledIdx = ([2,1,0] as const).find(i => zones[i] !== null) ?? null
+                    // filledSlots sorted newest→oldest (highest index = newest)
+                    const filledSlots = ([2,1,0] as const).filter(i => zones[i] !== null)
                     return (
-                      <div className="flex-shrink-0 flex flex-col" style={{ width: CARD_W }}>
-                        {([2,1,0] as const).map((ugi, renderIdx) => {
-                          const uz = zones[ugi] ?? null
-                          const isNewest = ugi === lastFilledIdx
-                          const isTarget = ugTargetMode.active && uz && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                      <div style={{ position:"relative", width:CARD_W, height:H, flexShrink:0 }}>
+                        {/* Background placeholders for all 3 visual positions */}
+                        {[0,1,2].map(vp => (
+                          <div key={`bg-${vp}`} style={{
+                            position:"absolute", top:vp*PEEK, left:0,
+                            width:CARD_W, height:CARD_H, borderRadius:6,
+                            border:"2px dashed rgba(52,211,153,0.15)",
+                            background:"rgba(6,30,20,0.40)",
+                            zIndex: 3 - vp,
+                          }}/>
+                        ))}
+                        {/* Filled cards: visualPos 0 = newest = topmost */}
+                        {filledSlots.map((slotIdx, vp) => {
+                          const uz = zones[slotIdx]!
+                          const isNewest = vp === 0
+                          const isTarget = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
                           return (
-                            <div key={ugi}
-                              onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", ugi) }}
+                            <div key={slotIdx}
+                              onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", slotIdx) }}
                               style={{
-                                width: CARD_W, height: CARD_H, flexShrink: 0,
-                                marginTop: renderIdx === 0 ? 0 : -(CARD_H - PEEK_SHOW),
-                                borderRadius: 6, overflow: "hidden",
-                                border: `2px ${uz ? "solid" : "dashed"} ${
-                                  isTarget ? "#facc15"
-                                  : isNewest && uz ? "rgba(52,211,153,0.95)"
-                                  : uz ? "rgba(52,211,153,0.45)"
-                                  : "rgba(52,211,153,0.15)"}`,
-                                background: uz ? "transparent" : "rgba(6,30,20,0.45)",
-                                boxShadow: isNewest && uz ? "0 0 10px rgba(52,211,153,0.4), 0 3px 10px rgba(0,0,0,0.7)" : uz ? "0 2px 6px rgba(0,0,0,0.5)" : "none",
+                                position:"absolute", top:vp*PEEK, left:0,
+                                width:CARD_W, height:CARD_H, borderRadius:6,
+                                overflow:"hidden",
+                                zIndex: 10 - vp,
+                                border:`2px solid ${isTarget ? "#facc15" : isNewest ? "rgba(52,211,153,0.9)" : "rgba(52,211,153,0.35)"}`,
+                                boxShadow: isNewest ? "0 0 12px rgba(52,211,153,0.40), 0 3px 8px rgba(0,0,0,0.7)" : "0 2px 6px rgba(0,0,0,0.5)",
+                                filter: isNewest ? "none" : `brightness(${vp === 1 ? 0.60 : 0.45}) saturate(0.65)`,
                                 cursor: isTarget ? "pointer" : "default",
-                                position: "relative",
-                                // newest card sits on top; older cards sit behind
-                                zIndex: 3 - renderIdx,
-                                // dim older cards so newest stands out clearly
-                                filter: uz && !isNewest ? "brightness(0.55) saturate(0.7)" : "none",
                               }}
                             >
-                              {uz ? (
-                                <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill
-                                  className="object-cover"
-                                  onMouseDown={() => handleCardPressStart(uz)}
-                                  onMouseUp={handleCardPressEnd}
-                                  onMouseLeave={handleCardPressEnd}
-                                  onTouchStart={() => handleCardPressStart(uz)}
-                                  onTouchEnd={handleCardPressEnd}
-                                />
-                              ) : null}
-                              {isTarget && (
-                                <div className="absolute inset-0 ring-2 ring-yellow-400/60 animate-pulse rounded" />
-                              )}
+                              <Image src={uz.image||"/placeholder.svg"} alt={uz.name} fill className="object-cover"
+                                onMouseDown={()=>handleCardPressStart(uz)} onMouseUp={handleCardPressEnd}
+                                onMouseLeave={handleCardPressEnd} onTouchStart={()=>handleCardPressStart(uz)} onTouchEnd={handleCardPressEnd}
+                              />
+                              {isTarget && <div className="absolute inset-0 ring-2 ring-yellow-400/60 animate-pulse rounded"/>}
                             </div>
                           )
                         })}
@@ -10542,13 +10537,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Player Ultimate Zone — peek stack, newest card on top */}
+                  {/* Player Ultimate Zone — peek stack with absolute positioning */}
                   {(() => {
-                    const PEEK_SHOW = 22  // px of each older card visible below the active one
-                    const CARD_W = 56, CARD_H = 80
+                    const PEEK = 22, CARD_H = 80, CARD_W = 56
+                    const H = CARD_H + 2 * PEEK   // 124px
                     const zones = playerField.ultimateZones
                     const firstEmpty = zones.findIndex(z => z === null)
-                    const lastFilledIdx = ([2,1,0] as const).find(i => zones[i] !== null) ?? null
+                    const filledSlots = ([2,1,0] as const).filter(i => zones[i] !== null)
                     const canDrop = firstEmpty !== -1 && (
                       dropTarget?.type === "ultimate" ||
                       (selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]))
@@ -10556,77 +10551,59 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const isDraggingUg = !!(draggedHandCard && isUltimateCard(draggedHandCard.card))
                     return (
                       <div
-                        className="flex-shrink-0 flex flex-col cursor-pointer"
-                        style={{ width: CARD_W }}
+                        style={{ position:"relative", width:CARD_W, height:H, flexShrink:0, cursor:"pointer" }}
                         onClick={() => {
                           if (firstEmpty !== -1 && selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]))
                             placeUltimateCard()
                         }}
                       >
-                        {/* Render 2→1→0 so newest (highest index) is visually on top */}
-                        {([2,1,0] as const).map((puzi, renderIdx) => {
-                          const puz = zones[puzi] ?? null
-                          const isEmpty = puz === null
-                          const isNewest = puzi === lastFilledIdx
-                          const slotCanDrop = canDrop && isEmpty && puzi === firstEmpty
-                          const slotIsDragging = isDraggingUg && isEmpty && puzi === firstEmpty
+                        {/* Background placeholders for all 3 visual positions */}
+                        {[0,1,2].map(vp => (
+                          <div key={`bg-${vp}`} style={{
+                            position:"absolute", top:vp*PEEK, left:0,
+                            width:CARD_W, height:CARD_H, borderRadius:6,
+                            border:`2px dashed ${canDrop && vp === filledSlots.length ? "#4ade80" : isDraggingUg && vp === filledSlots.length ? "rgba(52,211,153,0.5)" : "rgba(52,211,153,0.15)"}`,
+                            background: canDrop && vp === filledSlots.length ? "rgba(74,222,128,0.15)" : "rgba(6,30,20,0.40)",
+                            zIndex: 3 - vp,
+                          }}>
+                            {canDrop && vp === filledSlots.length && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-green-400 text-[9px] font-bold animate-pulse">SOLTAR</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {/* Filled cards: visualPos 0 = newest = top */}
+                        {filledSlots.map((slotIdx, vp) => {
+                          const puz = zones[slotIdx]!
+                          const isNewest = vp === 0
                           return (
-                            <div key={puzi}
-                              data-player-ultimate-slot={puzi}
-                              style={{
-                                width: CARD_W, height: CARD_H, flexShrink: 0,
-                                marginTop: renderIdx === 0 ? 0 : -(CARD_H - PEEK_SHOW),
-                                borderRadius: 6, overflow: "hidden",
-                                border: `2px ${isEmpty ? "dashed" : "solid"} ${
-                                  slotCanDrop ? "#4ade80"
-                                  : slotIsDragging ? "rgba(52,211,153,0.5)"
-                                  : isNewest && puz ? "rgba(52,211,153,0.95)"
-                                  : puz ? "rgba(52,211,153,0.40)"
-                                  : "rgba(52,211,153,0.15)"}`,
-                                background: slotCanDrop ? "rgba(74,222,128,0.18)"
-                                  : puz ? "transparent"
-                                  : "rgba(6,30,20,0.45)",
-                                boxShadow: isNewest && puz
-                                  ? "0 0 10px rgba(52,211,153,0.45), 0 3px 10px rgba(0,0,0,0.7)"
-                                  : puz ? "0 2px 6px rgba(0,0,0,0.5)" : "none",
-                                position: "relative",
-                                zIndex: 3 - renderIdx,
-                                // dim older cards so the newest one stands out clearly
-                                filter: puz && !isNewest ? "brightness(0.50) saturate(0.65)" : "none",
-                              }}
-                            >
-                              {puz ? (
-                                <>
-                                  <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill
-                                    className="object-cover"
-                                    onMouseDown={() => handleCardPressStart(puz)}
-                                    onMouseUp={handleCardPressEnd}
-                                    onMouseLeave={handleCardPressEnd}
-                                    onTouchStart={() => handleCardPressStart(puz)}
-                                    onTouchEnd={handleCardPressEnd}
-                                  />
-                                  {/* Action buttons only on the newest (active) card */}
-                                  {isNewest && isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && (() => {
-                                    const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
-                                    const ok=a.includes("ODEN SWORD")||n.includes("oden sword")||a.includes("TWILIGH")||n.includes("twiligh")||a.includes("MEFISTO")||n.includes("mefisto")
-                                    if(!ok) return null
-                                    if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
-                                    return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-20 text-center">⚡ ATIVAR</button>
-                                  })()}
-                                  {isNewest && isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && (() => {
-                                    const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
-                                    if(!a.includes("MIGUEL ARCANJO")&&!n.includes("miguel arcanjo")) return null
-                                    if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
-                                    return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-20 text-center">✦ JULGAMENTO</button>
-                                  })()}
-                                </>
-                              ) : (
-                                slotCanDrop ? (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-green-400 text-[9px] font-bold animate-pulse">SOLTAR</span>
-                                  </div>
-                                ) : null
-                              )}
+                            <div key={slotIdx} data-player-ultimate-slot={slotIdx} style={{
+                              position:"absolute", top:vp*PEEK, left:0,
+                              width:CARD_W, height:CARD_H, borderRadius:6, overflow:"hidden",
+                              zIndex: 10 - vp,
+                              border:`2px solid ${isNewest ? "rgba(52,211,153,0.9)" : "rgba(52,211,153,0.35)"}`,
+                              boxShadow: isNewest ? "0 0 12px rgba(52,211,153,0.40), 0 3px 8px rgba(0,0,0,0.7)" : "0 2px 6px rgba(0,0,0,0.5)",
+                              filter: isNewest ? "none" : `brightness(${vp === 1 ? 0.60 : 0.45}) saturate(0.65)`,
+                            }}>
+                              <Image src={puz.image||"/placeholder.svg"} alt={puz.name} fill className="object-cover"
+                                onMouseDown={()=>handleCardPressStart(puz)} onMouseUp={handleCardPressEnd}
+                                onMouseLeave={handleCardPressEnd} onTouchStart={()=>handleCardPressStart(puz)} onTouchEnd={handleCardPressEnd}
+                              />
+                              {/* Action buttons only on the newest card */}
+                              {isNewest && isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && (() => {
+                                const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
+                                const ok=a.includes("ODEN SWORD")||n.includes("oden sword")||a.includes("TWILIGH")||n.includes("twiligh")||a.includes("MEFISTO")||n.includes("mefisto")
+                                if(!ok) return null
+                                if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
+                                return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-20 text-center">⚡ ATIVAR</button>
+                              })()}
+                              {isNewest && isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && (() => {
+                                const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
+                                if(!a.includes("MIGUEL ARCANJO")&&!n.includes("miguel arcanjo")) return null
+                                if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
+                                return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-20 text-center">✦ JULGAMENTO</button>
+                              })()}
                             </div>
                           )
                         })}
