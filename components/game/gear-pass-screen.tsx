@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useGame } from "@/contexts/game-context"
+import { useGame, type Card } from "@/contexts/game-context"
 import {
   ArrowLeft, Crown, Star, Gift, Check, Lock, Zap,
   Calendar, RefreshCw, Flame, ChevronRight, ChevronLeft,
@@ -10,6 +10,7 @@ import {
 import {
   getMissionProgress,
   trackDailyLogin,
+  trackGachaPull,
 } from "@/lib/mission-tracker"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -715,7 +716,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const wallpaperUrl = typeof window !== "undefined"
     ? `/images/wallpapers/${localStorage.getItem("gpgame_selected_wallpaper") ?? "fehnon_wallpaper"}.png`
     : "/images/wallpapers/fehnon_wallpaper.png"
-  const { coins, setCoins, playerId } = useGame()
+  const { coins, setCoins, playerId, allCards, addToCollection } = useGame()
 
   // ── Verificar premium no servidor ao abrir a tela ─────────────────────────
   useEffect(() => {
@@ -873,6 +874,20 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [justClaimed, setJustClaimed] = useState<{ level: number; isPremium: boolean } | null>(null)
   // Toast de login diário — mostrado só uma vez por dia
   const [showLoginToast, setShowLoginToast] = useState(false)
+
+  // ── Pack Opening embutido — recompensas card_pack do Gear Pass ───────────────
+  const CARDS_PER_PACK = 4
+  const [packOpening, setPackOpening] = useState<{
+    cards: Card[]
+    phase: "floating" | "opening" | "revealing" | "done"
+    revealIndex: number
+    highestRarity: "R" | "SR" | "UR" | "LR"
+    swipeProgress: number
+    swipeComplete: boolean
+    rarityTier: "normal" | "rare" | "epic" | "legendary"
+  } | null>(null)
+  const packSwipeStartX = useRef<number | null>(null)
+
   // ── Clicar e segurar numa recompensa já coletada mostra os detalhes dela ─────
   const [peekedReward, setPeekedReward] = useState<{ level: number; isPremium: boolean } | null>(null)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1258,40 +1273,94 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   const handleClaimPassReward = (level: number, isPremium: boolean) => {
     if (level > passData.currentLevel) return
-    if (isPremium && !passData.hasPremium) {
-      setShowPremiumModal(true)
-      return
-    }
+    if (isPremium && !passData.hasPremium) { setShowPremiumModal(true); return }
     const key = isPremium ? "claimedPremium" : "claimedCommon"
     if (passData[key].includes(level)) return
-
     const reward = ALL_REWARDS.find(r => r.level === level && r.isPremium === isPremium)
     if (!reward) return
 
-    // Give reward
-    if (reward.type === "coins" && reward.amount) {
-      setCoins((c: number) => c + reward.amount!)
-    }
+    if (reward.type === "coins" && reward.amount) setCoins((c: number) => c + reward.amount!)
 
-    setPassData(pd => ({
-      ...pd,
-      [key]: [...pd[key], level],
-    }))
-
+    setPassData(pd => ({ ...pd, [key]: [...pd[key], level] }))
     vibrate(isPremium ? [30, 25, 40] : 35)
-    // Pop do checkmark — marca qual caixinha animar, limpa após 600ms
     setJustClaimed({ level, isPremium })
     setTimeout(() => setJustClaimed(null), 600)
-    setClaimFeedback(
-      reward.type === "coins"
-        ? `+${reward.amount} Coins!`
-        : reward.type === "gacha_coin"
-        ? `+${reward.amount ?? 1} Gacha Coin(s)!`
+
+    // card_pack → abre o pack opening embutido
+    if (reward.type === "card_pack") {
+      openPackReward(reward.rarity)
+    } else {
+      setClaimFeedback(
+        reward.type === "coins" ? `+${reward.amount} Coins!`
+        : reward.type === "gacha_coin" ? `+${reward.amount ?? 1} Gacha Coin(s)!`
         : `${reward.label} obtido!`
-    )
-    setTimeout(() => setClaimFeedback(null), 2000)
+      )
+      setTimeout(() => setClaimFeedback(null), 2000)
+    }
     setFocusedLevel(null)
   }
+
+  // ── Gera CARDS_PER_PACK cartas com taxas baseadas na raridade do pack ─────────
+  const openPackReward = (packRarity?: "R" | "SR" | "UR" | "LR") => {
+    if (!allCards || allCards.length === 0) return
+    const rarityRates: Record<string, Record<string, number>> = {
+      R:  { R: 75, SR: 20, UR: 4.5, LR: 0.5 },
+      SR: { R: 50, SR: 40, UR: 9, LR: 1 },
+      UR: { R: 20, SR: 55, UR: 22, LR: 3 },
+      LR: { R: 0, SR: 30, UR: 50, LR: 20 },
+    }
+    const rates = rarityRates[packRarity ?? "R"]
+    const packCards: Card[] = []
+    for (let i = 0; i < CARDS_PER_PACK; i++) {
+      const rand = Math.random() * 100
+      let targetRarity: "R" | "SR" | "UR" | "LR"
+      const cumLR = rates.LR; const cumUR = rates.LR + rates.UR
+      const cumSR = cumUR + rates.SR
+      if (rand < cumLR) targetRarity = "LR"
+      else if (rand < cumUR) targetRarity = "UR"
+      else if (rand < cumSR) targetRarity = "SR"
+      else targetRarity = "R"
+      let pool = (allCards as Card[]).filter(c => c.rarity === targetRarity)
+      if (pool.length === 0) pool = allCards as Card[]
+      const base = pool[Math.floor(Math.random() * pool.length)]
+      packCards.push({ ...base, id: `${base.id}-gp-${Date.now()}-${i}` })
+    }
+    const rarityOrder = ["R","SR","UR","LR"] as const
+    let highest: "R"|"SR"|"UR"|"LR" = "R"
+    for (const c of packCards) {
+      if (rarityOrder.indexOf(c.rarity as any) > rarityOrder.indexOf(highest))
+        highest = c.rarity as "R"|"SR"|"UR"|"LR"
+    }
+    const tier = packCards.some(c=>c.rarity==="LR") ? "legendary"
+      : packCards.some(c=>c.rarity==="UR") ? "epic"
+      : packCards.some(c=>c.rarity==="SR") ? "rare" : "normal"
+
+    addToCollection(packCards)
+    trackGachaPull(1, packCards)
+    vibrate([40,30,60])
+    setPackOpening({ cards: packCards, phase: "floating", revealIndex: -1,
+      highestRarity: highest, swipeProgress: 0, swipeComplete: false, rarityTier: tier })
+  }
+
+  // Progressão automática das fases do pack opening
+  useEffect(() => {
+    if (!packOpening) return
+    if (packOpening.phase === "opening") {
+      const t = setTimeout(() => setPackOpening(p => p ? {...p, phase:"revealing", revealIndex:0} : null), 700)
+      return () => clearTimeout(t)
+    }
+    if (packOpening.phase === "revealing" && packOpening.revealIndex >= 0 && packOpening.revealIndex < CARDS_PER_PACK) {
+      const card = packOpening.cards[packOpening.revealIndex]
+      const d = card?.rarity==="LR" ? 900 : card?.rarity==="UR" ? 600 : card?.rarity==="SR" ? 400 : 280
+      const t = setTimeout(() => setPackOpening(p => p ? {...p, revealIndex: p.revealIndex+1} : null), d)
+      return () => clearTimeout(t)
+    }
+    if (packOpening.phase === "revealing" && packOpening.revealIndex >= CARDS_PER_PACK) {
+      const t = setTimeout(() => setPackOpening(p => p ? {...p, phase:"done"} : null), 500)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packOpening?.phase, packOpening?.revealIndex])
 
   const openStripeCheckout = () => {
     // Passa o playerId como client_reference_id para o webhook identificar o jogador
@@ -1485,6 +1554,116 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               Lv.{levelUpAnim-1} → Lv.{levelUpAnim}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── PACK OPENING — recompensa card_pack do Gear Pass ── */}
+      {packOpening && (
+        <div style={{
+          position:"fixed", inset:0, zIndex:9995,
+          background: packOpening.rarityTier==="legendary" ? "radial-gradient(ellipse at center,rgba(30,0,60,0.97),rgba(5,0,15,0.99))"
+            : packOpening.rarityTier==="epic" ? "radial-gradient(ellipse at center,rgba(30,20,0,0.97),rgba(10,5,0,0.99))"
+            : packOpening.rarityTier==="rare" ? "radial-gradient(ellipse at center,rgba(20,0,40,0.97),rgba(5,0,15,0.99))"
+            : "radial-gradient(ellipse at center,rgba(5,10,25,0.97),rgba(2,4,12,0.99))",
+          display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", overflow:"hidden",
+        }}>
+          {/* Pular */}
+          <button onClick={() => setPackOpening(null)} style={{
+            position:"absolute", top:16, right:16, zIndex:10,
+            background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)",
+            borderRadius:20, padding:"6px 16px", color:"#94a3b8", fontSize:12, fontWeight:700, cursor:"pointer",
+          }}>Pular</button>
+
+          {/* Fase: floating — pack esperando rasgar */}
+          {packOpening.phase === "floating" && (
+            <>
+              <div style={{fontSize:26,fontWeight:900,color:"#f1f5f9",marginBottom:28,letterSpacing:"-0.02em"}}>Abra!</div>
+              <div
+                onMouseDown={e => { packSwipeStartX.current = e.clientX }}
+                onMouseMove={e => {
+                  if (packSwipeStartX.current===null || packOpening.swipeComplete) return
+                  const pct = Math.min(100, Math.max(0, ((e.clientX - packSwipeStartX.current) / 120)*100))
+                  setPackOpening(p => p ? {...p, swipeProgress:pct} : null)
+                  if (pct >= 100) { setPackOpening(p => p ? {...p, swipeComplete:true, phase:"opening"} : null); packSwipeStartX.current=null }
+                }}
+                onMouseUp={() => { if (!packOpening.swipeComplete) setPackOpening(p => p ? {...p, swipeProgress:0} : null); packSwipeStartX.current=null }}
+                onTouchStart={e => { packSwipeStartX.current = e.touches[0].clientX }}
+                onTouchMove={e => {
+                  if (packSwipeStartX.current===null || packOpening.swipeComplete) return
+                  const pct = Math.min(100, Math.max(0, ((e.touches[0].clientX - packSwipeStartX.current) / 120)*100))
+                  setPackOpening(p => p ? {...p, swipeProgress:pct} : null)
+                  if (pct >= 100) { setPackOpening(p => p ? {...p, swipeComplete:true, phase:"opening"} : null); packSwipeStartX.current=null }
+                }}
+                onTouchEnd={() => { if (!packOpening.swipeComplete) setPackOpening(p => p ? {...p, swipeProgress:0} : null) }}
+                style={{ cursor:"grab", userSelect:"none", position:"relative" }}
+              >
+                <img src="/images/gacha/pack-fsg.png" alt="Pack" style={{
+                  width:180, height:"auto",
+                  filter:`drop-shadow(0 0 ${24+packOpening.swipeProgress*0.4}px ${
+                    packOpening.highestRarity==="LR" ? "rgba(239,68,68,0.8)"
+                    : packOpening.highestRarity==="UR" ? "rgba(251,191,36,0.7)"
+                    : packOpening.highestRarity==="SR" ? "rgba(168,85,247,0.6)"
+                    : "rgba(6,182,212,0.5)"
+                  })`,
+                  transform:`rotate(${packOpening.swipeProgress*0.04}deg)`,
+                }} onError={e => { (e.target as HTMLImageElement).src="/images/card-back.png" }} />
+                {/* Linha de rasgar */}
+                <div style={{
+                  position:"absolute", top:"30%", left:"-10%", right:"-10%", height:2,
+                  background:`linear-gradient(90deg,transparent,rgba(255,255,255,${0.1+packOpening.swipeProgress*0.008}),rgba(255,255,255,${0.35+packOpening.swipeProgress*0.006}),rgba(255,255,255,${0.1+packOpening.swipeProgress*0.008}),transparent)`,
+                  boxShadow:"0 0 8px rgba(255,255,255,0.3)",
+                }}>
+                  <div style={{
+                    position:"absolute", top:"50%", left:`${packOpening.swipeProgress}%`,
+                    transform:"translate(-50%,-50%)", width:10, height:10, borderRadius:"50%",
+                    background:"#fff", boxShadow:"0 0 12px rgba(255,255,255,0.9)",
+                    opacity:packOpening.swipeProgress>0?1:0,
+                  }} />
+                </div>
+              </div>
+              <div style={{marginTop:24,fontSize:13,color:"#475569"}}>arraste a linha para rasgar</div>
+            </>
+          )}
+
+          {/* Fase: opening */}
+          {packOpening.phase === "opening" && (
+            <div style={{fontSize:24,fontWeight:900,color:"#f1f5f9",animation:"popIn 0.4s ease"}}>✨ Abrindo...</div>
+          )}
+
+          {/* Fase: revealing / done */}
+          {(packOpening.phase === "revealing" || packOpening.phase === "done") && (
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16,width:"100%",maxWidth:440,padding:"0 20px"}}>
+              <div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>Cartas Obtidas!</div>
+              <div style={{fontSize:11,color:"#64748b",marginTop:-10}}>{CARDS_PER_PACK} CARTAS · TOQUE PARA AMPLIAR</div>
+              <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+                {packOpening.cards.map((card,i) => {
+                  const revealed = i < packOpening.revealIndex || packOpening.phase==="done"
+                  const rc: Record<string,string> = {R:"#60a5fa",SR:"#a855f7",UR:"#fbbf24",LR:"#ef4444"}
+                  const col = rc[card.rarity] ?? "#94a3b8"
+                  return (
+                    <div key={card.id} style={{opacity:revealed?1:0,transform:revealed?"scale(1)":"scale(0.6)",transition:"all 0.4s cubic-bezier(.2,1.4,.4,1)"}}>
+                      <div style={{position:"relative",borderRadius:10,overflow:"hidden",boxShadow:`0 0 18px ${col}70`}}>
+                        <img src={card.image||"/images/card-back.png"} alt={card.name}
+                          style={{width:82,height:115,objectFit:"cover",display:"block"}}
+                          onError={e=>{(e.target as HTMLImageElement).src="/images/card-back.png"}} />
+                      </div>
+                      <div style={{marginTop:4,background:col,borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:900,color:"#000",textAlign:"center",boxShadow:`0 0 8px ${col}90`}}>
+                        {card.rarity}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {packOpening.phase === "done" && (
+                <button onClick={() => setPackOpening(null)} style={{
+                  marginTop:8,padding:"12px 44px",borderRadius:14,border:"none",
+                  background:"linear-gradient(135deg,#16a34a,#22c55e)",color:"#fff",
+                  fontSize:14,fontWeight:900,cursor:"pointer",letterSpacing:"0.06em",
+                  boxShadow:"0 4px 20px rgba(34,197,94,0.40)", animation:"popIn 0.3s ease",
+                }}>CONFIRMAR</button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
