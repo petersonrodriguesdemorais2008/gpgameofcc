@@ -70,8 +70,6 @@ export function GameWrapper() {
   const [tutorialInDuel, setTutorialInDuel] = useState(false)
   /** true quando o jogador volta do duelo real — sinaliza o overlay para avançar para post-duel-menu */
   const [tutorialPostDuel, setTutorialPostDuel] = useState(false)
-  /** true assim que o DuelScreen dispara onBattleStart (mesa montada) — sinaliza o overlay */
-  const [tutorialBattleStarted, setTutorialBattleStarted] = useState(false)
   // ─────────────────────────────────────────────────────────────────────────
   // ── RESET DE CONTA: detecta quando hasCompletedSetup vai de true → false
   //    NA MESMA sessão (ou seja, não é o boot normal de uma conta nova, é um
@@ -296,10 +294,7 @@ export function GameWrapper() {
       {currentScreen === "collection" && <CollectionScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "deck-builder" && <DeckBuilderScreen onBack={() => navigateTo("menu")} />}
       {(currentScreen === "duel-bot" || currentScreen === "duel-player") && (
-        <DuelScreen mode={duelMode} onBattleStart={() => {
-            pauseMenuMusic()
-            if (tutorialOverlayActive && tutorialInDuel) setTutorialBattleStarted(true)
-          }} onBack={() => {
+        <DuelScreen mode={duelMode} onBack={() => {
           // Se estamos no duelo do tutorial, avança o overlay para post-duel-menu
           if (tutorialOverlayActive && tutorialInDuel) {
             setTutorialInDuel(false)
@@ -375,7 +370,6 @@ export function GameWrapper() {
               // Inicia o duelo real (duel-screen.tsx) no modo bot
               setTutorialInDuel(true)
               setTutorialPostDuel(false)
-              setTutorialBattleStarted(false)
               pauseMenuMusic()
               setDuelMode("bot")
               navigateTo("duel-bot")
@@ -385,7 +379,6 @@ export function GameWrapper() {
               navigateTo("menu")
             }
           }}
-          battleStarted={tutorialBattleStarted}
           postDuelReady={tutorialPostDuel}
           onComplete={handleTutorialOverlayComplete}
         />
