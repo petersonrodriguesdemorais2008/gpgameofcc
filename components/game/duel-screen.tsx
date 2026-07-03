@@ -3973,7 +3973,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const animationInProgressRef = useRef(false)
   const attackIdRef = useRef(0)
   const draggedCardRef = useRef<HTMLDivElement>(null)
-  const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
+  const dragPosRef    = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
+  // Smooth drag — rAF loop reads these refs, zero React involvement during movement
+  const rafIdRef        = useRef<number>(0)
+  const nativePosRef    = useRef({ x: 0, y: 0 })   // raw pointer position
+  const nativeRotRef    = useRef(0)                  // lerped rotation
+  const nativeDropRef   = useRef<{ type: "unit"|"function"|"scenario"|"ultimate"; index: number } | null>(null)
+  const nativeCardRef   = useRef<{ index: number; card: GameCard } | null>(null)
+  const nativeCleanRef  = useRef<(() => void) | null>(null)  // cleanup fn
 
   useEffect(() => {
     if (!playerField.ultimateZones.some(z=>z?.requiresUnit)) {
@@ -7660,150 +7667,156 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   const handleHandCardDragStart = (index: number, e: React.MouseEvent | React.TouchEvent) => {
     if (!isPlayerTurn || phase !== "main") return
-
     const card = playerField.hand[index]
     if (!card) return
-
     e.preventDefault()
 
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
-    dragPosRef.current = { x: clientX, y: clientY, rotation: 0, lastCheck: 0 }
+    // ── Init refs ───────────────────────────────────────────────────────────
+    nativePosRef.current  = { x: clientX, y: clientY }
+    nativeRotRef.current  = 0
+    nativeDropRef.current = null
+    nativeCardRef.current = { index, card }
+    dragPosRef.current    = { x: clientX, y: clientY, rotation: 0, lastCheck: 0 }
+
+    // ONE React re-render to mount ghost card
     setDraggedHandCard({ index, card, currentY: clientY })
     setSelectedHandCard(index)
 
-    // Prime the ghost position instantly with translate3d (GPU layer)
-    if (draggedCardRef.current) {
-      draggedCardRef.current.style.transition = 'none'
-      draggedCardRef.current.style.transform = `translate3d(${clientX - 40}px,${clientY - 60}px,0) rotate(0deg) scale(1.08)`
+    // Prime ghost position before first frame
+    requestAnimationFrame(() => {
+      if (draggedCardRef.current) {
+        draggedCardRef.current.style.transition = "none"
+        draggedCardRef.current.style.transform  =
+          `translate3d(${clientX - 40}px,${clientY - 60}px,0) rotate(0deg) scale(1.08)`
+      }
+    })
+
+    // ── rAF loop: pure GPU transform at 60 fps, zero React overhead ─────────
+    const rAFLoop = () => {
+      const el = draggedCardRef.current
+      if (!el) return
+      const { x, y } = nativePosRef.current
+      const rot   = nativeDropRef.current ? 0               : nativeRotRef.current
+      const scale = nativeDropRef.current ? 1.18            : 1.08
+      const glow  = nativeDropRef.current
+        ? "drop-shadow(0 0 14px rgba(74,222,128,0.85)) drop-shadow(0 0 28px rgba(74,222,128,0.45))"
+        : "drop-shadow(0 0 10px rgba(250,204,21,0.75)) drop-shadow(0 0 22px rgba(250,204,21,0.35))"
+      el.style.transform = `translate3d(${x - 40}px,${y - 60}px,0) rotate(${rot}deg) scale(${scale})`
+      el.style.filter    = glow
+      rafIdRef.current   = requestAnimationFrame(rAFLoop)
     }
-  }
+    rafIdRef.current = requestAnimationFrame(rAFLoop)
 
-  const handleHandCardDragMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!draggedHandCard || !draggedCardRef.current) return
+    // ── Native move handler – updates refs only, never calls setState ────────
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (ev.cancelable) ev.preventDefault()
+      const cx = "touches" in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX
+      const cy = "touches" in ev ? (ev as TouchEvent).touches[0].clientY : (ev as MouseEvent).clientY
+      // Lerp rotation toward horizontal-velocity target
+      const dx = cx - nativePosRef.current.x
+      nativeRotRef.current = Math.max(-12, Math.min(12, dx * 1.5)) * 0.28 + nativeRotRef.current * 0.72
+      nativePosRef.current = { x: cx, y: cy }
 
-    e.preventDefault()
-
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
-
-    // Smooth rotation: lerp toward target based on horizontal velocity
-    const deltaX = clientX - dragPosRef.current.x
-    const targetRotation = Math.max(-12, Math.min(12, deltaX * 1.2))
-    // Use stronger lerp for snappier feel while still smooth
-    dragPosRef.current.rotation = targetRotation * 0.35 + dragPosRef.current.rotation * 0.65
-    dragPosRef.current.x = clientX
-    dragPosRef.current.y = clientY
-
-    const isOverTarget = dropTarget !== null
-    const rot   = isOverTarget ? 0 : dragPosRef.current.rotation
-    const scale = isOverTarget ? 1.18 : 1.08
-
-    // Update via direct DOM style — always GPU-composited via translate3d
-    draggedCardRef.current.style.transform =
-      `translate3d(${clientX - 40}px,${clientY - 60}px,0) rotate(${rot}deg) scale(${scale})`
-
-    // Drop-target detection throttled to every 16 ms (~60 fps)
-    const now = Date.now()
-    if (now - dragPosRef.current.lastCheck >= 16) {
+      // Hit-test throttled to 80 ms — only this may call setDropTarget (one re-render)
+      const now = Date.now()
+      if (now - dragPosRef.current.lastCheck < 80) return
       dragPosRef.current.lastCheck = now
-
-      const elements = document.elementsFromPoint(clientX, clientY)
-      let foundTarget: { type: "unit" | "function" | "scenario" | "ultimate"; index: number } | null = null
-
-      for (const el of elements) {
-        const unitSlot = el.closest("[data-player-unit-slot]")
-        const funcSlot = el.closest("[data-player-func-slot]")
-        const scenarioSlot = el.closest("[data-player-scenario-slot]")
-        const ultimateSlot = el.closest("[data-player-ultimate-slot]")
-
-        if (ultimateSlot && isUltimateCard(draggedHandCard.card)) {
-          if (!playerField.ultimateZones.some(z=>z)) {
-            foundTarget = { type: "ultimate", index: 0 }
-            break
-          }
-        } else if (unitSlot && isUnitCard(draggedHandCard.card) && !isUltimateCard(draggedHandCard.card)) {
-          const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
-          if (!playerField.unitZone[slotIndex]) {
-            foundTarget = { type: "unit", index: slotIndex }
-            break
-          }
-        } else if (funcSlot && !isUnitCard(draggedHandCard.card) && draggedHandCard.card.type !== "scenario") {
-          const slotIndex = Number.parseInt(funcSlot.getAttribute("data-player-func-slot") || "0")
-          if (!playerField.functionZone[slotIndex]) {
-            foundTarget = { type: "function", index: slotIndex }
-            break
-          }
-        } else if (scenarioSlot && draggedHandCard.card.type === "scenario") {
-          if (!playerField.scenarioZone) {
-            foundTarget = { type: "scenario", index: 0 }
-            break
-          }
+      const nc = nativeCardRef.current
+      if (!nc) return
+      const els = document.elementsFromPoint(cx, cy)
+      let found: { type: "unit"|"function"|"scenario"|"ultimate"; index: number } | null = null
+      for (const el of els) {
+        const uSlot = el.closest("[data-player-unit-slot]")
+        const fSlot = el.closest("[data-player-func-slot]")
+        const sSlot = el.closest("[data-player-scenario-slot]")
+        const gSlot = el.closest("[data-player-ultimate-slot]")
+        if (gSlot && isUltimateCard(nc.card)) {
+          if (!playerField.ultimateZones.some(z => z)) { found = { type: "ultimate", index: 0 }; break }
+        } else if (uSlot && isUnitCard(nc.card) && !isUltimateCard(nc.card)) {
+          const si = Number.parseInt(uSlot.getAttribute("data-player-unit-slot") || "0")
+          if (!playerField.unitZone[si]) { found = { type: "unit", index: si }; break }
+        } else if (fSlot && !isUnitCard(nc.card) && nc.card.type !== "scenario") {
+          const si = Number.parseInt(fSlot.getAttribute("data-player-func-slot") || "0")
+          if (!playerField.functionZone[si]) { found = { type: "function", index: si }; break }
+        } else if (sSlot && nc.card.type === "scenario") {
+          if (!playerField.scenarioZone) { found = { type: "scenario", index: 0 }; break }
         }
       }
-
-      if (foundTarget?.type !== dropTarget?.type || foundTarget?.index !== dropTarget?.index) {
-        setDropTarget(foundTarget)
+      if (found?.type !== nativeDropRef.current?.type || found?.index !== nativeDropRef.current?.index) {
+        nativeDropRef.current = found
+        setDropTarget(found)
       }
     }
+
+    // ── Native end handler ───────────────────────────────────────────────────
+    const onEnd = () => {
+      cancelAnimationFrame(rafIdRef.current)
+      document.removeEventListener("mousemove", onMove)
+      document.removeEventListener("touchmove", onMove)
+      nativeCleanRef.current = null
+      handleHandCardDragEndNative()
+    }
+
+    nativeCleanRef.current = () => {
+      cancelAnimationFrame(rafIdRef.current)
+      document.removeEventListener("mousemove", onMove)
+      document.removeEventListener("touchmove", onMove)
+      document.removeEventListener("mouseup",  onEnd)
+      document.removeEventListener("touchend", onEnd)
+    }
+
+    document.addEventListener("mousemove", onMove, { passive: false })
+    document.addEventListener("touchmove", onMove, { passive: false })
+    document.addEventListener("mouseup",   onEnd,  { once: true })
+    document.addEventListener("touchend",  onEnd,  { once: true })
   }
 
-  const handleHandCardDragEnd = () => {
-    if (!draggedHandCard) {
-      setDropTarget(null)
-      return
-    }
+  // handleHandCardDragMove kept as no-op (native listener handles everything)
+  const handleHandCardDragMove = (_e: React.MouseEvent | React.TouchEvent) => { /* handled natively */ }
 
-    if (dropTarget) {
-      const targetSelector = dropTarget.type === "unit"
-        ? `[data-player-unit-slot="${dropTarget.index}"]`
-        : dropTarget.type === "function"
-          ? `[data-player-func-slot="${dropTarget.index}"]`
-          : dropTarget.type === "ultimate"
+  const handleHandCardDragEndNative = () => {
+    const nc = nativeCardRef.current
+    const dt = nativeDropRef.current
+    if (!nc) { setDropTarget(null); setDraggedHandCard(null); return }
+
+    if (dt) {
+      const targetSelector = dt.type === "unit"
+        ? `[data-player-unit-slot="${dt.index}"]`
+        : dt.type === "function"
+          ? `[data-player-func-slot="${dt.index}"]`
+          : dt.type === "ultimate"
             ? `[data-player-ultimate-slot]`
             : `[data-player-scenario-slot]`
-      const targetElement = document.querySelector(targetSelector)
-      const targetRect = targetElement?.getBoundingClientRect()
+      const targetRect = document.querySelector(targetSelector)?.getBoundingClientRect()
 
-      const cardIndex = draggedHandCard.index
-      const targetType = dropTarget.type
-      const targetIndex = dropTarget.index
-      const cardToPlay = draggedHandCard.card
-
-      // Remove card from hand IMMEDIATELY by passing index directly
-      if (targetType === "ultimate") {
-        placeUltimateCard(cardIndex)
-      } else if (targetType === "scenario") {
-        placeScenarioCard(cardIndex)
-      } else {
-        placeCard(targetType, targetIndex, cardIndex)
-      }
+      if (dt.type === "ultimate")  { placeUltimateCard(nc.index) }
+      else if (dt.type === "scenario") { placeScenarioCard(nc.index) }
+      else { placeCard(dt.type, dt.index, nc.index) }
       setSelectedHandCard(null)
 
-      // Show materialize animation if we have target position
       if (targetRect) {
-        const targetX = targetRect.left + targetRect.width / 2
-        const targetY = targetRect.top + targetRect.height / 2
-
-        setDroppingCard({
-          card: cardToPlay,
-          targetX,
-          targetY,
-        })
-
-        setTimeout(() => {
-          setDroppingCard(null)
-        }, 500)
+        const tx = targetRect.left + targetRect.width  / 2
+        const ty = targetRect.top  + targetRect.height / 2
+        setDroppingCard({ card: nc.card, targetX: tx, targetY: ty })
+        setTimeout(() => setDroppingCard(null), 500)
       }
     }
 
-    // Always clear drag state
+    nativeCardRef.current  = null
+    nativeDropRef.current  = null
     setDraggedHandCard(null)
     setDropTarget(null)
   }
 
-  // Card inspection handlers (press and hold to view)
+  const handleHandCardDragEnd = () => {
+    nativeCleanRef.current?.()
+    handleHandCardDragEndNative()
+  }
+
+    // Card inspection handlers (press and hold to view)
   const handleCardPressStart = (card: GameCard) => {
     if (cardPressTimer.current) {
       clearTimeout(cardPressTimer.current)
