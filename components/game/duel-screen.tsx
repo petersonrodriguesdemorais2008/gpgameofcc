@@ -6834,25 +6834,38 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           })
         }
 
-        // Trigger Card Jump Animation
+        // Trigger Card Jump Animation — smooth arc via CSS transition
         const key = `player-${attackState.attackerIndex}`
-        const diffX = (targetX - startX) * 0.4 // Move 40% of the way
-        const diffY = (targetY - startY) * 0.4
+        const diffX = (targetX - startX) * 0.42
+        const diffY = (targetY - startY) * 0.42
         
         setTimeout(() => {
+          // Phase 1: quick anticipation pull-back (windup)
           setCardAnimations(prev => ({
             ...prev,
-            [key]: `translate3d(${diffX}px, ${diffY}px, 0) scale(1.1) rotate(${Math.random() * 4 - 2}deg)`
+            [key]: `__transition:transform 60ms cubic-bezier(0.4,0,1,1)||translate3d(${-diffX * 0.15}px,${-diffY * 0.15}px,0) scale(1.05)`
           }))
-          
-          // Reset card position after impact
+
+          // Phase 2: fast lunge toward target
           setTimeout(() => {
-            setCardAnimations(prev => {
-              const next = { ...prev }
-              delete next[key]
-              return next
-            })
-          }, CARD_JUMP_DURATION)
+            setCardAnimations(prev => ({
+              ...prev,
+              [key]: `__transition:transform 180ms cubic-bezier(0.2,0,0.4,1)||translate3d(${diffX}px,${diffY}px,0) scale(1.14) rotate(${Math.random() * 6 - 3}deg)`
+            }))
+          }, 65)
+
+          // Phase 3: smooth spring return
+          setTimeout(() => {
+            setCardAnimations(prev => ({
+              ...prev,
+              [key]: `__transition:transform 240ms cubic-bezier(0.34,1.56,0.64,1)||translate3d(0px,0px,0) scale(1)`
+            }))
+          }, 250)
+
+          // Cleanup
+          setTimeout(() => {
+            setCardAnimations(prev => { const n={...prev}; delete n[key]; return n })
+          }, 500)
         }, CARD_JUMP_DELAY)
 
         // Hide arrow immediately — before any animation
@@ -7660,9 +7673,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setDraggedHandCard({ index, card, currentY: clientY })
     setSelectedHandCard(index)
 
-    // Update ghost position immediately
+    // Prime the ghost position instantly with translate3d (GPU layer)
     if (draggedCardRef.current) {
-      draggedCardRef.current.style.transform = `translate(${clientX - 40}px, ${clientY - 56}px) rotate(0deg) scale(1.1)`
+      draggedCardRef.current.style.transition = 'none'
+      draggedCardRef.current.style.transform = `translate3d(${clientX - 40}px,${clientY - 60}px,0) rotate(0deg) scale(1.08)`
     }
   }
 
@@ -7674,20 +7688,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
-    // Calculate rotation based on horizontal movement
+    // Smooth rotation: lerp toward target based on horizontal velocity
     const deltaX = clientX - dragPosRef.current.x
-    const targetRotation = Math.max(-10, Math.min(10, deltaX * 0.8))
-    dragPosRef.current.rotation = targetRotation * 0.4 + dragPosRef.current.rotation * 0.6
+    const targetRotation = Math.max(-12, Math.min(12, deltaX * 1.2))
+    // Use stronger lerp for snappier feel while still smooth
+    dragPosRef.current.rotation = targetRotation * 0.35 + dragPosRef.current.rotation * 0.65
     dragPosRef.current.x = clientX
     dragPosRef.current.y = clientY
 
-    // Update DOM directly for smooth movement (no React re-render)
     const isOverTarget = dropTarget !== null
-    draggedCardRef.current.style.transform = `translate(${clientX - 40}px, ${clientY - 56}px) rotate(${isOverTarget ? 0 : dragPosRef.current.rotation}deg) scale(${isOverTarget ? 1.2 : 1.1})`
+    const rot   = isOverTarget ? 0 : dragPosRef.current.rotation
+    const scale = isOverTarget ? 1.18 : 1.08
 
-    // Throttled drop target check - only every 50ms
+    // Update via direct DOM style — always GPU-composited via translate3d
+    draggedCardRef.current.style.transform =
+      `translate3d(${clientX - 40}px,${clientY - 60}px,0) rotate(${rot}deg) scale(${scale})`
+
+    // Drop-target detection throttled to every 16 ms (~60 fps)
     const now = Date.now()
-    if (!dragPosRef.current.lastCheck || now - dragPosRef.current.lastCheck > 16) {
+    if (now - dragPosRef.current.lastCheck >= 16) {
       dragPosRef.current.lastCheck = now
 
       const elements = document.elementsFromPoint(clientX, clientY)
@@ -7724,7 +7743,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
       }
 
-      // Only update state if target changed
       if (foundTarget?.type !== dropTarget?.type || foundTarget?.index !== dropTarget?.index) {
         setDropTarget(foundTarget)
       }
@@ -10339,7 +10357,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                       : "border-blue-700/40"
                           }`}
                         style={{
-                          transform: cardAnimations[`player-${i}`] || "none",
+                          transform: (() => {
+                            const v = cardAnimations[`player-${i}`]
+                            if (!v) return 'none'
+                            return v.startsWith('__transition:') ? v.split('||')[1] : v
+                          })(),
+                          transition: (() => {
+                            const v = cardAnimations[`player-${i}`]
+                            if (!v || !v.startsWith('__transition:')) return 'transform 0.08s ease'
+                            return v.split('__transition:')[1].split('||')[0]
+                          })(),
                           zIndex: cardAnimations[`player-${i}`] ? 50 : 1,
                         }}
                       >
@@ -10911,17 +10938,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           style={{
             willChange: 'transform',
             contain: 'layout style paint',
-            transform: `translate(${dragPosRef.current.x - 40}px, ${dragPosRef.current.y - 56}px) rotate(0deg) scale(1.1)`,
+            transform: `translate3d(${dragPosRef.current.x - 40}px,${dragPosRef.current.y - 60}px,0) rotate(0deg) scale(1.08)`,
+            // Hardware-accelerated drop-shadow for the glow (no separate div needed)
+            filter: dropTarget
+              ? 'drop-shadow(0 0 14px rgba(74,222,128,0.85)) drop-shadow(0 0 28px rgba(74,222,128,0.45))'
+              : 'drop-shadow(0 0 10px rgba(250,204,21,0.75)) drop-shadow(0 0 22px rgba(250,204,21,0.35))',
+            transition: 'filter 0.12s ease',
           }}
         >
-          {/* Glow */}
-          <div className={`absolute -inset-3 rounded-xl blur-xl transition-all duration-150 ${dropTarget ? 'bg-green-400/60' : 'bg-yellow-400/40'
-            }`} />
-          {/* Card */}
-          <div className={`relative w-20 h-28 rounded-xl border-3 shadow-2xl overflow-hidden bg-slate-900 transition-all duration-100 ${dropTarget
-            ? 'border-green-400 shadow-green-500/60'
-            : 'border-yellow-400 shadow-yellow-500/50'
-            }`}>
+          <div className={`relative w-20 h-28 rounded-xl overflow-hidden bg-slate-900 shadow-2xl
+            ${dropTarget ? 'ring-2 ring-green-400 border-2 border-green-400' : 'ring-2 ring-yellow-400 border-2 border-yellow-400'}
+          `}>
             <img
               src={getActiveSkin(draggedHandCard.card.image || "") || "/placeholder.svg"}
               alt={draggedHandCard.card.name}
