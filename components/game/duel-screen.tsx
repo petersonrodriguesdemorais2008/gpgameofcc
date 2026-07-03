@@ -10111,7 +10111,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const isTarget = ugTargetMode.active && uz && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
                     return (
                       <div
-                        className={`w-14 h-20 bg-emerald-900/40 border rounded flex items-center justify-center relative overflow-hidden transition-all ${
+                        className={`w-16 h-24 bg-emerald-900/40 border rounded flex items-center justify-center relative overflow-hidden transition-all ${
                           isTarget ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                           : uz ? "border-emerald-500/60" : "border-emerald-600/40"
                         }`}
@@ -10517,7 +10517,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <div
                         data-player-ultimate-slot="0"
                         onClick={() => slotEmpty && selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                        className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative transition-all duration-75 ${
+                        className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative transition-all duration-75 ${
                           canDrop ? "border-green-400 bg-green-500/60 scale-105 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : draggedHandCard && isUltimateCard(draggedHandCard.card) && slotEmpty ? "border-emerald-400/50 bg-emerald-500/20"
                           : puz ? "border-emerald-500/60" : "border-emerald-600/40"
