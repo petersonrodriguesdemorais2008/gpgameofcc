@@ -33,11 +33,6 @@ export interface TutorialGameOverlayProps {
   /** Chamado quando TODO o tutorial (overlay) é concluído */
   onComplete: () => void
   /**
-   * Sinalizado como true pelo game-wrapper assim que onBattleStart dispara
-   * no DuelScreen (mesa montada). Quando true, pula para os passos da batalha.
-   */
-  battleStarted?: boolean
-  /**
    * Sinalizado como true pelo game-wrapper quando o duelo real do tutorial
    * terminou (jogador clicou em Voltar no DuelScreen). Quando true enquanto
    * phase === "duel-sim", o overlay avança para post-duel-menu.
@@ -1423,7 +1418,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
 // TutorialGameOverlay logo abaixo, além da integração em game-wrapper.tsx.
 // ────────────────────────────────────────────────────────────────────────────────
 
-export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuelReady, battleStarted }: TutorialGameOverlayProps) {
+export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuelReady }: TutorialGameOverlayProps) {
   const [phase, setPhase] = useState<OverlayPhase>("menu")
   const [step, setStep] = useState(0)
   const [visible, setVisible] = useState(false)
@@ -1473,15 +1468,6 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     }
   }, [phase, postDuelReady])
 
-  // ── Quando a mesa de batalha real monta (onBattleStart), pula para os passos
-  //    de guia da batalha (DUEL_SETUP_STEP_COUNT em diante). Sem DOM polling.
-  useEffect(() => {
-    if (phase === "duel-sim" && battleStarted && step < DUEL_SETUP_STEP_COUNT) {
-      setStep(DUEL_SETUP_STEP_COUNT)
-    }
-  }, [phase, battleStarted, step])
-
-
   // ── Handlers (definidos antes de qualquer return) ───────────────────────────
   const handleInterceptClick = () => {
     if (phase === "menu") {
@@ -1515,10 +1501,19 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
       }
     })
     if (found) (found as HTMLElement).click()
-    // Último passo de setup (step 2 = Aleatório) não avança manualmente:
-    // battleStarted dispara quando o DuelScreen inicia a batalha e aí
-    // o useEffect acima pula para DUEL_SETUP_STEP_COUNT
-    if (step < DUEL_SETUP_STEP_COUNT - 1) setStep(s => s + 1)
+    if (step < DUEL_SETUP_STEP_COUNT - 1) {
+      setStep(s => s + 1)
+      return
+    }
+    // Último passo de setup (Aleatório): esse clique já chama startGame() DE
+    // VERDADE dentro do DuelScreen (o onClick do botão real faz isso direto,
+    // sem tela intermediária). O DuelScreen real não expõe nenhum callback tipo
+    // onBattleStart — DuelScreenProps não tem isso, e como duel-screen.tsx é
+    // intocável, não dá pra adicionar. Então, em vez de esperar um sinal externo
+    // que nunca chegaria, avançamos nós mesmos pros passos de batalha logo em
+    // seguida. Pequeno delay só pra mesa real (mão, campo) montar por trás do
+    // overlay escuro antes dele aparecer — sem setInterval, sem DOM polling.
+    setTimeout(() => setStep(DUEL_SETUP_STEP_COUNT), 350)
   }
 
   const handleBubbleNext = () => {
