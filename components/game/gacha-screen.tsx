@@ -207,6 +207,41 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   // Init daily gacha state
   useEffect(() => {
     setDailyUsed(getDailyGachaUsed())
+
+    // ── Detecta pack pendente do Gear Pass ──────────────────────────────────────
+    // Quando o jogador coleta uma recompensa card_pack no Gear Pass, os dados
+    // são salvos aqui e o gacha screen inicia a animação automaticamente.
+    try {
+      const pending = localStorage.getItem("gpgame_pending_pack")
+      if (pending) {
+        localStorage.removeItem("gpgame_pending_pack")
+        const { cards, highestRarity } = JSON.parse(pending) as {
+          cards: Card[]
+          highestRarity: "R" | "SR" | "UR" | "LR"
+          source: string
+        }
+        if (Array.isArray(cards) && cards.length > 0) {
+          // Inicia a animação de pack opening com os cards pré-gerados
+          // (addToCollection e trackGachaPull já foram chamados no Gear Pass)
+          const hasLR = cards.some(c => c.rarity === "LR")
+          const hasUR = cards.some(c => c.rarity === "UR")
+          const hasSR = cards.some(c => c.rarity === "SR")
+          if (hasLR) setRarityTier("legendary")
+          else if (hasUR) setRarityTier("epic")
+          else if (hasSR) setRarityTier("rare")
+          else setRarityTier("normal")
+
+          setPacks([{ id: 0, cards, isOpened: false, isRevealing: false, highestRarity }])
+          setOpenedCards(cards)
+          setPullCount(1)
+          setCurrentPackIndex(0)
+          setCardRevealIndex(-1)
+          setRevealIndex(-1)
+          setIsOpening(true)
+          setPackPhase("entering")
+        }
+      }
+    } catch {}
   }, [])
 
   // Countdown timer for daily reset
