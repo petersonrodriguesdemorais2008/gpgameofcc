@@ -3141,6 +3141,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const CARD_JUMP_DURATION = 350 // Duration of the "jump" movement
   const CARD_JUMP_DELAY = 150 // Wait for charge phase before jumping
   const [gameResult, setGameResult] = useState<"won" | "lost" | null>(null)
+  const [isLogOpen, setIsLogOpen] = useState(true)
 
   const [attackState, setAttackState] = useState<AttackState>({
     isAttacking: false,
@@ -9855,15 +9856,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       </div>
 
-      {/* Enemy hand (card backs) */}
-      <div className="relative z-10 flex justify-center py-1">
-        <div className="flex gap-1">
+      {/* Enemy hand (card backs) — fixed height to prevent layout jitter on draw */}
+      <div className="relative z-10 flex justify-center" style={{ height: 44, alignItems: "center" }}>
+        <div className="flex gap-1" style={{ position: "relative" }}>
           {enemyField.hand.map((_, i) => (
             <div
               key={i}
               className="w-6 h-8 bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 rounded border border-slate-500/50 shadow-md"
               style={{
                 transform: `rotate(${(i - enemyField.hand.length / 2) * 3}deg) translateY(${Math.abs(i - enemyField.hand.length / 2) * 2}px)`,
+                transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
               }}
             />
           ))}
@@ -9887,14 +9889,38 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <div className="space-y-2 px-0.5">
                 <p className="text-white font-black text-sm leading-tight">{card.name}</p>
                 {card.dp > 0 && (
-                  <p className={`font-bold text-sm ${
-                    inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "text-green-400" :
-                    inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "text-red-400" :
-                    "text-amber-300"
-                  }`}>
-                    {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
-                    {card.element && <span className="text-slate-400 font-normal ml-1">· {card.element}</span>}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`font-black text-sm px-2 py-0.5 rounded-md ${
+                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "bg-green-500/20 text-green-300 border border-green-500/30" :
+                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "bg-red-500/20 text-red-300 border border-red-500/30" :
+                      "bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                    }`}>
+                      {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
+                    </span>
+                    {card.element && (() => {
+                      const el = card.element as string
+                      const elMap: Record<string, { icon: string; color: string; bg: string; border: string }> = {
+                        Aquos:     { icon: "💧", color: "#38bdf8", bg: "rgba(56,189,248,0.12)",  border: "rgba(56,189,248,0.30)" },
+                        Pyrus:     { icon: "🔥", color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.30)" },
+                        Ventus:    { icon: "🌿", color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.30)" },
+                        Subterra:  { icon: "🪨", color: "#d97706", bg: "rgba(217,119,6,0.12)",   border: "rgba(217,119,6,0.30)"  },
+                        Haos:      { icon: "✨", color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
+                        Lightness: { icon: "✨", color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
+                        Darkus:    { icon: "🌑", color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
+                        Darkness:  { icon: "🌑", color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
+                        Void:      { icon: "⬛", color: "#6b7280", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)"},
+                        Neutral:   { icon: "⚪", color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)"},
+                      }
+                      const e = elMap[el] || { icon: "◆", color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)" }
+                      return (
+                        <span className="flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-md"
+                          style={{ color: e.color, background: e.bg, border: `1px solid ${e.border}` }}>
+                          <span className="text-[11px]">{e.icon}</span>
+                          {el}
+                        </span>
+                      )
+                    })()}
+                  </div>
                 )}
                 {card.category && <p className="text-slate-500 text-[11px]">{card.category}</p>}
 
@@ -9945,39 +9971,61 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ── FIXED RIGHT PANEL: Duel Log ── */}
       <div className="fixed right-0 z-30 flex flex-col"
-        style={{top:"56px",bottom:"0",width:"clamp(140px,17vw,230px)",background:"rgba(4,3,13,0.96)",borderLeft:"1px solid rgba(251,191,36,0.15)",backdropFilter:"blur(12px)"}}>
+        style={{
+          top:"56px", bottom:"0",
+          width: isLogOpen ? "clamp(140px,17vw,230px)" : "36px",
+          background:"rgba(4,3,13,0.96)",
+          borderLeft:"1px solid rgba(251,191,36,0.15)",
+          backdropFilter:"blur(12px)",
+          transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
+          overflow:"hidden",
+        }}>
         <div className="px-2 py-2 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0"
-          style={{background:"rgba(251,191,36,0.05)"}}>
-          <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase">📋 Log</p>
-          <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${isPlayerTurn?"bg-blue-600/40 text-blue-200 border border-blue-400/40":"bg-red-700/40 text-red-200 border border-red-500/40"}`}>
-            T{turn}·{isPlayerTurn?"Você":"Bot"}
+          style={{background:"rgba(251,191,36,0.05)", minWidth: isLogOpen ? 0 : 36}}>
+          {isLogOpen && (
+            <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase whitespace-nowrap">📋 Log</p>
+          )}
+          <div className="flex items-center gap-1.5 ml-auto">
+            {isLogOpen && (
+              <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ${isPlayerTurn?"bg-blue-600/40 text-blue-200 border border-blue-400/40":"bg-red-700/40 text-red-200 border border-red-500/40"}`}>
+                T{turn}·{isPlayerTurn?"Você":"Bot"}
+              </div>
+            )}
+            <button
+              onClick={() => setIsLogOpen(v => !v)}
+              className="w-5 h-5 rounded flex items-center justify-center text-amber-400 hover:text-amber-200 hover:bg-amber-400/10 transition-colors flex-shrink-0"
+              title={isLogOpen ? "Recolher log" : "Expandir log"}
+            >
+              <span className="text-[10px] font-black" style={{transition:"transform 0.28s", display:"inline-block", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
+            </button>
           </div>
         </div>
-        <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
-          style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
-          {duelLog.length === 0 ? (
-            <p className="text-slate-700 text-[9px] text-center mt-6 leading-relaxed">As ações<br/>aparecerão aqui.</p>
-          ) : duelLog.map(entry => (
-            <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 ${
-              entry.type==="turn"
-                ? (entry.isPlayerTurn ? "bg-blue-900/35 border border-blue-500/25 my-0.5" : "bg-red-900/30 border border-red-500/25 my-0.5")
-                : "hover:bg-white/[0.03]"
-            }`}>
-              {entry.cardImage && (
-                <button className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 cursor-pointer hover:scale-105 transition-transform"
-                  onClick={() => setLogCardDetail({
-                    image: entry.cardImage!,
-                    name: entry.cardName || "",
-                    ability: entry.cardAbility,
-                    abilityDescription: entry.cardAbilityDescription,
-                    attackDescription: entry.cardAttackDescription,
-                    attack: entry.cardAttack,
-                    dp: entry.cardDp,
-                    element: entry.cardElement,
-                    category: entry.cardCategory,
-                  })}>
-                  <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-cover" />
-                </button>
+        {isLogOpen && (
+          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
+            style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+            {duelLog.length === 0 ? (
+              <p className="text-slate-700 text-[9px] text-center mt-6 leading-relaxed">As ações<br/>aparecerão aqui.</p>
+            ) : duelLog.map(entry => (
+              <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 ${
+                entry.type==="turn"
+                  ? (entry.isPlayerTurn ? "bg-blue-900/35 border border-blue-500/25 my-0.5" : "bg-red-900/30 border border-red-500/25 my-0.5")
+                  : "hover:bg-white/[0.03]"
+              }`}>
+                {entry.cardImage && (
+                  <button className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => setLogCardDetail({
+                      image: entry.cardImage!,
+                      name: entry.cardName || "",
+                      ability: entry.cardAbility,
+                      abilityDescription: entry.cardAbilityDescription,
+                      attackDescription: entry.cardAttackDescription,
+                      attack: entry.cardAttack,
+                      dp: entry.cardDp,
+                      element: entry.cardElement,
+                      category: entry.cardCategory,
+                    })}>
+                    <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-cover" />
+                  </button>
               )}
               <div className="flex-1 min-w-0">
                 {entry.type==="turn" ? (
@@ -9998,21 +10046,31 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* Main Battle Area — arena centered between side panels */}
       <div className="flex-1 flex items-center justify-center px-2 py-1"
-        style={{marginLeft:"clamp(130px,16vw,210px)",marginRight:"clamp(140px,17vw,230px)"}}>
+        style={{
+          marginLeft:"clamp(130px,16vw,210px)",
+          marginRight: isLogOpen ? "clamp(140px,17vw,230px)" : "36px",
+          transition: "margin-right 0.28s cubic-bezier(0.4,0,0.2,1)",
+        }}>
         <div
           className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
           style={{
             aspectRatio: "9/16",
             maxHeight: "calc(100vh - 220px)",
-            boxShadow: "0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3)",
+            boxShadow: "0 0 60px rgba(0,0,0,0.9), 0 0 120px rgba(0,0,0,0.5), inset 0 0 80px rgba(0,0,0,0.4)",
           }}
         >
-          {/* Playmat container with border */}
-          <div className="absolute inset-0 rounded-xl border-4 border-amber-600/30 bg-gradient-to-b from-slate-900/90 to-slate-800/90">
+          {/* Playmat container with epic border */}
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-slate-900/95 to-slate-800/95"
+            style={{
+              border: "2px solid transparent",
+              background: "linear-gradient(180deg, rgba(15,10,35,0.97) 0%, rgba(10,15,30,0.97) 50%, rgba(5,10,25,0.97) 100%)",
+              boxShadow: "inset 0 0 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.2), 0 0 0 2px rgba(59,130,246,0.08)",
+            }}>
             {/* Opponent Playmat Background (top half) */}
             {mode === "player" && opponentPlaymatImage ? (
               <div className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
@@ -10025,7 +10083,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/60" />
               </div>
             ) : (
-              <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-red-950/30 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-1/2"
+                style={{background:"linear-gradient(180deg, rgba(120,10,20,0.22) 0%, rgba(80,10,40,0.12) 60%, transparent 100%)"}} />
             )}
 
             {/* Player Playmat Background (bottom half) */}
@@ -10034,21 +10093,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               if (playmat) {
                 return (
                   <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden">
-                    <img
-                      src={playmat.image || "/placeholder.svg"}
-                      alt={playmat.name}
-                      className="w-full h-full object-cover"
-                      style={{ opacity: 0.75 }}
-                    />
+                    <img src={playmat.image || "/placeholder.svg"} alt={playmat.name}
+                      className="w-full h-full object-cover" style={{ opacity: 0.75 }} />
                     <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-slate-900/60" />
                   </div>
                 )
               }
               return (
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-blue-950/30 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-1/2"
+                  style={{background:"linear-gradient(0deg, rgba(10,30,80,0.22) 0%, rgba(10,40,100,0.12) 60%, transparent 100%)"}} />
               )
             })()}
-          </div>
+
+            {/* Center divider glow line */}
+            <div className="absolute inset-x-0 z-0 pointer-events-none"
+              style={{ top: "50%", height: 1, background: "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.35) 20%, rgba(251,191,36,0.55) 50%, rgba(139,92,246,0.35) 80%, transparent 100%)", boxShadow: "0 0 12px rgba(251,191,36,0.3), 0 0 24px rgba(139,92,246,0.2)" }}/>
+            {/* Center subtle radial aura */}
+            <div className="absolute inset-0 pointer-events-none z-0"
+              style={{background: "radial-gradient(ellipse 80% 30% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%)"}} />
+          </div>{/* end background div */}
 
           {/* Field content */}
           <div className="relative h-full flex flex-col justify-between p-1 pb-2 z-10">
@@ -10060,7 +10123,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <div className="flex flex-col gap-1.5">
                     <div
                       ref={enemyGraveyardRef}
-                      className="w-16 h-24 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
+                      className="w-16 h-24 rounded text-sm text-purple-300 flex items-center justify-center cursor-pointer transition-all hover:scale-105"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(88,28,135,0.7) 0%, rgba(59,7,100,0.9) 100%)",
+                        border: "1px solid rgba(168,85,247,0.4)",
+                        boxShadow: "0 0 12px rgba(168,85,247,0.2), inset 0 0 20px rgba(0,0,0,0.4)",
+                        fontWeight: 900, fontSize: 18,
+                      }}
                       onClick={() => setGraveyardView("enemy")}
                     >
                       {enemyField.graveyard.length}
