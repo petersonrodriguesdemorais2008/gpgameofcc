@@ -5771,10 +5771,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // sitting in the function zone, reusing the same FUNCTION_CARD_EFFECTS
   // registry already used when playing Action/Magic cards from hand.
   const activateTrapCard = (slotIndex: number) => {
-    if (!isPlayerTurn) {
-      showEffectFeedback("Só é possível ativar Traps no seu turno!", "error")
-      return
-    }
+    // Traps can be activated during any phase — the trap's own canActivate enforces timing
     const card = playerField.functionZone[slotIndex]
     if (!card || !card.isFaceDown) return
 
@@ -10168,7 +10165,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     </div>
                   </div>
                   <div
-                    className="w-16 h-24 bg-orange-600/80 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border border-orange-400/50 cursor-pointer hover:bg-orange-500/80 transition-animation"
+                    className="w-16 h-24 rounded-lg text-[10px] text-white flex flex-col items-center justify-center font-black cursor-pointer transition-all hover:scale-105"
+                    style={{background:"linear-gradient(135deg,rgba(160,50,0,0.88) 0%,rgba(200,70,10,0.80) 100%)",border:"1px solid rgba(251,146,60,0.45)",boxShadow:"0 0 10px rgba(251,146,60,0.20),inset 0 0 8px rgba(0,0,0,0.35)"}}
                     onClick={() => setTapView("enemy")}
                   >
                     <span className="opacity-70">TAP</span>
@@ -10304,16 +10302,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           handleEnemyUnitSelect(i)
                         }
                       }}
-                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(mrpTargetMode && card) ||
+                      className={`w-16 h-24 border-2 rounded-lg relative overflow-hidden transition-all duration-150 ${(mrpTargetMode && card) ||
                         (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
-                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                        ? "border-yellow-400 cursor-pointer ring-2 ring-yellow-400/60 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
-                          ? "border-red-500 ring-2 ring-red-400 scale-105"
+                          ? "border-red-400 ring-2 ring-red-400/80 scale-105"
                           : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
-                            ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
-                            : "border-red-700/40"
+                            ? "border-yellow-500 cursor-pointer"
+                            : card
+                              ? "border-red-600/70"
+                              : "border-red-900/40"
                         }`}
+                      style={{
+                        background: card
+                          ? "transparent"
+                          : "linear-gradient(135deg, rgba(60,5,5,0.55) 0%, rgba(80,10,10,0.35) 100%)",
+                        boxShadow: card
+                          ? "inset 0 0 20px rgba(0,0,0,0.5), 0 0 10px rgba(220,38,38,0.2)"
+                          : "inset 0 0 14px rgba(180,10,10,0.10)",
+                      }}
                     >
                       {card && (
                         <>
@@ -10339,25 +10347,37 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
             </div>
 
-            {/* Center Phase indicator and Direct Attack Zone */}
-            <div className="flex flex-col items-center gap-1 py-1">
-              <div
-                data-direct-attack
-                className={`px-6 py-1 rounded-full border-2 border-dashed transition-all text-sm font-bold ${attackTarget?.type === "direct"
-                  ? "border-red-500 bg-red-500/30 text-red-300 scale-105"
-                  : "border-slate-500/50 text-slate-500"
-                  }`}
-              >
-                {attackTarget?.type === "direct" ? "ATAQUE DIRETO!" : ""}
-              </div>
-
-              {/* Phase divider */}
-              <div className="w-full flex items-center gap-2">
-                <div className="flex-1 h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-amber-500" />
-                <span className="text-amber-400 text-xs font-bold px-3 py-1 bg-black/60 rounded-full border border-amber-500/40">
-                  {phase === "draw" ? "DRAW" : phase === "main" ? "MAIN" : "BATTLE"}
-                </span>
-                <div className="flex-1 h-0.5 bg-gradient-to-l from-transparent via-amber-500/60 to-amber-500" />
+            {/* ── Epic center arena divider ── */}
+            <div className="relative flex flex-col items-center" style={{margin:"1px 0",zIndex:20}}>
+              {/* Direct attack zone (only visible during attack targeting) */}
+              {attackTarget?.type === "direct" && (
+                <div data-direct-attack
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-0.5 rounded-full text-[9px] font-black text-red-300 animate-pulse"
+                  style={{background:"rgba(220,38,38,0.25)",border:"1px solid rgba(220,38,38,0.6)",boxShadow:"0 0 12px rgba(220,38,38,0.4)"}}>
+                  ⚔ ATAQUE DIRETO
+                </div>
+              )}
+              <div data-direct-attack className="absolute inset-0 opacity-0" style={{zIndex:-1}}/>
+              {/* Full-width energy line */}
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px]"
+                style={{background:"linear-gradient(90deg,transparent 0%,rgba(139,92,246,0.5) 12%,rgba(251,191,36,0.85) 30%,rgba(255,255,255,0.9) 50%,rgba(251,191,36,0.85) 70%,rgba(139,92,246,0.5) 88%,transparent 100%)",
+                boxShadow:"0 0 6px 2px rgba(251,191,36,0.45), 0 0 16px 3px rgba(139,92,246,0.3)"}}/>
+              {/* Phase badge */}
+              <div className="relative flex items-center gap-1.5 pointer-events-auto">
+                <div style={{width:24,height:1,background:"linear-gradient(90deg,transparent,rgba(251,191,36,0.65))"}}/>
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full"
+                  style={{background:"linear-gradient(135deg,rgba(10,5,28,0.98) 0%,rgba(20,10,45,0.98) 100%)",
+                  border:"1px solid rgba(251,191,36,0.30)",
+                  boxShadow:"0 0 12px rgba(139,92,246,0.35), 0 0 24px rgba(0,0,0,0.7), inset 0 0 6px rgba(251,191,36,0.06)"}}>
+                  {attackState && <span className="text-[8px] text-red-400 animate-pulse">⚔</span>}
+                  <span className="text-[8px] font-black tracking-[0.16em]"
+                    style={{color:phase==="draw"?"#60a5fa":phase==="main"?"#fbbf24":"#f87171",
+                    textShadow:phase==="draw"?"0 0 7px rgba(96,165,250,0.8)":phase==="main"?"0 0 7px rgba(251,191,36,0.8)":"0 0 7px rgba(248,113,113,0.8)"}}>
+                    {phase==="draw"?"✦ DRAW":phase==="main"?"◆ MAIN":"⚔ BATTLE"}
+                  </span>
+                  {selectedHandCard !== null && <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse"/>}
+                </div>
+                <div style={{width:24,height:1,background:"linear-gradient(90deg,rgba(251,191,36,0.65),transparent)"}}/>
               </div>
             </div>
 
@@ -10422,22 +10442,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         })() })
                           }
                         }}
-                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
-                          ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                        className={`w-16 h-24 border-2 rounded-lg relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                          ? "border-green-400 scale-115 ring-2 ring-green-400/60 animate-pulse"
                           : isDropTarget
-                            ? "border-green-400/70 bg-green-500/30 scale-105"
+                            ? "border-green-400/70 scale-105"
                             : selectedHandCard !== null && isUnitCard(playerField.hand[selectedHandCard])
-                              ? "border-green-500 bg-green-900/40 cursor-pointer"
+                              ? "border-cyan-500/80 cursor-pointer"
                               : draggedHandCard && isUnitCard(draggedHandCard.card)
-                                ? "border-blue-400/50 bg-blue-500/20"
+                                ? "border-cyan-400/50"
                                 : itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card
-                                  ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
+                                  ? "border-yellow-500 cursor-pointer"
                                   : hasAbility
-                                    ? "border-emerald-400 cursor-pointer shadow-[0_0_12px_3px_rgba(52,211,153,0.7)]"
+                                    ? "border-emerald-400 cursor-pointer shadow-[0_0_14px_3px_rgba(52,211,153,0.65)]"
                                     : canAttack
-                                      ? "border-yellow-400 shadow-lg shadow-yellow-500/40"
-                                      : "border-blue-700/40"
+                                      ? "border-yellow-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]"
+                                      : card
+                                        ? "border-cyan-700/60"
+                                        : "border-blue-900/40"
                           }`}
+                        style={{
+                          background: card
+                            ? "transparent"
+                            : isDropTarget || (dropTarget?.type === "unit" && dropTarget?.index === i)
+                              ? "rgba(74,222,128,0.12)"
+                              : "linear-gradient(135deg, rgba(5,15,50,0.55) 0%, rgba(10,20,70,0.35) 100%)",
+                          boxShadow: card
+                            ? "inset 0 0 20px rgba(0,0,0,0.5), 0 0 10px rgba(56,189,248,0.15)"
+                            : "inset 0 0 14px rgba(10,30,100,0.12)",
+                        }}
                         style={{
                           transform: (() => {
                             const v = cardAnimations[`player-${i}`]
@@ -10524,16 +10556,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         key={i}
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                        className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
-                          ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                        className={`w-16 h-24 border-2 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                          ? "border-green-400 scale-115 ring-2 ring-green-400/60 animate-pulse"
                           : isDropTarget
-                            ? "border-green-400/70 bg-green-500/30 scale-105"
+                            ? "border-green-400/70 scale-105"
                             : selectedHandCard !== null && !isUnitCard(playerField.hand[selectedHandCard])
-                              ? "border-green-500 bg-green-900/40"
+                              ? "border-amber-500/70 cursor-pointer"
                               : draggedHandCard && !isUnitCard(draggedHandCard.card)
-                                ? "border-purple-400/50 bg-purple-500/20"
-                                : "border-purple-600/40"
+                                ? "border-amber-400/40"
+                                : "border-amber-900/30"
                           }`}
+                        style={{
+                          background: card
+                            ? "transparent"
+                            : isDropTarget || (dropTarget?.type === "function" && dropTarget?.index === i)
+                              ? "rgba(74,222,128,0.10)"
+                              : "linear-gradient(135deg, rgba(40,20,5,0.55) 0%, rgba(60,30,5,0.35) 100%)",
+                          boxShadow: "inset 0 0 14px rgba(0,0,0,0.45)",
+                        }}
                       >
                         {card && (
                           <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
@@ -10570,13 +10610,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {!card && isDropTarget && (
                           <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
                         )}
-                        {/* Manual activation button for face-down Trap cards */}
-                        {card && card.isFaceDown && card.type === "trap" && isPlayerTurn && phase === "main" && (
+                        {/* Manual activation button for face-down Trap cards — shown always so player can react during enemy attacks */}
+                        {card && card.isFaceDown && card.type === "trap" && (
                           <button
                             onClick={(e) => { e.stopPropagation(); activateTrapCard(i) }}
-                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-500 hover:bg-red-400 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-red-500/50 animate-pulse whitespace-nowrap z-10"
+                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-lg shadow-red-600/60 animate-pulse whitespace-nowrap z-10"
+                            style={{ border: "1px solid rgba(239,68,68,0.6)" }}
                           >
-                            ATIVAR
+                            ⚡ TRAP
                           </button>
                         )}
                       </div>
@@ -10703,7 +10744,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     </div>
                     <div
                       ref={playerGraveyardRef}
-                      className="w-16 h-24 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
+                      className="w-16 h-24 rounded-lg text-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105"
+                      style={{background:"linear-gradient(135deg,rgba(88,28,135,0.65) 0%,rgba(50,5,90,0.85) 100%)",border:"1px solid rgba(168,85,247,0.35)",boxShadow:"0 0 14px rgba(168,85,247,0.18),inset 0 0 18px rgba(0,0,0,0.5)",color:"rgba(216,180,254,0.9)",fontWeight:900}}
                       onClick={() => setGraveyardView("player")}
                     >
                       {playerField.graveyard.length}
@@ -10715,10 +10757,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       return (
                         <div className="relative group/tap">
                           <div
-                            className={`w-16 h-24 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
-                              ? "bg-orange-600/90 border-orange-400"
-                              : "bg-slate-800/80 border-slate-700/50 opacity-60 grayscale-[0.5]"
+                            className={`w-16 h-24 rounded-lg text-[10px] text-white flex flex-col items-center justify-center font-black border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
+                              ? ""
+                              : "opacity-60 grayscale-[0.4]"
                               }`}
+                            style={{
+                              background: isTapAvailable
+                                ? "linear-gradient(135deg,rgba(180,60,0,0.9) 0%,rgba(234,88,12,0.85) 100%)"
+                                : "linear-gradient(135deg,rgba(30,20,10,0.7) 0%,rgba(40,25,10,0.6) 100%)",
+                              border: isTapAvailable ? "1px solid rgba(251,146,60,0.7)" : "1px solid rgba(100,80,40,0.3)",
+                              boxShadow: isTapAvailable ? "0 0 16px rgba(251,146,60,0.35),inset 0 0 8px rgba(0,0,0,0.3)" : "inset 0 0 8px rgba(0,0,0,0.3)",
+                            }}
                             onClick={() => setTapView("player")}
                           >
                             {isTapAvailable && (
