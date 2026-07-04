@@ -463,35 +463,38 @@ const MENU_STEPS = [
 ]
 
 // ── Guia do DUELO REAL (por cima do DuelScreen verdadeiro) ──────────────────────
-// Todo passo com textTarget != null é um "clique obrigatório": o overlay
-// escurece E BLOQUEIA a tela inteira (DynamicSpotlight), abre um buraco só
-// no elemento certo, intercepta o clique e replica no elemento real por
-// baixo (handleDuelInterceptClick), e então avança sozinho — sem botão no
-// balão (noButton). Passos com textTarget null são só leitura, bloqueiam a
-// tela também, mas avançam com um botão real "Entendido ►" no balão.
-const DUEL_STEPS: { text: string; textTarget: string | null }[] = [
+// kind "click": clique obrigatório de verdade — bloqueia a tela inteira
+//   (DynamicSpotlight), abre buraco só no elemento certo, intercepta o clique
+//   e replica no elemento real por baixo (handleDuelInterceptClick), avança
+//   sozinho, sem botão no balão.
+// kind "highlight": só leitura, mas com um buraco VISUAL (sem intercept) no
+//   elemento real sendo explicado — a área fica com opacidade normal em vez
+//   de escurecida. Avança com um botão real "Entendido ►" no balão.
+// kind "info": só leitura, sem nenhum buraco (tela inteira escurecida).
+//   Avança com um botão real "Entendido ►" no balão.
+const DUEL_STEPS: { text: string; textTarget: string | null; kind: "click" | "highlight" | "info" }[] = [
   // ── Setup (clicks obrigatórios nos elementos reais do DuelScreen) ────────────
   { text: "Selecione o Deck Inicial para entrar em batalha! Clique no deck em destaque.",
-    textTarget: "Deck Inicial" },
+    textTarget: "Deck Inicial", kind: "click" },
   { text: "Agora escolha a dificuldade Fácil para começar! Clique em Fácil.",
-    textTarget: "Fácil" },
+    textTarget: "Fácil", kind: "click" },
   { text: "Por último, selecione o deck Aleatório para o oponente — isso inicia o duelo!",
-    textTarget: "Aleatório" },
-  // ── Batalha: primeiro só leitura (overlay bloqueia + botão Entendido ►) ──────
+    textTarget: "Aleatório", kind: "click" },
+  // ── Batalha: leitura, com buraco visual no que está sendo explicado ──────────
   { text: "Bem-vindo à mesa de duelo! Você e o oponente começam com a mesma quantidade de LP — Pontos de Vida. Quem chegar a zero primeiro, perde!",
-    textTarget: null },
+    textTarget: null, kind: "info" },
   { text: "Essas são as cartas da sua mão. Cada tipo tem um papel: Unidades atacam, Tropas dão suporte, Action Funcions ativam poderes, Trap Funcions emboscam e Scenarios criam terrenos!",
-    textTarget: null },
+    textTarget: "__PLAYER_HAND__", kind: "highlight" },
   { text: "O TAP é uma zona especial: a cada poucos turnos, uma carta extra aparece lá de graça! Fique de olho.",
-    textTarget: null },
+    textTarget: "__PLAYER_TAP__", kind: "highlight" },
   // ── Batalha: agora clicks obrigatórios nos botões reais de ação do turno ────
   // (mesmo botão físico muda de rótulo conforme a fase: draw → main → battle)
   { text: "Chegou sua vez! Toque no botão em destaque para comprar sua carta.",
-    textTarget: "Comprar Carta" },
+    textTarget: "Comprar Carta", kind: "click" },
   { text: "Boa! Agora toque no botão em destaque para avançar para a Fase de Batalha.",
-    textTarget: "Ir para Batalha" },
+    textTarget: "Ir para Batalha", kind: "click" },
   { text: "Você está na Fase de Batalha! Se tiver uma carta em campo, arraste-a sobre o oponente para atacar. Quando terminar, toque no botão em destaque para finalizar o turno. Boa sorte, duelista!",
-    textTarget: "Finalizar Turno" },
+    textTarget: "Finalizar Turno", kind: "click" },
 ]
 
 const POST_DUEL_STEPS = [
@@ -593,16 +596,28 @@ function useTutorialAudio(src: string, volume = 0.5) {
 // COMPONENT: MASTER BUBBLE (balão de fala branco — fiel ao in-game)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function MasterBubble({ masterId, text, onNext, nextLabel = "Continuar ►", noButton }: {
+function MasterBubble({ masterId, text, onNext, nextLabel = "Continuar ►", noButton, avoidPhaseButton }: {
   masterId: TutorialMasterId; text: string; onNext: () => void; nextLabel?: string; noButton?: boolean
+  /**
+   * Desvia o balão pra longe do botão real de ação de fase (Comprar Carta /
+   * Ir para Batalha / Finalizar Turno), que fica fixo em
+   * right: calc(clamp(140px,17vw,230px)+18px), width clamp(115px,9vw,138px)
+   * — na mesma coluna direita onde também moram o LP do jogador e o LOG.
+   * Só "descer" o balão não resolve: a arte do Mestre fica embaixo dele
+   * empurrando-o pra cima, então a forma confiável de nunca cobrir o botão é
+   * deslocar o balão inteiro pra depois dessa coluna, não só pra baixo.
+   */
+  avoidPhaseButton?: boolean
 }) {
   const m = MASTERS[masterId]
   return (
     <div style={{
-      position: "fixed", bottom: 0, right: 0,
+      position: "fixed", bottom: 0,
+      right: avoidPhaseButton ? "calc(clamp(140px,17vw,230px) + 18px + clamp(115px,9vw,138px) + 16px)" : 0,
       display: "flex", flexDirection: "column", alignItems: "flex-end",
       zIndex: 600, pointerEvents: "none",
-      width: "clamp(240px, 27vw, 370px)",
+      width: avoidPhaseButton ? "clamp(220px, 24vw, 320px)" : "clamp(240px, 27vw, 370px)",
+      transition: "right 0.35s ease, width 0.35s ease",
     }}>
       {/* Balão */}
       <div style={{
@@ -729,6 +744,30 @@ function findSidebar(pad = 6): PixelRect | null {
   return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 }
 }
 
+/**
+ * Casos especiais "__PLAYER_HAND__" e "__PLAYER_TAP__": acham a mão e a zona
+ * TAP do JOGADOR (não do oponente) por classe CSS única do duel-screen.tsx,
+ * já que não têm um texto fixo e confiável pra buscar (a mão muda de cartas
+ * a cada turno, e "TAP" aparece duas vezes na tela — uma pra cada lado).
+ * Usa querySelector com atributo (em vez de seletor de classe direto) pra não
+ * precisar escapar a barra do nome da classe do Tailwind (ex.: "group/tap").
+ */
+function findPlayerHand(pad = 14): PixelRect | null {
+  const el = document.querySelector(".min-h-28")
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  if (r.width < 10 || r.height < 10) return null
+  return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+}
+
+function findPlayerTap(pad = 10): PixelRect | null {
+  const el = document.querySelector('[class*="group/tap"]')
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  if (r.width < 10 || r.height < 10) return null
+  return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+}
+
 // ─── DynamicSpotlight ─────────────────────────────────────────────────────────
 /**
  * Spotlight que encontra o elemento pelo texto no DOM real —
@@ -748,7 +787,10 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
 
     const update = () => {
       const found =
-        textTarget === "__SIDEBAR__" ? findSidebar() : findByText(textTarget)
+        textTarget === "__SIDEBAR__" ? findSidebar() :
+        textTarget === "__PLAYER_HAND__" ? findPlayerHand() :
+        textTarget === "__PLAYER_TAP__" ? findPlayerTap() :
+        findByText(textTarget)
       setR(found)
     }
 
@@ -1593,11 +1635,15 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   // • Passo sem textTarget (só leitura): div escuro bloqueante até Entendido ►.
   if (phase === "duel-sim") {
     const duelStep = DUEL_STEPS[step]
+    // Só os 3 passos que apontam pro botão físico de ação de fase precisam
+    // desviar o balão — os de setup (Deck/Fácil/Aleatório) não têm esse problema.
+    const avoidBtn = duelStep?.kind === "click" && duelStep.textTarget !== null &&
+      ["Comprar Carta", "Ir para Batalha", "Finalizar Turno"].includes(duelStep.textTarget)
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
         {!duelStepsDone && duelStep && (
-          duelStep.textTarget ? (
+          duelStep.kind === "click" ? (
             // ── Clique obrigatório: spotlight + intercept (sem botão no balão) ───
             <>
               <DynamicSpotlight
@@ -1609,6 +1655,18 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
                 text={duelStep.text}
                 onNext={() => {}}
                 noButton
+                avoidPhaseButton={avoidBtn}
+              />
+            </>
+          ) : duelStep.kind === "highlight" ? (
+            // ── Leitura com buraco visual (mão/TAP ficam com opacidade normal) ───
+            <>
+              <DynamicSpotlight textTarget={duelStep.textTarget} />
+              <MasterBubble
+                masterId={masterId}
+                text={duelStep.text}
+                onNext={() => setStep(s => s + 1)}
+                nextLabel="Entendido ►"
               />
             </>
           ) : (
