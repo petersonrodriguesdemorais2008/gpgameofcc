@@ -463,11 +463,12 @@ const MENU_STEPS = [
 ]
 
 // ── Guia do DUELO REAL (por cima do DuelScreen verdadeiro) ──────────────────────
-// Steps 0-2 = setup obrigatório (DynamicSpotlight intercepta o clique e
-// clica programaticamente no DuelScreen, avançando tanto o DuelScreen quanto
-// o overlay). Step 2 não avança manualmente — espera battleStarted.
-// Steps 3-6 = mesa de batalha: overlay escuro bloqueante até 'Entendido ►'.
-const DUEL_SETUP_STEP_COUNT = 3
+// Todo passo com textTarget != null é um "clique obrigatório": o overlay
+// escurece E BLOQUEIA a tela inteira (DynamicSpotlight), abre um buraco só
+// no elemento certo, intercepta o clique e replica no elemento real por
+// baixo (handleDuelInterceptClick), e então avança sozinho — sem botão no
+// balão (noButton). Passos com textTarget null são só leitura, bloqueiam a
+// tela também, mas avançam com um botão real "Entendido ►" no balão.
 const DUEL_STEPS: { text: string; textTarget: string | null }[] = [
   // ── Setup (clicks obrigatórios nos elementos reais do DuelScreen) ────────────
   { text: "Selecione o Deck Inicial para entrar em batalha! Clique no deck em destaque.",
@@ -476,15 +477,21 @@ const DUEL_STEPS: { text: string; textTarget: string | null }[] = [
     textTarget: "Fácil" },
   { text: "Por último, selecione o deck Aleatório para o oponente — isso inicia o duelo!",
     textTarget: "Aleatório" },
-  // ── Batalha (overlay escuro bloqueia o duelo até o jogador confirmar) ─────────
+  // ── Batalha: primeiro só leitura (overlay bloqueia + botão Entendido ►) ──────
   { text: "Bem-vindo à mesa de duelo! Você e o oponente começam com a mesma quantidade de LP — Pontos de Vida. Quem chegar a zero primeiro, perde!",
     textTarget: null },
   { text: "Essas são as cartas da sua mão. Cada tipo tem um papel: Unidades atacam, Tropas dão suporte, Action Funcions ativam poderes, Trap Funcions emboscam e Scenarios criam terrenos!",
     textTarget: null },
   { text: "O TAP é uma zona especial: a cada poucos turnos, uma carta extra aparece lá de graça! Fique de olho.",
     textTarget: null },
-  { text: "No seu turno, siga o botão principal de ação: compre uma carta, avance para a Fase de Batalha e ataque! Boa sorte, duelista!",
-    textTarget: null },
+  // ── Batalha: agora clicks obrigatórios nos botões reais de ação do turno ────
+  // (mesmo botão físico muda de rótulo conforme a fase: draw → main → battle)
+  { text: "Chegou sua vez! Toque no botão em destaque para comprar sua carta.",
+    textTarget: "Comprar Carta" },
+  { text: "Boa! Agora toque no botão em destaque para avançar para a Fase de Batalha.",
+    textTarget: "Ir para Batalha" },
+  { text: "Você está na Fase de Batalha! Se tiver uma carta em campo, arraste-a sobre o oponente para atacar. Quando terminar, toque no botão em destaque para finalizar o turno. Boa sorte, duelista!",
+    textTarget: "Finalizar Turno" },
 ]
 
 const POST_DUEL_STEPS = [
@@ -498,10 +505,13 @@ const GACHA_STEPS = [
   { text: "Hora da recompensa! Este pack veio de graça só por ser seu primeiro dia aqui. Vamos abrir!",
     textTarget: null },
   { text: "Clique para abrir! Quem sabe que cartas raras vão aparecer para você...",
-    textTarget: "GACHA x1" },
+    textTarget: "GACHA x1", interceptClick: true },
   // Passo "fantasma": sem balão, sem escurecimento — a animação real do pack
-  // roda limpa, sem nenhuma interferência visual do tutorial.
-  { text: "", textTarget: null, hidden: true, autoAdvanceMs: 4200 },
+  // (incluindo o swipe manual do jogador no primeiro pack) roda limpa, sem
+  // nenhuma interferência visual do tutorial. Em vez de um tempo fixo (a
+  // abertura tem duração variável), espera o "CONFIRMAR" da tela de
+  // resultado aparecer de verdade no DOM antes de avançar.
+  { text: "", textTarget: null, hidden: true, waitForText: "CONFIRMAR" },
   { text: "Incrível! Você conseguiu suas primeiras cartas! Continue jogando e abrindo packs — há muito mais pela frente. Obrigado(a) por me deixar te ensinar como tudo funciona. Agora... divirta-se e aproveite tudo que o jogo tem para te oferecer!",
     textTarget: null },
 ]
@@ -748,12 +758,13 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
     return () => { clearInterval(t); window.removeEventListener("resize", update) }
   }, [textTarget])
 
-  // Sem alvo: escurece a tela inteira
+  // Sem alvo (ou alvo ainda não achado no DOM): escurece E BLOQUEIA a tela
+  // inteira — nada responde a clique enquanto não sabemos onde está o alvo real.
   if (!textTarget || !r) {
     return (
       <div style={{
         position: "fixed", inset: 0,
-        background: "rgba(0,0,0,0.62)", zIndex: 400, pointerEvents: "none",
+        background: "rgba(0,0,0,0.62)", zIndex: 400, pointerEvents: "all",
       }} />
     )
   }
@@ -762,6 +773,15 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
 
   return (
     <>
+      {/* Bloqueador full-screen: captura QUALQUER clique fora do alvo em
+          destaque. Fica abaixo do captador de clique (z-index menor), então
+          só a área do alvo responde — o resto do jogo real fica surdo a
+          clique enquanto esse passo estiver ativo (nada de "clicar em outro
+          canto" pra pular o passo). */}
+      <div style={{
+        position: "fixed", inset: 0,
+        zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
+      }} />
       <svg style={{
         position: "fixed", inset: 0, width: "100%", height: "100%",
         zIndex: 400, pointerEvents: "none", overflow: "visible",
@@ -789,9 +809,9 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
           style={{ animation: "tutRingPulse 1.6s ease-in-out infinite 0.3s" }}
         />
       </svg>
-      {/* Captador de clique transparente — fica ACIMA do botão real, então o
-          clique nunca chega nele. Só existe quando onInterceptClick é dado.
-          IMPORTANTE: pointerEvents "all" sobrescreve o "none" do container pai. */}
+      {/* Captador de clique transparente sobre o alvo — fica ACIMA do
+          bloqueador full-screen (z-index maior: 401 > 400), então só essa
+          área realmente responde a clique. */}
       {onInterceptClick && (
         <div
           onClick={onInterceptClick}
@@ -1442,15 +1462,37 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   const isHidden        = !!(currentStep as any)?.hidden
 
   // ── Auto-avança em passos "fantasma" (TODOS os hooks antes de qualquer return)
+  // Dois modos: autoAdvanceMs (tempo fixo) ou waitForText (poll no DOM real até
+  // o texto aparecer — usado no gacha, cuja animação tem duração variável e no
+  // primeiro pack depende de um swipe manual do jogador). Rede de segurança de
+  // 20s no modo waitForText pra nunca travar o tutorial pra sempre.
   useEffect(() => {
-    // Não faz nada durante o duelo ou se não há autoAdvance
+    // Não faz nada durante o duelo ou se não há autoAdvance/waitForText
     if (phase === "duel-sim") return
     const ms = (currentStep as any)?.autoAdvanceMs
-    if (!ms) return
-    const t = setTimeout(() => {
+    const waitText = (currentStep as any)?.waitForText as string | undefined
+    if (!ms && !waitText) return
+
+    const advance = () => {
       if (isLastStep) onComplete()
       else setStep(s => s + 1)
-    }, ms)
+    }
+
+    if (waitText) {
+      let done = false
+      const finish = () => {
+        if (done) return
+        done = true
+        clearInterval(poll)
+        clearTimeout(safety)
+        advance()
+      }
+      const poll = setInterval(() => { if (findByText(waitText)) finish() }, 300)
+      const safety = setTimeout(finish, 20000)
+      return () => { clearInterval(poll); clearTimeout(safety) }
+    }
+
+    const t = setTimeout(advance, ms)
     return () => clearTimeout(t)
   }, [step, phase, currentStep, isLastStep, onComplete])
 
@@ -1469,24 +1511,12 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   }, [phase, postDuelReady])
 
   // ── Handlers (definidos antes de qualquer return) ───────────────────────────
-  const handleInterceptClick = () => {
-    if (phase === "menu") {
-      setPhase("duel-sim")
-      setStep(0)
-      setDuelStepsDone(false)
-    } else if (phase === "post-duel-menu") {
-      onNavigate("gacha")
-      setPhase("gacha")
-      setStep(0)
-    }
-  }
-
-
-  // ── Setup obrigatório: click no DuelScreen real + avanço do overlay ───────────────
-  const handleSetupInterceptClick = () => {
-    const target = DUEL_STEPS[step]?.textTarget
+  /** Acha o menor elemento real do DOM contendo `target` como texto e clica
+   *  nele programaticamente — usado por todo passo "forçado" que precisa
+   *  disparar uma ação real da tela por baixo do overlay (setup do duelo,
+   *  botões de ação do turno, abrir o pack no gacha). */
+  const clickRealElement = (target: string | null | undefined) => {
     if (!target) return
-    // Encontra e clica no elemento real do DuelScreen
     const tNorm = normText(target)
     let found: HTMLElement | null = null
     let foundArea = Infinity
@@ -1501,19 +1531,45 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
       }
     })
     if (found) (found as HTMLElement).click()
-    if (step < DUEL_SETUP_STEP_COUNT - 1) {
+  }
+
+  const handleInterceptClick = () => {
+    if (phase === "menu") {
+      setPhase("duel-sim")
+      setStep(0)
+      setDuelStepsDone(false)
+    } else if (phase === "post-duel-menu") {
+      onNavigate("gacha")
+      setPhase("gacha")
+      setStep(0)
+    } else if (phase === "gacha") {
+      // Clique real no botão "GACHA x1" — dispara pullGacha() de verdade
+      // (concede as cartas na hora) e deixa a animação real rolar. O passo
+      // fantasma seguinte espera o "CONFIRMAR" da tela de resultado aparecer.
+      clickRealElement(currentStep?.textTarget ?? null)
       setStep(s => s + 1)
-      return
     }
-    // Último passo de setup (Aleatório): esse clique já chama startGame() DE
-    // VERDADE dentro do DuelScreen (o onClick do botão real faz isso direto,
-    // sem tela intermediária). O DuelScreen real não expõe nenhum callback tipo
-    // onBattleStart — DuelScreenProps não tem isso, e como duel-screen.tsx é
-    // intocável, não dá pra adicionar. Então, em vez de esperar um sinal externo
-    // que nunca chegaria, avançamos nós mesmos pros passos de batalha logo em
-    // seguida. Pequeno delay só pra mesa real (mão, campo) montar por trás do
-    // overlay escuro antes dele aparecer — sem setInterval, sem DOM polling.
-    setTimeout(() => setStep(DUEL_SETUP_STEP_COUNT), 350)
+  }
+
+  // ── Duelo: click obrigatório no elemento real do DuelScreen + avanço ────────
+  const handleDuelInterceptClick = () => {
+    const target = DUEL_STEPS[step]?.textTarget
+    clickRealElement(target)
+    if (target === "Aleatório") {
+      // Esse clique já chama startGame() DE VERDADE dentro do DuelScreen (o
+      // onClick do botão real faz isso direto, sem tela intermediária). O
+      // DuelScreen real não expõe nenhum callback tipo onBattleStart —
+      // DuelScreenProps não tem isso, e como duel-screen.tsx é intocável, não
+      // dá pra adicionar. Então avançamos nós mesmos pros passos de batalha
+      // logo em seguida, com um pequeno respiro pra mesa real (mão, campo)
+      // montar por trás do overlay escuro — sem setInterval, sem DOM polling.
+      setTimeout(() => setStep(s => s + 1), 350)
+    } else if (target === "Finalizar Turno") {
+      // Fim do turno guiado: a partir daqui o duelo roda 100% livre.
+      setDuelStepsDone(true)
+    } else {
+      setStep(s => s + 1)
+    }
   }
 
   const handleBubbleNext = () => {
@@ -1529,24 +1585,24 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     MENU_STEPS.length + POST_DUEL_STEPS.length + step
 
   // ── Fase duel-sim: guia por cima do DuelScreen real ────────────────────────────
-  // • Setup (steps 0-2): DynamicSpotlight + intercept obrigatório.
-  //   O overlay captura o clique, clica no elemento real do DuelScreen
-  //   programaticamente, e avança o passo (exceto o último que espera battleStarted).
-  // • Batalha (steps 3+): div escuro bloqueante (pointerEvents:all) até Entendido ►.
+  // • Passo com textTarget: DynamicSpotlight bloqueia tudo, abre buraco só no
+  //   alvo, intercepta o clique e replica no elemento real (handleDuelInterceptClick).
+  //   Cobre tanto o setup (deck/dificuldade/oponente) quanto as ações de
+  //   batalha (comprar carta/avançar fase/finalizar turno) — handleDuelInterceptClick
+  //   decide se avança um passo, dá um respiro pro startGame(), ou libera o duelo.
+  // • Passo sem textTarget (só leitura): div escuro bloqueante até Entendido ►.
   if (phase === "duel-sim") {
     const duelStep = DUEL_STEPS[step]
-    const isSetupStep = step < DUEL_SETUP_STEP_COUNT
-    const isLastDuelStep = step >= DUEL_STEPS.length - 1
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
         {!duelStepsDone && duelStep && (
-          isSetupStep ? (
-            // ── Setup: spotlight + intercept obrigatório (sem botão no balão) ─────────
+          duelStep.textTarget ? (
+            // ── Clique obrigatório: spotlight + intercept (sem botão no balão) ───
             <>
               <DynamicSpotlight
                 textTarget={duelStep.textTarget}
-                onInterceptClick={handleSetupInterceptClick}
+                onInterceptClick={handleDuelInterceptClick}
               />
               <MasterBubble
                 masterId={masterId}
@@ -1556,7 +1612,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
               />
             </>
           ) : (
-            // ── Batalha: overlay escuro bloqueia o duelo até o jogador confirmar ──
+            // ── Só leitura: overlay escuro bloqueia o duelo até o jogador confirmar ──
             <>
               <div style={{
                 position: "fixed", inset: 0,
@@ -1566,11 +1622,8 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
               <MasterBubble
                 masterId={masterId}
                 text={duelStep.text}
-                onNext={() => {
-                  if (isLastDuelStep) setDuelStepsDone(true)
-                  else setStep(s => s + 1)
-                }}
-                nextLabel={isLastDuelStep ? "Entendido, vamos duelar! ►" : "Entendido ►"}
+                onNext={() => setStep(s => s + 1)}
+                nextLabel="Entendido ►"
               />
             </>
           )
@@ -1619,9 +1672,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
             onNext={handleBubbleNext}
             nextLabel={
               isInterceptStep
-                ? phase === "menu"
-                  ? "👆 Clique no botão JOGAR acima"
-                  : "👆 Clique no botão GACHA acima"
+                ? `👆 Clique no botão ${currentStep?.textTarget ?? ""} acima`
                 : isLastStep
                 ? "Finalizar Tutorial ►"
                 : "Entendido ►"
