@@ -487,14 +487,15 @@ const DUEL_STEPS: { text: string; textTarget: string | null; kind: "click" | "hi
     textTarget: "__PLAYER_HAND__", kind: "highlight" },
   { text: "O TAP é uma zona especial: a cada poucos turnos, uma carta extra aparece lá de graça! Fique de olho.",
     textTarget: "__PLAYER_TAP__", kind: "highlight" },
-  // ── Batalha: agora clicks obrigatórios nos botões reais de ação do turno ────
-  // (mesmo botão físico muda de rótulo conforme a fase: draw → main → battle)
+  // ── Batalha: agora clicks obrigatórios no botão real de ação do turno ───────
+  // (mesmo botão físico muda de rótulo conforme a fase: draw → main → battle
+  // — por isso mira pelo container __PHASE_BUTTON__, não pelo texto do rótulo)
   { text: "Chegou sua vez! Toque no botão em destaque para comprar sua carta.",
-    textTarget: "Comprar Carta", kind: "click" },
+    textTarget: "__PHASE_BUTTON__", kind: "click" },
   { text: "Boa! Agora toque no botão em destaque para avançar para a Fase de Batalha.",
-    textTarget: "Ir para Batalha", kind: "click" },
+    textTarget: "__PHASE_BUTTON__", kind: "click" },
   { text: "Você está na Fase de Batalha! Se tiver uma carta em campo, arraste-a sobre o oponente para atacar. Quando terminar, toque no botão em destaque para finalizar o turno. Boa sorte, duelista!",
-    textTarget: "Finalizar Turno", kind: "click" },
+    textTarget: "__PHASE_BUTTON__", kind: "click" },
 ]
 
 const POST_DUEL_STEPS = [
@@ -768,6 +769,29 @@ function findPlayerTap(pad = 10): PixelRect | null {
   return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
 }
 
+/**
+ * Caso especial "__PHASE_BUTTON__": acha o botão real de ação de fase
+ * (Comprar Carta / Ir para Batalha / Finalizar Turno) pelo container único
+ * que o envolve, em vez de procurar pelo TEXTO do botão. O jogo tem dezenas
+ * de habilidades de carta cujo texto também menciona "compre uma carta" e
+ * afins (visíveis na mão/campo/log) — buscar por texto solto no DOM inteiro
+ * corre o risco real de casar com uma dessas descrições em vez do botão de
+ * verdade. O container (`fixed z-40 flex items-center justify-center`) é
+ * usado só uma vez no arquivo inteiro, então é um alvo confiável independente
+ * de qual rótulo o botão estiver mostrando no momento.
+ */
+function findPhaseButtonContainer(): HTMLElement | null {
+  return document.querySelector('[class*="fixed z-40 flex items-center justify-center"]')
+}
+
+function findPhaseButton(pad = 10): PixelRect | null {
+  const btn = findPhaseButtonContainer()?.querySelector("button")
+  if (!btn) return null
+  const r = btn.getBoundingClientRect()
+  if (r.width < 10 || r.height < 10) return null
+  return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+}
+
 // ─── DynamicSpotlight ─────────────────────────────────────────────────────────
 /**
  * Spotlight que encontra o elemento pelo texto no DOM real —
@@ -790,6 +814,7 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
         textTarget === "__SIDEBAR__" ? findSidebar() :
         textTarget === "__PLAYER_HAND__" ? findPlayerHand() :
         textTarget === "__PLAYER_TAP__" ? findPlayerTap() :
+        textTarget === "__PHASE_BUTTON__" ? findPhaseButton() :
         findByText(textTarget)
       setR(found)
     }
@@ -1596,24 +1621,40 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   // ── Duelo: click obrigatório no elemento real do DuelScreen + avanço ────────
   const handleDuelInterceptClick = () => {
     const target = DUEL_STEPS[step]?.textTarget
-    clickRealElement(target)
+    const isLastDuelStep = step === DUEL_STEPS.length - 1
 
-    if (target === "Finalizar Turno") {
-      // Fim do turno guiado: clica e libera o duelo. Se por acaso o clique
-      // não pegar o botão real, ele continua ali, 100% clicável normalmente
-      // assim que duelStepsDone vira true (sem overlay no caminho) — não
-      // precisa de confirmação extra aqui.
-      setDuelStepsDone(true)
+    if (target === "__PHASE_BUTTON__") {
+      // Botão de ação de fase: clica pelo container (não por texto) e
+      // confirma comparando o PRÓPRIO rótulo do botão antes/depois — muito
+      // mais confiável do que vasculhar o DOM inteiro atrás de um texto que
+      // também aparece em descrições de habilidade de carta.
+      const before = findPhaseButtonContainer()?.querySelector("button")?.textContent ?? null
+      findPhaseButtonContainer()?.querySelector("button")?.click()
+
+      if (isLastDuelStep) {
+        // Finalizar Turno: fim do turno guiado, libera o duelo. Se o clique
+        // não pegar, o botão continua ali, 100% clicável normalmente assim
+        // que duelStepsDone vira true — não precisa de confirmação extra.
+        setDuelStepsDone(true)
+        return
+      }
+
+      let tries = 0
+      const check = () => {
+        tries++
+        const now = findPhaseButtonContainer()?.querySelector("button")?.textContent ?? null
+        if (now !== before || tries >= 10) { setStep(s => s + 1); return }
+        findPhaseButtonContainer()?.querySelector("button")?.click()
+        setTimeout(check, 300)
+      }
+      setTimeout(check, 300)
       return
     }
 
-    // Confirma que o clique realmente fez efeito antes de avançar — espera o
-    // alvo atual sumir do DOM de verdade (o botão de fase muda de rótulo, ou
-    // a tela de setup dá lugar à mesa real) em vez de avançar às cegas logo
-    // depois do .click(). Insiste clicando de novo a cada tentativa, caso o
-    // primeiro clique não tenha pego o elemento certo por algum motivo de
-    // timing. Rede de segurança de ~3s pra nunca travar de vez. Sem
-    // setInterval "eterno": o poll para assim que confirma ou desiste.
+    // Setup (Deck Inicial / Fácil / Aleatório): textos únicos o bastante
+    // (nome do deck, "Fácil", "Aleatório") pra não colidir com nenhuma
+    // descrição de carta, então a busca por texto solto continua segura aqui.
+    clickRealElement(target)
     let tries = 0
     const check = () => {
       tries++
@@ -1650,8 +1691,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     const duelStep = DUEL_STEPS[step]
     // Só os 3 passos que apontam pro botão físico de ação de fase precisam
     // desviar o balão — os de setup (Deck/Fácil/Aleatório) não têm esse problema.
-    const avoidBtn = duelStep?.kind === "click" && duelStep.textTarget !== null &&
-      ["Comprar Carta", "Ir para Batalha", "Finalizar Turno"].includes(duelStep.textTarget)
+    const avoidBtn = duelStep?.textTarget === "__PHASE_BUTTON__"
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
