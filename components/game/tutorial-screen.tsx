@@ -1597,21 +1597,34 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   const handleDuelInterceptClick = () => {
     const target = DUEL_STEPS[step]?.textTarget
     clickRealElement(target)
-    if (target === "Aleatório") {
-      // Esse clique já chama startGame() DE VERDADE dentro do DuelScreen (o
-      // onClick do botão real faz isso direto, sem tela intermediária). O
-      // DuelScreen real não expõe nenhum callback tipo onBattleStart —
-      // DuelScreenProps não tem isso, e como duel-screen.tsx é intocável, não
-      // dá pra adicionar. Então avançamos nós mesmos pros passos de batalha
-      // logo em seguida, com um pequeno respiro pra mesa real (mão, campo)
-      // montar por trás do overlay escuro — sem setInterval, sem DOM polling.
-      setTimeout(() => setStep(s => s + 1), 350)
-    } else if (target === "Finalizar Turno") {
-      // Fim do turno guiado: a partir daqui o duelo roda 100% livre.
+
+    if (target === "Finalizar Turno") {
+      // Fim do turno guiado: clica e libera o duelo. Se por acaso o clique
+      // não pegar o botão real, ele continua ali, 100% clicável normalmente
+      // assim que duelStepsDone vira true (sem overlay no caminho) — não
+      // precisa de confirmação extra aqui.
       setDuelStepsDone(true)
-    } else {
-      setStep(s => s + 1)
+      return
     }
+
+    // Confirma que o clique realmente fez efeito antes de avançar — espera o
+    // alvo atual sumir do DOM de verdade (o botão de fase muda de rótulo, ou
+    // a tela de setup dá lugar à mesa real) em vez de avançar às cegas logo
+    // depois do .click(). Insiste clicando de novo a cada tentativa, caso o
+    // primeiro clique não tenha pego o elemento certo por algum motivo de
+    // timing. Rede de segurança de ~3s pra nunca travar de vez. Sem
+    // setInterval "eterno": o poll para assim que confirma ou desiste.
+    let tries = 0
+    const check = () => {
+      tries++
+      if (!target || !findByText(target) || tries >= 10) {
+        setStep(s => s + 1)
+        return
+      }
+      clickRealElement(target)
+      setTimeout(check, 300)
+    }
+    setTimeout(check, 300)
   }
 
   const handleBubbleNext = () => {
