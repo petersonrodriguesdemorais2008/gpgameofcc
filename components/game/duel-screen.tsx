@@ -10064,9 +10064,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           {/* Playmat container with epic border */}
           <div className="absolute inset-0"
             style={{
-              background: "linear-gradient(180deg, rgba(12,6,22,0.97) 0%, rgba(8,12,24,0.97) 50%, rgba(4,8,18,0.97) 100%)",
-              borderTop: "1px solid rgba(120,90,30,0.30)",
-              borderBottom: "1px solid rgba(120,90,30,0.30)",
+              background: "linear-gradient(180deg, rgba(20,10,40,0.94) 0%, rgba(12,18,40,0.94) 50%, rgba(8,14,32,0.94) 100%)",
+              borderTop: "1px solid rgba(140,110,40,0.45)",
+              borderBottom: "1px solid rgba(140,110,40,0.45)",
             }}>
             {/* Opponent Playmat Background (top half) */}
             {mode === "player" && opponentPlaymatImage ? (
@@ -10081,7 +10081,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
             ) : (
               <div className="absolute inset-x-0 top-0 h-1/2"
-                style={{background:"rgba(40,5,5,0.25)"}} />
+                style={{background:"rgba(60,8,8,0.30)"}} />
             )}
 
             {/* Player Playmat Background (bottom half) */}
@@ -10098,7 +10098,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }
               return (
                 <div className="absolute inset-x-0 bottom-0 h-1/2"
-                  style={{background:"rgba(4,10,30,0.25)"}} />
+                  style={{background:"rgba(6,14,45,0.30)"}} />
               )
             })()}
 
@@ -10118,7 +10118,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     <div
                       ref={enemyGraveyardRef}
                       className="w-16 h-24 rounded text-sm text-purple-300 flex items-center justify-center cursor-pointer transition-all hover:scale-105"
-                      style={{background:"rgba(45,8,80,0.80)",border:"1px solid rgba(130,60,200,0.35)",fontWeight:900,fontSize:18}}
+                      style={{background:"rgba(60,12,110,0.82)",border:"1px solid rgba(150,80,220,0.45)",fontWeight:900,fontSize:18}}
                       onClick={() => setGraveyardView("enemy")}
                     >
                       {enemyField.graveyard.length}
@@ -10157,8 +10157,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     </div>
                   </div>
                   <div
-                    className="w-16 h-24 rounded-sm text-[10px] text-white flex flex-col items-center justify-center font-black cursor-pointer transition-all hover:scale-105"
-                    style={{background:"rgba(160,55,0,0.85)",border:"1px solid rgba(220,110,30,0.40)"}}
+                    className="w-16 h-24 text-[10px] text-white flex flex-col items-center justify-center font-black cursor-pointer transition-all hover:scale-105"
+                    style={{background:"rgba(185,65,0,0.90)",border:"1px solid rgba(240,120,30,0.55)"}}
                     onClick={() => setTapView("enemy")}
                   >
                     <span className="opacity-70">TAP</span>
@@ -10294,7 +10294,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           handleEnemyUnitSelect(i)
                         }
                       }}
-                      className={`w-16 h-24 border-2 rounded-sm relative overflow-hidden transition-all duration-150 ${(mrpTargetMode && card) ||
+                      className={`w-16 h-24 border-2 rounded-none relative overflow-hidden transition-all duration-150 ${(mrpTargetMode && card) ||
                         (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer ring-2 ring-yellow-400/60 animate-pulse"
@@ -10304,10 +10304,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             ? "border-yellow-500 cursor-pointer"
                             : card
                               ? "border-red-700/50"
-                              : "border-red-900/30"
+                              : "border-red-800/55"
                         }`}
                       style={{
-                        background: card ? "transparent" : "rgba(45,5,5,0.45)",
+                        background: card ? "transparent" : "rgba(70,8,8,0.70)",
                       }}
                     >
                       {card && (
@@ -10343,7 +10343,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               {/* Phase label */}
               <div className="relative flex items-center gap-2 pointer-events-auto">
                 <div className="flex items-center gap-1.5 px-3 py-0.5"
-                  style={{background:"rgba(8,6,18,0.96)",border:"1px solid rgba(140,110,40,0.40)"}}>
+                  style={{background:"rgba(12,10,28,0.98)",border:"1px solid rgba(160,130,50,0.50)"}}>
                   {attackState && <span className="text-[8px] text-red-400">⚔</span>}
                   {attackTarget?.type === "direct" && (
                     <span className="text-[8px] font-black text-red-300 animate-pulse">ATAQUE DIRETO</span>
@@ -10418,7 +10418,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         })() })
                           }
                         }}
-                        className={`w-16 h-24 border-2 rounded-sm relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 border-2 rounded-none relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
                           ? "border-green-400 scale-115 ring-2 ring-green-400/60 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 scale-105"
@@ -10434,13 +10434,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                       ? "border-yellow-500/70 shadow-[0_0_5px_rgba(251,191,36,0.30)]"
                                       : card
                                         ? "border-cyan-700/60"
-                                        : "border-slate-700/40"
+                                        : "border-slate-600/50"
                           }`}
                         style={{
                           background: card ? "transparent"
                             : isDropTarget || (dropTarget?.type==="unit" && dropTarget?.index===i)
                               ? "rgba(74,222,128,0.10)"
-                              : "rgba(5,10,40,0.45)",
+                              : "rgba(8,16,60,0.70)",
                         }}
                         style={{
                           transform: (() => {
@@ -10528,7 +10528,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         key={i}
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                        className={`w-16 h-24 border-2 rounded-sm flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 border-2 rounded-none flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 scale-115 ring-2 ring-green-400/60 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 scale-105"
@@ -10536,13 +10536,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               ? "border-amber-500/70 cursor-pointer"
                               : draggedHandCard && !isUnitCard(draggedHandCard.card)
                                 ? "border-amber-400/40"
-                                : "border-amber-900/30"
+                                : "border-amber-800/50"
                           }`}
                         style={{
                           background: card ? "transparent"
                             : isDropTarget || (dropTarget?.type==="function" && dropTarget?.index===i)
                               ? "rgba(74,222,128,0.10)"
-                              : "rgba(35,18,4,0.45)",
+                              : "rgba(55,28,6,0.70)",
                         }}
                       >
                         {card && (
@@ -10584,7 +10584,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {card && card.isFaceDown && card.type === "trap" && (
                           <button
                             onClick={(e) => { e.stopPropagation(); activateTrapCard(i) }}
-                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-lg shadow-red-600/60 animate-pulse whitespace-nowrap z-10"
+                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 animate-pulse whitespace-nowrap z-10"
                             style={{ border: "1px solid rgba(239,68,68,0.6)" }}
                           >
                             ⚡ TRAP
@@ -10714,8 +10714,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     </div>
                     <div
                       ref={playerGraveyardRef}
-                      className="w-16 h-24 rounded-sm text-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105"
-                      style={{background:"rgba(45,8,80,0.80)",border:"1px solid rgba(130,60,200,0.35)",color:"rgba(200,160,255,0.9)",fontWeight:900}}
+                      className="w-16 h-24 text-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105"
+                      style={{background:"rgba(60,12,110,0.82)",border:"1px solid rgba(150,80,220,0.45)",color:"rgba(200,160,255,0.9)",fontWeight:900}}
                       onClick={() => setGraveyardView("player")}
                     >
                       {playerField.graveyard.length}
@@ -10727,12 +10727,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       return (
                         <div className="relative group/tap">
                           <div
-                            className={`w-16 h-24 rounded-sm text-[10px] text-white flex flex-col items-center justify-center font-black border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
+                            className={`w-16 h-24 rounded-none text-[10px] text-white flex flex-col items-center justify-center font-black border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
                               ? ""
                               : "opacity-60 grayscale-[0.4]"
                               }`}
                             style={{
-                              background: isTapAvailable ? "rgba(180,60,0,0.88)" : "rgba(30,18,5,0.65)",
+                              background: isTapAvailable ? "rgba(200,72,0,0.92)" : "rgba(40,22,6,0.72)",
                               border: isTapAvailable ? "1px solid rgba(251,146,60,0.55)" : "1px solid rgba(80,50,15,0.30)",
                             }}
                             onClick={() => setTapView("player")}
