@@ -39,7 +39,7 @@ interface PassReward {
 
 interface GearPassScreenProps {
   onBack: () => void
-  onNavigate: (screen: string) => void
+  onNavigate?: (screen: string) => void
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1339,7 +1339,15 @@ export default function GearPassScreen({ onBack, onNavigate }: GearPassScreenPro
     } catch {}
 
     // Navega para o gacha screen — usa a animação EXATA, sem recriar nada
-    onNavigate("gacha")
+    if (onNavigate) {
+      onNavigate("gacha")
+    } else {
+      // Fallback: onNavigate não foi passado pelo main menu ainda
+      // O pack está salvo no localStorage — quando o jogador abrir o Gacha,
+      // a animação iniciará automaticamente
+      setClaimFeedback("Pack salvo! Abra o Gacha para ver suas cartas 📦")
+      setTimeout(() => setClaimFeedback(null), 3500)
+    }
   }
 
   const openStripeCheckout = () => {
