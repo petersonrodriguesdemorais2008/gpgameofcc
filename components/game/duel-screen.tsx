@@ -1607,19 +1607,8 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       if (troops.length === 0) {
         return { success: false, message: "Nenhuma Unidade de Tropa encontrada no deck" }
       }
-      // Pick the first troop found (deck is already shuffled)
-      const chosen = troops[0]
-      context.setPlayerField((prev) => {
-        // Remove chosen card from deck and shuffle the rest
-        const newDeck = prev.deck.filter((c) => c !== chosen)
-        const shuffled = [...newDeck].sort(() => Math.random() - 0.5)
-        return {
-          ...prev,
-          hand: [...prev.hand, chosen],
-          deck: shuffled,
-        }
-      })
-      return { success: true, message: `Chamado da Távola! ${chosen.name} adicionada à mão. Deck embaralhado.` }
+      // Signal the UI to open the deck-search picker — actual card move happens in the handler
+      return { success: true, message: "CHAMADA_TAVOLA_SEARCH" }
     },
   },
 
@@ -5842,6 +5831,45 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
           })
           showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+        },
+        onCancel: () => setDeckSearchModal(null),
+      })
+      return
+    }
+
+    if (result.success && result.message === "CHAMADA_TAVOLA_SEARCH") {
+      const isTroop = (c: GameCard) =>
+        c.type === "troops" ||
+        c.type === "trooper" ||
+        ((c.type === "unit") && typeof (c as any).category === "string" && (c as any).category.toLowerCase().includes("troop"))
+      const troopCards = playerField.deck.filter(isTroop)
+      if (troopCards.length === 0) {
+        showEffectFeedback("Nenhuma Unidade de Tropa no Deck!", "error")
+        return
+      }
+      // Remove the function card from the zone and send to graveyard
+      setPlayerField((prev) => {
+        const nz = [...prev.functionZone]
+        const ng = [...prev.graveyard, card]
+        nz[slotIndex] = null
+        return { ...prev, functionZone: nz, graveyard: ng }
+      })
+      setDeckSearchModal({
+        visible: true,
+        title: "Chamado da Távola — Escolha uma Unidade de Tropa",
+        cards: troopCards,
+        onSelect: (chosenCard) => {
+          setDeckSearchModal(null)
+          setPlayerField((prev) => {
+            const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+            // Shuffle remaining deck
+            for (let i = newDeck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+            }
+            return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
+          })
+          showEffectFeedback(`Chamado da Távola! ${chosenCard.name} convocada à mão! Deck embaralhado.`, "success")
         },
         onCancel: () => setDeckSearchModal(null),
       })
