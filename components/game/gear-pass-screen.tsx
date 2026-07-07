@@ -12,6 +12,7 @@ import {
   trackDailyLogin,
   trackGachaPull,
 } from "@/lib/mission-tracker"
+import GachaScreen from "@/components/game/gacha-screen"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,6 @@ interface PassReward {
 
 interface GearPassScreenProps {
   onBack: () => void
-  onNavigate?: (screen: string) => void
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -712,12 +712,16 @@ function MissionCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function GearPassScreen({ onBack, onNavigate }: GearPassScreenProps) {
+export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // Lê o wallpaper ativo do jogador (mesmo sistema do main menu)
   const wallpaperUrl = typeof window !== "undefined"
     ? `/images/wallpapers/${localStorage.getItem("gpgame_selected_wallpaper") ?? "fehnon_wallpaper"}.png`
     : "/images/wallpapers/fehnon_wallpaper.png"
   const { coins, setCoins, playerId, allCards, addToCollection } = useGame()
+
+  // ── Overlay de pack opening — renderiza o GachaScreen por cima do Gear Pass ──
+  // Não é uma recriação: é o componente GachaScreen de verdade, com a animação exata.
+  const [showPackOverlay, setShowPackOverlay] = useState(false)
 
   // ── Verificar premium no servidor ao abrir a tela ─────────────────────────
   useEffect(() => {
@@ -1329,7 +1333,7 @@ export default function GearPassScreen({ onBack, onNavigate }: GearPassScreenPro
     trackGachaPull(1, packCards)
     vibrate([40, 30, 60])
 
-    // Salva no localStorage — o gacha screen lê isso no mount e inicia automaticamente
+    // Salva no localStorage — o GachaScreen lê isso no mount e inicia a animação exata
     try {
       localStorage.setItem("gpgame_pending_pack", JSON.stringify({
         cards: packCards,
@@ -1338,16 +1342,8 @@ export default function GearPassScreen({ onBack, onNavigate }: GearPassScreenPro
       }))
     } catch {}
 
-    // Navega para o gacha screen — usa a animação EXATA, sem recriar nada
-    if (onNavigate) {
-      onNavigate("gacha")
-    } else {
-      // Fallback: onNavigate não foi passado pelo main menu ainda
-      // O pack está salvo no localStorage — quando o jogador abrir o Gacha,
-      // a animação iniciará automaticamente
-      setClaimFeedback("Pack salvo! Abra o Gacha para ver suas cartas 📦")
-      setTimeout(() => setClaimFeedback(null), 3500)
-    }
+    // Abre o GachaScreen como overlay por cima do Gear Pass — sem sair da tela
+    setShowPackOverlay(true)
   }
 
   const openStripeCheckout = () => {
@@ -2774,6 +2770,21 @@ export default function GearPassScreen({ onBack, onNavigate }: GearPassScreenPro
         }
       `}</style>
       </div>{/* end EVERYTHING ABOVE WALLPAPER */}
+
+      {/* ── GACHA PACK OPENING OVERLAY ──────────────────────────────────────────
+          Renderiza o GachaScreen de verdade por cima do Gear Pass — sem sair
+          da tela. Não é recriação: é o componente exato, com a animação exata.
+          O GachaScreen detecta "gpgame_pending_pack" no mount e inicia sozinho.
+      ── */}
+      {showPackOverlay && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999 }}>
+          <GachaScreen onBack={() => {
+            setShowPackOverlay(false)
+            // Limpa o localStorage caso o jogador tenha pulado a animação
+            try { localStorage.removeItem("gpgame_pending_pack") } catch {}
+          }} />
+        </div>
+      )}
     </div>
   )
 }
