@@ -194,6 +194,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
   const [swipeProgress, setSwipeProgress] = useState(0)
   const [swipeComplete, setSwipeComplete] = useState(false)
+  // Tear sparks — array of {id, x (% along line), side (+1/-1), life 0-1}
+  const [tearSparks, setTearSparks] = useState<{id:number;x:number;side:number;scale:number}[]>([])
+  const tearSparkIdRef = useRef(0)
+  // Card reveal dopamine burst — tracks which card just flipped
+  const [revealBurstIdx, setRevealBurstIdx] = useState<number>(-1)
   // Zoom on revealed cards
   const [revealZoomedCard, setRevealZoomedCard] = useState<{ image: string; name: string; rarity: string } | null>(null)
 
@@ -207,41 +212,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   // Init daily gacha state
   useEffect(() => {
     setDailyUsed(getDailyGachaUsed())
-
-    // ── Detecta pack pendente do Gear Pass ──────────────────────────────────────
-    // Quando o jogador coleta uma recompensa card_pack no Gear Pass, os dados
-    // são salvos aqui e o gacha screen inicia a animação automaticamente.
-    try {
-      const pending = localStorage.getItem("gpgame_pending_pack")
-      if (pending) {
-        localStorage.removeItem("gpgame_pending_pack")
-        const { cards, highestRarity } = JSON.parse(pending) as {
-          cards: Card[]
-          highestRarity: "R" | "SR" | "UR" | "LR"
-          source: string
-        }
-        if (Array.isArray(cards) && cards.length > 0) {
-          // Inicia a animação de pack opening com os cards pré-gerados
-          // (addToCollection e trackGachaPull já foram chamados no Gear Pass)
-          const hasLR = cards.some(c => c.rarity === "LR")
-          const hasUR = cards.some(c => c.rarity === "UR")
-          const hasSR = cards.some(c => c.rarity === "SR")
-          if (hasLR) setRarityTier("legendary")
-          else if (hasUR) setRarityTier("epic")
-          else if (hasSR) setRarityTier("rare")
-          else setRarityTier("normal")
-
-          setPacks([{ id: 0, cards, isOpened: false, isRevealing: false, highestRarity }])
-          setOpenedCards(cards)
-          setPullCount(1)
-          setCurrentPackIndex(0)
-          setCardRevealIndex(-1)
-          setRevealIndex(-1)
-          setIsOpening(true)
-          setPackPhase("entering")
-        }
-      }
-    } catch {}
   }, [])
 
   // Countdown timer for daily reset
@@ -1084,6 +1054,12 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           className={`fixed inset-0 z-50 overflow-hidden ${screenShake ? "animate-shake" : ""}`}
           style={{background:"radial-gradient(ellipse at 50% 40%, #0a0a2e 0%, #000000 70%)"}}
         >
+          {/* Chromatic aberration flash on screen shake */}
+          {screenShake && <>
+            <div className="absolute inset-0 pointer-events-none z-[200]" style={{background:"radial-gradient(circle at center,rgba(255,255,255,0.22) 0%,transparent 60%)",animation:"chromaFlash 0.5s ease-out forwards"}}/>
+            <div className="absolute inset-0 pointer-events-none z-[199] mix-blend-screen" style={{background:"radial-gradient(circle at center,rgba(255,30,30,0) 0%,rgba(255,30,30,0.18) 100%)",animation:"chromaR 0.5s ease-out forwards"}}/>
+            <div className="absolute inset-0 pointer-events-none z-[199] mix-blend-screen" style={{background:"radial-gradient(circle at center,rgba(30,30,255,0) 0%,rgba(30,30,255,0.18) 100%)",animation:"chromaB 0.5s ease-out forwards"}}/>
+          </>}
           {/* Particle canvas */}
           <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
 
@@ -1143,10 +1119,28 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                   const delta = clientX - swipeStartX
                   const progress = Math.min(1, Math.max(0, delta / 160))
                   setSwipeProgress(progress)
+
+                  // Generate tear sparks along the tear line
+                  if (progress > 0 && progress < 1) {
+                    const newSparks = Array.from({length: 3}, () => ({
+                      id: tearSparkIdRef.current++,
+                      x: progress * 100 + (Math.random() - 0.5) * 8,
+                      side: Math.random() > 0.5 ? 1 : -1,
+                      scale: 0.5 + Math.random() * 1.2,
+                    }))
+                    setTearSparks(prev => [...prev.slice(-18), ...newSparks])
+                    setTimeout(() => {
+                      setTearSparks(prev => prev.filter(s => !newSparks.find(n => n.id === s.id)))
+                    }, 380)
+                  }
+
                   if (progress >= 1 && !swipeComplete) {
                     setSwipeComplete(true)
                     setSwipeProgress(1)
                     setSwipeStartX(null)
+                    setScreenShake(true)
+                    setTimeout(() => setScreenShake(false), 500)
+                    setTearSparks([])
                     setPackPhase("shaking")
                   }
                 }
@@ -1216,11 +1210,42 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                     background: swipeProgress > i/28
                                       ? `linear-gradient(to right, white, ${rarityGlow.inner})`
                                       : "rgba(255,255,255,0.25)",
-                                    transition:"background 0.1s",
-                                    boxShadow: swipeProgress > i/28 ? `0 0 6px ${rarityGlow.inner}` : "none",
+                                    transition:"background 0.08s",
+                                    boxShadow: swipeProgress > i/28 ? `0 0 8px ${rarityGlow.inner}, 0 0 16px ${rarityGlow.inner}60` : "none",
                                   }} />
                                 ))}
                               </div>
+
+                              {/* Live tear sparks */}
+                              {tearSparks.map(spark => (
+                                <div key={spark.id} className="absolute pointer-events-none"
+                                  style={{
+                                    left:`${spark.x}%`,
+                                    top: spark.side > 0 ? "calc(50% - 2px)" : "calc(50% + 2px)",
+                                    width:`${4 * spark.scale}px`,
+                                    height:`${10 * spark.scale}px`,
+                                    background:`linear-gradient(to ${spark.side>0?"top":"bottom"}, white, ${rarityGlow.inner}, transparent)`,
+                                    borderRadius:"9999px",
+                                    transform:`translateX(-50%) translateY(${spark.side > 0 ? "-100%" : "0%"})`,
+                                    animation:"tearSparkBurst 0.38s ease-out forwards",
+                                    boxShadow:`0 0 6px 2px ${rarityGlow.inner}`,
+                                    filter:`brightness(1.6)`,
+                                  }} />
+                              ))}
+
+                              {/* Glow cursor that follows the drag */}
+                              {swipeProgress > 0 && swipeProgress < 1 && (
+                                <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                                  style={{
+                                    left:`${swipeProgress * 100}%`,
+                                    width:"18px", height:"18px",
+                                    borderRadius:"50%",
+                                    background:`radial-gradient(circle, white 10%, ${rarityGlow.inner} 55%, transparent 100%)`,
+                                    transform:`translateX(-50%) translateY(-50%)`,
+                                    boxShadow:`0 0 18px 6px ${rarityGlow.inner}, 0 0 40px 12px ${rarityGlow.outer}`,
+                                    filter:"brightness(1.8)",
+                                  }} />
+                              )}
 
                               {/* Scissor / swipe arrow indicator */}
                               <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-100"
@@ -1239,13 +1264,29 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
                               {/* Progress glow fill */}
                               {swipeProgress > 0 && (
-                                <div className="absolute top-0 left-0 bottom-0 pointer-events-none rounded-r-full" style={{
+                                <div className="absolute top-0 left-0 bottom-0 pointer-events-none" style={{
                                   width:`${swipeProgress*100}%`,
-                                  background:`linear-gradient(to right, transparent, ${rarityGlow.inner}20)`,
+                                  background:`linear-gradient(to right, transparent, ${rarityGlow.inner}25)`,
                                   borderRight:`2px solid ${rarityGlow.inner}`,
-                                  boxShadow:`0 0 12px ${rarityGlow.inner}`,
+                                  boxShadow:`0 0 18px ${rarityGlow.inner}`,
                                 }} />
                               )}
+                            </div>
+                          )}
+
+                          {/* ── PHYSICAL TOP FLAP SEPARATION ── */}
+                          {packPhase === "floating" && swipeProgress > 0 && (
+                            <div className="absolute left-0 right-0 overflow-hidden pointer-events-none z-20"
+                              style={{
+                                top: 0,
+                                height:"9%",
+                                transform:`rotate(${swipeProgress * -14}deg) translateY(${swipeProgress * -28}px) translateX(${swipeProgress * -12}px)`,
+                                transformOrigin:"left center",
+                                opacity: 1 - swipeProgress * 0.4,
+                                filter:`brightness(${1 + swipeProgress * 0.6}) drop-shadow(0 -4px 12px ${rarityGlow.inner})`,
+                                transition:"transform 0.05s linear",
+                              }}>
+                              <Image src={banner.packImage||"/placeholder.svg"} alt="Pack top" fill sizes="208px" className="object-cover object-top" />
                             </div>
                           )}
                         </div>
@@ -1257,24 +1298,50 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           </div>
                         )}
 
-                        {/* Burst rays on opening */}
+                        {/* Burst rays on opening — 32 rays with length variation */}
                         {packPhase === "opening" && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            {[...Array(18)].map((_,i) => (
-                              <div key={i} className="absolute" style={{
-                                width:"2.5px", height:"200px",
-                                background:`linear-gradient(to top, transparent, ${rarityGlow.inner}, white, transparent)`,
-                                transform:`rotate(${i*(360/18)}deg)`,
-                                transformOrigin:"50% 100%",
-                                top:"50%", left:"50%", marginLeft:"-1.25px",
-                                animation:`burstRayEpic 1s cubic-bezier(0.22,1,0.36,1) ${i*0.012}s forwards`,
-                                opacity:0, borderRadius:"2px",
-                                filter:`blur(1px) drop-shadow(0 0 4px ${rarityGlow.inner})`,
-                              }} />
+                            {/* Shockwave rings */}
+                            {[0,0.12,0.22].map((del,i) => (
+                              <div key={i} className="absolute rounded-full pointer-events-none"
+                                style={{
+                                  width:"80px", height:"80px",
+                                  border:`${4-i}px solid ${i===0?"white":rarityGlow.inner}`,
+                                  boxShadow: `0 0 ${24-i*6}px ${rarityGlow.inner}`,
+                                  animation:`shockwaveRing 0.9s cubic-bezier(0.03,0,0.14,1) ${del}s forwards`,
+                                  opacity:0,
+                                }} />
                             ))}
-                            <div className="absolute inset-0 rounded-full" style={{
-                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 25%, transparent 65%)`,
-                              animation:"centralFlash 1s ease-out forwards",
+                            {/* 32 burst rays — alternating long/short for depth */}
+                            {[...Array(32)].map((_,i) => {
+                              const isMain = i % 4 === 0
+                              const isMid  = i % 2 === 0
+                              const len = isMain ? 260 : isMid ? 180 : 120
+                              const w   = isMain ? "3.5px" : isMid ? "2px" : "1.5px"
+                              const del = i * 0.008
+                              return <div key={i} className="absolute" style={{
+                                width:w, height:`${len}px`,
+                                background:`linear-gradient(to top, transparent, ${isMid?rarityGlow.inner:"white"}, white, transparent)`,
+                                transform:`rotate(${i*(360/32)}deg)`,
+                                transformOrigin:"50% 100%",
+                                top:"50%", left:"50%",
+                                marginLeft:`calc(-${w}/2)`,
+                                animation:`burstRayEpic 1.1s cubic-bezier(0.18,1,0.32,1) ${del}s forwards`,
+                                opacity:0, borderRadius:"2px",
+                                filter:`blur(${isMain?0.5:1}px) drop-shadow(0 0 ${isMain?8:4}px ${rarityGlow.inner})`,
+                              }} />
+                            })}
+                            {/* Central flash orb */}
+                            <div className="absolute rounded-full" style={{
+                              width:"120px", height:"120px",
+                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 35%, ${rarityGlow.outer}80 65%, transparent 100%)`,
+                              animation:"centralFlash 1.1s ease-out forwards",
+                              filter:"blur(2px)",
+                            }} />
+                            <div className="absolute rounded-full" style={{
+                              width:"48px", height:"48px",
+                              background:"radial-gradient(circle, white 0%, white 60%, transparent 100%)",
+                              animation:"centralFlash 0.7s ease-out forwards",
                             }} />
                           </div>
                         )}
@@ -1331,6 +1398,27 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                     }}
                                     onClick={() => isRevealed && setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
                                   >
+                                  {/* Mini dopamine burst when this card was just revealed */}
+                                  {isRevealing && (
+                                    <div className="absolute inset-0 pointer-events-none z-30 overflow-visible">
+                                      {[...Array(card.rarity==="LR"?16:card.rarity==="UR"?12:card.rarity==="SR"?8:5)].map((_,pi)=>{
+                                        const ang = pi * (360/(card.rarity==="LR"?16:card.rarity==="UR"?12:card.rarity==="SR"?8:5))
+                                        const spd = 55+Math.random()*60
+                                        return <div key={pi} style={{
+                                          position:"absolute",left:"50%",top:"50%",
+                                          width:`${3+Math.random()*4}px`,height:`${3+Math.random()*4}px`,
+                                          borderRadius:"50%",
+                                          background: card.rarity==="LR"?"radial-gradient(circle,#fde047,#fb923c)":
+                                                      card.rarity==="UR"?"radial-gradient(circle,white,#38bdf8)":
+                                                      card.rarity==="SR"?"radial-gradient(circle,white,#a855f7)":"white",
+                                          boxShadow:`0 0 6px 2px ${card.rarity==="LR"?"rgba(251,146,60,1)":card.rarity==="UR"?"rgba(56,189,248,1)":card.rarity==="SR"?"rgba(168,85,247,1)":"rgba(148,163,184,0.8)"}`,
+                                          animation:`miniParticle 0.65s ease-out ${Math.random()*0.12}s both`,
+                                          "--mpx":`${Math.cos(ang*Math.PI/180)*spd}px`,
+                                          "--mpy":`${Math.sin(ang*Math.PI/180)*spd}px`,
+                                        } as React.CSSProperties}/>
+                                      })}
+                                    </div>
+                                  )}
                                     {/* FRONT — hidden until card turns */}
                                     <div className="absolute inset-0 overflow-hidden"
                                       style={{
@@ -1724,6 +1812,43 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         @keyframes floatCard {
           0%,100% { transform: translateY(0); }
           50%     { transform: translateY(-8px); }
+        }
+
+        /* ── NEW: Tear spark burst ── */
+        @keyframes tearSparkBurst {
+          0%   { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+          60%  { opacity: 0.8; }
+          100% { transform: translateX(-50%) translateY(-22px) scale(0.2); opacity: 0; }
+        }
+
+        /* ── NEW: Chromatic aberration on shake ── */
+        @keyframes chromaFlash {
+          0%   { opacity: 0.9; }
+          18%  { opacity: 0.75; }
+          100% { opacity: 0; }
+        }
+        @keyframes chromaR {
+          0%   { opacity: 0.85; transform: translate(-12px, 0); }
+          65%  { opacity: 0.4; }
+          100% { opacity: 0; transform: translate(-26px, 0); }
+        }
+        @keyframes chromaB {
+          0%   { opacity: 0.85; transform: translate(12px, 0); }
+          65%  { opacity: 0.4; }
+          100% { opacity: 0; transform: translate(26px, 0); }
+        }
+
+        /* ── NEW: Shockwave ring on burst ── */
+        @keyframes shockwaveRing {
+          0%   { transform: scale(0); opacity: 1; }
+          60%  { opacity: 0.55; }
+          100% { transform: scale(9); opacity: 0; }
+        }
+
+        /* ── NEW: Mini dopamine particle per card flip ── */
+        @keyframes miniParticle {
+          0%   { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
+          100% { transform: translate(calc(-50% + var(--mpx, 40px)), calc(-50% + var(--mpy, -40px))) scale(0); opacity: 0; }
         }
       `}</style>
     </div>
