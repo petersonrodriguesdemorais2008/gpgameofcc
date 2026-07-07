@@ -313,6 +313,9 @@ export function GameWrapper() {
           }
         }}
         startingLP={(() => {
+          // Duelo do tutorial: sempre 20 LP (em vez do padrão 50) pra ser
+          // mais rápido de completar na primeira batalha guiada.
+          if (tutorialOverlayActive && tutorialInDuel) return 20
           try {
             const r = localStorage.getItem("gpgame_story_battle_pending")
             if (!r) return undefined
