@@ -1587,14 +1587,23 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     name: "Chamado da Távola",
     requiresTargets: false,
     canActivate: (context) => {
-      const hasTroop = context.playerField.deck.some((c) => c.type === "troops")
+      // A Troop Unit is: type==="troops"|"trooper"  OR  type==="unit" with "troop" in category
+      const isTroop = (c: any) =>
+        c.type === "troops" ||
+        c.type === "trooper" ||
+        (c.type === "unit" && typeof c.category === "string" && c.category.toLowerCase().includes("troop"))
+      const hasTroop = context.playerField.deck.some(isTroop)
       if (!hasTroop) {
         return { canActivate: false, reason: "Não há Unidades de Tropa no seu deck" }
       }
       return { canActivate: true }
     },
     resolve: (context) => {
-      const troops = context.playerField.deck.filter((c) => c.type === "troops")
+      const isTroop = (c: any) =>
+        c.type === "troops" ||
+        c.type === "trooper" ||
+        (c.type === "unit" && typeof c.category === "string" && c.category.toLowerCase().includes("troop"))
+      const troops = context.playerField.deck.filter(isTroop)
       if (troops.length === 0) {
         return { success: false, message: "Nenhuma Unidade de Tropa encontrada no deck" }
       }
@@ -4410,7 +4419,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   const isTroopUnit = (card: GameCard) => {
-    return card.type === "troops"
+    // Cards can be Troop Units in two ways:
+    // 1. type === "troops" (legacy explicit type)
+    // 2. type === "unit" with "troop" anywhere in the category (e.g. "Darkness Troops unit")
+    return (
+      card.type === "troops" ||
+      card.type === "trooper" ||
+      (card.type === "unit" &&
+        typeof (card as any).category === "string" &&
+        (card as any).category.toLowerCase().includes("troop"))
+    )
   }
 
   const calculateCardDP = (
@@ -6547,7 +6565,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("mordred") && !mordredCamlannUsed) {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isTroop = drawn.type === "troops"
+            const isTroop = drawn.type === "troops" || drawn.type === "trooper" ||
+              (drawn.type === "unit" && typeof (drawn as any).category === "string" && (drawn as any).category.toLowerCase().includes("troop"))
             setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             setMordredCamlannUsed(true)
@@ -6569,7 +6588,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 2 && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isVoidTroop = (drawn.element === "Void" && drawn.type === "troops")
+            const isVoidTroop = drawn.element === "Void" && (
+              drawn.type === "troops" || drawn.type === "trooper" ||
+              (drawn.type === "unit" && typeof (drawn as any).category === "string" && (drawn as any).category.toLowerCase().includes("troop"))
+            )
             setPlayerField((prev) => {
               const newDeck = [...prev.deck.slice(1)]
               const newHand = [...prev.hand, drawn]
