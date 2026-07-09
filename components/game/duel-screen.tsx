@@ -4587,7 +4587,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       hand: botHand,
       deck: botRemaining,
       tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
-      life: startingLP,
+      life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
@@ -5249,6 +5249,47 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
                 })
                 showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+              },
+              onCancel: () => setDeckSearchModal(null),
+            })
+            return
+          }
+
+          // ── CHAMADA DA TÁVOLA: search deck for a Troop Unit and let player pick ──
+          if (result.message === "CHAMADA_TAVOLA_SEARCH") {
+            const isTroop = (c: GameCard) =>
+              c.type === "troops" ||
+              c.type === "trooper" ||
+              (c.type === "unit" && typeof (c as any).category === "string" && (c as any).category.toLowerCase().includes("troop"))
+            const troopCards = playerField.deck.filter(isTroop)
+            if (troopCards.length === 0) {
+              showEffectFeedback("Nenhuma Unidade de Tropa no Deck!", "error")
+              return
+            }
+            // Remove card from hand and send to graveyard
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
+              graveyard: [...prev.graveyard, cardToPlace],
+            }))
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            // Open selection modal
+            setDeckSearchModal({
+              visible: true,
+              title: "Chamado da Távola — Escolha uma Unidade de Tropa",
+              cards: troopCards,
+              onSelect: (chosenCard) => {
+                setDeckSearchModal(null)
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+                  for (let i = newDeck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+                  }
+                  return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
+                })
+                showEffectFeedback(`Chamado da Távola! ${chosenCard.name} convocada à mão! Deck embaralhado.`, "success")
               },
               onCancel: () => setDeckSearchModal(null),
             })
