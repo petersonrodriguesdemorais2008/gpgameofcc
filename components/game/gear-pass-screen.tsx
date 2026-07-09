@@ -898,7 +898,8 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     }
   }, [packPhase, packCardRevealIndex, packList, packCurrentIndex])
 
-  // Avança pro próximo pack ou finaliza (Gear Pass sempre abre 1 pack por vez)
+  // Avança pro próximo pack ou finaliza (agora suporta múltiplos packs em sequência
+  // — usado quando o jogador coleta vários packs de uma vez em "Coletar Pendentes")
   useEffect(() => {
     if (packPhase === "revealing" && packCardRevealIndex >= CARDS_PER_PACK) {
       const timer = setTimeout(() => {
@@ -915,6 +916,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       return () => clearTimeout(timer)
     }
   }, [packPhase, packCardRevealIndex, packCurrentIndex, packList.length])
+
+  // Sincroniza o tier visual (glow de fundo + cor das partículas) com a raridade
+  // do pack ATUAL sempre que avança pro próximo — essencial no fluxo multi-pack
+  useEffect(() => {
+    if (!packIsOpening || !packList[packCurrentIndex]) return
+    setPackRarityTier(tierFromRarity(packList[packCurrentIndex].highestRarity))
+  }, [packCurrentIndex, packIsOpening])
 
   // Progressão de fase: entering → floating (swipe) → shaking → opening → revealing
   useEffect(() => {
@@ -1535,9 +1543,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // ── openPackReward: gera cards, salva no localStorage, navega pro gacha ──────
   // O gacha screen detecta o localStorage no mount e inicia a animação EXATA
   // de pack opening, sem recriar nada.
-  const openPackReward = (packRarity?: "R" | "SR" | "UR" | "LR") => {
-    if (!allCards || allCards.length === 0) return
-
+  // ── Gera as 4 cartas de UM pack, com taxas baseadas na raridade do pack ──────
+  // Extraído como helper pra ser reutilizado tanto no claim individual quanto
+  // no "Coletar Pendentes" (múltiplos packs de uma vez).
+  const generatePackCards = (packRarity?: "R" | "SR" | "UR" | "LR"): { cards: Card[]; highestRarity: "R"|"SR"|"UR"|"LR" } => {
     const rarityRates: Record<string, Record<string, number>> = {
       R:  { LR: 0.5, UR: 4.5, SR: 25, R: 70 },
       SR: { LR: 1,   UR: 9,   SR: 40, R: 50 },
@@ -1550,14 +1559,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     for (let i = 0; i < 4; i++) {
       const rand = Math.random() * 100
       let targetRarity: "R" | "SR" | "UR" | "LR"
-      if      (rand < rates.LR)                    targetRarity = "LR"
-      else if (rand < rates.LR + rates.UR)         targetRarity = "UR"
-      else if (rand < rates.LR + rates.UR + rates.SR) targetRarity = "SR"
-      else                                         targetRarity = "R"
+      if      (rand < rates.LR)                       targetRarity = "LR"
+      else if (rand < rates.LR + rates.UR)            targetRarity = "UR"
+      else if (rand < rates.LR + rates.UR + rates.SR)  targetRarity = "SR"
+      else                                             targetRarity = "R"
       let pool = (allCards as Card[]).filter(c => c.rarity === targetRarity)
       if (pool.length === 0) pool = allCards as Card[]
       const base = pool[Math.floor(Math.random() * pool.length)]
-      packCards.push({ ...base, id: `${base.id}-gp-${Date.now()}-${i}` })
+      packCards.push({ ...base, id: `${base.id}-gp-${Date.now()}-${i}-${Math.random().toString(36).slice(2,7)}` })
     }
 
     const rarityOrder = ["R","SR","UR","LR"] as const
@@ -1566,6 +1575,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       if (rarityOrder.indexOf(c.rarity as any) > rarityOrder.indexOf(highestRarity))
         highestRarity = c.rarity as "R"|"SR"|"UR"|"LR"
     }
+    return { cards: packCards, highestRarity }
+  }
+
+  // Calcula o tier visual (pro glow de fundo e partículas) a partir da raridade mais alta
+  const tierFromRarity = (r: "R"|"SR"|"UR"|"LR"): "normal"|"rare"|"epic"|"legendary" =>
+    r === "LR" ? "legendary" : r === "UR" ? "epic" : r === "SR" ? "rare" : "normal"
+
+  const openPackReward = (packRarity?: "R" | "SR" | "UR" | "LR") => {
+    if (!allCards || allCards.length === 0) return
+
+    const { cards: packCards, highestRarity } = generatePackCards(packRarity)
 
     // Adiciona à coleção e rastreia — as cartas já vão pra conta antes da animação
     addToCollection(packCards)
@@ -1573,10 +1593,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     vibrate([40, 30, 60])
 
     // Dispara a animação de pack opening INLINE, sem sair do Gear Pass
-    const hasLR = packCards.some(c => c.rarity === "LR")
-    const hasUR = packCards.some(c => c.rarity === "UR")
-    const hasSR = packCards.some(c => c.rarity === "SR")
-    setPackRarityTier(hasLR ? "legendary" : hasUR ? "epic" : hasSR ? "rare" : "normal")
+    setPackRarityTier(tierFromRarity(highestRarity))
     setPackList([{ id: 0, cards: packCards, highestRarity }])
     setPackOpenedCards(packCards)
     setPackPullCount(1)
@@ -1634,23 +1651,48 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     const newPremium  = [...passData.claimedPremium]
     const touchedLevels: number[] = [] // ordem de cascata — usada só pro efeito visual
     let totalCoins = 0
+    // Packs encontrados no lote — cada um vira uma entrada em packList
+    const packsToOpen: { id: number; cards: Card[]; highestRarity: "R"|"SR"|"UR"|"LR" }[] = []
+    const allNewCards: Card[] = []
+
     levelGroups.filter(lg => lg.isUnlocked).forEach(lg => {
       let touched = false
       if (!lg.commonClaimed) {
         newCommon.push(lg.level)
         if (lg.common?.type === "coins" && lg.common.amount) totalCoins += lg.common.amount
+        if (lg.common?.type === "card_pack") {
+          const { cards, highestRarity } = generatePackCards(lg.common.rarity)
+          packsToOpen.push({ id: packsToOpen.length, cards, highestRarity })
+          allNewCards.push(...cards)
+        }
         touched = true
       }
       if (passData.hasPremium && !lg.premiumClaimed) {
         newPremium.push(lg.level)
         if (lg.premium?.type === "coins" && lg.premium.amount) totalCoins += lg.premium.amount
+        if (lg.premium?.type === "card_pack") {
+          const { cards, highestRarity } = generatePackCards(lg.premium.rarity)
+          packsToOpen.push({ id: packsToOpen.length, cards, highestRarity })
+          allNewCards.push(...cards)
+        }
         touched = true
       }
       if (touched) touchedLevels.push(lg.level)
     })
+
     if (totalCoins > 0) setCoins((c: number) => c + totalCoins)
     setPassData(pd => ({ ...pd, claimedCommon: newCommon, claimedPremium: newPremium }))
-    setClaimFeedback(`Tudo coletado!${totalCoins > 0 ? ` +${totalCoins} Coins` : ""}`)
+
+    // Cartas de todos os packs vão pra conta imediatamente, antes da animação
+    if (allNewCards.length > 0) {
+      addToCollection(allNewCards)
+      trackGachaPull(packsToOpen.length, allNewCards)
+      vibrate([40, 30, 60])
+    }
+
+    setClaimFeedback(
+      `Tudo coletado!${totalCoins > 0 ? ` +${totalCoins} Coins` : ""}${packsToOpen.length > 0 ? ` · ${packsToOpen.length} pack${packsToOpen.length !== 1 ? "s" : ""} aberto${packsToOpen.length !== 1 ? "s" : ""}` : ""}`
+    )
     setTimeout(() => setClaimFeedback(null), 2500)
 
     // Vibração escalonada + cascata visual nas caixinhas, na mesma ordem da trilha
@@ -1659,6 +1701,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     vibrate(vibePattern2)
     setCascadeTrackLevels(touchedLevels)
     setTimeout(() => setCascadeTrackLevels([]), touchedLevels.length * CASCADE_STEP_MS + 500)
+
+    // Se algum pack foi coletado no lote, dispara a animação em sequência —
+    // um pack de cada vez, na mesma ordem em que apareceram na trilha
+    if (packsToOpen.length > 0) {
+      setPackRarityTier(tierFromRarity(packsToOpen[0].highestRarity))
+      setPackList(packsToOpen)
+      setPackOpenedCards(allNewCards)
+      setPackPullCount(packsToOpen.length)
+      setPackCurrentIndex(0)
+      setPackCardRevealIndex(-1)
+      setPackIsOpening(true)
+      setPackPhase("entering")
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
