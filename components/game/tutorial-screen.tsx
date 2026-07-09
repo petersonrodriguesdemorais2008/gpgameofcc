@@ -472,7 +472,19 @@ const MENU_STEPS = [
 //   de escurecida. Avança com um botão real "Entendido ►" no balão.
 // kind "info": só leitura, sem nenhum buraco (tela inteira escurecida).
 //   Avança com um botão real "Entendido ►" no balão.
-const DUEL_STEPS: { text: string; textTarget: string | null; kind: "click" | "highlight" | "info" }[] = [
+// kind "drag": spotlight sem intercept (sem botão) — o JOGADOR arrasta de
+//   verdade (não dá pra simular arrastar com segurança), e o overlay avança
+//   sozinho assim que o alvo correspondente sumir do DOM real (poll em
+//   useEffect) — carta sai da mão (jogar) ou o banner "Arraste!" some
+//   (atacar, ver findAttackReadyUnit).
+// kind "wait": SEM balão, sem bloqueio nenhum — usado só pra atravessar o
+//   turno do bot (turno 3) de forma 100% passiva. O jogo real não tem
+//   nenhum callback pra avisar "turno do bot terminou", então o overlay
+//   detecta isso por polling no texto real do badge de turno
+//   ("TURNO INIMIGO" → "SEU TURNO"), com a mesma proteção de corrida do
+//   fix de postDuelReady (exige ver o estado "fora" pelo menos uma vez
+//   antes de aceitar o "voltou" como sinal de verdade).
+const DUEL_STEPS: { text: string; textTarget: string | null; kind: "click" | "highlight" | "info" | "drag" | "wait" }[] = [
   // ── Setup (clicks obrigatórios nos elementos reais do DuelScreen) ────────────
   { text: "Selecione o Deck Inicial para entrar em batalha! Clique no deck em destaque.",
     textTarget: "Deck Inicial", kind: "click" },
@@ -487,14 +499,32 @@ const DUEL_STEPS: { text: string; textTarget: string | null; kind: "click" | "hi
     textTarget: "__PLAYER_HAND__", kind: "highlight" },
   { text: "O TAP é uma zona especial: a cada poucos turnos, uma carta extra aparece lá de graça! Fique de olho.",
     textTarget: "__PLAYER_TAP__", kind: "highlight" },
-  // ── Batalha: agora clicks obrigatórios no botão real de ação do turno ───────
+  // ── Turno atual: clique obrigatório no botão real de ação do turno ──────────
   // (mesmo botão físico muda de rótulo conforme a fase: draw → main → battle
   // — por isso mira pelo container __PHASE_BUTTON__, não pelo texto do rótulo)
   { text: "Chegou sua vez! Toque no botão em destaque para comprar sua carta.",
     textTarget: "__PHASE_BUTTON__", kind: "click" },
+  // {MASTER_CARD} é trocado pelo nome real do mestre (MASTERS[masterId].name)
+  // na hora de renderizar — cada mestre tem sua própria carta UR de 3DP.
+  { text: "Muito bem! Agora arraste {MASTER_CARD} da sua mão até um espaço vazio do seu campo — ela é a carta mais poderosa que você tem.",
+    textTarget: "__MASTER_UNIT_CARD__", kind: "drag" },
   { text: "Boa! Agora toque no botão em destaque para avançar para a Fase de Batalha.",
     textTarget: "__PHASE_BUTTON__", kind: "click" },
-  { text: "Você está na Fase de Batalha! Se tiver uma carta em campo, arraste-a sobre o oponente para atacar. Quando terminar, toque no botão em destaque para finalizar o turno. Boa sorte, duelista!",
+  // Carta acabou de entrar em campo: NÃO pode atacar neste turno (regra do
+  // próprio jogo, ver canAttackTurn/canUnitAttackNow em duel-screen.tsx) —
+  // por isso este passo só finaliza o turno, sem pedir ataque ainda.
+  { text: "Sua carta acabou de entrar em campo, então ela só vai poder atacar a partir do seu PRÓXIMO turno. Por enquanto, toque no botão em destaque para finalizar este turno.",
+    textTarget: "__PHASE_BUTTON__", kind: "click" },
+  // ── Turno do bot: 100% passivo, sem balão, sem bloqueio ─────────────────────
+  { text: "", textTarget: null, kind: "wait" },
+  // ── Seu próximo turno: agora a carta já pode atacar ──────────────────────────
+  { text: "Chegou seu turno de novo! Toque no botão em destaque para comprar sua carta.",
+    textTarget: "__PHASE_BUTTON__", kind: "click" },
+  { text: "Agora toque no botão em destaque para avançar para a Fase de Batalha — sua carta já pode atacar!",
+    textTarget: "__PHASE_BUTTON__", kind: "click" },
+  { text: "Agora sim! Arraste sua carta em destaque para cima do oponente para atacar.",
+    textTarget: "__ATTACK_READY_UNIT__", kind: "drag" },
+  { text: "Muito bem, você atacou! Toque no botão em destaque para finalizar o turno. Parabéns, você completou o tutorial de duelo!",
     textTarget: "__PHASE_BUTTON__", kind: "click" },
 ]
 
@@ -792,17 +822,66 @@ function findPhaseButton(pad = 10): PixelRect | null {
   return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
 }
 
+/** Fragmento do caminho da imagem da carta UR (3DP) de cada mestre — os
+ *  cards em mão do duel-screen.tsx não mostram nome nem DP como texto
+ *  visível (é só uma <Image>), então o único jeito confiável de achar a
+ *  carta certa é pelo atributo src da imagem, que É único por raridade
+ *  mesmo quando duas cartas compartilham o mesmo nome (ex.: existe um
+ *  "Fehnon Hoskie" SR de 2DP e um UR de 3DP — mesmo nome, imagem diferente). */
+const MASTER_UNIT_IMG: Record<TutorialMasterId, string> = {
+  fehnon: "fehnon-20ur",
+  morgana: "morgana-20ur",
+  calem: "calem-ur",
+}
+
+function findMasterUnitCard(masterId: TutorialMasterId, pad = 8): PixelRect | null {
+  const hand = document.querySelector(".min-h-28")
+  const img = hand?.querySelector(`img[src*="${MASTER_UNIT_IMG[masterId]}"]`)
+  // Sobe até o card inteiro (não só a <img> interna) pra destacar o card todo
+  const cardEl = (img?.closest('[class*="cursor-grab"]') as HTMLElement | null) ?? img
+  if (!cardEl) return null
+  const r = cardEl.getBoundingClientRect()
+  if (r.width < 10 || r.height < 10) return null
+  return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+}
+
+/**
+ * Caso especial "__ATTACK_READY_UNIT__": acha a unidade do JOGADOR que já
+ * pode atacar agora. Em vez de recalcular a regra de turno por conta própria
+ * (turn > canAttackTurn, phase === "battle", !hasAttacked — tudo isso é
+ * estado interno do duel-screen.tsx, inacessível daqui), aproveita um sinal
+ * visual que o próprio jogo já exibe: o banner verde "Arraste!" (chave
+ * dragToAttack) só aparece em cima de uma carta exatamente quando
+ * canUnitAttackNow(card) é true. Esse banner é o sinal de verdade — quando
+ * ele some (jogador atacou, hasAttacked virou true), a função para de achar
+ * a carta e o polling em TutorialGameOverlay avança o passo sozinho.
+ */
+function findAttackReadyUnit(pad = 8): PixelRect | null {
+  const slots = document.querySelectorAll("[data-player-unit-slot]")
+  for (const slot of Array.from(slots)) {
+    if (normText(slot.textContent ?? "").includes(normText("Arraste!"))) {
+      const r = (slot as HTMLElement).getBoundingClientRect()
+      if (r.width < 10 || r.height < 10) continue
+      return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+    }
+  }
+  return null
+}
+
 // ─── DynamicSpotlight ─────────────────────────────────────────────────────────
 /**
  * Spotlight que encontra o elemento pelo texto no DOM real —
  * funciona em qualquer resolução sem coordenadas hardcoded.
  */
-function DynamicSpotlight({ textTarget, onInterceptClick }: {
+function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
   textTarget: string | null
   /** Quando definido, captura o clique sobre o alvo ANTES que ele chegue no
    *  botão real por baixo — usado pro JOGAR pular a navegação real do jogo
    *  e ir direto pro duelo roteirizado do tutorial. */
   onInterceptClick?: () => void
+  /** Só usado pelo caso especial "__MASTER_UNIT_CARD__" — identifica qual
+   *  card procurar na mão (cada mestre tem a sua própria carta UR 3DP). */
+  masterId?: TutorialMasterId
 }) {
   const [r, setR] = useState<PixelRect | null>(null)
 
@@ -815,6 +894,8 @@ function DynamicSpotlight({ textTarget, onInterceptClick }: {
         textTarget === "__PLAYER_HAND__" ? findPlayerHand() :
         textTarget === "__PLAYER_TAP__" ? findPlayerTap() :
         textTarget === "__PHASE_BUTTON__" ? findPhaseButton() :
+        textTarget === "__MASTER_UNIT_CARD__" ? (masterId ? findMasterUnitCard(masterId) : null) :
+        textTarget === "__ATTACK_READY_UNIT__" ? findAttackReadyUnit() :
         findByText(textTarget)
       setR(found)
     }
@@ -1591,6 +1672,49 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     }
   }, [phase, postDuelReady])
 
+  // ── Passos "drag" (jogar a carta do mestre / atacar): sem simular o gesto —
+  //    só detecta quando o jogador conseguiu (o alvo correspondente sumiu do
+  //    DOM real) e avança sozinho. Despacha pelo textTarget, igual ao switch
+  //    do DynamicSpotlight, já que cada passo "drag" observa uma coisa diferente. ──
+  useEffect(() => {
+    if (phase !== "duel-sim") return
+    const s = DUEL_STEPS[step]
+    if (!s || s.kind !== "drag") return
+    const stillThere = () =>
+      s.textTarget === "__MASTER_UNIT_CARD__"  ? !!findMasterUnitCard(masterId) :
+      s.textTarget === "__ATTACK_READY_UNIT__" ? !!findAttackReadyUnit() :
+      false
+    const poll = setInterval(() => {
+      if (!stillThere()) {
+        clearInterval(poll)
+        setStep(prev => prev + 1)
+      }
+    }, 300)
+    return () => clearInterval(poll)
+  }, [phase, step, masterId])
+
+  // ── Passo "wait" (atravessar o turno do bot): sem balão, sem bloqueio —
+  //    só espera "SEU TURNO" reaparecer de verdade no badge de turno.
+  //    Mesma proteção de corrida do fix de postDuelReady: exige ver
+  //    "TURNO INIMIGO" pelo menos uma vez antes de aceitar "SEU TURNO"
+  //    como sinal de que o turno do bot realmente passou (evita disparar
+  //    cedo demais caso o texto ainda não tenha trocado no instante em
+  //    que este passo começa). ──────────────────────────────────────────
+  const sawEnemyTurnRef = useRef(false)
+  useEffect(() => {
+    if (phase !== "duel-sim") return
+    const s = DUEL_STEPS[step]
+    if (!s || s.kind !== "wait") { sawEnemyTurnRef.current = false; return }
+    const poll = setInterval(() => {
+      if (findByText("TURNO INIMIGO")) { sawEnemyTurnRef.current = true; return }
+      if (sawEnemyTurnRef.current && findByText("SEU TURNO")) {
+        clearInterval(poll)
+        setStep(prev => prev + 1)
+      }
+    }, 300)
+    return () => clearInterval(poll)
+  }, [phase, step])
+
   // ── Handlers (definidos antes de qualquer return) ───────────────────────────
   /** Acha o menor elemento real do DOM contendo `target` como texto e clica
    *  nele programaticamente — usado por todo passo "forçado" que precisa
@@ -1706,11 +1830,19 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     // Só os 3 passos que apontam pro botão físico de ação de fase precisam
     // desviar o balão — os de setup (Deck/Fácil/Aleatório) não têm esse problema.
     const avoidBtn = duelStep?.textTarget === "__PHASE_BUTTON__"
+    // {MASTER_CARD} vira o nome real da carta UR do mestre ativo (mesmo nome
+    // do próprio mestre — Fehnon Hoskie / Morgana Pendragon / Calem Hidenori).
+    const duelStepText = duelStep?.text.replace("{MASTER_CARD}", MASTERS[masterId].name) ?? ""
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
         {!duelStepsDone && duelStep && (
-          duelStep.kind === "click" ? (
+          duelStep.kind === "wait" ? (
+            // ── Atravessar o turno do bot: nada na tela — sem balão, sem
+            //    bloqueio, sem escurecimento. O jogo real roda 100% livre
+            //    enquanto o useEffect de polling espera "SEU TURNO" voltar. ──
+            null
+          ) : duelStep.kind === "click" ? (
             // ── Clique obrigatório: spotlight + intercept (sem botão no balão) ───
             <>
               <DynamicSpotlight
@@ -1719,10 +1851,23 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
               />
               <MasterBubble
                 masterId={masterId}
-                text={duelStep.text}
+                text={duelStepText}
                 onNext={() => {}}
                 noButton
                 avoidPhaseButton={avoidBtn}
+              />
+            </>
+          ) : duelStep.kind === "drag" ? (
+            // ── Arrastar obrigatório: spotlight sem intercept (sem simular o
+            //    arrastar) — avança sozinho quando a carta sai da mão de
+            //    verdade (useEffect de polling acima cuida disso). ──────────
+            <>
+              <DynamicSpotlight textTarget={duelStep.textTarget} masterId={masterId} />
+              <MasterBubble
+                masterId={masterId}
+                text={duelStepText}
+                onNext={() => {}}
+                noButton
               />
             </>
           ) : duelStep.kind === "highlight" ? (
@@ -1731,7 +1876,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
               <DynamicSpotlight textTarget={duelStep.textTarget} />
               <MasterBubble
                 masterId={masterId}
-                text={duelStep.text}
+                text={duelStepText}
                 onNext={() => setStep(s => s + 1)}
                 nextLabel="Entendido ►"
               />
@@ -1746,7 +1891,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
               }} />
               <MasterBubble
                 masterId={masterId}
-                text={duelStep.text}
+                text={duelStepText}
                 onNext={() => setStep(s => s + 1)}
                 nextLabel="Entendido ►"
               />
