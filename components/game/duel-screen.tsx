@@ -11814,14 +11814,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* Deck Search Modal (Pedra de Afiar) */}
+      {/* Deck Search Modal — generic, title comes from deckSearchModal.title */}
       {deckSearchModal && deckSearchModal.visible && (
         <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-[90]">
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-amber-500/50 shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
             {/* Header */}
             <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-900/30 to-transparent">
-              <h3 className="text-amber-400 font-bold text-lg text-center">⚔️ Pedra de Afiar</h3>
-              <p className="text-white/60 text-xs text-center mt-1">Escolha uma Ultimate Gear do seu Deck</p>
+              <h3 className="text-amber-400 font-bold text-lg text-center">⚔️ {deckSearchModal.title?.split(" — ")[0] ?? "Busca no Deck"}</h3>
+              <p className="text-white/60 text-xs text-center mt-1">{deckSearchModal.title?.split(" — ")[1] ?? "Escolha uma carta do seu Deck"}</p>
             </div>
 
             {/* Card list */}
