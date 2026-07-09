@@ -1570,8 +1570,22 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   }, [phase]) // omitimos onNavigate das deps — dispara só uma vez ao entrar na fase
 
   // ── Quando duelo real termina, game-wrapper seta postDuelReady=true ──────────
+  // IMPORTANTE: game-wrapper.tsx NÃO desmonta entre tentativas do tutorial —
+  // só o TutorialGameOverlay remonta. Se o jogador já tiver passado por um
+  // duelo antes (ou saído de um), tutorialPostDuel pode chegar aqui já
+  // "grudado" em true na primeiríssima renderização desta nova instância,
+  // antes mesmo do reset (setTutorialPostDuel(false) dentro de onNavigate)
+  // ter tido a chance de propagar de volta como prop. Uma checagem de nível
+  // simples ("postDuelReady está true?") cai nessa corrida e pula pro
+  // post-duel-menu na hora, com a mesa de setup real ainda na tela.
+  // Por isso só reage à TRANSIÇÃO false → true, nunca a "já true": exige ver
+  // o reset (false) passar por aqui pelo menos uma vez antes de aceitar um
+  // true como sinal de verdade de fim de duelo.
+  const sawResetRef = useRef(false)
   useEffect(() => {
-    if (phase === "duel-sim" && postDuelReady) {
+    if (phase !== "duel-sim") { sawResetRef.current = false; return }
+    if (!postDuelReady) { sawResetRef.current = true; return }
+    if (sawResetRef.current) {
       setPhase("post-duel-menu")
       setStep(0)
     }
