@@ -1,18 +1,18 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useGame, type Card } from "@/contexts/game-context"
+import { useState, useEffect, useRef, useCallback } from "react"
+import Image from "next/image"
+import { useGame, type Card, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import {
   ArrowLeft, Crown, Star, Gift, Check, Lock, Zap,
   Calendar, RefreshCw, Flame, ChevronRight, ChevronLeft,
-  Sparkles, Shield, Target, Trophy,
+  Sparkles, Shield, Target, Trophy, X,
 } from "lucide-react"
 import {
   getMissionProgress,
   trackDailyLogin,
   trackGachaPull,
 } from "@/lib/mission-tracker"
-import GachaScreen from "@/components/game/gacha-screen"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -719,9 +719,248 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     : "/images/wallpapers/fehnon_wallpaper.png"
   const { coins, setCoins, playerId, allCards, addToCollection } = useGame()
 
-  // ── Overlay de pack opening — renderiza o GachaScreen por cima do Gear Pass ──
-  // Não é uma recriação: é o componente GachaScreen de verdade, com a animação exata.
-  const [showPackOverlay, setShowPackOverlay] = useState(false)
+  // ── PACK OPENING — extraído verbatim do GachaScreen ───────────────────────────
+  // Mesmos states, mesmos efeitos, mesmo JSX e keyframes. A única diferença é
+  // que aqui as cartas já chegam prontas (geradas por openPackReward) em vez de
+  // vir de pullGacha — a animação em si é idêntica.
+  const CARDS_PER_PACK = 4
+  const [packIsOpening, setPackIsOpening] = useState(false)
+  const [packShowResults, setPackShowResults] = useState(false)
+  const [packOpenedCards, setPackOpenedCards] = useState<Card[]>([])
+  const [packRarityTier, setPackRarityTier] = useState<"normal" | "rare" | "epic" | "legendary">("normal")
+  const [packScreenShake, setPackScreenShake] = useState(false)
+  const packCanvasRef = useRef<HTMLCanvasElement>(null)
+  const packAnimationRef = useRef<number>()
+  const [packList, setPackList] = useState<{ id: number; cards: Card[]; highestRarity: "R"|"SR"|"UR"|"LR" }[]>([])
+  const [packCurrentIndex, setPackCurrentIndex] = useState(0)
+  const [packPhase, setPackPhase] = useState<"entering"|"floating"|"shaking"|"opening"|"revealing"|"done">("entering")
+  const [packCardRevealIndex, setPackCardRevealIndex] = useState(-1)
+  const [packPullCount, setPackPullCount] = useState(0)
+  const [packSwipeStartX, setPackSwipeStartX] = useState<number | null>(null)
+  const [packSwipeProgress, setPackSwipeProgress] = useState(0)
+  const [packSwipeComplete, setPackSwipeComplete] = useState(false)
+  const [packRevealZoomedCard, setPackRevealZoomedCard] = useState<{ image: string; name: string; rarity: string } | null>(null)
+
+  // ── drawParticles — cópia exata do sistema de partículas do GachaScreen ──────
+  const drawPackParticles = useCallback(() => {
+    const canvas = packCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const cx = canvas.width / 2
+    const cy = canvas.height / 2
+
+    const palettes: Record<string, string[]> = {
+      normal:    ["#64748b","#94a3b8","#cbd5e1","#e2e8f0"],
+      rare:      ["#7c3aed","#8b5cf6","#a78bfa","#c4b5fd","#ede9fe"],
+      epic:      ["#fbbf24","#f59e0b","#fcd34d","#fde68a","#ffffff"],
+      legendary: ["#ef4444","#f97316","#fbbf24","#22c55e","#3b82f6","#8b5cf6","#ec4899"],
+    }
+    const cols = palettes[packRarityTier]
+
+    interface Particle {
+      x: number; y: number; vx: number; vy: number
+      size: number; color: string; alpha: number; life: number; maxLife: number
+      type: "spark"|"orb"|"ring"|"star"
+      angle?: number; spin?: number; trail?: {x:number;y:number}[]
+    }
+
+    const particles: Particle[] = []
+    let t = 0
+
+    const spawnAmbient = () => {
+      if (particles.length >= 120) return
+      const side = Math.random()
+      const x = side < 0.5 ? Math.random() * canvas.width : (Math.random() < 0.5 ? -10 : canvas.width + 10)
+      const y = side < 0.5 ? canvas.height + 10 : Math.random() * canvas.height
+      particles.push({ x, y, vx:(Math.random()-0.5)*1.5, vy:-1.5-Math.random()*2.5,
+        size:1.5+Math.random()*3, color:cols[Math.floor(Math.random()*cols.length)],
+        alpha:0.9, life:200, maxLife:200, type:"spark" })
+    }
+
+    const spawnBurst = (num:number, x:number, y:number, speed:number) => {
+      for (let i=0;i<num;i++) {
+        const a = (Math.PI*2/num)*i + Math.random()*0.4
+        const s = speed * (0.7+Math.random()*0.6)
+        particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
+          size:3+Math.random()*6, color:cols[Math.floor(Math.random()*cols.length)],
+          alpha:1, life:70, maxLife:70, type:Math.random()<0.3?"star":"spark",
+          spin:((Math.random()-0.5)*0.3), trail:[] })
+      }
+    }
+
+    const spawnRing = (x:number,y:number,radius:number,count:number) => {
+      for(let i=0;i<count;i++){
+        const a=(Math.PI*2/count)*i
+        particles.push({x:x+Math.cos(a)*radius,y:y+Math.sin(a)*radius,
+          vx:Math.cos(a)*2,vy:Math.sin(a)*2,
+          size:2+Math.random()*3,color:cols[Math.floor(Math.random()*cols.length)],
+          alpha:1,life:50,maxLife:50,type:"spark",trail:[]})
+      }
+    }
+
+    const animate = () => {
+      t++
+      const fade = packPhase==="opening"?"rgba(0,0,0,0.25)":packPhase==="revealing"?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.06)"
+      ctx.fillStyle=fade; ctx.fillRect(0,0,canvas.width,canvas.height)
+
+      if(t%2===0) spawnAmbient()
+
+      if(packPhase==="opening") {
+        if(t===1) { spawnBurst(40,cx,cy,18); spawnRing(cx,cy,0,20) }
+        if(t===8) { spawnBurst(30,cx,cy,12); spawnRing(cx,cy,60,16) }
+        if(t===16){ spawnBurst(20,cx,cy,8);  spawnRing(cx,cy,100,12) }
+      }
+
+      if(packPhase==="revealing" && t%25===0 && packCardRevealIndex>=0) {
+        const cardX = cx + (packCardRevealIndex - 1.5) * 80
+        spawnBurst(8, cardX + (Math.random()-0.5)*60, cy + (Math.random()-0.5)*60, 5)
+      }
+
+      if(packPhase==="shaking" && t%4===0) {
+        spawnBurst(4, cx+(Math.random()-0.5)*60, cy+(Math.random()-0.5)*80, 3)
+      }
+
+      ctx.globalAlpha=1
+
+      for(let i=particles.length-1;i>=0;i--){
+        const p=particles[i]
+        p.x+=p.vx; p.y+=p.vy
+        p.vx*=0.96; p.vy*=0.96
+        p.life--
+        const pct=p.life/p.maxLife
+        p.alpha=pct*(p.type==="orb"?0.7:0.9)
+
+        if(p.life<=0){particles.splice(i,1);continue}
+
+        if(p.trail){ p.trail.unshift({x:p.x,y:p.y}); if(p.trail.length>8)p.trail.pop() }
+
+        ctx.save()
+        if(p.type==="star"){
+          ctx.globalAlpha=Math.max(0,p.alpha)
+          ctx.translate(p.x,p.y)
+          if(p.spin) ctx.rotate(p.spin*t)
+          ctx.fillStyle=p.color
+          const r=p.size; const inner=r*0.4
+          ctx.beginPath()
+          for(let k=0;k<8;k++){
+            const a=(Math.PI/4)*k
+            const radius=k%2===0?r:inner
+            k===0?ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius):ctx.lineTo(Math.cos(a)*radius,Math.sin(a)*radius)
+          }
+          ctx.closePath(); ctx.fill()
+        } else {
+          ctx.globalAlpha=Math.max(0,p.alpha)
+          ctx.beginPath()
+          ctx.arc(p.x,p.y,Math.max(0.1,p.size),0,Math.PI*2)
+          ctx.fillStyle=p.color; ctx.fill()
+          const gs=Math.max(0.1,p.size*4)
+          const grd=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,gs)
+          grd.addColorStop(0,p.color); grd.addColorStop(1,"transparent")
+          ctx.globalAlpha=Math.max(0,p.alpha*0.35)
+          ctx.beginPath(); ctx.arc(p.x,p.y,gs,0,Math.PI*2)
+          ctx.fillStyle=grd; ctx.fill()
+          if(p.trail&&p.trail.length>1){
+            ctx.globalAlpha=Math.max(0,p.alpha*0.25)
+            ctx.strokeStyle=p.color; ctx.lineWidth=Math.max(0.1,p.size*0.5)
+            ctx.beginPath(); ctx.moveTo(p.trail[0].x,p.trail[0].y)
+            p.trail.forEach(pt=>ctx.lineTo(pt.x,pt.y))
+            ctx.stroke()
+          }
+        }
+        ctx.restore()
+      }
+      ctx.globalAlpha=1
+      packAnimationRef.current=requestAnimationFrame(animate)
+    }
+    animate()
+  }, [packPhase, packRarityTier, packCardRevealIndex])
+
+  useEffect(() => {
+    if (packIsOpening || packShowResults) {
+      drawPackParticles()
+    }
+    return () => {
+      if (packAnimationRef.current) cancelAnimationFrame(packAnimationRef.current)
+    }
+  }, [packIsOpening, packShowResults, drawPackParticles])
+
+  // Card reveal — delays dramáticos por raridade (idêntico ao gacha)
+  useEffect(() => {
+    if (packPhase === "revealing" && packCardRevealIndex < CARDS_PER_PACK) {
+      const card = packList[packCurrentIndex]?.cards[packCardRevealIndex]
+      const delay = card?.rarity === "LR" ? 900 : card?.rarity === "UR" ? 600 : card?.rarity === "SR" ? 400 : 280
+      const timer = setTimeout(() => setPackCardRevealIndex(prev => prev + 1), delay)
+      return () => clearTimeout(timer)
+    }
+  }, [packPhase, packCardRevealIndex, packList, packCurrentIndex])
+
+  // Avança pro próximo pack ou finaliza (Gear Pass sempre abre 1 pack por vez)
+  useEffect(() => {
+    if (packPhase === "revealing" && packCardRevealIndex >= CARDS_PER_PACK) {
+      const timer = setTimeout(() => {
+        if (packCurrentIndex < packList.length - 1) {
+          setPackCurrentIndex(prev => prev + 1)
+          setPackPhase("entering")
+          setPackCardRevealIndex(-1)
+        } else {
+          setPackPhase("done")
+          setPackShowResults(true)
+          setPackIsOpening(false)
+        }
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [packPhase, packCardRevealIndex, packCurrentIndex, packList.length])
+
+  // Progressão de fase: entering → floating (swipe) → shaking → opening → revealing
+  useEffect(() => {
+    if (!packIsOpening || packList.length === 0) return
+    if (packPhase === "entering") {
+      if (packCurrentIndex === 0) {
+        const t = setTimeout(() => { setPackPhase("floating"); setPackSwipeProgress(0); setPackSwipeComplete(false) }, 800)
+        return () => clearTimeout(t)
+      } else {
+        const t = setTimeout(() => { setPackPhase("shaking") }, 600)
+        return () => clearTimeout(t)
+      }
+    }
+    if (packPhase === "shaking") {
+      setPackScreenShake(true)
+      const t = setTimeout(() => { setPackScreenShake(false); setPackPhase("opening") }, 700)
+      return () => clearTimeout(t)
+    }
+    if (packPhase === "opening") {
+      const t = setTimeout(() => { setPackPhase("revealing"); setPackCardRevealIndex(0) }, 1000)
+      return () => clearTimeout(t)
+    }
+  }, [packPhase, packIsOpening, packList.length])
+
+  const closePackResults = () => {
+    setPackShowResults(false)
+    setPackOpenedCards([])
+    setPackRarityTier("normal")
+    setPackList([])
+    setPackCurrentIndex(0)
+    setPackPhase("entering")
+    setPackCardRevealIndex(-1)
+    setPackPullCount(0)
+    setPackSwipeProgress(0)
+    setPackSwipeStartX(null)
+    setPackSwipeComplete(false)
+  }
+
+  const getPackRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case "LR": return "from-red-500 via-amber-500 to-red-500"
+      case "UR": return "from-amber-400 to-yellow-500"
+      case "SR": return "from-purple-500 to-pink-500"
+      default:   return "from-slate-500 to-slate-600"
+    }
+  }
 
   // ── Verificar premium no servidor ao abrir a tela ─────────────────────────
   useEffect(() => {
@@ -1328,22 +1567,23 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         highestRarity = c.rarity as "R"|"SR"|"UR"|"LR"
     }
 
-    // Adiciona à coleção e rastreia ANTES de navegar
+    // Adiciona à coleção e rastreia — as cartas já vão pra conta antes da animação
     addToCollection(packCards)
     trackGachaPull(1, packCards)
     vibrate([40, 30, 60])
 
-    // Salva no localStorage — o GachaScreen lê isso no mount e inicia a animação exata
-    try {
-      localStorage.setItem("gpgame_pending_pack", JSON.stringify({
-        cards: packCards,
-        highestRarity,
-        source: "gear-pass",
-      }))
-    } catch {}
-
-    // Abre o GachaScreen como overlay por cima do Gear Pass — sem sair da tela
-    setShowPackOverlay(true)
+    // Dispara a animação de pack opening INLINE, sem sair do Gear Pass
+    const hasLR = packCards.some(c => c.rarity === "LR")
+    const hasUR = packCards.some(c => c.rarity === "UR")
+    const hasSR = packCards.some(c => c.rarity === "SR")
+    setPackRarityTier(hasLR ? "legendary" : hasUR ? "epic" : hasSR ? "rare" : "normal")
+    setPackList([{ id: 0, cards: packCards, highestRarity }])
+    setPackOpenedCards(packCards)
+    setPackPullCount(1)
+    setPackCurrentIndex(0)
+    setPackCardRevealIndex(-1)
+    setPackIsOpening(true)
+    setPackPhase("entering")
   }
 
   const openStripeCheckout = () => {
@@ -2771,20 +3011,542 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       `}</style>
       </div>{/* end EVERYTHING ABOVE WALLPAPER */}
 
-      {/* ── GACHA PACK OPENING OVERLAY ──────────────────────────────────────────
-          Renderiza o GachaScreen de verdade por cima do Gear Pass — sem sair
-          da tela. Não é recriação: é o componente exato, com a animação exata.
-          O GachaScreen detecta "gpgame_pending_pack" no mount e inicia sozinho.
-      ── */}
-      {showPackOverlay && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 99999 }}>
-          <GachaScreen onBack={() => {
-            setShowPackOverlay(false)
-            // Limpa o localStorage caso o jogador tenha pulado a animação
-            try { localStorage.removeItem("gpgame_pending_pack") } catch {}
-          }} />
+      {/* ── PACK OPENING OVERLAY — JSX extraído verbatim do GachaScreen ─────────
+          Mesma estrutura, mesmas classes, mesmos keyframes. Roda inline aqui
+          dentro do Gear Pass — o jogador nunca sai da tela. ── */}
+      {(packIsOpening || packShowResults) && (
+        <div
+          className={`fixed inset-0 z-[9999] overflow-hidden ${packScreenShake ? "animate-shake" : ""}`}
+          style={{background:"radial-gradient(ellipse at 50% 40%, #0a0a2e 0%, #000000 70%)"}}
+        >
+          <canvas ref={packCanvasRef} className="absolute inset-0 pointer-events-none" />
+
+          {packPhase !== "done" && packList[packCurrentIndex] && (
+            <div className="absolute inset-0 pointer-events-none transition-all duration-700" style={{
+              background: packList[packCurrentIndex].highestRarity === "LR"
+                ? "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(239,68,68,0.15) 70%, rgba(139,0,0,0.4) 100%)"
+                : packList[packCurrentIndex].highestRarity === "UR"
+                ? "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(56,189,248,0.12) 70%, rgba(0,50,100,0.35) 100%)"
+                : packList[packCurrentIndex].highestRarity === "SR"
+                ? "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(168,85,247,0.10) 70%, rgba(50,0,80,0.30) 100%)"
+                : "radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.5) 100%)"
+            }} />
+          )}
+
+          {packPhase !== "done" && (
+            <button
+              onClick={() => { setPackPhase("done"); setPackShowResults(true); setPackIsOpening(false) }}
+              className="absolute top-5 right-5 z-30 text-xs font-bold text-white/40 hover:text-white/80 transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/25 backdrop-blur-sm"
+            >
+              Pular
+            </button>
+          )}
+
+          {/* ── PACK PHASE ── */}
+          {packPhase !== "done" && packList[packCurrentIndex] && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              {(() => {
+                const pack = packList[packCurrentIndex]
+                const rarity = pack.highestRarity
+                const rarityGlow =
+                  rarity === "LR" ? { inner:"rgba(239,68,68,0.9)", outer:"rgba(251,191,36,0.5)", text:"text-red-400", label:"LENDÁRIO!" } :
+                  rarity === "UR" ? { inner:"rgba(56,189,248,0.85)", outer:"rgba(99,179,237,0.4)", text:"text-sky-300", label:"ULTRA RARO!" } :
+                  rarity === "SR" ? { inner:"rgba(168,85,247,0.8)", outer:"rgba(192,132,252,0.3)", text:"text-purple-400", label:"SUPER RARO!" } :
+                                   { inner:"rgba(148,163,184,0.5)", outer:"rgba(200,200,200,0.15)", text:"text-slate-400", label:"" }
+
+                const handleSwipeStart = (clientX: number) => {
+                  if (packPhase !== "floating") return
+                  setPackSwipeStartX(clientX)
+                }
+                const handleSwipeMove = (clientX: number) => {
+                  if (packPhase !== "floating" || packSwipeStartX === null) return
+                  const delta = clientX - packSwipeStartX
+                  const progress = Math.min(1, Math.max(0, delta / 160))
+                  setPackSwipeProgress(progress)
+                  if (progress >= 1 && !packSwipeComplete) {
+                    setPackSwipeComplete(true)
+                    setPackSwipeProgress(1)
+                    setPackSwipeStartX(null)
+                    setPackPhase("shaking")
+                  }
+                }
+                const handleSwipeEnd = () => {
+                  if (packSwipeProgress < 1) { setPackSwipeProgress(0); setPackSwipeStartX(null) }
+                }
+
+                return (
+                  <>
+                    {(packPhase === "entering" || packPhase === "floating" || packPhase === "shaking" || packPhase === "opening") && (
+                      <div className="relative flex flex-col items-center select-none">
+
+                        <div className="absolute pointer-events-none" style={{
+                          inset:"-60px", borderRadius:"50%",
+                          background:`radial-gradient(ellipse at 50% 50%, ${rarityGlow.inner} 0%, transparent 65%)`,
+                          filter:"blur(35px)",
+                          animation: packPhase==="shaking" ? "gpPackHaloFlicker 0.1s ease-in-out infinite" :
+                            packPhase==="floating" ? "gpPackHaloPulse 1.8s ease-in-out infinite" : "gpPackHaloPulse 2s ease-in-out infinite",
+                          opacity: packPhase==="entering" ? 0.4 : 0.8,
+                        }} />
+
+                        {packPhase === "floating" && (
+                          <div className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap"
+                            style={{animation:"gpPackAbraLabel 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
+                            <span className="text-white/90 font-black text-xl tracking-widest" style={{
+                              textShadow:`0 0 14px ${rarityGlow.inner}, 0 0 28px ${rarityGlow.outer}`}}>
+                              Abra!
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="relative" style={{
+                          width:"208px", height:"308px",
+                          animation:
+                            packPhase==="entering" ? "gpPackEnterEpic 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards" :
+                            packPhase==="floating" ? "gpPackFloat 2.4s ease-in-out infinite" :
+                            packPhase==="shaking"  ? "gpPackShakeEpic 0.1s ease-in-out infinite" :
+                            packPhase==="opening"  ? "gpPackOpenEpic 1s cubic-bezier(0.22,1,0.36,1) forwards" :
+                            undefined,
+                          filter:`drop-shadow(0 0 30px ${rarityGlow.inner}) drop-shadow(0 0 60px ${rarityGlow.outer})`,
+                        }}>
+                          <Image src="/images/gacha/pack-fsg.png" alt="Pack" fill sizes="208px" className="object-contain" />
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg" style={{
+                            background:"linear-gradient(135deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%)",
+                            animation:"gpPackSheen 3.5s ease-in-out infinite",
+                          }} />
+
+                          {packPhase === "floating" && (
+                            <div
+                              className="absolute left-0 right-0 z-30 cursor-grab active:cursor-grabbing"
+                              style={{top:"9%", height:"44px", touchAction:"none"}}
+                              onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); handleSwipeStart(e.clientX) }}
+                              onPointerMove={e => handleSwipeMove(e.clientX)}
+                              onPointerUp={handleSwipeEnd}
+                              onPointerCancel={handleSwipeEnd}
+                            >
+                              <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex items-center gap-[3px] px-1">
+                                {[...Array(28)].map((_,i) => (
+                                  <div key={i} className="flex-1 h-[2px] rounded-full" style={{
+                                    background: packSwipeProgress > i/28
+                                      ? `linear-gradient(to right, white, ${rarityGlow.inner})`
+                                      : "rgba(255,255,255,0.25)",
+                                    transition:"background 0.1s",
+                                    boxShadow: packSwipeProgress > i/28 ? `0 0 6px ${rarityGlow.inner}` : "none",
+                                  }} />
+                                ))}
+                              </div>
+
+                              <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-100"
+                                style={{left:`${4 + packSwipeProgress * 88}%`}}>
+                                <div className="flex items-center gap-1"
+                                  style={{animation: packSwipeProgress === 0 ? "gpSwipeHint 1.2s ease-in-out infinite" : "none",
+                                    filter:`drop-shadow(0 0 8px ${rarityGlow.inner})`}}>
+                                  <span style={{fontSize:"20px", lineHeight:1}}>✂</span>
+                                  {packSwipeProgress < 0.05 && (
+                                    <span className="text-white/70 text-[10px] font-bold ml-1 whitespace-nowrap" style={{animation:"gpSwipeHintText 1.2s ease-in-out infinite"}}>
+                                      ← rasgar
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {packSwipeProgress > 0 && (
+                                <div className="absolute top-0 left-0 bottom-0 pointer-events-none rounded-r-full" style={{
+                                  width:`${packSwipeProgress*100}%`,
+                                  background:`linear-gradient(to right, transparent, ${rarityGlow.inner}20)`,
+                                  borderRight:`2px solid ${rarityGlow.inner}`,
+                                  boxShadow:`0 0 12px ${rarityGlow.inner}`,
+                                }} />
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {packPhase === "floating" && packSwipeProgress === 0 && (
+                          <div className="mt-6 text-center pointer-events-none" style={{animation:"gpPackAbraLabel 0.6s ease-out 0.2s both"}}>
+                            <p className="text-white/40 text-xs tracking-widest">arraste a linha para rasgar</p>
+                          </div>
+                        )}
+
+                        {packPhase === "opening" && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            {[...Array(18)].map((_,i) => (
+                              <div key={i} className="absolute" style={{
+                                width:"2.5px", height:"200px",
+                                background:`linear-gradient(to top, transparent, ${rarityGlow.inner}, white, transparent)`,
+                                transform:`rotate(${i*(360/18)}deg)`,
+                                transformOrigin:"50% 100%",
+                                top:"50%", left:"50%", marginLeft:"-1.25px",
+                                animation:`gpBurstRayEpic 1s cubic-bezier(0.22,1,0.36,1) ${i*0.012}s forwards`,
+                                opacity:0, borderRadius:"2px",
+                                filter:`blur(1px) drop-shadow(0 0 4px ${rarityGlow.inner})`,
+                              }} />
+                            ))}
+                            <div className="absolute inset-0 rounded-full" style={{
+                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 25%, transparent 65%)`,
+                              animation:"gpCentralFlash 1s ease-out forwards",
+                            }} />
+                          </div>
+                        )}
+
+                        {packPhase === "opening" && rarity !== "R" && (
+                          <div className="absolute -bottom-20 left-1/2 whitespace-nowrap pointer-events-none"
+                            style={{animation:"gpRarityAnnounce 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.35s forwards",
+                              opacity:0, transform:"translateX(-50%) scale(0.5)"}}>
+                            <span className={`text-3xl font-black tracking-widest drop-shadow-2xl ${rarityGlow.text}`}
+                              style={{textShadow: rarity==="LR"?"0 0 20px #ef4444, 0 0 40px #fbbf24":
+                                rarity==="UR"?"0 0 20px #38bdf8, 0 0 40px #7dd3fc":"0 0 20px #a855f7, 0 0 35px #c084fc"}}>
+                              {rarityGlow.label}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── CARD REVEAL ── */}
+                    {packPhase === "revealing" && (
+                      <div className="flex flex-col items-center gap-5 w-full" style={{animation:"gpRevealContainerIn 0.4s ease-out forwards"}}>
+                        <div className="flex gap-3 justify-center px-2">
+                          {pack.cards.map((card, idx) => {
+                            const isRevealed = idx < packCardRevealIndex
+                            const isRevealing = idx === packCardRevealIndex - 1
+                            const isPending = idx >= packCardRevealIndex
+                            const cardGlowStyle =
+                              card.rarity==="LR" ? "0 0 30px rgba(239,68,68,0.9), 0 0 60px rgba(251,191,36,0.5)" :
+                              card.rarity==="UR" ? "0 0 25px rgba(56,189,248,0.85), 0 0 50px rgba(99,179,237,0.4)" :
+                              card.rarity==="SR" ? "0 0 22px rgba(168,85,247,0.8), 0 0 40px rgba(192,132,252,0.3)" :
+                              "0 0 12px rgba(148,163,184,0.4)"
+                            return (
+                              <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2">
+                                <div className="relative" style={{perspective:"900px"}}>
+                                  {isPending && idx === packCardRevealIndex && (
+                                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                                      background: card.rarity==="LR" ? "radial-gradient(ellipse, rgba(239,68,68,0.6) 0%, transparent 70%)" :
+                                        card.rarity==="UR" ? "radial-gradient(ellipse, rgba(56,189,248,0.5) 0%, transparent 70%)" :
+                                        card.rarity==="SR" ? "radial-gradient(ellipse, rgba(168,85,247,0.4) 0%, transparent 70%)" : "none",
+                                      filter:"blur(10px)", animation:"gpAnticipateGlow 0.6s ease-in-out infinite alternate",
+                                    }} />
+                                  )}
+                                  <div style={{perspective:"900px", width:"108px", height:"155px"}}>
+                                  <div
+                                    className={isRevealed ? "cursor-pointer" : ""}
+                                    style={{
+                                      width:"108px", height:"155px", position:"relative",
+                                      transformStyle:"preserve-3d",
+                                      transform: isRevealed ? "rotateY(0deg)" : "rotateY(-180deg)",
+                                      transition: isRevealing ? `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)` : "none",
+                                      opacity: isPending && idx > packCardRevealIndex ? 0.10 : 1,
+                                    }}
+                                    onClick={() => isRevealed && setPackRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
+                                  >
+                                    <div className="absolute inset-0 overflow-hidden"
+                                      style={{
+                                        backfaceVisibility:"hidden",
+                                        WebkitBackfaceVisibility:"hidden",
+                                        boxShadow: isRevealed ? cardGlowStyle : "none",
+                                        transition:"box-shadow 0.4s ease",
+                                      }}>
+                                      {(isRevealed || isRevealing) && (
+                                        <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="115px" className="object-cover" />
+                                      )}
+                                      {isRevealing && (
+                                        <div className="absolute inset-0 z-20 pointer-events-none" style={{
+                                          background:"linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.75) 50%,transparent 65%)",
+                                          animation:"gpShineSweep 0.65s ease-out 0.2s forwards", transform:"translateX(-100%)"}} />
+                                      )}
+                                      {card.rarity==="LR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
+                                          backgroundSize:"300% 100%", animation:"gpRainbowShift 1.5s linear infinite",
+                                          padding:"3px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                          WebkitMaskComposite:"xor", maskComposite:"exclude"}} />
+                                      )}
+                                      {card.rarity==="LR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          background:"linear-gradient(135deg,transparent 30%,rgba(255,255,255,0.08) 50%,transparent 70%)",
+                                          backgroundSize:"200% 200%", animation:"gpLrHoloShimmer 3s ease-in-out infinite"}} />
+                                      )}
+                                      {card.rarity==="UR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          border:"2px solid rgba(56,189,248,0.9)", boxShadow:"inset 0 0 14px rgba(56,189,248,0.35)",
+                                          animation:"gpUrDiamondPulse 1.8s ease-in-out infinite"}} />
+                                      )}
+                                      {card.rarity==="SR" && isRevealed && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          border:"2px solid rgba(168,85,247,0.8)", animation:"gpSrGoldPulse 2s ease-in-out infinite"}} />
+                                      )}
+                                      {isRevealed && <div className="absolute inset-0 bg-white/0 hover:bg-white/8 transition-colors duration-150" />}
+                                    </div>
+                                    <div className="absolute inset-0 overflow-hidden"
+                                      style={{
+                                        backfaceVisibility:"hidden",
+                                        WebkitBackfaceVisibility:"hidden",
+                                        transform:"rotateY(180deg)",
+                                      }}>
+                                      <Image src={CARD_BACK_IMAGE||"/placeholder.svg"} alt="Card Back" fill sizes="115px" className="object-cover" />
+                                      {!isRevealed && idx <= packCardRevealIndex && (
+                                        <div className="absolute inset-0 pointer-events-none" style={{
+                                          background: card.rarity==="LR" ? "linear-gradient(135deg,rgba(239,68,68,0.3),rgba(251,191,36,0.3))" :
+                                            card.rarity==="UR" ? "rgba(56,189,248,0.25)" :
+                                            card.rarity==="SR" ? "rgba(168,85,247,0.2)" : "transparent",
+                                          animation:"gpBackGlowPulse 0.8s ease-in-out infinite alternate"}} />
+                                      )}
+                                    </div>
+                                  </div>
+                                  </div>
+                                </div>
+                                <div className={`px-2.5 py-0.5 text-center text-xs font-black bg-gradient-to-r ${getPackRarityColor(card.rarity)} text-white`}
+                                  style={{opacity:isRevealed?1:0, transform:isRevealed?"translateY(0) scale(1)":"translateY(-6px) scale(0.8)",
+                                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.35s"}}>
+                                  {card.rarity}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {packCardRevealIndex >= CARDS_PER_PACK && (
+                          <p className="text-white/25 text-[10px] tracking-widest" style={{animation:"gpFadeIn 0.5s ease-out forwards"}}>
+                            toque em uma carta para ampliar
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* ── FINAL RESULTS ── */}
+          {packPhase === "done" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4" style={{animation:"gpFadeIn 0.5s ease-out forwards"}}>
+              <h2 className="text-3xl font-black text-white mb-1 tracking-wider" style={{textShadow:"0 0 20px rgba(255,255,255,0.3)"}}>
+                Cartas Obtidas!
+              </h2>
+              <p className="text-slate-500 text-xs mb-4 tracking-widest uppercase">{packOpenedCards.length} cartas · toque para ampliar</p>
+
+              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl px-3">
+                {packList.map((pack, packIdx) => (
+                  <div key={pack.id} className="mb-5">
+                    <div className="flex gap-2.5 justify-center flex-wrap">
+                      {pack.cards.map((card, cardIdx) => {
+                        const cardGlow =
+                          card.rarity==="LR" ? "0 0 24px rgba(239,68,68,0.85), 0 0 48px rgba(251,191,36,0.45)" :
+                          card.rarity==="UR" ? "0 0 20px rgba(56,189,248,0.85), 0 0 40px rgba(99,179,237,0.35)" :
+                          card.rarity==="SR" ? "0 0 18px rgba(168,85,247,0.75), 0 0 36px rgba(192,132,252,0.25)" : "none"
+                        return (
+                          <div
+                            key={`${card.id}-final-${cardIdx}`}
+                            className="flex flex-col items-center gap-1.5 cursor-pointer group"
+                            style={{animation:"gpCardPopIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards",
+                              animationDelay:`${(packIdx*4+cardIdx)*0.06}s`, opacity:0}}
+                            onClick={() => setPackRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
+                          >
+                            <div
+                              className="relative overflow-hidden transition-transform duration-200 group-hover:scale-110 group-hover:z-10"
+                              style={{width:"86px", height:"122px", boxShadow:cardGlow}}
+                            >
+                              <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="96px" className="object-cover" />
+                              {card.rarity==="LR" && (
+                                <div className="absolute inset-0 pointer-events-none" style={{
+                                  background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
+                                  backgroundSize:"300% 100%", animation:"gpRainbowShift 1.5s linear infinite",
+                                  padding:"2px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                  WebkitMaskComposite:"xor", maskComposite:"exclude"}} />
+                              )}
+                              {card.rarity==="UR" && (
+                                <div className="absolute inset-0 pointer-events-none" style={{
+                                  border:"2px solid rgba(56,189,248,0.85)",
+                                  boxShadow:"inset 0 0 10px rgba(56,189,248,0.25)",
+                                  animation:"gpUrDiamondPulse 1.8s ease-in-out infinite"}} />
+                              )}
+                              {card.rarity==="SR" && (
+                                <div className="absolute inset-0 pointer-events-none" style={{
+                                  border:"1.5px solid rgba(168,85,247,0.75)",
+                                  animation:"gpSrGoldPulse 2s ease-in-out infinite"}} />
+                              )}
+                              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/8 transition-colors duration-150" />
+                            </div>
+                            <div className={`px-2 py-0.5 text-center text-[10px] font-black bg-gradient-to-r ${getPackRarityColor(card.rarity)} text-white`}>
+                              {card.rarity}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={closePackResults}
+                className="mt-4 px-10 py-3.5 text-lg font-black rounded-2xl border-2 border-emerald-400/50 transition-all hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30"
+                style={{background:"linear-gradient(135deg,#059669,#10b981,#34d399)",animation:"gpScaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards",opacity:0}}>
+                CONFIRMAR
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* ── Zoom de carta revelada ── */}
+      {packRevealZoomedCard && (
+        <div
+          className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[10000] p-4"
+          onClick={() => setPackRevealZoomedCard(null)}
+        >
+          <div className="relative w-full max-w-sm aspect-[3/4]">
+            <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
+            <Image
+              src={packRevealZoomedCard.image || "/placeholder.svg"}
+              alt={packRevealZoomedCard.name}
+              fill
+              sizes="(max-width: 768px) 90vw, 384px"
+              className="object-contain"
+            />
+          </div>
+          <div className="absolute bottom-8 left-0 right-0 text-center">
+            <h3 className="text-2xl font-bold text-white mb-2">{packRevealZoomedCard.name}</h3>
+            <span className={`px-4 py-1 rounded-full text-sm font-bold ${
+              packRevealZoomedCard.rarity === "LR" ? "bg-gradient-to-r from-red-500 to-amber-500 text-white" :
+              packRevealZoomedCard.rarity === "UR" ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black" :
+              packRevealZoomedCard.rarity === "SR" ? "bg-purple-500 text-white" : "bg-slate-500 text-white"
+            }`}>
+              {packRevealZoomedCard.rarity}
+            </span>
+          </div>
+          <button onClick={() => setPackRevealZoomedCard(null)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors bg-white/10">
+            <X className="w-6 h-6 text-white" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Keyframes do Pack Opening — prefixo gp- pra não colidir com o resto ── */}
+      <style jsx>{`
+        @keyframes gpPackFloat {
+          0%,100% { transform: translateY(0px) rotate(0deg); }
+          30%     { transform: translateY(-12px) rotate(0.5deg); }
+          70%     { transform: translateY(-8px) rotate(-0.3deg); }
+        }
+        @keyframes gpPackAbraLabel {
+          0%   { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.85); }
+          60%  { opacity: 1; transform: translateX(-50%) translateY(2px) scale(1.05); }
+          100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+        @keyframes gpSwipeHint {
+          0%,100% { transform: translateX(0); opacity: 0.7; }
+          40%     { transform: translateX(18px); opacity: 1; }
+          80%     { transform: translateX(8px); opacity: 0.9; }
+        }
+        @keyframes gpSwipeHintText {
+          0%,100% { opacity: 0.5; }
+          50%     { opacity: 1; }
+        }
+        @keyframes gpPackEnterEpic {
+          0%   { transform: translateY(-200px) scale(0.4) rotate(-8deg); opacity: 0; filter: brightness(0); }
+          50%  { transform: translateY(18px) scale(1.07) rotate(1.5deg); opacity: 1; filter: brightness(1.4); }
+          75%  { transform: translateY(-6px) scale(0.98) rotate(-0.5deg); }
+          100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+        }
+        @keyframes gpPackShakeEpic {
+          0%   { transform: translateX(0) rotate(0deg); }
+          15%  { transform: translateX(-7px) rotate(-1.5deg) scale(1.01); }
+          30%  { transform: translateX(9px) rotate(2deg) scale(1.02); }
+          45%  { transform: translateX(-11px) rotate(-2.5deg) scale(1.03); }
+          60%  { transform: translateX(10px) rotate(2deg) scale(1.02); }
+          75%  { transform: translateX(-8px) rotate(-1.5deg) scale(1.01); }
+          100% { transform: translateX(0) rotate(0deg); }
+        }
+        @keyframes gpPackOpenEpic {
+          0%   { transform: scale(1) rotate(0deg) translateY(0); opacity: 1; }
+          20%  { transform: scale(1.12) rotate(0.5deg) translateY(-8px); }
+          50%  { transform: scale(1.35) rotate(-1deg) translateY(-15px); opacity: 0.9; filter: brightness(2.5); }
+          80%  { transform: scale(0.5) rotate(5deg) translateY(20px); opacity: 0.3; }
+          100% { transform: scale(0) rotate(12deg) translateY(40px); opacity: 0; }
+        }
+        @keyframes gpBurstRayEpic {
+          0%   { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(0) translateY(-50%); }
+          20%  { opacity: 1; }
+          60%  { opacity: 0.6; transform: rotate(var(--r,0deg)) scaleY(1) translateY(-50%); }
+          100% { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(2.5) translateY(-50%); }
+        }
+        @keyframes gpCentralFlash {
+          0%   { opacity: 0; transform: scale(0); }
+          15%  { opacity: 1; transform: scale(0.8); }
+          40%  { opacity: 0.7; transform: scale(1.2); }
+          100% { opacity: 0; transform: scale(2.5); }
+        }
+        @keyframes gpRarityAnnounce {
+          0%   { opacity: 0; transform: translateX(-50%) scale(0.4) rotate(-5deg); }
+          60%  { opacity: 1; transform: translateX(-50%) scale(1.1) rotate(1deg); }
+          80%  { transform: translateX(-50%) scale(0.97) rotate(-0.5deg); }
+          100% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
+        }
+        @keyframes gpPackHaloPulse {
+          0%,100% { opacity: 0.6; transform: scale(1); }
+          50%     { opacity: 1; transform: scale(1.15); }
+        }
+        @keyframes gpPackHaloFlicker {
+          0%,100% { opacity: 0.7; transform: scale(1.05) rotate(0deg); }
+          33%     { opacity: 1; transform: scale(1.2) rotate(1deg); }
+          66%     { opacity: 0.9; transform: scale(1.1) rotate(-1deg); }
+        }
+        @keyframes gpPackSheen {
+          0%,100% { background-position: 200% 200%; opacity: 0.6; }
+          50%     { background-position: -100% -100%; opacity: 1; }
+        }
+        @keyframes gpShineSweep {
+          0%   { transform: translateX(-150%); }
+          100% { transform: translateX(250%); }
+        }
+        @keyframes gpAnticipateGlow {
+          0%   { opacity: 0.3; transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes gpBackGlowPulse {
+          0%   { opacity: 0.4; }
+          100% { opacity: 0.9; }
+        }
+        @keyframes gpUrDiamondPulse {
+          0%,100% { box-shadow: 0 0 10px rgba(56,189,248,0.5), inset 0 0 8px rgba(56,189,248,0.2); border-color: rgba(56,189,248,0.7); }
+          50%     { box-shadow: 0 0 25px rgba(56,189,248,0.9), 0 0 50px rgba(99,179,237,0.4), inset 0 0 15px rgba(56,189,248,0.4); border-color: rgba(56,189,248,1); }
+        }
+        @keyframes gpSrGoldPulse {
+          0%,100% { box-shadow: 0 0 8px rgba(168,85,247,0.5); border-color: rgba(168,85,247,0.6); }
+          50%     { box-shadow: 0 0 20px rgba(168,85,247,0.9), 0 0 40px rgba(192,132,252,0.3); border-color: rgba(168,85,247,1); }
+        }
+        @keyframes gpLrHoloShimmer {
+          0%,100% { background-position: 200% 200%; opacity: 0.5; }
+          50%     { background-position: -100% -100%; opacity: 1; }
+        }
+        @keyframes gpRainbowShift {
+          0%   { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
+        }
+        @keyframes gpRevealContainerIn {
+          0%   { opacity: 0; transform: translateY(30px) scale(0.95); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes gpFadeIn {
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes gpScaleIn {
+          0%   { transform: scale(0.7); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes gpCardPopIn {
+          0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
+          55%  { transform: scale(1.12) rotate(2deg); }
+          80%  { transform: scale(0.97) rotate(-0.5deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes shake {
+          0%,100% { transform: translateX(0) rotate(0deg); }
+          10%,50%,90% { transform: translateX(-10px) rotate(-1deg); }
+          30%,70% { transform: translateX(10px) rotate(1deg); }
+        }
+        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+      `}</style>
     </div>
   )
 }
