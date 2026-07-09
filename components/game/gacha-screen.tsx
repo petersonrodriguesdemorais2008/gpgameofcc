@@ -311,17 +311,20 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       // Ambient
       if(t%2===0) spawnAmbient()
 
-      // Opening burst — multi-wave
+      // Opening burst — multi-wave, denser and more dramatic
       if(packPhase==="opening") {
-        if(t===1) { spawnBurst(40,cx,cy,18); spawnRing(cx,cy,0,20) }
-        if(t===8) { spawnBurst(30,cx,cy,12); spawnRing(cx,cy,60,16) }
-        if(t===16){ spawnBurst(20,cx,cy,8);  spawnRing(cx,cy,100,12) }
+        if(t===1)  { spawnBurst(56,cx,cy,22); spawnRing(cx,cy,0,28) }
+        if(t===6)  { spawnBurst(40,cx,cy,15); spawnRing(cx,cy,50,20) }
+        if(t===12) { spawnBurst(28,cx,cy,10); spawnRing(cx,cy,90,16) }
+        if(t===20) { spawnBurst(16,cx,cy,6);  spawnRing(cx,cy,140,10) }
       }
 
-      // Revealing — occasional sparkle bursts near cards
-      if(packPhase==="revealing" && t%25===0 && cardRevealIndex>=0) {
-        const cardX = cx + (cardRevealIndex - 1.5) * 80
-        spawnBurst(8, cardX + (Math.random()-0.5)*60, cy + (Math.random()-0.5)*60, 5)
+      // Revealing — burst on EACH card flip + ambient sparkle
+      if(packPhase==="revealing" && cardRevealIndex>=0) {
+        // Per-card burst exactly when it flips (t===2 after reveal starts)
+        if(t===2) { spawnBurst(20, cx + (cardRevealIndex-1.5)*80, cy, 9); spawnRing(cx + (cardRevealIndex-1.5)*80, cy, 30, 10) }
+        // Continuous ambient sparkles near the active card
+        if(t%12===0) { spawnBurst(5, cx+(cardRevealIndex-1.5)*80+(Math.random()-0.5)*50, cy+(Math.random()-0.5)*50, 4) }
       }
 
       // Shaking — tension particles
@@ -1502,14 +1505,41 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           )}
 
           {/* ── FINAL RESULTS ── */}
-          {packPhase === "done" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-4" style={{animation:"fadeIn 0.5s ease-out forwards"}}>
-              <h2 className="text-3xl font-black text-white mb-1 tracking-wider" style={{textShadow:"0 0 20px rgba(255,255,255,0.3)"}}>
-                {pullCount === 1 ? "Cartas Obtidas!" : `${pullCount} Packs Abertos!`}
-              </h2>
-              <p className="text-slate-500 text-xs mb-4 tracking-widest uppercase">{openedCards.length} cartas · toque para ampliar</p>
+          {packPhase === "done" && (() => {
+            const allCards = packs.flatMap(p => p.cards)
+            const bestRarity = allCards.some(c=>c.rarity==="LR") ? "LR" : allCards.some(c=>c.rarity==="UR") ? "UR" : allCards.some(c=>c.rarity==="SR") ? "SR" : "R"
+            const bgOverlay = bestRarity==="LR"
+              ? "radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.28) 0%, rgba(251,146,60,0.14) 40%, transparent 70%)"
+              : bestRarity==="UR"
+              ? "radial-gradient(ellipse at 50% 0%, rgba(56,189,248,0.22) 0%, rgba(99,102,241,0.12) 40%, transparent 70%)"
+              : bestRarity==="SR"
+              ? "radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.20) 0%, rgba(139,92,246,0.10) 40%, transparent 70%)"
+              : "none"
+            return (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4"
+              style={{background: bgOverlay, animation:"fadeIn 0.5s ease-out forwards"}}>
 
-              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl px-3">
+              {/* Title block — pops in with spring */}
+              <div style={{animation:"scaleIn 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards", opacity:0}}>
+                <h2 className="text-3xl font-black text-white mb-0.5 tracking-wider text-center"
+                  style={{textShadow:"0 0 30px rgba(255,255,255,0.35)"}}>
+                  {pullCount === 1 ? "Cartas Obtidas!" : `${pullCount} Packs Abertos!`}
+                </h2>
+                <p className="text-slate-500 text-xs tracking-widest uppercase text-center">{allCards.length} cartas · toque para ampliar</p>
+                {/* Best rarity callout */}
+                {bestRarity !== "R" && (
+                  <p className={`text-center text-base font-black mt-1 ${
+                    bestRarity==="LR" ? "text-orange-400 drop-shadow-[0_0_14px_rgba(251,146,60,0.9)]" :
+                    bestRarity==="UR" ? "text-sky-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.8)]" :
+                                        "text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.75)]"
+                  }`}>
+                    ★ {bestRarity==="LR"?"LENDÁRIO!":bestRarity==="UR"?"ULTRA RARO!":"SUPER RARO!"}
+                  </p>
+                )}
+              </div>
+
+              {/* Card grid — each card pops in with stagger */}
+              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl px-3 mt-4">
                 {packs.map((pack, packIdx) => (
                   <div key={pack.id} className="mb-5">
                     {packs.length > 1 && <p className="text-slate-600 text-xs mb-2 pl-1 uppercase tracking-widest">Pack {packIdx + 1}</p>}
@@ -1519,21 +1549,17 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           card.rarity==="LR" ? "0 0 24px rgba(239,68,68,0.85), 0 0 48px rgba(251,191,36,0.45)" :
                           card.rarity==="UR" ? "0 0 20px rgba(56,189,248,0.85), 0 0 40px rgba(99,179,237,0.35)" :
                           card.rarity==="SR" ? "0 0 18px rgba(168,85,247,0.75), 0 0 36px rgba(192,132,252,0.25)" : "none"
+                        const stagger = (packIdx*pack.cards.length+cardIdx)*0.065
                         return (
-                          <div
-                            key={`${card.id}-final-${cardIdx}`}
+                          <div key={`${card.id}-final-${cardIdx}`}
                             className="flex flex-col items-center gap-1.5 cursor-pointer group"
-                            style={{animation:"cardPopIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                              animationDelay:`${(packIdx*4+cardIdx)*0.06}s`, opacity:0}}
+                            style={{animation:`cardPopIn 0.42s cubic-bezier(0.34,1.56,0.64,1) ${stagger}s forwards`, opacity:0}}
                             onClick={() => setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
                           >
-                            {/* Card art — no rounded corners, bigger */}
-                            <div
-                              className="relative overflow-hidden transition-transform duration-200 group-hover:scale-110 group-hover:z-10"
-                              style={{width:"86px", height:"122px", boxShadow:cardGlow}}
-                            >
+                            <div className="relative overflow-hidden transition-transform duration-200 group-hover:scale-110 group-hover:z-10"
+                              style={{width:"86px", height:"122px", boxShadow:cardGlow}}>
                               <Image src={card.image||"/placeholder.svg"} alt={card.name} fill sizes="96px" className="object-cover" />
-                              {/* LR rainbow */}
+                              {/* LR rainbow shimmer */}
                               {card.rarity==="LR" && (
                                 <div className="absolute inset-0 pointer-events-none" style={{
                                   background:"linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#8b5cf6,#ef4444)",
@@ -1541,23 +1567,24 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                   padding:"2px", WebkitMask:"linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                                   WebkitMaskComposite:"xor", maskComposite:"exclude"}} />
                               )}
-                              {/* UR diamond border */}
+                              {/* UR border */}
                               {card.rarity==="UR" && (
                                 <div className="absolute inset-0 pointer-events-none" style={{
                                   border:"2px solid rgba(56,189,248,0.85)",
                                   boxShadow:"inset 0 0 10px rgba(56,189,248,0.25)",
                                   animation:"urDiamondPulse 1.8s ease-in-out infinite"}} />
                               )}
-                              {/* SR purple border */}
+                              {/* SR border */}
                               {card.rarity==="SR" && (
                                 <div className="absolute inset-0 pointer-events-none" style={{
                                   border:"1.5px solid rgba(168,85,247,0.75)",
                                   animation:"srGoldPulse 2s ease-in-out infinite"}} />
                               )}
-                              {/* Hover shimmer */}
-                              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/8 transition-colors duration-150" />
+                              {/* NEW: hover lens-flare sweep */}
+                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200"
+                                style={{background:"linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.22) 50%,transparent 60%)",
+                                  animation:"group-hover:lensFlare 0.4s ease-out"}} />
                             </div>
-                            {/* Rarity badge — no rounded */}
                             <div className={`px-2 py-0.5 text-center text-[10px] font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}>
                               {card.rarity}
                             </div>
@@ -1570,12 +1597,15 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
               </div>
 
               <button onClick={closeResults}
-                className="mt-4 px-10 py-3.5 text-lg font-black rounded-2xl border-2 border-emerald-400/50 transition-all hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30"
-                style={{background:"linear-gradient(135deg,#059669,#10b981,#34d399)",animation:"scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards",opacity:0}}>
+                className="mt-4 px-10 py-3.5 text-lg font-black rounded-2xl border-2 border-emerald-400/50 transition-all hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-emerald-500/30"
+                style={{background:"linear-gradient(135deg,#059669,#10b981,#34d399)",
+                  animation:"scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards",opacity:0,
+                  boxShadow:"0 0 24px rgba(16,185,129,0.45)"}}>
                 CONFIRMAR
               </button>
             </div>
-          )}
+            )
+          })()}
         </div>
       )}
 
@@ -1809,6 +1839,26 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           0%   { transform: translateX(-100%); }
           60%,100% { transform: translateX(200%); }
         }
+        /* ── NEW: Results screen animations ── */
+        @keyframes resultsTitle {
+          0%   { opacity: 0; transform: scale(0.75) translateY(-20px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes resultsBestRarity {
+          0%   { opacity: 0; transform: scale(0.5); }
+          70%  { transform: scale(1.08); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes cardEntrance {
+          0%   { opacity: 0; transform: translateY(28px) scale(0.82); }
+          65%  { transform: translateY(-4px) scale(1.04); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes rarePulse {
+          0%,100% { opacity: 1; }
+          50%     { opacity: 0.55; }
+        }
+
         @keyframes floatCard {
           0%,100% { transform: translateY(0); }
           50%     { transform: translateY(-8px); }
