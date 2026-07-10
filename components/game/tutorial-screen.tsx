@@ -950,15 +950,36 @@ function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
 
   return (
     <>
-      {/* Bloqueador full-screen: captura QUALQUER clique fora do alvo em
-          destaque. Fica abaixo do captador de clique (z-index menor), então
-          só a área do alvo responde — o resto do jogo real fica surdo a
-          clique enquanto esse passo estiver ativo (nada de "clicar em outro
-          canto" pra pular o passo). */}
-      <div style={{
-        position: "fixed", inset: 0,
-        zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
-      }} />
+      {onInterceptClick ? (
+        // ── Passos "click": um bloqueador único cobre a tela inteira, e o
+        //    captador de clique (mais abaixo) fica por cima do buraco e
+        //    intercepta/substitui o clique real via JS — não precisamos
+        //    deixar o clique real atravessar, porque nós mesmos disparamos
+        //    a ação equivalente por baixo (clickRealElement). ──────────────
+        <div style={{
+          position: "fixed", inset: 0,
+          zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
+        }} />
+      ) : (
+        // ── Passos "drag": NÃO dá pra simular — um arrastar é uma sequência
+        //    de eventos ao longo do tempo (mousedown→mousemove(s)→mouseup),
+        //    não um clique único, então o gesto real do jogador PRECISA
+        //    alcançar o elemento real por baixo sem nenhum elemento no
+        //    caminho. Um bloqueador full-screen único, mesmo com "buraco"
+        //    visual via máscara SVG, continua capturando TODOS os eventos
+        //    de ponteiro da tela inteira — a máscara SVG (pointerEvents:none)
+        //    só afeta a APARÊNCIA, nunca o roteamento de eventos reais. Por
+        //    isso aqui usamos uma "moldura" de 4 retângulos que juntos cobrem
+        //    a tela INTEIRA MENOS o retângulo do alvo — a área do alvo fica
+        //    sem NENHUM elemento por cima, e o gesto de arrastar chega
+        //    intacto no elemento real do duel-screen.tsx. ──────────────────
+        <>
+          <div style={{ position: "fixed", left: 0, top: 0, right: 0, height: y, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
+          <div style={{ position: "fixed", left: 0, top: y + h, right: 0, bottom: 0, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
+          <div style={{ position: "fixed", left: 0, top: y, width: x, height: h, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
+          <div style={{ position: "fixed", left: x + w, top: y, right: 0, height: h, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
+        </>
+      )}
       <svg style={{
         position: "fixed", inset: 0, width: "100%", height: "100%",
         zIndex: 400, pointerEvents: "none", overflow: "visible",
