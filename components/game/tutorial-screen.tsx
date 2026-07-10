@@ -506,8 +506,8 @@ const DUEL_STEPS: { text: string; textTarget: string | null; kind: "click" | "hi
     textTarget: "__PHASE_BUTTON__", kind: "click" },
   // {MASTER_CARD} é trocado pelo nome real do mestre (MASTERS[masterId].name)
   // na hora de renderizar — cada mestre tem sua própria carta UR de 3DP.
-  { text: "Muito bem! Agora arraste {MASTER_CARD} da sua mão até um espaço vazio do seu campo — ela é a carta mais poderosa que você tem.",
-    textTarget: "__MASTER_UNIT_CARD__", kind: "drag" },
+  { text: "Agora toque e arraste uma carta de Unidade da sua mão até um espaço vazio do seu campo! Se {MASTER_CARD} estiver nela, essa é a sua carta mais poderosa.",
+    textTarget: "__PLAY_UNIT_CARD__", kind: "drag" },
   { text: "Boa! Agora toque no botão em destaque para avançar para a Fase de Batalha.",
     textTarget: "__PHASE_BUTTON__", kind: "click" },
   // Carta acabou de entrar em campo: NÃO pode atacar neste turno (regra do
@@ -846,6 +846,35 @@ function findMasterUnitCard(masterId: TutorialMasterId, pad = 8): PixelRect | nu
 }
 
 /**
+ * Caso especial "__PLAY_UNIT_CARD__": destaque de QUAL carta jogar.
+ * A mão inicial é 100% embaralhada (ver startGame em duel-screen.tsx —
+ * shuffledDeck.sort(() => Math.random()-0.5).slice(0, 5)), sem NENHUMA
+ * garantia de que a carta UR do mestre caia nas 5 cartas iniciais — com um
+ * deck de 20 cartas, a chance é de só 25%. Por isso NUNCA se pode depender
+ * dela pra completar este passo (ver findAnyPlayerFieldUnit abaixo, que é
+ * quem realmente decide quando o passo termina). Esta função aqui é só
+ * cosmética: se a carta do mestre estiver visível na mão agora, aponta
+ * exatamente pra ela (mais bonito); senão, destaca a mão inteira — o
+ * jogador ainda pode jogar qualquer outra carta de Unidade que tiver.
+ */
+function findPlayableUnitTarget(masterId: TutorialMasterId): PixelRect | null {
+  return findMasterUnitCard(masterId) ?? findPlayerHand()
+}
+
+/**
+ * Decide quando o passo "__PLAY_UNIT_CARD__" termina: true assim que
+ * QUALQUER unidade aparecer em algum dos 4 slots do campo do jogador
+ * (`[data-player-unit-slot]`), não necessariamente a carta do mestre — o
+ * campo começa 100% vazio (unitZone: [null,null,null,null] em startGame),
+ * então a primeira imagem que aparecer ali é garantidamente a carta que o
+ * próprio jogador acabou de jogar.
+ */
+function findAnyPlayerFieldUnit(): boolean {
+  const slots = document.querySelectorAll("[data-player-unit-slot]")
+  return Array.from(slots).some(slot => slot.querySelector("img"))
+}
+
+/**
  * Caso especial "__ATTACK_READY_UNIT__": acha a unidade do JOGADOR que já
  * pode atacar agora. Em vez de recalcular a regra de turno por conta própria
  * (turn > canAttackTurn, phase === "battle", !hasAttacked — tudo isso é
@@ -894,7 +923,7 @@ function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
         textTarget === "__PLAYER_HAND__" ? findPlayerHand() :
         textTarget === "__PLAYER_TAP__" ? findPlayerTap() :
         textTarget === "__PHASE_BUTTON__" ? findPhaseButton() :
-        textTarget === "__MASTER_UNIT_CARD__" ? (masterId ? findMasterUnitCard(masterId) : null) :
+        textTarget === "__PLAY_UNIT_CARD__" ? (masterId ? findPlayableUnitTarget(masterId) : findPlayerHand()) :
         textTarget === "__ATTACK_READY_UNIT__" ? findAttackReadyUnit() :
         findByText(textTarget)
       setR(found)
@@ -1672,25 +1701,36 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     }
   }, [phase, postDuelReady])
 
-  // ── Passos "drag" (jogar a carta do mestre / atacar): sem simular o gesto —
-  //    só detecta quando o jogador conseguiu (o alvo correspondente sumiu do
-  //    DOM real) e avança sozinho. Despacha pelo textTarget, igual ao switch
-  //    do DynamicSpotlight, já que cada passo "drag" observa uma coisa diferente. ──
+  // ── Passos "drag" (jogar carta de Unidade / atacar): sem simular o gesto —
+  //    só detecta quando o jogador conseguiu e avança sozinho. Despacha pelo
+  //    textTarget, igual ao switch do DynamicSpotlight, já que cada passo
+  //    "drag" observa uma condição diferente de conclusão:
+  //    • __PLAY_UNIT_CARD__: concluído quando QUALQUER unidade aparece no
+  //      campo (a mão inicial é embaralhada — não há garantia de que a carta
+  //      do mestre seja sorteada pra mão, então não dá pra exigir ELA
+  //      especificamente, ver findAnyPlayerFieldUnit).
+  //    • __ATTACK_READY_UNIT__: concluído quando o banner "Arraste!" some
+  //      (a unidade atacou de verdade).
+  //    Rede de segurança de 30s: se por azar de embaralhamento a mão inicial
+  //    não tiver NENHUMA carta de Unidade jogável, ou qualquer outro caso
+  //    extremo impedir a condição de ser satisfeita, avança mesmo assim —
+  //    nunca trava o tutorial de vez. ─────────────────────────────────────
   useEffect(() => {
     if (phase !== "duel-sim") return
     const s = DUEL_STEPS[step]
     if (!s || s.kind !== "drag") return
-    const stillThere = () =>
-      s.textTarget === "__MASTER_UNIT_CARD__"  ? !!findMasterUnitCard(masterId) :
-      s.textTarget === "__ATTACK_READY_UNIT__" ? !!findAttackReadyUnit() :
+    const isDone = () =>
+      s.textTarget === "__PLAY_UNIT_CARD__"    ? findAnyPlayerFieldUnit() :
+      s.textTarget === "__ATTACK_READY_UNIT__" ? !findAttackReadyUnit() :
       false
     const poll = setInterval(() => {
-      if (!stillThere()) {
-        clearInterval(poll)
-        setStep(prev => prev + 1)
-      }
+      if (isDone()) { clearInterval(poll); clearTimeout(safety); setStep(prev => prev + 1) }
     }, 300)
-    return () => clearInterval(poll)
+    const safety = setTimeout(() => {
+      clearInterval(poll)
+      setStep(prev => prev + 1)
+    }, 30000)
+    return () => { clearInterval(poll); clearTimeout(safety) }
   }, [phase, step, masterId])
 
   // ── Passo "wait" (atravessar o turno do bot): sem balão, sem bloqueio —
@@ -1859,8 +1899,9 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
             </>
           ) : duelStep.kind === "drag" ? (
             // ── Arrastar obrigatório: spotlight sem intercept (sem simular o
-            //    arrastar) — avança sozinho quando a carta sai da mão de
-            //    verdade (useEffect de polling acima cuida disso). ──────────
+            //    gesto) — avança sozinho quando a condição de conclusão do
+            //    passo é satisfeita (useEffect de polling acima cuida disso,
+            //    ver isDone() — cada passo "drag" observa algo diferente). ──
             <>
               <DynamicSpotlight textTarget={duelStep.textTarget} masterId={masterId} />
               <MasterBubble
