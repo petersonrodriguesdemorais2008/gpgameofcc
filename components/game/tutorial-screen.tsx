@@ -935,13 +935,17 @@ function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
     return () => { clearInterval(t); window.removeEventListener("resize", update) }
   }, [textTarget])
 
-  // Sem alvo (ou alvo ainda não achado no DOM): escurece E BLOQUEIA a tela
-  // inteira — nada responde a clique enquanto não sabemos onde está o alvo real.
+  // Sem alvo (ou alvo ainda não achado no DOM): escurece a tela. SÓ bloqueia
+  // clique (pointerEvents:"all") quando há onInterceptClick — ou seja, em
+  // passos "click". Em passos "drag" (onInterceptClick ausente), fica
+  // puramente visual (pointerEvents:"none") — nunca arriscamos bloquear
+  // o gesto real antes mesmo de sabermos onde o alvo está.
   if (!textTarget || !r) {
     return (
       <div style={{
         position: "fixed", inset: 0,
-        background: "rgba(0,0,0,0.62)", zIndex: 400, pointerEvents: "all",
+        background: "rgba(0,0,0,0.62)", zIndex: 400,
+        pointerEvents: onInterceptClick ? "all" : "none",
       }} />
     )
   }
@@ -950,7 +954,7 @@ function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
 
   return (
     <>
-      {onInterceptClick ? (
+      {onInterceptClick && (
         // ── Passos "click": um bloqueador único cobre a tela inteira, e o
         //    captador de clique (mais abaixo) fica por cima do buraco e
         //    intercepta/substitui o clique real via JS — não precisamos
@@ -960,26 +964,24 @@ function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
           position: "fixed", inset: 0,
           zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
         }} />
-      ) : (
-        // ── Passos "drag": NÃO dá pra simular — um arrastar é uma sequência
-        //    de eventos ao longo do tempo (mousedown→mousemove(s)→mouseup),
-        //    não um clique único, então o gesto real do jogador PRECISA
-        //    alcançar o elemento real por baixo sem nenhum elemento no
-        //    caminho. Um bloqueador full-screen único, mesmo com "buraco"
-        //    visual via máscara SVG, continua capturando TODOS os eventos
-        //    de ponteiro da tela inteira — a máscara SVG (pointerEvents:none)
-        //    só afeta a APARÊNCIA, nunca o roteamento de eventos reais. Por
-        //    isso aqui usamos uma "moldura" de 4 retângulos que juntos cobrem
-        //    a tela INTEIRA MENOS o retângulo do alvo — a área do alvo fica
-        //    sem NENHUM elemento por cima, e o gesto de arrastar chega
-        //    intacto no elemento real do duel-screen.tsx. ──────────────────
-        <>
-          <div style={{ position: "fixed", left: 0, top: 0, right: 0, height: y, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
-          <div style={{ position: "fixed", left: 0, top: y + h, right: 0, bottom: 0, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
-          <div style={{ position: "fixed", left: 0, top: y, width: x, height: h, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
-          <div style={{ position: "fixed", left: x + w, top: y, right: 0, height: h, zIndex: 400, pointerEvents: "all", cursor: "not-allowed" }} />
-        </>
       )}
+      {/* Passos "drag" (onInterceptClick ausente): SEM bloqueio físico
+          nenhum aqui — só o SVG abaixo (puramente visual, pointerEvents:none).
+          Um arrastar é uma sequência de eventos ao longo do tempo
+          (mousedown→mousemove(s)→mouseup), não um clique único que dá pra
+          interceptar; e qualquer "buraco" recortado via divs de bloqueio
+          precisaria bater PIXEL A PIXEL com a posição real da carta no
+          exato instante do toque inicial (o mousedown/touchstart usa
+          hit-test simples no elemento mais no topo — não a varredura de
+          pilha usada pelo handleHandCardDragStart pra soltar a carta, que
+          já é robusta a qualquer overlay via elementsFromPoint). Como a
+          posição que temos aqui vem de um polling a cada 350ms, ela pode
+          divergir da posição real por uma fração de segundo — o suficiente
+          pra um bloqueador mal-alinhado tapar o toque inicial e o
+          arrastar nunca nem começar. Preferimos abrir mão do "bloqueio de
+          clicar em outro canto" aqui a arriscar quebrar a própria ação que
+          o passo pede — o avanço continua 100% controlado pelo polling
+          real de estado (useEffect isDone acima), não por nenhum clique. */}
       <svg style={{
         position: "fixed", inset: 0, width: "100%", height: "100%",
         zIndex: 400, pointerEvents: "none", overflow: "visible",
