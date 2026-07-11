@@ -4587,7 +4587,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       hand: botHand,
       deck: botRemaining,
       tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
-      life: 50,
+      life: startingLP, // NÃO trocar por 50 fixo — precisa espelhar o LP do jogador (ver startingLP acima)
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
