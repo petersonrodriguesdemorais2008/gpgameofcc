@@ -1947,25 +1947,28 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           </button>
 
           {/* Title block */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{
-              width: 34, height: 34, borderRadius: 9, flexShrink: 0, position: "relative", overflow: "hidden",
-              background: "linear-gradient(135deg,rgba(6,182,212,0.25),rgba(6,182,212,0.08))",
-              border: "1px solid rgba(6,182,212,0.30)",
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0, position: "relative", overflow: "hidden",
+              background: "linear-gradient(145deg,rgba(6,182,212,0.28),rgba(6,182,212,0.06))",
+              border: `1px solid ${passData.hasPremium ? "rgba(251,191,36,0.55)" : "rgba(6,182,212,0.30)"}`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0 12px rgba(6,182,212,0.20), inset 0 1px 0 rgba(255,255,255,0.12)",
+              boxShadow: `0 0 14px ${passData.hasPremium ? "rgba(251,191,36,0.25)" : "rgba(6,182,212,0.20)"}, inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -6px 10px rgba(0,0,0,0.25)`,
             }}>
-              <Shield size={17} color="#06b6d4" />
+              {/* Anel interno — dá sensação de "brasão", não só ícone solto */}
+              <div style={{ position: "absolute", inset: 3, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", pointerEvents: "none" }} />
+              <Shield size={18} color={passData.hasPremium ? "#fbbf24" : "#06b6d4"} />
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.01em", color: "#f1f5f9" }}>Gear Pass</span>
+                <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: "-0.015em", color: "#f8fafc", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Gear Pass</span>
                 {passData.hasPremium && (
                   <span style={{
                     position: "relative", overflow: "hidden",
                     background: "linear-gradient(90deg,#b45309,#f59e0b)",
                     borderRadius: 5, padding: "2px 7px",
                     fontSize: 8, fontWeight: 900, color: "#000", letterSpacing: "0.08em",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)",
                   }}>
                     PREMIUM
                     <div style={{ position: "absolute", inset: 0, width: "50%",
@@ -1975,11 +1978,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 )}
               </div>
               {/* Season pill */}
-              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "pulseGlow 2s ease-in-out infinite" }} />
-                <span style={{ fontSize: 10, color: "#475569" }}>Temporada {passData.seasonNumber}</span>
-                <span style={{ fontSize: 10, color: "#1e293b" }}>·</span>
-                <span style={{ fontSize: 10, color: "#475569" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 5px rgba(34,197,94,0.8)", animation: "pulseGlow 2s ease-in-out infinite" }} />
+                <span style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>Temporada {passData.seasonNumber}</span>
+                <span style={{ fontSize: 10, color: "#334155" }}>·</span>
+                <span style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>
                   {seasonDaysLeft > 0 ? `Encerra em ${seasonDaysLeft} dia${seasonDaysLeft !== 1 ? "s" : ""}` : "Temporada encerrada"}
                 </span>
               </div>
@@ -1989,34 +1992,33 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {!passData.hasPremium && (
             <button onClick={() => setShowPremiumModal(true)} style={{
               position: "relative", overflow: "hidden",
-              background: "linear-gradient(135deg,#92400e,#d97706,#fbbf24)",
-              border: "none", borderRadius: 11, padding: "9px 18px",
-              color: "#000", fontWeight: 900, fontSize: 11, cursor: "pointer",
-              boxShadow: "0 4px 18px rgba(217,119,6,0.40), inset 0 1px 0 rgba(255,255,255,0.30)",
+              background: "linear-gradient(135deg,#78350f,#b45309,#d97706,#fbbf24)",
+              border: "1px solid rgba(255,213,128,0.40)", borderRadius: 11, padding: "9px 18px",
+              color: "#1c0a00", fontWeight: 900, fontSize: 11, cursor: "pointer",
+              boxShadow: "0 4px 18px rgba(217,119,6,0.45), inset 0 1.5px 0 rgba(255,255,255,0.45), inset 0 -3px 6px rgba(0,0,0,0.20)",
               display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
               letterSpacing: "0.02em",
             }}>
               <Crown size={13} />
               {PREMIUM_PRICE}
               <div style={{ position: "absolute", inset: 0, width: "45%",
-                background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.45),transparent)",
+                background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)",
                 animation: "shimmer 3s ease-in-out infinite" }} />
             </button>
           )}
         </div>
 
         {/* Tabs com badges de notificação */}
-        <div style={{ display:"flex",maxWidth:700,margin:"10px auto 0",borderTop:"1px solid rgba(255,255,255,0.04)" }}>
+        <div style={{ display:"flex",maxWidth:700,margin:"12px auto 0",borderTop:"1px solid rgba(255,255,255,0.05)" }}>
           {(["pass","missions"] as const).map(tab => {
             const badge = tab==="pass" ? trackPendingCount : missionPendingCount
             const active = activeTab===tab
             return (
               <button key={tab} onClick={()=>setActiveTab(tab)} style={{
-                flex:1,padding:"11px 0",border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
-                transition:"all 0.2s",
-                background: active ? "linear-gradient(180deg,rgba(6,182,212,0.08),transparent)" : "transparent",
-                color:active?"#06b6d4":"#334155",
-                borderBottom:`2px solid ${active?"#06b6d4":"transparent"}`,
+                flex:1,padding:"12px 0",border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
+                transition:"all 0.2s", position: "relative",
+                background: active ? "linear-gradient(180deg,rgba(6,182,212,0.09),transparent)" : "transparent",
+                color:active?"#22d3ee":"#334155",
                 display:"flex",alignItems:"center",justifyContent:"center",gap:6,
               }}>
                 {tab==="pass"?<Shield size={13}/>:<Star size={13}/>}
@@ -2029,14 +2031,22 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     boxShadow:"0 0 8px rgba(239,68,68,0.55)",
                   }}>{badge>9?"9+":badge}</div>
                 )}
+                {active && (
+                  <div style={{ position: "absolute", left: "20%", right: "20%", bottom: 0, height: 2, borderRadius: 99,
+                    background: "linear-gradient(90deg,transparent,#22d3ee,transparent)",
+                    boxShadow: "0 0 8px rgba(34,211,238,0.80)" }} />
+                )}
               </button>
             )
           })}
         </div>
 
-        {/* Hairline de fechamento — separa o header do conteúdo sem barra sólida */}
-        <div style={{ height: 1, maxWidth: 700, margin: "0 auto",
-          background: "linear-gradient(90deg,transparent,rgba(6,182,212,0.18) 20%,rgba(6,182,212,0.18) 80%,transparent)" }} />
+        {/* Fechamento ornamental — linha · losango · linha, em vez de hairline seca */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: 700, margin: "0 auto", padding: "0 16px" }}>
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,rgba(6,182,212,0.28))" }} />
+          <div style={{ width: 4, height: 4, background: "rgba(6,182,212,0.55)", transform: "rotate(45deg)", boxShadow: "0 0 5px rgba(6,182,212,0.6)", flexShrink: 0 }} />
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.28),transparent)" }} />
+        </div>
       </div>
 
       {/* ── AVISO DE TEMPORADA ENCERRANDO ── últimos 3 dias, lembra de coletar tudo */}
@@ -2086,8 +2096,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 boxShadow: passData.hasPremium
                   ? "0 8px 48px rgba(0,0,0,0.75), 0 0 30px rgba(245,158,11,0.08) inset"
                   : "0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(6,182,212,0.08) inset",
-                padding: "14px 18px 12px",
+                padding: "17px 18px 12px",
               }}>
+                {/* Cap ornamental no topo — mesma linguagem visual do topo dos marcos na trilha */}
+                <div style={{ position: "absolute", top: 0, left: "18%", right: "18%", height: 2, borderRadius: "0 0 3px 3px",
+                  background: passData.hasPremium
+                    ? "linear-gradient(90deg,transparent,#f59e0b,#fbbf24,#f59e0b,transparent)"
+                    : "linear-gradient(90deg,transparent,#0891b2,#22d3ee,#0891b2,transparent)",
+                  boxShadow: passData.hasPremium ? "0 0 10px rgba(251,191,36,0.7)" : "0 0 10px rgba(34,211,238,0.7)" }} />
                 {/* Textura sutil — hairlines diagonais, dá densidade de "material premium" sem poluir */}
                 <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.5,
                   background: "repeating-linear-gradient(115deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 26px)" }} />
@@ -2114,11 +2130,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 ) : (
                 /* Level + teaser de próxima recompensa (sem repetir pts, que já está na barra abaixo) */
                 <div style={{ position:"relative", display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:12 }}>
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: "#475569", letterSpacing: "0.18em", marginBottom: 1 }}>NÍVEL</div>
-                    <div style={{ display:"flex", alignItems:"baseline", gap:6, lineHeight:1 }}>
-                      <span style={{ fontSize:42, fontWeight:900, color:"#f1f5f9", letterSpacing:"-0.04em" }}>{passData.currentLevel}</span>
-                      <span style={{ fontSize:14, color:"#1e293b", fontWeight:700 }}>/ {MAX_LEVELS}</span>
+                  <div style={{ position: "relative" }}>
+                    {/* Halo atrás do número — dá peso de "hero" sem virar um anel de progresso redundante */}
+                    <div style={{ position: "absolute", left: -14, top: -10, width: 84, height: 84, borderRadius: "50%", pointerEvents: "none",
+                      background: `radial-gradient(circle, ${passData.hasPremium ? "rgba(251,191,36,0.16)" : "rgba(6,182,212,0.18)"} 0%, transparent 70%)` }} />
+                    <div style={{ fontSize: 9, fontWeight: 800, color: "#64748b", letterSpacing: "0.20em", marginBottom: 2, position: "relative" }}>NÍVEL</div>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:6, lineHeight:1, position: "relative" }}>
+                      <span style={{ fontSize:46, fontWeight:900, color:"#f8fafc", letterSpacing:"-0.045em",
+                        textShadow: `0 2px 12px ${passData.hasPremium ? "rgba(251,191,36,0.35)" : "rgba(6,182,212,0.40)"}, 0 1px 2px rgba(0,0,0,0.6)` }}>
+                        {passData.currentLevel}
+                      </span>
+                      <span style={{ fontSize:14, color:"#334155", fontWeight:700 }}>/ {MAX_LEVELS}</span>
                     </div>
                   </div>
                   <div style={{ textAlign:"right", maxWidth:180 }}>
@@ -2126,11 +2148,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       <div style={{ background:"linear-gradient(135deg,#d97706,#fbbf24)",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:900,color:"#000" }}>MAX</div>
                     ) : nextRewardEntry ? (
                       <>
-                        <div style={{ fontSize:9,color:"#475569",marginBottom:2 }}>próxima recompensa</div>
+                        <div style={{ fontSize:9,color:"#475569",marginBottom:2,letterSpacing:"0.04em" }}>PRÓXIMA RECOMPENSA</div>
                         <div style={{ fontSize:12,fontWeight:800,color:"#f1f5f9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
                           {nextRewardEntry.common?.label ?? "Recompensa"} · Lv.{nextRewardEntry.level}
                         </div>
-                        <div style={{ fontSize:10,color:"#06b6d4",marginTop:1 }}>
+                        <div style={{ fontSize:10,color:"#06b6d4",marginTop:1,fontWeight:600 }}>
                           {nextRewardEntry.level - passData.currentLevel} nível{nextRewardEntry.level - passData.currentLevel !== 1 ? "s" : ""} restante{nextRewardEntry.level - passData.currentLevel !== 1 ? "s" : ""}
                         </div>
                       </>
@@ -2141,35 +2163,47 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 </div>
                 )}
 
+                {/* Divisor ornamental — linha · losango · linha, separa hero dos cards de passe */}
+                <div style={{ display: "flex", alignItems: "center", gap: 5, margin: "2px 0 10px", position: "relative" }}>
+                  <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.10))" }} />
+                  <div style={{ width: 3.5, height: 3.5, background: "rgba(255,255,255,0.20)", transform: "rotate(45deg)", flexShrink: 0 }} />
+                  <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(255,255,255,0.10),transparent)" }} />
+                </div>
+
                 {/* Pass type cards */}
                 <div style={{ display:"flex", gap:8, position:"relative" }}>
                   {/* Common */}
                   <div style={{ flex:1,borderRadius:12,padding:"9px 12px",
-                    background:"rgba(6,182,212,0.08)",backdropFilter:"blur(8px)",
-                    border:"1px solid rgba(6,182,212,0.20)",
+                    background:"linear-gradient(160deg,rgba(6,182,212,0.10),rgba(6,182,212,0.04))",backdropFilter:"blur(8px)",
+                    border:"1px solid rgba(6,182,212,0.22)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -8px 14px -8px rgba(0,0,0,0.35)",
                     display:"flex",alignItems:"center",gap:9 }}>
-                    <div style={{ width:28,height:28,borderRadius:8,flexShrink:0, position:"relative",
-                      background:"rgba(6,182,212,0.14)",border:"1px solid rgba(6,182,212,0.25)",
-                      boxShadow:"inset 0 1px 0 rgba(255,255,255,0.10)",
+                    <div style={{ width:29,height:29,borderRadius:8,flexShrink:0, position:"relative",
+                      background:"rgba(6,182,212,0.16)",border:"1px solid rgba(6,182,212,0.30)",
+                      boxShadow:"inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -3px 5px rgba(0,0,0,0.25)",
                       display:"flex",alignItems:"center",justifyContent:"center" }}>
-                      <Shield size={13} color="#06b6d4" />
+                      <Shield size={13} color="#22d3ee" />
                     </div>
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontWeight:900,fontSize:11,color:"#06b6d4" }}>Passe Comum</div>
-                      <div style={{ fontSize:9,color:"#334155" }}>Grátis · Sempre ativo</div>
+                      <div style={{ fontWeight:900,fontSize:11,color:"#22d3ee" }}>Passe Comum</div>
+                      <div style={{ fontSize:9,color:"#475569" }}>Grátis · Sempre ativo</div>
                     </div>
-                    <div style={{ marginLeft:"auto",flexShrink:0,width:16,height:16,borderRadius:"50%",
-                      background:"rgba(34,197,94,0.14)",border:"1.5px solid rgba(34,197,94,0.35)",
+                    <div style={{ marginLeft:"auto",flexShrink:0,width:17,height:17,borderRadius:"50%",
+                      background:"rgba(34,197,94,0.16)",border:"1.5px solid rgba(34,197,94,0.40)",
+                      boxShadow: "0 0 6px rgba(34,197,94,0.30)",
                       display:"flex",alignItems:"center",justifyContent:"center" }}>
-                      <Check size={9} color="#22c55e" strokeWidth={3} />
+                      <Check size={9} color="#4ade80" strokeWidth={3} />
                     </div>
                   </div>
                   {/* Premium — badge com contagem retroativa reforça o teaser antes mesmo de abrir o modal */}
                   <div onClick={passData.hasPremium ? undefined : () => setShowPremiumModal(true)} style={{
                     flex:1,borderRadius:12,padding:"9px 12px",position:"relative",
-                    background: passData.hasPremium ? "rgba(217,119,6,0.12)" : "rgba(92,40,10,0.10)",
+                    background: passData.hasPremium ? "linear-gradient(160deg,rgba(245,158,11,0.16),rgba(217,119,6,0.06))" : "rgba(92,40,10,0.10)",
                     backdropFilter:"blur(8px)",
-                    border:`1px solid ${passData.hasPremium ? "rgba(251,191,36,0.30)" : "rgba(92,40,10,0.25)"}`,
+                    border:`1px solid ${passData.hasPremium ? "rgba(251,191,36,0.35)" : "rgba(92,40,10,0.25)"}`,
+                    boxShadow: passData.hasPremium
+                      ? "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -8px 14px -8px rgba(0,0,0,0.35)"
+                      : "inset 0 2px 6px rgba(0,0,0,0.30)",
                     display:"flex",alignItems:"center",gap:9,cursor:passData.hasPremium?"default":"pointer" }}>
                     {/* Badge "N esperando" */}
                     {!passData.hasPremium && retroactivePremiumCount > 0 && (
@@ -2181,20 +2215,23 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                         boxShadow:"0 0 10px rgba(239,68,68,0.60)", border:"2px solid rgba(3,8,22,0.93)",
                       }}>{retroactivePremiumCount > 9 ? "9+" : retroactivePremiumCount}</div>
                     )}
-                    <div style={{ width:28,height:28,borderRadius:8,flexShrink:0,
-                      background:passData.hasPremium?"rgba(245,158,11,0.14)":"rgba(92,40,10,0.18)",
-                      border:`1px solid ${passData.hasPremium?"rgba(245,158,11,0.30)":"rgba(92,40,10,0.25)"}`,
-                      boxShadow:"inset 0 1px 0 rgba(255,255,255,0.10)",
+                    <div style={{ width:29,height:29,borderRadius:8,flexShrink:0,
+                      background:passData.hasPremium?"rgba(245,158,11,0.18)":"rgba(92,40,10,0.20)",
+                      border:`1px solid ${passData.hasPremium?"rgba(251,191,36,0.35)":"rgba(92,40,10,0.28)"}`,
+                      boxShadow: passData.hasPremium
+                        ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -3px 5px rgba(0,0,0,0.25)"
+                        : "inset 0 2px 5px rgba(0,0,0,0.35)",
                       display:"flex",alignItems:"center",justifyContent:"center" }}>
-                      <Crown size={13} color={passData.hasPremium?"#f59e0b":"#78350f"} />
+                      <Crown size={13} color={passData.hasPremium?"#fbbf24":"#78350f"} />
                     </div>
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontWeight:900,fontSize:11,color:passData.hasPremium?"#f59e0b":"#78350f" }}>Passe Premium</div>
-                      <div style={{ fontSize:9,color:"#334155" }}>{passData.hasPremium?"Ativo ✓":PREMIUM_PRICE}</div>
+                      <div style={{ fontWeight:900,fontSize:11,color:passData.hasPremium?"#fbbf24":"#a16207" }}>Passe Premium</div>
+                      <div style={{ fontSize:9,color:"#475569" }}>{passData.hasPremium?"Ativo ✓":PREMIUM_PRICE}</div>
                     </div>
                     {!passData.hasPremium && (
                       <div style={{ marginLeft:"auto",flexShrink:0,background:"linear-gradient(135deg,#92400e,#d97706)",
-                        borderRadius:6,padding:"2px 7px",fontSize:8,fontWeight:900,color:"#fff" }}>Desbloquear</div>
+                        borderRadius:6,padding:"2px 7px",fontSize:8,fontWeight:900,color:"#fff",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)" }}>Desbloquear</div>
                     )}
                   </div>
                 </div>
@@ -2254,9 +2291,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 {/* Elegant section header + Coletar Pendentes — minHeight fixo evita
                     que o header "pule" de tamanho quando o FAB 📍 ou o botão
                     "Coletar Pendentes" aparecem/somem durante o arrasto da trilha */}
-                <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 10, minHeight: 38 }}>
-                  <div style={{ height: 1, width: 16, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                <div style={{ padding: "8px 14px 8px", flexShrink: 0, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 8, minHeight: 38 }}>
+                  <div style={{ width: 3.5, height: 3.5, background: "rgba(6,182,212,0.55)", transform: "rotate(45deg)", flexShrink: 0 }} />
+                  <div style={{ height: 1, width: 12, background: "rgba(6,182,212,0.35)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#64748b", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                     Trilha de Recompensas
                   </span>
                   <div style={{ height: 1, flex: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.25),transparent)" }} />
@@ -2401,6 +2439,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   Puramente decorativo/absolute: zero impacto na altura fixa da coluna. */}
                               {isMilestone && (
                                 <>
+                                  {/* Faixa dourada no topo — mesmo motivo do cap no Progress Hero, amarra a tela toda */}
+                                  <div style={{ position:"absolute", top:0, left:"14%", right:"14%", height:2, borderRadius:"0 0 2px 2px",
+                                    background:"linear-gradient(90deg,transparent,#f59e0b,#fde68a,#f59e0b,transparent)",
+                                    boxShadow:"0 0 8px rgba(251,191,36,0.65)", pointerEvents:"none" }} />
                                   <div style={{ position:"absolute", top:10, left:3, width:9, height:9,
                                     borderTop:"1.5px solid rgba(251,191,36,0.55)", borderLeft:"1.5px solid rgba(251,191,36,0.55)",
                                     borderTopLeftRadius:3, pointerEvents:"none" }} />
@@ -2439,15 +2481,19 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   background: lg.premiumClaimed
                                     ? "rgba(34,197,94,0.10)"
                                     : isPast && passData.hasPremium
-                                    ? "rgba(217,119,6,0.18)"
+                                    ? "linear-gradient(160deg,rgba(245,158,11,0.20),rgba(180,83,9,0.10))"
                                     : isPast
                                     ? "rgba(217,119,6,0.10)"
                                     : "linear-gradient(145deg,rgba(180,83,9,0.14),rgba(120,53,15,0.08))",
+                                  // Soquete real: recessado (inset escuro) quando bloqueado/vazio,
+                                  // rim-light no topo quando disponível — como luz pegando a borda de metal
                                   boxShadow: lg.premiumClaimed
-                                    ? "0 0 10px rgba(34,197,94,0.20), inset 0 0 6px rgba(34,197,94,0.08)"
+                                    ? "0 0 10px rgba(34,197,94,0.20), inset 0 0 6px rgba(34,197,94,0.08), inset 0 1px 0 rgba(255,255,255,0.10)"
+                                    : isPast && passData.hasPremium
+                                    ? "inset 0 1.5px 0 rgba(255,255,255,0.18), inset 0 -4px 8px rgba(0,0,0,0.25)"
                                     : !isPast
-                                    ? "inset 0 0 14px rgba(251,191,36,0.06)"
-                                    : "none",
+                                    ? "inset 0 3px 7px rgba(0,0,0,0.45), inset 0 0 14px rgba(251,191,36,0.05)"
+                                    : "inset 0 2px 5px rgba(0,0,0,0.30)",
                                   // Cascata tem prioridade (flash sequencial); senão, o pulso normal de "pronto pra coletar"
                                   animation: cascadeIdx !== -1
                                     ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
@@ -2534,14 +2580,16 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   }`,
                                   background: lg.commonClaimed
                                     ? "rgba(34,197,94,0.12)"
-                                    : isPast   ? "rgba(6,182,212,0.13)"
+                                    : isPast   ? "linear-gradient(160deg,rgba(6,182,212,0.16),rgba(6,182,212,0.06))"
                                     : isCurrent ? "rgba(6,182,212,0.07)"
                                     : isMilestone ? "rgba(245,158,11,0.05)"
                                     : "rgba(255,255,255,0.03)",
+                                  // Soquete real: recessado (inset escuro) quando bloqueado, rim-light no topo quando disponível
                                   boxShadow: lg.commonClaimed
-                                    ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10)"
-                                    : isCurrent ? "0 0 16px rgba(6,182,212,0.45)"
-                                    : "none",
+                                    ? "0 0 12px rgba(34,197,94,0.25), inset 0 0 8px rgba(34,197,94,0.10), inset 0 1px 0 rgba(255,255,255,0.10)"
+                                    : isPast
+                                    ? `inset 0 1.5px 0 rgba(255,255,255,0.16), inset 0 -4px 8px rgba(0,0,0,0.22)${isCurrent ? ", 0 0 16px rgba(6,182,212,0.45)" : ""}`
+                                    : "inset 0 3px 7px rgba(0,0,0,0.42)",
                                   animation: cascadeIdx !== -1
                                     ? `cascadeFlash 0.5s ease ${cascadeDelay}ms`
                                     : commonClaimable ? "claimPulseCyan 2s ease-in-out infinite" : "none",
@@ -2913,27 +2961,38 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             border: "1px solid rgba(217,119,6,0.35)",
             borderRadius: 28, padding: "28px 24px", maxWidth: 380, width: "100%",
             boxShadow: "0 24px 80px rgba(217,119,6,0.20)",
-            position: "relative",
+            position: "relative", overflow: "hidden",
           }}>
+            {/* Cap ornamental — mesma linguagem do topo do Progress Hero e dos marcos */}
+            <div style={{ position: "absolute", top: 0, left: "22%", right: "22%", height: 2, borderRadius: "0 0 3px 3px",
+              background: "linear-gradient(90deg,transparent,#f59e0b,#fde68a,#f59e0b,transparent)",
+              boxShadow: "0 0 12px rgba(251,191,36,0.7)" }} />
+            {/* Textura sutil — mesmo padrão do Progress Hero */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.4,
+              background: "repeating-linear-gradient(115deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 26px)" }} />
+
             {/* Close */}
             <button onClick={() => setShowPremiumModal(false)} style={{
-              position: "absolute", top: 16, right: 16,
+              position: "absolute", top: 16, right: 16, zIndex: 2,
               background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)",
               borderRadius: 10, width: 32, height: 32, cursor: "pointer",
               color: "#64748b", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
             }}>✕</button>
 
             {/* Icon */}
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <div style={{ textAlign: "center", marginBottom: 20, position: "relative" }}>
               <div style={{
-                width: 72, height: 72, borderRadius: 20, margin: "0 auto 12px",
-                background: "linear-gradient(145deg,#92400e,#b45309,#d97706)",
+                width: 76, height: 76, borderRadius: 20, margin: "0 auto 14px", position: "relative",
+                background: "linear-gradient(145deg,#78350f,#b45309,#d97706,#f59e0b)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 8px 32px rgba(217,119,6,0.35)",
+                boxShadow: "0 8px 32px rgba(217,119,6,0.40), inset 0 2px 0 rgba(255,255,255,0.30), inset 0 -6px 12px rgba(0,0,0,0.30)",
               }}>
-                <Crown size={32} color="#fff" />
+                {/* Anel interno — mesmo tratamento de "brasão" do crest do header */}
+                <div style={{ position: "absolute", inset: 5, borderRadius: 15, border: "1px solid rgba(255,255,255,0.20)", pointerEvents: "none" }} />
+                <Crown size={34} color="#fff" style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
               </div>
-              <h2 style={{ fontWeight: 900, fontSize: 22, margin: "0 0 6px" }}>
+              <h2 style={{ fontWeight: 900, fontSize: 23, margin: "0 0 6px", letterSpacing: "-0.01em",
+                textShadow: "0 2px 10px rgba(251,191,36,0.25)" }}>
                 Gear Pass Premium
               </h2>
               <p style={{ color: "#64748b", fontSize: 13, margin: 0 }}>
@@ -3001,14 +3060,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             </div>
 
             <button onClick={openStripeCheckout} style={{
-              width: "100%", padding: "16px 0", borderRadius: 16,
-              background: "linear-gradient(135deg,#92400e,#b45309,#d97706,#f59e0b)",
-              border: "none", cursor: "pointer",
-              color: "#fff", fontWeight: 900, fontSize: 16,
-              boxShadow: "0 8px 32px rgba(217,119,6,0.40)",
+              width: "100%", padding: "16px 0", borderRadius: 16, position: "relative", overflow: "hidden",
+              background: "linear-gradient(135deg,#78350f,#b45309,#d97706,#fbbf24)",
+              border: "1px solid rgba(255,213,128,0.35)", cursor: "pointer",
+              color: "#1c0a00", fontWeight: 900, fontSize: 16,
+              boxShadow: "0 8px 32px rgba(217,119,6,0.45), inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.20)",
               letterSpacing: "0.02em",
             }}>
               👑 Comprar Agora
+              <div style={{ position: "absolute", inset: 0, width: "40%",
+                background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.50),transparent)",
+                animation: "shimmer 2.8s ease-in-out infinite" }} />
             </button>
 
             <p style={{ textAlign: "center", fontSize: 10, color: "#334155", marginTop: 12 }}>
