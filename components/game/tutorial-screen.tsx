@@ -897,6 +897,36 @@ function findAttackReadyUnit(pad = 8): PixelRect | null {
   return null
 }
 
+// ─── SurrenderBlocker ─────────────────────────────────────────────────────────
+/**
+ * Usado SÓ nos passos "drag" (jogar carta / atacar), onde o DynamicSpotlight
+ * abaixo intencionalmente não bloqueia nada (pra não arriscar tapar o
+ * próprio gesto de arrastar que o passo pede). Isso deixaria o botão real
+ * "Desistir" livre pra clicar — e clicá-lo chama surrender() na hora, sem
+ * confirmação, marcando derrota e saindo do duelo, pulando o resto do
+ * tutorial guiado (o game-wrapper trata isso como "duelo terminou" e avança
+ * pro post-duel-menu de qualquer jeito). Diferente da carta (posição muda a
+ * cada duelo), "Desistir" é ESTÁTICO — sempre mesmo texto, sempre visível no
+ * topo — então dá pra bloquear só ele com segurança, sem o risco de
+ * desalinhamento que tirei do spotlight principal.
+ */
+function SurrenderBlocker() {
+  const [r, setR] = useState<PixelRect | null>(null)
+  useEffect(() => {
+    const update = () => setR(findByText("Desistir"))
+    update()
+    const t = setInterval(update, 350)
+    return () => clearInterval(t)
+  }, [])
+  if (!r) return null
+  return (
+    <div style={{
+      position: "fixed", left: r.x, top: r.y, width: r.w, height: r.h,
+      zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
+    }} />
+  )
+}
+
 // ─── DynamicSpotlight ─────────────────────────────────────────────────────────
 /**
  * Spotlight que encontra o elemento pelo texto no DOM real —
@@ -1924,9 +1954,12 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
             // ── Arrastar obrigatório: spotlight sem intercept (sem simular o
             //    gesto) — avança sozinho quando a condição de conclusão do
             //    passo é satisfeita (useEffect de polling acima cuida disso,
-            //    ver isDone() — cada passo "drag" observa algo diferente). ──
+            //    ver isDone() — cada passo "drag" observa algo diferente).
+            //    SurrenderBlocker cobre só o botão "Desistir" (estático,
+            //    seguro de bloquear) — ver comentário no componente. ────────
             <>
               <DynamicSpotlight textTarget={duelStep.textTarget} masterId={masterId} />
+              <SurrenderBlocker />
               <MasterBubble
                 masterId={masterId}
                 text={duelStepText}
