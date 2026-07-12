@@ -846,19 +846,61 @@ function findMasterUnitCard(masterId: TutorialMasterId, pad = 8): PixelRect | nu
 }
 
 /**
+ * Caminhos de imagem de TODA carta do deck do mestre que pode ir pro
+ * unitZone — mesmo critério de isUnitCard() em duel-screen.tsx:
+ * type "unit" | "ultimateElemental" | "troops" (NÃO inclui "ultimateGear"/
+ * "ultimateGuardian", que vão pra Ultimate Zone, uma zona separada).
+ * IMPORTANTE: pro Calem, a própria carta UR/SR do mestre é "ultimateElemental",
+ * não "unit" — por isso o critério não pode ser só type==="unit", ou o Calem
+ * fica sem nenhuma carta reconhecida como "de Unidade" pelo tutorial.
+ * Computado a partir de STARTER_DECKS — se o deck for editado, atualiza sozinho.
+ */
+function unitZoneCardImages(masterId: TutorialMasterId): string[] {
+  return STARTER_DECKS[masterId].main
+    .filter(({ card }) => card.type === "unit" || card.type === "ultimateElemental" || card.type === "troops")
+    .map(({ card }) => card.image)
+}
+
+/**
+ * Acha, na mão do jogador, a PRIMEIRA carta que bate com qualquer imagem de
+ * unitZoneCardImages — ou seja, qualquer carta jogável no campo de unidades
+ * (não só a UR nomeada do mestre). Usada como fallback de findMasterUnitCard:
+ * se a carta específica do mestre não estiver na mão, ainda destaca uma
+ * carta ESPECÍFICA (nunca a mão toda) que o jogador realmente pode jogar.
+ */
+function findAnyUnitCardInHand(masterId: TutorialMasterId, pad = 8): PixelRect | null {
+  const hand = document.querySelector(".min-h-28")
+  if (!hand) return null
+  for (const image of unitZoneCardImages(masterId)) {
+    const img = hand.querySelector(`img[src*="${image}"]`)
+    if (!img) continue
+    const cardEl = (img.closest('[class*="cursor-grab"]') as HTMLElement | null) ?? img
+    const r = (cardEl as HTMLElement).getBoundingClientRect()
+    if (r.width < 10 || r.height < 10) continue
+    return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }
+  }
+  return null
+}
+
+/**
  * Caso especial "__PLAY_UNIT_CARD__": destaque de QUAL carta jogar.
  * A mão inicial é 100% embaralhada (ver startGame em duel-screen.tsx —
  * shuffledDeck.sort(() => Math.random()-0.5).slice(0, 5)), sem NENHUMA
  * garantia de que a carta UR do mestre caia nas 5 cartas iniciais — com um
  * deck de 20 cartas, a chance é de só 25%. Por isso NUNCA se pode depender
  * dela pra completar este passo (ver findAnyPlayerFieldUnit abaixo, que é
- * quem realmente decide quando o passo termina). Esta função aqui é só
- * cosmética: se a carta do mestre estiver visível na mão agora, aponta
- * exatamente pra ela (mais bonito); senão, destaca a mão inteira — o
- * jogador ainda pode jogar qualquer outra carta de Unidade que tiver.
+ * quem realmente decide quando o passo termina).
+ * Ordem de prioridade pro DESTAQUE VISUAL (sempre uma carta específica,
+ * nunca a mão toda):
+ *   1) A carta UR nomeada do próprio mestre, se estiver na mão (mais bonito).
+ *   2) Qualquer outra carta jogável no unitZone que esteja na mão (ainda
+ *      específica, só não é a nomeada do mestre).
+ *   3) Mão inteira — só como último recurso; não deveria mais acontecer na
+ *      prática, já que startGame() garante pelo menos 1 candidato na mão
+ *      (ver comentário "Garante ao menos 1 carta" em duel-screen.tsx).
  */
 function findPlayableUnitTarget(masterId: TutorialMasterId): PixelRect | null {
-  return findMasterUnitCard(masterId) ?? findPlayerHand()
+  return findMasterUnitCard(masterId) ?? findAnyUnitCardInHand(masterId) ?? findPlayerHand()
 }
 
 /**
