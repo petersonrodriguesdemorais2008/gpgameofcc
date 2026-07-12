@@ -3159,7 +3159,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [choiceModal, setChoiceModal] = useState<{
     visible: boolean
     cardName: string
-    options: { id: string; label: string; description: string }[]
+    options: { id: string; label: string; description: string; image?: string }[]
     onChoose: (optionId: string) => void
     gridLayout?: boolean
   } | null>(null)
@@ -4587,7 +4587,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       hand: botHand,
       deck: botRemaining,
       tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
-      life: startingLP, // NÃO trocar por 50 fixo — precisa espelhar o LP do jogador (ver startingLP acima)
+      life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
@@ -4915,7 +4915,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
          const seenNames = new Set()
          for (const c of searchOptions) {
             if (!seenNames.has(c.name)) {
-               uniqueOptions.push({ id: c.id, label: c.name, description: `Adicionar ${c.name} à mão` })
+               uniqueOptions.push({ id: c.id, label: c.name, description: `Adicionar ${c.name} à mão`, image: c.image })
                seenNames.add(c.name)
             }
          }
@@ -6535,7 +6535,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               visible: true,
               cardName: "Flecha de Skadi — Destruir 1 unidade inimiga com 2DP?",
               options: [
-                ...twoDpTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
+                ...twoDpTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP`, image: u!.image })),
                 { id: "skip", label: "Não usar", description: "Atacar normalmente" },
               ],
               onChoose: (optId) => {
@@ -6710,7 +6710,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 visible: true,
                 cardName: "Veredito do Rei Tirano — Descarte 1 carta para destruir 1 unidade inimiga",
                 options: [
-                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type, image: c.image })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
                 ],
                 onChoose: (optId) => {
@@ -6743,7 +6743,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     setChoiceModal({
                       visible: true,
                       cardName: "Veredito do Rei Tirano — Escolha a unidade inimiga para destruir",
-                      options: enemyTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
+                      options: enemyTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP`, image: u!.image })),
                       onChoose: (targetId) => {
                         setChoiceModal(null)
                         const tIdx = parseInt(targetId)
@@ -6776,7 +6776,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 cardName: "Cálice do Monarca — Descarte 1 carta para destruir 2 unidades inimigas",
                 gridLayout: true,
                 options: [
-                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type, image: c.image })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
                 ],
                 onChoose: (optId) => {
@@ -7183,7 +7183,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     visible: true,
                     cardName: "Explosão de Muspell — Escolha 1 unidade de fogo para +1DP",
                     options: fireUnits.slice(0, 4).map(({ u, i }) => ({
-                      id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`
+                      id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`, image: u!.image
                     })),
                     onChoose: (optId) => {
                       setChoiceModal(null)
@@ -7463,7 +7463,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         cardName: `Lucro na Crise — Escolha carta ${picks.length + 1}/${pickCount}${hasItems ? " (Itens encontrados!)" : ""}`,
         options: available.map((c, i) => {
           const origIdx = pool.indexOf(c)
-          return { id: String(origIdx), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') }
+          return { id: String(origIdx), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : ''), image: c.image }
         }),
         onChoose: (optId) => {
           setChoiceModal(null)
@@ -7700,7 +7700,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       options: enemyTargets.slice(0,4).map(({u,i}) => {
         const isVentus = u!.element === "Ventus" || u!.element === "Wind"
         const dpLoss = isVentus ? 2 : 1
-        return { id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0,(u!.currentDp ?? u!.dp)-dpLoss)}DP${isVentus ? " (Ventus: -2DP)" : " (-1DP)"}` }
+        return { id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0,(u!.currentDp ?? u!.dp)-dpLoss)}DP${isVentus ? " (Ventus: -2DP)" : " (-1DP)"}`, image: u!.image }
       }),
       onChoose: (optId) => {
         setChoiceModal(null)
@@ -11769,47 +11769,75 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* Choice Modal for cards like Véu dos Laços Cruzados */}
+      {/* Choice Modal — shows card images when available, matching deckSearchModal style */}
       {choiceModal && choiceModal.visible && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4">
-            <h3 className="text-purple-400 font-bold text-xl mb-4">{choiceModal.cardName}</h3>
-            <p className="text-white/80 text-sm mb-5">Escolha um dos efeitos:</p>
-            {choiceModal.gridLayout ? (
-              <div className="grid grid-cols-3 gap-2">
-                {choiceModal.options.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
-                    className={`bg-gradient-to-b ${option.id === 'skip' ? 'from-slate-600 to-slate-700 hover:from-slate-500 col-span-3' : 'from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600'} text-white font-bold py-2 px-2 rounded-lg border border-purple-400/40 transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[60px]`}
-                  >
-                    <div className="text-[11px] font-bold leading-tight text-center">{option.label}</div>
-                    {option.description && <div className="text-[9px] text-white/60 mt-0.5 text-center">{option.description}</div>}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {choiceModal.options.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
-                  >
-                    <div className="text-lg">{option.label}</div>
-                    <div className="text-xs text-white/70 mt-1">{option.description}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-            <Button
-              onClick={() => setChoiceModal(null)}
-              size="sm"
-              variant="outline"
-              className="mt-4 border-red-500/50 text-red-400 hover:bg-red-950/50"
-            >
-              Cancelar
-            </Button>
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-xl border-2 border-purple-500/50 shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-purple-900/30 to-transparent">
+              <h3 className="text-purple-300 font-bold text-base text-center">{choiceModal.cardName}</h3>
+              <p className="text-white/55 text-xs text-center mt-0.5">Escolha um dos efeitos:</p>
+            </div>
+
+            {/* Options */}
+            <div className="p-3 max-h-80 overflow-y-auto flex flex-col gap-2.5">
+              {choiceModal.gridLayout ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {choiceModal.options.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
+                      className={`bg-gradient-to-b ${option.id === 'skip' ? 'from-slate-600 to-slate-700 hover:from-slate-500 col-span-3' : 'from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600'} text-white font-bold py-2 px-2 rounded-lg border border-purple-400/40 transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[60px]`}
+                    >
+                      <div className="text-[11px] font-bold leading-tight text-center">{option.label}</div>
+                      {option.description && <div className="text-[9px] text-white/60 mt-0.5 text-center">{option.description}</div>}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                choiceModal.options.map((option) => (
+                  option.image ? (
+                    /* Card-style row (with image) — matches deckSearchModal look */
+                    <button
+                      key={option.id}
+                      onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-purple-900/35 hover:border-purple-400/40 transition-all text-left group"
+                    >
+                      <div className="flex-shrink-0 w-10 h-14 rounded overflow-hidden border border-white/15 shadow-md">
+                        <img src={option.image} alt={option.label} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-bold text-sm leading-tight truncate group-hover:text-purple-200 transition-colors">{option.label}</p>
+                        {option.description && (
+                          <p className="text-amber-400/80 text-[10px] mt-0.5 leading-snug line-clamp-2">{option.description}</p>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-purple-400/60 group-hover:text-purple-300 transition-colors text-lg">›</div>
+                    </button>
+                  ) : (
+                    /* Text-only row (no image) */
+                    <button
+                      key={option.id}
+                      onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105 text-left"
+                    >
+                      <div className="text-sm font-bold">{option.label}</div>
+                      {option.description && <div className="text-xs text-white/70 mt-0.5">{option.description}</div>}
+                    </button>
+                  )
+                ))
+              )}
+            </div>
+
+            {/* Cancel */}
+            <div className="px-3 pb-3">
+              <button
+                onClick={() => setChoiceModal(null)}
+                className="w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm font-semibold hover:bg-red-950/40 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
