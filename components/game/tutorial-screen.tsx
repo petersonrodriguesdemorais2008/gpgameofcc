@@ -927,6 +927,43 @@ function SurrenderBlocker() {
   )
 }
 
+// ─── SkipTutorialButton ───────────────────────────────────────────────────────
+/**
+ * Botão fixo, sempre visível (z-index acima de tudo: bloqueadores em 400/401,
+ * MasterBubble em 600), disponível em TODAS as fases do TutorialGameOverlay
+ * — desde o momento em que ele aparece (logo após o jogador escolher o
+ * Mestre) até o fim. Chama a MESMA função onComplete que já dispara
+ * naturalmente ao concluir o tutorial de verdade (handleTutorialOverlayComplete
+ * no game-wrapper.tsx) — ou seja, marca o tutorial como visto pra essa conta
+ * e devolve o jogador ao menu livre, sem overlay nenhum, de qualquer fase ou
+ * passo em que ele estiver. Exige um segundo clique de confirmação em até 3s
+ * (evita pular sem querer com um toque acidental).
+ */
+function SkipTutorialButton({ onSkip }: { onSkip: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  useEffect(() => {
+    if (!confirming) return
+    const t = setTimeout(() => setConfirming(false), 3000)
+    return () => clearTimeout(t)
+  }, [confirming])
+  return (
+    <button
+      onClick={() => confirming ? onSkip() : setConfirming(true)}
+      style={{
+        position: "fixed", top: 12, left: 12, zIndex: 700,
+        padding: "8px 14px", borderRadius: 10,
+        background: confirming ? "rgba(220,38,38,0.92)" : "rgba(0,0,0,0.55)",
+        border: "1px solid rgba(255,255,255,0.18)",
+        color: "white", fontSize: 12, fontWeight: 700,
+        cursor: "pointer", pointerEvents: "all",
+        transition: "background 0.2s ease",
+      }}
+    >
+      {confirming ? "Confirmar? Toque de novo ►" : "Pular Tutorial ✕"}
+    </button>
+  )
+}
+
 // ─── DynamicSpotlight ─────────────────────────────────────────────────────────
 /**
  * Spotlight que encontra o elemento pelo texto no DOM real —
@@ -1929,6 +1966,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
+        <SkipTutorialButton onSkip={onComplete} />
         {!duelStepsDone && duelStep && (
           duelStep.kind === "wait" ? (
             // ── Atravessar o turno do bot: nada na tela — sem balão, sem
@@ -2007,6 +2045,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
       pointerEvents: "none",
     }}>
       <style>{TUTORIAL_CSS}</style>
+      <SkipTutorialButton onSkip={onComplete} />
 
       {/* Spotlight dinâmico — passa o interceptor nos passos obrigatórios */}
       {!isHidden && (
