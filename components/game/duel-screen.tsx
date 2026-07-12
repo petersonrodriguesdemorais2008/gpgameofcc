@@ -4562,8 +4562,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const startingHand = roguelikeConfigRef.current?.startingHandSize ?? roguelikeConfig?.startingHandSize ?? 5
 
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
-    const hand = shuffledDeck.slice(0, startingHand)
-    const remainingDeck = shuffledDeck.slice(startingHand)
+    let hand = shuffledDeck.slice(0, startingHand)
+    let remainingDeck = shuffledDeck.slice(startingHand)
+
+    // Garante ao menos 1 carta de Unidade (type === "unit") na mão inicial —
+    // sem isso, o embaralhamento puro podia entregar uma mão sem NENHUMA
+    // unidade jogável (ex.: só Tropas/Funções/Cenário), o que trava qualquer
+    // fluxo — tutorial ou jogo normal — que dependa do jogador conseguir
+    // evocar uma unidade logo no primeiro turno. Troca a 1ª carta da mão
+    // pela 1ª unidade encontrada no resto do deck, se a mão sorteada não
+    // tiver nenhuma.
+    if (!hand.some(c => c.type === "unit")) {
+      const idx = remainingDeck.findIndex(c => c.type === "unit")
+      if (idx !== -1) {
+        const unit = remainingDeck[idx]
+        remainingDeck[idx] = hand[0]
+        hand = [unit, ...hand.slice(1)]
+      }
+    }
 
     setPlayerField((prev) => ({
       ...prev,
@@ -4587,7 +4603,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       hand: botHand,
       deck: botRemaining,
       tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
-      life: 50,
+      life: startingLP, // NÃO trocar por 50 fixo — precisa espelhar o LP do jogador (ver startingLP acima)
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
