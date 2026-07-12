@@ -6338,6 +6338,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (attackState.isAttacking && attackState.attackerIndex !== null && attackState.targetInfo) {
       const attacker = playerField.unitZone[attackState.attackerIndex]
       if (attacker) {
+        // Espelha os setFehnonXxDouble(...) abaixo: aqueles são estado React e só valem
+        // a partir do próximo render, então keepAttackReady/keepReadyDirect (mesma execução,
+        // mais abaixo) sempre leriam o valor antigo e perderiam o segundo ataque.
+        let fehnonDoubleTriggered = false
 
         // ── FEHNON SR 2DP: Laceração — compra 1 carta ao atacar; se Unidade → ataca novamente ──
         if (attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
@@ -6348,6 +6352,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             showDrawAnimation(drawn)
             if (isUnit) {
               setFehnonSrDouble(true)
+              fehnonDoubleTriggered = true
               showEffectFeedback("LACERAÇÃO: Carta Unidade! Fehnon pode atacar novamente!", "success")
             } else {
               showEffectFeedback("LACERAÇÃO: Carta comprada!", "info")
@@ -6368,6 +6373,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("PROTONIX SWORD") && z?.requiresUnit?.toLowerCase().includes("fehnon"))
             if (isUnit && !fehnonUrUsedDoubleThisTurn && hasProtonixSword) {
               setFehnonUrDouble(true)
+              fehnonDoubleTriggered = true
               showEffectFeedback("ORDEM DE LACERAÇÃO: Carta Unidade + Protonix Sword! Fehnon ataca novamente (traps ignorados)!", "success")
             } else if (isUnit && !fehnonUrUsedDoubleThisTurn && !hasProtonixSword) {
               // Without Protonix Sword, still draw but no second attack
@@ -6392,6 +6398,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("ODEN SWORD") && z?.requiresUnit?.toLowerCase().includes("fehnon"))
             if (isUnitOrAction && hasOdenSword) {
               setFehnonLrDouble(true)
+              fehnonDoubleTriggered = true
               setFehnonLrBonusDp(3)
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
@@ -7202,6 +7209,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const keepAttackReady =
                 (isLogiSrKill) ||
                 (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) ||
+                fehnonDoubleTriggered ||
                 (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
                 (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
                 (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
@@ -7243,6 +7251,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
 
             const keepReadyDirect =
+              fehnonDoubleTriggered ||
               (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) ||
               (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
               (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
