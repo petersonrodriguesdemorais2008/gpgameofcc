@@ -176,6 +176,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [fpReward, setFpReward] = useState<number | null>(null)
   const [revealIndex, setRevealIndex] = useState(-1)
   const [screenShake, setScreenShake] = useState(false)
+  const [raritySpecialShake, setRaritySpecialShake] = useState(false) // physical shake only, no extra white flash
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -421,7 +422,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         const holdDur   = rarity === "LR" ? 900 : rarity === "UR" ? 650 : 420
         // LR reveals get a screen shake at the peak of the flash — the biggest "wow" moment
         if (rarity === "LR") {
-          setTimeout(() => { setScreenShake(true); setTimeout(() => setScreenShake(false), 400) }, flashDur * 0.6)
+          setTimeout(() => { setRaritySpecialShake(true); setTimeout(() => setRaritySpecialShake(false), 400) }, flashDur * 0.6)
         }
         const t1 = setTimeout(() => setRarityRevealPhase("hold"), flashDur)
         const t2 = setTimeout(() => {
@@ -1080,14 +1081,14 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       {(isOpening || showResults) && currentBanner !== "friendship" && (
         <div
           ref={containerRef}
-          className={`fixed inset-0 z-50 overflow-hidden ${screenShake ? "animate-shake" : ""}`}
+          className={`fixed inset-0 z-50 overflow-hidden ${(screenShake || raritySpecialShake) ? "animate-shake" : ""}`}
           style={{background:"radial-gradient(ellipse at 50% 40%, #0a0a2e 0%, #000000 70%)"}}
         >
-          {/* Chromatic aberration flash on screen shake */}
+          {/* Chromatic aberration flash on screen shake — tightened radius, lower peak opacity */}
           {screenShake && <>
-            <div className="absolute inset-0 pointer-events-none z-[200]" style={{background:"radial-gradient(circle at center,rgba(255,255,255,0.22) 0%,transparent 60%)",animation:"chromaFlash 0.5s ease-out forwards"}}/>
-            <div className="absolute inset-0 pointer-events-none z-[199] mix-blend-screen" style={{background:"radial-gradient(circle at center,rgba(255,30,30,0) 0%,rgba(255,30,30,0.18) 100%)",animation:"chromaR 0.5s ease-out forwards"}}/>
-            <div className="absolute inset-0 pointer-events-none z-[199] mix-blend-screen" style={{background:"radial-gradient(circle at center,rgba(30,30,255,0) 0%,rgba(30,30,255,0.18) 100%)",animation:"chromaB 0.5s ease-out forwards"}}/>
+            <div className="absolute inset-0 pointer-events-none z-[200]" style={{background:"radial-gradient(circle at center,rgba(255,255,255,0.14) 0%,transparent 42%)",animation:"chromaFlash 0.45s ease-out forwards"}}/>
+            <div className="absolute inset-0 pointer-events-none z-[199] mix-blend-screen" style={{background:"radial-gradient(circle at center,rgba(255,30,30,0) 0%,rgba(255,30,30,0.10) 100%)",animation:"chromaR 0.45s ease-out forwards"}}/>
+            <div className="absolute inset-0 pointer-events-none z-[199] mix-blend-screen" style={{background:"radial-gradient(circle at center,rgba(30,30,255,0) 0%,rgba(30,30,255,0.10) 100%)",animation:"chromaB 0.45s ease-out forwards"}}/>
           </>}
           {/* Particle canvas */}
           <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
@@ -1360,16 +1361,16 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 filter:`blur(${isMain?0.5:1}px) drop-shadow(0 0 ${isMain?8:4}px ${rarityGlow.inner})`,
                               }} />
                             })}
-                            {/* Central flash orb */}
+                            {/* Central flash orb — smaller, contained core so it doesn't wash out the screen */}
                             <div className="absolute rounded-full" style={{
-                              width:"120px", height:"120px",
-                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 35%, ${rarityGlow.outer}80 65%, transparent 100%)`,
+                              width:"90px", height:"90px",
+                              background:`radial-gradient(circle, white 0%, ${rarityGlow.inner} 30%, ${rarityGlow.outer}60 58%, transparent 90%)`,
                               animation:"centralFlash 1.1s ease-out forwards",
-                              filter:"blur(2px)",
+                              filter:"blur(1.5px)",
                             }} />
                             <div className="absolute rounded-full" style={{
-                              width:"48px", height:"48px",
-                              background:"radial-gradient(circle, white 0%, white 60%, transparent 100%)",
+                              width:"32px", height:"32px",
+                              background:"radial-gradient(circle, white 0%, white 50%, transparent 100%)",
                               animation:"centralFlash 0.7s ease-out forwards",
                             }} />
                           </div>
@@ -1398,51 +1399,57 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                       const rLabel = rc==="LR" ? "LENDÁRIO" : rc==="UR" ? "ULTRA RARO" : "SUPER RARO"
                       return (
                         <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none overflow-hidden">
-                          {/* Flash — instant white-to-color burst */}
+                          {/* Dark scrim FIRST — dims the background so the color pops without washing the whole screen white */}
+                          <div className="absolute inset-0 bg-black" style={{
+                            opacity: rarityRevealPhase === "flash" ? 0.35 : 0.58,
+                            transition: "opacity 0.25s ease-out",
+                          }}/>
+
+                          {/* Flash — brief, CONTAINED burst (small white core, color falls off fast) */}
                           {rarityRevealPhase === "flash" && (
                             <div className="absolute inset-0" style={{
-                              background: `radial-gradient(circle at center, white 0%, ${rColor} 30%, ${rColor2} 55%, transparent 78%)`,
+                              background: `radial-gradient(circle at center, rgba(255,255,255,0.9) 0%, ${rColor}cc 12%, ${rColor2}66 28%, transparent 48%)`,
                               animation: `raritySpecialFlash ${rc==="LR"?"0.32s":rc==="UR"?"0.26s":"0.2s"} ease-out forwards`,
                             }}/>
                           )}
-                          {/* Hold — pulsing color wash + rays + label */}
+                          {/* Hold — gentle pulsing color wash (much lower opacity), rays, label */}
                           {rarityRevealPhase === "hold" && (
                             <>
                               <div className="absolute inset-0" style={{
-                                background: `radial-gradient(ellipse at center, ${rColor}35 0%, ${rColor2}18 45%, transparent 75%)`,
-                                animation: "rarityHoldPulse 0.5s ease-in-out infinite",
+                                background: `radial-gradient(ellipse at center, ${rColor}22 0%, ${rColor2}0f 38%, transparent 62%)`,
+                                animation: "rarityHoldPulse 0.6s ease-in-out infinite",
                               }}/>
-                              {/* Radiating rays — count scales with tier */}
-                              {[...Array(rc==="LR"?24:rc==="UR"?18:12)].map((_,i)=>{
-                                const n = rc==="LR"?24:rc==="UR"?18:12
+                              {/* Radiating rays — thinner, dimmer, less bloom */}
+                              {[...Array(rc==="LR"?20:rc==="UR"?14:10)].map((_,i)=>{
+                                const n = rc==="LR"?20:rc==="UR"?14:10
                                 return <div key={i} className="absolute top-1/2 left-1/2" style={{
-                                  width:"3px", height: rc==="LR"?"420px":rc==="UR"?"340px":"260px",
-                                  background:`linear-gradient(to top, transparent, ${rColor}, white, transparent)`,
+                                  width:"2px", height: rc==="LR"?"340px":rc==="UR"?"270px":"210px",
+                                  background:`linear-gradient(to top, transparent, ${rColor}90, transparent)`,
                                   transform:`translate(-50%,-100%) rotate(${i*(360/n)}deg)`,
                                   transformOrigin:"50% 100%",
-                                  animation:`rarityRaySpin ${rc==="LR"?"3s":rc==="UR"?"4s":"5s"} linear infinite`,
-                                  opacity:0.65, borderRadius:"3px",
-                                  filter:`blur(0.5px) drop-shadow(0 0 6px ${rColor})`,
+                                  animation:`rarityRaySpin ${rc==="LR"?"3.5s":rc==="UR"?"4.5s":"5.5s"} linear infinite`,
+                                  opacity:0.35, borderRadius:"3px",
+                                  filter:`drop-shadow(0 0 3px ${rColor}80)`,
                                 }}/>
                               })}
                               {/* Label banner */}
                               <div className="relative z-10 text-center" style={{animation:"raritySpecialLabel 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
                                 <p className="font-black tracking-[0.3em]" style={{
-                                  fontSize: rc==="LR"?"52px":rc==="UR"?"42px":"34px",
+                                  fontSize: rc==="LR"?"48px":rc==="UR"?"38px":"30px",
                                   color:"white",
-                                  textShadow:`0 0 20px ${rColor}, 0 0 40px ${rColor}, 0 0 70px ${rColor2}`,
-                                  WebkitTextStroke:`1.5px ${rColor2}`,
+                                  textShadow:`0 0 12px ${rColor}, 0 0 24px ${rColor2}99`,
+                                  WebkitTextStroke:`1px ${rColor2}`,
                                 }}>{rLabel}</p>
                                 {rc==="LR" && (
-                                  <p className="text-white/90 text-sm font-bold tracking-[0.4em] mt-2" style={{textShadow:`0 0 12px ${rColor}`}}>✦ ✦ ✦</p>
+                                  <p className="text-white/80 text-sm font-bold tracking-[0.4em] mt-2" style={{textShadow:`0 0 8px ${rColor}`}}>✦ ✦ ✦</p>
                                 )}
                               </div>
-                              {/* LR gets extra: rotating halo ring */}
+                              {/* LR gets extra: rotating halo ring — thinner, dimmer glow */}
                               {rc==="LR" && (
                                 <div className="absolute rounded-full pointer-events-none" style={{
-                                  width:"460px", height:"460px",
-                                  border:`2px solid ${rColor}90`,
-                                  boxShadow:`0 0 40px ${rColor}, inset 0 0 40px ${rColor2}`,
+                                  width:"420px", height:"420px",
+                                  border:`1.5px solid ${rColor}70`,
+                                  boxShadow:`0 0 18px ${rColor}60, inset 0 0 18px ${rColor2}40`,
                                   animation:"rarityHaloSpin 2.5s linear infinite",
                                 }}/>
                               )}
@@ -1949,13 +1956,14 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
         /* ── NEW: Special SR/UR/LR reveal sequence ── */
         @keyframes raritySpecialFlash {
-          0%   { opacity: 0; transform: scale(0.3); }
-          35%  { opacity: 1; transform: scale(1.15); }
-          100% { opacity: 1; transform: scale(1); }
+          0%   { opacity: 0; transform: scale(0.4); }
+          30%  { opacity: 1; transform: scale(1.05); }
+          70%  { opacity: 0.7; }
+          100% { opacity: 0.5; transform: scale(1); }
         }
         @keyframes rarityHoldPulse {
-          0%,100% { opacity: 0.75; }
-          50%     { opacity: 1; }
+          0%,100% { opacity: 0.55; }
+          50%     { opacity: 0.85; }
         }
         @keyframes rarityRaySpin {
           from { transform: translate(-50%,-100%) rotate(0deg); }
