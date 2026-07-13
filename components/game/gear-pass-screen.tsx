@@ -7,6 +7,7 @@ import {
   ArrowLeft, Crown, Star, Gift, Check, Lock, Zap,
   Calendar, RefreshCw, Flame, ChevronRight, ChevronLeft,
   Sparkles, Shield, Target, Trophy, X,
+  MapPin, Package, Award, Frame, PartyPopper, Gem, Flag, Dices, AlertTriangle, Unlock, Clock,
 } from "lucide-react"
 import {
   getMissionProgress,
@@ -563,8 +564,7 @@ function buildMissions(): PassMission[] {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) {
-  const iconSize = small ? 22 : 28
-  const emojiSize = small ? 18 : 24
+  const iconSize = small ? 20 : 24
   const rarityColor: Record<string, string> = {
     R: "#60a5fa", SR: "#c084fc", UR: "#fbbf24", LR: "#f87171",
   }
@@ -573,7 +573,7 @@ function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) 
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
         <img src="/images/icons/gacha-coin.png" alt="Coins"
-          style={{ width: iconSize, height: iconSize, objectFit: "contain" }}
+          style={{ width: small ? 22 : 28, height: small ? 22 : 28, objectFit: "contain" }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
         {reward.amount && (
           <span style={{ fontSize: 8, fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>
@@ -583,19 +583,25 @@ function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) 
       </div>
     )
   }
-  if (reward.type === "gacha_coin") return <div style={{ fontSize: emojiSize }}>🎰</div>
+  if (reward.type === "gacha_coin")
+    return <Dices size={iconSize} color="#fbbf24" strokeWidth={2} style={{ filter: "drop-shadow(0 0 4px rgba(251,191,36,0.45))" }} />
   if (reward.type === "card_pack") {
+    const rc = reward.rarity ? rarityColor[reward.rarity] : "#94a3b8"
     return (
-      <div style={{ fontSize: 10, fontWeight: 900, lineHeight: 1, textAlign: "center" }}>
-        <div style={{ fontSize: emojiSize }}>📦</div>
-        {reward.rarity && <div style={{ color: rarityColor[reward.rarity], fontSize: 8, marginTop: 1 }}>{reward.rarity}</div>}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+        <Package size={iconSize} color={rc} strokeWidth={2} style={{ filter: `drop-shadow(0 0 4px ${rc}70)` }} />
+        {reward.rarity && <div style={{ color: rc, fontSize: 7.5, fontWeight: 900, marginTop: -1, letterSpacing: "0.02em" }}>{reward.rarity}</div>}
       </div>
     )
   }
-  if (reward.type === "exclusive_card") return <div style={{ fontSize: emojiSize }}>🃏</div>
-  if (reward.type === "playmat")       return <div style={{ fontSize: emojiSize }}>🖼️</div>
-  if (reward.type === "avatar_frame")  return <div style={{ fontSize: emojiSize }}>👑</div>
-  if (reward.type === "title")         return <div style={{ fontSize: emojiSize }}>🏅</div>
+  if (reward.type === "exclusive_card")
+    return <Gem size={iconSize} color="#f87171" strokeWidth={2} style={{ filter: "drop-shadow(0 0 4px rgba(248,113,113,0.45))" }} />
+  if (reward.type === "playmat")
+    return <Frame size={iconSize} color="#22d3ee" strokeWidth={2} style={{ filter: "drop-shadow(0 0 4px rgba(34,211,238,0.40))" }} />
+  if (reward.type === "avatar_frame")
+    return <Award size={iconSize} color="#c084fc" strokeWidth={2} style={{ filter: "drop-shadow(0 0 4px rgba(192,132,252,0.40))" }} />
+  if (reward.type === "title")
+    return <Sparkles size={iconSize} color="#fbbf24" strokeWidth={2} style={{ filter: "drop-shadow(0 0 4px rgba(251,191,36,0.40))" }} />
   return <Star size={iconSize - 4} color="#94a3b8" />
 }
 
@@ -1762,7 +1768,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             boxShadow: "0 0 60px rgba(6,182,212,0.20)",
             animation: "popIn 0.28s cubic-bezier(.2,1.3,.4,1)",
           }}>
-            <div style={{ fontSize: 32, marginBottom: 6 }}>🏁</div>
+            <div style={{
+              width: 54, height: 54, borderRadius: 16, margin: "0 auto 10px",
+              background: "linear-gradient(145deg,#0e7490,#0891b2,#22d3ee)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 6px 20px rgba(6,182,212,0.35), inset 0 1.5px 0 rgba(255,255,255,0.30), inset 0 -4px 8px rgba(0,0,0,0.20)",
+            }}>
+              <Flag size={26} color="#fff" strokeWidth={2} style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }} />
+            </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#06b6d4", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
               Temporada {seasonRecap.seasonNumber} Encerrada
             </div>
@@ -1905,9 +1918,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           zIndex: 9999, background: "rgba(34,197,94,0.18)", border: "1px solid rgba(34,197,94,0.40)",
           borderRadius: 14, padding: "10px 24px", color: "#4ade80", fontWeight: 900, fontSize: 14,
           backdropFilter: "blur(12px)", boxShadow: "0 4px 24px rgba(34,197,94,0.2)",
-          animation: "fadeInDown 0.3s ease",
+          animation: "fadeInDown 0.3s ease", display: "flex", alignItems: "center", gap: 8,
         }}>
-          🎉 {claimFeedback}
+          <PartyPopper size={16} color="#4ade80" strokeWidth={2} />
+          {claimFeedback}
         </div>
       )}
 
@@ -2059,7 +2073,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             background: "rgba(245,158,11,0.12)", borderBottom: "1px solid rgba(245,158,11,0.30)",
             padding: "7px 16px", display: "flex", alignItems: "center", gap: 8,
           }}>
-          <span style={{ fontSize: 13 }}>⚠️</span>
+          <div style={{
+            width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+            background: "rgba(245,158,11,0.20)", border: "1px solid rgba(245,158,11,0.35)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <AlertTriangle size={11} color="#fbbf24" strokeWidth={2.5} />
+          </div>
           <span style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700 }}>
             Temporada encerra em {seasonDaysLeft} dia{seasonDaysLeft !== 1 ? "s" : ""}
           </span>
@@ -2119,7 +2139,14 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     position: "relative", textAlign: "center", padding: "8px 0 10px",
                     marginBottom: 12,
                   }}>
-                    <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+                    <div style={{
+                      width: 52, height: 52, borderRadius: 16, margin: "0 auto 8px",
+                      background: "linear-gradient(145deg,#78350f,#d97706,#fbbf24)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: "0 6px 20px rgba(217,119,6,0.40), inset 0 1.5px 0 rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.25)",
+                    }}>
+                      <Trophy size={26} color="#fff" strokeWidth={2} style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }} />
+                    </div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: "#fbbf24", letterSpacing: "-0.01em" }}>
                       Passe Completo!
                     </div>
@@ -2308,7 +2335,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       boxShadow: "0 0 10px rgba(6,182,212,0.20)",
                       animation: "fabIn 0.2s ease",
                     }}>
-                      📍 Lv.{passData.currentLevel}
+                      <MapPin size={11} strokeWidth={2.5} /> Lv.{passData.currentLevel}
                     </button>
                   )}
                   {/* Atalho pro próximo marco não alcançado */}
@@ -2319,7 +2346,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)",
                       color: "#fbbf24", fontSize: 10, fontWeight: 800, cursor: "pointer",
                     }}>
-                      🏆 Lv.{nextMilestone} ›
+                      <Trophy size={11} strokeWidth={2.5} /> Lv.{nextMilestone} <ChevronRight size={11} strokeWidth={3} style={{ marginLeft: -2 }} />
                     </button>
                   )}
                   {trackPendingCount > 0 && (
@@ -2545,12 +2572,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     : (isCurrent ? "rgba(6,182,212,0.80)" : isPast ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)")
                                 }`,
                               }}>
-                                <span style={{ fontSize: 9, fontWeight: 900, color:
+                                <span style={{ fontSize: 9, fontWeight: 900, display: "flex", alignItems: "center", gap: 2, color:
                                   isMilestone
                                     ? (isCurrent ? "#fde68a" : isPast ? "#fbbf24" : "#78350f")
                                     : (isCurrent ? "#e0f2fe" : isPast ? "#38bdf8" : "#334155")
                                 }}>
-                                  {isMilestone && "🏆 "}{lg.level}
+                                  {isMilestone && <Trophy size={9} strokeWidth={2.5} />}{lg.level}
                                 </span>
                               </div>
 
@@ -2666,7 +2693,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   {[
                     { icon: <Crown size={9} color="#f59e0b" />, label: "Premium", color: "#94a3b8" },
                     { icon: <Shield size={9} color="#06b6d4" />, label: "Trilha Ativa", color: "#06b6d4", bold: true },
-                    { icon: <span style={{ fontSize: 9 }}>🏆</span>, label: "Marco", color: "#fbbf24", bold: true },
+                    { icon: <Trophy size={9} color="#fbbf24" strokeWidth={2.5} />, label: "Marco", color: "#fbbf24", bold: true },
                     { icon: <div style={{ width: 6, height: 6, borderRadius: 99, background: "#06b6d4", boxShadow: "0 0 6px rgba(6,182,212,0.9)" }} />, label: "Pronto", color: "#94a3b8" },
                   ].map((item, i) => (
                     <div key={i} style={{
@@ -2788,8 +2815,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                     gap: 8, padding: "40px 20px", textAlign: "center",
                   }}>
-                    <div style={{ fontSize: 32, opacity: 0.35 }}>
-                      {missionFilter === "limited" ? "⏳" : missionFilter === "weekly" ? "📅" : "☀️"}
+                    <div style={{
+                      width: 52, height: 52, borderRadius: 16, opacity: 0.5,
+                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {missionFilter === "limited" ? <Clock size={22} color="#94a3b8" /> : missionFilter === "weekly" ? <Calendar size={22} color="#94a3b8" /> : <Zap size={22} color="#94a3b8" />}
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>
                       {missionFilter === "limited"
@@ -2807,12 +2838,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   (["daily", "weekly", "limited"] as const).map(type => {
                     const group = missions.filter(m => m.type === type)
                     if (group.length === 0) return null
-                    const labels = { daily: "☀️ Diárias", weekly: "📅 Semanais", limited: "⏳ Limitadas" }
+                    const labels = { daily: "Diárias", weekly: "Semanais", limited: "Limitadas" }
+                    const groupIcons = { daily: Zap, weekly: Calendar, limited: Clock }
                     const colors = { daily: "#22d3ee", weekly: "#c084fc", limited: "#fbbf24" }
+                    const GroupIcon = groupIcons[type]
                     return (
                       <div key={type}>
                         {/* Cabeçalho de grupo */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, marginTop: type === "daily" ? 0 : 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6, marginTop: type === "daily" ? 0 : 4 }}>
+                          <GroupIcon size={11} color={colors[type]} strokeWidth={2.5} />
                           <span style={{ fontSize: 10, fontWeight: 800, color: colors[type], letterSpacing: "0.08em", textTransform: "uppercase" }}>
                             {labels[type]}
                           </span>
@@ -2855,7 +2889,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 const { allDone, claimed, pts } = getCompletionBonusState(missionFilter)
                 const color = missionFilter === "daily" ? "#06b6d4" : "#a78bfa"
                 const label = missionFilter === "daily" ? "Diárias" : "Semanais"
-                const icon  = missionFilter === "daily" ? "☀️" : "📅"
+                const TypeIcon = missionFilter === "daily" ? Zap : Calendar
                 return (
                   <div style={{
                     marginTop: 6,
@@ -2882,9 +2916,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                           : "rgba(255,255,255,0.04)",
                         border: `1px solid ${claimed ? "rgba(34,197,94,0.35)" : allDone ? `${color}40` : "rgba(255,255,255,0.07)"}`,
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 20,
                       }}>
-                        {claimed ? "✅" : allDone ? "🏆" : icon}
+                        {claimed ? <Check size={20} color="#4ade80" strokeWidth={2.5} />
+                          : allDone ? <Trophy size={19} color={color} strokeWidth={2} />
+                          : <TypeIcon size={19} color="#475569" strokeWidth={2} />}
                       </div>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 900, color: claimed ? "#4ade80" : allDone ? "#f1f0ee" : "#475569", marginBottom: 2 }}>
@@ -2977,7 +3012,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)",
               borderRadius: 10, width: 32, height: 32, cursor: "pointer",
               color: "#64748b", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
-            }}>✕</button>
+            }}><X size={16} strokeWidth={2.5} /></button>
 
             {/* Icon */}
             <div style={{ textAlign: "center", marginBottom: 20, position: "relative" }}>
@@ -3013,8 +3048,8 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 <div style={{
                   width: 38, height: 38, borderRadius: 10, flexShrink: 0,
                   background: "rgba(245,158,11,0.20)", border: "1px solid rgba(245,158,11,0.35)",
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
-                }}>🎁</div>
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}><Gift size={18} color="#fbbf24" strokeWidth={2} /></div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24", lineHeight: 1.3 }}>
                     {retroactivePremiumCount} recompensa{retroactivePremiumCount !== 1 ? "s" : ""} esperando por você
@@ -3029,18 +3064,25 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
             {/* Benefits */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
               {[
-                { icon: "🃏", text: "Recompensas Premium em todos os 100 níveis" },
-                { icon: "👑", text: "Carta LR Exclusiva ao atingir Nível 100" },
-                { icon: "🖼️", text: "4 Playmats exclusivos do Passe" },
-                { icon: "💎", text: "Packs UR e SR em marcos especiais" },
-                { icon: "⚡", text: "Bônus de coins dobrado nas recompensas" },
-                { icon: "🔓", text: `Válido por toda a Temporada ${passData.seasonNumber} (${SEASON_DURATION_DAYS} dias)` },
+                { Icon: Package, color: "#22d3ee", text: "Recompensas Premium em todos os 100 níveis" },
+                { Icon: Crown, color: "#fbbf24", text: "Carta LR Exclusiva ao atingir Nível 100" },
+                { Icon: Frame, color: "#c084fc", text: "4 Playmats exclusivos do Passe" },
+                { Icon: Gem, color: "#f87171", text: "Packs UR e SR em marcos especiais" },
+                { Icon: Zap, color: "#fbbf24", text: "Bônus de coins dobrado nas recompensas" },
+                { Icon: Unlock, color: "#4ade80", text: `Válido por toda a Temporada ${passData.seasonNumber} (${SEASON_DURATION_DAYS} dias)` },
               ].map((b, i) => (
                 <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "8px 12px",
+                  display: "flex", alignItems: "center", gap: 11,
+                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: 11, padding: "9px 12px",
                 }}>
-                  <span style={{ fontSize: 16 }}>{b.icon}</span>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                    background: `${b.color}18`, border: `1px solid ${b.color}35`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <b.Icon size={14} color={b.color} strokeWidth={2} />
+                  </div>
                   <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600 }}>{b.text}</span>
                 </div>
               ))}
@@ -3067,7 +3109,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               boxShadow: "0 8px 32px rgba(217,119,6,0.45), inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.20)",
               letterSpacing: "0.02em",
             }}>
-              👑 Comprar Agora
+              <Crown size={17} style={{ marginRight: 6, verticalAlign: -3, filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.3))" }} />Comprar Agora
               <div style={{ position: "absolute", inset: 0, width: "40%",
                 background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.50),transparent)",
                 animation: "shimmer 2.8s ease-in-out infinite" }} />
