@@ -53,7 +53,7 @@ export type GameScreen =
   | "masters"
 
 export function GameWrapper() {
-  const { playerProfile, mobileMode, addToCollection, saveDeck } = useGame()
+  const { playerProfile, mobileMode, addToCollection, saveDeck, coins, setCoins } = useGame()
   const [currentScreen, setCurrentScreen] = useState<GameScreen>("menu")
   const [duelMode, setDuelMode] = useState<"bot" | "player">("bot")
   const [showSetup, setShowSetup] = useState(false)
@@ -237,6 +237,11 @@ export function GameWrapper() {
     if (playerProfile.id) {
       localStorage.setItem(`gpgame_tutorial_done_${playerProfile.id}`, "1")
     }
+    // Recompensa por completar (ou pular) o tutorial: 1500 Gacha Coins —
+    // mesma moeda ("coins" do useGame()) que a gacha-screen.tsx gasta pra
+    // puxar pacotes, o mesmo padrão já usado pelas recompensas de nível de
+    // mestre do tipo "gacha_coins" em master-screen.tsx.
+    setCoins(coins + 1500)
     setTutorialOverlayActive(false)
     setTutorialOverlayMaster(null)
     navigateTo("menu")
