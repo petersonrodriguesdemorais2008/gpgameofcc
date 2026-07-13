@@ -169,6 +169,9 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [openedCards, setOpenedCards] = useState<Card[]>([])
   const [showResults, setShowResults] = useState(false)
   const [rarityTier, setRarityTier] = useState<"normal" | "rare" | "epic" | "legendary">("normal")
+  // Special rarity reveal — plays before opening when pack contains SR+
+  const [rarityRevealPhase, setRarityRevealPhase] = useState<"idle" | "flash" | "hold" | "done">("idle")
+  const [revealingCardRarity, setRevealingCardRarity] = useState<"R" | "SR" | "UR" | "LR" | null>(null)
   const [phase, setPhase] = useState(0)
   const [fpReward, setFpReward] = useState<number | null>(null)
   const [revealIndex, setRevealIndex] = useState(-1)
@@ -404,12 +407,35 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }
   }, [isOpening, showResults, drawParticles])
 
-  // Card reveal animation — dramatic delays for rares
+  // Card reveal animation — dramatic delays + special rarity flash for SR+
   useEffect(() => {
     if (packPhase === "revealing" && cardRevealIndex < CARDS_PER_PACK) {
       const card = packs[currentPackIndex]?.cards[cardRevealIndex]
-      // Dramatic pause before UR/LR reveals
-      const delay = card?.rarity === "LR" ? 900 : card?.rarity === "UR" ? 600 : card?.rarity === "SR" ? 400 : 280
+      const rarity = card?.rarity as "R" | "SR" | "UR" | "LR" | undefined
+
+      if (rarity && rarity !== "R") {
+        // Fire the special rarity reveal sequence BEFORE flipping the card
+        setRevealingCardRarity(rarity)
+        setRarityRevealPhase("flash")
+        const flashDur  = rarity === "LR" ? 320 : rarity === "UR" ? 260 : 200
+        const holdDur   = rarity === "LR" ? 900 : rarity === "UR" ? 650 : 420
+        // LR reveals get a screen shake at the peak of the flash — the biggest "wow" moment
+        if (rarity === "LR") {
+          setTimeout(() => { setScreenShake(true); setTimeout(() => setScreenShake(false), 400) }, flashDur * 0.6)
+        }
+        const t1 = setTimeout(() => setRarityRevealPhase("hold"), flashDur)
+        const t2 = setTimeout(() => {
+          setRarityRevealPhase("done")
+          setRevealingCardRarity(null)
+          const flipDelay = rarity === "LR" ? 900 : rarity === "UR" ? 600 : 400
+          const t3 = setTimeout(() => setCardRevealIndex((prev) => prev + 1), flipDelay)
+          return () => clearTimeout(t3)
+        }, flashDur + holdDur)
+        return () => { clearTimeout(t1); clearTimeout(t2) }
+      }
+
+      // Normal R card — just delay and flip
+      const delay = 280
       const timer = setTimeout(() => setCardRevealIndex((prev) => prev + 1), delay)
       return () => clearTimeout(timer)
     }
@@ -1364,6 +1390,68 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                       </div>
                     )}
 
+                    {/* ── SPECIAL RARITY REVEAL OVERLAY — plays before SR/UR/LR card flips ── */}
+                    {packPhase === "revealing" && revealingCardRarity && rarityRevealPhase !== "idle" && rarityRevealPhase !== "done" && (() => {
+                      const rc = revealingCardRarity
+                      const rColor = rc==="LR" ? "#f97316" : rc==="UR" ? "#38bdf8" : "#a855f7"
+                      const rColor2 = rc==="LR" ? "#ef4444" : rc==="UR" ? "#6366f1" : "#7c3aed"
+                      const rLabel = rc==="LR" ? "LENDÁRIO" : rc==="UR" ? "ULTRA RARO" : "SUPER RARO"
+                      return (
+                        <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none overflow-hidden">
+                          {/* Flash — instant white-to-color burst */}
+                          {rarityRevealPhase === "flash" && (
+                            <div className="absolute inset-0" style={{
+                              background: `radial-gradient(circle at center, white 0%, ${rColor} 30%, ${rColor2} 55%, transparent 78%)`,
+                              animation: `raritySpecialFlash ${rc==="LR"?"0.32s":rc==="UR"?"0.26s":"0.2s"} ease-out forwards`,
+                            }}/>
+                          )}
+                          {/* Hold — pulsing color wash + rays + label */}
+                          {rarityRevealPhase === "hold" && (
+                            <>
+                              <div className="absolute inset-0" style={{
+                                background: `radial-gradient(ellipse at center, ${rColor}35 0%, ${rColor2}18 45%, transparent 75%)`,
+                                animation: "rarityHoldPulse 0.5s ease-in-out infinite",
+                              }}/>
+                              {/* Radiating rays — count scales with tier */}
+                              {[...Array(rc==="LR"?24:rc==="UR"?18:12)].map((_,i)=>{
+                                const n = rc==="LR"?24:rc==="UR"?18:12
+                                return <div key={i} className="absolute top-1/2 left-1/2" style={{
+                                  width:"3px", height: rc==="LR"?"420px":rc==="UR"?"340px":"260px",
+                                  background:`linear-gradient(to top, transparent, ${rColor}, white, transparent)`,
+                                  transform:`translate(-50%,-100%) rotate(${i*(360/n)}deg)`,
+                                  transformOrigin:"50% 100%",
+                                  animation:`rarityRaySpin ${rc==="LR"?"3s":rc==="UR"?"4s":"5s"} linear infinite`,
+                                  opacity:0.65, borderRadius:"3px",
+                                  filter:`blur(0.5px) drop-shadow(0 0 6px ${rColor})`,
+                                }}/>
+                              })}
+                              {/* Label banner */}
+                              <div className="relative z-10 text-center" style={{animation:"raritySpecialLabel 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
+                                <p className="font-black tracking-[0.3em]" style={{
+                                  fontSize: rc==="LR"?"52px":rc==="UR"?"42px":"34px",
+                                  color:"white",
+                                  textShadow:`0 0 20px ${rColor}, 0 0 40px ${rColor}, 0 0 70px ${rColor2}`,
+                                  WebkitTextStroke:`1.5px ${rColor2}`,
+                                }}>{rLabel}</p>
+                                {rc==="LR" && (
+                                  <p className="text-white/90 text-sm font-bold tracking-[0.4em] mt-2" style={{textShadow:`0 0 12px ${rColor}`}}>✦ ✦ ✦</p>
+                                )}
+                              </div>
+                              {/* LR gets extra: rotating halo ring */}
+                              {rc==="LR" && (
+                                <div className="absolute rounded-full pointer-events-none" style={{
+                                  width:"460px", height:"460px",
+                                  border:`2px solid ${rColor}90`,
+                                  boxShadow:`0 0 40px ${rColor}, inset 0 0 40px ${rColor2}`,
+                                  animation:"rarityHaloSpin 2.5s linear infinite",
+                                }}/>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })()}
+
                     {/* ── CARD REVEAL ── */}
                     {packPhase === "revealing" && (
                       <div className="flex flex-col items-center gap-5 w-full" style={{animation:"revealContainerIn 0.4s ease-out forwards"}}>
@@ -1857,6 +1945,30 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         @keyframes rarePulse {
           0%,100% { opacity: 1; }
           50%     { opacity: 0.55; }
+        }
+
+        /* ── NEW: Special SR/UR/LR reveal sequence ── */
+        @keyframes raritySpecialFlash {
+          0%   { opacity: 0; transform: scale(0.3); }
+          35%  { opacity: 1; transform: scale(1.15); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes rarityHoldPulse {
+          0%,100% { opacity: 0.75; }
+          50%     { opacity: 1; }
+        }
+        @keyframes rarityRaySpin {
+          from { transform: translate(-50%,-100%) rotate(0deg); }
+          to   { transform: translate(-50%,-100%) rotate(360deg); }
+        }
+        @keyframes raritySpecialLabel {
+          0%   { opacity: 0; transform: scale(0.4) translateY(20px); letter-spacing: 0.1em; }
+          60%  { transform: scale(1.1) translateY(0); }
+          100% { opacity: 1; transform: scale(1) translateY(0); letter-spacing: 0.3em; }
+        }
+        @keyframes rarityHaloSpin {
+          from { transform: rotate(0deg) scale(0.85); opacity: 0.9; }
+          to   { transform: rotate(360deg) scale(1); opacity: 0.6; }
         }
 
         @keyframes floatCard {
