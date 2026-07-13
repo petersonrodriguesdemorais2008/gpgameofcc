@@ -546,7 +546,7 @@ const GACHA_STEPS = [
   // abertura tem duração variável), espera o "CONFIRMAR" da tela de
   // resultado aparecer de verdade no DOM antes de avançar.
   { text: "", textTarget: null, hidden: true, waitForText: "CONFIRMAR" },
-  { text: "Incrível! Você conseguiu suas primeiras cartas! Continue jogando e abrindo packs — há muito mais pela frente. Obrigado(a) por me deixar te ensinar como tudo funciona. Agora... divirta-se e aproveite tudo que o jogo tem para te oferecer!",
+  { text: "Incrível! Você conseguiu suas primeiras cartas! Continue jogando e abrindo packs — há muito mais pela frente. Obrigado(a) por me deixar te ensinar como tudo funciona. Antes de você ir, tenho um presente por ter concluído o tutorial...",
     textTarget: null },
 ]
 
@@ -1003,6 +1003,110 @@ function SkipTutorialButton({ onSkip }: { onSkip: () => void }) {
     >
       {confirming ? "Confirmar? Toque de novo ►" : "Pular Tutorial ✕"}
     </button>
+  )
+}
+
+// ─── TutorialRewardReveal ─────────────────────────────────────────────────────
+/**
+ * Tela de celebração exibida no exato fim natural do tutorial (depois de
+ * abrir o primeiro pack, ao clicar no botão final do balão) — mesma
+ * linguagem visual da tela de confirmação de mestre (glow radial na cor do
+ * mestre, raios cônicos, arte entrando com animação), só que com o valor da
+ * recompensa contando de 0 até `amount` em vez de um balão de texto comum.
+ * onContinue dispara o onComplete de verdade (mesmo que SkipTutorialButton
+ * usa) — essa tela é só uma parada visual antes disso, nunca substitui a
+ * lógica real de conclusão.
+ */
+function TutorialRewardReveal({ masterId, amount, onContinue }: {
+  masterId: TutorialMasterId; amount: number; onContinue: () => void
+}) {
+  const m = MASTERS[masterId]
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const duration = 1100
+    const start = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 3) // easeOutCubic — desacelera no final
+      setCount(Math.round(eased * amount))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [amount])
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 800,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      background: "rgba(4,6,14,0.88)", backdropFilter: "blur(6px)",
+      animation: "tutFadeIn 0.4s ease both",
+    }}>
+      <div style={{
+        position: "absolute", inset: 0,
+        background: `radial-gradient(circle at 50% 40%, ${m.color}24 0%, transparent 60%)`,
+      }} />
+      <div style={{
+        position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+        width: "140%", height: "75%",
+        background: `conic-gradient(from 260deg at 50% 120%, transparent 0deg, ${m.color}12 10deg, transparent 20deg, transparent 340deg, ${m.color}0e 350deg, transparent 360deg)`,
+        animation: "msRays 1s ease both",
+      }} />
+
+      <img src={m.art} alt={m.name} style={{
+        height: "clamp(170px,32vh,300px)", objectFit: "contain",
+        filter: `drop-shadow(0 0 50px ${m.shadowGlow}) drop-shadow(0 0 100px ${m.color}22)`,
+        animation: "msConfirmArt 0.7s cubic-bezier(0.22,1,0.36,1) both",
+        position: "relative", zIndex: 2,
+      }} />
+
+      <div style={{ position: "relative", zIndex: 2, textAlign: "center", marginTop: 6, animation: "tutFadeIn 0.6s ease 0.15s both" }}>
+        <div style={{
+          fontSize: "clamp(22px,3.6vw,36px)", fontWeight: 900, color: "white",
+          textShadow: `0 0 24px ${m.color}90`,
+        }}>
+          🎉 Tutorial Concluído!
+        </div>
+        <div style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", marginTop: 6 }}>
+          Parabéns! {m.name} tem orgulho de você — receba essa recompensa:
+        </div>
+
+        <div style={{
+          marginTop: 22, display: "inline-flex", alignItems: "center", gap: 10,
+          background: "rgba(255,255,255,0.06)", border: `1px solid ${m.color}55`,
+          borderRadius: 16, padding: "14px 28px",
+          boxShadow: `0 0 40px ${m.color}30`,
+          animation: "tutRingPulse 2.2s ease-in-out infinite",
+        }}>
+          <span style={{ fontSize: 30 }}>🎰</span>
+          <span style={{
+            fontSize: "clamp(24px,4.2vw,40px)", fontWeight: 900, color: "#ffd76b",
+            fontVariantNumeric: "tabular-nums", minWidth: "5ch", textAlign: "right",
+          }}>
+            +{count.toLocaleString("pt-BR")}
+          </span>
+          <span style={{ fontSize: 14, color: "rgba(255,255,255,0.75)", fontWeight: 700 }}>
+            Gacha Coins
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={onContinue}
+        style={{
+          position: "relative", zIndex: 2, marginTop: 32,
+          padding: "12px 36px", borderRadius: 12,
+          background: m.color, color: "#0a0a12",
+          fontWeight: 900, fontSize: 15, border: "none", cursor: "pointer",
+          boxShadow: `0 8px 30px ${m.color}55`,
+          animation: "tutFadeIn 0.6s ease 0.3s both",
+        }}
+      >
+        Continuar ►
+      </button>
+    </div>
   )
 }
 
@@ -1754,6 +1858,11 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
   /** true quando o jogador já passou por todos os DUEL_STEPS — a partir daí
    *  o duelo real roda 100% livre, sem nenhuma interferência visual do tutorial */
   const [duelStepsDone, setDuelStepsDone] = useState(false)
+  /** true depois que o jogador clica "Finalizar Tutorial" no fim natural do
+   *  gacha — mostra TutorialRewardReveal por cima de tudo antes de disparar
+   *  o onComplete de verdade (ver handleBubbleNext). SkipTutorialButton NÃO
+   *  passa por aqui — pular vai direto pro onComplete, sem essa parada. */
+  const [showReward, setShowReward] = useState(false)
 
   useEffect(() => { setTimeout(() => setVisible(true), 80) }, [])
 
@@ -1980,7 +2089,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
 
   const handleBubbleNext = () => {
     if (isInterceptStep) return   // botão do balão é no-op nos passos forçados
-    if (isLastStep) onComplete()
+    if (isLastStep) setShowReward(true)
     else setStep(s => s + 1)
   }
 
@@ -1989,6 +2098,11 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     phase === "menu"            ? step :
     phase === "post-duel-menu"  ? MENU_STEPS.length + step :
     MENU_STEPS.length + POST_DUEL_STEPS.length + step
+
+  // ── Tela de recompensa: prioridade máxima, cobre QUALQUER fase ──────────────
+  if (showReward) {
+    return <TutorialRewardReveal masterId={masterId} amount={1500} onContinue={onComplete} />
+  }
 
   // ── Fase duel-sim: guia por cima do DuelScreen real ────────────────────────────
   // • Passo com textTarget: DynamicSpotlight bloqueia tudo, abre buraco só no
