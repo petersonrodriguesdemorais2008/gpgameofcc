@@ -1859,9 +1859,10 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
    *  o duelo real roda 100% livre, sem nenhuma interferência visual do tutorial */
   const [duelStepsDone, setDuelStepsDone] = useState(false)
   /** true depois que o jogador clica "Finalizar Tutorial" no fim natural do
-   *  gacha — mostra TutorialRewardReveal por cima de tudo antes de disparar
-   *  o onComplete de verdade (ver handleBubbleNext). SkipTutorialButton NÃO
-   *  passa por aqui — pular vai direto pro onComplete, sem essa parada. */
+   *  gacha OU confirma o SkipTutorialButton — mostra TutorialRewardReveal
+   *  por cima de tudo antes de disparar o onComplete de verdade (a
+   *  recompensa é concedida do mesmo jeito nos dois casos, então a tela
+   *  também aparece nos dois casos). */
   const [showReward, setShowReward] = useState(false)
 
   useEffect(() => { setTimeout(() => setVisible(true), 80) }, [])
@@ -2122,7 +2123,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
     return (
       <>
         <style>{TUTORIAL_CSS}</style>
-        <SkipTutorialButton onSkip={onComplete} />
+        <SkipTutorialButton onSkip={() => setShowReward(true)} />
         {!duelStepsDone && duelStep && (
           duelStep.kind === "wait" ? (
             // ── Atravessar o turno do bot: nada na tela — sem balão, sem
@@ -2201,7 +2202,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
       pointerEvents: "none",
     }}>
       <style>{TUTORIAL_CSS}</style>
-      <SkipTutorialButton onSkip={onComplete} />
+      <SkipTutorialButton onSkip={() => setShowReward(true)} />
 
       {/* Spotlight dinâmico — passa o interceptor nos passos obrigatórios */}
       {!isHidden && (
