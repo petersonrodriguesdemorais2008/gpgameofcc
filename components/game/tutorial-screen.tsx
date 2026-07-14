@@ -1037,21 +1037,47 @@ function TutorialRewardReveal({ masterId, amount, onContinue }: {
     return () => cancelAnimationFrame(raf)
   }, [amount])
 
+  // Posições fixas (não aleatórias — evita "pulo" visual a cada re-render)
+  // pra um punhado de brilhos decorativos espalhados pela tela.
+  const sparkles = [
+    { top: "12%", left: "10%", delay: "0s" },
+    { top: "20%", left: "86%", delay: "0.5s" },
+    { top: "70%", left: "7%",  delay: "1.1s" },
+    { top: "80%", left: "90%", delay: "0.3s" },
+    { top: "9%",  left: "48%", delay: "0.8s" },
+    { top: "86%", left: "50%", delay: "1.4s" },
+  ]
+
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 800,
+      position: "fixed", inset: 0, zIndex: 800, overflow: "hidden",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      background: "rgba(4,6,14,0.88)", backdropFilter: "blur(6px)",
       animation: "tutFadeIn 0.4s ease both",
     }}>
+      {/* Fundo praticamente opaco — esconde por completo o menu real por
+          trás (o backdrop-blur sozinho ainda deixava a UI real transparecer
+          e poluir a composição). */}
       <div style={{
         position: "absolute", inset: 0,
-        background: `radial-gradient(circle at 50% 40%, ${m.color}24 0%, transparent 60%)`,
+        background: `radial-gradient(circle at 50% 38%, ${m.color}22 0%, #05060d 70%)`,
       }} />
+      <div style={{ position: "absolute", inset: 0, background: "rgba(4,6,14,0.94)" }} />
+
+      {/* Brilhos decorativos — celebração sutil, sem exagerar */}
+      {sparkles.map((s, i) => (
+        <div key={i} style={{
+          position: "absolute", top: s.top, left: s.left,
+          width: 5, height: 5, borderRadius: "50%",
+          background: "white",
+          boxShadow: "0 0 8px 2px rgba(255,255,255,0.85)",
+          animation: `rewardSparkle 2.4s ease-in-out ${s.delay} infinite`,
+        }} />
+      ))}
+
       <div style={{
         position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
         width: "140%", height: "75%",
-        background: `conic-gradient(from 260deg at 50% 120%, transparent 0deg, ${m.color}12 10deg, transparent 20deg, transparent 340deg, ${m.color}0e 350deg, transparent 360deg)`,
+        background: `conic-gradient(from 260deg at 50% 120%, transparent 0deg, ${m.color}16 10deg, transparent 20deg, transparent 340deg, ${m.color}12 350deg, transparent 360deg)`,
         animation: "msRays 1s ease both",
       }} />
 
@@ -1070,17 +1096,21 @@ function TutorialRewardReveal({ masterId, amount, onContinue }: {
           🎉 Tutorial Concluído!
         </div>
         <div style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", marginTop: 6 }}>
-          Parabéns! {m.name} tem orgulho de você — receba essa recompensa:
+          Você deu os primeiros passos como duelista — receba essa recompensa:
         </div>
 
         <div style={{
-          marginTop: 22, display: "inline-flex", alignItems: "center", gap: 10,
+          marginTop: 22, display: "inline-flex", alignItems: "center", gap: 12,
           background: "rgba(255,255,255,0.06)", border: `1px solid ${m.color}55`,
           borderRadius: 16, padding: "14px 28px",
           boxShadow: `0 0 40px ${m.color}30`,
           animation: "tutRingPulse 2.2s ease-in-out infinite",
         }}>
-          <span style={{ fontSize: 30 }}>🎰</span>
+          <img src="/images/Gacha_Coin.png" alt="Gacha Coin" style={{
+            width: 34, height: 34, objectFit: "contain",
+            filter: "drop-shadow(0 0 10px rgba(255,255,255,0.4))",
+            animation: "rewardCoinSpin 3.2s linear infinite",
+          }} />
           <span style={{
             fontSize: "clamp(24px,4.2vw,40px)", fontWeight: 900, color: "#ffd76b",
             fontVariantNumeric: "tabular-nums", minWidth: "5ch", textAlign: "right",
@@ -2294,6 +2324,14 @@ const TUTORIAL_CSS = `
   @keyframes tutRingPulse {
     0%,100% { opacity:0.5; }
     50%     { opacity:1; }
+  }
+  @keyframes rewardCoinSpin {
+    0%   { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+  @keyframes rewardSparkle {
+    0%, 100% { opacity: 0; transform: scale(0.6); }
+    50%      { opacity: 1; transform: scale(1); }
   }
   @keyframes tutCursor {
     0%,100% { opacity:1; }
