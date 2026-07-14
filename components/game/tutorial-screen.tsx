@@ -1294,10 +1294,28 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: slide.bg,
+      position: "fixed", inset: 0,
       cursor: "pointer", userSelect: "none",
-      transition: "background 0.65s ease",
     }} onClick={handleClick}>
+      {/* Camada base: paisagem de fundo do mundo do jogo — fixa, cobre a
+          tela inteira, por baixo de tudo. O usuário vai adicionar o arquivo
+          em /public/images/gearperks-world-tutorial_background.png. */}
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: "url(/images/gearperks-world-tutorial_background.png)",
+        backgroundSize: "cover", backgroundPosition: "center",
+        pointerEvents: "none",
+      }} />
+
+      {/* "Tintura" de cor por cima da paisagem — mesmo slide.bg de antes,
+          agora semi-transparente (em vez de opaco) pra dar a variação de
+          humor entre os slides sem esconder a paisagem por baixo. */}
+      <div style={{
+        position: "absolute", inset: 0, background: slide.bg,
+        opacity: 0.68, transition: "background 0.65s ease",
+        pointerEvents: "none",
+      }} />
+
       {/* Fundo estrelado */}
       <div style={{
         position: "absolute", inset: 0,
