@@ -2730,11 +2730,23 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {/* ── MISSIONS TAB ── */}
           {activeTab === "missions" && (
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column",
-              padding: "10px 14px 0",
-              background: "rgba(3,8,22,0.88)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-              margin: "8px 14px 6px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.65)",
+              padding: "10px 14px 0", position: "relative",
+              background: "rgba(3,8,22,0.93)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              margin: "8px 14px 6px", borderRadius: 16,
+              border: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+              boxShadow: passData.hasPremium
+                ? "0 8px 32px rgba(0,0,0,0.65), 0 0 24px rgba(245,158,11,0.06) inset"
+                : "0 8px 32px rgba(0,0,0,0.65), 0 0 0 1px rgba(6,182,212,0.06) inset",
             }}>
+              {/* Cap ornamental no topo — mesma linguagem visual do Passe, fecha a consistência entre abas */}
+              <div style={{ position: "absolute", top: 0, left: "18%", right: "18%", height: 2, borderRadius: "0 0 3px 3px",
+                background: passData.hasPremium
+                  ? "linear-gradient(90deg,transparent,#f59e0b,#fbbf24,#f59e0b,transparent)"
+                  : "linear-gradient(90deg,transparent,#0891b2,#22d3ee,#0891b2,transparent)",
+                boxShadow: passData.hasPremium ? "0 0 10px rgba(251,191,36,0.7)" : "0 0 10px rgba(34,211,238,0.7)" }} />
+              {/* Textura sutil — mesmo padrão do Progress Hero */}
+              <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.4, borderRadius: 16,
+                background: "repeating-linear-gradient(115deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 26px)" }} />
               {/* Filter pills + Coletar Tudo */}
               <div style={{ flexShrink: 0, display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", alignItems: "center" }}>
                 {(["all", "daily", "weekly", "limited"] as const).map(f => {
