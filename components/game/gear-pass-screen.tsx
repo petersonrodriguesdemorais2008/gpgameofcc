@@ -2105,18 +2105,21 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           {/* ── PASS TAB ── */}
           {activeTab === "pass" && (
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              {/* ── PROGRESS HERO — borda dourada quando premium ativo ── */}
+              {/* ── PROGRESS HERO — fundido visualmente com a trilha abaixo, ── */}
+              {/* ── formando UM painel contínuo em vez de dois cards soltos ── */}
               <div style={{
-                margin: "10px 14px 0", borderRadius: 18, flexShrink: 0,
+                margin: "10px 14px 0", borderRadius: "18px 18px 0 0", flexShrink: 0,
                 position: "relative", overflow: "hidden",
                 background: "rgba(3,8,22,0.93)",
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
-                border: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                borderTop: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                borderLeft: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                borderRight: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
                 boxShadow: passData.hasPremium
                   ? "0 8px 48px rgba(0,0,0,0.75), 0 0 30px rgba(245,158,11,0.08) inset"
                   : "0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(6,182,212,0.08) inset",
-                padding: "17px 18px 12px",
+                padding: "17px 18px 14px",
               }}>
                 {/* Cap ornamental no topo — mesma linguagem visual do topo dos marcos na trilha */}
                 <div style={{ position: "absolute", top: 0, left: "18%", right: "18%", height: 2, borderRadius: "0 0 3px 3px",
@@ -2262,13 +2265,27 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     )}
                   </div>
                 </div>
+
+                {/* Costura — selo ornamental que marca a transição pro painel da trilha,
+                    substitui o antigo gap entre dois cards separados por UM painel contínuo */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "13px -18px -14px", padding: "0 18px",
+                  position: "relative", height: 1 }}>
+                  <div style={{ position: "absolute", left: 18, right: 18, height: 1,
+                    background: `linear-gradient(90deg,transparent,${passData.hasPremium ? "rgba(251,191,36,0.30)" : "rgba(6,182,212,0.30)"} 20%,${passData.hasPremium ? "rgba(251,191,36,0.30)" : "rgba(6,182,212,0.30)"} 80%,transparent)` }} />
+                  <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%) rotate(45deg)",
+                    width: 5, height: 5, background: passData.hasPremium ? "#fbbf24" : "#22d3ee",
+                    boxShadow: `0 0 8px ${passData.hasPremium ? "rgba(251,191,36,0.8)" : "rgba(34,211,238,0.8)"}` }} />
+                </div>
               </div>
 
               {/* ── REWARD TRACK ── */}
-              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginTop: 8,
-                background: "rgba(3,8,22,0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-                borderRadius: "14px", margin: "8px 14px 0", border: "1px solid rgba(255,255,255,0.07)",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.60)",
+              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column",
+                background: "rgba(3,8,22,0.93)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                borderRadius: "0 0 14px 14px", margin: "0 14px 0",
+                borderBottom: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                borderLeft: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                borderRight: passData.hasPremium ? "1px solid rgba(245,158,11,0.42)" : "1px solid rgba(6,182,212,0.32)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.50)",
               }}>
                 {/* ── XP BAR FUNDIDA ── Lv badge + barra full-width + pts, ponta a ponta */}
                 <div style={{ padding: "12px 14px 10px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10,
