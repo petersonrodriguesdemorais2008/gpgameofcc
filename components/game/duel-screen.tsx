@@ -4562,29 +4562,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const startingHand = roguelikeConfigRef.current?.startingHandSize ?? roguelikeConfig?.startingHandSize ?? 5
 
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
-    let hand = shuffledDeck.slice(0, startingHand)
-    let remainingDeck = shuffledDeck.slice(startingHand)
-
-    // Garante ao menos 1 carta jogável no unitZone na mão inicial — sem
-    // isso, o embaralhamento puro podia entregar uma mão sem NENHUMA carta
-    // assim, travando qualquer fluxo (tutorial ou jogo normal) que dependa
-    // do jogador conseguir evocar algo no primeiro turno. Usa o MESMO
-    // critério de isUnitCard() (linha ~4368 acima): type "unit" OU
-    // "ultimateElemental" OU "troops" — NÃO só "unit": o Calem, por
-    // exemplo, tem sua carta principal como "ultimateElemental", então
-    // checar só "unit" nunca reconheceria a própria carta-mestre dele.
-    // "ultimateGear"/"ultimateGuardian" ficam de fora de propósito — vão
-    // pra Ultimate Zone, uma zona diferente, ver isUltimateCard().
-    const isFieldUnitCard = (c: typeof hand[number]) =>
-      c.type === "unit" || c.type === "ultimateElemental" || c.type === "troops"
-    if (!hand.some(isFieldUnitCard)) {
-      const idx = remainingDeck.findIndex(isFieldUnitCard)
-      if (idx !== -1) {
-        const unit = remainingDeck[idx]
-        remainingDeck[idx] = hand[0]
-        hand = [unit, ...hand.slice(1)]
-      }
-    }
+    const hand = shuffledDeck.slice(0, startingHand)
+    const remainingDeck = shuffledDeck.slice(startingHand)
 
     setPlayerField((prev) => ({
       ...prev,
@@ -4608,7 +4587,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       hand: botHand,
       deck: botRemaining,
       tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
-      life: startingLP, // NÃO trocar por 50 fixo — precisa espelhar o LP do jogador (ver startingLP acima)
+      life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
@@ -6369,6 +6348,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
+            console.log("[FEHNON DEBUG] SR comprou:", drawn.name, "| type:", drawn.type, "| isUnit:", isUnit)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             if (isUnit) {
@@ -6378,6 +6358,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             } else {
               showEffectFeedback("LACERAÇÃO: Carta comprada!", "info")
             }
+          } else {
+            console.log("[FEHNON DEBUG] SR: deck vazio, nada comprado")
           }
         }
 
@@ -7231,6 +7213,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 (isLogiSrKill) ||
                 (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) ||
                 fehnonDoubleTriggered
+              if (attacker.name.toLowerCase().includes("fehnon")) {
+                console.log("[FEHNON DEBUG] keepAttackReady (ataque em unidade):", keepAttackReady, "| fehnonDoubleTriggered:", fehnonDoubleTriggered, "| atacante:", attacker.name, attacker.dp+"DP")
+              }
 
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
@@ -7270,6 +7255,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
             const keepReadyDirect =
               fehnonDoubleTriggered
+            if (attacker.name.toLowerCase().includes("fehnon")) {
+              console.log("[FEHNON DEBUG] keepReadyDirect (ataque direto):", keepReadyDirect, "| fehnonDoubleTriggered:", fehnonDoubleTriggered, "| atacante:", attacker.name, attacker.dp+"DP")
+            }
 
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
