@@ -244,6 +244,12 @@ export function GameWrapper() {
     setCoins(coins + 1500)
     setTutorialOverlayActive(false)
     setTutorialOverlayMaster(null)
+    // Reset defensivo: normalmente já é false nesse ponto (a transição pro
+    // post-duel-menu já reseta), mas se o jogador pular o tutorial ENQUANTO
+    // ainda dentro do duelo real (antes dessa transição acontecer), esse
+    // reset garante que nenhum duelo seguinte (fora do tutorial) herde por
+    // engano o startingLP=20 do tutorial.
+    setTutorialInDuel(false)
     navigateTo("menu")
   }
   // ─────────────────────────────────────────────────────────────────────────
