@@ -3633,7 +3633,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     const t = setTimeout(() => {
-      if (cancelled || !autoPlayRef.current || !isPlayerTurn) return
+      if (cancelled || !autoPlayRef.current || !isPlayerTurn) {
+        console.log("[AUTO-PLAY DEBUG] Abortou no guard inicial | cancelled:", cancelled, "| autoPlayRef:", autoPlayRef.current, "| isPlayerTurn:", isPlayerTurn, "| phase:", phase)
+        return
+      }
 
       if (phase === "draw") {
         advancePhase()
@@ -3642,6 +3645,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const pf        = playerFieldRef.current
         const emptyUnit = pf.unitZone.findIndex(s => s === null)
         const emptyFunc = pf.functionZone.findIndex(s => s === null)
+        console.log("[AUTO-PLAY DEBUG] FASE MAIN | mão:", pf.hand.map(c => `${c.name}(${c.type})`), "| slot unidade vazio:", emptyUnit, "| slot função vazio:", emptyFunc, "| normalSummonUsed:", normalSummonUsedRef.current)
 
         // ── 1. Invoca melhor Unidade / Tropa (se ainda não invocou) ──
         if (!normalSummonUsedRef.current && emptyUnit !== -1) {
@@ -3670,6 +3674,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             .map((c, i) => ({ c, i }))
             .filter(({ c }) => c.type === "action" || c.type === "magic" || c.type === "function")
             .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
+          console.log("[AUTO-PLAY DEBUG] Function/Ação/Magia na mão:", pf.hand.filter(c => c.type === "action" || c.type === "magic" || c.type === "function").map(c => c.name), "| escolhida:", funcCard?.c?.name ?? "NENHUMA")
 
           if (funcCard) {
             const { c: card, i: handIdx } = funcCard
@@ -3755,6 +3760,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           .map((u, i) => ({ u, i }))
           .filter(({ u }) => u && !u.hasAttacked && curTurn > u.canAttackTurn)
           .map(({ i }) => i)
+        console.log("[AUTO-PLAY DEBUG] FASE BATTLE | turno:", curTurn, "| unitZone:", pf.unitZone.map(u => u ? `${u.name}(hasAttacked:${u.hasAttacked},canAttackTurn:${u.canAttackTurn})` : "vazio"), "| atacantes elegíveis:", attackers.length)
 
         if (attackers.length > 0) fireAutoAttacks(attackers)
         else setTimeout(() => { if (!cancelled) endTurn() }, D(400))
@@ -4562,29 +4568,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const startingHand = roguelikeConfigRef.current?.startingHandSize ?? roguelikeConfig?.startingHandSize ?? 5
 
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
-    let hand = shuffledDeck.slice(0, startingHand)
-    let remainingDeck = shuffledDeck.slice(startingHand)
-
-    // Garante ao menos 1 carta jogável no unitZone na mão inicial — sem
-    // isso, o embaralhamento puro podia entregar uma mão sem NENHUMA carta
-    // assim, travando qualquer fluxo (tutorial ou jogo normal) que dependa
-    // do jogador conseguir evocar algo no primeiro turno. Usa o MESMO
-    // critério de isUnitCard() (linha ~4368 acima): type "unit" OU
-    // "ultimateElemental" OU "troops" — NÃO só "unit": o Calem, por
-    // exemplo, tem sua carta principal como "ultimateElemental", então
-    // checar só "unit" nunca reconheceria a própria carta-mestre dele.
-    // "ultimateGear"/"ultimateGuardian" ficam de fora de propósito — vão
-    // pra Ultimate Zone, uma zona diferente, ver isUltimateCard().
-    const isFieldUnitCard = (c: typeof hand[number]) =>
-      c.type === "unit" || c.type === "ultimateElemental" || c.type === "troops"
-    if (!hand.some(isFieldUnitCard)) {
-      const idx = remainingDeck.findIndex(isFieldUnitCard)
-      if (idx !== -1) {
-        const unit = remainingDeck[idx]
-        remainingDeck[idx] = hand[0]
-        hand = [unit, ...hand.slice(1)]
-      }
-    }
+    const hand = shuffledDeck.slice(0, startingHand)
+    const remainingDeck = shuffledDeck.slice(startingHand)
 
     setPlayerField((prev) => ({
       ...prev,
@@ -4608,7 +4593,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       hand: botHand,
       deck: botRemaining,
       tap: activeBotDeck.tapCards ? [...activeBotDeck.tapCards] : [],
-      life: startingLP, // NÃO trocar por 50 fixo — precisa espelhar o LP do jogador (ver startingLP acima)
+      life: 50,
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
