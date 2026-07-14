@@ -957,7 +957,7 @@ function SurrenderBlocker() {
   useEffect(() => {
     const update = () => setR(findByText("Desistir"))
     update()
-    const t = setInterval(update, 350)
+    const t = setInterval(update, 100)
     return () => clearInterval(t)
   }, [])
   if (!r) return null
@@ -1107,8 +1107,8 @@ function TutorialRewardReveal({ masterId, amount, onContinue }: {
           animation: "tutRingPulse 2.2s ease-in-out infinite",
         }}>
           <img src="/images/Gacha_Coin.png" alt="Gacha Coin" style={{
-            width: 34, height: 34, objectFit: "contain",
-            filter: "drop-shadow(0 0 10px rgba(255,255,255,0.4))",
+            width: 52, height: 52, objectFit: "contain",
+            filter: "drop-shadow(0 0 12px rgba(255,255,255,0.4))",
             animation: "rewardCoinSpin 3.2s linear infinite",
           }} />
           <span style={{
@@ -1173,7 +1173,7 @@ function DynamicSpotlight({ textTarget, onInterceptClick, masterId }: {
     }
 
     update()
-    const t = setInterval(update, 350)
+    const t = setInterval(update, 100)
     window.addEventListener("resize", update)
     return () => { clearInterval(t); window.removeEventListener("resize", update) }
   }, [textTarget])
@@ -1936,7 +1936,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
         clearTimeout(safety)
         advance()
       }
-      const poll = setInterval(() => { if (findByText(waitText)) finish() }, 300)
+      const poll = setInterval(() => { if (findByText(waitText)) finish() }, 120)
       const safety = setTimeout(finish, 20000)
       return () => { clearInterval(poll); clearTimeout(safety) }
     }
@@ -1997,7 +1997,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
       false
     const poll = setInterval(() => {
       if (isDone()) { clearInterval(poll); clearTimeout(safety); setStep(prev => prev + 1) }
-    }, 300)
+    }, 120)
     const safety = setTimeout(() => {
       clearInterval(poll)
       setStep(prev => prev + 1)
@@ -2023,7 +2023,7 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
         clearInterval(poll)
         setStep(prev => prev + 1)
       }
-    }, 300)
+    }, 120)
     return () => clearInterval(poll)
   }, [phase, step])
 
@@ -2095,9 +2095,9 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
         const now = findPhaseButtonContainer()?.querySelector("button")?.textContent ?? null
         if (now !== before || tries >= 10) { setStep(s => s + 1); return }
         findPhaseButtonContainer()?.querySelector("button")?.click()
-        setTimeout(check, 300)
+        setTimeout(check, 120)
       }
-      setTimeout(check, 300)
+      setTimeout(check, 120)
       return
     }
 
@@ -2113,9 +2113,9 @@ export function TutorialGameOverlay({ masterId, onNavigate, onComplete, postDuel
         return
       }
       clickRealElement(target)
-      setTimeout(check, 300)
+      setTimeout(check, 120)
     }
-    setTimeout(check, 300)
+    setTimeout(check, 120)
   }
 
   const handleBubbleNext = () => {
