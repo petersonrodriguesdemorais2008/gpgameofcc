@@ -1328,7 +1328,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           </div>
                         )}
 
-                        {/* Burst rays on opening — 32 rays with length variation */}
+                        {/* Opening burst — energy ring expansion + scattering shards + light sweep (cinematic, not a starburst) */}
                         {packPhase === "opening" && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             {/* Shockwave rings */}
@@ -1342,25 +1342,44 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                   opacity:0,
                                 }} />
                             ))}
-                            {/* 32 burst rays — alternating long/short for depth */}
-                            {[...Array(32)].map((_,i) => {
-                              const isMain = i % 4 === 0
-                              const isMid  = i % 2 === 0
-                              const len = isMain ? 260 : isMid ? 180 : 120
-                              const w   = isMain ? "3.5px" : isMid ? "2px" : "1.5px"
-                              const del = i * 0.008
+
+                            {/* Expanding energy ring — solid band thinning as it grows (not spiky) */}
+                            <div className="absolute rounded-full" style={{
+                              width:"60px", height:"60px",
+                              border:`10px solid ${rarityGlow.inner}`,
+                              animation:"energyRingExpand 0.85s cubic-bezier(0.1,0.6,0.25,1) forwards",
+                              opacity:0,
+                            }}/>
+
+                            {/* Diagonal light sweep across the whole area — single elegant pass */}
+                            <div className="absolute inset-[-40%]" style={{
+                              background:`linear-gradient(115deg, transparent 42%, ${rarityGlow.inner}55 49%, white 50%, ${rarityGlow.inner}55 51%, transparent 58%)`,
+                              animation:"lightSweepPass 0.7s ease-out 0.05s forwards",
+                              opacity:0,
+                              mixBlendMode:"screen",
+                            }}/>
+
+                            {/* Scattering shards — short segments that fly out with slight arcs & rotation, not straight pins */}
+                            {[...Array(18)].map((_,i) => {
+                              const ang = i * (360/18) + (Math.random()*10-5)
+                              const dist = 90 + Math.random()*70
+                              const len = 22 + Math.random()*20
+                              const del = i * 0.012
+                              const rad = ang * Math.PI/180
                               return <div key={i} className="absolute" style={{
-                                width:w, height:`${len}px`,
-                                background:`linear-gradient(to top, transparent, ${isMid?rarityGlow.inner:"white"}, white, transparent)`,
-                                transform:`rotate(${i*(360/32)}deg)`,
-                                transformOrigin:"50% 100%",
+                                width:"3px", height:`${len}px`,
+                                background:`linear-gradient(to top, transparent, ${rarityGlow.inner}, white)`,
                                 top:"50%", left:"50%",
-                                marginLeft:`calc(-${w}/2)`,
-                                animation:`burstRayEpic 1.1s cubic-bezier(0.18,1,0.32,1) ${del}s forwards`,
-                                opacity:0, borderRadius:"2px",
-                                filter:`blur(${isMain?0.5:1}px) drop-shadow(0 0 ${isMain?8:4}px ${rarityGlow.inner})`,
-                              }} />
+                                borderRadius:"2px",
+                                animation:`shardScatter 0.75s cubic-bezier(0.16,0.85,0.3,1) ${del}s forwards`,
+                                opacity:0,
+                                filter:`drop-shadow(0 0 5px ${rarityGlow.inner})`,
+                                "--sx": `${Math.cos(rad)*dist}px`,
+                                "--sy": `${Math.sin(rad)*dist}px`,
+                                "--srot": `${ang}deg`,
+                              } as React.CSSProperties} />
                             })}
+
                             {/* Central flash orb — smaller, contained core so it doesn't wash out the screen */}
                             <div className="absolute rounded-full" style={{
                               width:"90px", height:"90px",
@@ -1397,6 +1416,17 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                       const rColor = rc==="LR" ? "#f97316" : rc==="UR" ? "#38bdf8" : "#a855f7"
                       const rColor2 = rc==="LR" ? "#ef4444" : rc==="UR" ? "#6366f1" : "#7c3aed"
                       const rLabel = rc==="LR" ? "LENDÁRIO" : rc==="UR" ? "ULTRA RARO" : "SUPER RARO"
+                      // Segmented magic-circle ring pattern (conic-gradient) — reads as "arcane circle", not a starburst
+                      const ringSegments = `conic-gradient(from 0deg,
+                        transparent 0deg 8deg, ${rColor} 8deg 20deg, transparent 20deg 34deg,
+                        ${rColor} 34deg 46deg, transparent 46deg 60deg, ${rColor} 60deg 72deg,
+                        transparent 72deg 96deg, ${rColor} 96deg 108deg, transparent 108deg 122deg,
+                        ${rColor} 122deg 134deg, transparent 134deg 156deg, ${rColor} 156deg 168deg,
+                        transparent 168deg 182deg, ${rColor} 182deg 194deg, transparent 194deg 216deg,
+                        ${rColor} 216deg 228deg, transparent 228deg 240deg, ${rColor} 240deg 252deg,
+                        transparent 252deg 276deg, ${rColor} 276deg 288deg, transparent 288deg 302deg,
+                        ${rColor} 302deg 314deg, transparent 314deg 336deg, ${rColor} 336deg 348deg,
+                        transparent 348deg 360deg)`
                       return (
                         <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none overflow-hidden">
                           {/* Dark scrim FIRST — dims the background so the color pops without washing the whole screen white */}
@@ -1412,26 +1442,67 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                               animation: `raritySpecialFlash ${rc==="LR"?"0.32s":rc==="UR"?"0.26s":"0.2s"} ease-out forwards`,
                             }}/>
                           )}
-                          {/* Hold — gentle pulsing color wash (much lower opacity), rays, label */}
+                          {/* Hold — ambient wash, magic circle rings, drifting motes, vertical beam, label */}
                           {rarityRevealPhase === "hold" && (
                             <>
                               <div className="absolute inset-0" style={{
-                                background: `radial-gradient(ellipse at center, ${rColor}22 0%, ${rColor2}0f 38%, transparent 62%)`,
+                                background: `radial-gradient(ellipse at center, ${rColor}20 0%, ${rColor2}0e 38%, transparent 62%)`,
                                 animation: "rarityHoldPulse 0.6s ease-in-out infinite",
                               }}/>
-                              {/* Radiating rays — thinner, dimmer, less bloom */}
-                              {[...Array(rc==="LR"?20:rc==="UR"?14:10)].map((_,i)=>{
-                                const n = rc==="LR"?20:rc==="UR"?14:10
-                                return <div key={i} className="absolute top-1/2 left-1/2" style={{
-                                  width:"2px", height: rc==="LR"?"340px":rc==="UR"?"270px":"210px",
-                                  background:`linear-gradient(to top, transparent, ${rColor}90, transparent)`,
-                                  transform:`translate(-50%,-100%) rotate(${i*(360/n)}deg)`,
-                                  transformOrigin:"50% 100%",
-                                  animation:`rarityRaySpin ${rc==="LR"?"3.5s":rc==="UR"?"4.5s":"5.5s"} linear infinite`,
-                                  opacity:0.35, borderRadius:"3px",
-                                  filter:`drop-shadow(0 0 3px ${rColor}80)`,
-                                }}/>
+
+                              {/* Vertical light beam descending from top — cinematic "chosen one" spotlight */}
+                              <div className="absolute top-0 left-1/2 -translate-x-1/2" style={{
+                                width: rc==="LR"?"140px":rc==="UR"?"105px":"75px",
+                                height:"100%",
+                                background:`linear-gradient(to bottom, ${rColor}00, ${rColor}35 15%, ${rColor}22 60%, ${rColor}00 100%)`,
+                                animation:"lightBeamDescend 0.6s ease-out forwards",
+                                mixBlendMode:"screen",
+                              }}/>
+
+                              {/* Magic circle — 2 segmented rings rotating opposite directions (arcane, not firework) */}
+                              <div className="absolute rounded-full" style={{
+                                width: rc==="LR"?"300px":rc==="UR"?"240px":"190px",
+                                height: rc==="LR"?"300px":rc==="UR"?"240px":"190px",
+                                background: ringSegments,
+                                opacity: 0.55,
+                                animation:`magicRingSpin ${rc==="LR"?"6s":rc==="UR"?"7.5s":"9s"} linear infinite`,
+                                filter:`drop-shadow(0 0 4px ${rColor}80)`,
+                                WebkitMaskImage:"radial-gradient(circle, transparent 62%, black 64%, black 76%, transparent 78%)",
+                                maskImage:"radial-gradient(circle, transparent 62%, black 64%, black 76%, transparent 78%)",
+                              }}/>
+                              <div className="absolute rounded-full" style={{
+                                width: rc==="LR"?"220px":rc==="UR"?"175px":"140px",
+                                height: rc==="LR"?"220px":rc==="UR"?"175px":"140px",
+                                background: ringSegments,
+                                opacity: 0.4,
+                                animation:`magicRingSpinRev ${rc==="LR"?"4.5s":rc==="UR"?"5.5s":"6.5s"} linear infinite`,
+                                WebkitMaskImage:"radial-gradient(circle, transparent 58%, black 60%, black 70%, transparent 72%)",
+                                maskImage:"radial-gradient(circle, transparent 58%, black 60%, black 70%, transparent 72%)",
+                              }}/>
+                              {/* Thin static outer ring for definition */}
+                              <div className="absolute rounded-full pointer-events-none" style={{
+                                width: rc==="LR"?"320px":rc==="UR"?"258px":"205px",
+                                height: rc==="LR"?"320px":rc==="UR"?"258px":"205px",
+                                border:`1px solid ${rColor}55`,
+                              }}/>
+
+                              {/* Drifting light motes — float upward slowly with gentle sway, NOT exploding outward */}
+                              {[...Array(rc==="LR"?14:rc==="UR"?10:7)].map((_,i)=>{
+                                const startX = (Math.random()-0.5) * (rc==="LR"?320:rc==="UR"?250:190)
+                                const sway = (Math.random()-0.5) * 60
+                                const size = 2 + Math.random()*3
+                                const dur = 1.6 + Math.random()*1.2
+                                const del = Math.random()*0.5
+                                return <div key={i} className="absolute rounded-full" style={{
+                                  left:`calc(50% + ${startX}px)`, bottom:"38%",
+                                  width:`${size}px`, height:`${size}px`,
+                                  background: rc==="LR" ? "#fde047" : rc==="UR" ? "#bae6fd" : "#e9d5ff",
+                                  boxShadow:`0 0 4px 1px ${rColor}90`,
+                                  animation:`moteDrift ${dur}s ease-out ${del}s infinite`,
+                                  "--sway": `${sway}px`,
+                                } as React.CSSProperties}/>
                               })}
+
                               {/* Label banner */}
                               <div className="relative z-10 text-center" style={{animation:"raritySpecialLabel 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
                                 <p className="font-black tracking-[0.3em]" style={{
@@ -1444,15 +1515,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                   <p className="text-white/80 text-sm font-bold tracking-[0.4em] mt-2" style={{textShadow:`0 0 8px ${rColor}`}}>✦ ✦ ✦</p>
                                 )}
                               </div>
-                              {/* LR gets extra: rotating halo ring — thinner, dimmer glow */}
-                              {rc==="LR" && (
-                                <div className="absolute rounded-full pointer-events-none" style={{
-                                  width:"420px", height:"420px",
-                                  border:`1.5px solid ${rColor}70`,
-                                  boxShadow:`0 0 18px ${rColor}60, inset 0 0 18px ${rColor2}40`,
-                                  animation:"rarityHaloSpin 2.5s linear infinite",
-                                }}/>
-                              )}
                             </>
                           )}
                         </div>
@@ -1828,11 +1890,23 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         }
 
         /* ── Burst rays ── */
-        @keyframes burstRayEpic {
-          0%   { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(0) translateY(-50%); }
-          20%  { opacity: 1; }
-          60%  { opacity: 0.6; transform: rotate(var(--r,0deg)) scaleY(1) translateY(-50%); }
-          100% { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(2.5) translateY(-50%); }
+        /* ── NEW: Cinematic opening burst (ring + sweep + scattering shards) ── */
+        @keyframes energyRingExpand {
+          0%   { opacity: 0; transform: scale(0.3); border-width: 14px; }
+          25%  { opacity: 0.9; }
+          100% { opacity: 0; transform: scale(5.5); border-width: 0px; }
+        }
+        @keyframes lightSweepPass {
+          0%   { opacity: 0; transform: translateX(-30%) rotate(0deg); }
+          15%  { opacity: 1; }
+          60%  { opacity: 0.5; }
+          100% { opacity: 0; transform: translateX(30%) rotate(0deg); }
+        }
+        @keyframes shardScatter {
+          0%   { opacity: 0; transform: translate(-50%,-50%) rotate(var(--srot,0deg)) translateY(0) scale(0.4); }
+          22%  { opacity: 1; }
+          60%  { opacity: 0.55; }
+          100% { opacity: 0; transform: translate(calc(-50% + var(--sx,60px)), calc(-50% + var(--sy,60px))) rotate(var(--srot,0deg)) scale(0.15); }
         }
         @keyframes centralFlash {
           0%   { opacity: 0; transform: scale(0); }
@@ -1965,18 +2039,30 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           0%,100% { opacity: 0.55; }
           50%     { opacity: 0.85; }
         }
-        @keyframes rarityRaySpin {
-          from { transform: translate(-50%,-100%) rotate(0deg); }
-          to   { transform: translate(-50%,-100%) rotate(360deg); }
+        /* ── NEW: Magic-circle rarity reveal (beam, rotating rings, drifting motes) ── */
+        @keyframes lightBeamDescend {
+          0%   { opacity: 0; transform: translateX(-50%) scaleY(0.3); transform-origin: top; }
+          40%  { opacity: 1; }
+          100% { opacity: 0.8; transform: translateX(-50%) scaleY(1); transform-origin: top; }
+        }
+        @keyframes magicRingSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes magicRingSpinRev {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(-360deg); }
+        }
+        @keyframes moteDrift {
+          0%   { opacity: 0; transform: translate(0, 0); }
+          15%  { opacity: 1; }
+          80%  { opacity: 0.7; }
+          100% { opacity: 0; transform: translate(var(--sway, 20px), -160px); }
         }
         @keyframes raritySpecialLabel {
           0%   { opacity: 0; transform: scale(0.4) translateY(20px); letter-spacing: 0.1em; }
           60%  { transform: scale(1.1) translateY(0); }
           100% { opacity: 1; transform: scale(1) translateY(0); letter-spacing: 0.3em; }
-        }
-        @keyframes rarityHaloSpin {
-          from { transform: rotate(0deg) scale(0.85); opacity: 0.9; }
-          to   { transform: rotate(360deg) scale(1); opacity: 0.6; }
         }
 
         @keyframes floatCard {
