@@ -3647,7 +3647,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (!normalSummonUsedRef.current && emptyUnit !== -1) {
           const best = pf.hand
             .map((c, i) => ({ c, i }))
-            .filter(({ c }) => (c.type === "unit" || c.type === "trooper") && !isUltimateCard(c))
+            .filter(({ c }) => (c.type === "unit" || c.type === "trooper" || c.type === "troops") && !isUltimateCard(c))
             .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
           if (best) {
@@ -6205,9 +6205,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const advancePhase = () => {
     if (!isPlayerTurn) return
     if (phase === "draw") {
-      // Compra uma carta automaticamente ao sair da fase de draw
-      if (playerField.deck.length > 0) {
-        const drawnCard = playerField.deck[0]
+      // Compra uma carta automaticamente ao sair da fase de draw.
+      // Usa playerFieldRef (igual o fireAutoAttacks já faz) em vez da closure
+      // playerField, que pode estar desatualizada quando isso é chamado de
+      // dentro do setTimeout do modo automático.
+      const currentDeck = playerFieldRef.current.deck
+      console.log("[AUTO-DRAW DEBUG] deck.length via ref:", currentDeck.length, "| via closure:", playerField.deck.length)
+      if (currentDeck.length > 0) {
+        const drawnCard = currentDeck[0]
         showDrawAnimation(drawnCard)
         setPlayerField((prev) => ({
           ...prev,
@@ -6347,7 +6352,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
+            const isUnit = ["unit","troops","trooper","ultimateGuardian","ultimateElemental"].includes(drawn.type)
             console.log("[FEHNON DEBUG] SR comprou:", drawn.name, "| type:", drawn.type, "| isUnit:", isUnit)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
@@ -6368,7 +6373,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
+            const isUnit = ["unit","troops","trooper","ultimateGuardian","ultimateElemental"].includes(drawn.type)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             // Only grant double attack if Protonix Sword is equipped (Singularidade Zero condition)
@@ -6393,7 +6398,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn = playerField.deck[0]
           if (drawn) {
             // "Unit or Action Function" = unit, troops, ultimates, or function cards
-            const isUnitOrAction = ["unit","troops","ultimateGuardian","ultimateElemental","function","action"].includes(drawn.type)
+            const isUnitOrAction = ["unit","troops","trooper","ultimateGuardian","ultimateElemental","function","action"].includes(drawn.type)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             // Check ODEN SWORD is equipped on Fehnon LR (Laceração do Mundo requirement)
