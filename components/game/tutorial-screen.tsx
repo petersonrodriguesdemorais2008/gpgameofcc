@@ -1298,11 +1298,13 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
       cursor: "pointer", userSelect: "none",
     }} onClick={handleClick}>
       {/* Camada base: paisagem de fundo do mundo do jogo — fixa, cobre a
-          tela inteira, por baixo de tudo. O usuário vai adicionar o arquivo
-          em /public/images/gearperks-world-tutorial_background.png. */}
+          tela inteira, por baixo de tudo. Arquivo real (com ESPAÇO, não
+          underscore, no nome — confirmado no commit 17ce03a):
+          /public/images/gearperks-world-tutorial background.png. Aspas
+          dentro do url() são necessárias pra um espaço literal funcionar. */}
       <div style={{
         position: "absolute", inset: 0,
-        backgroundImage: "url(/images/gearperks-world-tutorial_background.png)",
+        backgroundImage: 'url("/images/gearperks-world-tutorial background.png")',
         backgroundSize: "cover", backgroundPosition: "center",
         pointerEvents: "none",
       }} />
