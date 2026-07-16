@@ -1755,8 +1755,8 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
           continuidade visual entre os diálogos e a escolha do mestre. Como
           essa tela não tem cor de humor variando por slide (é sempre a
           mesma #050508), a "tintura" usa exatamente essa mesma cor em vez
-          de uma nova — mais forte que na LorePhase (0.82 vs 0.68) porque
-          aqui tem bastante texto/UI que precisa continuar bem legível. */}
+          de uma nova — mesma opacidade da LorePhase (0.68), pra manter a
+          paisagem igualmente visível nas duas telas. */}
       <div style={{
         position: "absolute", inset: 0,
         backgroundImage: `url("${WORLD_BG_IMAGE}")`,
@@ -1765,7 +1765,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
         transition: "opacity 0.6s ease",
         pointerEvents: "none",
       }} />
-      <div style={{ position:"absolute", inset:0, background:"#050508", opacity:0.82, pointerEvents:"none" }} />
+      <div style={{ position:"absolute", inset:0, background:"#050508", opacity:0.68, pointerEvents:"none" }} />
 
       {/* Ambient glow seguindo o personagem ativo */}
       <div style={{
