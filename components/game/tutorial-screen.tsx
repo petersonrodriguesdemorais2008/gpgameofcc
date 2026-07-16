@@ -1280,6 +1280,22 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
   const { displayed, done, skip } = useTypewriter(slide.text, 28)
   useTutorialAudio("/audio/Solidificação.mp3", 0.45)
 
+  // Pré-carrega a imagem de fundo (~2MB) assim que a tela monta, em vez de
+  // deixar a <div backgroundImage> descobrir a URL sozinha — isso evita o
+  // "pop" perceptível de a imagem aparecer de repente no meio da leitura.
+  // Enquanto não carrega, opacity fica 0 (só a tintura+estrelas aparecem,
+  // igual a antes dessa imagem existir); quando carrega, some com fade
+  // suave em vez de estourar na tela.
+  const [bgLoaded, setBgLoaded] = useState(false)
+  useEffect(() => {
+    const img = new window.Image()
+    img.onload = () => setBgLoaded(true)
+    img.src = "/images/gearperks-world-tutorial background.png"
+    // Se já estiver em cache de uma visita anterior, onload pode não
+    // disparar de novo em alguns navegadores — .complete cobre esse caso.
+    if (img.complete) setBgLoaded(true)
+  }, [])
+
   // Slide 6 = "Ufa, você acordou!" — primeira apresentação real dos personagens.
   // Antes disso as artes aparecem como silhuetas escuras e misteriosas.
   const REVEAL_SLIDE = 6
@@ -1306,6 +1322,8 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
         position: "absolute", inset: 0,
         backgroundImage: 'url("/images/gearperks-world-tutorial background.png")',
         backgroundSize: "cover", backgroundPosition: "center",
+        opacity: bgLoaded ? 1 : 0,
+        transition: "opacity 0.6s ease",
         pointerEvents: "none",
       }} />
 
