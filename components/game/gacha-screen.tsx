@@ -181,6 +181,24 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const animationRef = useRef<number>()
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Refs mirroring the latest state so the particle animation loop (below) can
+  // read current values without ever being torn down and rebuilt. Previously
+  // drawParticles's useCallback depended directly on packPhase/cardRevealIndex/
+  // rarityTier/revealingCardRarity, so EVERY change to any of them (which
+  // happens many times per second during a reveal sequence) recreated the
+  // whole closure — wiping the particle array and frame counter, and because
+  // assigning canvas.width always clears its pixel content, this caused a
+  // visible flash/reset of every in-flight particle and the ambient smoke
+  // trail. That repeated reset is very likely what read as "bugged" flicker.
+  const packPhaseRef = useRef(packPhase)
+  const cardRevealIndexRef = useRef(cardRevealIndex)
+  const rarityTierRef = useRef(rarityTier)
+  const revealingCardRarityRef = useRef(revealingCardRarity)
+  useEffect(() => { packPhaseRef.current = packPhase }, [packPhase])
+  useEffect(() => { cardRevealIndexRef.current = cardRevealIndex }, [cardRevealIndex])
+  useEffect(() => { rarityTierRef.current = rarityTier }, [rarityTier])
+  useEffect(() => { revealingCardRarityRef.current = revealingCardRarity }, [revealingCardRarity])
+
   // Daily gacha state
   const [dailyUsed, setDailyUsed] = useState(false)
   const [timeUntilReset, setTimeUntilReset] = useState("")
@@ -201,8 +219,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   // Tear sparks — array of {id, x (% along line), side (+1/-1), life 0-1}
   const [tearSparks, setTearSparks] = useState<{id:number;x:number;side:number;scale:number}[]>([])
   const tearSparkIdRef = useRef(0)
-  // Card reveal dopamine burst — tracks which card just flipped
-  const [revealBurstIdx, setRevealBurstIdx] = useState<number>(-1)
   // Zoom on revealed cards
   const [revealZoomedCard, setRevealZoomedCard] = useState<{ image: string; name: string; rarity: string } | null>(null)
 
@@ -268,33 +284,44 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       epic:      ["#38bdf8","#93c5fd","#e0f2fe"],
       legendary: ["#f97316","#fbbf24","#fde68a"],
     }
-    const cols = palettes[rarityTier]
+    const currentCols = () => palettes[rarityTierRef.current] || palettes.normal
 
     interface Particle {
       x: number; y: number; vx: number; vy: number
       size: number; color: string; alpha: number; life: number; maxLife: number
-      type: "spark"|"orb"|"ring"
       gravity?: boolean
-      angle?: number; spin?: number; trail?: {x:number;y:number}[]
+      trail?: {x:number;y:number}[]
     }
 
     const particles: Particle[] = []
-    let t = 0
+    let frame = 0
+
+    // "Last seen" trackers so bursts fire exactly once per state TRANSITION
+    // (a phase newly starting, a new card index) rather than at a fixed
+    // absolute frame number — the old `if (t===1)` style only worked because
+    // the whole loop used to restart (t back to 0) on every phase change; now
+    // that the loop runs continuously forever, triggers must detect "this
+    // just became true" instead.
+    let openingBurstStage: 0 | 1 | 2 = 0
+    let openingBurstStageStartFrame = 0
+    let lastRevealedIdx = -2
 
     const spawnAmbient = () => {
       if (particles.length >= 120) return
+      const cols = currentCols()
       const side = Math.random()
       const x = side < 0.5 ? Math.random() * canvas.width : (Math.random() < 0.5 ? -10 : canvas.width + 10)
       const y = side < 0.5 ? canvas.height + 10 : Math.random() * canvas.height
       particles.push({ x, y, vx:(Math.random()-0.5)*1.5, vy:-1.5-Math.random()*2.5,
         size:1.5+Math.random()*3, color:cols[Math.floor(Math.random()*cols.length)],
-        alpha:0.9, life:200, maxLife:200, type:"spark" })
+        alpha:0.9, life:200, maxLife:200 })
     }
 
     // Loot-burst style: particles launch outward/upward then arc down under
     // gravity, like a treasure-chest opening — NOT a flat radial firework
     // burst that hangs in a perfect circle with no gravity.
     const spawnBurst = (num:number, x:number, y:number, speed:number) => {
+      const cols = currentCols()
       for (let i=0;i<num;i++) {
         // Bias toward upward directions (-160°..-20° in screen space) rather
         // than a full uniform 360° ring — reads as "erupting up" not "radiating out".
@@ -302,47 +329,46 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         const s = speed * (0.6+Math.random()*0.7)
         particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
           size:2.5+Math.random()*4.5, color:cols[Math.floor(Math.random()*cols.length)],
-          alpha:1, life:60, maxLife:60, type:"spark", gravity:true,
-          spin:((Math.random()-0.5)*0.3), trail:[] })
-      }
-    }
-
-    const spawnRing = (x:number,y:number,radius:number,count:number) => {
-      for(let i=0;i<count;i++){
-        const a=(Math.PI*2/count)*i
-        particles.push({x:x+Math.cos(a)*radius,y:y+Math.sin(a)*radius,
-          vx:Math.cos(a)*1.3,vy:Math.sin(a)*1.3-0.8,
-          size:1.8+Math.random()*2.5,color:cols[Math.floor(Math.random()*cols.length)],
-          alpha:1,life:44,maxLife:44,type:"spark",gravity:true,trail:[]})
+          alpha:1, life:60, maxLife:60, gravity:true, trail:[] })
       }
     }
 
     const animate = () => {
-      t++
-      const fade = packPhase==="opening"?"rgba(0,0,0,0.25)":packPhase==="revealing"?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.06)"
+      frame++
+      const phase = packPhaseRef.current
+      const cri = cardRevealIndexRef.current
+      const rarity = revealingCardRarityRef.current
+
+      const fade = phase==="opening"?"rgba(0,0,0,0.25)":phase==="revealing"?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.06)"
       ctx.fillStyle=fade; ctx.fillRect(0,0,canvas.width,canvas.height)
 
       // Ambient
-      if(t%2===0) spawnAmbient()
+      if(frame%2===0) spawnAmbient()
 
-      // Opening burst — multi-wave, denser and more dramatic
-      if(packPhase==="opening") {
-        if(t===1)  { spawnBurst(56,cx,cy,22); spawnRing(cx,cy,0,28) }
-        if(t===6)  { spawnBurst(40,cx,cy,15); spawnRing(cx,cy,50,20) }
-        if(t===12) { spawnBurst(28,cx,cy,10); spawnRing(cx,cy,90,16) }
-        if(t===20) { spawnBurst(16,cx,cy,6);  spawnRing(cx,cy,140,10) }
+      // Opening burst — two waves, each fired exactly once per "opening" phase
+      // entry (detected via the stage counter, not an absolute frame number,
+      // so this works correctly no matter how long the loop has been running).
+      if (phase==="opening") {
+        if (openingBurstStage===0) { spawnBurst(22,cx,cy,14); openingBurstStage=1; openingBurstStageStartFrame=frame }
+        else if (openingBurstStage===1 && frame-openingBurstStageStartFrame>=7) { spawnBurst(10,cx,cy,8); openingBurstStage=2 }
+      } else {
+        openingBurstStage = 0 // reset so the NEXT pack's opening phase can fire its waves again
       }
 
-      // Revealing — burst on EACH card flip + ambient sparkle
-      if(packPhase==="revealing" && cardRevealIndex>=0) {
-        // Per-card burst exactly when it flips (t===2 after reveal starts)
-        if(t===2) { spawnBurst(20, cx + (cardRevealIndex-1.5)*80, cy, 9); spawnRing(cx + (cardRevealIndex-1.5)*80, cy, 30, 10) }
-        // Continuous ambient sparkles near the active card
-        if(t%12===0) { spawnBurst(5, cx+(cardRevealIndex-1.5)*80+(Math.random()-0.5)*50, cy+(Math.random()-0.5)*50, 4) }
+      // Revealing — a small twinkle only on rare cards, fired once when
+      // cardRevealIndex reaches a new value (i.e. a card just flipped).
+      // Plain R cards get no canvas burst at all.
+      if (phase==="revealing" && cri>=0 && cri!==lastRevealedIdx) {
+        lastRevealedIdx = cri
+        if (rarity) {
+          const n = rarity==="LR" ? 14 : rarity==="UR" ? 9 : 6
+          spawnBurst(n, cx + (cri-1.5)*80, cy, rarity==="LR"?10:7)
+        }
       }
+      if (phase!=="revealing") lastRevealedIdx = -2
 
       // Shaking — tension particles
-      if(packPhase==="shaking" && t%4===0) {
+      if(phase==="shaking" && frame%4===0) {
         spawnBurst(4, cx+(Math.random()-0.5)*60, cy+(Math.random()-0.5)*80, 3)
       }
 
@@ -355,7 +381,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         if (p.gravity) p.vy += 0.13 // arcs particles downward like falling treasure/embers, not a flat radial hang
         p.life--
         const pct=p.life/p.maxLife
-        p.alpha=pct*(p.type==="orb"?0.7:0.9)
+        p.alpha=pct*0.9
 
         if(p.life<=0){particles.splice(i,1);continue}
 
@@ -392,19 +418,28 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       animationRef.current=requestAnimationFrame(animate)
     }
     animate()
-  }, [packPhase, rarityTier, cardRevealIndex])
+  }, []) // Empty deps — created ONCE and never torn down mid-session; all
+         // time-varying reads go through the refs above instead.
 
+  // Runs the particle loop for exactly one continuous session per gacha pull.
+  // Derived into a single boolean so that isOpening and showResults flipping
+  // together at the very end of a multi-pack pull (isOpening: true→false and
+  // showResults: false→true happen in the same update, when moving from the
+  // last card's reveal straight into the results screen) doesn't count as a
+  // stop-then-restart — the boolean itself stays true across that transition,
+  // so the loop (and its particles) carries on seamlessly instead of resetting.
+  const particleSessionActive = isOpening || showResults
   useEffect(() => {
-    if (isOpening || showResults) {
-      drawParticles()
-    }
+    if (!particleSessionActive) return
+    drawParticles()
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [isOpening, showResults, drawParticles])
+  }, [particleSessionActive, drawParticles])
+
 
   // Card reveal animation — dramatic delays + special rarity flash for SR+
   // FIX: all setTimeout IDs are now tracked in a single array and cleared
@@ -1173,9 +1208,12 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                     setSwipeComplete(true)
                     setSwipeProgress(1)
                     setSwipeStartX(null)
-                    setScreenShake(true)
-                    setTimeout(() => setScreenShake(false), 500)
                     setTearSparks([])
+                    // Single source of truth for the shake: just transition phase.
+                    // The "shaking" state-machine effect owns screenShake timing —
+                    // previously this handler ALSO drove its own 500ms shake timer
+                    // while the effect ran an independent 700ms one, leaving a ~200ms
+                    // dead pause where the pack sat frozen before the burst fired.
                     setPackPhase("shaking")
                   }
                 }
@@ -1525,30 +1563,43 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                       width:"108px", height:"155px", position:"relative",
                                       transformStyle:"preserve-3d",
                                       transform: isRevealed ? "rotateY(0deg)" : "rotateY(-180deg)",
-                                      transition: isRevealing ? `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)` : "none",
+                                      // FIX: transition used to be gated on `isRevealing`, which turns false
+                                      // as soon as the NEXT card starts its own reveal — for R cards (only
+                                      // 280ms between reveals) this happened WHILE the current card's 0.6s
+                                      // flip transition was still mid-flight, snapping `transition` to "none"
+                                      // and causing the card to instantly pop to its end angle instead of
+                                      // finishing the rotation smoothly. The transition rule now always
+                                      // applies (each card only ever changes its transform once, from
+                                      // face-down to face-up, so this never causes unwanted animation on
+                                      // mount) — only the one-time shine-sweep/glow effects below still key
+                                      // off `isRevealing`.
+                                      transition: `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)`,
                                       opacity: isPending && idx > cardRevealIndex ? 0.10 : 1,
                                     }}
                                     onClick={() => isRevealed && setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
                                   >
-                                  {/* Mini dopamine burst when this card was just revealed */}
+                                  {/* Card reveal shine — a single directional light sweep across the
+                                      card face as it flips into view (the classic "legendary card"
+                                      glint from Hearthstone/MTG Arena). Directional motion like this
+                                      can never read as fireworks the way radiating particles do.
+                                      Rare cards additionally get a soft uniform glow bloom behind them
+                                      — a smooth scale+fade, not discrete sparks, so it stays a "glow"
+                                      rather than a "burst". */}
                                   {isRevealing && (
-                                    <div className="absolute inset-0 pointer-events-none z-30 overflow-visible">
-                                      {[...Array(card.rarity==="LR"?16:card.rarity==="UR"?12:card.rarity==="SR"?8:5)].map((_,pi)=>{
-                                        const ang = pi * (360/(card.rarity==="LR"?16:card.rarity==="UR"?12:card.rarity==="SR"?8:5))
-                                        const spd = 55+Math.random()*60
-                                        return <div key={pi} style={{
-                                          position:"absolute",left:"50%",top:"50%",
-                                          width:`${3+Math.random()*4}px`,height:`${3+Math.random()*4}px`,
-                                          borderRadius:"50%",
-                                          background: card.rarity==="LR"?"radial-gradient(circle,#fde047,#fb923c)":
-                                                      card.rarity==="UR"?"radial-gradient(circle,white,#38bdf8)":
-                                                      card.rarity==="SR"?"radial-gradient(circle,white,#a855f7)":"white",
-                                          boxShadow:`0 0 6px 2px ${card.rarity==="LR"?"rgba(251,146,60,1)":card.rarity==="UR"?"rgba(56,189,248,1)":card.rarity==="SR"?"rgba(168,85,247,1)":"rgba(148,163,184,0.8)"}`,
-                                          animation:`miniParticle 0.65s ease-out ${Math.random()*0.12}s both`,
-                                          "--mpx":`${Math.cos(ang*Math.PI/180)*spd}px`,
-                                          "--mpy":`${Math.sin(ang*Math.PI/180)*spd}px`,
-                                        } as React.CSSProperties}/>
-                                      })}
+                                    <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden rounded-sm">
+                                      {card.rarity !== "R" && (
+                                        <div className="absolute inset-0 rounded-full" style={{
+                                          background: `radial-gradient(circle, ${
+                                            card.rarity==="LR" ? "rgba(251,146,60,0.55)" :
+                                            card.rarity==="UR" ? "rgba(56,189,248,0.5)" : "rgba(168,85,247,0.45)"
+                                          } 0%, transparent 70%)`,
+                                          animation: "cardGlowBloom 0.6s ease-out forwards",
+                                        }}/>
+                                      )}
+                                      <div className="absolute inset-[-30%]" style={{
+                                        background: `linear-gradient(115deg, transparent 40%, rgba(255,255,255,${card.rarity==="R"?0.35:0.6}) 50%, transparent 60%)`,
+                                        animation: `cardShineSweep ${card.rarity==="LR"?"0.7s":"0.55s"} ease-out ${card.rarity==="R"?"0.05s":"0.15s"} forwards`,
+                                      }}/>
                                     </div>
                                   )}
                                     {/* FRONT — hidden until card turns */}
@@ -1777,9 +1828,15 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       <style jsx>{`
         /* ── Pack float idle ── */
         @keyframes packFloat {
+          /* Small amplitude on purpose: switching the `animation` property
+             (e.g. when the phase moves from floating → shaking) does NOT
+             interpolate from wherever this loop was interrupted — it hard-cuts
+             straight to the next animation's 0% state. A large offset here
+             would produce a visible snap at that instant; keeping the range
+             tight keeps any such snap imperceptible. */
           0%,100% { transform: translateY(0px) rotate(0deg); }
-          30%     { transform: translateY(-12px) rotate(0.5deg); }
-          70%     { transform: translateY(-8px) rotate(-0.3deg); }
+          30%     { transform: translateY(-4px) rotate(0.3deg); }
+          70%     { transform: translateY(-2px) rotate(-0.2deg); }
         }
 
         /* ── "Abra!" label ── */
@@ -2067,10 +2124,16 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           100% { transform: scale(9); opacity: 0; }
         }
 
-        /* ── NEW: Mini dopamine particle per card flip ── */
-        @keyframes miniParticle {
-          0%   { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
-          100% { transform: translate(calc(-50% + var(--mpx, 40px)), calc(-50% + var(--mpy, -40px))) scale(0); opacity: 0; }
+        /* ── NEW: Card reveal shine — directional sweep + soft glow bloom (no radial particles) ── */
+        @keyframes cardShineSweep {
+          0%   { opacity: 0; transform: translateX(-60%) rotate(0deg); }
+          20%  { opacity: 1; }
+          100% { opacity: 0; transform: translateX(60%) rotate(0deg); }
+        }
+        @keyframes cardGlowBloom {
+          0%   { opacity: 0; transform: scale(0.5); }
+          35%  { opacity: 1; transform: scale(1.15); }
+          100% { opacity: 0; transform: scale(1.5); }
         }
       `}</style>
     </div>
