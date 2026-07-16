@@ -1776,7 +1776,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
       }} />
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:30, display:"flex", flexDirection:"column", alignItems:"center", padding:"clamp(16px,3vh,30px) 0 16px", background:"linear-gradient(to bottom, rgba(5,5,8,0.98) 0%, transparent 100%)", pointerEvents:"none", animation:"tutFadeIn 0.6s ease both" }}>
+      <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:30, display:"flex", flexDirection:"column", alignItems:"center", padding:"clamp(16px,3vh,30px) 0 16px", background:"linear-gradient(to bottom, rgba(5,5,8,0.68) 0%, transparent 100%)", pointerEvents:"none", animation:"tutFadeIn 0.6s ease both" }}>
         <span style={{ fontSize:"clamp(7px,0.78vw,9px)", letterSpacing:"0.55em", color:"rgba(255,255,255,0.2)", textTransform:"uppercase", marginBottom:9 }}>A Grande Ordem — Sua Escolha</span>
         <h1 style={{ fontSize:"clamp(21px,2.9vw,38px)", fontWeight:900, color:"#fff", margin:"0 0 10px", letterSpacing:"0.01em", textShadow:"0 2px 30px rgba(120,60,200,0.3)" }}>Escolha seu Mestre de Jornada</h1>
         <div style={{ display:"flex", alignItems:"center", gap:8, width:"clamp(140px,30vw,380px)" }}>
@@ -1865,7 +1865,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
               </div>
 
               {/* ── Área de info (altura fixa → zero layout shift) ── */}
-              <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"clamp(182px,26.5vh,237px)", background:"linear-gradient(to top, rgba(5,5,8,0.99) 0%, rgba(5,5,8,0.90) 55%, transparent 100%)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", padding:`0 clamp(10px,1.8vw,18px) clamp(12px,2.2vh,20px)` }}>
+              <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"clamp(182px,26.5vh,237px)", background:"linear-gradient(to top, rgba(5,5,8,0.68) 0%, rgba(5,5,8,0.68) 55%, transparent 100%)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", padding:`0 clamp(10px,1.8vw,18px) clamp(12px,2.2vh,20px)` }}>
 
                 {/* Badge elemento com pontos laterais */}
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
