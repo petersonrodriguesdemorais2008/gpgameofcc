@@ -623,6 +623,33 @@ function useTutorialAudio(src: string, volume = 0.5) {
   }, [src, volume])
 }
 
+/** Caminho real do arquivo (com ESPAÇO, não underscore, no nome — confirmado
+ *  no commit 17ce03a). Constante única pra LorePhase e MasterSelectPhase
+ *  nunca divergirem no caminho usado. */
+const WORLD_BG_IMAGE = "/images/gearperks-world-tutorial background.png"
+
+/**
+ * Pré-carrega uma imagem (via objeto Image() do JS, fora do DOM) assim que o
+ * componente que chama monta, e avisa quando termina — usado pra imagens de
+ * fundo pesadas (a paisagem do mundo do jogo, ~2MB) que não devem "estourar"
+ * na tela no meio de uma transição. Retorna `loaded`, pra a tela aplicar um
+ * fade-in (opacity 0 → 1) em vez de deixar a <div background-image> revelar
+ * a imagem de repente assim que o navegador termina de baixá-la sozinho.
+ */
+function useBackgroundPreload(src: string): boolean {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    setLoaded(false)
+    const img = new window.Image()
+    img.onload = () => setLoaded(true)
+    img.src = src
+    // Já em cache de uma visita anterior: onload pode não disparar de novo
+    // em alguns navegadores — .complete cobre esse caso.
+    if (img.complete) setLoaded(true)
+  }, [src])
+  return loaded
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPONENT: MASTER BUBBLE (balão de fala branco — fiel ao in-game)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1279,22 +1306,7 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
   const slide = slides[currentSlide]
   const { displayed, done, skip } = useTypewriter(slide.text, 28)
   useTutorialAudio("/audio/Solidificação.mp3", 0.45)
-
-  // Pré-carrega a imagem de fundo (~2MB) assim que a tela monta, em vez de
-  // deixar a <div backgroundImage> descobrir a URL sozinha — isso evita o
-  // "pop" perceptível de a imagem aparecer de repente no meio da leitura.
-  // Enquanto não carrega, opacity fica 0 (só a tintura+estrelas aparecem,
-  // igual a antes dessa imagem existir); quando carrega, some com fade
-  // suave em vez de estourar na tela.
-  const [bgLoaded, setBgLoaded] = useState(false)
-  useEffect(() => {
-    const img = new window.Image()
-    img.onload = () => setBgLoaded(true)
-    img.src = "/images/gearperks-world-tutorial background.png"
-    // Se já estiver em cache de uma visita anterior, onload pode não
-    // disparar de novo em alguns navegadores — .complete cobre esse caso.
-    if (img.complete) setBgLoaded(true)
-  }, [])
+  const bgLoaded = useBackgroundPreload(WORLD_BG_IMAGE)
 
   // Slide 6 = "Ufa, você acordou!" — primeira apresentação real dos personagens.
   // Antes disso as artes aparecem como silhuetas escuras e misteriosas.
@@ -1314,13 +1326,10 @@ function LorePhase({ slides, currentSlide, onAdvance, onSkip }: {
       cursor: "pointer", userSelect: "none",
     }} onClick={handleClick}>
       {/* Camada base: paisagem de fundo do mundo do jogo — fixa, cobre a
-          tela inteira, por baixo de tudo. Arquivo real (com ESPAÇO, não
-          underscore, no nome — confirmado no commit 17ce03a):
-          /public/images/gearperks-world-tutorial background.png. Aspas
-          dentro do url() são necessárias pra um espaço literal funcionar. */}
+          tela inteira, por baixo de tudo. */}
       <div style={{
         position: "absolute", inset: 0,
-        backgroundImage: 'url("/images/gearperks-world-tutorial background.png")',
+        backgroundImage: `url("${WORLD_BG_IMAGE}")`,
         backgroundSize: "cover", backgroundPosition: "center",
         opacity: bgLoaded ? 1 : 0,
         transition: "opacity 0.6s ease",
@@ -1694,6 +1703,7 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
   const [viewingDeck, setViewingDeck] = useState<TutorialMasterId | null>(null)
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useTutorialAudio("/audio/Big Memory.mp3", 0.5)
+  const bgLoaded = useBackgroundPreload(WORLD_BG_IMAGE)
 
   useEffect(() => { const t = setTimeout(() => setEntered(true), 80); return () => clearTimeout(t) }, [])
 
@@ -1740,6 +1750,22 @@ function MasterSelectPhase({ playerName, onSelect, selectedMaster, confirmed }: 
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#050508", fontFamily:"'Segoe UI',sans-serif", overflow:"hidden" }}>
+
+      {/* Mesma paisagem de fundo do mundo do jogo usada em LorePhase — dá
+          continuidade visual entre os diálogos e a escolha do mestre. Como
+          essa tela não tem cor de humor variando por slide (é sempre a
+          mesma #050508), a "tintura" usa exatamente essa mesma cor em vez
+          de uma nova — mais forte que na LorePhase (0.82 vs 0.68) porque
+          aqui tem bastante texto/UI que precisa continuar bem legível. */}
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: `url("${WORLD_BG_IMAGE}")`,
+        backgroundSize: "cover", backgroundPosition: "center",
+        opacity: bgLoaded ? 1 : 0,
+        transition: "opacity 0.6s ease",
+        pointerEvents: "none",
+      }} />
+      <div style={{ position:"absolute", inset:0, background:"#050508", opacity:0.82, pointerEvents:"none" }} />
 
       {/* Ambient glow seguindo o personagem ativo */}
       <div style={{
