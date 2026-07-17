@@ -1828,9 +1828,9 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       <style jsx>{`
         /* ── Pack float idle ── */
         @keyframes packFloat {
-          /* Small amplitude on purpose: switching the `animation` property
-             (e.g. when the phase moves from floating → shaking) does NOT
-             interpolate from wherever this loop was interrupted — it hard-cuts
+          /* Small amplitude on purpose: switching the animation property
+             (e.g. when the phase moves from floating to shaking) does NOT
+             interpolate from wherever this loop was interrupted -- it hard-cuts
              straight to the next animation's 0% state. A large offset here
              would produce a visible snap at that instant; keeping the range
              tight keeps any such snap imperceptible. */
