@@ -10983,6 +10983,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   >
                     <div className="relative w-full h-full overflow-hidden rounded-lg">
                       {card.type === "scenario" ? (
+                        <div className="absolute inset-0 border-4 border-fuchsia-500 z-50 flex items-center justify-center bg-fuchsia-500/20">
+                          <span className="text-[8px] font-black text-fuchsia-200 text-center leading-tight">SCENARIO-DEBUG<br/>type:{card.type}</span>
+                        </div>
+                      ) : null}
+                      {card.type === "scenario" ? (
                         <div className="absolute top-1/2 left-1/2 w-28 h-20 -translate-x-1/2 -translate-y-1/2 -rotate-90">
                           <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill className="object-contain" />
                         </div>
