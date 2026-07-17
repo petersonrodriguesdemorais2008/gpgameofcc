@@ -1940,7 +1940,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         background: "transparent",
       }}>
         {/* Top bar */}
-        <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 700, margin: "0 auto" }}>
+        <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 960, margin: "0 auto" }}>
           <button onClick={onBack} style={{
             background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
             borderRadius: 10, width: 36, height: 36, cursor: "pointer",
@@ -2013,7 +2013,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         </div>
 
         {/* Tabs com badges de notificação */}
-        <div style={{ display:"flex",maxWidth:700,margin:"12px auto 0",borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ display:"flex",maxWidth:960,margin:"12px auto 0",borderTop:"1px solid rgba(255,255,255,0.05)" }}>
           {(["pass","missions"] as const).map(tab => {
             const badge = tab==="pass" ? trackPendingCount : missionPendingCount
             const active = activeTab===tab
@@ -2046,7 +2046,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         </div>
 
         {/* Fechamento ornamental — linha · losango · linha, em vez de hairline seca */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: 700, margin: "0 auto", padding: "0 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: 960, margin: "0 auto", padding: "0 16px" }}>
           <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,rgba(6,182,212,0.28))" }} />
           <div style={{ width: 4, height: 4, background: "rgba(6,182,212,0.55)", transform: "rotate(45deg)", boxShadow: "0 0 5px rgba(6,182,212,0.6)", flexShrink: 0 }} />
           <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(6,182,212,0.28),transparent)" }} />
@@ -2059,7 +2059,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
           onClick={() => setActiveTab("pass")}
           style={{
             position: "relative", zIndex: 1, flexShrink: 0, cursor: "pointer",
-            maxWidth: 700, margin: "0 auto", width: "100%",
+            maxWidth: 960, margin: "0 auto", width: "100%",
             background: "rgba(245,158,11,0.12)", borderBottom: "1px solid rgba(245,158,11,0.30)",
             padding: "7px 16px", display: "flex", alignItems: "center", gap: 8,
           }}>
@@ -2090,7 +2090,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
       {/* ── CONTENT (flex:1, sem scroll de página) ── */}
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 700, margin: "0 auto", width: "100%" }}>
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 960, margin: "0 auto", width: "100%" }}>
 
           {/* ── PASS TAB ── */}
           {activeTab === "pass" && (
