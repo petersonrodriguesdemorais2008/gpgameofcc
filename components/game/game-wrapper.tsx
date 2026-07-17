@@ -179,10 +179,18 @@ export function GameWrapper() {
       setDuelMode("player")
       setCurrentScreen("duel-player")
     } else if (screen === "duel-draft") {
+      // DraftDuelScreen/RoguelikeScreen/CatastropheScreen não pausam a
+      // música do menu sozinhas (diferente do duel-screen.tsx normal, que
+      // já faz isso internamente em startGame()) — antes isso dependia de
+      // um onBattleStart que nenhuma das três realmente declarava (prop
+      // morta, sem efeito, só gerando erro de tipo). Centralizado aqui.
+      pauseMenuMusic()
       setCurrentScreen("duel-draft")
     } else if (screen === "duel-roguelike") {
+      pauseMenuMusic()
       setCurrentScreen("duel-roguelike")
     } else if (screen === "duel-catastrophe") {
+      pauseMenuMusic()
       setCurrentScreen("duel-catastrophe")
     } else {
       setCurrentScreen(screen)
@@ -367,13 +375,13 @@ export function GameWrapper() {
         />
       )}
       {currentScreen === "duel-draft" && (
-        <DraftDuelScreen onBattleStart={() => pauseMenuMusic()} onBack={() => navigateTo("menu")} />
+        <DraftDuelScreen onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "duel-roguelike" && (
-        <RoguelikeScreen onBattleStart={() => pauseMenuMusic()} onBack={() => navigateTo("menu")} />
+        <RoguelikeScreen onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "duel-catastrophe" && (
-        <CatastropheScreen onBattleStart={() => pauseMenuMusic()} onBack={() => navigateTo("menu")} />
+        <CatastropheScreen onBack={() => navigateTo("menu")} />
       )}
       {currentScreen === "history" && <HistoryScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "settings" && <SettingsScreen
