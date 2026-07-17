@@ -181,24 +181,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const animationRef = useRef<number>()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Refs mirroring the latest state so the particle animation loop (below) can
-  // read current values without ever being torn down and rebuilt. Previously
-  // drawParticles's useCallback depended directly on packPhase/cardRevealIndex/
-  // rarityTier/revealingCardRarity, so EVERY change to any of them (which
-  // happens many times per second during a reveal sequence) recreated the
-  // whole closure — wiping the particle array and frame counter, and because
-  // assigning canvas.width always clears its pixel content, this caused a
-  // visible flash/reset of every in-flight particle and the ambient smoke
-  // trail. That repeated reset is very likely what read as "bugged" flicker.
-  const packPhaseRef = useRef(packPhase)
-  const cardRevealIndexRef = useRef(cardRevealIndex)
-  const rarityTierRef = useRef(rarityTier)
-  const revealingCardRarityRef = useRef(revealingCardRarity)
-  useEffect(() => { packPhaseRef.current = packPhase }, [packPhase])
-  useEffect(() => { cardRevealIndexRef.current = cardRevealIndex }, [cardRevealIndex])
-  useEffect(() => { rarityTierRef.current = rarityTier }, [rarityTier])
-  useEffect(() => { revealingCardRarityRef.current = revealingCardRarity }, [revealingCardRarity])
-
   // Daily gacha state
   const [dailyUsed, setDailyUsed] = useState(false)
   const [timeUntilReset, setTimeUntilReset] = useState("")
@@ -212,6 +194,29 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [packPhase, setPackPhase] = useState<"entering" | "floating" | "shaking" | "opening" | "revealing" | "done">("entering")
   const [cardRevealIndex, setCardRevealIndex] = useState(-1)
   const [pullCount, setPullCount] = useState(0)
+
+  // Refs mirroring the latest state so the particle animation loop (below) can
+  // read current values without ever being torn down and rebuilt. Previously
+  // drawParticles's useCallback depended directly on packPhase/cardRevealIndex/
+  // rarityTier/revealingCardRarity, so EVERY change to any of them (which
+  // happens many times per second during a reveal sequence) recreated the
+  // whole closure — wiping the particle array and frame counter, and because
+  // assigning canvas.width always clears its pixel content, this caused a
+  // visible flash/reset of every in-flight particle and the ambient smoke
+  // trail. That repeated reset is very likely what read as "bugged" flicker.
+  // NOTE: these must be declared AFTER packPhase/cardRevealIndex/rarityTier/
+  // revealingCardRarity above — reading a `const` state variable before its
+  // own useState() line has executed throws "Cannot access before
+  // initialization", which is what crashed the screen on load previously.
+  const packPhaseRef = useRef(packPhase)
+  const cardRevealIndexRef = useRef(cardRevealIndex)
+  const rarityTierRef = useRef(rarityTier)
+  const revealingCardRarityRef = useRef(revealingCardRarity)
+  useEffect(() => { packPhaseRef.current = packPhase }, [packPhase])
+  useEffect(() => { cardRevealIndexRef.current = cardRevealIndex }, [cardRevealIndex])
+  useEffect(() => { rarityTierRef.current = rarityTier }, [rarityTier])
+  useEffect(() => { revealingCardRarityRef.current = revealingCardRarity }, [revealingCardRarity])
+
   // Drag/swipe to open
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
   const [swipeProgress, setSwipeProgress] = useState(0)
