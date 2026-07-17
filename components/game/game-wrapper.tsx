@@ -126,7 +126,23 @@ export function GameWrapper() {
         // contas no mesmo navegador) tem sua própria chave independente.
         if (playerProfile.id) {
           const tutorialDone = !!localStorage.getItem(`gpgame_tutorial_done_${playerProfile.id}`)
-          if (!tutorialDone) setShowTutorial(true)
+          const tutorialStarted = !!localStorage.getItem(`gpgame_tutorial_started_${playerProfile.id}`)
+          if (!tutorialDone) {
+            if (tutorialStarted) {
+              // O jogador já tinha ENTRADO na tela do tutorial (lore ou
+              // seleção de Mestre) nesta conta, mas recarregou a página
+              // ANTES de escolher um Mestre — showTutorial/showSetup são
+              // estado local do React, então se perdem no recarregamento,
+              // e sem essa checagem o jogador cairia direto no jogo sem
+              // nunca ter recebido o Deck Inicial (só é concedido dentro de
+              // handleTutorialComplete, ao escolher o Mestre). Em vez de
+              // tentar retomar de onde parou, reseta por completo: volta
+              // pro formulário de nome, do mesmo jeito que uma conta nova.
+              setShowSetup(true)
+            } else {
+              setShowTutorial(true)
+            }
+          }
         }
       } else if (sawCompletedSetupRef.current) {
         // ── RESET DE CONTA: hasCompletedSetup acabou de virar false DEPOIS de
@@ -183,6 +199,14 @@ export function GameWrapper() {
     // automaticamente o "tutorial não volta após apagar dados da conta",
     // sem precisar mexer no deleteAccountData() do game-context.
     setShowTutorial(true)
+    // Marca que o jogador ENTROU na tela do tutorial (lore/seleção de
+    // mestre), mas ainda não escolheu um Mestre — ver o useEffect de
+    // carregamento abaixo, que usa isso pra detectar se a página foi
+    // recarregada nesse meio-tempo. Limpo em handleTutorialComplete assim
+    // que o Mestre é escolhido de verdade.
+    if (playerProfile.id) {
+      localStorage.setItem(`gpgame_tutorial_started_${playerProfile.id}`, "1")
+    }
     // ─────────────────────────────────────────────────────────────────────────
   }
 
@@ -224,6 +248,12 @@ export function GameWrapper() {
     setShowTutorial(false)
     setTutorialOverlayMaster(selectedMasterId)
     setTutorialOverlayActive(true)
+    // Mestre escolhido de verdade e Deck Inicial já concedido (passo 2
+    // acima) — a partir daqui um recarregamento de página não perde mais
+    // nada essencial, então essa marcação não é mais necessária.
+    if (playerProfile.id) {
+      localStorage.removeItem(`gpgame_tutorial_started_${playerProfile.id}`)
+    }
     navigateTo("menu")
   }
 
