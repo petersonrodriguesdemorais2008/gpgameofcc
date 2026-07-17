@@ -10983,41 +10983,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   >
                     <div className="relative w-full h-full overflow-hidden rounded-lg">
                       {card.type === "scenario" ? (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[232px] z-50 flex gap-0.5 bg-black p-1 rounded border-2 border-fuchsia-500">
-                          <div className="flex flex-col items-center">
-                            <div className="relative w-14 h-14 bg-slate-800 overflow-hidden">
-                              <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill className="object-contain" />
-                            </div>
-                            <span className="text-[7px] text-white leading-none mt-0.5">0°</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <div className="relative w-14 h-14 bg-slate-800 overflow-hidden">
-                              <div className="absolute top-1/2 left-1/2 w-14 h-14 -translate-x-1/2 -translate-y-1/2 rotate-90">
-                                <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill className="object-contain" />
-                              </div>
-                            </div>
-                            <span className="text-[7px] text-white leading-none mt-0.5">90°</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <div className="relative w-14 h-14 bg-slate-800 overflow-hidden">
-                              <div className="absolute top-1/2 left-1/2 w-14 h-14 -translate-x-1/2 -translate-y-1/2 -rotate-90">
-                                <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill className="object-contain" />
-                              </div>
-                            </div>
-                            <span className="text-[7px] text-white leading-none mt-0.5">-90°</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <div className="relative w-14 h-14 bg-slate-800 overflow-hidden">
-                              <div className="absolute top-1/2 left-1/2 w-14 h-14 -translate-x-1/2 -translate-y-1/2 rotate-180">
-                                <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill className="object-contain" />
-                              </div>
-                            </div>
-                            <span className="text-[7px] text-white leading-none mt-0.5">180°</span>
-                          </div>
-                        </div>
-                      ) : null}
-                      {card.type === "scenario" ? (
-                        <div className="absolute top-1/2 left-1/2 w-28 h-20 -translate-x-1/2 -translate-y-1/2 -rotate-90">
+                        <div className="absolute top-1/2 left-1/2 w-28 h-20 -translate-x-1/2 -translate-y-1/2 rotate-90">
                           <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill className="object-contain" />
                         </div>
                       ) : (
