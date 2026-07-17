@@ -2196,3 +2196,60 @@
     transform: scale(1.02);
   }
 }
+
+/* ============================================================
+   DUEL FIELD — Tabletop perspective (PVZ style)
+   ============================================================ */
+.duel-arena-perspective {
+  perspective: 1200px;
+  perspective-origin: 50% 22%;
+}
+
+.duel-board-tilt {
+  transform: rotateX(13deg) scale(1.045);
+  transform-origin: 50% 62%;
+  transform-style: preserve-3d;
+}
+
+/* ============================================================
+   DUEL FIELD — Floating cards (Balatro style)
+   Soft idle bob + tilt, with a grounded drop shadow that
+   breathes in sync so the card reads as hovering over the mat.
+   ============================================================ */
+@keyframes gp-card-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(var(--float-rot, -0.7deg));
+    box-shadow:
+      0 7px 8px -5px rgba(0, 0, 0, 0.8),
+      0 3px 4px -2px rgba(0, 0, 0, 0.55);
+  }
+  50% {
+    transform: translateY(-3px) rotate(calc(var(--float-rot, -0.7deg) * -1));
+    box-shadow:
+      0 13px 13px -6px rgba(0, 0, 0, 0.62),
+      0 6px 7px -3px rgba(0, 0, 0, 0.42);
+  }
+}
+
+.gp-card-float {
+  animation: gp-card-float var(--float-dur, 3.8s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  will-change: transform, box-shadow;
+}
+
+/* Static resting shadow for field cards that shouldn't animate
+   (piles, decks) or while an attack animation is in control */
+.gp-card-shadow {
+  box-shadow:
+    0 8px 9px -5px rgba(0, 0, 0, 0.75),
+    0 3px 4px -2px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-card-float {
+    animation: none;
+    box-shadow:
+      0 8px 9px -5px rgba(0, 0, 0, 0.75),
+      0 3px 4px -2px rgba(0, 0, 0, 0.5);
+  }
+}

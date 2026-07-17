@@ -7583,9 +7583,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       </div>
 
       {/* Main Battle Area — centered arena */}
-      <div className="flex-1 flex items-center justify-center px-2 py-1">
+      <div className="flex-1 flex items-center justify-center px-2 py-1 duel-arena-perspective">
         <div
-          className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden"
+          className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden duel-board-tilt"
           style={{
             aspectRatio: "9/16",
             maxHeight: "calc(100vh - 220px)",
@@ -7677,7 +7677,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
-                  <div className="h-16 w-24 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                  <div
+                    className={`h-16 w-24 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden ${enemyField.scenarioZone ? "gp-card-float" : ""}`}
+                    style={{
+                      ["--float-delay" as any]: "0.8s",
+                      ["--float-rot" as any]: "0.4deg",
+                      ["--float-dur" as any]: "4.4s",
+                    }}
+                  >
                     {enemyField.scenarioZone ? (
                       <Image
                         src={enemyField.scenarioZone.image || "/placeholder.svg"}
@@ -7695,7 +7702,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                     )}
                   </div>
                   {/* Enemy Ultimate Zone - single slot, green */}
-                  <div className="w-16 h-24 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                  <div
+                    className={`w-16 h-24 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden ${enemyField.ultimateZone ? "gp-card-float" : ""}`}
+                    style={{
+                      ["--float-delay" as any]: "1.3s",
+                      ["--float-rot" as any]: "-0.5deg",
+                      ["--float-dur" as any]: "4.1s",
+                    }}
+                  >
                     {enemyField.ultimateZone ? (
                       <Image
                         src={enemyField.ultimateZone.image || "/placeholder.svg"}
@@ -7738,10 +7752,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                             handleJulgamentoVazioTarget("function", i)
                           }
                         }}
-                        className={`w-16 h-24 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${isUgTarget || (julgamentoVazioTargetMode.active && card)
+                        className={`w-16 h-24 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${card ? "gp-card-float" : ""} ${isUgTarget || (julgamentoVazioTargetMode.active && card)
                           ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                           : "border-purple-600/40"
                           }`}
+                        style={{
+                          ["--float-delay" as any]: `${i * 0.55 + 0.2}s`,
+                          ["--float-rot" as any]: i % 2 === 0 ? "0.6deg" : "-0.6deg",
+                          ["--float-dur" as any]: `${3.6 + (i % 3) * 0.4}s`,
+                        }}
                       >
                         {card && (
                           <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
@@ -7787,7 +7806,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                           handleEnemyUnitSelect(i)
                         }
                       }}
-                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${(mrpTargetMode && card) ||
+                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
                         (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
@@ -7797,6 +7816,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                             ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
                             : "border-red-700/40"
                         }`}
+                      style={{
+                        ["--float-delay" as any]: `${i * 0.5}s`,
+                        ["--float-rot" as any]: i % 2 === 0 ? "-0.7deg" : "0.7deg",
+                        ["--float-dur" as any]: `${3.4 + (i % 3) * 0.5}s`,
+                      }}
                     >
                       {card && (
                         <>
@@ -7905,7 +7929,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         })() })
                           }
                         }}
-                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${card ? (cardAnimations[`player-${i}`] ? "gp-card-shadow" : "gp-card-float") : ""} ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -7922,8 +7946,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                                       : "border-blue-700/40"
                           }`}
                         style={{
-                          transform: cardAnimations[`player-${i}`] || "none",
+                          transform: cardAnimations[`player-${i}`] || undefined,
                           zIndex: cardAnimations[`player-${i}`] ? 50 : 1,
+                          ["--float-delay" as any]: `${i * 0.5 + 0.25}s`,
+                          ["--float-rot" as any]: i % 2 === 0 ? "0.7deg" : "-0.7deg",
+                          ["--float-dur" as any]: `${3.5 + (i % 3) * 0.45}s`,
                         }}
                       >
                         {/* Green glow for ability-ready cards */}
@@ -7998,7 +8025,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         key={i}
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                        className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${card ? "gp-card-float" : ""} ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -8008,6 +8035,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                                 ? "border-purple-400/50 bg-purple-500/20"
                                 : "border-purple-600/40"
                           }`}
+                        style={{
+                          ["--float-delay" as any]: `${i * 0.6 + 0.4}s`,
+                          ["--float-rot" as any]: i % 2 === 0 ? "-0.6deg" : "0.6deg",
+                          ["--float-dur" as any]: `${3.7 + (i % 3) * 0.4}s`,
+                        }}
                       >
                         {card && (
                           <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
