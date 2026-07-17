@@ -11182,12 +11182,23 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <div className={`relative w-20 h-28 rounded-xl overflow-hidden bg-slate-900 shadow-2xl
             ${dropTarget ? 'ring-2 ring-green-400 border-2 border-green-400' : 'ring-2 ring-yellow-400 border-2 border-yellow-400'}
           `}>
-            <img
-              src={getActiveSkin(draggedHandCard.card.image || "") || "/placeholder.svg"}
-              alt={draggedHandCard.card.name}
-              className="w-full h-full object-contain"
-              draggable={false}
-            />
+            {draggedHandCard.card.type === "scenario" ? (
+              <div className="absolute top-1/2 left-1/2 w-28 h-20 -translate-x-1/2 -translate-y-1/2 rotate-90">
+                <img
+                  src={getActiveSkin(draggedHandCard.card.image || "") || "/placeholder.svg"}
+                  alt={draggedHandCard.card.name}
+                  className="w-full h-full object-contain"
+                  draggable={false}
+                />
+              </div>
+            ) : (
+              <img
+                src={getActiveSkin(draggedHandCard.card.image || "") || "/placeholder.svg"}
+                alt={draggedHandCard.card.name}
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            )}
           </div>
         </div>
       )}
@@ -11225,12 +11236,23 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               transformStyle: 'preserve-3d',
             }}
           >
-            <img
-              src={getActiveSkin(droppingCard.card.image || "") || "/placeholder.svg"}
-              alt={droppingCard.card.name}
-              className="w-full h-full object-contain"
-              draggable={false}
-            />
+            {droppingCard.card.type === "scenario" ? (
+              <div className="absolute top-1/2 left-1/2 w-[88px] h-16 -translate-x-1/2 -translate-y-1/2 rotate-90">
+                <img
+                  src={getActiveSkin(droppingCard.card.image || "") || "/placeholder.svg"}
+                  alt={droppingCard.card.name}
+                  className="w-full h-full object-contain"
+                  draggable={false}
+                />
+              </div>
+            ) : (
+              <img
+                src={getActiveSkin(droppingCard.card.image || "") || "/placeholder.svg"}
+                alt={droppingCard.card.name}
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            )}
           </div>
         </div>
       )}
