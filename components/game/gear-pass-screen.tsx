@@ -65,7 +65,7 @@ const MAX_LEVELS = 100
 const VISIBLE = 7          // Número de níveis visíveis por vez na trilha
 // Níveis-marco — recebem coluna mais larga e destaque dourado na trilha
 const MILESTONE_LEVELS = new Set([10, 25, 50, 75, 100])
-const NORMAL_COL_WIDTH    = 96   // 82px coluna + 14px gap
+const NORMAL_COL_WIDTH    = 112  // 96px coluna + 16px gap (aumentado ~17% pra trilha maior)
 // Marcos usam a MESMA largura/altura que colunas normais — só mudam de cor/borda.
 // Antes, marcos tinham boxSz=60 e largura=112 (vs 54/96 normal); essa diferença
 // dimensional entre tipos de coluna causava uma instabilidade visual perceptível
@@ -562,7 +562,7 @@ function buildMissions(): PassMission[] {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) {
-  const iconSize = small ? 20 : 24
+  const iconSize = small ? 24 : 28
   const rarityColor: Record<string, string> = {
     R: "#60a5fa", SR: "#c084fc", UR: "#fbbf24", LR: "#f87171",
   }
@@ -571,10 +571,10 @@ function RewardIcon({ reward, small }: { reward: PassReward; small?: boolean }) 
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
         <img src="/images/icons/gacha-coin.png" alt="Coins"
-          style={{ width: small ? 22 : 28, height: small ? 22 : 28, objectFit: "contain" }}
+          style={{ width: small ? 26 : 32, height: small ? 26 : 32, objectFit: "contain" }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
         {reward.amount && (
-          <span style={{ fontSize: 8, fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>
             +{reward.amount}
           </span>
         )}
@@ -2374,7 +2374,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                     Sem isso, a altura era calculada a partir do conteúdo da trilha,
                     e qualquer variação durante os re-renders do drag (mesmo sutil)
                     causava a sensação de "tela subindo/oscilando" */}
-                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8, height: 196, flexShrink: 0 }}>
+                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, paddingRight: 8, height: 222, flexShrink: 0 }}>
 
                   {/* ← Seta anterior */}
                   <button
@@ -2440,7 +2440,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                         const isPast      = lg.level <= passData.currentLevel
                         const isMilestone = MILESTONE_LEVELS.has(lg.level)
                         const colW   = isMilestone ? MILESTONE_COL_WIDTH : NORMAL_COL_WIDTH
-                        const boxSz  = 54  // mesma altura para marcos e colunas normais
+                        const boxSz  = 64  // mesma altura para marcos e colunas normais (aumentado de 54)
                         // Estados "pronto para coletar" — alimentam o glow pulsante
                         const commonClaimable  = isPast && !lg.commonClaimed
                         const premiumClaimable = isPast && !lg.premiumClaimed && passData.hasPremium
@@ -2460,7 +2460,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                 ao cruzar o viewport durante o arrasto */}
                             <div style={{
                               width: colW, flexShrink: 0,
-                              height: 190, overflow: "hidden", position: "relative",
+                              height: 216, overflow: "hidden", position: "relative",
                               display: "flex", flexDirection: "column",
                               alignItems: "center", justifyContent: "center", gap: 3,
                               ...(isMilestone ? {
@@ -2477,16 +2477,16 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                   <div style={{ position:"absolute", top:0, left:"14%", right:"14%", height:2, borderRadius:"0 0 2px 2px",
                                     background:"linear-gradient(90deg,transparent,#f59e0b,#fde68a,#f59e0b,transparent)",
                                     boxShadow:"0 0 8px rgba(251,191,36,0.65)", pointerEvents:"none" }} />
-                                  <div style={{ position:"absolute", top:10, left:3, width:9, height:9,
+                                  <div style={{ position:"absolute", top:12, left:4, width:10, height:10,
                                     borderTop:"1.5px solid rgba(251,191,36,0.55)", borderLeft:"1.5px solid rgba(251,191,36,0.55)",
                                     borderTopLeftRadius:3, pointerEvents:"none" }} />
-                                  <div style={{ position:"absolute", top:10, right:3, width:9, height:9,
+                                  <div style={{ position:"absolute", top:12, right:4, width:10, height:10,
                                     borderTop:"1.5px solid rgba(251,191,36,0.55)", borderRight:"1.5px solid rgba(251,191,36,0.55)",
                                     borderTopRightRadius:3, pointerEvents:"none" }} />
-                                  <div style={{ position:"absolute", bottom:10, left:3, width:9, height:9,
+                                  <div style={{ position:"absolute", bottom:12, left:4, width:10, height:10,
                                     borderBottom:"1.5px solid rgba(251,191,36,0.55)", borderLeft:"1.5px solid rgba(251,191,36,0.55)",
                                     borderBottomLeftRadius:3, pointerEvents:"none" }} />
-                                  <div style={{ position:"absolute", bottom:10, right:3, width:9, height:9,
+                                  <div style={{ position:"absolute", bottom:12, right:4, width:10, height:10,
                                     borderBottom:"1.5px solid rgba(251,191,36,0.55)", borderRight:"1.5px solid rgba(251,191,36,0.55)",
                                     borderBottomRightRadius:3, pointerEvents:"none" }} />
                                 </>
@@ -2536,7 +2536,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                 }}>
                                 {lg.premiumClaimed ? (
                                   <div style={{
-                                    width: 30, height: 30, borderRadius: "50%",
+                                    width: 36, height: 36, borderRadius: "50%",
                                     background: "rgba(34,197,94,0.22)",
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     // Pop do checkmark — só anima no claim que acabou de acontecer
@@ -2544,10 +2544,10 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                       ? "claimPop 0.5s cubic-bezier(.2,1.4,.4,1)"
                                       : "none",
                                   }}>
-                                    <Check size={16} color="#22c55e" strokeWidth={3} />
+                                    <Check size={19} color="#22c55e" strokeWidth={3} />
                                   </div>
                                 ) : !isPast ? (
-                                  <Lock size={14} color="#78350f" />
+                                  <Lock size={16} color="#78350f" />
                                 ) : lg.premium ? (
                                   <RewardIcon reward={lg.premium} />
                                 ) : null}
@@ -2568,7 +2568,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                               {/* Badge do nível — sem boxShadow (o glow vazava pra fora dos bounds
                                   do elemento e criava percepção de "levanta" durante o drag) */}
                               <div style={{
-                                width: isMilestone ? 46 : 36, height: 22, borderRadius: 8, zIndex: 1,
+                                width: isMilestone ? 54 : 42, height: 26, borderRadius: 8, zIndex: 1,
                                 background: isMilestone
                                   ? (isCurrent ? "linear-gradient(135deg,#92400e,#d97706)" : isPast ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.06)")
                                   : (isCurrent ? "linear-gradient(135deg,#0e7490,#0369a1)" : isPast ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.05)"),
@@ -2584,7 +2584,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     ? (isCurrent ? "#fde68a" : isPast ? "#fbbf24" : "#78350f")
                                     : (isCurrent ? "#e0f2fe" : isPast ? "#38bdf8" : "#334155")
                                 }}>
-                                  {isMilestone && <Trophy size={9} strokeWidth={2.5} />}{lg.level}
+                                  {isMilestone && <Trophy size={10} strokeWidth={2.5} />}{lg.level}
                                 </span>
                               </div>
 
@@ -2633,17 +2633,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                 }}>
                                 {lg.commonClaimed ? (
                                   <div style={{
-                                    width: 30, height: 30, borderRadius: "50%",
+                                    width: 36, height: 36, borderRadius: "50%",
                                     background: "rgba(34,197,94,0.22)",
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     animation: justClaimed?.level === lg.level && !justClaimed.isPremium
                                       ? "claimPop 0.5s cubic-bezier(.2,1.4,.4,1)"
                                       : "none",
                                   }}>
-                                    <Check size={16} color="#22c55e" strokeWidth={3} />
+                                    <Check size={19} color="#22c55e" strokeWidth={3} />
                                   </div>
                                 ) : !isPast ? (
-                                  <Lock size={14} color="#334155" />
+                                  <Lock size={16} color="#334155" />
                                 ) : lg.common ? (
                                   <RewardIcon reward={lg.common} />
                                 ) : null}
@@ -2651,8 +2651,8 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                                     caixinha, sem afetar o height do fluxo da coluna */}
                                 {isMilestone && lg.common?.label && !lg.commonClaimed && !isPast && (
                                   <div style={{
-                                    position: "absolute", bottom: 3, left: 0, right: 0,
-                                    textAlign: "center", fontSize: 6, fontWeight: 900,
+                                    position: "absolute", bottom: 4, left: 0, right: 0,
+                                    textAlign: "center", fontSize: 7, fontWeight: 900,
                                     color: "#fbbf24", letterSpacing: "0.04em",
                                     overflow: "hidden", textOverflow: "ellipsis",
                                     whiteSpace: "nowrap", padding: "0 3px",
