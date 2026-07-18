@@ -969,30 +969,40 @@ function findAttackReadyUnit(pad = 8): PixelRect | null {
 // ─── SurrenderBlocker ─────────────────────────────────────────────────────────
 /**
  * Usado SÓ nos passos "drag" (jogar carta / atacar), onde o DynamicSpotlight
- * abaixo intencionalmente não bloqueia nada (pra não arriscar tapar o
- * próprio gesto de arrastar que o passo pede). Isso deixaria o botão real
- * "Desistir" livre pra clicar — e clicá-lo chama surrender() na hora, sem
- * confirmação, marcando derrota e saindo do duelo, pulando o resto do
- * tutorial guiado (o game-wrapper trata isso como "duelo terminou" e avança
- * pro post-duel-menu de qualquer jeito). Diferente da carta (posição muda a
- * cada duelo), "Desistir" é ESTÁTICO — sempre mesmo texto, sempre visível no
- * topo — então dá pra bloquear só ele com segurança, sem o risco de
- * desalinhamento que tirei do spotlight principal.
+ * abaixo intencionalmente não bloqueia nada. Bloqueia os DOIS jeitos de
+ * abandonar o duelo sem completar o passo obrigatório:
+ *   1) "Desistir" — botão fixo sempre visível no topo da tela.
+ *   2) "Desistir do Duelo" — dentro do menu de Pausa; só existe no DOM
+ *      quando showPauseMenu é true, então normalmente essa busca só retorna
+ *      null e não faz nada. Contém "Desistir" como substring, mas usar o
+ *      texto completo aqui garante achar ESSE botão especificamente, sem
+ *      depender do ícone de pausa (SVG, sem texto — não dá pra mirar com
+ *      segurança) pra saber quando o menu abriu.
+ * Bloqueia os dois em paralelo (array, não um só) porque, quando o menu de
+ * Pausa está aberto, os dois elementos podem coexistir no DOM ao mesmo
+ * tempo (um por baixo do modal, visualmente coberto mas ainda presente).
  */
 function SurrenderBlocker() {
-  const [r, setR] = useState<PixelRect | null>(null)
+  const [rects, setRects] = useState<PixelRect[]>([])
   useEffect(() => {
-    const update = () => setR(findByText("Desistir"))
+    const update = () => {
+      const found = [findByText("Desistir"), findByText("Desistir do Duelo")]
+        .filter((r): r is PixelRect => r !== null)
+      setRects(found)
+    }
     update()
     const t = setInterval(update, 100)
     return () => clearInterval(t)
   }, [])
-  if (!r) return null
   return (
-    <div style={{
-      position: "fixed", left: r.x, top: r.y, width: r.w, height: r.h,
-      zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
-    }} />
+    <>
+      {rects.map((r, i) => (
+        <div key={i} style={{
+          position: "fixed", left: r.x, top: r.y, width: r.w, height: r.h,
+          zIndex: 400, pointerEvents: "all", cursor: "not-allowed",
+        }} />
+      ))}
+    </>
   )
 }
 
