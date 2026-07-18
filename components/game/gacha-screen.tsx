@@ -1775,8 +1775,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                               )}
                               {/* Hover lens-flare sweep — the Tailwind opacity-0/group-hover:opacity-100/
                                   transition-opacity classes on the wrapper already handle the show/hide;
-                                  `group-hover:` is a class modifier and is not valid inside a raw CSS
-                                  `animation` value, so it was silently dropped by the browser and never
+                                  "group-hover:" is a class modifier and is not valid inside a raw CSS
+                                  "animation" value, so it was silently dropped by the browser and never
                                   animated anything (a harmless but dead style declaration). */}
                               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200"
                                 style={{background:"linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.22) 50%,transparent 60%)"}} />
@@ -2060,11 +2060,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           50%  { opacity: 0.85; }
           100% { opacity: 0.55; }
         }
-        /* ── NEW: Magic-circle rarity reveal (beam, rotating rings, drifting motes) ──
+        /* ── NEW: Magic-circle rarity reveal (beam, rotating rings, drifting motes) --
            lightBeamDescend's duration is bound to holdMs (see holdMs below) so the
-           grow→hold→fade cycle always finishes before the overlay unmounts. It
-           previously used a fixed 0.6s and ended at opacity 0.8 via `forwards`
-           regardless of rarity — for SR (hold window only 420ms) the overlay was
+           grow-hold-fade cycle always finishes before the overlay unmounts. It
+           previously used a fixed 0.6s and ended at opacity 0.8 via "forwards"
+           regardless of rarity -- for SR (hold window only 420ms) the overlay was
            torn down mid-grow, yanking a still-bright beam off-screen abruptly;
            for every rarity the tail end never actually faded out, so whatever was
            left on screen the instant the overlay unmounted was still ~80% opaque.
