@@ -10175,6 +10175,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         )}
       </div>
 
+      <style>{`
+        /* ── Cartas do campo: flutuação sutil + sombra que "respira" com o movimento ── */
+        @keyframes gp-float {
+          0%, 100% {
+            transform: translateY(0) rotate(0deg);
+            box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45);
+          }
+          50% {
+            transform: translateY(-5px) rotate(var(--float-rot, 0deg));
+            box-shadow: 0 14px 16px -4px rgba(0,0,0,0.42), 0 6px 8px -3px rgba(0,0,0,0.22);
+          }
+        }
+        .gp-card-float {
+          animation: gp-float var(--float-dur, 4s) ease-in-out var(--float-delay, 0s) infinite;
+        }
+        .gp-card-shadow {
+          box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .gp-card-float { animation: none; box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45); }
+        }
+
+        /* ── Tabuleiro: visão de cima levemente inclinada pra frente, tipo mesa física ── */
+        .duel-arena-perspective {
+          perspective: 1500px;
+          perspective-origin: 50% 12%;
+        }
+        .duel-board-tilt {
+          transform: rotateX(17deg);
+          transform-origin: 50% 88%;
+        }
+      `}</style>
+
       {/* Main Battle Area — arena centered between side panels */}
       <div className="flex-1 flex items-center justify-center px-2 py-1 duel-arena-perspective"
         style={{
