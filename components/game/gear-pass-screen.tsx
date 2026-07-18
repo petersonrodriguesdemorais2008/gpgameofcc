@@ -1957,7 +1957,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               background: "linear-gradient(145deg,rgba(6,182,212,0.28),rgba(6,182,212,0.06))",
               border: `1px solid ${passData.hasPremium ? "rgba(251,191,36,0.55)" : "rgba(6,182,212,0.30)"}`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: `0 0 14px ${passData.hasPremium ? "rgba(251,191,36,0.25)" : "rgba(6,182,212,0.20)"}, inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -6px 10px rgba(0,0,0,0.25)`,
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -6px 10px rgba(0,0,0,0.25)`,
             }}>
               {/* Anel interno — dá sensação de "brasão", não só ícone solto */}
               <div style={{ position: "absolute", inset: 3, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", pointerEvents: "none" }} />
@@ -2205,12 +2205,11 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       <Shield size={13} color="#22d3ee" />
                     </div>
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontWeight:900,fontSize:11,color:"#22d3ee" }}>Passe Comum</div>
+                      <div style={{ fontWeight:800,fontSize:11,color:"#22d3ee" }}>Passe Comum</div>
                       <div style={{ fontSize:9,color:"#475569" }}>Grátis · Sempre ativo</div>
                     </div>
                     <div style={{ marginLeft:"auto",flexShrink:0,width:17,height:17,borderRadius:"50%",
                       background:"rgba(34,197,94,0.16)",border:"1.5px solid rgba(34,197,94,0.40)",
-                      boxShadow: "0 0 6px rgba(34,197,94,0.30)",
                       display:"flex",alignItems:"center",justifyContent:"center" }}>
                       <Check size={9} color="#4ade80" strokeWidth={3} />
                     </div>
@@ -2245,7 +2244,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                       <Crown size={13} color={passData.hasPremium?"#fbbf24":"#78350f"} />
                     </div>
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontWeight:900,fontSize:11,color:passData.hasPremium?"#fbbf24":"#a16207" }}>Passe Premium</div>
+                      <div style={{ fontWeight:800,fontSize:11,color:passData.hasPremium?"#fbbf24":"#a16207" }}>Passe Premium</div>
                       <div style={{ fontSize:9,color:"#475569" }}>{passData.hasPremium?"Ativo ✓":PREMIUM_PRICE}</div>
                     </div>
                     {!passData.hasPremium && (
@@ -3080,8 +3079,9 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               </div>
             )}
 
-            {/* Benefits */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+            {/* Benefits — lista limpa, sem repetir a mesma caixinha 6 vezes seguidas */}
+            <div style={{ display: "flex", flexDirection: "column", marginBottom: 24,
+              border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
               {[
                 { Icon: Package, color: "#22d3ee", text: "Recompensas Premium em todos os 100 níveis" },
                 { Icon: Crown, color: "#fbbf24", text: "Carta LR Exclusiva ao atingir Nível 100" },
@@ -3091,18 +3091,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                 { Icon: Unlock, color: "#4ade80", text: `Válido por toda a Temporada ${passData.seasonNumber} (${SEASON_DURATION_DAYS} dias)` },
               ].map((b, i) => (
                 <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 11,
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 11, padding: "9px 12px",
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "11px 14px",
+                  background: i % 2 === 0 ? "rgba(255,255,255,0.025)" : "transparent",
+                  borderBottom: i < 5 ? "1px solid rgba(255,255,255,0.05)" : "none",
                 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                    background: `${b.color}18`, border: `1px solid ${b.color}35`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <b.Icon size={14} color={b.color} strokeWidth={2} />
-                  </div>
-                  <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600 }}>{b.text}</span>
+                  <b.Icon size={15} color={b.color} strokeWidth={2} style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 500 }}>{b.text}</span>
                 </div>
               ))}
             </div>
