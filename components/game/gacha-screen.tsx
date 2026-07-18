@@ -1430,10 +1430,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           </div>
                         )}
 
-                        {/* Rarity announcement */}
+                        {/* Rarity announcement — delay+duration kept comfortably under the
+                            1000ms "opening" phase window (see the setTimeout that advances
+                            packPhase to "revealing"), so the pop-in always fully completes
+                            instead of being unmounted mid-animation at ~83% through. */}
                         {packPhase === "opening" && rarity !== "R" && (
                           <div className="absolute -bottom-20 left-1/2 whitespace-nowrap pointer-events-none"
-                            style={{animation:"rarityAnnounce 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.35s forwards",
+                            style={{animation:"rarityAnnounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.2s forwards",
                               opacity:0, transform:"translateX(-50%) scale(0.5)"}}>
                             <span className={`text-3xl font-black tracking-widest drop-shadow-2xl ${rarityGlow.text}`}
                               style={{textShadow: rarity==="LR"?"0 0 20px #ef4444, 0 0 40px #fbbf24":
@@ -1453,6 +1456,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                       const rLabel = rc==="LR" ? "LENDÁRIO" : rc==="UR" ? "ULTRA RARO" : "SUPER RARO"
                       const ringSize = rc==="LR" ? 300 : rc==="UR" ? 240 : 190
                       const ringSize2 = rc==="LR" ? 220 : rc==="UR" ? 175 : 140
+                      // Matches holdDur in the card-reveal useEffect exactly, so anything
+                      // animated for the FULL hold window (the beam below) always completes
+                      // its own fade-out before this overlay unmounts, instead of being cut
+                      // off mid-animation and yanked from the DOM still visible.
+                      const holdMs = rc==="LR" ? 900 : rc==="UR" ? 650 : 420
                       return (
                         <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none overflow-hidden">
                           {/* Dark scrim FIRST — dims the background so the color pops without washing the whole screen white */}
@@ -1481,7 +1489,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 width: rc==="LR"?"140px":rc==="UR"?"105px":"75px",
                                 height:"100%",
                                 background:`linear-gradient(to bottom, ${rColor}00, ${rColor}35 15%, ${rColor}22 60%, ${rColor}00 100%)`,
-                                animation:"lightBeamDescend 0.6s ease-out forwards",
+                                animation:`lightBeamDescend ${holdMs}ms ease-out forwards`,
                                 mixBlendMode:"screen",
                               }}/>
 
@@ -1765,10 +1773,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                   border:"1.5px solid rgba(168,85,247,0.75)",
                                   animation:"srGoldPulse 2s ease-in-out infinite"}} />
                               )}
-                              {/* NEW: hover lens-flare sweep */}
+                              {/* Hover lens-flare sweep — the Tailwind opacity-0/group-hover:opacity-100/
+                                  transition-opacity classes on the wrapper already handle the show/hide;
+                                  `group-hover:` is a class modifier and is not valid inside a raw CSS
+                                  `animation` value, so it was silently dropped by the browser and never
+                                  animated anything (a harmless but dead style declaration). */}
                               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200"
-                                style={{background:"linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.22) 50%,transparent 60%)",
-                                  animation:"group-hover:lensFlare 0.4s ease-out"}} />
+                                style={{background:"linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.22) 50%,transparent 60%)"}} />
                             </div>
                             <div className={`px-2 py-0.5 text-center text-[10px] font-black bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}>
                               {card.rarity}
@@ -2036,42 +2047,33 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           0%   { transform: translateX(-100%); }
           60%,100% { transform: translateX(200%); }
         }
-        /* ── NEW: Results screen animations ── */
-        @keyframes resultsTitle {
-          0%   { opacity: 0; transform: scale(0.75) translateY(-20px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes resultsBestRarity {
-          0%   { opacity: 0; transform: scale(0.5); }
-          70%  { transform: scale(1.08); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-        @keyframes cardEntrance {
-          0%   { opacity: 0; transform: translateY(28px) scale(0.82); }
-          65%  { transform: translateY(-4px) scale(1.04); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes rarePulse {
-          0%,100% { opacity: 1; }
-          50%     { opacity: 0.55; }
-        }
 
         /* ── NEW: Special SR/UR/LR reveal sequence ── */
         @keyframes raritySpecialFlash {
           0%   { opacity: 0; transform: scale(0.4); }
           30%  { opacity: 1; transform: scale(1.05); }
-          70%  { opacity: 0.7; }
-          100% { opacity: 0.5; transform: scale(1); }
+          70%  { opacity: 0.35; }
+          100% { opacity: 0; transform: scale(1); }
         }
         @keyframes rarityHoldPulse {
-          0%,100% { opacity: 0.55; }
-          50%     { opacity: 0.85; }
+          0%   { opacity: 0.55; }
+          50%  { opacity: 0.85; }
+          100% { opacity: 0.55; }
         }
-        /* ── NEW: Magic-circle rarity reveal (beam, rotating rings, drifting motes) ── */
+        /* ── NEW: Magic-circle rarity reveal (beam, rotating rings, drifting motes) ──
+           lightBeamDescend's duration is bound to holdMs (see holdMs below) so the
+           grow→hold→fade cycle always finishes before the overlay unmounts. It
+           previously used a fixed 0.6s and ended at opacity 0.8 via `forwards`
+           regardless of rarity — for SR (hold window only 420ms) the overlay was
+           torn down mid-grow, yanking a still-bright beam off-screen abruptly;
+           for every rarity the tail end never actually faded out, so whatever was
+           left on screen the instant the overlay unmounted was still ~80% opaque.
+           Both issues are what read as "the beam appears bugged". */
         @keyframes lightBeamDescend {
-          0%   { opacity: 0; transform: translateX(-50%) scaleY(0.3); transform-origin: top; }
-          40%  { opacity: 1; }
-          100% { opacity: 0.8; transform: translateX(-50%) scaleY(1); transform-origin: top; }
+          0%   { opacity: 0;    transform: translateX(-50%) scaleY(0.3); transform-origin: top; }
+          25%  { opacity: 0.9;  transform: translateX(-50%) scaleY(1);   transform-origin: top; }
+          70%  { opacity: 0.75; transform: translateX(-50%) scaleY(1);   transform-origin: top; }
+          100% { opacity: 0;    transform: translateX(-50%) scaleY(1);   transform-origin: top; }
         }
         @keyframes magicRingSpin {
           from { transform: rotate(0deg); }
