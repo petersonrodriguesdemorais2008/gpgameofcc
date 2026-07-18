@@ -10303,7 +10303,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               <Image
                                 src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Deck"
-                                fill quality={100}
+                                fill quality={100} sizes="180px"
                                 className="object-cover"
                               />
                             </div>
@@ -10354,7 +10354,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <Image
                         src={enemyField.scenarioZone.image || "/placeholder.svg"}
                         alt={enemyField.scenarioZone.name}
-                        fill quality={100}
+                        fill quality={100} sizes="180px"
                         className="object-contain"
                         onMouseDown={() => handleCardPressStart(enemyField.scenarioZone!)}
                         onMouseUp={handleCardPressEnd}
@@ -10385,7 +10385,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", enemyField.ultimateZones.findIndex(z => z !== null)) }}
                       >
                         {uz && (
-                          <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill quality={100}
+                          <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill quality={100} sizes="180px"
                             className="object-contain"
                             onMouseDown={() => handleCardPressStart(uz)}
                             onMouseUp={handleCardPressEnd}
@@ -10439,7 +10439,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               <Image
                                 src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Face down card"
-                                fill quality={100}
+                                fill quality={100} sizes="180px"
                                 className="object-cover"
                               />
                             </div>
@@ -10447,7 +10447,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               <Image
                                 src={card.image || "/placeholder.svg"}
                                 alt={card.name}
-                                fill quality={100}
+                                fill quality={100} sizes="180px"
                                 className="object-contain"
                               />
                             </div>
@@ -10502,7 +10502,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           <Image
                             src={card.image || "/placeholder.svg"}
                             alt={card.name}
-                            fill quality={100}
+                            fill quality={100} sizes="180px"
                             className="object-contain"
                             onMouseDown={() => handleCardPressStart(card)}
                             onMouseUp={handleCardPressEnd}
@@ -10658,7 +10658,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             <Image
                               src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                               alt={card.name}
-                              fill quality={100}
+                              fill quality={100} sizes="180px"
                               className="object-contain"
                               onMouseDown={(e) => {
                                 if (canAttack && !hasAbility) {
@@ -10745,7 +10745,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               <Image
                                 src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Face down card"
-                                fill quality={100}
+                                fill quality={100} sizes="180px"
                                 className="object-cover"
                                 onMouseDown={() => handleCardPressStart(card)}
                                 onMouseUp={handleCardPressEnd}
@@ -10759,7 +10759,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               <Image
                                 src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                                 alt={card.name}
-                                fill quality={100}
+                                fill quality={100} sizes="180px"
                                 className="object-contain"
                                 onMouseDown={() => handleCardPressStart(card)}
                                 onMouseUp={handleCardPressEnd}
@@ -10815,7 +10815,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <Image
                         src={playerField.scenarioZone.image || "/placeholder.svg"}
                         alt={playerField.scenarioZone.name}
-                        fill quality={100}
+                        fill quality={100} sizes="180px"
                         className="object-contain"
                         onMouseDown={() => handleCardPressStart(playerField.scenarioZone!)}
                         onMouseUp={handleCardPressEnd}
@@ -10851,7 +10851,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {puz ? (
                           <>
                             <div className="absolute inset-0 overflow-hidden">
-                              <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill quality={100}
+                              <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill quality={100} sizes="180px"
                                 className="object-contain"
                                 onMouseDown={() => handleCardPressStart(puz)}
                                 onMouseUp={handleCardPressEnd}
@@ -10900,7 +10900,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               <Image
                                 src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Deck"
-                                fill quality={100}
+                                fill quality={100} sizes="180px"
                                 className="object-cover"
                               />
                             </div>
@@ -10964,7 +10964,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                     zIndex: 5 - idx 
                                   }}
                                 >
-                                  <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill quality={100} className="object-contain" />
+                                  <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt="" fill quality={100} sizes="180px" className="object-contain" />
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                                 </div>
                               ))}
@@ -10992,11 +10992,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         {/* Player Hand - PROMINENT display */}
         <div className="flex justify-center mt-0 min-h-28">
-          <div ref={handContainerRef} className="flex gap-3 items-end">
+          <div ref={handContainerRef} className="flex gap-5 items-end">
             {playerField.hand.map((card, i) => {
               const offset = i - (playerField.hand.length - 1) / 2
-              const rotation = offset * 4
-              const translateY = Math.abs(offset) * 5
+              const rotation = offset * 2.2
+              const translateY = Math.abs(offset) * 3
               const isSelected = selectedHandCard === i
               const isDragging = draggedHandCard?.index === i
 
@@ -11060,10 +11060,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     <div className="relative w-full h-full overflow-hidden">
                       {card.type === "scenario" ? (
                         <div className="absolute top-1/2 left-1/2 w-28 h-20 -translate-x-1/2 -translate-y-1/2 rotate-90">
-                          <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} className="object-contain" />
+                          <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} sizes="180px" className="object-contain" />
                         </div>
                       ) : (
-                        <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} className="object-contain" />
+                        <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} sizes="180px" className="object-contain" />
                       )}
                     </div>
                   </div>
@@ -12259,7 +12259,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               }
                             }}
                           >
-                            <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} className="object-contain" />
+                            <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} sizes="180px" className="object-contain" />
 
                             {/* Available Glow Overlay */}
                             {isPlayable && (
