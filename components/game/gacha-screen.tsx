@@ -1454,8 +1454,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                       const rColor = rc==="LR" ? "#f97316" : rc==="UR" ? "#38bdf8" : "#a855f7"
                       const rColor2 = rc==="LR" ? "#ef4444" : rc==="UR" ? "#6366f1" : "#7c3aed"
                       const rLabel = rc==="LR" ? "LENDÁRIO" : rc==="UR" ? "ULTRA RARO" : "SUPER RARO"
-                      const ringSize = rc==="LR" ? 300 : rc==="UR" ? 240 : 190
-                      const ringSize2 = rc==="LR" ? 220 : rc==="UR" ? 175 : 140
+                      // Bumped up from the previous 190/240/300 pass, with a wider gap for LR
+                      // specifically so the top tier reads as a clear step above UR, not just
+                      // a slightly-bigger version of it.
+                      const ringSize = rc==="LR" ? 360 : rc==="UR" ? 260 : 200
+                      const ringSize2 = rc==="LR" ? 265 : rc==="UR" ? 190 : 148
                       // Matches holdDur in the card-reveal useEffect exactly, so anything
                       // animated for the FULL hold window (the beam below) always completes
                       // its own fade-out before this overlay unmounts, instead of being cut
@@ -1484,34 +1487,51 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 animation: "rarityHoldPulse 0.6s ease-in-out infinite",
                               }}/>
 
+                              {/* NEW: Screen-edge color vignette — frames the whole viewport in the
+                                  rarity's color so the reveal feels "color-graded" rather than a
+                                  small effect floating alone in the middle of the screen. Scales
+                                  up with rarity, giving LR a noticeably heavier frame than SR. */}
+                              <div className="absolute inset-0" style={{
+                                boxShadow: `inset 0 0 ${rc==="LR"?160:rc==="UR"?115:82}px ${rc==="LR"?42:rc==="UR"?26:16}px ${rColor}75`,
+                                animation: "rarityHoldPulse 0.6s ease-in-out infinite",
+                              }}/>
+
+                              {/* NEW: Impact punch — a one-shot scale-flash marking the beat where
+                                  flash gives way to hold, so the transition lands with a "thunk"
+                                  instead of just a background-color cut. */}
+                              <div className="absolute inset-0" style={{
+                                background: `radial-gradient(circle at center, ${rColor}55 0%, transparent 60%)`,
+                                animation: "holdImpactPunch 0.35s ease-out forwards",
+                              }}/>
+
                               {/* Vertical light beam descending from top — cinematic "chosen one" spotlight */}
                               <div className="absolute top-0 left-1/2 -translate-x-1/2" style={{
-                                width: rc==="LR"?"140px":rc==="UR"?"105px":"75px",
+                                width: rc==="LR"?"170px":rc==="UR"?"120px":"82px",
                                 height:"100%",
-                                background:`linear-gradient(to bottom, ${rColor}00, ${rColor}35 15%, ${rColor}22 60%, ${rColor}00 100%)`,
+                                background:`linear-gradient(to bottom, ${rColor}00, ${rColor}45 15%, ${rColor}28 60%, ${rColor}00 100%)`,
                                 animation:`lightBeamDescend ${holdMs}ms ease-out forwards`,
                                 mixBlendMode:"screen",
                               }}/>
 
                               {/* Magic circle — SVG dashed rings rotating opposite directions (arcane, not a mask/gradient hack) */}
                               <svg className="absolute" width={ringSize} height={ringSize} viewBox="0 0 100 100"
-                                style={{opacity:0.6, animation:`magicRingSpin ${rc==="LR"?"6s":rc==="UR"?"7.5s":"9s"} linear infinite`,
-                                  filter:`drop-shadow(0 0 3px ${rColor}90)`}}>
-                                <circle cx="50" cy="50" r="46" fill="none" stroke={rColor} strokeWidth="2.2" strokeDasharray="7 5" />
+                                style={{opacity:0.65, animation:`magicRingSpin ${rc==="LR"?"6s":rc==="UR"?"7.5s":"9s"} linear infinite`,
+                                  filter:`drop-shadow(0 0 4px ${rColor}a0)`}}>
+                                <circle cx="50" cy="50" r="46" fill="none" stroke={rColor} strokeWidth="2.4" strokeDasharray="7 5" />
                               </svg>
                               <svg className="absolute" width={ringSize2} height={ringSize2} viewBox="0 0 100 100"
-                                style={{opacity:0.45, animation:`magicRingSpinRev ${rc==="LR"?"4.5s":rc==="UR"?"5.5s":"6.5s"} linear infinite`}}>
-                                <circle cx="50" cy="50" r="46" fill="none" stroke={rColor} strokeWidth="1.6" strokeDasharray="4 4" />
+                                style={{opacity:0.5, animation:`magicRingSpinRev ${rc==="LR"?"4.5s":rc==="UR"?"5.5s":"6.5s"} linear infinite`}}>
+                                <circle cx="50" cy="50" r="46" fill="none" stroke={rColor} strokeWidth="1.8" strokeDasharray="4 4" />
                               </svg>
                               {/* Thin static outer ring for definition */}
                               <div className="absolute rounded-full pointer-events-none" style={{
-                                width: ringSize+20, height: ringSize+20,
-                                border:`1px solid ${rColor}55`,
+                                width: ringSize+24, height: ringSize+24,
+                                border:`1px solid ${rColor}60`,
                               }}/>
 
                               {/* Drifting light motes — float upward slowly with gentle sway, NOT exploding outward */}
-                              {[...Array(rc==="LR"?14:rc==="UR"?10:7)].map((_,i)=>{
-                                const startX = (Math.random()-0.5) * (rc==="LR"?320:rc==="UR"?250:190)
+                              {[...Array(rc==="LR"?16:rc==="UR"?11:8)].map((_,i)=>{
+                                const startX = (Math.random()-0.5) * (rc==="LR"?360:rc==="UR"?270:200)
                                 const sway = (Math.random()-0.5) * 60
                                 const size = 2 + Math.random()*3
                                 const dur = 1.6 + Math.random()*1.2
@@ -1526,16 +1546,31 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 } as React.CSSProperties}/>
                               })}
 
-                              {/* Label banner */}
+                              {/* Label — now on an ornate rank-badge plate instead of bare floating
+                                  text, for "trophy reveal" weight that matches the rarity tier. */}
                               <div className="relative z-10 text-center" style={{animation:"raritySpecialLabel 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
-                                <p className="font-black tracking-[0.3em]" style={{
-                                  fontSize: rc==="LR"?"48px":rc==="UR"?"38px":"30px",
-                                  color:"white",
-                                  textShadow:`0 0 12px ${rColor}, 0 0 24px ${rColor2}99`,
-                                  WebkitTextStroke:`1px ${rColor2}`,
-                                }}>{rLabel}</p>
+                                {/* Impact stamp — quick localized burst right as the badge lands */}
+                                <div className="absolute left-1/2 top-1/2 rounded-full pointer-events-none" style={{
+                                  width:"10px", height:"10px",
+                                  background: `radial-gradient(circle, white, ${rColor}, transparent 70%)`,
+                                  transform:"translate(-50%,-50%)",
+                                  animation:"labelStampFlash 0.5s ease-out forwards",
+                                }}/>
+                                <div className="relative mx-auto" style={{
+                                  padding: rc==="LR" ? "15px 46px" : rc==="UR" ? "12px 40px" : "10px 34px",
+                                  background: `linear-gradient(135deg, ${rColor2}e6, ${rColor}cc 50%, ${rColor2}e6)`,
+                                  clipPath: "polygon(3% 0%, 97% 0%, 100% 50%, 97% 100%, 3% 100%, 0% 50%)",
+                                  boxShadow: `0 0 34px ${rColor}95, 0 4px 14px rgba(0,0,0,0.55)`,
+                                  border: "1px solid rgba(255,255,255,0.45)",
+                                }}>
+                                  <p className="font-black tracking-[0.3em]" style={{
+                                    fontSize: rc==="LR"?"46px":rc==="UR"?"36px":"28px",
+                                    color:"white",
+                                    textShadow:`0 2px 6px rgba(0,0,0,0.6), 0 0 18px ${rColor}`,
+                                  }}>{rLabel}</p>
+                                </div>
                                 {rc==="LR" && (
-                                  <p className="text-white/80 text-sm font-bold tracking-[0.4em] mt-2" style={{textShadow:`0 0 8px ${rColor}`}}>✦ ✦ ✦</p>
+                                  <p className="text-white/85 text-sm font-bold tracking-[0.4em] mt-3" style={{textShadow:`0 0 8px ${rColor}`}}>✦ ✦ ✦</p>
                                 )}
                               </div>
                             </>
@@ -2093,6 +2128,16 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           0%   { opacity: 0; transform: scale(0.4) translateY(20px); letter-spacing: 0.1em; }
           60%  { transform: scale(1.1) translateY(0); }
           100% { opacity: 1; transform: scale(1) translateY(0); letter-spacing: 0.3em; }
+        }
+        /* NEW: one-shot punch marking the flash-to-hold transition beat */
+        @keyframes holdImpactPunch {
+          0%   { opacity: 0.85; transform: scale(0.3); }
+          100% { opacity: 0; transform: scale(1.9); }
+        }
+        /* NEW: quick localized burst synced to the rank-badge landing */
+        @keyframes labelStampFlash {
+          0%   { opacity: 0.9; width: 10px; height: 10px; }
+          100% { opacity: 0; width: 240px; height: 240px; }
         }
 
         @keyframes floatCard {
