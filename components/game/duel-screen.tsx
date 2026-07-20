@@ -9915,9 +9915,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* Top HUD - Turn info (LP do oponente movido para fixed abaixo) */}
       <div className="relative z-20 flex items-center justify-end px-4 py-2 bg-gradient-to-b from-black/80 to-transparent gap-3">
-          <div className="text-center px-4 py-1 bg-black/50 rounded-lg border border-amber-500/30">
-            <span className="text-xs text-slate-400">{t("turn")}</span>
-            <span className="block text-2xl font-bold text-amber-400">{turn}</span>
+          <div className="text-center px-4 py-1 bg-fuchsia-500 border-4 border-lime-400" style={{ boxShadow: "0 0 20px 6px rgba(217,70,239,0.9)" }}>
+            <span className="text-xs text-black font-black">🔥 BUILD-TESTE-ATIVO 🔥</span>
+            <span className="block text-2xl font-bold text-black">{turn}</span>
           </div>
           {mode === 'bot' && (
             <div className={`px-2 py-1 rounded text-[9px] font-bold border ${
