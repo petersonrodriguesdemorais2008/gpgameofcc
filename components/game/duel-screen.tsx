@@ -10655,6 +10655,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         )}
                         {card && (
                           <>
+                            <div className="absolute inset-0 outline outline-4 outline-lime-400 z-40 pointer-events-none" />
                             <Image
                               src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                               alt={card.name}
