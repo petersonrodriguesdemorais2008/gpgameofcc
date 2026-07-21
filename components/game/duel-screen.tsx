@@ -10679,7 +10679,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               onTouchEnd={handleCardPressEnd}
                             />
                             {canAttack && !hasAbility && (
-                              <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-[10px] text-center font-bold animate-pulse">
+                              <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white text-[10px] text-center font-bold animate-pulse">
                                 {t("dragToAttack")}
                               </div>
                             )}
@@ -10689,7 +10689,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               </div>
                             )}
                             {!canAttack && !hasAbility && card && turn <= (card as FieldCard).canAttackTurn && (
-                              <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center">
+                              <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-amber-600/90 text-white text-[9px] flex items-center justify-center font-bold shadow">
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
                             )}
