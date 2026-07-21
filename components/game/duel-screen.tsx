@@ -9915,26 +9915,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* Top HUD - Turn info (LP do oponente movido para fixed abaixo) */}
       <div className="relative z-20 flex items-center justify-end px-4 py-2 bg-gradient-to-b from-black/80 to-transparent gap-3">
-          <div className="text-center px-4 py-1 bg-fuchsia-500 border-4 border-lime-400" style={{ boxShadow: "0 0 20px 6px rgba(217,70,239,0.9)" }}>
-            <span className="text-xs text-black font-black">🔥 BUILD-TESTE-ATIVO 🔥</span>
-            <span className="block text-2xl font-bold text-black">{turn}</span>
+          <div className="text-center px-4 py-1 bg-black/50 rounded-lg border border-amber-500/30">
+            <span className="text-xs text-slate-400">{t("turn")}</span>
+            <span className="block text-2xl font-bold text-amber-400">{turn}</span>
           </div>
-          {playerField.hand[0] && (
-            <div className="flex items-end gap-2 bg-black border-4 border-lime-400 p-1">
-              <div className="flex flex-col items-center">
-                <div className="relative w-10 h-14 bg-slate-800">
-                  <Image src={getActiveSkin(playerField.hand[0].image || "") || "/placeholder.svg"} alt="" fill quality={100} className="object-contain" />
-                </div>
-                <span className="text-[7px] text-lime-300 font-black">PEQUENA</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="relative w-24 h-32 bg-slate-800">
-                  <Image src={getActiveSkin(playerField.hand[0].image || "") || "/placeholder.svg"} alt="" fill quality={100} className="object-contain" />
-                </div>
-                <span className="text-[7px] text-lime-300 font-black">GRANDE (4x)</span>
-              </div>
-            </div>
-          )}
           {mode === 'bot' && (
             <div className={`px-2 py-1 rounded text-[9px] font-bold border ${
               difficulty === 'easy' ? 'bg-green-900/50 border-green-600/40 text-green-300'
@@ -11073,7 +11057,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         : "border-slate-600/50"
                       }`}
                   >
-                    <div className="relative w-full h-full overflow-visible outline outline-4 outline-lime-400">
+                    <div className="relative w-full h-full overflow-visible">
                       {card.type === "scenario" ? (
                         <div className="absolute top-1/2 left-1/2 w-28 h-20 -translate-x-1/2 -translate-y-1/2 rotate-90">
                           <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} sizes="180px" className="object-contain" />
