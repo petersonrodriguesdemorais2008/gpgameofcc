@@ -216,6 +216,17 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   useEffect(() => { cardRevealIndexRef.current = cardRevealIndex }, [cardRevealIndex])
   useEffect(() => { rarityTierRef.current = rarityTier }, [rarityTier])
   useEffect(() => { revealingCardRarityRef.current = revealingCardRarity }, [revealingCardRarity])
+  // Holds the rarity of whichever card's flip the canvas twinkle should sync
+  // to. Set directly inside the SAME setTimeout that advances cardRevealIndex
+  // (see the reveal-driver effect below) instead of reusing
+  // revealingCardRarityRef — that ref is cleared to null earlier, at
+  // flashDur+holdDur, while cardRevealIndex (which the canvas loop actually
+  // watches to trigger the burst) only changes later at
+  // flashDur+holdDur+flipDelay. By the time the canvas loop saw the index
+  // change, the rarity had already been nulled out for hundreds of ms, so the
+  // "if (rarity)" check was always false and the per-card twinkle silently
+  // never fired for rare cards.
+  const flippingCardRarityRef = useRef<"R"|"SR"|"UR"|"LR"|null>(null)
 
   // Drag/swipe to open
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
@@ -342,7 +353,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       frame++
       const phase = packPhaseRef.current
       const cri = cardRevealIndexRef.current
-      const rarity = revealingCardRarityRef.current
 
       const fade = phase==="opening"?"rgba(0,0,0,0.25)":phase==="revealing"?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.06)"
       ctx.fillStyle=fade; ctx.fillRect(0,0,canvas.width,canvas.height)
@@ -361,10 +371,14 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       }
 
       // Revealing — a small twinkle only on rare cards, fired once when
-      // cardRevealIndex reaches a new value (i.e. a card just flipped).
+      // cardRevealIndex reaches a new value (i.e. a card just flipped). Reads
+      // flippingCardRarityRef (set synchronously alongside the cardRevealIndex
+      // update itself) rather than revealingCardRarityRef, which is cleared
+      // earlier in the sequence and would always read null here.
       // Plain R cards get no canvas burst at all.
       if (phase==="revealing" && cri>=0 && cri!==lastRevealedIdx) {
         lastRevealedIdx = cri
+        const rarity = flippingCardRarityRef.current
         if (rarity) {
           const n = rarity==="LR" ? 14 : rarity==="UR" ? 9 : 6
           spawnBurst(n, cx + (cri-1.5)*80, cy, rarity==="LR"?10:7)
@@ -478,10 +492,16 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         setRarityRevealPhase("done")
         setRevealingCardRarity(null)
       }, flashDur + holdDur))
-      timers.push(setTimeout(() => setCardRevealIndex((prev) => prev + 1), flashDur + holdDur + flipDelay))
+      timers.push(setTimeout(() => {
+        flippingCardRarityRef.current = rarity
+        setCardRevealIndex((prev) => prev + 1)
+      }, flashDur + holdDur + flipDelay))
     } else {
       // Normal R card — just delay and flip
-      timers.push(setTimeout(() => setCardRevealIndex((prev) => prev + 1), 280))
+      timers.push(setTimeout(() => {
+        flippingCardRarityRef.current = null
+        setCardRevealIndex((prev) => prev + 1)
+      }, 280))
     }
 
     return () => timers.forEach(clearTimeout)
@@ -1237,7 +1257,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           inset:"-60px", borderRadius:"50%",
                           background:`radial-gradient(ellipse at 50% 50%, ${rarityGlow.inner} 0%, transparent 65%)`,
                           filter:"blur(35px)",
-                          animation: packPhase==="shaking" ? "haloFlicker 0.1s ease-in-out infinite" :
+                          animation: packPhase==="shaking" ? "haloFlicker 0.7s ease-in forwards" :
                             packPhase==="floating" ? "haloPulse 1.8s ease-in-out infinite" : "haloPulse 2s ease-in-out infinite",
                           opacity: packPhase==="entering" ? 0.4 : 0.8,
                         }} />
@@ -1259,7 +1279,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                           animation:
                             packPhase==="entering" ? "packEnterEpic 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards" :
                             packPhase==="floating" ? "packFloat 2.4s ease-in-out infinite" :
-                            packPhase==="shaking"  ? "packShakeEpic 0.1s ease-in-out infinite" :
+                            packPhase==="shaking"  ? "packShakeEpic 0.7s ease-in forwards" :
                             packPhase==="opening"  ? "packOpenEpic 1s cubic-bezier(0.22,1,0.36,1) forwards" :
                             undefined,
                           filter:`drop-shadow(0 0 30px ${rarityGlow.inner}) drop-shadow(0 0 60px ${rarityGlow.outer})`,
@@ -1925,14 +1945,28 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         }
 
         /* ── Pack shake — intensifying ── */
+        /* Builds tension across the FULL 700ms "shaking" window (matches the
+           setTimeout that hands off to "opening") instead of looping a flat
+           100ms cycle 7 times. Amplitude escalates toward a peak around 88%,
+           then rapidly settles back near center by 100% -- like a spring
+           coiling before release -- landing close to packOpenEpic's own 0%
+           state (scale(1) rotate(0deg), no X-offset) so the handoff into the
+           burst doesn't visibly snap. */
         @keyframes packShakeEpic {
-          0%   { transform: translateX(0) rotate(0deg); }
-          15%  { transform: translateX(-7px) rotate(-1.5deg) scale(1.01); }
-          30%  { transform: translateX(9px) rotate(2deg) scale(1.02); }
-          45%  { transform: translateX(-11px) rotate(-2.5deg) scale(1.03); }
-          60%  { transform: translateX(10px) rotate(2deg) scale(1.02); }
-          75%  { transform: translateX(-8px) rotate(-1.5deg) scale(1.01); }
-          100% { transform: translateX(0) rotate(0deg); }
+          0%   { transform: translateX(0) rotate(0deg) scale(1); }
+          8%   { transform: translateX(-2px) rotate(-0.3deg) scale(1.005); }
+          16%  { transform: translateX(2px) rotate(0.3deg) scale(1.01); }
+          24%  { transform: translateX(-3px) rotate(-0.5deg) scale(1.015); }
+          32%  { transform: translateX(4px) rotate(0.6deg) scale(1.02); }
+          40%  { transform: translateX(-5px) rotate(-0.9deg) scale(1.025); }
+          48%  { transform: translateX(6px) rotate(1.2deg) scale(1.03); }
+          56%  { transform: translateX(-8px) rotate(-1.6deg) scale(1.035); }
+          64%  { transform: translateX(9px) rotate(2deg) scale(1.04); }
+          72%  { transform: translateX(-11px) rotate(-2.5deg) scale(1.045); }
+          80%  { transform: translateX(12px) rotate(3deg) scale(1.05); }
+          88%  { transform: translateX(-13px) rotate(-3.2deg) scale(1.055); }
+          94%  { transform: translateX(6px) rotate(1.5deg) scale(1.04); }
+          100% { transform: translateX(0) rotate(0deg) scale(1.02); }
         }
 
         /* ── Pack open ── */
@@ -2002,10 +2036,21 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           0%,100% { opacity: 0.6; transform: scale(1); }
           50%     { opacity: 1; transform: scale(1.15); }
         }
+        /* Synced to the same 700ms tension-build timeline as packShakeEpic:
+           starts as a calm, slow pulse and becomes an increasingly frequent,
+           brighter flicker that peaks right as the burst fires. */
         @keyframes haloFlicker {
-          0%,100% { opacity: 0.7; transform: scale(1.05) rotate(0deg); }
-          33%     { opacity: 1; transform: scale(1.2) rotate(1deg); }
-          66%     { opacity: 0.9; transform: scale(1.1) rotate(-1deg); }
+          0%   { opacity: 0.5; transform: scale(1); }
+          15%  { opacity: 0.65; transform: scale(1.02); }
+          30%  { opacity: 0.5; transform: scale(1); }
+          45%  { opacity: 0.75; transform: scale(1.05); }
+          55%  { opacity: 0.55; transform: scale(1.01); }
+          65%  { opacity: 0.9; transform: scale(1.1); }
+          72%  { opacity: 0.6; transform: scale(1.02); }
+          80%  { opacity: 1; transform: scale(1.18); }
+          86%  { opacity: 0.65; transform: scale(1.05); }
+          93%  { opacity: 1; transform: scale(1.25); }
+          100% { opacity: 0.85; transform: scale(1.15); }
         }
         @keyframes packSheen {
           0%,100% { background-position: 200% 200%; opacity: 0.6; }
