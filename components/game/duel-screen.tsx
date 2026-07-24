@@ -9919,6 +9919,30 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <span className="text-xs text-slate-400">{t("turn")}</span>
             <span className="block text-2xl font-bold text-amber-400">{turn}</span>
           </div>
+          {(() => {
+            const refCard = playerField.unitZone.find(u => u) || playerField.hand[0]
+            if (!refCard) return null
+            const options = [
+              { label: "A", h: "178.6%", t: "-14.29%" },
+              { label: "B", h: "208.3%", t: "-20.83%" },
+              { label: "C", h: "222.2%", t: "-33.33%" },
+              { label: "D", h: "153.8%", t: "-7.69%" },
+            ]
+            return (
+              <div className="flex items-end gap-1 bg-black border-4 border-lime-400 p-1">
+                {options.map(opt => (
+                  <div key={opt.label} className="flex flex-col items-center">
+                    <div className="relative w-10 h-14 bg-slate-800 overflow-hidden">
+                      <div className="absolute w-full overflow-hidden" style={{ height: opt.h, top: opt.t }}>
+                        <Image src={getActiveSkin(refCard.image || "") || "/placeholder.svg"} alt="" fill quality={100} className="object-cover" />
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-lime-300 font-black">{opt.label}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
           {mode === 'bot' && (
             <div className={`px-2 py-1 rounded text-[9px] font-bold border ${
               difficulty === 'easy' ? 'bg-green-900/50 border-green-600/40 text-green-300'
