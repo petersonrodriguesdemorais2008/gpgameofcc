@@ -10499,18 +10499,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     >
                       {card && (
                         <>
-                          <div className="absolute w-full overflow-hidden" style={{ height: "142.86%", top: "-7.14%" }}>
-                            <Image
-                              src={card.image || "/placeholder.svg"}
-                              alt={card.name}
-                              fill quality={100} sizes="180px"
-                              className="object-cover"
-                              onMouseDown={() => handleCardPressStart(card)}
-                              onMouseUp={handleCardPressEnd}
-                              onMouseLeave={handleCardPressEnd}
-                              onTouchStart={() => handleCardPressStart(card)}
-                              onTouchEnd={handleCardPressEnd}
-                            />
+                          <div className="absolute inset-0 overflow-hidden">
+                            <div className="absolute w-full overflow-hidden" style={{ height: "142.86%", top: "-7.14%" }}>
+                              <Image
+                                src={card.image || "/placeholder.svg"}
+                                alt={card.name}
+                                fill quality={100} sizes="180px"
+                                className="object-cover"
+                                onMouseDown={() => handleCardPressStart(card)}
+                                onMouseUp={handleCardPressEnd}
+                                onMouseLeave={handleCardPressEnd}
+                                onTouchStart={() => handleCardPressStart(card)}
+                                onTouchEnd={handleCardPressEnd}
+                              />
+                            </div>
                           </div>
                           <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
                             {(card as FieldCard).currentDp} DP
@@ -10657,15 +10659,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         )}
                         {card && (
                           <>
-                            <div className="absolute w-full overflow-hidden" style={{ height: "142.86%", top: "-7.14%" }}>
-                              <Image
-                                src={getActiveSkin(card.image || "") || "/placeholder.svg"}
-                                alt={card.name}
-                                fill quality={100} sizes="180px"
-                                className="object-cover"
-                                onMouseDown={(e) => {
-                                  if (canAttack && !hasAbility) {
-                                    handleAttackStart(i, e)
+                            <div className="absolute inset-0 overflow-hidden">
+                              <div className="absolute w-full overflow-hidden" style={{ height: "142.86%", top: "-7.14%" }}>
+                                <Image
+                                  src={getActiveSkin(card.image || "") || "/placeholder.svg"}
+                                  alt={card.name}
+                                  fill quality={100} sizes="180px"
+                                  className="object-cover"
+                                  onMouseDown={(e) => {
+                                    if (canAttack && !hasAbility) {
+                                      handleAttackStart(i, e)
                                 } else {
                                   handleCardPressStart(card)
                                 }
@@ -10681,6 +10684,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               }}
                               onTouchEnd={handleCardPressEnd}
                               />
+                              </div>
                             </div>
                             {canAttack && !hasAbility && (
                               <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white text-[10px] text-center font-bold animate-pulse">
