@@ -10500,7 +10500,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       {card && (
                         <>
                           <div className="absolute inset-0 overflow-hidden">
-                            <div className="absolute w-full overflow-hidden" style={{ height: "142.86%", top: "-7.14%" }}>
+                            <div className="absolute w-full overflow-hidden" style={{ height: "227.27%", top: "-27.27%" }}>
                               <Image
                                 src={card.image || "/placeholder.svg"}
                                 alt={card.name}
@@ -10660,7 +10660,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {card && (
                           <>
                             <div className="absolute inset-0 overflow-hidden">
-                              <div className="absolute w-full overflow-hidden" style={{ height: "142.86%", top: "-7.14%" }}>
+                              <div className="absolute w-full overflow-hidden" style={{ height: "227.27%", top: "-27.27%" }}>
                                 <Image
                                   src={getActiveSkin(card.image || "") || "/placeholder.svg"}
                                   alt={card.name}
