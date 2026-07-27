@@ -27,8 +27,9 @@ interface GameModeScreenProps {
 }
 
 /* Durações da transição — loading adaptativo:
-   - imagens em cache  → loading curtíssimo (só o tempo da cortina abrir)
+   - imagens em cache  → transição rápida de cortina (LOADING_FAST_MS)
    - imagens baixando  → espera elas ficarem prontas, com teto máximo */
+const LOADING_FAST_MS = 340
 const LOADING_MIN_MS = 250
 const LOADING_MAX_MS = 3000
 const FADE_MS = 450
@@ -37,13 +38,12 @@ const SELECT_MS = 1150
 type Phase = "loading" | "in" | "ready" | "select" | "out"
 
 export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps) {
-  const [phase, setPhase] = useState<Phase>(() =>
-    areImagesCached(GAME_MODE_IMAGES) ? "in" : "loading",
-  )
+  const [phase, setPhase] = useState<Phase>("loading")
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const [selected, setSelected] = useState<{ name: string; accent: string } | null>(null)
 
-  /* Fade in adaptativo: espera as imagens (mín. LOADING_MIN_MS, máx. LOADING_MAX_MS) */
+  /* Fade in adaptativo: sempre com transição de cortina —
+     curta se as imagens já estão em cache, ou aguardando o download com teto */
   useEffect(() => {
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
@@ -57,10 +57,8 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
     }
 
     if (areImagesCached(GAME_MODE_IMAGES)) {
-      /* Tudo em cache: revela imediatamente (estado inicial já é "in") */
-      timers.push(setTimeout(() => {
-        if (!cancelled) setPhase((p) => (p === "in" ? "ready" : p))
-      }, FADE_MS))
+      /* Tudo em cache: cortina rápida mesmo assim, para manter o ritmo da transição */
+      timers.push(setTimeout(reveal, LOADING_FAST_MS))
     } else {
       /* Espera imagens + tempo mínimo (para a animação não "piscar"),
          com teto máximo para nunca prender o jogador no loading */
