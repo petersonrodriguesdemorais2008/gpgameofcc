@@ -11,6 +11,7 @@ import {
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import { loadMastersFromStorage } from "@/lib/masters-data"
+import { preloadImages, GAME_MODE_IMAGES } from "./image-preloader"
 
 const MasterMenuCard = dynamic(
   () => import("./master-screen").then(m => ({ default: m.MasterMenuCard })),
@@ -832,6 +833,20 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     // RAF alone can fire before stylesheets are applied on first load.
     const t = setTimeout(() => setMounted(true), 60)
     return () => { clearTimeout(t); setMounted(false) }
+  }, [])
+
+  // ── Warm-up: pré-carrega as artes da tela de Modo de Jogo em tempo ocioso,
+  //    para o loading dela ser praticamente instantâneo ao clicar em JOGAR ──
+  useEffect(() => {
+    const idle = (cb: () => void) =>
+      "requestIdleCallback" in window
+        ? (window as any).requestIdleCallback(cb, { timeout: 2500 })
+        : setTimeout(cb, 800)
+    const id = idle(() => preloadImages(GAME_MODE_IMAGES))
+    return () => {
+      if ("cancelIdleCallback" in window) (window as any).cancelIdleCallback(id)
+      else clearTimeout(id as ReturnType<typeof setTimeout>)
+    }
   }, [])
 
   // ── Event banner carousel ──
@@ -2013,7 +2028,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <div className="px-6 pt-6 pb-2 text-center">
               <div className="text-6xl mb-3">{dailyBonusClaimed?"✅":"🎁"}</div>
               <h2 className="text-white font-black text-2xl mb-1">Bônus Diário</h2>
-              <p className="text-sm" style={{color:"rgba(167,139,250,0.58)"}}>{dailyBonusClaimed?"Você já coletou o bônus de hoje. Volte amanhã!":"Colete suas recompensas diárias gratuitas!"}</p>
+              <p className="text-sm" style={{color:"rgba(167,139,250,0.58)"}}>{dailyBonusClaimed?"Você já coletou o b��nus de hoje. Volte amanhã!":"Colete suas recompensas diárias gratuitas!"}</p>
             </div>
             <div className="px-6 py-5">
               <div className="rounded-2xl p-5 flex items-center justify-center gap-4"

@@ -19,39 +19,85 @@ import Image from "next/image"
 import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight } from "lucide-react"
 import type { GameScreen } from "./game-wrapper"
 import GearBackdrop from "./gear-backdrop"
+import { imagesReady, areImagesCached, GAME_MODE_IMAGES } from "./image-preloader"
 
 interface GameModeScreenProps {
   onSelect: (screen: GameScreen) => void
   onBack: () => void
 }
 
-/* Durações da transição */
-const LOADING_MS = 700
+/* Durações da transição — loading adaptativo:
+   - imagens em cache  → loading curtíssimo (só o tempo da cortina abrir)
+   - imagens baixando  → espera elas ficarem prontas, com teto máximo */
+const LOADING_MIN_MS = 250
+const LOADING_MAX_MS = 3000
 const FADE_MS = 450
+const SELECT_MS = 1150
 
-type Phase = "loading" | "in" | "ready" | "out"
+type Phase = "loading" | "in" | "ready" | "select" | "out"
 
 export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps) {
-  const [phase, setPhase] = useState<Phase>("loading")
+  const [phase, setPhase] = useState<Phase>(() =>
+    areImagesCached(GAME_MODE_IMAGES) ? "in" : "loading",
+  )
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  const [selected, setSelected] = useState<{ name: string; accent: string } | null>(null)
 
-  /* Fade in: loading breve → revela conteúdo */
+  /* Fade in adaptativo: espera as imagens (mín. LOADING_MIN_MS, máx. LOADING_MAX_MS) */
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("in"), LOADING_MS)
-    const t2 = setTimeout(() => setPhase("ready"), LOADING_MS + FADE_MS)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    let cancelled = false
+    const timers: ReturnType<typeof setTimeout>[] = []
+
+    const reveal = () => {
+      if (cancelled) return
+      setPhase((p) => (p === "loading" ? "in" : p))
+      timers.push(setTimeout(() => {
+        if (!cancelled) setPhase((p) => (p === "in" ? "ready" : p))
+      }, FADE_MS))
+    }
+
+    if (areImagesCached(GAME_MODE_IMAGES)) {
+      /* Tudo em cache: revela imediatamente (estado inicial já é "in") */
+      timers.push(setTimeout(() => {
+        if (!cancelled) setPhase((p) => (p === "in" ? "ready" : p))
+      }, FADE_MS))
+    } else {
+      /* Espera imagens + tempo mínimo (para a animação não "piscar"),
+         com teto máximo para nunca prender o jogador no loading */
+      const minWait = new Promise<void>((r) => timers.push(setTimeout(r, LOADING_MIN_MS)))
+      const maxWait = new Promise<void>((r) => timers.push(setTimeout(r, LOADING_MAX_MS)))
+      Promise.race([
+        Promise.all([imagesReady(GAME_MODE_IMAGES), minWait]).then(() => undefined),
+        maxWait,
+      ]).then(reveal)
+    }
+
+    return () => { cancelled = true; timers.forEach(clearTimeout) }
   }, [])
 
-  /* Fade out antes de executar a ação (voltar ou entrar num modo) */
+  /* Fade out antes de executar a ação (voltar ao menu) */
   const exitWith = useCallback((action: () => void) => {
     setPhase("out")
     setPendingAction(() => action)
   }, [])
 
+  /* Transição de seleção de modo: cortina fecha com o nome do modo estampado */
+  const selectWith = useCallback((name: string, accent: string, action: () => void) => {
+    setSelected({ name, accent })
+    setPhase("select")
+    setPendingAction(() => action)
+  }, [])
+
   useEffect(() => {
-    if (phase !== "out" || !pendingAction) return
-    const t = setTimeout(() => pendingAction(), FADE_MS)
-    return () => clearTimeout(t)
+    if (!pendingAction) return
+    if (phase === "out") {
+      const t = setTimeout(() => pendingAction(), FADE_MS)
+      return () => clearTimeout(t)
+    }
+    if (phase === "select") {
+      const t = setTimeout(() => pendingAction(), SELECT_MS)
+      return () => clearTimeout(t)
+    }
   }, [phase, pendingAction])
 
   const contentVisible = phase === "in" || phase === "ready"
@@ -180,12 +226,76 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         </div>
       )}
 
+      {/* ── Overlay de SELEÇÃO DE MODO: cortina fecha com o nome estampado ── */}
+      {phase === "select" && selected && (
+        <div className="fixed inset-0 z-[230] pointer-events-none overflow-hidden">
+          {/* Cortina dupla fechando (invertida da abertura) */}
+          <div
+            className="gpm-sel-top absolute inset-x-0 top-0 h-1/2"
+            style={{ background: "linear-gradient(180deg, #05010f 60%, rgba(5,1,15,0.99))" }}
+          />
+          <div
+            className="gpm-sel-bot absolute inset-x-0 bottom-0 h-1/2"
+            style={{ background: "linear-gradient(0deg, #05010f 60%, rgba(5,1,15,0.99))" }}
+          />
+
+          {/* Flash radial na cor do modo */}
+          <div
+            aria-hidden
+            className="gpm-sel-flash absolute inset-0"
+            style={{ background: `radial-gradient(ellipse 60% 45% at 50% 50%, ${selected.accent}38 0%, transparent 65%)` }}
+          />
+
+          {/* Linha de energia central na cor do modo */}
+          <div
+            aria-hidden
+            className="gpm-sel-line absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${selected.accent}e6 28%, #ffffff 50%, ${selected.accent}e6 72%, transparent)`,
+              boxShadow: `0 0 20px ${selected.accent}cc, 0 0 52px ${selected.accent}80`,
+            }}
+          />
+
+          {/* Nome do modo estampado no centro */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <p
+              className="gpm-sel-tag text-[10px] font-black uppercase tracking-[0.5em]"
+              style={{ color: `${selected.accent}cc` }}
+            >
+              Modo selecionado
+            </p>
+            <h2
+              className="gpm-sel-name mt-3 text-balance px-6 text-center text-4xl font-black uppercase italic leading-none tracking-[0.14em] sm:text-6xl"
+              style={{
+                background: `linear-gradient(180deg, #ffffff 25%, ${selected.accent} 100%)`,
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                filter: `drop-shadow(0 0 26px ${selected.accent}aa) drop-shadow(0 3px 0 rgba(0,0,20,0.9))`,
+              }}
+            >
+              {selected.name}
+            </h2>
+            {/* Losangos decorativos laterais */}
+            <div aria-hidden className="gpm-sel-diamonds mt-5 flex items-center gap-2.5">
+              <div className="h-px w-14" style={{ background: `linear-gradient(90deg, transparent, ${selected.accent}99)` }} />
+              <div className="h-2 w-2 rotate-45" style={{ background: selected.accent, boxShadow: `0 0 10px ${selected.accent}` }} />
+              <div className="h-px w-14" style={{ background: `linear-gradient(90deg, ${selected.accent}99, transparent)` }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════ CONTEÚDO ══════════════════ */}
       <div
         className="relative z-10 mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 pb-28 pt-8 sm:px-8"
         style={{
           opacity: contentVisible ? 1 : 0,
-          transform: contentVisible ? "translateY(0) scale(1)" : "translateY(22px) scale(0.985)",
+          transform: contentVisible
+            ? "translateY(0) scale(1)"
+            : phase === "select"
+              ? "translateY(0) scale(0.97)"
+              : "translateY(22px) scale(0.985)",
           transition: `opacity ${FADE_MS + 100}ms cubic-bezier(0.4, 0, 0.2, 1), transform ${FADE_MS + 250}ms cubic-bezier(0.16, 1, 0.3, 1)`,
         }}
       >
@@ -240,7 +350,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           icon={<BookOpen className="h-5 w-5" />}
           delay={0}
           visible={contentVisible}
-          onClick={() => exitWith(() => onSelect("story"))}
+          onClick={() => selectWith("CAMPANHA", "#a855f7", () => onSelect("story"))}
         />
 
         {/* ── DOIS TICKETS MÉDIOS: VS BOT / PVP ── */}
@@ -256,7 +366,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
             icon={<Bot className="h-5 w-5" />}
             delay={90}
             visible={contentVisible}
-            onClick={() => exitWith(() => onSelect("duel-bot"))}
+            onClick={() => selectWith("VS BOT", "#3b82f6", () => onSelect("duel-bot"))}
           />
           <TicketPanel
             accent="#f97316"
@@ -269,7 +379,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
             icon={<Users className="h-5 w-5" />}
             delay={180}
             visible={contentVisible}
-            onClick={() => exitWith(() => onSelect("duel-player"))}
+            onClick={() => selectWith("PVP", "#f97316", () => onSelect("duel-player"))}
           />
         </div>
 
@@ -293,7 +403,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
             icon={<Layers className="h-4 w-4" />}
             delay={260}
             visible={contentVisible}
-            onClick={() => exitWith(() => onSelect("duel-draft"))}
+            onClick={() => selectWith("DRAFT", "#10b981", () => onSelect("duel-draft"))}
           />
           <ModeCard
             accent="#f59e0b"
@@ -304,7 +414,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
             icon={<Compass className="h-4 w-4" />}
             delay={340}
             visible={contentVisible}
-            onClick={() => exitWith(() => onSelect("duel-roguelike"))}
+            onClick={() => selectWith("ROGUELIKE", "#f59e0b", () => onSelect("duel-roguelike"))}
           />
           <ModeCard
             accent="#ef4444"
@@ -315,7 +425,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
             icon={<Flame className="h-4 w-4" />}
             delay={420}
             visible={contentVisible}
-            onClick={() => exitWith(() => onSelect("duel-catastrophe"))}
+            onClick={() => selectWith("CATÁSTROFE", "#ef4444", () => onSelect("duel-catastrophe"))}
           />
         </div>
       </div>
@@ -358,8 +468,66 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           from { transform: translate3d(0, 0, 0) scale(1); }
           to { transform: translate3d(9vw, 6vh, 0) scale(1.18); }
         }
+
+        /* ── Transição de SELEÇÃO: cortina fecha + nome estampado ── */
+        .gpm-sel-top {
+          transform: translateY(-101%);
+          animation: gpmSelTop 420ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+        }
+        .gpm-sel-bot {
+          transform: translateY(101%);
+          animation: gpmSelBot 420ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+        }
+        @keyframes gpmSelTop { to { transform: translateY(0); } }
+        @keyframes gpmSelBot { to { transform: translateY(0); } }
+
+        .gpm-sel-line {
+          opacity: 0;
+          transform: translateY(-50%) scaleX(0);
+          animation: gpmSelLine 480ms cubic-bezier(0.22, 1, 0.36, 1) 240ms forwards;
+        }
+        @keyframes gpmSelLine {
+          from { opacity: 0; transform: translateY(-50%) scaleX(0); }
+          60% { opacity: 1; }
+          to { opacity: 1; transform: translateY(-50%) scaleX(1); }
+        }
+
+        .gpm-sel-flash {
+          opacity: 0;
+          animation: gpmSelFlash 700ms ease-out 300ms forwards;
+        }
+        @keyframes gpmSelFlash {
+          from { opacity: 0; }
+          40% { opacity: 1; }
+          to { opacity: 0.55; }
+        }
+
+        .gpm-sel-tag {
+          opacity: 0;
+          animation: gpmSelFadeUp 400ms ease-out 430ms forwards;
+        }
+        .gpm-sel-name {
+          opacity: 0;
+          transform: scale(1.45);
+          animation: gpmSelStamp 460ms cubic-bezier(0.22, 1, 0.36, 1) 380ms forwards;
+        }
+        @keyframes gpmSelStamp {
+          from { opacity: 0; transform: scale(1.45); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .gpm-sel-diamonds {
+          opacity: 0;
+          animation: gpmSelFadeUp 400ms ease-out 560ms forwards;
+        }
+        @keyframes gpmSelFadeUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .gpm-aurora, .gpm-aurora-2, .gpm-pulse, .gpm-load-txt { animation: none; }
+          .gpm-sel-top, .gpm-sel-bot { animation-duration: 1ms; }
+          .gpm-sel-line, .gpm-sel-flash, .gpm-sel-tag, .gpm-sel-name, .gpm-sel-diamonds { animation-duration: 1ms; animation-delay: 0ms; }
         }
       `}</style>
     </div>
@@ -369,7 +537,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
 /* ═══════════════════════════════════════════════════════════════════════════
    TICKET PANEL — painel grande em formato de bilhete com recortes laterais,
    picote tracejado e faixa de nome inclinada (estilo Inazuma Eleven Cross)
-═══════════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════���════════════════════════ */
 
 interface TicketPanelProps {
   big?: boolean
@@ -437,6 +605,8 @@ function TicketPanel({
             src={image || "/placeholder.svg"}
             alt={imageAlt}
             fill
+            priority
+            unoptimized
             sizes={big ? "(max-width: 1024px) 100vw, 960px" : "(max-width: 768px) 100vw, 470px"}
             className="object-cover"
           />
@@ -544,7 +714,7 @@ function TicketPanel({
 /* ═══════════════════════════════════════════════════════════════════════════
    MODE CARD — card vertical menor para os modos especiais
    (fileira inferior, como os cards de Trial/Versus da referência)
-═══════════════════════════════════════════════════════════════════════════ */
+═════════════════════════════════════════════════════════════════��═════════ */
 
 interface ModeCardProps {
   accent: string
@@ -578,8 +748,10 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
           src={image || "/placeholder.svg"}
           alt={imageAlt}
           fill
+          loading="eager"
+          unoptimized
           sizes="(max-width: 640px) 100vw, 300px"
-            className="object-cover"
+          className="object-cover"
         />
         <div
           aria-hidden
