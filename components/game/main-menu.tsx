@@ -776,7 +776,38 @@ let _gpTrackId: string = ""
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _gpACtx: any = null  // AudioContext singleton for spectrum visualizer
 
+// ── Audio settings — localStorage persistence keys ────────────────────────
+const AUDIO_MUSIC_VOL_LS = "gpgame_audio_music_vol"
+const AUDIO_SFX_VOL_LS   = "gpgame_audio_sfx_vol"
+const AUDIO_MUTED_LS     = "gpgame_audio_muted"
 
+export function getMenuMusicVolume(): number {
+  if (typeof window === "undefined") return 0.55
+  const v = localStorage.getItem(AUDIO_MUSIC_VOL_LS)
+  return v !== null ? Math.max(0, Math.min(1, parseFloat(v))) : 0.55
+}
+export function getSfxVolume(): number {
+  if (typeof window === "undefined") return 0.75
+  const v = localStorage.getItem(AUDIO_SFX_VOL_LS)
+  return v !== null ? Math.max(0, Math.min(1, parseFloat(v))) : 0.75
+}
+export function getMenuMusicMuted(): boolean {
+  if (typeof window === "undefined") return false
+  return localStorage.getItem(AUDIO_MUTED_LS) === "true"
+}
+export function setMenuMusicVolume(vol: number) {
+  const v = Math.max(0, Math.min(1, vol))
+  if (typeof window !== "undefined") localStorage.setItem(AUDIO_MUSIC_VOL_LS, String(v))
+  if (_gpAudio) _gpAudio.volume = v
+}
+export function setSfxVolume(vol: number) {
+  const v = Math.max(0, Math.min(1, vol))
+  if (typeof window !== "undefined") localStorage.setItem(AUDIO_SFX_VOL_LS, String(v))
+}
+export function setMenuMusicMuted(muted: boolean) {
+  if (typeof window !== "undefined") localStorage.setItem(AUDIO_MUTED_LS, String(muted))
+  if (_gpAudio) _gpAudio.muted = muted
+}
 
 // Exposed so other screens (duel) can pause/resume menu music
 export function pauseMenuMusic() {
@@ -981,7 +1012,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       voiceAudioRef.current.currentTime = 0
     }
     voiceAudioRef.current = new Audio(voice.src)
-    voiceAudioRef.current.volume = 1.0
+    voiceAudioRef.current.volume = getSfxVolume()
+    voiceAudioRef.current.muted = getMenuMusicMuted()
     voiceAudioRef.current.play().catch(() => {})
 
     // Auto-hide bubble after 3.2s with fade-out
@@ -1030,7 +1062,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     if (!_gpAudio) {
       _gpAudio = new Audio()
       _gpAudio.loop = true
-      _gpAudio.volume = 0.55
+      _gpAudio.volume = getMenuMusicVolume()
+      _gpAudio.muted = getMenuMusicMuted()
     }
     // Always ensure correct src is loaded
     if (_gpTrackId !== currentTrack.src) {
@@ -1061,7 +1094,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     // Instant switch: stop current, load + play new immediately (no delay, no click needed)
     if (_gpAudio) {
       _gpAudio.pause()
-      _gpAudio.volume = 0.55
+      _gpAudio.volume = getMenuMusicVolume()
       const track = TRACKS.find(t => t.id === id)
       if (track) {
         _gpAudio.src = track.src

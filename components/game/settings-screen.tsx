@@ -30,14 +30,26 @@ import {
   Monitor,
   Smartphone,
   Home,
+  Volume2,
+  VolumeX,
+  Music,
+  Zap,
 } from "lucide-react"
+import {
+  getMenuMusicVolume,
+  getSfxVolume,
+  getMenuMusicMuted,
+  setMenuMusicVolume,
+  setSfxVolume,
+  setMenuMusicMuted,
+} from "./main-menu"
 
 interface SettingsScreenProps {
   onBack: (message?: string) => void
   onReturnToTitle?: () => void
 }
 
-type TabType = "language" | "account" | "codes" | "display"
+type TabType = "language" | "account" | "codes" | "display" | "audio"
 
 export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScreenProps) {
   const { t, language, setLanguage } = useLanguage()
@@ -59,6 +71,29 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
     setMobileMode,
   } = useGame()
   const [activeTab, setActiveTab] = useState<TabType>("language")
+
+  // ── Audio tab state — initialised from persisted values ──
+  const [musicVol, setMusicVolState]   = useState<number>(() => getMenuMusicVolume())
+  const [sfxVol, setSfxVolState]       = useState<number>(() => getSfxVolume())
+  const [audioMuted, setAudioMutedState] = useState<boolean>(() => getMenuMusicMuted())
+
+  function handleMusicVol(v: number) {
+    setMusicVolState(v)
+    setMenuMusicVolume(v)
+    if (audioMuted && v > 0) {
+      setAudioMutedState(false)
+      setMenuMusicMuted(false)
+    }
+  }
+  function handleSfxVol(v: number) {
+    setSfxVolState(v)
+    setSfxVolume(v)
+  }
+  function handleToggleMute() {
+    const next = !audioMuted
+    setAudioMutedState(next)
+    setMenuMusicMuted(next)
+  }
   const [copied, setCopied] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(playerProfile.name)
@@ -343,6 +378,17 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
         >
           <Monitor className="w-4 h-4 inline mr-2" />
           Display
+        </button>
+        <button
+          onClick={() => setActiveTab("audio")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "audio"
+              ? "text-violet-400 border-b-2 border-violet-400 bg-violet-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Volume2 className="w-4 h-4 inline mr-2" />
+          Audio
         </button>
       </div>
 
@@ -1243,6 +1289,142 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── AUDIO TAB ── */}
+          {activeTab === "audio" && (
+            <div className="space-y-4">
+
+              {/* Master mute toggle */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-violet-900/30 rounded-2xl p-6 border border-violet-500/30 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-lg">
+                    {audioMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Configuracoes de Audio</h2>
+                    <p className="text-slate-400 text-xs">Ajuste volumes e silencio global</p>
+                  </div>
+                </div>
+
+                {/* Mute row */}
+                <div className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-3 border border-violet-500/15 mb-4">
+                  <div className="flex items-center gap-3">
+                    {audioMuted
+                      ? <VolumeX className="w-5 h-5 text-red-400" />
+                      : <Volume2 className="w-5 h-5 text-violet-400" />}
+                    <div>
+                      <p className="text-white text-sm font-semibold">
+                        {audioMuted ? "Audio silenciado" : "Audio ativado"}
+                      </p>
+                      <p className="text-slate-500 text-xs">
+                        {audioMuted ? "Toda a musica esta muda" : "Musica e efeitos ativos"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleMute}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
+                      audioMuted ? "bg-red-600/70" : "bg-violet-600"
+                    }`}
+                    aria-label={audioMuted ? "Desmutar audio" : "Mutar audio"}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${
+                        audioMuted ? "translate-x-0" : "translate-x-6"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Music volume slider */}
+                <div className="space-y-2 mb-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Music className="w-4 h-4 text-violet-400" />
+                      <span className="text-sm font-semibold text-white">Volume da Musica</span>
+                    </div>
+                    <span className="text-xs font-bold text-violet-300 tabular-nums w-8 text-right">
+                      {Math.round(musicVol * 100)}%
+                    </span>
+                  </div>
+                  <div className="relative h-3 flex items-center">
+                    {/* Track */}
+                    <div className="absolute inset-0 rounded-full bg-slate-700/70 border border-slate-600/40" />
+                    {/* Fill */}
+                    <div
+                      className="absolute left-0 h-full rounded-full transition-none"
+                      style={{
+                        width: `${musicVol * 100}%`,
+                        background: "linear-gradient(90deg, #6d28d9, #a855f7)",
+                        boxShadow: "0 0 8px rgba(168,85,247,0.5)",
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={musicVol}
+                      onChange={e => handleMusicVol(parseFloat(e.target.value))}
+                      className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+                      aria-label="Volume da musica"
+                    />
+                    {/* Thumb */}
+                    <div
+                      className="absolute w-4 h-4 rounded-full bg-white border-2 border-violet-500 shadow-md pointer-events-none"
+                      style={{ left: `calc(${musicVol * 100}% - 8px)` }}
+                    />
+                  </div>
+                </div>
+
+                {/* SFX volume slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-semibold text-white">Volume dos Efeitos (SFX)</span>
+                    </div>
+                    <span className="text-xs font-bold text-amber-300 tabular-nums w-8 text-right">
+                      {Math.round(sfxVol * 100)}%
+                    </span>
+                  </div>
+                  <div className="relative h-3 flex items-center">
+                    <div className="absolute inset-0 rounded-full bg-slate-700/70 border border-slate-600/40" />
+                    <div
+                      className="absolute left-0 h-full rounded-full transition-none"
+                      style={{
+                        width: `${sfxVol * 100}%`,
+                        background: "linear-gradient(90deg, #b45309, #f59e0b)",
+                        boxShadow: "0 0 8px rgba(245,158,11,0.45)",
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={sfxVol}
+                      onChange={e => handleSfxVol(parseFloat(e.target.value))}
+                      className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+                      aria-label="Volume dos efeitos sonoros"
+                    />
+                    <div
+                      className="absolute w-4 h-4 rounded-full bg-white border-2 border-amber-500 shadow-md pointer-events-none"
+                      style={{ left: `calc(${sfxVol * 100}% - 8px)` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Info card */}
+              <div className="bg-black/30 rounded-2xl p-4 border border-slate-700/40">
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  As configuracoes de audio sao salvas automaticamente e aplicadas em tempo real. O volume da musica controla a trilha sonora do menu e das batalhas. O volume dos efeitos controla sons de cartas, acoes e vozes dos mestres.
+                </p>
+              </div>
+
             </div>
           )}
 
