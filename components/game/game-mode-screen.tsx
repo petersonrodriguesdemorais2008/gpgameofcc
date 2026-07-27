@@ -14,10 +14,11 @@
  * referência) faz fade out antes de retornar ao menu.
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
 import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight } from "lucide-react"
 import type { GameScreen } from "./game-wrapper"
+import GearBackdrop from "./gear-backdrop"
 
 interface GameModeScreenProps {
   onSelect: (screen: GameScreen) => void
@@ -25,8 +26,8 @@ interface GameModeScreenProps {
 }
 
 /* Durações da transição */
-const LOADING_MS = 650
-const FADE_MS = 380
+const LOADING_MS = 700
+const FADE_MS = 450
 
 type Phase = "loading" | "in" | "ready" | "out"
 
@@ -64,7 +65,8 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         background:
           "radial-gradient(ellipse 90% 60% at 50% -10%, rgba(88,28,135,0.35) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 85% 110%, rgba(30,10,60,0.6) 0%, transparent 55%), linear-gradient(165deg, #060214 0%, #0a0420 45%, #05010f 100%)",
         opacity: phase === "out" ? 0 : 1,
-        transition: `opacity ${FADE_MS}ms ease`,
+        transition: `opacity ${FADE_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        willChange: phase === "out" ? "opacity" : undefined,
       }}
     >
       {/* ── Fundo animado: engrenagens tonais girando e deslizando na diagonal ── */}
@@ -109,21 +111,72 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
       {(phase === "loading" || phase === "in") && (
         <div
           aria-hidden={phase !== "loading"}
-          className="fixed inset-0 z-[220] flex flex-col items-center justify-center pointer-events-none"
+          className="fixed inset-0 z-[220] pointer-events-none overflow-hidden"
           style={{
-            background: "rgba(3,4,14,0.97)",
             opacity: phase === "loading" ? 1 : 0,
-            transition: `opacity ${FADE_MS}ms ease`,
+            transition: `opacity ${FADE_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
           }}
         >
-          <div className="relative w-14 h-14">
-            <div className="absolute inset-0 rounded-full border-2 border-purple-500/15" />
-            <div className="absolute inset-0 rounded-full border-2 border-t-purple-400 border-r-transparent border-b-transparent border-l-transparent gpm-spin" />
-            <div className="absolute inset-2 rounded-full border border-t-fuchsia-400/60 border-r-transparent border-b-transparent border-l-transparent gpm-spin-rev" />
+          {/* Cortina dupla: duas metades que deslizam para fora no fade out */}
+          <div
+            className="absolute inset-x-0 top-0 h-1/2"
+            style={{
+              background: "linear-gradient(180deg, #05010f 60%, rgba(5,1,15,0.99))",
+              transform: phase === "loading" ? "translateY(0)" : "translateY(-101%)",
+              transition: `transform ${FADE_MS + 150}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-1/2"
+            style={{
+              background: "linear-gradient(0deg, #05010f 60%, rgba(5,1,15,0.99))",
+              transform: phase === "loading" ? "translateY(0)" : "translateY(101%)",
+              transition: `transform ${FADE_MS + 150}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          />
+
+          {/* Linha de energia central — marca a "costura" da cortina */}
+          <div
+            aria-hidden
+            className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(168,85,247,0.9) 30%, #d8b4fe 50%, rgba(168,85,247,0.9) 70%, transparent)",
+              boxShadow: "0 0 18px rgba(168,85,247,0.8), 0 0 46px rgba(124,58,237,0.5)",
+              opacity: phase === "loading" ? 1 : 0,
+              transform: phase === "loading" ? "translateY(-50%) scaleX(1)" : "translateY(-50%) scaleX(1.15)",
+              transition: `opacity ${Math.round(FADE_MS * 0.6)}ms ease, transform ${FADE_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          />
+
+          {/* Núcleo do loading: engrenagem girando + anéis de energia */}
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center"
+            style={{
+              opacity: phase === "loading" ? 1 : 0,
+              transform: phase === "loading" ? "scale(1)" : "scale(0.85)",
+              transition: `opacity ${Math.round(FADE_MS * 0.55)}ms ease, transform ${FADE_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          >
+            <div className="relative flex h-24 w-24 items-center justify-center">
+              {/* Pulso de energia externo */}
+              <div className="gpm-pulse absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle, rgba(124,58,237,0.28) 0%, transparent 65%)" }} />
+              {/* Anel orbital externo */}
+              <div className="gpm-spin absolute inset-0 rounded-full border-2 border-t-purple-400 border-r-transparent border-b-purple-400/25 border-l-transparent" />
+              {/* Anel orbital interno em contra-rotação */}
+              <div className="gpm-spin-rev absolute inset-3 rounded-full border border-t-fuchsia-400/70 border-r-transparent border-b-transparent border-l-fuchsia-400/20" />
+              {/* Engrenagem central girando (mesma arte do fundo) */}
+              <img
+                src="/images/modes/gear-blue.png"
+                alt=""
+                draggable={false}
+                className="gpm-gear-load h-11 w-11 select-none"
+                style={{ filter: "hue-rotate(45deg) saturate(1.2) drop-shadow(0 0 12px rgba(168,85,247,0.75))" }}
+              />
+            </div>
+            <p className="gpm-load-txt mt-6 text-[10px] font-black tracking-[0.4em] uppercase text-purple-300/70">
+              Preparando modos
+            </p>
           </div>
-          <p className="mt-5 text-[10px] font-black tracking-[0.35em] uppercase text-purple-300/60">
-            Preparando modos
-          </p>
         </div>
       )}
 
@@ -132,8 +185,8 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         className="relative z-10 mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 pb-28 pt-8 sm:px-8"
         style={{
           opacity: contentVisible ? 1 : 0,
-          transform: contentVisible ? "translateY(0)" : "translateY(14px)",
-          transition: `opacity ${FADE_MS}ms ease, transform ${FADE_MS + 120}ms cubic-bezier(0.22,1,0.36,1)`,
+          transform: contentVisible ? "translateY(0) scale(1)" : "translateY(22px) scale(0.985)",
+          transition: `opacity ${FADE_MS + 100}ms cubic-bezier(0.4, 0, 0.2, 1), transform ${FADE_MS + 250}ms cubic-bezier(0.16, 1, 0.3, 1)`,
         }}
       >
         {/* ── Cabeçalho ── */}
@@ -285,9 +338,20 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
       </button>
 
       <style jsx>{`
-        .gpm-spin { animation: gpmSpin 0.9s linear infinite; }
-        .gpm-spin-rev { animation: gpmSpin 1.4s linear infinite reverse; }
+        .gpm-spin { animation: gpmSpin 1.1s cubic-bezier(0.6, 0.15, 0.4, 0.85) infinite; }
+        .gpm-spin-rev { animation: gpmSpin 1.6s cubic-bezier(0.6, 0.15, 0.4, 0.85) infinite reverse; }
         @keyframes gpmSpin { to { transform: rotate(360deg); } }
+        .gpm-gear-load { animation: gpmSpin 2.2s linear infinite; }
+        .gpm-pulse { animation: gpmPulse 1.5s ease-in-out infinite; }
+        @keyframes gpmPulse {
+          0%, 100% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.35); opacity: 1; }
+        }
+        .gpm-load-txt { animation: gpmTxtGlow 1.8s ease-in-out infinite; }
+        @keyframes gpmTxtGlow {
+          0%, 100% { opacity: 0.55; }
+          50% { opacity: 1; }
+        }
         .gpm-aurora { animation: gpmAurora 14s ease-in-out infinite alternate; will-change: transform; }
         .gpm-aurora-2 { animation: gpmAurora 18s ease-in-out infinite alternate-reverse; will-change: transform; }
         @keyframes gpmAurora {
@@ -295,7 +359,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           to { transform: translate3d(9vw, 6vh, 0) scale(1.18); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .gpm-aurora, .gpm-aurora-2 { animation: none; }
+          .gpm-aurora, .gpm-aurora-2, .gpm-pulse, .gpm-load-txt { animation: none; }
         }
       `}</style>
     </div>
@@ -576,114 +640,4 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
   )
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   GEAR BACKDROP — fundo animado estilo loading de jogo (referência Inazuma):
-   padrão tonal de engrenagens flat que giram enquanto a camada inteira
-   desliza na diagonal em loop perfeito. 100% transform (GPU), zero repaint.
-═══════════════════════════════════════════════════════════════════════════ */
 
-/* Variantes por célula (padrão com período de 2x2 células → loop perfeito).
-   Duas engrenagens por célula → padrão mais denso. Durações já dobradas em velocidade. */
-const GEAR_VARIANTS = [
-  [
-    { size: 132, dur: 15, rev: false, ox: 24, oy: 36, op: 0.14 },
-    { size: 54, dur: 7, rev: true, ox: 172, oy: 130, op: 0.18 },
-  ],
-  [
-    { size: 66, dur: 8, rev: true, ox: 150, oy: 30, op: 0.17 },
-    { size: 96, dur: 11, rev: false, ox: 40, oy: 152, op: 0.15 },
-  ],
-  [
-    { size: 88, dur: 11, rev: true, ox: 120, oy: 96, op: 0.15 },
-    { size: 44, dur: 5.5, rev: false, ox: 30, oy: 210, op: 0.19 },
-  ],
-  [
-    { size: 50, dur: 6, rev: false, ox: 196, oy: 190, op: 0.18 },
-    { size: 110, dur: 13, rev: true, ox: 60, oy: 60, op: 0.14 },
-  ],
-] as const
-
-const GEAR_SPACING = 260
-const GEAR_PERIOD = GEAR_SPACING * 2
-const GEAR_IMG = "/images/modes/gear-blue.png"
-
-function GearBackdrop() {
-  const gears = useMemo(() => {
-    const vw = typeof window !== "undefined" ? window.innerWidth : 1600
-    const vh = typeof window !== "undefined" ? window.innerHeight : 900
-    const cols = Math.ceil((vw + GEAR_PERIOD) / GEAR_SPACING) + 1
-    const rows = Math.ceil((vh + GEAR_PERIOD) / GEAR_SPACING) + 1
-    const list: Array<{
-      key: string; x: number; y: number
-      size: number; dur: number; rev: boolean; op: number
-    }> = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = GEAR_VARIANTS[(c % 2) + (r % 2) * 2]
-        cell.forEach((v, i) => {
-          list.push({
-            key: `${r}-${c}-${i}`,
-            x: c * GEAR_SPACING + v.ox - GEAR_SPACING,
-            y: r * GEAR_SPACING + v.oy - GEAR_SPACING,
-            size: v.size, dur: v.dur, rev: v.rev, op: v.op,
-          })
-        })
-      }
-    }
-    return list
-  }, [])
-
-  return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-      <div
-        className="gpm-drift absolute left-0 top-0"
-        style={{
-          width: `calc(100% + ${GEAR_PERIOD}px)`,
-          height: `calc(100% + ${GEAR_PERIOD}px)`,
-          willChange: "transform",
-        }}
-      >
-        {gears.map((g) => (
-          <img
-            key={g.key}
-            src={GEAR_IMG || "/placeholder.svg"}
-            alt=""
-            draggable={false}
-            className={g.rev ? "gpm-gear-ccw absolute select-none" : "gpm-gear-cw absolute select-none"}
-            style={{
-              left: g.x,
-              top: g.y,
-              width: g.size,
-              height: g.size,
-              opacity: g.op,
-              animationDuration: `${g.dur}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      <style jsx global>{`
-        .gpm-drift {
-          animation: gpmDrift 24s linear infinite;
-        }
-        .gpm-gear-cw {
-          animation: gpmRot linear infinite;
-        }
-        .gpm-gear-ccw {
-          animation: gpmRot linear infinite reverse;
-        }
-        @keyframes gpmDrift {
-          from { transform: translate3d(0, 0, 0); }
-          to { transform: translate3d(-${GEAR_PERIOD}px, -${GEAR_PERIOD}px, 0); }
-        }
-        @keyframes gpmRot {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .gpm-drift, .gpm-gear-cw, .gpm-gear-ccw { animation: none; }
-        }
-      `}</style>
-    </div>
-  )
-}

@@ -43,6 +43,7 @@ import {
   setSfxVolume,
   setMenuMusicMuted,
 } from "./main-menu"
+import GearBackdrop from "./gear-backdrop"
 
 interface SettingsScreenProps {
   onBack: (message?: string) => void
@@ -305,6 +306,8 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 via-cyan-900/10 to-black">
+      {/* Fundo animado de engrenagens — mesmo da tela de Modo de Jogo */}
+      <GearBackdrop />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <div
