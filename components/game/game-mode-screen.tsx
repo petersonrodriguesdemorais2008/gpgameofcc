@@ -374,7 +374,7 @@ function TicketPanel({
             alt={imageAlt}
             fill
             sizes={big ? "(max-width: 1024px) 100vw, 960px" : "(max-width: 768px) 100vw, 470px"}
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+            className="object-cover"
           />
           {/* Vinheta inferior pra ancorar a faixa de nome */}
           <div
@@ -515,7 +515,7 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
           alt={imageAlt}
           fill
           sizes="(max-width: 640px) 100vw, 300px"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.08]"
+            className="object-cover"
         />
         <div
           aria-hidden
