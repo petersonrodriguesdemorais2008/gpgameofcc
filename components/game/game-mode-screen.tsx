@@ -496,29 +496,30 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
    desliza na diagonal em loop perfeito. 100% transform (GPU), zero repaint.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Variantes por célula (padrão com período de 2x2 células → loop perfeito) */
+/* Variantes por célula (padrão com período de 2x2 células → loop perfeito).
+   Duas engrenagens por célula → padrão mais denso. Durações já dobradas em velocidade. */
 const GEAR_VARIANTS = [
-  { size: 128, dur: 30, rev: false, teeth: 8, ox: 30, oy: 44, op: 0.07 },
-  { size: 62, dur: 16, rev: true, teeth: 6, ox: 205, oy: 128, op: 0.1 },
-  { size: 88, dur: 22, rev: true, teeth: 8, ox: 128, oy: 238, op: 0.085 },
-  { size: 46, dur: 11, rev: false, teeth: 6, ox: 258, oy: 300, op: 0.11 },
+  [
+    { size: 132, dur: 15, rev: false, ox: 24, oy: 36, op: 0.14 },
+    { size: 54, dur: 7, rev: true, ox: 172, oy: 130, op: 0.18 },
+  ],
+  [
+    { size: 66, dur: 8, rev: true, ox: 150, oy: 30, op: 0.17 },
+    { size: 96, dur: 11, rev: false, ox: 40, oy: 152, op: 0.15 },
+  ],
+  [
+    { size: 88, dur: 11, rev: true, ox: 120, oy: 96, op: 0.15 },
+    { size: 44, dur: 5.5, rev: false, ox: 30, oy: 210, op: 0.19 },
+  ],
+  [
+    { size: 50, dur: 6, rev: false, ox: 196, oy: 190, op: 0.18 },
+    { size: 110, dur: 13, rev: true, ox: 60, oy: 60, op: 0.14 },
+  ],
 ] as const
 
-const GEAR_SPACING = 340
+const GEAR_SPACING = 260
 const GEAR_PERIOD = GEAR_SPACING * 2
-
-function GearShape({ size, teeth }: { size: number; teeth: number }) {
-  const step = 360 / teeth
-  return (
-    <svg width={size} height={size} viewBox="-50 -50 100 100" fill="currentColor" aria-hidden>
-      {Array.from({ length: teeth }, (_, i) => (
-        <rect key={i} x={-8} y={-48} width={16} height={20} rx={5} transform={`rotate(${step * i})`} />
-      ))}
-      {/* Corpo em rosca (furo central vazado, sem cor de fundo por baixo) */}
-      <path fillRule="evenodd" d="M0,-36 a36,36 0 1,0 0.01,0 Z M0,-15 a15,15 0 1,1 -0.01,0 Z" />
-    </svg>
-  )
-}
+const GEAR_IMG = "/images/modes/gear-blue.png"
 
 function GearBackdrop() {
   const gears = useMemo(() => {
@@ -528,16 +529,18 @@ function GearBackdrop() {
     const rows = Math.ceil((vh + GEAR_PERIOD) / GEAR_SPACING) + 1
     const list: Array<{
       key: string; x: number; y: number
-      size: number; dur: number; rev: boolean; teeth: number; op: number
+      size: number; dur: number; rev: boolean; op: number
     }> = []
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const v = GEAR_VARIANTS[(c % 2) + (r % 2) * 2]
-        list.push({
-          key: `${r}-${c}`,
-          x: c * GEAR_SPACING + v.ox - GEAR_SPACING,
-          y: r * GEAR_SPACING + v.oy - GEAR_SPACING,
-          size: v.size, dur: v.dur, rev: v.rev, teeth: v.teeth, op: v.op,
+        const cell = GEAR_VARIANTS[(c % 2) + (r % 2) * 2]
+        cell.forEach((v, i) => {
+          list.push({
+            key: `${r}-${c}-${i}`,
+            x: c * GEAR_SPACING + v.ox - GEAR_SPACING,
+            y: r * GEAR_SPACING + v.oy - GEAR_SPACING,
+            size: v.size, dur: v.dur, rev: v.rev, op: v.op,
+          })
         })
       }
     }
@@ -555,26 +558,27 @@ function GearBackdrop() {
         }}
       >
         {gears.map((g) => (
-          <div
+          <img
             key={g.key}
-            className={g.rev ? "gpm-gear-ccw absolute" : "gpm-gear-cw absolute"}
+            src={GEAR_IMG || "/placeholder.svg"}
+            alt=""
+            draggable={false}
+            className={g.rev ? "gpm-gear-ccw absolute select-none" : "gpm-gear-cw absolute select-none"}
             style={{
               left: g.x,
               top: g.y,
               width: g.size,
               height: g.size,
-              color: `rgba(167, 139, 250, ${g.op})`,
+              opacity: g.op,
               animationDuration: `${g.dur}s`,
             }}
-          >
-            <GearShape size={g.size} teeth={g.teeth} />
-          </div>
+          />
         ))}
       </div>
 
       <style jsx global>{`
         .gpm-drift {
-          animation: gpmDrift 48s linear infinite;
+          animation: gpmDrift 24s linear infinite;
         }
         .gpm-gear-cw {
           animation: gpmRot linear infinite;
