@@ -720,9 +720,15 @@ function MissionCard({
 
 export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   // Lê o wallpaper ativo do jogador (mesmo sistema do main menu)
-  const wallpaperUrl = typeof window !== "undefined"
-    ? `/images/wallpapers/${localStorage.getItem("gpgame_selected_wallpaper") ?? "fehnon_wallpaper"}.png`
-    : "/images/wallpapers/fehnon_wallpaper.png"
+  // try/catch: roda a cada render, fora de qualquer effect — se localStorage lançar
+  // (browsers embutidos de apps sociais, storage bloqueado por política, etc.)
+  // isso derrubaria a tela inteira sem essa proteção
+  let wallpaperUrl = "/images/wallpapers/fehnon_wallpaper.png"
+  if (typeof window !== "undefined") {
+    try {
+      wallpaperUrl = `/images/wallpapers/${localStorage.getItem("gpgame_selected_wallpaper") ?? "fehnon_wallpaper"}.png`
+    } catch {}
+  }
   const { setCoins, playerId, allCards, addToCollection } = useGame()
 
   // ── PACK OPENING — extraído verbatim do GachaScreen ───────────────────────────
@@ -1073,15 +1079,17 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   useEffect(() => {
     trackDailyLogin()
     // Mostra toast de "+30 pts" só uma vez por dia
-    const todayKey = getDayKey()
-    const seenKey  = `gpgame_login_toast_${todayKey}`
-    if (typeof window !== "undefined" && !localStorage.getItem(seenKey)) {
-      localStorage.setItem(seenKey, "1")
-      setTimeout(() => {
-        setShowLoginToast(true)
-        setTimeout(() => setShowLoginToast(false), 2800)
-      }, 900)
-    }
+    try {
+      const todayKey = getDayKey()
+      const seenKey  = `gpgame_login_toast_${todayKey}`
+      if (typeof window !== "undefined" && !localStorage.getItem(seenKey)) {
+        localStorage.setItem(seenKey, "1")
+        setTimeout(() => {
+          setShowLoginToast(true)
+          setTimeout(() => setShowLoginToast(false), 2800)
+        }, 900)
+      }
+    } catch {}
   }, [])
 
   // Detecta virada de dia a cada 60s e atualiza currentDayKey
@@ -1401,14 +1409,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
     passRowRef.current.scrollTo({ left: currentLevelTargetX, behavior: "smooth" })
   }, [passData.currentLevel])
 
-  // Persist passData
+  // Persist passData — try/catch: roda a cada claim/level-up, precisa sobreviver
+  // a quota excedida ou storage bloqueado sem quebrar o resto do app
   useEffect(() => {
-    localStorage.setItem(LS_PASS_KEY, JSON.stringify(passData))
+    try { localStorage.setItem(LS_PASS_KEY, JSON.stringify(passData)) } catch {}
   }, [passData])
 
   // Persist claimed mission IDs with timestamps
   useEffect(() => {
-    localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(claimedMissionIds))
+    try { localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(claimedMissionIds)) } catch {}
   }, [claimedMissionIds])
 
   // Scroll to current level
@@ -1604,7 +1613,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
 
   const openStripeCheckout = () => {
     // Passa o playerId como client_reference_id para o webhook identificar o jogador
-    const pid = playerId || localStorage.getItem("gear-perks-player-id") || localStorage.getItem("gearperks-playerid") || ""
+    let pid = playerId || ""
+    if (!pid) {
+      try {
+        pid = localStorage.getItem("gear-perks-player-id") || localStorage.getItem("gearperks-playerid") || ""
+      } catch {}
+    }
     const stripeUrl = pid
       ? `${STRIPE_PAYMENT_URL}?client_reference_id=${encodeURIComponent(pid)}`
       : STRIPE_PAYMENT_URL
@@ -1941,13 +1955,13 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
       }}>
         {/* Top bar */}
         <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 12, maxWidth: 960, margin: "0 auto" }}>
-          <button onClick={onBack} style={{
+          <button onClick={onBack} aria-label="Voltar" style={{
             background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 10, width: 36, height: 36, cursor: "pointer",
+            borderRadius: 12, width: 44, height: 44, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "#64748b", transition: "all 0.2s", flexShrink: 0,
           }}>
-            <ArrowLeft size={17} />
+            <ArrowLeft size={19} />
           </button>
 
           {/* Title block */}
@@ -2379,14 +2393,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   <button
                     onClick={() => scrollTrack(-1)}
                     disabled={scrollLeft <= 0}
+                    aria-label="Ver níveis anteriores"
                     style={{
-                      flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+                      flexShrink: 0, width: 44, height: 44, borderRadius: "50%",
                       border: "1px solid rgba(255,255,255,0.10)",
                       background: scrollLeft <= 0 ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
                       color: scrollLeft <= 0 ? "#1e293b" : "#06b6d4",
                       cursor: scrollLeft <= 0 ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 18, fontWeight: 900, transition: "all 0.2s",
+                      fontSize: 22, fontWeight: 900, transition: "all 0.2s",
                       boxShadow: scrollLeft <= 0 ? "none" : "0 0 8px rgba(6,182,212,0.20)",
                       userSelect: "none",
                     }}>‹</button>
@@ -2681,14 +2696,15 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
                   <button
                     onClick={() => scrollTrack(1)}
                     disabled={scrollLeft >= scrollMax - 1}
+                    aria-label="Ver próximos níveis"
                     style={{
-                      flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+                      flexShrink: 0, width: 44, height: 44, borderRadius: "50%",
                       border: "1px solid rgba(255,255,255,0.10)",
                       background: scrollLeft >= scrollMax - 1 ? "rgba(255,255,255,0.02)" : "rgba(6,182,212,0.14)",
                       color: scrollLeft >= scrollMax - 1 ? "#1e293b" : "#06b6d4",
                       cursor: scrollLeft >= scrollMax - 1 ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 18, fontWeight: 900, transition: "all 0.2s",
+                      fontSize: 22, fontWeight: 900, transition: "all 0.2s",
                       boxShadow: scrollLeft >= scrollMax - 1 ? "none" : "0 0 8px rgba(6,182,212,0.20)",
                       userSelect: "none",
                     }}>›</button>
@@ -3025,12 +3041,12 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               background: "repeating-linear-gradient(115deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 26px)" }} />
 
             {/* Close */}
-            <button onClick={() => setShowPremiumModal(false)} style={{
-              position: "absolute", top: 16, right: 16, zIndex: 2,
+            <button onClick={() => setShowPremiumModal(false)} aria-label="Fechar" style={{
+              position: "absolute", top: 12, right: 12, zIndex: 2,
               background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)",
-              borderRadius: 10, width: 32, height: 32, cursor: "pointer",
+              borderRadius: 12, width: 44, height: 44, cursor: "pointer",
               color: "#64748b", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
-            }}><X size={16} strokeWidth={2.5} /></button>
+            }}><X size={18} strokeWidth={2.5} /></button>
 
             {/* Icon */}
             <div style={{ textAlign: "center", marginBottom: 20, position: "relative" }}>
@@ -3170,10 +3186,6 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
         @keyframes pulseGlow {
           0%,100% { opacity: 0.6; }
           50%      { opacity: 1; }
-        }
-        @keyframes orbitSpin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
         }
         /* "Pronto para coletar" — glow pulsante, sinaliza recompensa disponível */
         @keyframes claimPulseCyan {
@@ -3633,7 +3645,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
               {packRevealZoomedCard.rarity}
             </span>
           </div>
-          <button onClick={() => setPackRevealZoomedCard(null)}
+          <button onClick={() => setPackRevealZoomedCard(null)} aria-label="Fechar"
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors bg-white/10">
             <X className="w-6 h-6 text-white" />
           </button>
