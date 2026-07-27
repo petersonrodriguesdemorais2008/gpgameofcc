@@ -70,6 +70,18 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
       {/* ── Fundo animado: engrenagens tonais girando e deslizando na diagonal ── */}
       <GearBackdrop />
 
+      {/* ── Auroras de energia à deriva (transform-only) ── */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div
+          className="gpm-aurora absolute -left-40 top-[-20%] h-[60vh] w-[60vw] rounded-full"
+          style={{ background: "radial-gradient(ellipse at center, rgba(124,58,237,0.16) 0%, transparent 65%)" }}
+        />
+        <div
+          className="gpm-aurora-2 absolute -right-40 bottom-[-25%] h-[65vh] w-[55vw] rounded-full"
+          style={{ background: "radial-gradient(ellipse at center, rgba(217,70,239,0.1) 0%, transparent 65%)" }}
+        />
+      </div>
+
       {/* ── Textura de fundo: grade diagonal sutil (papel de scrapbook da referência) ── */}
       <div
         aria-hidden
@@ -80,6 +92,16 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           backgroundSize: "44px 44px",
           maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
           WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
+        }}
+      />
+
+      {/* ── Vinheta cinematográfica nas bordas da tela ── */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(2,0,10,0.55) 100%)",
         }}
       />
 
@@ -117,41 +139,48 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         {/* ── Cabeçalho ── */}
         <header className="mb-7 flex items-center gap-4">
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-xl"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(88,28,135,0.2))",
-              border: "1px solid rgba(167,139,250,0.35)",
-              boxShadow: "0 0 18px rgba(124,58,237,0.25)",
+              background: "linear-gradient(135deg, rgba(124,58,237,0.4), rgba(88,28,135,0.18))",
+              border: "1px solid rgba(167,139,250,0.45)",
+              boxShadow: "0 0 22px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+              clipPath: "polygon(22% 0, 100% 0, 100% 78%, 78% 100%, 0 100%, 0 22%)",
             }}
           >
-            <Ticket className="h-5 w-5 text-purple-300" />
+            <Ticket className="h-5 w-5 text-purple-200" />
           </div>
           <div className="flex flex-col">
             <h1
-              className="text-balance text-2xl font-black uppercase leading-none tracking-[0.22em] text-white sm:text-3xl"
-              style={{ textShadow: "0 0 18px rgba(139,92,246,0.55), 0 2px 0 rgba(0,0,30,0.8)" }}
+              className="text-balance text-2xl font-black uppercase italic leading-none tracking-[0.22em] sm:text-3xl"
+              style={{
+                background: "linear-gradient(180deg, #ffffff 30%, #c4b5fd 70%, #a78bfa 100%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                filter: "drop-shadow(0 0 16px rgba(139,92,246,0.6)) drop-shadow(0 2px 0 rgba(0,0,30,0.9))",
+              }}
             >
               Modo de Jogo
             </h1>
-            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-purple-300/50">
+            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-purple-300/55">
               Escolha seu destino, duelista
             </p>
           </div>
-          {/* Linha decorativa */}
-          <div
-            aria-hidden
-            className="ml-2 hidden h-px flex-1 sm:block"
-            style={{ background: "linear-gradient(90deg, rgba(167,139,250,0.4), transparent)" }}
-          />
+          {/* Linha decorativa com losango de energia */}
+          <div aria-hidden className="ml-2 hidden flex-1 items-center gap-2 sm:flex">
+            <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(167,139,250,0.5), rgba(167,139,250,0.08))" }} />
+            <div className="h-1.5 w-1.5 rotate-45" style={{ background: "rgba(196,181,253,0.7)", boxShadow: "0 0 8px rgba(167,139,250,0.8)" }} />
+            <div className="h-px w-10" style={{ background: "linear-gradient(90deg, rgba(167,139,250,0.3), transparent)" }} />
+          </div>
         </header>
 
-        {/* ── TICKET GRANDE: CAMPANHA ── */}
+        {/* ── TICKET GRANDE: CAMPANHA (banner oficial Modo História) ── */}
         <TicketPanel
           big
           accent="#a855f7"
           accentDark="#5b21b6"
-          image="/images/modes/mode-campanha.png"
-          imageAlt="Arte do modo Campanha: cavaleiro rumo ao castelo de Camelot"
+          image="/images/modes/banner-campanha.png"
+          imageAlt="Banner do Modo História: dois duelistas em confronto de energia azul e roxa"
           name="CAMPANHA"
           tag="MODO HISTÓRIA"
           description="Viva a jornada de Camelot capítulo por capítulo e desbloqueie recompensas de história."
@@ -161,7 +190,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           onClick={() => exitWith(() => onSelect("story"))}
         />
 
-        {/* ── DOIS TICKETS MÉDIOS: VS BOT / VS JOGADOR ── */}
+        {/* ── DOIS TICKETS MÉDIOS: VS BOT / PVP ── */}
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
           <TicketPanel
             accent="#3b82f6"
@@ -179,10 +208,10 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           <TicketPanel
             accent="#f97316"
             accentDark="#c2410c"
-            image="/images/modes/mode-vsjogador.png"
-            imageAlt="Arte do modo VS JOGADOR: dois rivais em confronto"
-            name="VS JOGADOR"
-            tag="RANQUEADA · PVP"
+            image="/images/modes/banner-pvp.png"
+            imageAlt="Banner do modo PVP Ranqueada: dois gladiadores rivais, um com aura azul e outro com aura de fogo"
+            name="PVP"
+            tag="RANQUEADA · JxJ"
             description="Desafie duelistas reais e prove quem manda na arena."
             icon={<Users className="h-5 w-5" />}
             delay={180}
@@ -259,6 +288,15 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         .gpm-spin { animation: gpmSpin 0.9s linear infinite; }
         .gpm-spin-rev { animation: gpmSpin 1.4s linear infinite reverse; }
         @keyframes gpmSpin { to { transform: rotate(360deg); } }
+        .gpm-aurora { animation: gpmAurora 14s ease-in-out infinite alternate; will-change: transform; }
+        .gpm-aurora-2 { animation: gpmAurora 18s ease-in-out infinite alternate-reverse; will-change: transform; }
+        @keyframes gpmAurora {
+          from { transform: translate3d(0, 0, 0) scale(1); }
+          to { transform: translate3d(9vw, 6vh, 0) scale(1.18); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .gpm-aurora, .gpm-aurora-2 { animation: none; }
+        }
       `}</style>
     </div>
   )
@@ -297,6 +335,17 @@ function TicketPanel({
         transition: `opacity 500ms ease ${delay}ms, transform 600ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, scale 200ms ease`,
       }}
     >
+      {/* Halo de energia atrás do ticket (intensifica no hover) */}
+      <div
+        aria-hidden
+        className="absolute -inset-1 opacity-40 transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          borderRadius: 18,
+          background: `radial-gradient(ellipse 70% 90% at 50% 50%, ${accent}30, transparent 70%)`,
+          filter: "blur(10px)",
+        }}
+      />
+
       {/* Corpo do ticket — recortes laterais via mask radial */}
       <div
         className="relative overflow-hidden"
@@ -309,9 +358,15 @@ function TicketPanel({
           maskImage:
             "radial-gradient(circle 13px at 0% 50%, transparent 98%, black 100%), radial-gradient(circle 13px at 100% 50%, transparent 98%, black 100%)",
           maskComposite: "intersect",
-          boxShadow: `inset 0 0 0 1px ${accent}44`,
+          boxShadow: `inset 0 0 0 1px ${accent}55, inset 0 0 32px ${accent}14`,
         }}
       >
+        {/* Fio de energia no topo do ticket */}
+        <div
+          aria-hidden
+          className="absolute left-0 top-0 z-10 h-[2px] w-full"
+          style={{ background: `linear-gradient(90deg, transparent, ${accent}cc 30%, ${accent} 50%, ${accent}cc 70%, transparent)` }}
+        />
         {/* Arte do modo */}
         <div className={`relative w-full overflow-hidden ${big ? "h-44 sm:h-52" : "h-36 sm:h-40"}`}>
           <Image
@@ -376,14 +431,33 @@ function TicketPanel({
         <div className="flex items-center gap-3 px-5 py-3.5">
           <p className="flex-1 text-pretty text-xs leading-relaxed text-purple-100/65">{description}</p>
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-transform group-hover:translate-x-0.5"
-            style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})`, boxShadow: `0 3px 14px ${accent}55` }}
+            className="flex shrink-0 items-center gap-1.5 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-transform group-hover:translate-x-0.5"
+            style={{
+              background: `linear-gradient(135deg, ${accentDark}, ${accent})`,
+              boxShadow: `0 3px 14px ${accent}55, inset 0 1px 0 rgba(255,255,255,0.3)`,
+              clipPath: "polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)",
+            }}
           >
             Entrar
             <ChevronRight className="h-3.5 w-3.5" />
           </span>
         </div>
       </div>
+
+      {/* Cantoneiras táticas nos 4 cantos (fora da mask, sempre visíveis) */}
+      {[
+        "left-0 top-0 border-l-2 border-t-2 rounded-tl-[14px]",
+        "right-0 top-0 border-r-2 border-t-2 rounded-tr-[14px]",
+        "left-0 bottom-0 border-l-2 border-b-2 rounded-bl-[14px]",
+        "right-0 bottom-0 border-r-2 border-b-2 rounded-br-[14px]",
+      ].map((pos) => (
+        <span
+          key={pos}
+          aria-hidden
+          className={`pointer-events-none absolute h-5 w-5 transition-all duration-300 group-hover:h-7 group-hover:w-7 ${pos}`}
+          style={{ borderColor: accent, filter: `drop-shadow(0 0 4px ${accent}aa)` }}
+        />
+      ))}
 
       <style jsx>{`
         .gpt-shine {
@@ -485,6 +559,18 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
         aria-hidden
         className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
         style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
+      />
+
+      {/* Cantoneiras nos cantos superiores */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 h-4 w-4 rounded-tl-[14px] border-l-2 border-t-2 opacity-60 transition-all duration-300 group-hover:h-6 group-hover:w-6 group-hover:opacity-100"
+        style={{ borderColor: accent, filter: `drop-shadow(0 0 4px ${accent}99)` }}
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute right-0 top-0 h-4 w-4 rounded-tr-[14px] border-r-2 border-t-2 opacity-60 transition-all duration-300 group-hover:h-6 group-hover:w-6 group-hover:opacity-100"
+        style={{ borderColor: accent, filter: `drop-shadow(0 0 4px ${accent}99)` }}
       />
     </button>
   )
