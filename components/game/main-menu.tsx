@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/language-context"
 import { useGame } from "@/contexts/game-context"
 import type { GameScreen } from "@/components/game/game-wrapper"
 import {
-  Swords, Bot, Users, Gift, BookOpen, Hammer, History, Settings,
+  Swords, Users, Gift, BookOpen, Hammer, History, Settings,
   Coins, X, Sparkles, Star, Target, Shield,
 } from "lucide-react"
 import Image from "next/image"
@@ -16,6 +16,11 @@ const MasterMenuCard = dynamic(
   () => import("./master-screen").then(m => ({ default: m.MasterMenuCard })),
   { ssr: false, loading: () => null }
 )
+
+const GameModeScreen = dynamic(() => import("./game-mode-screen"), {
+  ssr: false,
+  loading: () => null,
+})
 
 const GP_CSS = `
 @keyframes gp-conic-spin { to { transform: rotate(360deg); } }
@@ -1809,61 +1814,45 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className={"fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap" + (mounted ? " gp-anim-nav" : " gp-pre-mount")}>
         <div className="gp-nav-line" />
 
-        {!showPlayMenu ? (
-          /* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */
-          <div className="flex items-center justify-around px-4 pb-5 pt-2">
-            <button className="gp-ni relative" onClick={() => onNavigate("friends")}>
-              <Users className="w-7 h-7" />
-              {onlineFriends > 0 && (
-                <span className="absolute top-1.5 right-3 min-w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
-                  style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)", boxShadow:"0 0 6px rgba(34,197,94,0.7)", border:"1px solid rgba(255,255,255,0.2)" }}>
-                  {onlineFriends}
-                </span>
-              )}
-              <span className="gp-ni-lbl">Social</span>
-            </button>
-            <button className="gp-ni" onClick={() => onNavigate("missions")}>
-              <Target className="w-7 h-7" /><span className="gp-ni-lbl">Missões</span>
-            </button>
-            <button className="gp-ni" onClick={() => onNavigate("guild")}>
-              <Users className="w-7 h-7" /><span className="gp-ni-lbl">Guilda</span>
-            </button>
-            <button className="gp-ni" onClick={() => onNavigate("shop" as GameScreen)}>
-              <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">🛒</span>
-              <span className="gp-ni-lbl">Loja</span>
-            </button>
-            <button className="gp-ni" onClick={() => onNavigate("profile")}>
-              <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">👤</span>
-              <span className="gp-ni-lbl">Perfil</span>
-            </button>
-          </div>
-        ) : (
-          /* Sub-menu de modos de jogo */
-          <div className="px-4 pb-6 pt-4 max-w-lg mx-auto space-y-2.5">
-            <p className="text-center text-[11px] font-black tracking-widest uppercase mb-3" style={{color:"rgba(139,92,246,0.5)"}}>Modo de jogo</p>
-            <button onClick={() => onNavigate("duel-bot")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
-              style={{background:"linear-gradient(135deg,#1d4ed8,#3b82f6,#2563eb)",boxShadow:"0 8px 24px rgba(59,130,246,0.25)"}}>
-              <Bot className="h-6 w-6" />{t("vsBot")}
-            </button>
-            <button onClick={() => onNavigate("duel-player")}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
-              style={{background:"linear-gradient(135deg,#c2410c,#f97316,#ea580c)",boxShadow:"0 8px 24px rgba(249,115,22,0.25)"}}>
-              <Users className="h-6 w-6" />{t("vsPlayer")}
-            </button>
-            <button onClick={() => { setShowPlayMenu(false); onNavigate("story") }}
-              className="w-full h-14 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:brightness-110 shadow-xl"
-              style={{background:"linear-gradient(135deg,#5b21b6,#7c3aed,#4c1d95)",boxShadow:"0 8px 24px rgba(124,58,237,0.30)"}}>
-              <BookOpen className="h-6 w-6" />Campanha
-            </button>
-            <button onClick={() => setShowPlayMenu(false)}
-              className="w-full h-10 rounded-xl border text-sm font-semibold transition-colors hover:bg-white/[0.04]"
-              style={{borderColor:"rgba(255,255,255,0.08)",color:"rgba(139,92,246,0.5)"}}>
-              {t("back")}
-            </button>
-          </div>
-        )}
+        {/* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */}
+        <div className="flex items-center justify-around px-4 pb-5 pt-2">
+          <button className="gp-ni relative" onClick={() => onNavigate("friends")}>
+            <Users className="w-7 h-7" />
+            {onlineFriends > 0 && (
+              <span className="absolute top-1.5 right-3 min-w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
+                style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)", boxShadow:"0 0 6px rgba(34,197,94,0.7)", border:"1px solid rgba(255,255,255,0.2)" }}>
+                {onlineFriends}
+              </span>
+            )}
+            <span className="gp-ni-lbl">Social</span>
+          </button>
+          <button className="gp-ni" onClick={() => onNavigate("missions")}>
+            <Target className="w-7 h-7" /><span className="gp-ni-lbl">Missões</span>
+          </button>
+          <button className="gp-ni" onClick={() => onNavigate("guild")}>
+            <Users className="w-7 h-7" /><span className="gp-ni-lbl">Guilda</span>
+          </button>
+          <button className="gp-ni" onClick={() => onNavigate("shop" as GameScreen)}>
+            <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">🛒</span>
+            <span className="gp-ni-lbl">Loja</span>
+          </button>
+          <button className="gp-ni" onClick={() => onNavigate("profile")}>
+            <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">👤</span>
+            <span className="gp-ni-lbl">Perfil</span>
+          </button>
+        </div>
       </div>
+
+      {/* ══ TELA DE MODO DE JOGO — overlay fullscreen com fade in/out ══ */}
+      {showPlayMenu && (
+        <GameModeScreen
+          onSelect={(screen) => {
+            setShowPlayMenu(false)
+            onNavigate(screen)
+          }}
+          onBack={() => setShowPlayMenu(false)}
+        />
+      )}
 
       {/* ══════════════════════ MODAIS ══════════════════════════════════════ */}
 
