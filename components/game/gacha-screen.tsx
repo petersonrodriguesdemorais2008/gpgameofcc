@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Heart, Sparkles, Star, Gift, Clock, Zap, Crown, BookOpen, X } from "lucide-react"
 import Image from "next/image"
 import { trackGachaPull, trackDailyLogin } from "@/lib/mission-tracker"
+import GearBackdrop from "./gear-backdrop"
 
 interface GachaScreenProps {
   onBack: () => void
@@ -762,9 +763,10 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a1a] via-[#0d0820] to-[#0a0a1a]" />
         <div className="absolute inset-0" style={{background:`radial-gradient(ellipse 110% 55% at 50% -5%, rgba(139,92,246,0.22) 0%, transparent 55%),radial-gradient(ellipse 70% 45% at 85% 105%, rgba(56,189,248,0.10) 0%, transparent 45%),radial-gradient(ellipse 55% 40% at 5% 85%, rgba(251,191,36,0.07) 0%, transparent 40%)`}} />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_25%,rgba(0,0,0,0.55)_100%)]" />
-        {/* Subtle grid */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:`linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,backgroundSize:"40px 40px"}} />
       </div>
+
+      {/* Fundo animado de engrenagens — mesmo da tela de Modo de Jogo */}
+      <GearBackdrop />
 
       {/* Floating particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1613,7 +1615,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                               card.rarity==="SR" ? "0 0 22px rgba(168,85,247,0.8), 0 0 40px rgba(192,132,252,0.3)" :
                               "0 0 12px rgba(148,163,184,0.4)"
                             return (
-                              <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2">
+                              <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2"
+                                style={{animation:`cardDealIn 0.55s cubic-bezier(0.22,1,0.36,1) ${idx*0.09}s both`}}>
                                 <div className="relative" style={{perspective:"900px"}}>
                                   {isPending && idx === cardRevealIndex && (
                                     <div className="absolute inset-0 pointer-events-none z-10" style={{
@@ -1641,7 +1644,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                       // face-down to face-up, so this never causes unwanted animation on
                                       // mount) — only the one-time shine-sweep/glow effects below still key
                                       // off `isRevealing`.
-                                      transition: `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.4,0,0.2,1)`,
+                                      transition: `transform ${card.rarity==="LR"?"0.9s":card.rarity==="UR"?"0.75s":"0.6s"} cubic-bezier(0.34,1.3,0.5,1), opacity 0.35s ease`,
                                       opacity: isPending && idx > cardRevealIndex ? 0.10 : 1,
                                     }}
                                     onClick={() => isRevealed && setRevealZoomedCard({image:card.image||"/placeholder.svg",name:card.name,rarity:card.rarity})}
@@ -1936,11 +1939,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           100% { transform: translateY(-80px) translateX(4px) scale(0.8); opacity: 0; }
         }
 
-        /* ── Pack enter ── */
+        /* ── Pack enter — queda com arco suave, blur de movimento e assentamento elástico ── */
         @keyframes packEnterEpic {
-          0%   { transform: translateY(-200px) scale(0.4) rotate(-8deg); opacity: 0; filter: brightness(0); }
-          50%  { transform: translateY(18px) scale(1.07) rotate(1.5deg); opacity: 1; filter: brightness(1.4); }
-          75%  { transform: translateY(-6px) scale(0.98) rotate(-0.5deg); }
+          0%   { transform: translateY(-240px) scale(0.5) rotate(-10deg); opacity: 0; filter: brightness(0.2) blur(6px); }
+          38%  { transform: translateY(6px) scale(1.05) rotate(1.8deg); opacity: 1; filter: brightness(1.5) blur(0px); }
+          55%  { transform: translateY(14px) scale(0.94) rotate(-1deg); filter: brightness(1.2); }
+          72%  { transform: translateY(-8px) scale(1.03) rotate(0.6deg); }
+          86%  { transform: translateY(3px) scale(0.99) rotate(-0.2deg); }
           100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
         }
 
@@ -1969,13 +1974,15 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           100% { transform: translateX(0) rotate(0deg) scale(1.02); }
         }
 
-        /* ── Pack open ── */
+        /* ── Pack open — compressão de mola, expansão explosiva e implosão limpa ── */
         @keyframes packOpenEpic {
-          0%   { transform: scale(1) rotate(0deg) translateY(0); opacity: 1; }
-          20%  { transform: scale(1.12) rotate(0.5deg) translateY(-8px); }
-          50%  { transform: scale(1.35) rotate(-1deg) translateY(-15px); opacity: 0.9; filter: brightness(2.5); }
-          80%  { transform: scale(0.5) rotate(5deg) translateY(20px); opacity: 0.3; }
-          100% { transform: scale(0) rotate(12deg) translateY(40px); opacity: 0; }
+          0%   { transform: scale(1) rotate(0deg) translateY(0); opacity: 1; filter: brightness(1); }
+          12%  { transform: scale(0.92) rotate(-0.8deg) translateY(4px); filter: brightness(1.3); }
+          30%  { transform: scale(1.22) rotate(0.8deg) translateY(-12px); filter: brightness(1.9); }
+          48%  { transform: scale(1.42) rotate(-1.2deg) translateY(-20px); opacity: 0.95; filter: brightness(2.8) blur(0.5px); }
+          62%  { transform: scale(1.30) rotate(0.5deg) translateY(-16px); opacity: 0.8; filter: brightness(3.2) blur(1px); }
+          82%  { transform: scale(0.35) rotate(6deg) translateY(14px); opacity: 0.25; filter: brightness(4) blur(3px); }
+          100% { transform: scale(0) rotate(14deg) translateY(36px); opacity: 0; filter: brightness(5) blur(6px); }
         }
 
         /* ── Tearing animations ── */
@@ -2095,8 +2102,15 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
         /* ── Global ── */
         @keyframes revealContainerIn {
-          0%   { opacity: 0; transform: translateY(30px) scale(0.95); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
+          0%   { opacity: 0; transform: translateY(34px) scale(0.93); filter: blur(4px); }
+          60%  { filter: blur(0px); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+        }
+        /* Entrada em leque das cartas — cada uma sobe com stagger e leve rotação */
+        @keyframes cardDealIn {
+          0%   { opacity: 0; transform: translateY(44px) scale(0.8) rotate(-4deg); }
+          65%  { opacity: 1; transform: translateY(-5px) scale(1.03) rotate(1deg); }
+          100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
@@ -2112,12 +2126,19 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           80%  { transform: scale(0.97) rotate(-0.5deg); }
           100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
+        /* Shake com decaimento — impacto forte no início e amortecimento gradual */
         @keyframes shake {
-          0%,100% { transform: translateX(0) rotate(0deg); }
-          10%,50%,90% { transform: translateX(-10px) rotate(-1deg); }
-          30%,70% { transform: translateX(10px) rotate(1deg); }
+          0%   { transform: translate(0, 0) rotate(0deg); }
+          8%   { transform: translate(-12px, 4px) rotate(-1.2deg); }
+          18%  { transform: translate(11px, -3px) rotate(1.1deg); }
+          30%  { transform: translate(-9px, 3px) rotate(-0.9deg); }
+          44%  { transform: translate(7px, -2px) rotate(0.7deg); }
+          58%  { transform: translate(-5px, 2px) rotate(-0.5deg); }
+          72%  { transform: translate(3px, -1px) rotate(0.3deg); }
+          86%  { transform: translate(-1.5px, 0.5px) rotate(-0.1deg); }
+          100% { transform: translate(0, 0) rotate(0deg); }
         }
-        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        .animate-shake { animation: shake 0.55s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes heartbeat {
           0%,100% { transform: scale(1); }
           25%     { transform: scale(1.1); }
