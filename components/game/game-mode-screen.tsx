@@ -19,29 +19,60 @@ import Image from "next/image"
 import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight } from "lucide-react"
 import type { GameScreen } from "./game-wrapper"
 import GearBackdrop from "./gear-backdrop"
+import { imagesReady, areImagesCached, GAME_MODE_IMAGES } from "./image-preloader"
 
 interface GameModeScreenProps {
   onSelect: (screen: GameScreen) => void
   onBack: () => void
 }
 
-/* Durações da transição */
-const LOADING_MS = 700
+/* Durações da transição — loading adaptativo:
+   - imagens em cache  → loading curtíssimo (só o tempo da cortina abrir)
+   - imagens baixando  → espera elas ficarem prontas, com teto máximo */
+const LOADING_MIN_MS = 250
+const LOADING_MAX_MS = 3000
 const FADE_MS = 450
 const SELECT_MS = 1150
 
 type Phase = "loading" | "in" | "ready" | "select" | "out"
 
 export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps) {
-  const [phase, setPhase] = useState<Phase>("loading")
+  const [phase, setPhase] = useState<Phase>(() =>
+    areImagesCached(GAME_MODE_IMAGES) ? "in" : "loading",
+  )
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const [selected, setSelected] = useState<{ name: string; accent: string } | null>(null)
 
-  /* Fade in: loading breve → revela conteúdo */
+  /* Fade in adaptativo: espera as imagens (mín. LOADING_MIN_MS, máx. LOADING_MAX_MS) */
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("in"), LOADING_MS)
-    const t2 = setTimeout(() => setPhase("ready"), LOADING_MS + FADE_MS)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    let cancelled = false
+    const timers: ReturnType<typeof setTimeout>[] = []
+
+    const reveal = () => {
+      if (cancelled) return
+      setPhase((p) => (p === "loading" ? "in" : p))
+      timers.push(setTimeout(() => {
+        if (!cancelled) setPhase((p) => (p === "in" ? "ready" : p))
+      }, FADE_MS))
+    }
+
+    if (areImagesCached(GAME_MODE_IMAGES)) {
+      /* Tudo em cache: revela imediatamente (estado inicial já é "in") */
+      timers.push(setTimeout(() => {
+        if (!cancelled) setPhase((p) => (p === "in" ? "ready" : p))
+      }, FADE_MS))
+    } else {
+      /* Espera imagens + tempo mínimo (para a animação não "piscar"),
+         com teto máximo para nunca prender o jogador no loading */
+      const minWait = new Promise<void>((r) => timers.push(setTimeout(r, LOADING_MIN_MS)))
+      const maxWait = new Promise<void>((r) => timers.push(setTimeout(r, LOADING_MAX_MS)))
+      Promise.race([
+        Promise.all([imagesReady(GAME_MODE_IMAGES), minWait]).then(() => undefined),
+        maxWait,
+      ]).then(reveal)
+    }
+
+    return () => { cancelled = true; timers.forEach(clearTimeout) }
   }, [])
 
   /* Fade out antes de executar a ação (voltar ao menu) */
@@ -506,7 +537,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
 /* ═══════════════════════════════════════════════════════════════════════════
    TICKET PANEL — painel grande em formato de bilhete com recortes laterais,
    picote tracejado e faixa de nome inclinada (estilo Inazuma Eleven Cross)
-═══════════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════���════════════════════════ */
 
 interface TicketPanelProps {
   big?: boolean
@@ -574,6 +605,8 @@ function TicketPanel({
             src={image || "/placeholder.svg"}
             alt={imageAlt}
             fill
+            priority
+            unoptimized
             sizes={big ? "(max-width: 1024px) 100vw, 960px" : "(max-width: 768px) 100vw, 470px"}
             className="object-cover"
           />
@@ -681,7 +714,7 @@ function TicketPanel({
 /* ═══════════════════════════════════════════════════════════════════════════
    MODE CARD — card vertical menor para os modos especiais
    (fileira inferior, como os cards de Trial/Versus da referência)
-═══════════════════════════════════════════════════════════════════════════ */
+═════════════════════════════════════════════════════════════════��═════════ */
 
 interface ModeCardProps {
   accent: string
@@ -715,8 +748,10 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
           src={image || "/placeholder.svg"}
           alt={imageAlt}
           fill
+          loading="eager"
+          unoptimized
           sizes="(max-width: 640px) 100vw, 300px"
-            className="object-cover"
+          className="object-cover"
         />
         <div
           aria-hidden
