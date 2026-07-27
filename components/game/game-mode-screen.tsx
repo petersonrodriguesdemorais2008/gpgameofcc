@@ -14,7 +14,7 @@
  * referência) faz fade out antes de retornar ao menu.
  */
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import Image from "next/image"
 import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight } from "lucide-react"
 import type { GameScreen } from "./game-wrapper"
@@ -67,6 +67,9 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         transition: `opacity ${FADE_MS}ms ease`,
       }}
     >
+      {/* ── Fundo animado: engrenagens tonais girando e deslizando na diagonal ── */}
+      <GearBackdrop />
+
       {/* ── Textura de fundo: grade diagonal sutil (papel de scrapbook da referência) ── */}
       <div
         aria-hidden
@@ -80,25 +83,27 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         }}
       />
 
-      {/* ── Overlay de loading (fade in/out) ── */}
-      <div
-        aria-hidden={phase !== "loading"}
-        className="fixed inset-0 z-[220] flex flex-col items-center justify-center pointer-events-none"
-        style={{
-          background: "rgba(3,4,14,0.97)",
-          opacity: phase === "loading" ? 1 : 0,
-          transition: `opacity ${FADE_MS}ms ease`,
-        }}
-      >
-        <div className="relative w-14 h-14">
-          <div className="absolute inset-0 rounded-full border-2 border-purple-500/15" />
-          <div className="absolute inset-0 rounded-full border-2 border-t-purple-400 border-r-transparent border-b-transparent border-l-transparent gpm-spin" />
-          <div className="absolute inset-2 rounded-full border border-t-fuchsia-400/60 border-r-transparent border-b-transparent border-l-transparent gpm-spin-rev" />
+      {/* ── Overlay de loading (fade in/out) — desmonta após a transição ── */}
+      {(phase === "loading" || phase === "in") && (
+        <div
+          aria-hidden={phase !== "loading"}
+          className="fixed inset-0 z-[220] flex flex-col items-center justify-center pointer-events-none"
+          style={{
+            background: "rgba(3,4,14,0.97)",
+            opacity: phase === "loading" ? 1 : 0,
+            transition: `opacity ${FADE_MS}ms ease`,
+          }}
+        >
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-2 border-purple-500/15" />
+            <div className="absolute inset-0 rounded-full border-2 border-t-purple-400 border-r-transparent border-b-transparent border-l-transparent gpm-spin" />
+            <div className="absolute inset-2 rounded-full border border-t-fuchsia-400/60 border-r-transparent border-b-transparent border-l-transparent gpm-spin-rev" />
+          </div>
+          <p className="mt-5 text-[10px] font-black tracking-[0.35em] uppercase text-purple-300/60">
+            Preparando modos
+          </p>
         </div>
-        <p className="mt-5 text-[10px] font-black tracking-[0.35em] uppercase text-purple-300/60">
-          Preparando modos
-        </p>
-      </div>
+      )}
 
       {/* ══════════════════ CONTEÚDO ══════════════════ */}
       <div
@@ -322,11 +327,8 @@ function TicketPanel({
             className="absolute inset-0"
             style={{ background: "linear-gradient(180deg, transparent 40%, rgba(8,3,22,0.55) 82%, rgba(8,3,22,0.92) 100%)" }}
           />
-          {/* Brilho varrendo no hover */}
-          <div
-            aria-hidden
-            className="gpt-shine absolute inset-0 opacity-0 group-hover:opacity-100"
-          />
+          {/* Brilho varrendo no hover (transform-only, roda apenas ao passar o mouse) */}
+          <div aria-hidden className="gpt-shine absolute inset-0" />
           {/* Tag no canto superior */}
           <span
             className="absolute left-0 top-4 flex items-center gap-1.5 py-1 pl-4 pr-3 text-[9px] font-black uppercase tracking-[0.22em] text-white"
@@ -386,14 +388,15 @@ function TicketPanel({
       <style jsx>{`
         .gpt-shine {
           background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.14) 48%, transparent 62%);
-          background-size: 250% 100%;
-          transition: opacity 300ms ease;
-          animation: gptShine 1.6s ease infinite;
+          transform: translate3d(-105%, 0, 0);
           pointer-events: none;
         }
+        .gpt-ticket:hover .gpt-shine {
+          animation: gptShine 0.9s ease;
+        }
         @keyframes gptShine {
-          from { background-position: 160% 0; }
-          to { background-position: -60% 0; }
+          from { transform: translate3d(-105%, 0, 0); }
+          to { transform: translate3d(105%, 0, 0); }
         }
       `}</style>
     </button>
@@ -484,5 +487,113 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
         style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
       />
     </button>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GEAR BACKDROP — fundo animado estilo loading de jogo (referência Inazuma):
+   padrão tonal de engrenagens flat que giram enquanto a camada inteira
+   desliza na diagonal em loop perfeito. 100% transform (GPU), zero repaint.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Variantes por célula (padrão com período de 2x2 células → loop perfeito) */
+const GEAR_VARIANTS = [
+  { size: 128, dur: 30, rev: false, teeth: 8, ox: 30, oy: 44, op: 0.07 },
+  { size: 62, dur: 16, rev: true, teeth: 6, ox: 205, oy: 128, op: 0.1 },
+  { size: 88, dur: 22, rev: true, teeth: 8, ox: 128, oy: 238, op: 0.085 },
+  { size: 46, dur: 11, rev: false, teeth: 6, ox: 258, oy: 300, op: 0.11 },
+] as const
+
+const GEAR_SPACING = 340
+const GEAR_PERIOD = GEAR_SPACING * 2
+
+function GearShape({ size, teeth }: { size: number; teeth: number }) {
+  const step = 360 / teeth
+  return (
+    <svg width={size} height={size} viewBox="-50 -50 100 100" fill="currentColor" aria-hidden>
+      {Array.from({ length: teeth }, (_, i) => (
+        <rect key={i} x={-8} y={-48} width={16} height={20} rx={5} transform={`rotate(${step * i})`} />
+      ))}
+      {/* Corpo em rosca (furo central vazado, sem cor de fundo por baixo) */}
+      <path fillRule="evenodd" d="M0,-36 a36,36 0 1,0 0.01,0 Z M0,-15 a15,15 0 1,1 -0.01,0 Z" />
+    </svg>
+  )
+}
+
+function GearBackdrop() {
+  const gears = useMemo(() => {
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1600
+    const vh = typeof window !== "undefined" ? window.innerHeight : 900
+    const cols = Math.ceil((vw + GEAR_PERIOD) / GEAR_SPACING) + 1
+    const rows = Math.ceil((vh + GEAR_PERIOD) / GEAR_SPACING) + 1
+    const list: Array<{
+      key: string; x: number; y: number
+      size: number; dur: number; rev: boolean; teeth: number; op: number
+    }> = []
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const v = GEAR_VARIANTS[(c % 2) + (r % 2) * 2]
+        list.push({
+          key: `${r}-${c}`,
+          x: c * GEAR_SPACING + v.ox - GEAR_SPACING,
+          y: r * GEAR_SPACING + v.oy - GEAR_SPACING,
+          size: v.size, dur: v.dur, rev: v.rev, teeth: v.teeth, op: v.op,
+        })
+      }
+    }
+    return list
+  }, [])
+
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+      <div
+        className="gpm-drift absolute left-0 top-0"
+        style={{
+          width: `calc(100% + ${GEAR_PERIOD}px)`,
+          height: `calc(100% + ${GEAR_PERIOD}px)`,
+          willChange: "transform",
+        }}
+      >
+        {gears.map((g) => (
+          <div
+            key={g.key}
+            className={g.rev ? "gpm-gear-ccw absolute" : "gpm-gear-cw absolute"}
+            style={{
+              left: g.x,
+              top: g.y,
+              width: g.size,
+              height: g.size,
+              color: `rgba(167, 139, 250, ${g.op})`,
+              animationDuration: `${g.dur}s`,
+            }}
+          >
+            <GearShape size={g.size} teeth={g.teeth} />
+          </div>
+        ))}
+      </div>
+
+      <style jsx global>{`
+        .gpm-drift {
+          animation: gpmDrift 48s linear infinite;
+        }
+        .gpm-gear-cw {
+          animation: gpmRot linear infinite;
+        }
+        .gpm-gear-ccw {
+          animation: gpmRot linear infinite reverse;
+        }
+        @keyframes gpmDrift {
+          from { transform: translate3d(0, 0, 0); }
+          to { transform: translate3d(-${GEAR_PERIOD}px, -${GEAR_PERIOD}px, 0); }
+        }
+        @keyframes gpmRot {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .gpm-drift, .gpm-gear-cw, .gpm-gear-ccw { animation: none; }
+        }
+      `}</style>
+    </div>
   )
 }
