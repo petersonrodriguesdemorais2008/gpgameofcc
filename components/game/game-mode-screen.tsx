@@ -14,10 +14,11 @@
  * referência) faz fade out antes de retornar ao menu.
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
 import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight } from "lucide-react"
 import type { GameScreen } from "./game-wrapper"
+import GearBackdrop from "./gear-backdrop"
 
 interface GameModeScreenProps {
   onSelect: (screen: GameScreen) => void
@@ -25,8 +26,8 @@ interface GameModeScreenProps {
 }
 
 /* Durações da transição */
-const LOADING_MS = 650
-const FADE_MS = 380
+const LOADING_MS = 700
+const FADE_MS = 450
 
 type Phase = "loading" | "in" | "ready" | "out"
 
@@ -64,11 +65,24 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         background:
           "radial-gradient(ellipse 90% 60% at 50% -10%, rgba(88,28,135,0.35) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 85% 110%, rgba(30,10,60,0.6) 0%, transparent 55%), linear-gradient(165deg, #060214 0%, #0a0420 45%, #05010f 100%)",
         opacity: phase === "out" ? 0 : 1,
-        transition: `opacity ${FADE_MS}ms ease`,
+        transition: `opacity ${FADE_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        willChange: phase === "out" ? "opacity" : undefined,
       }}
     >
       {/* ── Fundo animado: engrenagens tonais girando e deslizando na diagonal ── */}
       <GearBackdrop />
+
+      {/* ── Auroras de energia à deriva (transform-only) ── */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div
+          className="gpm-aurora absolute -left-40 top-[-20%] h-[60vh] w-[60vw] rounded-full"
+          style={{ background: "radial-gradient(ellipse at center, rgba(124,58,237,0.16) 0%, transparent 65%)" }}
+        />
+        <div
+          className="gpm-aurora-2 absolute -right-40 bottom-[-25%] h-[65vh] w-[55vw] rounded-full"
+          style={{ background: "radial-gradient(ellipse at center, rgba(217,70,239,0.1) 0%, transparent 65%)" }}
+        />
+      </div>
 
       {/* ── Textura de fundo: grade diagonal sutil (papel de scrapbook da referência) ── */}
       <div
@@ -83,25 +97,86 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         }}
       />
 
+      {/* ── Vinheta cinematográfica nas bordas da tela ── */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(2,0,10,0.55) 100%)",
+        }}
+      />
+
       {/* ── Overlay de loading (fade in/out) — desmonta após a transição ── */}
       {(phase === "loading" || phase === "in") && (
         <div
           aria-hidden={phase !== "loading"}
-          className="fixed inset-0 z-[220] flex flex-col items-center justify-center pointer-events-none"
+          className="fixed inset-0 z-[220] pointer-events-none overflow-hidden"
           style={{
-            background: "rgba(3,4,14,0.97)",
             opacity: phase === "loading" ? 1 : 0,
-            transition: `opacity ${FADE_MS}ms ease`,
+            transition: `opacity ${FADE_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
           }}
         >
-          <div className="relative w-14 h-14">
-            <div className="absolute inset-0 rounded-full border-2 border-purple-500/15" />
-            <div className="absolute inset-0 rounded-full border-2 border-t-purple-400 border-r-transparent border-b-transparent border-l-transparent gpm-spin" />
-            <div className="absolute inset-2 rounded-full border border-t-fuchsia-400/60 border-r-transparent border-b-transparent border-l-transparent gpm-spin-rev" />
+          {/* Cortina dupla: duas metades que deslizam para fora no fade out */}
+          <div
+            className="absolute inset-x-0 top-0 h-1/2"
+            style={{
+              background: "linear-gradient(180deg, #05010f 60%, rgba(5,1,15,0.99))",
+              transform: phase === "loading" ? "translateY(0)" : "translateY(-101%)",
+              transition: `transform ${FADE_MS + 150}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-1/2"
+            style={{
+              background: "linear-gradient(0deg, #05010f 60%, rgba(5,1,15,0.99))",
+              transform: phase === "loading" ? "translateY(0)" : "translateY(101%)",
+              transition: `transform ${FADE_MS + 150}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          />
+
+          {/* Linha de energia central — marca a "costura" da cortina */}
+          <div
+            aria-hidden
+            className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(168,85,247,0.9) 30%, #d8b4fe 50%, rgba(168,85,247,0.9) 70%, transparent)",
+              boxShadow: "0 0 18px rgba(168,85,247,0.8), 0 0 46px rgba(124,58,237,0.5)",
+              opacity: phase === "loading" ? 1 : 0,
+              transform: phase === "loading" ? "translateY(-50%) scaleX(1)" : "translateY(-50%) scaleX(1.15)",
+              transition: `opacity ${Math.round(FADE_MS * 0.6)}ms ease, transform ${FADE_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          />
+
+          {/* Núcleo do loading: engrenagem girando + anéis de energia */}
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center"
+            style={{
+              opacity: phase === "loading" ? 1 : 0,
+              transform: phase === "loading" ? "scale(1)" : "scale(0.85)",
+              transition: `opacity ${Math.round(FADE_MS * 0.55)}ms ease, transform ${FADE_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`,
+            }}
+          >
+            <div className="relative flex h-24 w-24 items-center justify-center">
+              {/* Pulso de energia externo */}
+              <div className="gpm-pulse absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle, rgba(124,58,237,0.28) 0%, transparent 65%)" }} />
+              {/* Anel orbital externo */}
+              <div className="gpm-spin absolute inset-0 rounded-full border-2 border-t-purple-400 border-r-transparent border-b-purple-400/25 border-l-transparent" />
+              {/* Anel orbital interno em contra-rotação */}
+              <div className="gpm-spin-rev absolute inset-3 rounded-full border border-t-fuchsia-400/70 border-r-transparent border-b-transparent border-l-fuchsia-400/20" />
+              {/* Engrenagem central girando (mesma arte do fundo) */}
+              <img
+                src="/images/modes/gear-blue.png"
+                alt=""
+                draggable={false}
+                className="gpm-gear-load h-11 w-11 select-none"
+                style={{ filter: "hue-rotate(45deg) saturate(1.2) drop-shadow(0 0 12px rgba(168,85,247,0.75))" }}
+              />
+            </div>
+            <p className="gpm-load-txt mt-6 text-[10px] font-black tracking-[0.4em] uppercase text-purple-300/70">
+              Preparando modos
+            </p>
           </div>
-          <p className="mt-5 text-[10px] font-black tracking-[0.35em] uppercase text-purple-300/60">
-            Preparando modos
-          </p>
         </div>
       )}
 
@@ -110,48 +185,55 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
         className="relative z-10 mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 pb-28 pt-8 sm:px-8"
         style={{
           opacity: contentVisible ? 1 : 0,
-          transform: contentVisible ? "translateY(0)" : "translateY(14px)",
-          transition: `opacity ${FADE_MS}ms ease, transform ${FADE_MS + 120}ms cubic-bezier(0.22,1,0.36,1)`,
+          transform: contentVisible ? "translateY(0) scale(1)" : "translateY(22px) scale(0.985)",
+          transition: `opacity ${FADE_MS + 100}ms cubic-bezier(0.4, 0, 0.2, 1), transform ${FADE_MS + 250}ms cubic-bezier(0.16, 1, 0.3, 1)`,
         }}
       >
         {/* ── Cabeçalho ── */}
         <header className="mb-7 flex items-center gap-4">
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-xl"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(88,28,135,0.2))",
-              border: "1px solid rgba(167,139,250,0.35)",
-              boxShadow: "0 0 18px rgba(124,58,237,0.25)",
+              background: "linear-gradient(135deg, rgba(124,58,237,0.4), rgba(88,28,135,0.18))",
+              border: "1px solid rgba(167,139,250,0.45)",
+              boxShadow: "0 0 22px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+              clipPath: "polygon(22% 0, 100% 0, 100% 78%, 78% 100%, 0 100%, 0 22%)",
             }}
           >
-            <Ticket className="h-5 w-5 text-purple-300" />
+            <Ticket className="h-5 w-5 text-purple-200" />
           </div>
           <div className="flex flex-col">
             <h1
-              className="text-balance text-2xl font-black uppercase leading-none tracking-[0.22em] text-white sm:text-3xl"
-              style={{ textShadow: "0 0 18px rgba(139,92,246,0.55), 0 2px 0 rgba(0,0,30,0.8)" }}
+              className="text-balance text-2xl font-black uppercase italic leading-none tracking-[0.22em] sm:text-3xl"
+              style={{
+                background: "linear-gradient(180deg, #ffffff 30%, #c4b5fd 70%, #a78bfa 100%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                filter: "drop-shadow(0 0 16px rgba(139,92,246,0.6)) drop-shadow(0 2px 0 rgba(0,0,30,0.9))",
+              }}
             >
               Modo de Jogo
             </h1>
-            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-purple-300/50">
+            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-purple-300/55">
               Escolha seu destino, duelista
             </p>
           </div>
-          {/* Linha decorativa */}
-          <div
-            aria-hidden
-            className="ml-2 hidden h-px flex-1 sm:block"
-            style={{ background: "linear-gradient(90deg, rgba(167,139,250,0.4), transparent)" }}
-          />
+          {/* Linha decorativa com losango de energia */}
+          <div aria-hidden className="ml-2 hidden flex-1 items-center gap-2 sm:flex">
+            <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(167,139,250,0.5), rgba(167,139,250,0.08))" }} />
+            <div className="h-1.5 w-1.5 rotate-45" style={{ background: "rgba(196,181,253,0.7)", boxShadow: "0 0 8px rgba(167,139,250,0.8)" }} />
+            <div className="h-px w-10" style={{ background: "linear-gradient(90deg, rgba(167,139,250,0.3), transparent)" }} />
+          </div>
         </header>
 
-        {/* ── TICKET GRANDE: CAMPANHA ── */}
+        {/* ── TICKET GRANDE: CAMPANHA (banner oficial Modo História) ── */}
         <TicketPanel
           big
           accent="#a855f7"
           accentDark="#5b21b6"
-          image="/images/modes/mode-campanha.png"
-          imageAlt="Arte do modo Campanha: cavaleiro rumo ao castelo de Camelot"
+          image="/images/modes/banner-campanha.png"
+          imageAlt="Banner do Modo História: dois duelistas em confronto de energia azul e roxa"
           name="CAMPANHA"
           tag="MODO HISTÓRIA"
           description="Viva a jornada de Camelot capítulo por capítulo e desbloqueie recompensas de história."
@@ -161,7 +243,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           onClick={() => exitWith(() => onSelect("story"))}
         />
 
-        {/* ── DOIS TICKETS MÉDIOS: VS BOT / VS JOGADOR ── */}
+        {/* ── DOIS TICKETS MÉDIOS: VS BOT / PVP ── */}
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
           <TicketPanel
             accent="#3b82f6"
@@ -179,10 +261,10 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           <TicketPanel
             accent="#f97316"
             accentDark="#c2410c"
-            image="/images/modes/mode-vsjogador.png"
-            imageAlt="Arte do modo VS JOGADOR: dois rivais em confronto"
-            name="VS JOGADOR"
-            tag="RANQUEADA · PVP"
+            image="/images/modes/banner-pvp.png"
+            imageAlt="Banner do modo PVP Ranqueada: dois gladiadores rivais, um com aura azul e outro com aura de fogo"
+            name="PVP"
+            tag="RANQUEADA · JxJ"
             description="Desafie duelistas reais e prove quem manda na arena."
             icon={<Users className="h-5 w-5" />}
             delay={180}
@@ -256,9 +338,29 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
       </button>
 
       <style jsx>{`
-        .gpm-spin { animation: gpmSpin 0.9s linear infinite; }
-        .gpm-spin-rev { animation: gpmSpin 1.4s linear infinite reverse; }
+        .gpm-spin { animation: gpmSpin 1.1s cubic-bezier(0.6, 0.15, 0.4, 0.85) infinite; }
+        .gpm-spin-rev { animation: gpmSpin 1.6s cubic-bezier(0.6, 0.15, 0.4, 0.85) infinite reverse; }
         @keyframes gpmSpin { to { transform: rotate(360deg); } }
+        .gpm-gear-load { animation: gpmSpin 2.2s linear infinite; }
+        .gpm-pulse { animation: gpmPulse 1.5s ease-in-out infinite; }
+        @keyframes gpmPulse {
+          0%, 100% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.35); opacity: 1; }
+        }
+        .gpm-load-txt { animation: gpmTxtGlow 1.8s ease-in-out infinite; }
+        @keyframes gpmTxtGlow {
+          0%, 100% { opacity: 0.55; }
+          50% { opacity: 1; }
+        }
+        .gpm-aurora { animation: gpmAurora 14s ease-in-out infinite alternate; will-change: transform; }
+        .gpm-aurora-2 { animation: gpmAurora 18s ease-in-out infinite alternate-reverse; will-change: transform; }
+        @keyframes gpmAurora {
+          from { transform: translate3d(0, 0, 0) scale(1); }
+          to { transform: translate3d(9vw, 6vh, 0) scale(1.18); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .gpm-aurora, .gpm-aurora-2, .gpm-pulse, .gpm-load-txt { animation: none; }
+        }
       `}</style>
     </div>
   )
@@ -297,6 +399,17 @@ function TicketPanel({
         transition: `opacity 500ms ease ${delay}ms, transform 600ms cubic-bezier(0.22,1,0.36,1) ${delay}ms, scale 200ms ease`,
       }}
     >
+      {/* Halo de energia atrás do ticket (intensifica no hover) */}
+      <div
+        aria-hidden
+        className="absolute -inset-1 opacity-40 transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          borderRadius: 18,
+          background: `radial-gradient(ellipse 70% 90% at 50% 50%, ${accent}30, transparent 70%)`,
+          filter: "blur(10px)",
+        }}
+      />
+
       {/* Corpo do ticket — recortes laterais via mask radial */}
       <div
         className="relative overflow-hidden"
@@ -309,9 +422,15 @@ function TicketPanel({
           maskImage:
             "radial-gradient(circle 13px at 0% 50%, transparent 98%, black 100%), radial-gradient(circle 13px at 100% 50%, transparent 98%, black 100%)",
           maskComposite: "intersect",
-          boxShadow: `inset 0 0 0 1px ${accent}44`,
+          boxShadow: `inset 0 0 0 1px ${accent}55, inset 0 0 32px ${accent}14`,
         }}
       >
+        {/* Fio de energia no topo do ticket */}
+        <div
+          aria-hidden
+          className="absolute left-0 top-0 z-10 h-[2px] w-full"
+          style={{ background: `linear-gradient(90deg, transparent, ${accent}cc 30%, ${accent} 50%, ${accent}cc 70%, transparent)` }}
+        />
         {/* Arte do modo */}
         <div className={`relative w-full overflow-hidden ${big ? "h-44 sm:h-52" : "h-36 sm:h-40"}`}>
           <Image
@@ -319,7 +438,7 @@ function TicketPanel({
             alt={imageAlt}
             fill
             sizes={big ? "(max-width: 1024px) 100vw, 960px" : "(max-width: 768px) 100vw, 470px"}
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+            className="object-cover"
           />
           {/* Vinheta inferior pra ancorar a faixa de nome */}
           <div
@@ -376,14 +495,33 @@ function TicketPanel({
         <div className="flex items-center gap-3 px-5 py-3.5">
           <p className="flex-1 text-pretty text-xs leading-relaxed text-purple-100/65">{description}</p>
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-transform group-hover:translate-x-0.5"
-            style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})`, boxShadow: `0 3px 14px ${accent}55` }}
+            className="flex shrink-0 items-center gap-1.5 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-transform group-hover:translate-x-0.5"
+            style={{
+              background: `linear-gradient(135deg, ${accentDark}, ${accent})`,
+              boxShadow: `0 3px 14px ${accent}55, inset 0 1px 0 rgba(255,255,255,0.3)`,
+              clipPath: "polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)",
+            }}
           >
             Entrar
             <ChevronRight className="h-3.5 w-3.5" />
           </span>
         </div>
       </div>
+
+      {/* Cantoneiras táticas nos 4 cantos (fora da mask, sempre visíveis) */}
+      {[
+        "left-0 top-0 border-l-2 border-t-2 rounded-tl-[14px]",
+        "right-0 top-0 border-r-2 border-t-2 rounded-tr-[14px]",
+        "left-0 bottom-0 border-l-2 border-b-2 rounded-bl-[14px]",
+        "right-0 bottom-0 border-r-2 border-b-2 rounded-br-[14px]",
+      ].map((pos) => (
+        <span
+          key={pos}
+          aria-hidden
+          className={`pointer-events-none absolute h-5 w-5 transition-all duration-300 group-hover:h-7 group-hover:w-7 ${pos}`}
+          style={{ borderColor: accent, filter: `drop-shadow(0 0 4px ${accent}aa)` }}
+        />
+      ))}
 
       <style jsx>{`
         .gpt-shine {
@@ -441,7 +579,7 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
           alt={imageAlt}
           fill
           sizes="(max-width: 640px) 100vw, 300px"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.08]"
+            className="object-cover"
         />
         <div
           aria-hidden
@@ -486,114 +624,20 @@ function ModeCard({ accent, image, imageAlt, name, description, icon, delay, vis
         className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
         style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
       />
+
+      {/* Cantoneiras nos cantos superiores */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 h-4 w-4 rounded-tl-[14px] border-l-2 border-t-2 opacity-60 transition-all duration-300 group-hover:h-6 group-hover:w-6 group-hover:opacity-100"
+        style={{ borderColor: accent, filter: `drop-shadow(0 0 4px ${accent}99)` }}
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute right-0 top-0 h-4 w-4 rounded-tr-[14px] border-r-2 border-t-2 opacity-60 transition-all duration-300 group-hover:h-6 group-hover:w-6 group-hover:opacity-100"
+        style={{ borderColor: accent, filter: `drop-shadow(0 0 4px ${accent}99)` }}
+      />
     </button>
   )
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   GEAR BACKDROP — fundo animado estilo loading de jogo (referência Inazuma):
-   padrão tonal de engrenagens flat que giram enquanto a camada inteira
-   desliza na diagonal em loop perfeito. 100% transform (GPU), zero repaint.
-═══════════════════════════════════════════════════════════════════════════ */
 
-/* Variantes por célula (padrão com período de 2x2 células → loop perfeito) */
-const GEAR_VARIANTS = [
-  { size: 128, dur: 30, rev: false, teeth: 8, ox: 30, oy: 44, op: 0.07 },
-  { size: 62, dur: 16, rev: true, teeth: 6, ox: 205, oy: 128, op: 0.1 },
-  { size: 88, dur: 22, rev: true, teeth: 8, ox: 128, oy: 238, op: 0.085 },
-  { size: 46, dur: 11, rev: false, teeth: 6, ox: 258, oy: 300, op: 0.11 },
-] as const
-
-const GEAR_SPACING = 340
-const GEAR_PERIOD = GEAR_SPACING * 2
-
-function GearShape({ size, teeth }: { size: number; teeth: number }) {
-  const step = 360 / teeth
-  return (
-    <svg width={size} height={size} viewBox="-50 -50 100 100" fill="currentColor" aria-hidden>
-      {Array.from({ length: teeth }, (_, i) => (
-        <rect key={i} x={-8} y={-48} width={16} height={20} rx={5} transform={`rotate(${step * i})`} />
-      ))}
-      {/* Corpo em rosca (furo central vazado, sem cor de fundo por baixo) */}
-      <path fillRule="evenodd" d="M0,-36 a36,36 0 1,0 0.01,0 Z M0,-15 a15,15 0 1,1 -0.01,0 Z" />
-    </svg>
-  )
-}
-
-function GearBackdrop() {
-  const gears = useMemo(() => {
-    const vw = typeof window !== "undefined" ? window.innerWidth : 1600
-    const vh = typeof window !== "undefined" ? window.innerHeight : 900
-    const cols = Math.ceil((vw + GEAR_PERIOD) / GEAR_SPACING) + 1
-    const rows = Math.ceil((vh + GEAR_PERIOD) / GEAR_SPACING) + 1
-    const list: Array<{
-      key: string; x: number; y: number
-      size: number; dur: number; rev: boolean; teeth: number; op: number
-    }> = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const v = GEAR_VARIANTS[(c % 2) + (r % 2) * 2]
-        list.push({
-          key: `${r}-${c}`,
-          x: c * GEAR_SPACING + v.ox - GEAR_SPACING,
-          y: r * GEAR_SPACING + v.oy - GEAR_SPACING,
-          size: v.size, dur: v.dur, rev: v.rev, teeth: v.teeth, op: v.op,
-        })
-      }
-    }
-    return list
-  }, [])
-
-  return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-      <div
-        className="gpm-drift absolute left-0 top-0"
-        style={{
-          width: `calc(100% + ${GEAR_PERIOD}px)`,
-          height: `calc(100% + ${GEAR_PERIOD}px)`,
-          willChange: "transform",
-        }}
-      >
-        {gears.map((g) => (
-          <div
-            key={g.key}
-            className={g.rev ? "gpm-gear-ccw absolute" : "gpm-gear-cw absolute"}
-            style={{
-              left: g.x,
-              top: g.y,
-              width: g.size,
-              height: g.size,
-              color: `rgba(167, 139, 250, ${g.op})`,
-              animationDuration: `${g.dur}s`,
-            }}
-          >
-            <GearShape size={g.size} teeth={g.teeth} />
-          </div>
-        ))}
-      </div>
-
-      <style jsx global>{`
-        .gpm-drift {
-          animation: gpmDrift 48s linear infinite;
-        }
-        .gpm-gear-cw {
-          animation: gpmRot linear infinite;
-        }
-        .gpm-gear-ccw {
-          animation: gpmRot linear infinite reverse;
-        }
-        @keyframes gpmDrift {
-          from { transform: translate3d(0, 0, 0); }
-          to { transform: translate3d(-${GEAR_PERIOD}px, -${GEAR_PERIOD}px, 0); }
-        }
-        @keyframes gpmRot {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .gpm-drift, .gpm-gear-cw, .gpm-gear-ccw { animation: none; }
-        }
-      `}</style>
-    </div>
-  )
-}
