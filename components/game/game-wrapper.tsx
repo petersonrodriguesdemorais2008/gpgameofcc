@@ -17,6 +17,7 @@ import ProfileScreen from "./profile-screen"
 import MissionsScreen from "./missions-screen"
 import GearPassScreen from "./gear-pass-screen"
 import StoryModeScreen from "./story-mode-screen"
+import EventsScreen, { EVENT_BATTLE_KEY } from "./events-screen"
 import GuildScreen from "./guild-screen"
 import MasterScreen from "./master-screen"
 import LoadingScreen from "./loading-screen"
@@ -51,6 +52,7 @@ export type GameScreen =
   | "story"
   | "guild"
   | "masters"
+  | "events"
 
 export function GameWrapper() {
   const { playerProfile, mobileMode, addToCollection, saveDeck, coins, setCoins } = useGame()
@@ -323,7 +325,7 @@ export function GameWrapper() {
     return <PlayerSetupScreen onComplete={handleSetupComplete} />
   }
 
-  // ── TUTORIAL ──────────────────────────────────────────────────────────────
+  // ── TUTORIAL ───────────���──────────────────────────────────────────────────
   // 5️⃣ Tutorial standalone (Lore + Escolha de Mestre)
   if (showTutorial) {
     return (
@@ -355,8 +357,14 @@ export function GameWrapper() {
           const storyBattle = (() => {
             try { const r = localStorage.getItem("gpgame_story_battle_pending"); return r ? JSON.parse(r) : null } catch { return null }
           })()
+          // If returning from an event battle, go back to the events tab
+          const eventBattle = (() => {
+            try { const r = localStorage.getItem(EVENT_BATTLE_KEY); return r ? JSON.parse(r) : null } catch { return null }
+          })()
           if (storyBattle) {
             navigateTo("story")
+          } else if (eventBattle) {
+            navigateTo("events")
           } else {
             navigateTo("menu")
           }
@@ -366,6 +374,11 @@ export function GameWrapper() {
           // mais rápido de completar na primeira batalha guiada.
           if (tutorialOverlayActive && tutorialInDuel) return 20
           try {
+            const ev = localStorage.getItem(EVENT_BATTLE_KEY)
+            if (ev) {
+              const { lp } = JSON.parse(ev)
+              if (lp) return lp
+            }
             const r = localStorage.getItem("gpgame_story_battle_pending")
             if (!r) return undefined
             const { lp } = JSON.parse(r)
@@ -401,6 +414,18 @@ export function GameWrapper() {
       {currentScreen === "gear-pass" && <GearPassScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "guild" && <GuildScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "masters" && <MasterScreen onBack={() => navigateTo("menu")} />}
+      {currentScreen === "events" && (
+        <EventsScreen
+          onBack={() => navigateTo("menu")}
+          onStartBattle={({ eventId, difficulty, lp, gacha, gear }) => {
+            // Guarda a pendência para o duelo aplicar o drop e a tela marcar progresso
+            localStorage.setItem(EVENT_BATTLE_KEY,
+              JSON.stringify({ eventId, difficulty, lp, gacha, gear, won: false }))
+            setDuelMode("bot")
+            navigateTo("duel-bot")
+          }}
+        />
+      )}
       {currentScreen === "story" && (
         <StoryModeScreen
           onBack={() => navigateTo("menu")}

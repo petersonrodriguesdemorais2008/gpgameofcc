@@ -16,7 +16,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
-import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight } from "lucide-react"
+import { ArrowLeft, Bot, Users, BookOpen, Layers, Compass, Flame, Ticket, ChevronRight, Sparkles } from "lucide-react"
 import type { GameScreen } from "./game-wrapper"
 import GearBackdrop from "./gear-backdrop"
 import { imagesReady, areImagesCached, GAME_MODE_IMAGES } from "./image-preloader"
@@ -335,7 +335,7 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           </div>
         </header>
 
-        {/* ── TICKET GRANDE: CAMPANHA (banner oficial Modo História) ── */}
+        {/* ��─ TICKET GRANDE: CAMPANHA (banner oficial Modo História) ── */}
         <TicketPanel
           big
           accent="#a855f7"
@@ -378,6 +378,23 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
             delay={180}
             visible={contentVisible}
             onClick={() => selectWith("PVP", "#f97316", () => onSelect("duel-player"))}
+          />
+        </div>
+
+        {/* ── TICKET: EVENTOS (aba de treinamentos especiais) ── */}
+        <div className="mt-5">
+          <TicketPanel
+            accent="#e879f9"
+            accentDark="#86198f"
+            image="/images/events/ciclone-verde.png"
+            imageAlt="Banner dos eventos: treinamentos especiais com duelistas elementais"
+            name="EVENTOS"
+            tag="TREINAMENTO ESPECIAL"
+            description="Encare os treinamentos elementais em 3 fases e farme Gacha Coins e Gear Coins."
+            icon={<Sparkles className="h-5 w-5" />}
+            delay={220}
+            visible={contentVisible}
+            onClick={() => selectWith("EVENTOS", "#e879f9", () => onSelect("events"))}
           />
         </div>
 

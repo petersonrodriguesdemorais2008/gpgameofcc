@@ -111,12 +111,15 @@ export interface AccountAuth {
   lastSaved: string | null
 }
 
+/** Recompensa de duelo: preset padrão ou valores explícitos (eventos). */
+export type DuelRewardKind = "normal" | "pvp" | { gacha: number; gear: number }
+
 interface GameContextType {
   coins: number
   setCoins: (coins: number) => void
   gearCoins: number
   setGearCoins: React.Dispatch<React.SetStateAction<number>>
-  addDuelRewards: (kind: "normal" | "pvp") => { gacha: number; gear: number }
+  addDuelRewards: (kind: DuelRewardKind) => { gacha: number; gear: number }
   collection: Card[]
   addToCollection: (cards: Card[]) => void
   decks: Deck[]
@@ -1937,9 +1940,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [gearCoins])
 
   // ── Duel rewards: gacha coins + gear coins per victory ──────────────────
-  const addDuelRewards = useCallback((kind: "normal" | "pvp") => {
-    const gacha = kind === "pvp" ? 20 : 10
-    const gear = kind === "pvp" ? 50 : 30
+  // Aceita um preset ("normal" / "pvp") ou valores explícitos (eventos).
+  const addDuelRewards = useCallback((kind: DuelRewardKind) => {
+    const { gacha, gear } =
+      typeof kind === "object"
+        ? kind
+        : kind === "pvp"
+          ? { gacha: 20, gear: 50 }
+          : { gacha: 10, gear: 30 }
     setCoins((prev) => prev + gacha)
     setGearCoins((prev) => prev + gear)
     return { gacha, gear }

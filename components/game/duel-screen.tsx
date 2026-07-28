@@ -4,7 +4,7 @@ import { pauseMenuMusic, resumeMenuMusic } from "@/components/game/main-menu"
 
 import React, { Component } from "react"
 import DUEL_OST_SRC from "./duel-ost"
-import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context"
+import type { Deck as GameDeck, Card as GameCard, DuelRewardKind } from "@/contexts/game-context"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
@@ -2705,7 +2705,7 @@ function StarfieldCanvas() {
 interface GameResultScreenProps {
   result: "won" | "lost"
   onBack: () => void
-  rewardKind?: "normal" | "pvp"
+  rewardKind?: DuelRewardKind
 }
 
 function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps) {
@@ -9791,7 +9791,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         JSON.stringify({ ...storyBattle, won: gameResult === "won" }))
     }
 
-    return <GameResultScreen result={gameResult} rewardKind={mode === "player" ? "pvp" : "normal"} onBack={() => {
+    // ── Event Mode: recompensas próprias por dificuldade da fase ──────────────
+    const eventBattle = (() => {
+      if (typeof window === "undefined") return null
+      try {
+        const raw = localStorage.getItem("gpgame_event_battle_pending")
+        return raw ? JSON.parse(raw) : null
+      } catch { return null }
+    })()
+
+    if (eventBattle) {
+      localStorage.setItem("gpgame_event_battle_pending",
+        JSON.stringify({ ...eventBattle, won: gameResult === "won" }))
+    }
+
+    const rewardKind: DuelRewardKind =
+      eventBattle && typeof eventBattle.gacha === "number" && typeof eventBattle.gear === "number"
+        ? { gacha: eventBattle.gacha, gear: eventBattle.gear }
+        : mode === "player" ? "pvp" : "normal"
+
+    return <GameResultScreen result={gameResult} rewardKind={rewardKind} onBack={() => {
       if (mode === "player") {
         setOnlinePhase("lobby")
         setGameResult(null)
