@@ -2705,12 +2705,25 @@ function StarfieldCanvas() {
 interface GameResultScreenProps {
   result: "won" | "lost"
   onBack: () => void
+  rewardKind?: "normal" | "pvp"
 }
 
-function GameResultScreen({ result, onBack }: GameResultScreenProps) {
+function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef    = useRef<number>(0)
   const isWon     = result === "won"
+
+  // ── Duel rewards: gacha + gear coins on victory (granted once) ──
+  const { addDuelRewards } = useGame()
+  const rewardsGrantedRef = useRef(false)
+  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number } | null>(null)
+
+  useEffect(() => {
+    if (!isWon || !rewardKind || rewardsGrantedRef.current) return
+    rewardsGrantedRef.current = true
+    setDuelRewards(addDuelRewards(rewardKind))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWon, rewardKind])
 
   // Master XP notification state
   const [masterXPData, setMasterXPData] = useState<{
@@ -2970,6 +2983,36 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
         }}>
           {isWon ? "O duelo terminou em sua glória" : "Você caiu em batalha"}
         </p>
+
+        {/* Duel rewards — gacha + gear coins */}
+        {isWon && duelRewards && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:14,
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:"1px solid rgba(250,204,21,0.30)", borderRadius:14,
+            padding:"10px 22px", animation:"gr-up 500ms ease-out 850ms both",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <img src="/images/Gacha_Coin.png" alt="Gacha Coin"
+                style={{ width:34, height:34, objectFit:"contain",
+                  filter:"drop-shadow(0 0 8px rgba(252,211,77,0.7))" }} />
+              <span style={{ fontWeight:900, fontSize:17, color:"#FCD34D",
+                textShadow:"0 0 10px rgba(252,211,77,0.5)" }}>
+                +{duelRewards.gacha}
+              </span>
+            </div>
+            <div style={{ width:1, height:22, background:"rgba(250,204,21,0.25)" }} />
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <img src="/images/gear-coin.png" alt="Gear Coin"
+                style={{ width:32, height:32, objectFit:"contain",
+                  filter:"drop-shadow(0 0 8px rgba(253,224,71,0.7))" }} />
+              <span style={{ fontWeight:900, fontSize:17, color:"#FDE047",
+                textShadow:"0 0 10px rgba(253,224,71,0.5)" }}>
+                +{duelRewards.gear}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Master XP notification */}
         {masterXPData && (
@@ -8712,7 +8755,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
 
-  // ═══════��═══════════════════════════════════════════════════════════════════
+  // ══════����═══════════════════════════════════════════════════════════════════
   //  MULTIPLAYER LAYER — active when mode === "player" && onlinePhase === "duel"
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -9748,7 +9791,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         JSON.stringify({ ...storyBattle, won: gameResult === "won" }))
     }
 
-    return <GameResultScreen result={gameResult} onBack={() => {
+    return <GameResultScreen result={gameResult} rewardKind={mode === "player" ? "pvp" : "normal"} onBack={() => {
       if (mode === "player") {
         setOnlinePhase("lobby")
         setGameResult(null)
@@ -12374,7 +12417,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE BADGE in HUD ────────────────────────────────────── */}
+      {/* ─── CATASTROPHE BADGE in HUD ─────��──────────────────────────────── */}
 
       {/* ─────────────────────────────────────────────────────────────────────
            ── PAUSE MENU ──
