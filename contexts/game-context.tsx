@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useRef, type ReactNode, useEffect } from "react"
+import { createContext, useContext, useState, useRef, useCallback, type ReactNode, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 
 export interface Card {
@@ -111,9 +111,15 @@ export interface AccountAuth {
   lastSaved: string | null
 }
 
+/** Recompensa de duelo: preset padrão ou valores explícitos (eventos). */
+export type DuelRewardKind = "normal" | "pvp" | { gacha: number; gear: number }
+
 interface GameContextType {
   coins: number
   setCoins: (coins: number) => void
+  gearCoins: number
+  setGearCoins: React.Dispatch<React.SetStateAction<number>>
+  addDuelRewards: (kind: DuelRewardKind) => { gacha: number; gear: number }
   collection: Card[]
   addToCollection: (cards: Card[]) => void
   decks: Deck[]
@@ -1617,6 +1623,7 @@ const INITIAL_GIFT_BOXES: GiftBox[] = [
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [coins, setCoins] = useState(999)
+  const [gearCoins, setGearCoins] = useState(500)
   const [collection, setCollection] = useState<Card[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([])
@@ -1833,6 +1840,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const savedProfile = getLS("profile")
 
         if (savedCoins) setCoins(Number.parseInt(savedCoins))
+        const savedGearCoins = getLS("gearcoins")
+        if (savedGearCoins) setGearCoins(Number.parseInt(savedGearCoins))
         if (savedCollection) {
           try { setCollection(JSON.parse(savedCollection)) } catch { }
         }
@@ -1925,6 +1934,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("coins", coins.toString())
   }, [coins])
+
+  useEffect(() => {
+    setLS("gearcoins", gearCoins.toString())
+  }, [gearCoins])
+
+  // ── Duel rewards: gacha coins + gear coins per victory ──────────────────
+  // Aceita um preset ("normal" / "pvp") ou valores explícitos (eventos).
+  const addDuelRewards = useCallback((kind: DuelRewardKind) => {
+    const { gacha, gear } =
+      typeof kind === "object"
+        ? kind
+        : kind === "pvp"
+          ? { gacha: 20, gear: 50 }
+          : { gacha: 10, gear: 30 }
+    setCoins((prev) => prev + gacha)
+    setGearCoins((prev) => prev + gear)
+    return { gacha, gear }
+  }, [])
 
   useEffect(() => {
     setLS("collection", JSON.stringify(collection))
@@ -2529,6 +2556,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     // Reset game state to defaults
     setCoins(999)
+    setGearCoins(500)
     setCollection([])
     setDecks([])
     setMatchHistory([])
@@ -2715,6 +2743,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try {
       // Reset all game data to defaults
       setCoins(999)
+      setGearCoins(500)
       setCollection([])
       setDecks([])
       setMatchHistory([])
@@ -2776,11 +2805,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_titles")
       localStorage.removeItem("gpgame_pending_packs")
 
-      // ── Gacha coins & coins ───────────────────────────────────────────────
-      localStorage.removeItem("gpgame_coins")
-      localStorage.removeItem("gpgame_gacha_coins")
-      localStorage.removeItem("gacha_coins")
-      localStorage.removeItem("coins")
+    // ── Gacha coins & coins ───────────────────────────────────────────────
+    localStorage.removeItem("gpgame_coins")
+    localStorage.removeItem("gpgame_gacha_coins")
+    localStorage.removeItem("gacha_coins")
+    localStorage.removeItem("coins")
+    localStorage.removeItem("gearperks-gearcoins")
+    localStorage.removeItem("gear-perks-gearcoins")
+    localStorage.removeItem("gpgame_menu_prev_gearcoins")
       localStorage.removeItem("gpgame_profile")
 
       // ── Stamina ───────────────────────────────────────────────────────────
@@ -2834,6 +2866,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       value={{
         coins,
         setCoins,
+        gearCoins,
+        setGearCoins,
+        addDuelRewards,
         collection,
         addToCollection,
         decks,

@@ -4,7 +4,7 @@ import { pauseMenuMusic, resumeMenuMusic } from "@/components/game/main-menu"
 
 import React, { Component } from "react"
 import DUEL_OST_SRC from "./duel-ost"
-import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context"
+import type { Deck as GameDeck, Card as GameCard, DuelRewardKind } from "@/contexts/game-context"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
@@ -187,6 +187,15 @@ interface Particle {
   shape?: string
   rotation?: number
   rv?: number
+}
+
+/** Nome exibido do deck elemental do oponente nos duelos de evento. */
+const EVENT_ELEMENT_LABELS: Record<string, string> = {
+  aquos: "Aquos (Água)",
+  ventus: "Ventus (Vento)",
+  fire: "Pyrus (Fogo)",
+  darkness: "Darkus (Trevas)",
+  lightness: "Haos (Luz)",
 }
 
 // Define interface for Deck with image and playmat image
@@ -414,7 +423,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
   "cauda-de-dragao-assada": {
     id: "cauda-de-dragao-assada",
-    name: "Cauda de Dragão Assada",
+    name: "Cauda de Drag��o Assada",
     requiresTargets: false,
     canActivate: (context) => {
       const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
@@ -2120,7 +2129,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ──────────────────────────
+        // ── PHASE 2: SETTLE  spring 360ms ──────────────��───────────
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -2705,12 +2714,25 @@ function StarfieldCanvas() {
 interface GameResultScreenProps {
   result: "won" | "lost"
   onBack: () => void
+  rewardKind?: DuelRewardKind
 }
 
-function GameResultScreen({ result, onBack }: GameResultScreenProps) {
+function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef    = useRef<number>(0)
   const isWon     = result === "won"
+
+  // ── Duel rewards: gacha + gear coins on victory (granted once) ──
+  const { addDuelRewards } = useGame()
+  const rewardsGrantedRef = useRef(false)
+  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number } | null>(null)
+
+  useEffect(() => {
+    if (!isWon || !rewardKind || rewardsGrantedRef.current) return
+    rewardsGrantedRef.current = true
+    setDuelRewards(addDuelRewards(rewardKind))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWon, rewardKind])
 
   // Master XP notification state
   const [masterXPData, setMasterXPData] = useState<{
@@ -2971,6 +2993,36 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
           {isWon ? "O duelo terminou em sua glória" : "Você caiu em batalha"}
         </p>
 
+        {/* Duel rewards — gacha + gear coins */}
+        {isWon && duelRewards && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:14,
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:"1px solid rgba(250,204,21,0.30)", borderRadius:14,
+            padding:"10px 22px", animation:"gr-up 500ms ease-out 850ms both",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <img src="/images/Gacha_Coin.png" alt="Gacha Coin"
+                style={{ width:34, height:34, objectFit:"contain",
+                  filter:"drop-shadow(0 0 8px rgba(252,211,77,0.7))" }} />
+              <span style={{ fontWeight:900, fontSize:17, color:"#FCD34D",
+                textShadow:"0 0 10px rgba(252,211,77,0.5)" }}>
+                +{duelRewards.gacha}
+              </span>
+            </div>
+            <div style={{ width:1, height:22, background:"rgba(250,204,21,0.25)" }} />
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <img src="/images/gear-coin.png" alt="Gear Coin"
+                style={{ width:32, height:32, objectFit:"contain",
+                  filter:"drop-shadow(0 0 8px rgba(253,224,71,0.7))" }} />
+              <span style={{ fontWeight:900, fontSize:17, color:"#FDE047",
+                textShadow:"0 0 10px rgba(253,224,71,0.5)" }}>
+                +{duelRewards.gear}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Master XP notification */}
         {masterXPData && (
           <div style={{
@@ -3078,7 +3130,7 @@ class OnlineDuelErrorBoundary extends Component<
 export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, startingLP: propStartingLP, roguelikeConfig, catastropheMode }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
-  const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
+  const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId, allCards } = useGame()
   // Ensure decks are typed correctly if they have playmat images
   const typedDecks = decks as DeckWithImages[]
   const [selectedDeck, setSelectedDeck] = useState<DeckWithImages | null>(null)
@@ -3388,6 +3440,78 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [pendingPlayerDeck, setPendingPlayerDeck] = useState<DeckWithImages | null>(null)
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
+
+  // ── Event Mode (Treinamento Especial) ─────────────────────────────────────
+  // Nos duelos de evento a dificuldade e o deck do oponente já vêm definidos
+  // pela fase escolhida: o jogador só seleciona o próprio deck e o duelo começa.
+  // O deck do bot é montado com cartas do elemento do treinamento (o evento de
+  // água enfrenta um deck Aquos, o de trevas um deck Darkus, etc.).
+  interface EventDuelInfo {
+    eventName: string
+    elementGroup: 'aquos' | 'ventus' | 'fire' | 'darkness' | 'lightness'
+    difficulty: Difficulty
+  }
+  const [eventDuel] = useState<EventDuelInfo | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem('gpgame_event_battle_pending')
+      if (!raw) return null
+      const p = JSON.parse(raw)
+      if (!p?.elementGroup || !p?.difficulty) return null
+      return { eventName: p.eventName ?? 'Treinamento Especial', elementGroup: p.elementGroup, difficulty: p.difficulty }
+    } catch { return null }
+  })
+
+  /** Normaliza o elemento de uma carta para o mesmo grupo usado no deck builder. */
+  const normalizeElementGroup = (el: string): string => {
+    const e = (el || '').toLowerCase().trim()
+    if (['fire', 'pyrus'].includes(e)) return 'fire'
+    if (['aquos', 'aquo', 'water'].includes(e)) return 'aquos'
+    if (['haos', 'light', 'lightness'].includes(e)) return 'lightness'
+    if (['darkus', 'darkness', 'dark'].includes(e)) return 'darkness'
+    if (['ventus', 'wind'].includes(e)) return 'ventus'
+    return e
+  }
+
+  /**
+   * Monta o deck temático do oponente do evento (20 cartas + 2 TAP) usando
+   * apenas cartas do elemento do treinamento. Cartas neutras (Void) entram
+   * como reserva caso o elemento não tenha cartas suficientes.
+   */
+  const buildEventBotDeck = (info: EventDuelInfo): DeckWithImages => {
+    const pool = (allCards ?? []) as GameCard[]
+    const elemental = pool.filter((c) => normalizeElementGroup(c.element) === info.elementGroup)
+    const neutral = pool.filter((c) => normalizeElementGroup(c.element) === 'void')
+
+    // Prioriza unidades e tropas pra garantir que o bot tenha o que evocar,
+    // depois completa com o suporte do mesmo elemento.
+    const isFieldUnit = (c: GameCard) =>
+      c.type === 'unit' || c.type === 'troops' || c.type === 'ultimateElemental'
+    const units = elemental.filter(isFieldUnit)
+    const support = elemental.filter((c) => !isFieldUnit(c))
+
+    const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5)
+    const picked: GameCard[] = [
+      ...shuffle(units).slice(0, 13),
+      ...shuffle(support).slice(0, 7),
+    ]
+    // Se o elemento tiver poucas cartas, repete as disponíveis (até 4 cópias,
+    // mesmo limite do construtor de decks) e por fim recorre às neutras.
+    const fallback = shuffle([...elemental, ...elemental, ...elemental, ...neutral])
+    let fi = 0
+    while (picked.length < 20 && fi < fallback.length) picked.push(fallback[fi++])
+
+    const withUniqueIds = picked.slice(0, 20).map((c, i) => ({ ...c, id: `${c.id}-ev-${i}` }))
+    const tapPool = shuffle(elemental.filter(isFieldUnit))
+    const tapCards = tapPool.slice(0, 2).map((c, i) => ({ ...c, id: `${c.id}-evtap-${i}` }))
+
+    return {
+      id: `event-bot-${info.elementGroup}`,
+      name: `Deck ${info.eventName}`,
+      cards: withUniqueIds,
+      tapCards: tapCards.length > 0 ? tapCards : undefined,
+    } as DeckWithImages
+  }
 
   // Keep roguelikeConfig in a ref so startGame always reads the latest values
   const roguelikeConfigRef = useRef(roguelikeConfig)
@@ -7397,7 +7521,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const tagged = top5.map((card, idx) => ({ card, idx }))
 
     if (top5.length <= 2) {
-      // Fewer than 3 cards — all go to hand
+      // Fewer than 3 cards ��� all go to hand
       setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, ...top5],
@@ -8212,6 +8336,77 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
+
+            // ── TRAP CHECK: ESCUDO DE MANA ────────────────────────────────────
+            // Ativa quando o bot usa Magic Function ou Item Function de dano.
+            // Efeito: anula o efeito da carta e a destrói (manda para o cemitério
+            // do bot sem aplicar o efeito).
+            const isMagicOrItem = card.type === "magic" || (card as any).category === "Item Funcion Card"
+            const trapEscudoIdx = playerField.functionZone.findIndex(
+              f => f?.id === "escudo-de-mana" && f.isFaceDown
+            )
+            if (isMagicOrItem && trapEscudoIdx !== -1) {
+              // Reveal trap, negate the bot card, both go to graveyard
+              setPlayerField((pf) => {
+                const nz = [...pf.functionZone]
+                if (nz[trapEscudoIdx]) nz[trapEscudoIdx] = { ...nz[trapEscudoIdx]!, isFaceDown: false }
+                setTimeout(() => {
+                  setPlayerField((pf2) => {
+                    const nz2 = [...pf2.functionZone]
+                    nz2[trapEscudoIdx] = null
+                    return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, nz[trapEscudoIdx]!] }
+                  })
+                }, 800)
+                return { ...pf, functionZone: nz }
+              })
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
+              setTimeout(() => showEffectFeedback(`Armadilha Ativada! Escudo de Mana anulou ${card.name}!`, "success"), 200)
+              continue
+            }
+
+            // ── TRAP CHECK: BRINCADEIRA DE MAU GOSTO ─────────────────────────
+            // Ativa quando o bot usa uma Action Function.
+            // Efeito: anula a carta, uma unidade do bot perde -2DP (ou bot revela mão).
+            const isActionFunc = card.type === "action" || (card as any).category === "Action Funcion Card"
+            const trapBrincIdx = playerField.functionZone.findIndex(
+              f => f?.id === "brincadeira-de-mau-gosto" && f.isFaceDown
+            )
+            if (isActionFunc && trapBrincIdx !== -1) {
+              setPlayerField((pf) => {
+                const nz = [...pf.functionZone]
+                if (nz[trapBrincIdx]) nz[trapBrincIdx] = { ...nz[trapBrincIdx]!, isFaceDown: false }
+                setTimeout(() => {
+                  setPlayerField((pf2) => {
+                    const nz2 = [...pf2.functionZone]
+                    nz2[trapBrincIdx] = null
+                    return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, nz[trapBrincIdx]!] }
+                  })
+                }, 800)
+                return { ...pf, functionZone: nz }
+              })
+              // Negate the card
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
+              // Apply -2DP to a bot unit, or reveal hand if no units
+              const botUnitIdx = prev.unitZone.findIndex(u => u !== null)
+              if (botUnitIdx !== -1) {
+                setEnemyField(e => {
+                  const uz = [...e.unitZone]
+                  const u = uz[botUnitIdx]
+                  if (!u) return e
+                  const newDp = Math.max(0, (u.currentDp ?? u.dp) - 2)
+                  uz[botUnitIdx] = { ...u, currentDp: newDp }
+                  return { ...e, unitZone: uz as (FieldCard | null)[] }
+                })
+                setTimeout(() => showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name} e causou -2DP em ${prev.unitZone[botUnitIdx]?.name || "unidade"}!`, "success"), 200)
+              } else {
+                // No bot units — reveal hand (show feedback)
+                setTimeout(() => showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name}! Oponente não tem unidades — mão revelada!`, "success"), 200)
+              }
+              continue
+            }
+
             const effect = getFunctionCardEffect(card)
             if (effect) {
               const effectContext: EffectContext = {
@@ -8480,6 +8675,40 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
               const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.7
 
+              // ── TRAP CHECK: PORTÃO DA FORTALEZA ──────────────────────────────
+              // Quando o bot declara ataque em uma unidade do jogador, verificar se
+              // "Portão da Fortaleza" está face-down na função zone do JOGADOR.
+              // Efeito: nega o ataque, devolve a unidade atacante à mão do bot,
+              // e o jogador descarta 1 carta da mão para ativar.
+              const trapPortaoPlayerIdx = playerField.functionZone.findIndex(
+                f => f?.id === "portao-da-fortaleza" && f.isFaceDown
+              )
+              if (trapPortaoPlayerIdx !== -1) {
+                // Reveal trap
+                setPlayerField(prev => {
+                  const nz = [...prev.functionZone]
+                  if (nz[trapPortaoPlayerIdx]) nz[trapPortaoPlayerIdx] = { ...nz[trapPortaoPlayerIdx]!, isFaceDown: false }
+                  // Discard one random card from hand as cost
+                  const newHand = [...prev.hand]
+                  if (newHand.length > 0) {
+                    const discardIdx = Math.floor(Math.random() * newHand.length)
+                    const discarded = newHand.splice(discardIdx, 1)[0]
+                    return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
+                  }
+                  return { ...prev, functionZone: nz }
+                })
+                // Return the attacking unit back to bot's hand
+                setEnemyField(prev => {
+                  const u2 = [...prev.unitZone]
+                  const returned = u2[unitIdx]
+                  u2[unitIdx] = null
+                  return { ...prev, unitZone: u2 as (FieldCard | null)[], hand: returned ? [...prev.hand, returned] : prev.hand }
+                })
+                showEffectFeedback(`Armadilha Ativada! Portão da Fortaleza negou o ataque de ${unit.name} e o devolveu à mão do oponente!`, "success")
+                setTimeout(() => fireBotAttack(rest), 600)
+                return
+              }
+
               showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
 
               // Fire projectile — ONLY this unit
@@ -8505,6 +8734,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               // Apply damage after projectile lands, then chain next attack
               setTimeout(() => {
+                // ── TRAP CHECK: CONTRA-ATAQUE SURPRESA ───────────────────────
+                // Quando a unidade do jogador recebe dano de batalha, o bot recebe
+                // o mesmo valor de dano nos LP.
+                const trapContraIdx = playerField.functionZone.findIndex(
+                  f => f?.id === "contra-ataque-surpresa" && f.isFaceDown
+                )
+                if (trapContraIdx !== -1) {
+                  setPlayerField(prev => {
+                    const nz = [...prev.functionZone]
+                    if (nz[trapContraIdx]) nz[trapContraIdx] = { ...nz[trapContraIdx]!, isFaceDown: false }
+                    return { ...prev, functionZone: nz }
+                  })
+                  setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
+                  showEffectFeedback(`Armadilha Ativada! Contra-Ataque Surpresa! ${unit.name} causou ${attackerDp} de dano de volta ao oponente!`, "success")
+                }
+
                 setPlayerField((prevPlayer) => {
                   const newUnitZone = [...prevPlayer.unitZone]
                   const newGrave = [...prevPlayer.graveyard]
@@ -8516,7 +8761,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                     // ── Equipped Ultimate Gear is destroyed together with its unit ──
                     const __ugDestroyIdx = newUltimateZonesP.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
-                  if (__ugDestroyIdx !== -1) {
+                    if (__ugDestroyIdx !== -1) {
                       newGrave.push(newUltimateZonesP[__ugDestroyIdx]!)
                       showEffectFeedback(`${newUltimateZonesP[__ugDestroyIdx]!.name} foi destruída junto com ${defender.name}!`, "error")
                       newUltimateZonesP[__ugDestroyIdx] = null
@@ -8554,11 +8799,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }, PROJECTILE_DURATION)
 
             } else {
-              // Direct attack
+              // Direct attack — no player units on field
               const directEl = document.querySelector("[data-direct-attack]")
               const directRect = directEl?.getBoundingClientRect()
               const targetX = directRect ? directRect.left + directRect.width / 2 : window.innerWidth / 2
               const targetY = directRect ? directRect.top + directRect.height / 2 : window.innerHeight * 0.8
+
+              // ── TRAP CHECK: PORTÃO DA FORTALEZA (ataque direto) ──────────────
+              // Portão também ativa em ataque direto — nega e devolve à mão
+              const trapPortaoDirectIdx = playerField.functionZone.findIndex(
+                f => f?.id === "portao-da-fortaleza" && f.isFaceDown
+              )
+              if (trapPortaoDirectIdx !== -1) {
+                setPlayerField(prev => {
+                  const nz = [...prev.functionZone]
+                  if (nz[trapPortaoDirectIdx]) nz[trapPortaoDirectIdx] = { ...nz[trapPortaoDirectIdx]!, isFaceDown: false }
+                  const newHand = [...prev.hand]
+                  if (newHand.length > 0) {
+                    const discardIdx = Math.floor(Math.random() * newHand.length)
+                    const discarded = newHand.splice(discardIdx, 1)[0]
+                    return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
+                  }
+                  return { ...prev, functionZone: nz }
+                })
+                setEnemyField(prev => {
+                  const u2 = [...prev.unitZone]
+                  const returned = u2[unitIdx]
+                  u2[unitIdx] = null
+                  return { ...prev, unitZone: u2 as (FieldCard | null)[], hand: returned ? [...prev.hand, returned] : prev.hand }
+                })
+                showEffectFeedback(`Armadilha Ativada! Portão da Fortaleza negou o ataque direto de ${unit.name}!`, "success")
+                setTimeout(() => fireBotAttack(rest), 600)
+                return
+              }
 
               showEffectFeedback(`${unit.name} ataque direto!`, "warning")
 
@@ -8572,7 +8845,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }])
 
               setTimeout(() => {
-                setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - (unit.currentDp ?? unit.dp)) }))
+                const directDmg = unit.currentDp ?? unit.dp
+                setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - directDmg) }))
                 setEnemyField(prev => {
                   const u2 = [...prev.unitZone]
                   if (u2[unitIdx]) u2[unitIdx] = { ...u2[unitIdx]!, hasAttacked: true }
@@ -8712,7 +8986,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
 
-  // ═══════��═══════════════════════════════════════════════════════════════════
+  // ══════����═══════════════════════════════════════════════════════════════════
   //  MULTIPLAYER LAYER — active when mode === "player" && onlinePhase === "duel"
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -9607,12 +9881,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <ArrowLeft className="mr-2 h-5 w-5" />
             {setupStep === 'selectDeck' ? t("back") : "Voltar"}
           </Button>
-          <h1 className="text-2xl font-bold text-white">{mode === "bot" ? t("vsBot") : t("vsPlayer")}</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {eventDuel ? eventDuel.eventName : mode === "bot" ? t("vsBot") : t("vsPlayer")}
+          </h1>
           <div className="w-20" />
         </div>
 
-        {/* Progress indicator (bot mode only) */}
-        {mode === 'bot' && (
+        {/* Resumo da fase do evento: oponente e dificuldade já estão definidos */}
+        {eventDuel && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4 text-xs font-semibold">
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-slate-300">
+              Deck do oponente: {EVENT_ELEMENT_LABELS[eventDuel.elementGroup]}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-slate-300">
+              Dificuldade: {eventDuel.difficulty === 'easy' ? 'Fácil' : eventDuel.difficulty === 'medium' ? 'Médio' : 'Difícil'}
+            </span>
+          </div>
+        )}
+
+        {/* Progress indicator (bot mode only, fora dos eventos) */}
+        {mode === 'bot' && !eventDuel && (
           <div className="flex justify-center gap-3 pt-4 pb-2">
             {['Seu Deck','Dificuldade','Deck Inimigo'].map((label,i) => {
               const stepIdx = setupStep === 'selectDeck' ? 0 : setupStep === 'selectDifficulty' ? 1 : 2
@@ -9634,7 +9922,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <>
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white mb-1">Escolha seu Deck</h2>
-                <p className="text-slate-400 text-sm">Selecione o deck que você vai usar no duelo</p>
+                <p className="text-slate-400 text-sm">
+                  {eventDuel
+                    ? "Selecione seu deck para começar o duelo do treinamento"
+                    : "Selecione o deck que você vai usar no duelo"}
+                </p>
               </div>
               {typedDecks.length === 0 ? (
                 <p className="text-slate-400">Crie um deck primeiro no menu Construir Deck!</p>
@@ -9645,7 +9937,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       key={deck.id}
                       onClick={() => {
                         setPendingPlayerDeck(deck)
-                        if (mode === 'bot') setSetupStep('selectDifficulty')
+                        // Duelo de evento: dificuldade e deck do oponente já
+                        // definidos pela fase → começa imediatamente.
+                        if (eventDuel) {
+                          const botDeck = buildEventBotDeck(eventDuel)
+                          setSelectedBotDeck(botDeck)
+                          startGame(deck, botDeck, eventDuel.difficulty)
+                        } else if (mode === 'bot') setSetupStep('selectDifficulty')
                         else setOnlinePhase("lobby")
                       }}
                       className="w-full h-16 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 border border-slate-500/30 hover:border-cyan-500/40 transition-all text-left group"
@@ -9748,7 +10046,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         JSON.stringify({ ...storyBattle, won: gameResult === "won" }))
     }
 
-    return <GameResultScreen result={gameResult} onBack={() => {
+    // ── Event Mode: recompensas próprias por dificuldade da fase ──────────────
+    const eventBattle = (() => {
+      if (typeof window === "undefined") return null
+      try {
+        const raw = localStorage.getItem("gpgame_event_battle_pending")
+        return raw ? JSON.parse(raw) : null
+      } catch { return null }
+    })()
+
+    if (eventBattle) {
+      localStorage.setItem("gpgame_event_battle_pending",
+        JSON.stringify({ ...eventBattle, won: gameResult === "won" }))
+    }
+
+    const rewardKind: DuelRewardKind =
+      eventBattle && typeof eventBattle.gacha === "number" && typeof eventBattle.gear === "number"
+        ? { gacha: eventBattle.gacha, gear: eventBattle.gear }
+        : mode === "player" ? "pvp" : "normal"
+
+    return <GameResultScreen result={gameResult} rewardKind={rewardKind} onBack={() => {
       if (mode === "player") {
         setOnlinePhase("lobby")
         setGameResult(null)
@@ -12360,7 +12677,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE BLACKOUT (Apagão Dimensional) ──────────────────── */}
+      {/* ─── CATASTROPHE BLACKOUT (Apagão Dimensional) ───────────���──────── */}
       {catBlackout && (
         <div className="absolute z-[1000] pointer-events-none"
           style={{
@@ -12374,7 +12691,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE BADGE in HUD ────────────────────────────────────── */}
+      {/* ─── CATASTROPHE BADGE in HUD ─────��──────────────────────────────── */}
 
       {/* ─────────────────────────────────────────────────────────────────────
            ── PAUSE MENU ──

@@ -245,6 +245,14 @@ const GP_CSS = `
   pointer-events: none; white-space: nowrap; z-index: 10;
 }
 @keyframes gp-coin-plus-anim { 0%{opacity:1;transform:translateY(0);} 60%{opacity:1;transform:translateY(-18px);} 100%{opacity:0;transform:translateY(-28px);} }
+.gp-coin-minus {
+  position: absolute; right: -8px; top: -14px;
+  font-size: 11px; font-weight: 900; color: #f87171;
+  text-shadow: 0 0 6px rgba(248,113,113,0.7);
+  animation: gp-coin-minus-anim 1.2s ease-out both;
+  pointer-events: none; white-space: nowrap; z-index: 10;
+}
+@keyframes gp-coin-minus-anim { 0%{opacity:1;transform:translateY(-24px);} 60%{opacity:1;transform:translateY(-6px);} 100%{opacity:0;transform:translateY(4px);} }
 
 /* Nav item active glow */
 .gp-ni:hover .gp-ni-lbl { color: rgba(167,139,250,0.95); text-shadow: 0 0 8px rgba(139,92,246,0.5); }
@@ -824,7 +832,7 @@ export function resumeMenuMusic() {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends } = useGame()
+  const { coins, setCoins, gearCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends } = useGame()
 
   // ── Entrance animation: hidden until mounted, then animate in ──
   const [mounted, setMounted] = useState(false)
@@ -895,11 +903,9 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     // Pop
     setCoinPop(true)
     setTimeout(() => setCoinPop(false), 380)
-    // Delta label (only for gains)
-    if (diff > 0) {
-      setCoinDelta(diff)
-      setTimeout(() => setCoinDelta(null), 1400)
-    }
+    // Delta label (gains and losses)
+    setCoinDelta(diff)
+    setTimeout(() => setCoinDelta(null), 1400)
     // Rolling counter
     const steps = 28
     const stepVal = (end - start) / steps
@@ -923,6 +929,53 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     prevCoinsRef.current = coins
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coins])
+
+  // ── Gear Coin animation (mesma mecânica da gacha coin) ──
+  const GEAR_COIN_LS = "gpgame_menu_prev_gearcoins"
+
+  const [displayGearCoins, setDisplayGearCoins] = useState(gearCoins)
+  const [gearCoinDelta, setGearCoinDelta] = useState<number | null>(null)
+  const [gearCoinPop, setGearCoinPop] = useState(false)
+  const gearCoinAnimRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const prevGearCoinsRef = useRef<number>(gearCoins)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const saved = localStorage.getItem(GEAR_COIN_LS)
+    prevGearCoinsRef.current = saved !== null ? parseInt(saved) : gearCoins
+    const diff = gearCoins - prevGearCoinsRef.current
+    if (Math.abs(diff) > 0) triggerGearCoinAnim(prevGearCoinsRef.current, gearCoins, diff)
+    return () => { localStorage.setItem(GEAR_COIN_LS, String(gearCoins)) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const triggerGearCoinAnim = (start: number, end: number, diff: number) => {
+    setGearCoinPop(true)
+    setTimeout(() => setGearCoinPop(false), 380)
+    setGearCoinDelta(diff)
+    setTimeout(() => setGearCoinDelta(null), 1400)
+    const steps = 28
+    const stepVal = (end - start) / steps
+    let step = 0
+    if (gearCoinAnimRef.current) clearInterval(gearCoinAnimRef.current)
+    gearCoinAnimRef.current = setInterval(() => {
+      step++
+      setDisplayGearCoins(Math.round(start + stepVal * step))
+      if (step >= steps) {
+        if (gearCoinAnimRef.current) clearInterval(gearCoinAnimRef.current)
+        setDisplayGearCoins(end)
+        localStorage.setItem(GEAR_COIN_LS, String(end))
+      }
+    }, 18)
+  }
+
+  useEffect(() => {
+    const diff = gearCoins - prevGearCoinsRef.current
+    if (diff === 0) { setDisplayGearCoins(gearCoins); return }
+    triggerGearCoinAnim(prevGearCoinsRef.current, gearCoins, diff)
+    prevGearCoinsRef.current = gearCoins
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gearCoins])
 
   // ── Watch level changes for achievement ──
   const prevLevelMenuRef = useRef(playerProfile.level)
@@ -1631,6 +1684,36 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             </div>
           </div>
 
+          {/* GEAR COINS — moeda comum */}
+          <div className="relative cursor-pointer transition-all hover:brightness-110"
+            style={{ background:"rgba(10,8,2,0.90)", border:"1px solid rgba(250,204,21,0.30)",
+              boxShadow:"0 0 12px rgba(250,204,21,0.10)", borderRadius:16,
+              height:44, paddingLeft:52, paddingRight:14,
+              display:"flex", alignItems:"center", gap:4,
+              overflow:"visible" }}>
+            {/* Gear Coin icon — absolute, overflows bar vertically */}
+            <Image src="/images/gear-coin.png" alt="Gear Coins" width={50} height={50}
+              style={{
+                position:"absolute", left:4, top:"50%",
+                transform:"translateY(-50%)",
+                width:50, height:50,
+                objectFit:"contain",
+                filter:"drop-shadow(0 0 12px rgba(250,204,21,0.75))",
+                pointerEvents:"none",
+                zIndex:1,
+              }}
+            />
+            <span className={"font-black text-base tabular-nums" + (gearCoinPop ? " gp-coin-pop" : "")}
+              style={{ color:"#FDE047", textShadow:"0 0 8px rgba(253,224,71,0.4)", position:"relative" }}>
+              {displayGearCoins.toLocaleString()}
+              {gearCoinDelta !== null && (
+                gearCoinDelta > 0
+                  ? <span className="gp-coin-plus">+{gearCoinDelta}</span>
+                  : <span className="gp-coin-minus">{gearCoinDelta}</span>
+              )}
+            </span>
+          </div>
+
           {/* COINS — sem anel girando */}
           <div className="relative cursor-pointer transition-all hover:brightness-110"
             style={{ background:"rgba(10,6,2,0.90)", border:"1px solid rgba(245,158,11,0.28)",
@@ -1653,7 +1736,11 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
             <span className={"font-black text-base tabular-nums" + (coinPop ? " gp-coin-pop" : "")}
               style={{ color:"#FCD34D", textShadow:"0 0 8px rgba(252,211,77,0.4)", position:"relative" }}>
               {displayCoins.toLocaleString()}
-              {coinDelta !== null && <span className="gp-coin-plus">+{coinDelta}</span>}
+              {coinDelta !== null && (
+                coinDelta > 0
+                  ? <span className="gp-coin-plus">+{coinDelta}</span>
+                  : <span className="gp-coin-minus">{coinDelta}</span>
+              )}
             </span>
             <span style={{color:"rgba(167,139,250,0.35)", fontSize:14}}>+</span>
           </div>

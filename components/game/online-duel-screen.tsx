@@ -2397,6 +2397,18 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
   const rafRef    = useRef<number>(0)
   const isWon     = result === "won"
 
+  // ── Duel rewards: PVP online → +20 gacha coins, +50 gear coins ──
+  const { addDuelRewards } = useGame()
+  const rewardsGrantedRef = useRef(false)
+  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number } | null>(null)
+
+  useEffect(() => {
+    if (!isWon || rewardsGrantedRef.current) return
+    rewardsGrantedRef.current = true
+    setDuelRewards(addDuelRewards("pvp"))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWon])
+
   // Canvas particle system
   useEffect(() => {
     const canvas = canvasRef.current
@@ -2640,6 +2652,36 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
         }}>
           {isWon ? "O duelo terminou em sua glória" : "Você caiu em batalha"}
         </p>
+
+        {/* Duel rewards — gacha + gear coins */}
+        {isWon && duelRewards && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:14,
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:"1px solid rgba(250,204,21,0.30)", borderRadius:14,
+            padding:"10px 22px", animation:"gr-up 500ms ease-out 850ms both",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <img src="/images/Gacha_Coin.png" alt="Gacha Coin"
+                style={{ width:34, height:34, objectFit:"contain",
+                  filter:"drop-shadow(0 0 8px rgba(252,211,77,0.7))" }} />
+              <span style={{ fontWeight:900, fontSize:17, color:"#FCD34D",
+                textShadow:"0 0 10px rgba(252,211,77,0.5)" }}>
+                +{duelRewards.gacha}
+              </span>
+            </div>
+            <div style={{ width:1, height:22, background:"rgba(250,204,21,0.25)" }} />
+            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+              <img src="/images/gear-coin.png" alt="Gear Coin"
+                style={{ width:32, height:32, objectFit:"contain",
+                  filter:"drop-shadow(0 0 8px rgba(253,224,71,0.7))" }} />
+              <span style={{ fontWeight:900, fontSize:17, color:"#FDE047",
+                textShadow:"0 0 10px rgba(253,224,71,0.5)" }}>
+                +{duelRewards.gear}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Back button */}
         <button
