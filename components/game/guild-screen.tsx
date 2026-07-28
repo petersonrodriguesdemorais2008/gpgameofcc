@@ -14,17 +14,39 @@ import { createClient } from "@/lib/supabase/client"
 // NEXT_PUBLIC_ vars are inlined by Next.js at build time — always available client-side.
 
 function getSupaConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim()
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim()
   const base = url.endsWith("/") ? url.slice(0, -1) : url
   return { base, key }
+}
+
+// "TypeError: Failed to fetch" means the request never got an HTTP response at all —
+// so it's NEVER about RLS/permissions/missing tables (those come back as a normal
+// HTTP error with a body, handled by the `!res.ok` branches below). It's almost
+// always: Supabase project paused, a wrong/malformed URL or key, or the request
+// being blocked (adblocker, VPN, offline). This turns the generic browser message
+// into something the user can actually act on, and shows the exact URL that failed.
+function describeFetchError(e: unknown, attemptedUrl: string): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  const isNetworkFailure = /Failed to fetch|NetworkError|Load failed|ERR_/i.test(msg)
+  if (!isNetworkFailure) return msg
+  if (!/^https?:\/\//i.test(attemptedUrl)) {
+    return msg + " — URL do Supabase inválida (sem http/https): \"" + attemptedUrl + "\". Corrija NEXT_PUBLIC_SUPABASE_URL na Vercel e faça novo deploy."
+  }
+  return (
+    msg + " ao tentar conectar em " + attemptedUrl + ". " +
+    "Causas mais prováveis: (1) o projeto Supabase está pausado — confira em supabase.com/dashboard; " +
+    "(2) a URL ou a chave anon têm espaço/erro de digitação nas env vars da Vercel; " +
+    "(3) bloqueio de rede — adblocker, VPN ou firewall (teste em aba anônima)."
+  )
 }
 
 async function sbInsert(table: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
   const { base, key } = getSupaConfig()
   if (!base || !key) return { error: "Supabase não configurado — verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY na Vercel" }
+  const url = `${base}/rest/v1/${table}`
   try {
-    const res = await fetch(`${base}/rest/v1/${table}`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type":  "application/json",
@@ -40,15 +62,15 @@ async function sbInsert(table: string, row: Record<string, unknown>): Promise<{ 
     }
     return { error: null }
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : String(e) }
+    return { error: describeFetchError(e, url) }
   }
 }
 
 async function sbSelect<T>(table: string, filter?: string): Promise<{ data: T[] | null; error: string | null }> {
   const { base, key } = getSupaConfig()
   if (!base || !key) return { data: null, error: "Supabase não configurado" }
+  const url = base + "/rest/v1/" + table + (filter ? "?" + filter : "")
   try {
-    const url = base + "/rest/v1/" + table + (filter ? "?" + filter : "")
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -64,15 +86,16 @@ async function sbSelect<T>(table: string, filter?: string): Promise<{ data: T[] 
     const data = await res.json()
     return { data: Array.isArray(data) ? data : [data], error: null }
   } catch (e: unknown) {
-    return { data: null, error: e instanceof Error ? e.message : String(e) }
+    return { data: null, error: describeFetchError(e, url) }
   }
 }
 
 async function sbDelete(table: string, filter: string): Promise<{ error: string | null }> {
   const { base, key } = getSupaConfig()
   if (!base || !key) return { error: "Supabase não configurado" }
+  const url = base + "/rest/v1/" + table + "?" + filter
   try {
-    const res = await fetch(base + "/rest/v1/" + table + "?" + filter, {
+    const res = await fetch(url, {
       method: "DELETE",
       headers: {
         "apikey":        key,
@@ -86,15 +109,16 @@ async function sbDelete(table: string, filter: string): Promise<{ error: string 
     }
     return { error: null }
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : String(e) }
+    return { error: describeFetchError(e, url) }
   }
 }
 
 async function sbUpdate(table: string, filter: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
   const { base, key } = getSupaConfig()
   if (!base || !key) return { error: "Supabase não configurado" }
+  const url = base + "/rest/v1/" + table + "?" + filter
   try {
-    const res = await fetch(base + "/rest/v1/" + table + "?" + filter, {
+    const res = await fetch(url, {
       method: "PATCH",
       headers: {
         "Content-Type":  "application/json",
@@ -110,15 +134,16 @@ async function sbUpdate(table: string, filter: string, row: Record<string, unkno
     }
     return { error: null }
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : String(e) }
+    return { error: describeFetchError(e, url) }
   }
 }
 
 async function sbUpsert(table: string, row: Record<string, unknown>): Promise<{ error: string | null }> {
   const { base, key } = getSupaConfig()
   if (!base || !key) return { error: "Supabase não configurado" }
+  const url = base + "/rest/v1/" + table
   try {
-    const res = await fetch(base + "/rest/v1/" + table, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type":  "application/json",
@@ -134,7 +159,7 @@ async function sbUpsert(table: string, row: Record<string, unknown>): Promise<{ 
     }
     return { error: null }
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : String(e) }
+    return { error: describeFetchError(e, url) }
   }
 }
 
@@ -660,11 +685,7 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
     }
 
     // Debug: log what URL and key are being used
-    const { base: debugBase, key: debugKey } = (() => {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
-      return { base: url, key }
-    })()
+    const { base: debugBase, key: debugKey } = getSupaConfig()
     console.log("[Guild Create] SUPABASE_URL:", debugBase || "EMPTY!")
     console.log("[Guild Create] ANON_KEY set:", debugKey ? "YES (" + debugKey.slice(0,20) + "...)" : "NO — EMPTY!")
 
@@ -674,6 +695,10 @@ function CreateGuildModal({ onClose, onCreate, coins, setCoins, playerId, player
     }
     if (!debugKey) {
       setError("NEXT_PUBLIC_SUPABASE_ANON_KEY está vazio. Verifique as variáveis de ambiente na Vercel e faça um novo deploy.")
+      setSaving(false); return
+    }
+    if (!/^https?:\/\//i.test(debugBase)) {
+      setError("NEXT_PUBLIC_SUPABASE_URL inválida: \"" + debugBase + "\" (precisa começar com https://). Corrija na Vercel e faça novo deploy.")
       setSaving(false); return
     }
 
