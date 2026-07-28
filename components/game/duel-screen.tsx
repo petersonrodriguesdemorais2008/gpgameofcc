@@ -423,7 +423,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
   "cauda-de-dragao-assada": {
     id: "cauda-de-dragao-assada",
-    name: "Cauda de Dragão Assada",
+    name: "Cauda de Drag��o Assada",
     requiresTargets: false,
     canActivate: (context) => {
       const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
@@ -7521,7 +7521,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const tagged = top5.map((card, idx) => ({ card, idx }))
 
     if (top5.length <= 2) {
-      // Fewer than 3 cards — all go to hand
+      // Fewer than 3 cards ��� all go to hand
       setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, ...top5],
@@ -9740,9 +9740,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         {/* Resumo da fase do evento: oponente e dificuldade já estão definidos */}
         {eventDuel && (
           <div className="flex flex-wrap items-center justify-center gap-2 pt-4 text-xs font-semibold">
-            <span className="rounded-full border border-fuchsia-400/40 bg-fuchsia-500/15 px-3 py-1 text-fuchsia-200">
-              Treinamento Especial
-            </span>
             <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-slate-300">
               Deck do oponente: {EVENT_ELEMENT_LABELS[eventDuel.elementGroup]}
             </span>
