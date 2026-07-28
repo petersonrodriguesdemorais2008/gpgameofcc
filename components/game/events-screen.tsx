@@ -44,7 +44,14 @@ export interface EventDef {
   bannerAlt: string
   accent: string
   accentDark: string
+  /** Nome do elemento em português, exibido na interface. */
   element: string
+  /**
+   * Grupo de elemento canônico das cartas (mesma normalização do deck builder).
+   * Define o deck que o oponente usa: o treinamento de água enfrenta um deck
+   * Aquos, o de trevas um deck Darkus, e assim por diante.
+   */
+  elementGroup: "aquos" | "ventus" | "fire" | "darkness" | "lightness"
 }
 
 /** As 3 fases são iguais em todos os eventos: fácil, médio e difícil. */
@@ -88,6 +95,7 @@ export const EVENTS: EventDef[] = [
     accent: "#22c55e",
     accentDark: "#15803d",
     element: "Vento",
+    elementGroup: "ventus",
   },
   {
     id: "vastidao-roxa",
@@ -98,6 +106,7 @@ export const EVENTS: EventDef[] = [
     accent: "#a855f7",
     accentDark: "#6b21a8",
     element: "Trevas",
+    elementGroup: "darkness",
   },
   {
     id: "tsunami-azul",
@@ -108,6 +117,7 @@ export const EVENTS: EventDef[] = [
     accent: "#3b82f6",
     accentDark: "#1d4ed8",
     element: "Água",
+    elementGroup: "aquos",
   },
   {
     id: "incendio-vermelho",
@@ -118,6 +128,7 @@ export const EVENTS: EventDef[] = [
     accent: "#ef4444",
     accentDark: "#b91c1c",
     element: "Fogo",
+    elementGroup: "fire",
   },
   {
     id: "feixe-amarelo",
@@ -128,6 +139,7 @@ export const EVENTS: EventDef[] = [
     accent: "#f59e0b",
     accentDark: "#b45309",
     element: "Luz",
+    elementGroup: "lightness",
   },
 ]
 
@@ -510,6 +522,9 @@ interface EventsScreenProps {
   /** Dispara o duelo da fase; o wrapper salva a pendência e navega pro duelo. */
   onStartBattle: (payload: {
     eventId: string
+    eventName: string
+    /** Grupo de elemento do deck que o oponente vai usar. */
+    elementGroup: EventDef["elementGroup"]
     difficulty: EventDifficulty
     lp: number
     gacha: number
@@ -549,8 +564,12 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
   }, [])
 
   const handleStart = useCallback((eventId: string, stage: EventStageDef) => {
+    const ev = EVENTS.find((e) => e.id === eventId)
+    if (!ev) return
     onStartBattle({
       eventId,
+      eventName: ev.name,
+      elementGroup: ev.elementGroup,
       difficulty: stage.difficulty,
       lp: stage.lp,
       gacha: stage.gacha,

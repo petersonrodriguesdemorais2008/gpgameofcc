@@ -351,20 +351,20 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           onClick={() => selectWith("CAMPANHA", "#a855f7", () => onSelect("story"))}
         />
 
-        {/* ── DOIS TICKETS MÉDIOS: VS BOT / PVP ── */}
+        {/* ── DOIS TICKETS MÉDIOS: EVENTOS / PVP ── */}
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
           <TicketPanel
-            accent="#3b82f6"
-            accentDark="#1d4ed8"
-            image="/images/modes/mode-vsbot.png"
-            imageAlt="Arte do modo VS BOT: duelista holográfico de energia azul"
-            name="VS BOT"
-            tag="TREINO · PVE"
-            description="Enfrente a IA e aperfeiçoe suas estratégias sem pressão."
-            icon={<Bot className="h-5 w-5" />}
+            accent="#e879f9"
+            accentDark="#86198f"
+            image="/images/events/ciclone-verde.png"
+            imageAlt="Banner dos eventos: treinamentos especiais com duelistas elementais"
+            name="EVENTOS"
+            tag="TREINAMENTO ESPECIAL"
+            description="Encare os treinamentos elementais em 3 fases e farme Gacha Coins e Gear Coins."
+            icon={<Sparkles className="h-5 w-5" />}
             delay={90}
             visible={contentVisible}
-            onClick={() => selectWith("VS BOT", "#3b82f6", () => onSelect("duel-bot"))}
+            onClick={() => selectWith("EVENTOS", "#e879f9", () => onSelect("events"))}
           />
           <TicketPanel
             accent="#f97316"
@@ -381,20 +381,20 @@ export default function GameModeScreen({ onSelect, onBack }: GameModeScreenProps
           />
         </div>
 
-        {/* ── TICKET: EVENTOS (aba de treinamentos especiais) ── */}
+        {/* ── TICKET: VS BOT (treino contra a IA) ── */}
         <div className="mt-5">
           <TicketPanel
-            accent="#e879f9"
-            accentDark="#86198f"
-            image="/images/events/ciclone-verde.png"
-            imageAlt="Banner dos eventos: treinamentos especiais com duelistas elementais"
-            name="EVENTOS"
-            tag="TREINAMENTO ESPECIAL"
-            description="Encare os treinamentos elementais em 3 fases e farme Gacha Coins e Gear Coins."
-            icon={<Sparkles className="h-5 w-5" />}
+            accent="#3b82f6"
+            accentDark="#1d4ed8"
+            image="/images/modes/mode-vsbot.png"
+            imageAlt="Arte do modo VS BOT: duelista holográfico de energia azul"
+            name="VS BOT"
+            tag="TREINO · PVE"
+            description="Enfrente a IA e aperfeiçoe suas estratégias sem pressão."
+            icon={<Bot className="h-5 w-5" />}
             delay={220}
             visible={contentVisible}
-            onClick={() => selectWith("EVENTOS", "#e879f9", () => onSelect("events"))}
+            onClick={() => selectWith("VS BOT", "#3b82f6", () => onSelect("duel-bot"))}
           />
         </div>
 

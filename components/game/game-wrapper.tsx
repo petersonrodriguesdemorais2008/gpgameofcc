@@ -417,10 +417,11 @@ export function GameWrapper() {
       {currentScreen === "events" && (
         <EventsScreen
           onBack={() => navigateTo("menu")}
-          onStartBattle={({ eventId, difficulty, lp, gacha, gear }) => {
-            // Guarda a pendência para o duelo aplicar o drop e a tela marcar progresso
+          onStartBattle={({ eventId, eventName, elementGroup, difficulty, lp, gacha, gear }) => {
+            // Guarda a pendência: o duelo lê o elemento pra montar o deck do
+            // oponente, a dificuldade da IA e o drop da fase.
             localStorage.setItem(EVENT_BATTLE_KEY,
-              JSON.stringify({ eventId, difficulty, lp, gacha, gear, won: false }))
+              JSON.stringify({ eventId, eventName, elementGroup, difficulty, lp, gacha, gear, won: false }))
             setDuelMode("bot")
             navigateTo("duel-bot")
           }}

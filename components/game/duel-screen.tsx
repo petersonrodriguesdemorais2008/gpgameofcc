@@ -189,6 +189,15 @@ interface Particle {
   rv?: number
 }
 
+/** Nome exibido do deck elemental do oponente nos duelos de evento. */
+const EVENT_ELEMENT_LABELS: Record<string, string> = {
+  aquos: "Aquos (Água)",
+  ventus: "Ventus (Vento)",
+  fire: "Pyrus (Fogo)",
+  darkness: "Darkus (Trevas)",
+  lightness: "Haos (Luz)",
+}
+
 // Define interface for Deck with image and playmat image
 interface DeckWithImages extends GameDeck {
   image?: string
@@ -3121,7 +3130,7 @@ class OnlineDuelErrorBoundary extends Component<
 export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, startingLP: propStartingLP, roguelikeConfig, catastropheMode }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
-  const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId } = useGame()
+  const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId, allCards } = useGame()
   // Ensure decks are typed correctly if they have playmat images
   const typedDecks = decks as DeckWithImages[]
   const [selectedDeck, setSelectedDeck] = useState<DeckWithImages | null>(null)
@@ -3431,6 +3440,78 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [pendingPlayerDeck, setPendingPlayerDeck] = useState<DeckWithImages | null>(null)
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [selectedBotDeck, setSelectedBotDeck] = useState<DeckWithImages | null>(null)
+
+  // ── Event Mode (Treinamento Especial) ─────────────────────────────────────
+  // Nos duelos de evento a dificuldade e o deck do oponente já vêm definidos
+  // pela fase escolhida: o jogador só seleciona o próprio deck e o duelo começa.
+  // O deck do bot é montado com cartas do elemento do treinamento (o evento de
+  // água enfrenta um deck Aquos, o de trevas um deck Darkus, etc.).
+  interface EventDuelInfo {
+    eventName: string
+    elementGroup: 'aquos' | 'ventus' | 'fire' | 'darkness' | 'lightness'
+    difficulty: Difficulty
+  }
+  const [eventDuel] = useState<EventDuelInfo | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem('gpgame_event_battle_pending')
+      if (!raw) return null
+      const p = JSON.parse(raw)
+      if (!p?.elementGroup || !p?.difficulty) return null
+      return { eventName: p.eventName ?? 'Treinamento Especial', elementGroup: p.elementGroup, difficulty: p.difficulty }
+    } catch { return null }
+  })
+
+  /** Normaliza o elemento de uma carta para o mesmo grupo usado no deck builder. */
+  const normalizeElementGroup = (el: string): string => {
+    const e = (el || '').toLowerCase().trim()
+    if (['fire', 'pyrus'].includes(e)) return 'fire'
+    if (['aquos', 'aquo', 'water'].includes(e)) return 'aquos'
+    if (['haos', 'light', 'lightness'].includes(e)) return 'lightness'
+    if (['darkus', 'darkness', 'dark'].includes(e)) return 'darkness'
+    if (['ventus', 'wind'].includes(e)) return 'ventus'
+    return e
+  }
+
+  /**
+   * Monta o deck temático do oponente do evento (20 cartas + 2 TAP) usando
+   * apenas cartas do elemento do treinamento. Cartas neutras (Void) entram
+   * como reserva caso o elemento não tenha cartas suficientes.
+   */
+  const buildEventBotDeck = (info: EventDuelInfo): DeckWithImages => {
+    const pool = (allCards ?? []) as GameCard[]
+    const elemental = pool.filter((c) => normalizeElementGroup(c.element) === info.elementGroup)
+    const neutral = pool.filter((c) => normalizeElementGroup(c.element) === 'void')
+
+    // Prioriza unidades e tropas pra garantir que o bot tenha o que evocar,
+    // depois completa com o suporte do mesmo elemento.
+    const isFieldUnit = (c: GameCard) =>
+      c.type === 'unit' || c.type === 'troops' || c.type === 'ultimateElemental'
+    const units = elemental.filter(isFieldUnit)
+    const support = elemental.filter((c) => !isFieldUnit(c))
+
+    const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5)
+    const picked: GameCard[] = [
+      ...shuffle(units).slice(0, 13),
+      ...shuffle(support).slice(0, 7),
+    ]
+    // Se o elemento tiver poucas cartas, repete as disponíveis (até 4 cópias,
+    // mesmo limite do construtor de decks) e por fim recorre às neutras.
+    const fallback = shuffle([...elemental, ...elemental, ...elemental, ...neutral])
+    let fi = 0
+    while (picked.length < 20 && fi < fallback.length) picked.push(fallback[fi++])
+
+    const withUniqueIds = picked.slice(0, 20).map((c, i) => ({ ...c, id: `${c.id}-ev-${i}` }))
+    const tapPool = shuffle(elemental.filter(isFieldUnit))
+    const tapCards = tapPool.slice(0, 2).map((c, i) => ({ ...c, id: `${c.id}-evtap-${i}` }))
+
+    return {
+      id: `event-bot-${info.elementGroup}`,
+      name: `Deck ${info.eventName}`,
+      cards: withUniqueIds,
+      tapCards: tapCards.length > 0 ? tapCards : undefined,
+    } as DeckWithImages
+  }
 
   // Keep roguelikeConfig in a ref so startGame always reads the latest values
   const roguelikeConfigRef = useRef(roguelikeConfig)
@@ -9650,12 +9731,29 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <ArrowLeft className="mr-2 h-5 w-5" />
             {setupStep === 'selectDeck' ? t("back") : "Voltar"}
           </Button>
-          <h1 className="text-2xl font-bold text-white">{mode === "bot" ? t("vsBot") : t("vsPlayer")}</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {eventDuel ? eventDuel.eventName : mode === "bot" ? t("vsBot") : t("vsPlayer")}
+          </h1>
           <div className="w-20" />
         </div>
 
-        {/* Progress indicator (bot mode only) */}
-        {mode === 'bot' && (
+        {/* Resumo da fase do evento: oponente e dificuldade já estão definidos */}
+        {eventDuel && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4 text-xs font-semibold">
+            <span className="rounded-full border border-fuchsia-400/40 bg-fuchsia-500/15 px-3 py-1 text-fuchsia-200">
+              Treinamento Especial
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-slate-300">
+              Deck do oponente: {EVENT_ELEMENT_LABELS[eventDuel.elementGroup]}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-slate-300">
+              Dificuldade: {eventDuel.difficulty === 'easy' ? 'Fácil' : eventDuel.difficulty === 'medium' ? 'Médio' : 'Difícil'}
+            </span>
+          </div>
+        )}
+
+        {/* Progress indicator (bot mode only, fora dos eventos) */}
+        {mode === 'bot' && !eventDuel && (
           <div className="flex justify-center gap-3 pt-4 pb-2">
             {['Seu Deck','Dificuldade','Deck Inimigo'].map((label,i) => {
               const stepIdx = setupStep === 'selectDeck' ? 0 : setupStep === 'selectDifficulty' ? 1 : 2
@@ -9677,7 +9775,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <>
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white mb-1">Escolha seu Deck</h2>
-                <p className="text-slate-400 text-sm">Selecione o deck que você vai usar no duelo</p>
+                <p className="text-slate-400 text-sm">
+                  {eventDuel
+                    ? "Selecione seu deck para começar o duelo do treinamento"
+                    : "Selecione o deck que você vai usar no duelo"}
+                </p>
               </div>
               {typedDecks.length === 0 ? (
                 <p className="text-slate-400">Crie um deck primeiro no menu Construir Deck!</p>
@@ -9688,7 +9790,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       key={deck.id}
                       onClick={() => {
                         setPendingPlayerDeck(deck)
-                        if (mode === 'bot') setSetupStep('selectDifficulty')
+                        // Duelo de evento: dificuldade e deck do oponente já
+                        // definidos pela fase → começa imediatamente.
+                        if (eventDuel) {
+                          const botDeck = buildEventBotDeck(eventDuel)
+                          setSelectedBotDeck(botDeck)
+                          startGame(deck, botDeck, eventDuel.difficulty)
+                        } else if (mode === 'bot') setSetupStep('selectDifficulty')
                         else setOnlinePhase("lobby")
                       }}
                       className="w-full h-16 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 border border-slate-500/30 hover:border-cyan-500/40 transition-all text-left group"
@@ -12422,7 +12530,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE BLACKOUT (Apagão Dimensional) ──────────────────── */}
+      {/* ─── CATASTROPHE BLACKOUT (Apagão Dimensional) ───────────���──────── */}
       {catBlackout && (
         <div className="absolute z-[1000] pointer-events-none"
           style={{
