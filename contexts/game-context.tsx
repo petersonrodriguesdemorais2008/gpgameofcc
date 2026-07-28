@@ -2802,7 +2802,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("gpgame_gacha_coins")
     localStorage.removeItem("gacha_coins")
     localStorage.removeItem("coins")
-    localStorage.removeItem("gearcoins")
+    localStorage.removeItem("gearperks-gearcoins")
+    localStorage.removeItem("gear-perks-gearcoins")
     localStorage.removeItem("gpgame_menu_prev_gearcoins")
       localStorage.removeItem("gpgame_profile")
 
