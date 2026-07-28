@@ -2129,7 +2129,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ──────────────────────────
+        // ── PHASE 2: SETTLE  spring 360ms ──────────────��───────────
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -8336,6 +8336,77 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
+
+            // ── TRAP CHECK: ESCUDO DE MANA ────────────────────────────────────
+            // Ativa quando o bot usa Magic Function ou Item Function de dano.
+            // Efeito: anula o efeito da carta e a destrói (manda para o cemitério
+            // do bot sem aplicar o efeito).
+            const isMagicOrItem = card.type === "magic" || (card as any).category === "Item Funcion Card"
+            const trapEscudoIdx = playerField.functionZone.findIndex(
+              f => f?.id === "escudo-de-mana" && f.isFaceDown
+            )
+            if (isMagicOrItem && trapEscudoIdx !== -1) {
+              // Reveal trap, negate the bot card, both go to graveyard
+              setPlayerField((pf) => {
+                const nz = [...pf.functionZone]
+                if (nz[trapEscudoIdx]) nz[trapEscudoIdx] = { ...nz[trapEscudoIdx]!, isFaceDown: false }
+                setTimeout(() => {
+                  setPlayerField((pf2) => {
+                    const nz2 = [...pf2.functionZone]
+                    nz2[trapEscudoIdx] = null
+                    return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, nz[trapEscudoIdx]!] }
+                  })
+                }, 800)
+                return { ...pf, functionZone: nz }
+              })
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
+              setTimeout(() => showEffectFeedback(`Armadilha Ativada! Escudo de Mana anulou ${card.name}!`, "success"), 200)
+              continue
+            }
+
+            // ── TRAP CHECK: BRINCADEIRA DE MAU GOSTO ─────────────────────────
+            // Ativa quando o bot usa uma Action Function.
+            // Efeito: anula a carta, uma unidade do bot perde -2DP (ou bot revela mão).
+            const isActionFunc = card.type === "action" || (card as any).category === "Action Funcion Card"
+            const trapBrincIdx = playerField.functionZone.findIndex(
+              f => f?.id === "brincadeira-de-mau-gosto" && f.isFaceDown
+            )
+            if (isActionFunc && trapBrincIdx !== -1) {
+              setPlayerField((pf) => {
+                const nz = [...pf.functionZone]
+                if (nz[trapBrincIdx]) nz[trapBrincIdx] = { ...nz[trapBrincIdx]!, isFaceDown: false }
+                setTimeout(() => {
+                  setPlayerField((pf2) => {
+                    const nz2 = [...pf2.functionZone]
+                    nz2[trapBrincIdx] = null
+                    return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, nz[trapBrincIdx]!] }
+                  })
+                }, 800)
+                return { ...pf, functionZone: nz }
+              })
+              // Negate the card
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
+              // Apply -2DP to a bot unit, or reveal hand if no units
+              const botUnitIdx = prev.unitZone.findIndex(u => u !== null)
+              if (botUnitIdx !== -1) {
+                setEnemyField(e => {
+                  const uz = [...e.unitZone]
+                  const u = uz[botUnitIdx]
+                  if (!u) return e
+                  const newDp = Math.max(0, (u.currentDp ?? u.dp) - 2)
+                  uz[botUnitIdx] = { ...u, currentDp: newDp }
+                  return { ...e, unitZone: uz as (FieldCard | null)[] }
+                })
+                setTimeout(() => showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name} e causou -2DP em ${prev.unitZone[botUnitIdx]?.name || "unidade"}!`, "success"), 200)
+              } else {
+                // No bot units — reveal hand (show feedback)
+                setTimeout(() => showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name}! Oponente não tem unidades — mão revelada!`, "success"), 200)
+              }
+              continue
+            }
+
             const effect = getFunctionCardEffect(card)
             if (effect) {
               const effectContext: EffectContext = {
@@ -8604,6 +8675,40 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
               const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.7
 
+              // ── TRAP CHECK: PORTÃO DA FORTALEZA ──────────────────────────────
+              // Quando o bot declara ataque em uma unidade do jogador, verificar se
+              // "Portão da Fortaleza" está face-down na função zone do JOGADOR.
+              // Efeito: nega o ataque, devolve a unidade atacante à mão do bot,
+              // e o jogador descarta 1 carta da mão para ativar.
+              const trapPortaoPlayerIdx = playerField.functionZone.findIndex(
+                f => f?.id === "portao-da-fortaleza" && f.isFaceDown
+              )
+              if (trapPortaoPlayerIdx !== -1) {
+                // Reveal trap
+                setPlayerField(prev => {
+                  const nz = [...prev.functionZone]
+                  if (nz[trapPortaoPlayerIdx]) nz[trapPortaoPlayerIdx] = { ...nz[trapPortaoPlayerIdx]!, isFaceDown: false }
+                  // Discard one random card from hand as cost
+                  const newHand = [...prev.hand]
+                  if (newHand.length > 0) {
+                    const discardIdx = Math.floor(Math.random() * newHand.length)
+                    const discarded = newHand.splice(discardIdx, 1)[0]
+                    return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
+                  }
+                  return { ...prev, functionZone: nz }
+                })
+                // Return the attacking unit back to bot's hand
+                setEnemyField(prev => {
+                  const u2 = [...prev.unitZone]
+                  const returned = u2[unitIdx]
+                  u2[unitIdx] = null
+                  return { ...prev, unitZone: u2 as (FieldCard | null)[], hand: returned ? [...prev.hand, returned] : prev.hand }
+                })
+                showEffectFeedback(`Armadilha Ativada! Portão da Fortaleza negou o ataque de ${unit.name} e o devolveu à mão do oponente!`, "success")
+                setTimeout(() => fireBotAttack(rest), 600)
+                return
+              }
+
               showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
 
               // Fire projectile — ONLY this unit
@@ -8629,6 +8734,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               // Apply damage after projectile lands, then chain next attack
               setTimeout(() => {
+                // ── TRAP CHECK: CONTRA-ATAQUE SURPRESA ───────────────────────
+                // Quando a unidade do jogador recebe dano de batalha, o bot recebe
+                // o mesmo valor de dano nos LP.
+                const trapContraIdx = playerField.functionZone.findIndex(
+                  f => f?.id === "contra-ataque-surpresa" && f.isFaceDown
+                )
+                if (trapContraIdx !== -1) {
+                  setPlayerField(prev => {
+                    const nz = [...prev.functionZone]
+                    if (nz[trapContraIdx]) nz[trapContraIdx] = { ...nz[trapContraIdx]!, isFaceDown: false }
+                    return { ...prev, functionZone: nz }
+                  })
+                  setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
+                  showEffectFeedback(`Armadilha Ativada! Contra-Ataque Surpresa! ${unit.name} causou ${attackerDp} de dano de volta ao oponente!`, "success")
+                }
+
                 setPlayerField((prevPlayer) => {
                   const newUnitZone = [...prevPlayer.unitZone]
                   const newGrave = [...prevPlayer.graveyard]
@@ -8640,7 +8761,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
                     // ── Equipped Ultimate Gear is destroyed together with its unit ──
                     const __ugDestroyIdx = newUltimateZonesP.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
-                  if (__ugDestroyIdx !== -1) {
+                    if (__ugDestroyIdx !== -1) {
                       newGrave.push(newUltimateZonesP[__ugDestroyIdx]!)
                       showEffectFeedback(`${newUltimateZonesP[__ugDestroyIdx]!.name} foi destruída junto com ${defender.name}!`, "error")
                       newUltimateZonesP[__ugDestroyIdx] = null
@@ -8678,11 +8799,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }, PROJECTILE_DURATION)
 
             } else {
-              // Direct attack
+              // Direct attack — no player units on field
               const directEl = document.querySelector("[data-direct-attack]")
               const directRect = directEl?.getBoundingClientRect()
               const targetX = directRect ? directRect.left + directRect.width / 2 : window.innerWidth / 2
               const targetY = directRect ? directRect.top + directRect.height / 2 : window.innerHeight * 0.8
+
+              // ── TRAP CHECK: PORTÃO DA FORTALEZA (ataque direto) ──────────────
+              // Portão também ativa em ataque direto — nega e devolve à mão
+              const trapPortaoDirectIdx = playerField.functionZone.findIndex(
+                f => f?.id === "portao-da-fortaleza" && f.isFaceDown
+              )
+              if (trapPortaoDirectIdx !== -1) {
+                setPlayerField(prev => {
+                  const nz = [...prev.functionZone]
+                  if (nz[trapPortaoDirectIdx]) nz[trapPortaoDirectIdx] = { ...nz[trapPortaoDirectIdx]!, isFaceDown: false }
+                  const newHand = [...prev.hand]
+                  if (newHand.length > 0) {
+                    const discardIdx = Math.floor(Math.random() * newHand.length)
+                    const discarded = newHand.splice(discardIdx, 1)[0]
+                    return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
+                  }
+                  return { ...prev, functionZone: nz }
+                })
+                setEnemyField(prev => {
+                  const u2 = [...prev.unitZone]
+                  const returned = u2[unitIdx]
+                  u2[unitIdx] = null
+                  return { ...prev, unitZone: u2 as (FieldCard | null)[], hand: returned ? [...prev.hand, returned] : prev.hand }
+                })
+                showEffectFeedback(`Armadilha Ativada! Portão da Fortaleza negou o ataque direto de ${unit.name}!`, "success")
+                setTimeout(() => fireBotAttack(rest), 600)
+                return
+              }
 
               showEffectFeedback(`${unit.name} ataque direto!`, "warning")
 
@@ -8696,7 +8845,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }])
 
               setTimeout(() => {
-                setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - (unit.currentDp ?? unit.dp)) }))
+                const directDmg = unit.currentDp ?? unit.dp
+                setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - directDmg) }))
                 setEnemyField(prev => {
                   const u2 = [...prev.unitZone]
                   if (u2[unitIdx]) u2[unitIdx] = { ...u2[unitIdx]!, hasAttacked: true }
