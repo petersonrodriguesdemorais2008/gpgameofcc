@@ -139,6 +139,7 @@ interface FunctionZoneCard extends GameCard {
   isFaceDown?: boolean
   isRevealing?: boolean
   isSettingDown?: boolean
+  turnSet?: number
 }
 
 interface FieldState {
@@ -3823,7 +3824,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const newHand = prev.hand.filter((_, i) => i !== handIdx)
               const newFZ   = [...prev.functionZone]
               const slot    = newFZ.findIndex(s => s === null)
-              if (slot !== -1) newFZ[slot] = { ...card, isFaceDown: true }
+              if (slot !== -1) newFZ[slot] = { ...card, isFaceDown: true, turnSet: turnRef2.current }
               return { ...prev, hand: newHand, functionZone: newFZ }
             })
             showEffectFeedback(`AUTO: Trap posicionada!`, "info")
@@ -5104,7 +5105,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       if (cardToPlace.type === "trap") {
         setPlayerField((prev) => {
           const newFunctionZone = [...prev.functionZone]
-          newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: true }
+          newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: true, turnSet: turn }
           return {
             ...prev,
             functionZone: newFunctionZone,
@@ -5964,9 +5965,27 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // sitting in the function zone, reusing the same FUNCTION_CARD_EFFECTS
   // registry already used when playing Action/Magic cards from hand.
   const activateTrapCard = (slotIndex: number) => {
-    // Traps can be activated during any phase — the trap's own canActivate enforces timing
+    // Traps cannot be activated the same turn they were set — must wait until
+    // at least the opponent's turn (standard "trap" timing, prevents same-turn abuse)
     const card = playerField.functionZone[slotIndex]
     if (!card || !card.isFaceDown) return
+
+    if (card.turnSet !== undefined && turn <= card.turnSet) {
+      showEffectFeedback(`${card.name}: não pode ser ativada no turno em que foi colocada!`, "error")
+      return
+    }
+
+    // These 4 traps have real logic hardcoded into specific combat/effect checks
+    // elsewhere (they trigger automatically while face-down, at the right moment).
+    // Their registry entry is a stub just so getFunctionCardEffect doesn't return
+    // null — activating them here would flip them face-up (via the fake "success")
+    // without ever running their real effect, and would break the automatic
+    // trigger since that also requires isFaceDown to still be true.
+    const AUTO_ONLY_TRAPS = ["portao-da-fortaleza", "contra-ataque-surpresa", "escudo-de-mana", "brincadeira-de-mau-gosto"]
+    if (AUTO_ONLY_TRAPS.includes(getBaseCardId(card.id))) {
+      showEffectFeedback(`${card.name}: essa armadilha ativa sozinha na hora certa, não precisa ativar manualmente!`, "info")
+      return
+    }
 
     const effect = getFunctionCardEffect(card)
     if (!effect) {
@@ -8330,7 +8349,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else if (isTrap) {
             const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
-              newFunctionZone[emptySlot] = { ...card, isFaceDown: true }
+              newFunctionZone[emptySlot] = { ...card, isFaceDown: true, turnSet: turn }
               newHand = newHand.filter((_, idx) => idx !== i)
               logEvent("play", `Oponente posicionou uma carta virada para baixo`, { name: card.name })
             }
@@ -9064,7 +9083,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           setEnemyField(prev => {
             const nFZ = [...prev.functionZone]
             nFZ[action.data.index] = action.data.isTrap
-              ? { ...card, isFaceDown: true, isSettingDown: true }
+              ? { ...card, isFaceDown: true, isSettingDown: true, turnSet: turn }
               : card
             return {
               ...prev, functionZone: nFZ,
