@@ -1949,7 +1949,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className={"fixed bottom-0 left-0 right-0 z-40 gp-nav-wrap" + (mounted ? " gp-anim-nav" : " gp-pre-mount")}>
         <div className="gp-nav-line" />
 
-        {/* Nav normal: Social / Missões / Guilda / Loja / Perfil — SEM Jogar, Coleção, Gacha */}
+        {/* Nav normal: Social / Missões / Loja / Perfil — SEM Jogar, Coleção, Gacha */}
         <div className="flex items-center justify-around px-4 pb-5 pt-2">
           <button className="gp-ni relative" onClick={() => onNavigate("friends")}>
             <Users className="w-7 h-7" />
@@ -1963,9 +1963,6 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
           </button>
           <button className="gp-ni" onClick={() => onNavigate("missions")}>
             <Target className="w-7 h-7" /><span className="gp-ni-lbl">Missões</span>
-          </button>
-          <button className="gp-ni" onClick={() => onNavigate("guild")}>
-            <Users className="w-7 h-7" /><span className="gp-ni-lbl">Guilda</span>
           </button>
           <button className="gp-ni" onClick={() => onNavigate("shop" as GameScreen)}>
             <span className="w-7 h-7 flex items-center justify-center text-2xl leading-none">🛒</span>
