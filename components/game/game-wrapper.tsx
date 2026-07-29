@@ -18,7 +18,6 @@ import MissionsScreen from "./missions-screen"
 import GearPassScreen from "./gear-pass-screen"
 import StoryModeScreen from "./story-mode-screen"
 import EventsScreen, { EVENT_BATTLE_KEY } from "./events-screen"
-import GuildScreen from "./guild-screen"
 import MasterScreen from "./master-screen"
 import LoadingScreen from "./loading-screen"
 import { trackDailyLogin } from "@/lib/mission-tracker"
@@ -169,6 +168,14 @@ export function GameWrapper() {
   }, [playerProfile.hasCompletedSetup, playerProfile.id])
 
   const navigateTo = (screen: GameScreen) => {
+    // Mecânica de guilda removida. O botão "Guilda" em main-menu.tsx (arquivo
+    // protegido, não editar) ainda chama onNavigate("guild") — em vez de deixar
+    // o jogador numa tela em branco, isso vira um no-op seguro: a navegação nem
+    // chega a acontecer, o jogador simplesmente continua no menu.
+    if (screen === "guild") {
+      return
+    }
+
     // Resume menu music when returning to menu from duel
     if (screen === "menu") {
       resumeMenuMusic()
@@ -412,7 +419,6 @@ export function GameWrapper() {
       {currentScreen === "profile" && <ProfileScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "missions" && <MissionsScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "gear-pass" && <GearPassScreen onBack={() => navigateTo("menu")} />}
-      {currentScreen === "guild" && <GuildScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "masters" && <MasterScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "events" && (
         <EventsScreen
