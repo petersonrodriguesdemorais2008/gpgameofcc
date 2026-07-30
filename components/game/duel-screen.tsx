@@ -1270,28 +1270,85 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     name: "Contra-Ataque Surpresa",
     requiresTargets: false,
     canActivate: () => ({ canActivate: true }),
-    resolve: () => ({ success: true, message: "Armadilha ativada: Contra-Ataque Surpresa!" }),
+    resolve: (context) => {
+      const strongest = context.enemyField.unitZone.reduce((max: FieldCard | null, u) =>
+        u && (!max || (u.currentDp ?? u.dp) > (max.currentDp ?? max.dp)) ? u : max, null)
+      const dmg = strongest ? (strongest.currentDp ?? strongest.dp) : 3
+      context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - dmg) }))
+      return { success: true, message: `Armadilha Ativada! Contra-Ataque Surpresa causou ${dmg} de dano direto ao oponente!` }
+    },
   },
   "escudo-de-mana": {
     id: "escudo-de-mana",
     name: "Escudo de Mana",
     requiresTargets: false,
     canActivate: () => ({ canActivate: true }),
-    resolve: () => ({ success: true, message: "Armadilha ativada: Escudo de Mana!" }),
+    resolve: (context) => {
+      const idx = context.enemyField.functionZone.findIndex((f) => f !== null)
+      if (idx === -1) {
+        return { success: true, message: "Escudo de Mana ativado, mas o oponente não tinha carta de função em campo pra destruir." }
+      }
+      context.setEnemyField((prev) => {
+        const nz = [...prev.functionZone]
+        const destroyed = nz[idx]
+        nz[idx] = null
+        return { ...prev, functionZone: nz, graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
+      })
+      return { success: true, message: "Armadilha Ativada! Escudo de Mana destruiu uma carta de função do oponente!" }
+    },
   },
   "portao-da-fortaleza": {
     id: "portao-da-fortaleza",
     name: "Portão da Fortaleza",
     requiresTargets: false,
     canActivate: () => ({ canActivate: true }),
-    resolve: () => ({ success: true, message: "Armadilha ativada: Portão da Fortaleza!" }),
+    resolve: (context) => {
+      const enemyUnitIndices = context.enemyField.unitZone
+        .map((u, i) => (u ? i : -1))
+        .filter((i) => i !== -1)
+      if (enemyUnitIndices.length === 0) {
+        return { success: true, message: "Portão da Fortaleza ativado, mas o oponente não tinha unidade em campo." }
+      }
+      const idx = enemyUnitIndices[Math.floor(Math.random() * enemyUnitIndices.length)]
+      context.setEnemyField((prev) => {
+        const nz = [...prev.unitZone]
+        const returned = nz[idx]
+        nz[idx] = null
+        const newHand = returned ? [...prev.hand, returned] : [...prev.hand]
+        if (newHand.length > 1) {
+          const discardIdx = Math.floor(Math.random() * (newHand.length - 1))
+          const discarded = newHand.splice(discardIdx, 1)[0]
+          return { ...prev, unitZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
+        }
+        return { ...prev, unitZone: nz, hand: newHand }
+      })
+      return { success: true, message: "Armadilha Ativada! Portão da Fortaleza devolveu uma unidade inimiga pra mão e descartou uma carta!" }
+    },
   },
   "brincadeira-de-mau-gosto": {
     id: "brincadeira-de-mau-gosto",
     name: "Brincadeira de Mau Gosto",
     requiresTargets: false,
     canActivate: () => ({ canActivate: true }),
-    resolve: () => ({ success: true, message: "Armadilha ativada: Brincadeira de Mau Gosto!" }),
+    resolve: (context) => {
+      const enemyUnitIndices = context.enemyField.unitZone
+        .map((u, i) => (u ? i : -1))
+        .filter((i) => i !== -1)
+      if (enemyUnitIndices.length === 0) {
+        return { success: true, message: "Brincadeira de Mau Gosto ativada, mas o oponente não tinha unidade em campo." }
+      }
+      const idx = enemyUnitIndices[Math.floor(Math.random() * enemyUnitIndices.length)]
+      context.setEnemyField((prev) => {
+        const nz = [...prev.unitZone]
+        const u = nz[idx]
+        if (u) {
+          const newDp = Math.max(0, (u.currentDp ?? u.dp) - 2)
+          nz[idx] = { ...u, currentDp: newDp }
+        }
+        return { ...prev, unitZone: nz }
+      })
+      return { success: true, message: "Armadilha Ativada! Brincadeira de Mau Gosto aplicou -2DP numa unidade inimiga!" }
+    },
   },
 
   // ========== NEW ACTION FUNCTION CARDS ==========
@@ -5965,27 +6022,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // sitting in the function zone, reusing the same FUNCTION_CARD_EFFECTS
   // registry already used when playing Action/Magic cards from hand.
   const activateTrapCard = (slotIndex: number) => {
-    // Traps cannot be activated the same turn they were set — must wait until
-    // at least the opponent's turn (standard "trap" timing, prevents same-turn abuse)
     const card = playerField.functionZone[slotIndex]
     if (!card || !card.isFaceDown) return
-
-    if (card.turnSet !== undefined && turn <= card.turnSet) {
-      showEffectFeedback(`${card.name}: não pode ser ativada no turno em que foi colocada!`, "error")
-      return
-    }
-
-    // These 4 traps have real logic hardcoded into specific combat/effect checks
-    // elsewhere (they trigger automatically while face-down, at the right moment).
-    // Their registry entry is a stub just so getFunctionCardEffect doesn't return
-    // null — activating them here would flip them face-up (via the fake "success")
-    // without ever running their real effect, and would break the automatic
-    // trigger since that also requires isFaceDown to still be true.
-    const AUTO_ONLY_TRAPS = ["portao-da-fortaleza", "contra-ataque-surpresa", "escudo-de-mana", "brincadeira-de-mau-gosto"]
-    if (AUTO_ONLY_TRAPS.includes(getBaseCardId(card.id))) {
-      showEffectFeedback(`${card.name}: essa armadilha ativa sozinha na hora certa, não precisa ativar manualmente!`, "info")
-      return
-    }
 
     const effect = getFunctionCardEffect(card)
     if (!effect) {
