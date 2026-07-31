@@ -11147,8 +11147,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {!card && isDropTarget && (
                           <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
                         )}
-                        {/* Manual activation button for face-down Trap cards — shown always so player can react during enemy attacks */}
-                        {card && card.isFaceDown && card.type === "trap" && (
+                        {/* Manual activation button for face-down Trap cards — only shown when
+                            this specific trap's canActivate() currently allows it */}
+                        {card && card.isFaceDown && card.type === "trap" && (() => {
+                          const effect = getFunctionCardEffect(card)
+                          if (!effect) return false
+                          const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField })
+                          return check.canActivate
+                        })() && (
                           <button
                             onClick={(e) => { e.stopPropagation(); activateTrapCard(i) }}
                             className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 animate-pulse whitespace-nowrap z-10"
