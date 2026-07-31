@@ -1476,16 +1476,23 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                       const rColor = rc==="LR" ? "#f97316" : rc==="UR" ? "#38bdf8" : "#a855f7"
                       const rColor2 = rc==="LR" ? "#ef4444" : rc==="UR" ? "#6366f1" : "#7c3aed"
                       const rLabel = rc==="LR" ? "LENDÁRIO" : rc==="UR" ? "ULTRA RARO" : "SUPER RARO"
-                      // Bumped up from the previous 190/240/300 pass, with a wider gap for LR
-                      // specifically so the top tier reads as a clear step above UR, not just
-                      // a slightly-bigger version of it.
-                      const ringSize = rc==="LR" ? 360 : rc==="UR" ? 260 : 200
-                      const ringSize2 = rc==="LR" ? 265 : rc==="UR" ? 190 : 148
                       // Matches holdDur in the card-reveal useEffect exactly, so anything
-                      // animated for the FULL hold window (the beam below) always completes
-                      // its own fade-out before this overlay unmounts, instead of being cut
-                      // off mid-animation and yanked from the DOM still visible.
+                      // animated for the FULL hold window (the rift below) always completes
+                      // its own settle before the overlay unmounts, instead of being cut off
+                      // mid-animation and yanked from the DOM still visible.
                       const holdMs = rc==="LR" ? 900 : rc==="UR" ? 650 : 420
+                      // Jagged horizontal tear silhouette — a deliberately different visual
+                      // language from the earlier "spinning magic circle" motif: instead of
+                      // smooth circles, reality itself tears open along a jagged horizontal
+                      // seam and light spills out. Percentages are relative to the shape's
+                      // own bounding box, so scaling it via transform:scaleY keeps the jagged
+                      // pattern proportional as it "tears open" wider.
+                      const RIFT_CLIP = "polygon(0% 42%,6% 35%,13% 47%,19% 30%,26% 45%,33% 28%,40% 43%,47% 25%,54% 44%,61% 31%,68% 41%,75% 24%,82% 39%,89% 33%,100% 40%,100% 60%,89% 67%,82% 58%,75% 71%,68% 56%,61% 68%,54% 53%,47% 70%,40% 55%,33% 69%,26% 52%,19% 66%,13% 50%,6% 62%,0% 58%)"
+                      const riftHeight = rc==="LR" ? 260 : rc==="UR" ? 200 : 150
+                      const shardPositions = [
+                        {x:-32,y:-10,rot:-25},{x:-16,y:14,rot:18},{x:4,y:-16,rot:-32},
+                        {x:22,y:12,rot:28},{x:36,y:-8,rot:-18},{x:10,y:18,rot:38},
+                      ]
                       return (
                         <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none overflow-hidden">
                           {/* Dark scrim FIRST — dims the background so the color pops without washing the whole screen white */}
@@ -1501,7 +1508,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                               animation: `raritySpecialFlash ${rc==="LR"?"0.32s":rc==="UR"?"0.26s":"0.2s"} ease-out forwards`,
                             }}/>
                           )}
-                          {/* Hold — ambient wash, magic circle rings, drifting motes, vertical beam, label */}
+                          {/* Hold — ambient wash, reality rift, drifting motes, label badge */}
                           {rarityRevealPhase === "hold" && (
                             <>
                               <div className="absolute inset-0" style={{
@@ -1509,16 +1516,15 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 animation: "rarityHoldPulse 0.6s ease-in-out infinite",
                               }}/>
 
-                              {/* NEW: Screen-edge color vignette — frames the whole viewport in the
+                              {/* Screen-edge color vignette — frames the whole viewport in the
                                   rarity's color so the reveal feels "color-graded" rather than a
-                                  small effect floating alone in the middle of the screen. Scales
-                                  up with rarity, giving LR a noticeably heavier frame than SR. */}
+                                  small effect floating alone in the middle of the screen. */}
                               <div className="absolute inset-0" style={{
                                 boxShadow: `inset 0 0 ${rc==="LR"?160:rc==="UR"?115:82}px ${rc==="LR"?42:rc==="UR"?26:16}px ${rColor}75`,
                                 animation: "rarityHoldPulse 0.6s ease-in-out infinite",
                               }}/>
 
-                              {/* NEW: Impact punch — a one-shot scale-flash marking the beat where
+                              {/* Impact punch — a one-shot scale-flash marking the beat where
                                   flash gives way to hold, so the transition lands with a "thunk"
                                   instead of just a background-color cut. */}
                               <div className="absolute inset-0" style={{
@@ -1526,30 +1532,42 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 animation: "holdImpactPunch 0.35s ease-out forwards",
                               }}/>
 
-                              {/* Vertical light beam descending from top — cinematic "chosen one" spotlight */}
-                              <div className="absolute top-0 left-1/2 -translate-x-1/2" style={{
-                                width: rc==="LR"?"170px":rc==="UR"?"120px":"82px",
-                                height:"100%",
-                                background:`linear-gradient(to bottom, ${rColor}00, ${rColor}45 15%, ${rColor}28 60%, ${rColor}00 100%)`,
-                                animation:`lightBeamDescend ${holdMs}ms ease-out forwards`,
-                                mixBlendMode:"screen",
+                              {/* NEW: soft light bleed behind the rift, before the jagged tear
+                                  itself appears on top of it */}
+                              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 pointer-events-none" style={{
+                                height: `${riftHeight*1.35}px`,
+                                background: `radial-gradient(ellipse at center, ${rColor}38 0%, transparent 72%)`,
+                                filter: "blur(18px)",
+                                animation: `riftGlowBleed ${holdMs}ms ease-out forwards`,
                               }}/>
 
-                              {/* Magic circle — SVG dashed rings rotating opposite directions (arcane, not a mask/gradient hack) */}
-                              <svg className="absolute" width={ringSize} height={ringSize} viewBox="0 0 100 100"
-                                style={{opacity:0.65, animation:`magicRingSpin ${rc==="LR"?"6s":rc==="UR"?"7.5s":"9s"} linear infinite`,
-                                  filter:`drop-shadow(0 0 4px ${rColor}a0)`}}>
-                                <circle cx="50" cy="50" r="46" fill="none" stroke={rColor} strokeWidth="2.4" strokeDasharray="7 5" />
-                              </svg>
-                              <svg className="absolute" width={ringSize2} height={ringSize2} viewBox="0 0 100 100"
-                                style={{opacity:0.5, animation:`magicRingSpinRev ${rc==="LR"?"4.5s":rc==="UR"?"5.5s":"6.5s"} linear infinite`}}>
-                                <circle cx="50" cy="50" r="46" fill="none" stroke={rColor} strokeWidth="1.8" strokeDasharray="4 4" />
-                              </svg>
-                              {/* Thin static outer ring for definition */}
-                              <div className="absolute rounded-full pointer-events-none" style={{
-                                width: ringSize+24, height: ringSize+24,
-                                border:`1px solid ${rColor}60`,
+                              {/* NEW: Reality Rift — a jagged horizontal tear that rips open
+                                  across the screen, replacing the earlier spinning-circle motif
+                                  entirely. Light in the rarity's color pours through the gap. */}
+                              <div className="absolute left-0 right-0 top-1/2" style={{
+                                height: `${riftHeight}px`,
+                                marginTop: -riftHeight/2,
+                                background: `linear-gradient(180deg, transparent, white 10%, ${rColor} 32%, ${rColor2} 50%, ${rColor} 68%, white 90%, transparent)`,
+                                clipPath: RIFT_CLIP,
+                                boxShadow: `0 0 46px 14px ${rColor}90`,
+                                animation: `riftTearOpen ${holdMs}ms cubic-bezier(0.16,0.9,0.25,1) forwards`,
+                                transformOrigin: "center",
                               }}/>
+
+                              {/* NEW: angular shard accents framing the rift — static light
+                                  streaks (not flying particles), reinforcing the "shattering"
+                                  read without any radial-burst motion. */}
+                              {shardPositions.map((p,i) => (
+                                <div key={i} className="absolute" style={({
+                                  left: `${50+p.x}%`, top: `calc(50% + ${p.y}px)`,
+                                  width: "3px", height: rc==="LR"?"46px":rc==="UR"?"36px":"28px",
+                                  background: `linear-gradient(to bottom, transparent, white, ${rColor}, transparent)`,
+                                  opacity: 0,
+                                  animation: `riftShardAppear 0.4s ease-out ${0.1+i*0.05}s forwards`,
+                                  boxShadow: `0 0 8px 2px ${rColor}80`,
+                                  "--r": `${p.rot}deg`,
+                                }) as React.CSSProperties}/>
+                              ))}
 
                               {/* Drifting light motes — float upward slowly with gentle sway, NOT exploding outward */}
                               {[...Array(rc==="LR"?16:rc==="UR"?11:8)].map((_,i)=>{
@@ -1568,8 +1586,8 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
                                 } as React.CSSProperties}/>
                               })}
 
-                              {/* Label — now on an ornate rank-badge plate instead of bare floating
-                                  text, for "trophy reveal" weight that matches the rarity tier. */}
+                              {/* Label — an ornate rank-badge plate for "trophy reveal" weight
+                                  that matches the rarity tier. */}
                               <div className="relative z-10 text-center" style={{animation:"raritySpecialLabel 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
                                 {/* Impact stamp — quick localized burst right as the badge lands */}
                                 <div className="absolute left-1/2 top-1/2 rounded-full pointer-events-none" style={{
@@ -2161,28 +2179,30 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           50%  { opacity: 0.85; }
           100% { opacity: 0.55; }
         }
-        /* ── NEW: Magic-circle rarity reveal (beam, rotating rings, drifting motes) --
-           lightBeamDescend's duration is bound to holdMs (see holdMs below) so the
-           grow-hold-fade cycle always finishes before the overlay unmounts. It
-           previously used a fixed 0.6s and ended at opacity 0.8 via "forwards"
-           regardless of rarity -- for SR (hold window only 420ms) the overlay was
-           torn down mid-grow, yanking a still-bright beam off-screen abruptly;
-           for every rarity the tail end never actually faded out, so whatever was
-           left on screen the instant the overlay unmounted was still ~80% opaque.
-           Both issues are what read as "the beam appears bugged". */
-        @keyframes lightBeamDescend {
-          0%   { opacity: 0;    transform: translateX(-50%) scaleY(0.3); transform-origin: top; }
-          25%  { opacity: 0.9;  transform: translateX(-50%) scaleY(1);   transform-origin: top; }
-          70%  { opacity: 0.75; transform: translateX(-50%) scaleY(1);   transform-origin: top; }
-          100% { opacity: 0;    transform: translateX(-50%) scaleY(1);   transform-origin: top; }
+        /* ── NEW: Reality Rift reveal (jagged tear, glow bleed, shard accents,
+           drifting motes) — replaces the earlier spinning-circle + vertical-
+           beam motif with a deliberately different visual language: a torn
+           horizontal seam that rips open and spills colored light, instead of
+           smooth rotating rings. riftTearOpen's duration is bound to holdMs
+           so the tear-open-and-settle cycle always finishes before the
+           overlay unmounts. */
+        @keyframes riftTearOpen {
+          0%   { transform: scaleY(0.02); opacity: 0; }
+          15%  { opacity: 1; }
+          42%  { transform: scaleY(1.12); }
+          58%  { transform: scaleY(0.92); }
+          75%  { transform: scaleY(1.04); }
+          100% { transform: scaleY(1); opacity: 1; }
         }
-        @keyframes magicRingSpin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
+        @keyframes riftGlowBleed {
+          0%   { opacity: 0; transform: scaleY(0.3); }
+          30%  { opacity: 1; }
+          100% { opacity: 0.7; transform: scaleY(1); }
         }
-        @keyframes magicRingSpinRev {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(-360deg); }
+        @keyframes riftShardAppear {
+          0%   { opacity: 0; transform: translate(-50%,-50%) rotate(var(--r,0deg)) scale(0.3); }
+          40%  { opacity: 1; transform: translate(-50%,-50%) rotate(var(--r,0deg)) scale(1.15); }
+          100% { opacity: 0.75; transform: translate(-50%,-50%) rotate(var(--r,0deg)) scale(1); }
         }
         @keyframes moteDrift {
           0%   { opacity: 0; transform: translate(0, 0); }
