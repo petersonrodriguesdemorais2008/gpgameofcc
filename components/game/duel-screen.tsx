@@ -1282,7 +1282,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     id: "escudo-de-mana",
     name: "Escudo de Mana",
     requiresTargets: false,
-    canActivate: () => ({ canActivate: true }),
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.functionZone.some((f) => f !== null)
+      if (!hasTarget) return { canActivate: false, reason: "Oponente não tem carta de função em campo" }
+      return { canActivate: true }
+    },
     resolve: (context) => {
       const idx = context.enemyField.functionZone.findIndex((f) => f !== null)
       if (idx === -1) {
@@ -1301,7 +1305,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     id: "portao-da-fortaleza",
     name: "Portão da Fortaleza",
     requiresTargets: false,
-    canActivate: () => ({ canActivate: true }),
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo" }
+      return { canActivate: true }
+    },
     resolve: (context) => {
       const enemyUnitIndices = context.enemyField.unitZone
         .map((u, i) => (u ? i : -1))
@@ -1329,7 +1337,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     id: "brincadeira-de-mau-gosto",
     name: "Brincadeira de Mau Gosto",
     requiresTargets: false,
-    canActivate: () => ({ canActivate: true }),
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo" }
+      return { canActivate: true }
+    },
     resolve: (context) => {
       const enemyUnitIndices = context.enemyField.unitZone
         .map((u, i) => (u ? i : -1))
@@ -6038,12 +6050,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return
     }
 
-    // Reveal the trap face-up immediately for visual feedback
+    // Reveal the trap face-up immediately for visual feedback, with a brief
+    // "activation flash" animation (isRevealing) that clears itself after
     setPlayerField((prev) => {
       const nz = [...prev.functionZone]
-      if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isFaceDown: false }
+      if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isFaceDown: false, isRevealing: true }
       return { ...prev, functionZone: nz }
     })
+    setTimeout(() => {
+      setPlayerField((prev) => {
+        const nz = [...prev.functionZone]
+        if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isRevealing: false }
+        return { ...prev, functionZone: nz }
+      })
+    }, 900)
 
     const result = effect.resolve(effectContext)
 
@@ -10583,6 +10603,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transform: rotateX(17deg);
           transform-origin: 50% 88%;
         }
+
+        /* ── Animação de ativação de armadilha: flash vermelho + pulso rápido ── */
+        @keyframes trap-flash {
+          0%   { box-shadow: 0 0 0px 0px rgba(239,68,68,0); transform: scale(1); filter: brightness(1); }
+          25%  { box-shadow: 0 0 18px 6px rgba(239,68,68,0.85); transform: scale(1.12); filter: brightness(1.5); }
+          55%  { box-shadow: 0 0 10px 3px rgba(239,68,68,0.55); transform: scale(1.05); filter: brightness(1.2); }
+          100% { box-shadow: 0 0 0px 0px rgba(239,68,68,0); transform: scale(1); filter: brightness(1); }
+        }
+        .trap-activating {
+          animation: trap-flash 0.9s ease-out 1;
+          z-index: 30;
+        }
       `}</style>
 
       {/* Main Battle Area — arena centered between side panels */}
@@ -11091,7 +11123,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         key={i}
                         data-player-func-slot={i}
                         onClick={() => selectedHandCard !== null && placeCard("function", i)}
-                        className={`w-[69px] h-24 border-2 flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-visible ${card ? "gp-card-float" : ""} ${dropTarget?.type === "function" && dropTarget?.index === i && !card
+                        className={`w-[69px] h-24 border-2 flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-visible ${card ? "gp-card-float" : ""} ${(card as FunctionZoneCard)?.isRevealing ? "trap-activating" : ""} ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 scale-115 ring-2 ring-green-400/60 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 scale-105"
