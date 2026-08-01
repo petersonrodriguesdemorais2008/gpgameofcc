@@ -1336,20 +1336,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
   "brincadeira-de-mau-gosto": {
     id: "brincadeira-de-mau-gosto",
     name: "Brincadeira de Mau Gosto",
-    requiresTargets: false,
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
     canActivate: (context) => {
       const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo" }
       return { canActivate: true }
     },
-    resolve: (context) => {
-      const enemyUnitIndices = context.enemyField.unitZone
-        .map((u, i) => (u ? i : -1))
-        .filter((i) => i !== -1)
-      if (enemyUnitIndices.length === 0) {
-        return { success: true, message: "Brincadeira de Mau Gosto ativada, mas o oponente não tinha unidade em campo." }
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined || !context.enemyField.unitZone[idx]) {
+        return { success: false, message: "Escolha uma unidade inimiga válida." }
       }
-      const idx = enemyUnitIndices[Math.floor(Math.random() * enemyUnitIndices.length)]
       context.setEnemyField((prev) => {
         const nz = [...prev.unitZone]
         const u = nz[idx]
@@ -1359,7 +1357,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         }
         return { ...prev, unitZone: nz }
       })
-      return { success: true, message: "Armadilha Ativada! Brincadeira de Mau Gosto aplicou -2DP numa unidade inimiga!" }
+      return { success: true, message: "Armadilha Ativada! Brincadeira de Mau Gosto aplicou -2DP na unidade escolhida!" }
     },
   },
 
@@ -3493,6 +3491,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
   const [normalSummonUsed, setNormalSummonUsed] = useState(false)  // 1 normal unit summon per turn
   const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
+  const [trapTargetMode, setTrapTargetMode] = useState<{ active: boolean; slotIndex: number | null }>({ active: false, slotIndex: null })
   const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
 
   // ── Fehnon double-attack & bonus DP flags ──
@@ -6050,6 +6049,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return
     }
 
+    // If the trap's effect needs a target the player picks, enter selection
+    // mode instead of resolving right away — resolveTrapEffect runs once a
+    // target is chosen (see the enemy-unit click handler).
+    if (effect.requiresTargets) {
+      setTrapTargetMode({ active: true, slotIndex })
+      showEffectFeedback(`${card.name}: escolha a unidade inimiga alvo!`, "info")
+      return
+    }
+
+    resolveTrapEffect(slotIndex)
+  }
+
+  const resolveTrapEffect = (slotIndex: number, targets?: EffectTargets) => {
+    const card = playerField.functionZone[slotIndex]
+    if (!card) return
+    const effect = getFunctionCardEffect(card)
+    if (!effect) return
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField }
+
     // Reveal the trap face-up immediately for visual feedback, with a brief
     // "activation flash" animation (isRevealing) that clears itself after
     setPlayerField((prev) => {
@@ -6065,7 +6083,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       })
     }, 900)
 
-    const result = effect.resolve(effectContext)
+    const result = effect.resolve(effectContext, targets)
 
     if (result.success && result.message === "PEDRA_AFIAR_SEARCH") {
       const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
@@ -10879,13 +10897,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           handleJulgamentoDivinoTarget(i)
                         } else if (julgamentoVazioTargetMode.active && card) {
                           handleJulgamentoVazioTarget("unit", i)
+                        } else if (trapTargetMode.active && card && trapTargetMode.slotIndex !== null) {
+                          resolveTrapEffect(trapTargetMode.slotIndex, { enemyUnitIndices: [i] })
+                          setTrapTargetMode({ active: false, slotIndex: null })
                         } else if (itemSelectionMode.active && itemSelectionMode.step === "selectEnemy") {
                           handleEnemyUnitSelect(i)
                         }
                       }}
                       className={`w-[69px] h-24 border-2 relative overflow-visible transition-all duration-150 ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
                         (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
-                        (julgamentoVazioTargetMode.active && card)
+                        (julgamentoVazioTargetMode.active && card) ||
+                        (trapTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer ring-2 ring-yellow-400/60 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
                           ? "border-red-400 ring-2 ring-red-400/80 scale-105"
@@ -12543,6 +12565,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <p className="text-violet-200/80 text-xs mb-2">Selecione 1 carta inimiga para destruir</p>
           <button
             onClick={() => { setJulgamentoVazioTargetMode({ active: false, attackerIndex: null }); animationInProgressRef.current = false }}
+            className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
+          >
+            CANCELAR
+          </button>
+        </div>
+      )}
+
+      {trapTargetMode.active && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-red-500/60 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-red-300 font-bold text-sm mb-1">
+            {trapTargetMode.slotIndex !== null ? playerField.functionZone[trapTargetMode.slotIndex]?.name : "Armadilha"}
+          </h3>
+          <p className="text-red-200/80 text-xs mb-2">Selecione 1 unidade inimiga como alvo</p>
+          <button
+            onClick={() => setTrapTargetMode({ active: false, slotIndex: null })}
             className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
           >
             CANCELAR
