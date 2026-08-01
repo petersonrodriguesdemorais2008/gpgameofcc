@@ -10622,16 +10622,37 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transform-origin: 50% 88%;
         }
 
-        /* ── Animação de ativação de armadilha: flash vermelho + pulso rápido ── */
+        /* ── Animação de ativação de armadilha: impacto + onda de choque + brilho duplo ── */
         @keyframes trap-flash {
-          0%   { box-shadow: 0 0 0px 0px rgba(239,68,68,0); transform: scale(1); filter: brightness(1); }
-          25%  { box-shadow: 0 0 18px 6px rgba(239,68,68,0.85); transform: scale(1.12); filter: brightness(1.5); }
-          55%  { box-shadow: 0 0 10px 3px rgba(239,68,68,0.55); transform: scale(1.05); filter: brightness(1.2); }
-          100% { box-shadow: 0 0 0px 0px rgba(239,68,68,0); transform: scale(1); filter: brightness(1); }
+          0%   { transform: scale(1) rotate(0deg); filter: brightness(1) saturate(1); }
+          10%  { transform: scale(1.2) rotate(-3deg); filter: brightness(2.4) saturate(1.6); }
+          22%  { transform: scale(1.1) rotate(3deg); filter: brightness(1.7) saturate(1.4); }
+          38%  { transform: scale(1.15) rotate(-1.5deg); filter: brightness(1.45); }
+          58%  { transform: scale(1.06) rotate(0.5deg); filter: brightness(1.15); }
+          100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+        }
+        @keyframes trap-glow-pulse {
+          0%   { box-shadow: 0 0 0px 0px rgba(239,68,68,0), 0 0 0px 0px rgba(239,68,68,0); }
+          12%  { box-shadow: 0 0 34px 10px rgba(239,68,68,0.95), 0 0 64px 22px rgba(239,68,68,0.45); }
+          40%  { box-shadow: 0 0 18px 6px rgba(239,68,68,0.65), 0 0 34px 12px rgba(239,68,68,0.25); }
+          100% { box-shadow: 0 0 0px 0px rgba(239,68,68,0), 0 0 0px 0px rgba(239,68,68,0); }
+        }
+        @keyframes trap-shockwave {
+          0%   { opacity: 0.95; transform: scale(0.4); border-width: 5px; }
+          70%  { opacity: 0.35; }
+          100% { opacity: 0; transform: scale(2.8); border-width: 1px; }
         }
         .trap-activating {
-          animation: trap-flash 0.9s ease-out 1;
+          animation: trap-flash 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) 1, trap-glow-pulse 1.1s ease-out 1;
           z-index: 30;
+        }
+        .trap-activating::after {
+          content: "";
+          position: absolute;
+          inset: -3px;
+          border: 4px solid rgba(239,68,68,0.9);
+          pointer-events: none;
+          animation: trap-shockwave 0.75s ease-out 1;
         }
       `}</style>
 
