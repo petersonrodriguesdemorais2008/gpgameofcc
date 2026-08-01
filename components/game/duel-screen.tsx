@@ -11232,7 +11232,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         })() && (
                           <button
                             onClick={(e) => { e.stopPropagation(); activateTrapCard(i) }}
-                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 animate-pulse whitespace-nowrap z-10"
+                            className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 animate-pulse whitespace-nowrap z-10"
                             style={{ border: "1px solid rgba(239,68,68,0.6)" }}
                           >
                             ⚡ TRAP
