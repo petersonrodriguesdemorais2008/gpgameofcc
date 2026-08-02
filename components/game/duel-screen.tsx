@@ -2650,7 +2650,7 @@ function StarfieldCanvas() {
       ctx.restore()
     }
 
-    /* ─����� Runtime particles ── */
+    /* ─������ Runtime particles ── */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -3194,6 +3194,89 @@ class OnlineDuelErrorBoundary extends Component<
     }
     return this.props.children
   }
+}
+
+// ── FX de ativação de armadilha: correntes que prendem a carta ─────────────
+// Faixa de corrente em SVG: elos alternados (elo aberto / elo de perfil)
+function ChainStrap({ links = 9 }: { links?: number }) {
+  return (
+    <svg viewBox="0 0 140 16" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="chainMetal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f1f5f9" />
+          <stop offset="45%" stopColor="#94a3b8" />
+          <stop offset="100%" stopColor="#475569" />
+        </linearGradient>
+      </defs>
+      {Array.from({ length: links }).map((_, i) =>
+        i % 2 === 0 ? (
+          <ellipse key={i} cx={10 + i * 15} cy={8} rx={8.5} ry={5.5}
+            fill="none" stroke="url(#chainMetal)" strokeWidth={3} />
+        ) : (
+          <rect key={i} x={7 + i * 15} y={4.5} width={6} height={7} rx={3}
+            fill="url(#chainMetal)" stroke="#1e293b" strokeWidth={0.6} />
+        )
+      )}
+    </svg>
+  )
+}
+
+// Overlay renderizado dentro do slot da trap enquanto isRevealing=true.
+// Fases: correntes cravam (0–0.2s) → apertam/tremem (0.2–1s) → estilhaçam (1–1.5s)
+function TrapChainsFX() {
+  const chains = [
+    { rot: -32, top: "22%", delay: 0 },
+    { rot: 28, top: "50%", delay: 0.06 },
+    { rot: -18, top: "76%", delay: 0.12 },
+    { rot: 62, top: "38%", delay: 0.09 },
+  ]
+  const particles = Array.from({ length: 12 }).map((_, i) => ({
+    px: Math.cos((i / 12) * Math.PI * 2) * (46 + (i % 3) * 16),
+    py: Math.sin((i / 12) * Math.PI * 2) * (46 + (i % 3) * 16),
+    delay: 0.98 + (i % 4) * 0.045,
+    size: 3 + (i % 3) * 2,
+    hue: i % 3 === 0 ? "#fbbf24" : i % 3 === 1 ? "#ef4444" : "#f8fafc",
+  }))
+  return (
+    <div className="absolute pointer-events-none" style={{ inset: "-26px", zIndex: 40 }} aria-hidden="true">
+      {/* Selo arcano girando atrás da carta */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="trap-seal" />
+      </div>
+      {/* Anéis de onda de choque */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="trap-ring" style={{ animationDelay: "0s" }} />
+        <div className="trap-ring trap-ring--gold" style={{ animationDelay: "0.14s" }} />
+        <div className="trap-ring" style={{ animationDelay: "1.02s" }} />
+      </div>
+      {/* Correntes que se prendem em volta da carta */}
+      {chains.map((c, i) => (
+        <div key={i} className="trap-chain-wrap"
+          style={{
+            top: c.top,
+            ["--ch-rot" as any]: `${c.rot}deg`,
+            ["--ch-delay" as any]: `${c.delay}s`,
+            ["--ch-dir" as any]: i % 2 === 0 ? "1" : "-1",
+          }}>
+          <ChainStrap />
+        </div>
+      ))}
+      {/* Faíscas / brasas no estilhaço final */}
+      {particles.map((p, i) => (
+        <div key={i} className="trap-spark"
+          style={{
+            ["--sp-x" as any]: `${p.px}px`,
+            ["--sp-y" as any]: `${p.py}px`,
+            width: p.size, height: p.size,
+            background: p.hue,
+            boxShadow: `0 0 8px 2px ${p.hue}`,
+            animationDelay: `${p.delay}s`,
+          }} />
+      ))}
+      {/* Clarão central no momento da quebra */}
+      <div className="trap-burst" />
+    </div>
+  )
 }
 
 export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, startingLP: propStartingLP, roguelikeConfig, catastropheMode }: DuelScreenProps) {
@@ -6145,7 +6228,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isRevealing: false }
         return { ...prev, functionZone: nz }
       })
-    }, 900)
+    }, 1600)
 
     const result = effect.resolve(effectContext, targets)
 
@@ -8496,7 +8579,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
 
-            // ── TRAP CHECK: ESCUDO DE MANA ────────���───────────���───────────────
+            // ── TRAP CHECK: ESCUDO DE MANA ──────���─���───────────���───────────────
             // Ativa quando o bot usa Magic Function ou Item Function de dano.
             // Efeito: anula o efeito da carta e a destrói (manda para o cemitério
             // do bot sem aplicar o efeito).
@@ -10474,22 +10557,36 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       </div>
 
-      {/* ─�� FIXED LEFT PANEL: Card Detail ── */}
+      {/* ── FIXED LEFT PANEL: Card Detail ── */}
       <div className="fixed left-0 z-30 flex flex-col"
-        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"rgba(4,3,13,0.96)",borderRight:"1px solid rgba(6,182,212,0.18)",backdropFilter:"blur(12px)"}}>
-        <div className="px-2 py-2 border-b border-white/[0.07] flex-shrink-0"
-          style={{background:"rgba(6,182,212,0.06)"}}>
-          <p className="text-cyan-400 text-[10px] font-black tracking-widest uppercase">🃏 Detalhe</p>
+        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"linear-gradient(180deg, rgba(4,10,18,0.97) 0%, rgba(4,3,13,0.97) 40%, rgba(4,3,13,0.97) 100%)",borderRight:"1px solid rgba(6,182,212,0.22)",backdropFilter:"blur(12px)",boxShadow:"inset -18px 0 24px -22px rgba(6,182,212,0.35)"}}>
+        <div className="flex-shrink-0">
+          <div className="px-2.5 py-2 flex items-center gap-1.5"
+            style={{background:"linear-gradient(90deg, rgba(6,182,212,0.14), rgba(6,182,212,0.03))"}}>
+            <span className="flex items-center justify-center w-4 h-4 rounded"
+              style={{background:"rgba(6,182,212,0.18)",border:"1px solid rgba(34,211,238,0.4)",boxShadow:"0 0 8px rgba(34,211,238,0.35)"}}>
+              <span className="text-cyan-300 text-[9px] leading-none">◈</span>
+            </span>
+            <p className="text-cyan-300 text-[10px] font-black tracking-[0.25em] uppercase"
+              style={{textShadow:"0 0 10px rgba(34,211,238,0.5)"}}>Detalhe</p>
+          </div>
+          <div className="panel-header-line text-cyan-400/80" />
         </div>
         {(inspectedCard || logCardDetail) ? (() => {
           const card: any = inspectedCard || logCardDetail
           return (
-            <div className="flex-1 overflow-y-auto p-2 space-y-2" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
-              <div className="relative w-full overflow-hidden rounded-lg border border-white/10" style={{aspectRatio:"3/4"}}>
+            <div key={card.name} className="panel-detail-in flex-1 overflow-y-auto p-2 space-y-2" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+              <div className="detail-card-frame relative w-full overflow-hidden rounded-lg"
+                style={{aspectRatio:"3/4",border:"1px solid rgba(34,211,238,0.28)",boxShadow:"0 0 18px -4px rgba(34,211,238,0.35), 0 8px 16px -8px rgba(0,0,0,0.8)",background:"radial-gradient(ellipse at 50% 30%, rgba(6,182,212,0.08), transparent 70%)"}}>
+                <span className="detail-corner detail-corner--tl" />
+                <span className="detail-corner detail-corner--tr" />
+                <span className="detail-corner detail-corner--bl" />
+                <span className="detail-corner detail-corner--br" />
                 <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
               </div>
               <div className="space-y-2 px-0.5">
-                <p className="text-white font-black text-sm leading-tight">{card.name}</p>
+                <p className="font-black text-sm leading-tight text-balance"
+                  style={{background:"linear-gradient(180deg, #ffffff 30%, #a5f3fc 100%)",WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent",textShadow:"0 2px 8px rgba(6,182,212,0.25)"}}>{card.name}</p>
                 {card.dp > 0 && (
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`font-black text-sm px-2 py-0.5 rounded-md ${
@@ -10564,9 +10661,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             </div>
           )
         })() : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-2 p-3 opacity-25">
-            <div className="w-10 h-14 rounded border-2 border-dashed border-slate-700" />
-            <p className="text-slate-600 text-[9px] text-center leading-relaxed">Toque e segure<br/>uma carta</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-2.5 p-3">
+            <div className="relative w-11 h-15 rounded-md border-2 border-dashed opacity-35"
+              style={{borderColor:"rgba(34,211,238,0.5)",height:60,boxShadow:"0 0 14px -2px rgba(34,211,238,0.25)"}}>
+              <span className="absolute inset-0 flex items-center justify-center text-cyan-500/50 text-base">◈</span>
+            </div>
+            <p className="text-slate-500 text-[9px] text-center leading-relaxed opacity-60">Toque e segure<br/>uma carta para<br/>ver os detalhes</p>
           </div>
         )}
       </div>
@@ -10576,77 +10676,102 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         style={{
           top:"56px", bottom:"0",
           width: isLogOpen ? "clamp(140px,17vw,230px)" : "36px",
-          background:"rgba(4,3,13,0.96)",
-          borderLeft:"1px solid rgba(251,191,36,0.15)",
+          background:"linear-gradient(180deg, rgba(14,9,3,0.97) 0%, rgba(4,3,13,0.97) 40%, rgba(4,3,13,0.97) 100%)",
+          borderLeft:"1px solid rgba(251,191,36,0.22)",
           backdropFilter:"blur(12px)",
+          boxShadow:"inset 18px 0 24px -22px rgba(251,191,36,0.3)",
           transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
           overflow:"hidden",
         }}>
-        <div className="px-2 py-2 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0"
-          style={{background:"rgba(251,191,36,0.05)", minWidth: isLogOpen ? 0 : 36}}>
-          {isLogOpen && (
-            <p className="text-amber-400 text-[10px] font-black tracking-widest uppercase whitespace-nowrap">📋 Log</p>
-          )}
-          <div className="flex items-center gap-1.5 ml-auto">
+        <div className="flex-shrink-0">
+          <div className="px-2.5 py-2 flex items-center justify-between gap-1.5"
+            style={{background:"linear-gradient(270deg, rgba(251,191,36,0.13), rgba(251,191,36,0.03))", minWidth: isLogOpen ? 0 : 36}}>
             {isLogOpen && (
-              <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ${isPlayerTurn?"bg-blue-600/40 text-blue-200 border border-blue-400/40":"bg-red-700/40 text-red-200 border border-red-500/40"}`}>
-                T{turn}·{isPlayerTurn?"Você":"Bot"}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="flex items-center justify-center w-4 h-4 rounded flex-shrink-0"
+                  style={{background:"rgba(251,191,36,0.16)",border:"1px solid rgba(251,191,36,0.4)",boxShadow:"0 0 8px rgba(251,191,36,0.3)"}}>
+                  <span className="text-amber-300 text-[9px] leading-none">✦</span>
+                </span>
+                <p className="text-amber-300 text-[10px] font-black tracking-[0.25em] uppercase whitespace-nowrap"
+                  style={{textShadow:"0 0 10px rgba(251,191,36,0.45)"}}>Log</p>
               </div>
             )}
-            <button
-              onClick={() => setIsLogOpen(v => !v)}
-              className="w-5 h-5 rounded flex items-center justify-center text-amber-400 hover:text-amber-200 hover:bg-amber-400/10 transition-colors flex-shrink-0"
-              title={isLogOpen ? "Recolher log" : "Expandir log"}
-            >
-              <span className="text-[10px] font-black" style={{transition:"transform 0.28s", display:"inline-block", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
-            </button>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {isLogOpen && (
+                <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ${isPlayerTurn?"bg-blue-600/40 text-blue-200 border border-blue-400/40":"bg-red-700/40 text-red-200 border border-red-500/40"}`}
+                  style={{boxShadow: isPlayerTurn ? "0 0 10px rgba(59,130,246,0.35)" : "0 0 10px rgba(239,68,68,0.35)"}}>
+                  T{turn}·{isPlayerTurn?"Você":"Bot"}
+                </div>
+              )}
+              <button
+                onClick={() => setIsLogOpen(v => !v)}
+                className="w-5 h-5 rounded flex items-center justify-center text-amber-400 hover:text-amber-200 hover:bg-amber-400/10 transition-colors flex-shrink-0"
+                title={isLogOpen ? "Recolher log" : "Expandir log"}
+              >
+                <span className="text-[10px] font-black" style={{transition:"transform 0.28s", display:"inline-block", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
+              </button>
+            </div>
           </div>
+          <div className="panel-header-line text-amber-400/80" />
         </div>
         {isLogOpen && (
-          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-0.5"
+          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-1.5 space-y-1"
             style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
             {duelLog.length === 0 ? (
-              <p className="text-slate-700 text-[9px] text-center mt-6 leading-relaxed">As ações<br/>aparecerão aqui.</p>
-            ) : duelLog.map(entry => (
-              <div key={entry.id} className={`flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 ${
-                entry.type==="turn"
-                  ? (entry.isPlayerTurn ? "bg-blue-900/35 border border-blue-500/25 my-0.5" : "bg-red-900/30 border border-red-500/25 my-0.5")
-                  : "hover:bg-white/[0.03]"
-              }`}>
-                {entry.cardImage && (
-                  <button className="flex-shrink-0 w-7 h-10 rounded overflow-hidden border border-white/10 cursor-pointer hover:scale-105 transition-transform"
-                    onClick={() => setLogCardDetail({
-                      image: entry.cardImage!,
-                      name: entry.cardName || "",
-                      ability: entry.cardAbility,
-                      abilityDescription: entry.cardAbilityDescription,
-                      attackDescription: entry.cardAttackDescription,
-                      attack: entry.cardAttack,
-                      dp: entry.cardDp,
-                      element: entry.cardElement,
-                      category: entry.cardCategory,
-                    })}>
-                    <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-contain" />
-                  </button>
-              )}
-              <div className="flex-1 min-w-0">
-                {entry.type==="turn" ? (
-                  <p className={`text-[10px] font-black tracking-wide ${entry.isPlayerTurn?"text-blue-300":"text-red-300"}`}>{entry.message}</p>
-                ) : (
-                  <>
-                    <p className="text-[8px] text-slate-700">T{entry.turn}</p>
-                    <p className={`text-[10px] leading-tight ${
-                      entry.type==="draw"?"text-slate-400":
-                      entry.type==="play"?(entry.isPlayerTurn?"text-cyan-300":"text-red-300"):
-                      entry.type==="attack"?"text-amber-300":
-                      entry.type==="lp"?"text-red-400":
-                      entry.type==="effect"?"text-purple-300":"text-slate-500"
-                    }`}>{entry.message}</p>
-                  </>
-                )}
+              <div className="flex flex-col items-center gap-2 mt-8 opacity-40">
+                <span className="text-amber-500/60 text-base">✦</span>
+                <p className="text-slate-500 text-[9px] text-center leading-relaxed">As ações do duelo<br/>aparecerão aqui.</p>
               </div>
-            </div>
-          ))}
+            ) : duelLog.map(entry => {
+              const typeMeta: Record<string, { icon: string; color: string; border: string }> = {
+                draw:   { icon: "⇪", color: "text-slate-400",  border: "rgba(148,163,184,0.4)" },
+                play:   { icon: "◈", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", border: entry.isPlayerTurn ? "rgba(34,211,238,0.5)" : "rgba(239,68,68,0.5)" },
+                attack: { icon: "⚔", color: "text-amber-300",  border: "rgba(251,191,36,0.55)" },
+                lp:     { icon: "♥", color: "text-red-400",    border: "rgba(239,68,68,0.55)" },
+                effect: { icon: "✦", color: "text-purple-300", border: "rgba(168,85,247,0.5)" },
+              }
+              const meta = typeMeta[entry.type] || { icon: "·", color: "text-slate-500", border: "rgba(100,116,139,0.3)" }
+              if (entry.type === "turn") {
+                return (
+                  <div key={entry.id} className="log-entry-in relative my-1.5 flex items-center gap-1.5">
+                    <div className="flex-1 h-px" style={{background: entry.isPlayerTurn ? "linear-gradient(90deg, transparent, rgba(59,130,246,0.6))" : "linear-gradient(90deg, transparent, rgba(239,68,68,0.6))"}} />
+                    <p className={`text-[9px] font-black tracking-widest uppercase whitespace-nowrap px-2 py-0.5 rounded-full border ${
+                      entry.isPlayerTurn ? "text-blue-300 border-blue-500/40 bg-blue-900/40" : "text-red-300 border-red-500/40 bg-red-900/35"
+                    }`} style={{boxShadow: entry.isPlayerTurn ? "0 0 12px rgba(59,130,246,0.25)" : "0 0 12px rgba(239,68,68,0.25)"}}>{entry.message}</p>
+                    <div className="flex-1 h-px" style={{background: entry.isPlayerTurn ? "linear-gradient(270deg, transparent, rgba(59,130,246,0.6))" : "linear-gradient(270deg, transparent, rgba(239,68,68,0.6))"}} />
+                  </div>
+                )
+              }
+              return (
+                <div key={entry.id} className="log-entry-in flex items-start gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-white/[0.05]"
+                  style={{borderLeft:`2px solid ${meta.border}`, background:"rgba(255,255,255,0.02)"}}>
+                  {entry.cardImage && (
+                    <button className="flex-shrink-0 w-7 h-10 rounded overflow-hidden cursor-pointer hover:scale-110 transition-transform"
+                      style={{border:`1px solid ${meta.border}`, boxShadow:"0 2px 6px rgba(0,0,0,0.6)"}}
+                      onClick={() => setLogCardDetail({
+                        image: entry.cardImage!,
+                        name: entry.cardName || "",
+                        ability: entry.cardAbility,
+                        abilityDescription: entry.cardAbilityDescription,
+                        attackDescription: entry.cardAttackDescription,
+                        attack: entry.cardAttack,
+                        dp: entry.cardDp,
+                        element: entry.cardElement,
+                        category: entry.cardCategory,
+                      })}>
+                      <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-contain" />
+                    </button>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[8px] leading-none ${meta.color} opacity-80`}>{meta.icon}</span>
+                      <p className="text-[8px] text-slate-600 font-bold">T{entry.turn}</p>
+                    </div>
+                    <p className={`text-[10px] leading-tight ${meta.color}`}>{entry.message}</p>
+                  </div>
+                </div>
+              )
+            })}
         </div>
         )}
       </div>
@@ -10703,39 +10828,263 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           will-change: transform;
         }
 
-        /* ── Animação de ativação de armadilha: impacto + onda de choque + brilho duplo ── */
-        @keyframes trap-flash {
-          0%   { transform: scale(1) rotate(0deg); filter: brightness(1) saturate(1); }
-          10%  { transform: scale(1.2) rotate(-3deg); filter: brightness(2.4) saturate(1.6); }
-          22%  { transform: scale(1.1) rotate(3deg); filter: brightness(1.7) saturate(1.4); }
-          38%  { transform: scale(1.15) rotate(-1.5deg); filter: brightness(1.45); }
-          58%  { transform: scale(1.06) rotate(0.5deg); filter: brightness(1.15); }
-          100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+        /* ══ ATIVAÇÃO DE ARMADILHA — correntes + selo arcano + estilhaço ══
+           Linha do tempo (1.5s no total):
+           0–0.20s  correntes cravam na carta (impacto)
+           0.20–1s  correntes apertam, carta treme, selo gira, brilho pulsa
+           1–1.5s   correntes estilhaçam, clarão, faíscas, ondas de choque   */
+
+        /* Carta: impacto ao ser presa, tremor contido, flash na quebra */
+        @keyframes trap-card-bound {
+          0%   { transform: scale(1); filter: brightness(1); }
+          8%   { transform: scale(1.22); filter: brightness(2.6) saturate(1.5); }
+          14%  { transform: scale(0.94); filter: brightness(1.3); }
+          20%  { transform: scale(0.97) rotate(-1.2deg); filter: brightness(1.15) saturate(1.2); }
+          28%  { transform: scale(0.97) rotate(1.2deg) translateX(-1.5px); }
+          36%  { transform: scale(0.97) rotate(-1deg) translateX(1.5px); }
+          44%  { transform: scale(0.97) rotate(0.8deg) translateX(-1px); }
+          52%  { transform: scale(0.97) rotate(-0.6deg) translateX(1px); }
+          60%  { transform: scale(0.97) rotate(0.4deg); filter: brightness(1.2) saturate(1.25); }
+          66%  { transform: scale(0.95); filter: brightness(1.4); }
+          70%  { transform: scale(1.28); filter: brightness(3) saturate(1.8); }
+          80%  { transform: scale(1.08); filter: brightness(1.6); }
+          100% { transform: scale(1); filter: brightness(1); }
         }
-        @keyframes trap-glow-pulse {
-          0%   { box-shadow: 0 0 0px 0px rgba(239,68,68,0), 0 0 0px 0px rgba(239,68,68,0); }
-          12%  { box-shadow: 0 0 34px 10px rgba(239,68,68,0.95), 0 0 64px 22px rgba(239,68,68,0.45); }
-          40%  { box-shadow: 0 0 18px 6px rgba(239,68,68,0.65), 0 0 34px 12px rgba(239,68,68,0.25); }
-          100% { box-shadow: 0 0 0px 0px rgba(239,68,68,0), 0 0 0px 0px rgba(239,68,68,0); }
-        }
-        @keyframes trap-shockwave {
-          0%   { opacity: 0.95; transform: scale(0.4); border-width: 5px; }
-          70%  { opacity: 0.35; }
-          100% { opacity: 0; transform: scale(2.8); border-width: 1px; }
+        @keyframes trap-card-glow {
+          0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+          10%  { box-shadow: 0 0 30px 8px rgba(239,68,68,0.9), 0 0 60px 20px rgba(168,85,247,0.35); }
+          40%  { box-shadow: 0 0 16px 5px rgba(239,68,68,0.6), 0 0 40px 14px rgba(168,85,247,0.22); }
+          62%  { box-shadow: 0 0 22px 7px rgba(239,68,68,0.8), 0 0 50px 18px rgba(168,85,247,0.3); }
+          72%  { box-shadow: 0 0 55px 20px rgba(251,191,36,0.95), 0 0 100px 40px rgba(239,68,68,0.5); }
+          100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
         }
         .trap-activating {
-          animation: trap-flash 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) 1, trap-glow-pulse 1.1s ease-out 1;
-          z-index: 30;
+          animation: trap-card-bound 1.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1,
+                     trap-card-glow 1.5s ease-out 1;
+          z-index: 45;
         }
-        .trap-activating::after {
+
+        /* Correntes: cravam com overshoot, seguram tremendo, estilhaçam */
+        @keyframes trap-chain-life {
+          0%   { opacity: 0; transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(2.2); filter: brightness(2.5) drop-shadow(0 0 6px rgba(248,250,252,0.9)); }
+          10%  { opacity: 1; transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.96); filter: brightness(1.4) drop-shadow(0 2px 3px rgba(0,0,0,0.7)); }
+          14%  { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(1.02); }
+          18%  { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.99); }
+          40%  { transform: translateY(calc(-50% + 1px)) rotate(calc(var(--ch-rot) + 0.6deg)) scaleX(0.99); }
+          55%  { transform: translateY(calc(-50% - 1px)) rotate(calc(var(--ch-rot) - 0.6deg)) scaleX(0.99); }
+          64%  { opacity: 1; transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.97); filter: brightness(1.2); }
+          70%  { opacity: 1; transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(1.06); filter: brightness(3) drop-shadow(0 0 10px rgba(251,191,36,0.9)); }
+          100% { opacity: 0; transform: translateY(calc(-50% + var(--ch-dir) * 22px)) rotate(calc(var(--ch-rot) + var(--ch-dir) * 24deg)) scaleX(1.4); filter: brightness(2); }
+        }
+        .trap-chain-wrap {
+          position: absolute;
+          left: -34%;
+          right: -34%;
+          height: 13px;
+          transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(2.2);
+          opacity: 0;
+          animation: trap-chain-life 1.5s cubic-bezier(0.22, 1, 0.36, 1) var(--ch-delay) 1 forwards;
+          will-change: transform, opacity;
+        }
+
+        /* Selo arcano circular girando atrás da carta */
+        @keyframes trap-seal-spin {
+          0%   { opacity: 0; transform: rotate(0deg) scale(0.4); }
+          12%  { opacity: 0.85; transform: rotate(40deg) scale(1); }
+          62%  { opacity: 0.85; transform: rotate(180deg) scale(1.02); }
+          74%  { opacity: 0.6; transform: rotate(230deg) scale(1.25); }
+          100% { opacity: 0; transform: rotate(300deg) scale(1.6); }
+        }
+        .trap-seal {
+          width: 150%;
+          aspect-ratio: 1;
+          border-radius: 9999px;
+          border: 2px dashed rgba(239,68,68,0.85);
+          outline: 1.5px solid rgba(168,85,247,0.5);
+          outline-offset: -8px;
+          box-shadow: 0 0 24px rgba(239,68,68,0.45), inset 0 0 24px rgba(168,85,247,0.35);
+          animation: trap-seal-spin 1.5s ease-in-out 1 forwards;
+          will-change: transform, opacity;
+        }
+
+        /* Ondas de choque em anel */
+        @keyframes trap-ring-out {
+          0%   { opacity: 0.95; transform: scale(0.35); border-width: 4px; }
+          70%  { opacity: 0.35; }
+          100% { opacity: 0; transform: scale(2.6); border-width: 1px; }
+        }
+        .trap-ring {
+          position: absolute;
+          width: 90%;
+          aspect-ratio: 1;
+          border-radius: 9999px;
+          border: 4px solid rgba(239,68,68,0.9);
+          opacity: 0;
+          animation: trap-ring-out 0.7s ease-out 1 forwards;
+          will-change: transform, opacity;
+        }
+        .trap-ring--gold { border-color: rgba(251,191,36,0.85); }
+
+        /* Faíscas voando na quebra das correntes */
+        @keyframes trap-spark-fly {
+          0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+          12%  { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+          100% { opacity: 0; transform: translate(calc(-50% + var(--sp-x)), calc(-50% + var(--sp-y))) scale(0.2); }
+        }
+        .trap-spark {
+          position: absolute;
+          top: 50%; left: 50%;
+          border-radius: 9999px;
+          opacity: 0;
+          animation: trap-spark-fly 0.55s cubic-bezier(0.16, 1, 0.3, 1) 1 forwards;
+          will-change: transform, opacity;
+        }
+
+        /* Clarão central no momento da quebra */
+        @keyframes trap-burst-flash {
+          0%, 64% { opacity: 0; transform: scale(0.3); }
+          70%  { opacity: 0.95; transform: scale(1.15); }
+          100% { opacity: 0; transform: scale(1.9); }
+        }
+        .trap-burst {
+          position: absolute;
+          inset: 12%;
+          border-radius: 9999px;
+          background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(251,191,36,0.55) 35%, rgba(239,68,68,0.25) 60%, transparent 75%);
+          opacity: 0;
+          animation: trap-burst-flash 1.5s ease-out 1 forwards;
+          will-change: transform, opacity;
+          pointer-events: none;
+        }
+
+        /* Vinheta escura no campo enquanto a trap ativa (holofote dramático) */
+        @keyframes trap-dim-io {
+          0%   { opacity: 0; }
+          12%  { opacity: 1; }
+          70%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        .trap-dim-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 35;
+          pointer-events: none;
+          background: radial-gradient(ellipse at 50% 62%, transparent 18%, rgba(2,2,8,0.55) 55%, rgba(2,2,8,0.82) 100%);
+          animation: trap-dim-io 1.5s ease-in-out 1 forwards;
+        }
+
+        /* Banner "ARMADILHA ATIVADA" */
+        @keyframes trap-banner-io {
+          0%   { opacity: 0; transform: translate(-50%, 24px) scale(0.7); filter: blur(6px); }
+          14%  { opacity: 1; transform: translate(-50%, 0) scale(1.06); filter: blur(0); }
+          20%  { transform: translate(-50%, 0) scale(1); }
+          74%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -18px) scale(1.05); filter: blur(3px); }
+        }
+        .trap-banner {
+          animation: trap-banner-io 1.5s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
+        }
+        @keyframes trap-banner-sheen {
+          0%   { transform: translateX(-130%) skewX(-20deg); }
+          100% { transform: translateX(230%) skewX(-20deg); }
+        }
+        .trap-banner-sheen {
+          animation: trap-banner-sheen 0.9s ease-in-out 0.25s 1 both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .trap-activating { animation: trap-card-glow 1.5s ease-out 1; }
+          .trap-chain-wrap, .trap-seal, .trap-ring, .trap-spark, .trap-burst { animation-duration: 0.01s; opacity: 0; }
+          .trap-dim-overlay { animation: none; opacity: 0; }
+        }
+
+        /* ══ PAINÉIS LATERAIS: Detalhe & Log ══ */
+        @keyframes panel-detail-in {
+          0%   { opacity: 0; transform: translateX(-14px) scale(0.97); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        .panel-detail-in { animation: panel-detail-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+        @keyframes detail-sheen-sweep {
+          0%   { transform: translateX(-140%) skewX(-18deg); }
+          100% { transform: translateX(260%) skewX(-18deg); }
+        }
+        .detail-card-frame { position: relative; }
+        .detail-card-frame::after {
           content: "";
           position: absolute;
-          inset: -3px;
-          border: 4px solid rgba(239,68,68,0.9);
+          inset: 0;
+          width: 45%;
+          background: linear-gradient(100deg, transparent, rgba(255,255,255,0.14), transparent);
+          transform: translateX(-140%) skewX(-18deg);
+          animation: detail-sheen-sweep 1s ease-in-out 0.25s 1 both;
           pointer-events: none;
-          animation: trap-shockwave 0.75s ease-out 1;
+        }
+        .detail-corner {
+          position: absolute;
+          width: 14px; height: 14px;
+          border-color: rgba(34,211,238,0.75);
+          border-style: solid;
+          pointer-events: none;
+          z-index: 2;
+        }
+        .detail-corner--tl { top: 3px; left: 3px; border-width: 2px 0 0 2px; border-top-left-radius: 4px; }
+        .detail-corner--tr { top: 3px; right: 3px; border-width: 2px 2px 0 0; border-top-right-radius: 4px; }
+        .detail-corner--bl { bottom: 3px; left: 3px; border-width: 0 0 2px 2px; border-bottom-left-radius: 4px; }
+        .detail-corner--br { bottom: 3px; right: 3px; border-width: 0 2px 2px 0; border-bottom-right-radius: 4px; }
+
+        @keyframes panel-header-glow {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 1; }
+        }
+        .panel-header-line {
+          height: 1px;
+          background: linear-gradient(90deg, transparent, currentColor 30%, currentColor 70%, transparent);
+          animation: panel-header-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes log-entry-in {
+          0%   { opacity: 0; transform: translateX(10px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        .log-entry-in { animation: log-entry-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .panel-detail-in, .log-entry-in { animation: none; }
+          .detail-card-frame::after { animation: none; opacity: 0; }
         }
       `}</style>
+
+      {/* ── OVERLAY ÉPICO DE ATIVAÇÃO DE TRAP: vinheta + banner ── */}
+      {(() => {
+        const revealingTrap = playerField.functionZone.find((c) => (c as FunctionZoneCard)?.isRevealing)
+        if (!revealingTrap) return null
+        return (
+          <>
+            <div className="trap-dim-overlay" aria-hidden="true" />
+            <div className="trap-banner fixed left-1/2 z-[46] pointer-events-none flex flex-col items-center gap-1"
+              style={{ top: "18%" }}>
+              <div className="relative overflow-hidden px-6 py-2 rounded-xl border-2"
+                style={{
+                  background: "linear-gradient(180deg, rgba(30,5,8,0.96), rgba(12,2,4,0.96))",
+                  borderColor: "rgba(239,68,68,0.75)",
+                  boxShadow: "0 0 40px rgba(239,68,68,0.55), 0 0 90px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.12)",
+                }}>
+                <div className="trap-banner-sheen absolute inset-y-0 w-1/3 pointer-events-none"
+                  style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)" }} />
+                <p className="text-[10px] font-black tracking-[0.35em] uppercase text-center"
+                  style={{ color: "#fca5a5", textShadow: "0 0 12px rgba(239,68,68,0.9)" }}>
+                  ⛓ Armadilha Ativada ⛓
+                </p>
+                <p className="text-white font-black text-lg text-center leading-tight text-balance"
+                  style={{ textShadow: "0 0 18px rgba(251,191,36,0.65), 0 2px 4px rgba(0,0,0,0.9)" }}>
+                  {revealingTrap.name}
+                </p>
+              </div>
+            </div>
+          </>
+        )
+      })()}
 
       {/* Main Battle Area — arena centered between side panels */}
       <div className="flex-1 flex items-center justify-center px-2 py-1 duel-arena-perspective"
@@ -11300,6 +11649,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             </div>
                           </div>
                         )}
+                        {/* FX de correntes ao ativar a armadilha */}
+                        {(card as FunctionZoneCard)?.isRevealing && <TrapChainsFX />}
                         {!card && isDropTarget && (
                           <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
                         )}
@@ -12848,42 +13199,67 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {/* ─── MOBILE DUEL LOG OVERLAY ─────────────────────────────────────── */}
       {showDuelLog && (
         <div className="lg:hidden fixed inset-0 z-[8400] flex flex-col"
-          style={{background:"rgba(0,0,0,0.92)",backdropFilter:"blur(6px)"}}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
-            <h2 className="text-amber-400 font-black text-base tracking-widest">DUEL LOG</h2>
-            <div className={`px-3 py-1 rounded text-xs font-black ${isPlayerTurn ? "bg-blue-600/30 text-blue-300" : "bg-red-700/30 text-red-300"}`}>
-              Turno {turn} — {isPlayerTurn ? "Seu Turno" : "Vez do Oponente"}
-            </div>
-            <button onClick={() => setShowDuelLog(false)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 text-slate-400 hover:text-white transition-all">
-              ✕
-            </button>
-          </div>
-          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-3 space-y-1">
-            {duelLog.map(entry => (
-              <div key={entry.id} className={`flex items-start gap-2 rounded-xl px-3 py-2 ${
-                entry.type==="turn"
-                  ? entry.isPlayerTurn ? "bg-blue-900/40 border border-blue-500/30" : "bg-red-900/30 border border-red-500/30"
-                  : "bg-white/[0.04] border border-white/[0.06]"
-              }`}>
-                {entry.cardImage && (
-                  <img src={entry.cardImage} alt={entry.cardName||""} className="w-8 h-11 object-contain rounded flex-shrink-0 border border-white/10" />
-                )}
-                <div className="flex-1">
-                  {entry.type==="turn" ? (
-                    <p className={`font-black text-sm ${entry.isPlayerTurn ? "text-blue-400" : "text-red-400"}`}>{entry.message}</p>
-                  ) : (
-                    <>
-                      <p className="text-slate-600 text-[10px]">Turno {entry.turn}</p>
-                      <p className={`text-sm leading-snug ${
-                        entry.type==="play" ? (entry.isPlayerTurn?"text-cyan-300":"text-red-300") :
-                        entry.type==="lp"   ? "text-red-400" : "text-slate-300"
-                      }`}>{entry.message}</p>
-                    </>
-                  )}
-                </div>
+          style={{background:"linear-gradient(180deg, rgba(14,9,3,0.96), rgba(0,0,0,0.94))",backdropFilter:"blur(8px)"}}>
+          <div className="flex-shrink-0">
+            <div className="flex items-center justify-between px-4 py-3"
+              style={{background:"linear-gradient(90deg, rgba(251,191,36,0.10), transparent)"}}>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-md"
+                  style={{background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.4)",boxShadow:"0 0 10px rgba(251,191,36,0.3)"}}>
+                  <span className="text-amber-300 text-xs leading-none">✦</span>
+                </span>
+                <h2 className="text-amber-300 font-black text-base tracking-[0.2em]"
+                  style={{textShadow:"0 0 14px rgba(251,191,36,0.5)"}}>DUEL LOG</h2>
               </div>
-            ))}
+              <div className={`px-3 py-1 rounded-full text-xs font-black border ${isPlayerTurn ? "bg-blue-600/30 text-blue-300 border-blue-500/40" : "bg-red-700/30 text-red-300 border-red-500/40"}`}
+                style={{boxShadow: isPlayerTurn ? "0 0 12px rgba(59,130,246,0.3)" : "0 0 12px rgba(239,68,68,0.3)"}}>
+                Turno {turn} — {isPlayerTurn ? "Seu Turno" : "Vez do Oponente"}
+              </div>
+              <button onClick={() => setShowDuelLog(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 text-slate-400 hover:text-white transition-all">
+                ✕
+              </button>
+            </div>
+            <div className="panel-header-line text-amber-400/80" />
+          </div>
+          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            {duelLog.map(entry => {
+              const mMeta: Record<string, { icon: string; color: string; border: string }> = {
+                draw:   { icon: "⇪", color: "text-slate-300",  border: "rgba(148,163,184,0.4)" },
+                play:   { icon: "◈", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", border: entry.isPlayerTurn ? "rgba(34,211,238,0.5)" : "rgba(239,68,68,0.5)" },
+                attack: { icon: "⚔", color: "text-amber-300",  border: "rgba(251,191,36,0.55)" },
+                lp:     { icon: "♥", color: "text-red-400",    border: "rgba(239,68,68,0.55)" },
+                effect: { icon: "✦", color: "text-purple-300", border: "rgba(168,85,247,0.5)" },
+              }
+              const m = mMeta[entry.type] || { icon: "·", color: "text-slate-300", border: "rgba(100,116,139,0.3)" }
+              if (entry.type === "turn") {
+                return (
+                  <div key={entry.id} className="log-entry-in relative my-2 flex items-center gap-2">
+                    <div className="flex-1 h-px" style={{background: entry.isPlayerTurn ? "linear-gradient(90deg, transparent, rgba(59,130,246,0.6))" : "linear-gradient(90deg, transparent, rgba(239,68,68,0.6))"}} />
+                    <p className={`text-xs font-black tracking-widest uppercase whitespace-nowrap px-3 py-1 rounded-full border ${
+                      entry.isPlayerTurn ? "text-blue-300 border-blue-500/40 bg-blue-900/40" : "text-red-300 border-red-500/40 bg-red-900/35"
+                    }`} style={{boxShadow: entry.isPlayerTurn ? "0 0 14px rgba(59,130,246,0.25)" : "0 0 14px rgba(239,68,68,0.25)"}}>{entry.message}</p>
+                    <div className="flex-1 h-px" style={{background: entry.isPlayerTurn ? "linear-gradient(270deg, transparent, rgba(59,130,246,0.6))" : "linear-gradient(270deg, transparent, rgba(239,68,68,0.6))"}} />
+                  </div>
+                )
+              }
+              return (
+                <div key={entry.id} className="log-entry-in flex items-start gap-2 rounded-xl px-3 py-2 bg-white/[0.04]"
+                  style={{borderLeft:`3px solid ${m.border}`, border:"1px solid rgba(255,255,255,0.06)", borderLeftWidth:3, borderLeftColor:m.border}}>
+                  {entry.cardImage && (
+                    <img src={entry.cardImage} alt={entry.cardName||""} className="w-8 h-11 object-contain rounded flex-shrink-0"
+                      style={{border:`1px solid ${m.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.6)"}} />
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] leading-none ${m.color} opacity-80`}>{m.icon}</span>
+                      <p className="text-slate-600 text-[10px] font-bold">Turno {entry.turn}</p>
+                    </div>
+                    <p className={`text-sm leading-snug ${m.color}`}>{entry.message}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
