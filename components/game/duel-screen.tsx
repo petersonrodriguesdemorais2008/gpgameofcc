@@ -4889,7 +4889,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       // For mode === "player": opponent state is driven by handleOpponentAction
     }
-    pauseMenuMusic() // silencia o menu já durante a intro
+    // A música do menu CONTINUA tocando durante toda a intro cinemática.
+    // Ela só é pausada por startDuelOst() (dentro de afterIntroRef, disparado
+    // em handleIntroComplete), no exato momento em que a OST do duelo começa.
     setDuelIntro(buildIntroOpponent(activeDifficulty))
   }
 

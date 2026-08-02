@@ -5,16 +5,20 @@ import { useGame } from "@/contexts/game-context"
 import { loadMastersFromStorage, type Master } from "@/lib/masters-data"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Intro cinematográfica de duelo
+// Intro cinematográfica de duelo — versão ÉPICA
 //
-// Fase 1 — "CHAMADO DO MESTRE": ícone do Mestre ativo entra em cena, o áudio
-//          <id>_voice_2_introduel.mp3 toca e o balão de fala escreve, em
-//          sincronia, exatamente a frase que ele está dizendo.
-// Fase 2 — "CHOQUE": o nome + ícone do jogador colidem com o nome + ícone do
-//          oponente (estilo Duel Links, mas com impacto/shockwave próprios).
+// Fase 1 — "CHAMADO DO MESTRE": letterbox cinematográfico, aura girante,
+//          partículas de energia subindo, ícone do Mestre entra com flash e
+//          o balão de fala escreve em sincronia com o áudio
+//          <id>_voice_2_introduel.mp3.
+// Fase 2 — "CHOQUE": speed-lines radiais, relâmpagos, painéis com zoom lento,
+//          flash duplo (branco + cor de impacto), faíscas voando do centro,
+//          shockwaves triplas e VS com pulso de energia contínuo.
 //
-// Performance: 100% CSS (só transform/opacity — sem layout thrash, sem
-// requestAnimationFrame, sem timers por frame). O único timer contínuo é o
+// A música do MENU continua tocando por trás durante toda a intro — quem a
+// pausa é o startDuelOst() do duel-screen, exatamente quando o duelo começa.
+//
+// Performance: 100% CSS (só transform/opacity). O único timer contínuo é o
 // "typewriter" do balão (~26ms), que só atualiza um <span> de texto.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -46,7 +50,7 @@ interface DuelIntroOverlayProps {
 // ── Timeline (ms) ────────────────────────────────────────────────────────────
 const T_MASTER_END = 2600   // fim da fala do Mestre → começa o choque
 const T_IMPACT     = 380    // atraso do impacto dentro da fase de choque
-const T_CLASH_END  = 1950   // duração da fase de choque
+const T_CLASH_END  = 2250   // duração da fase de choque
 const T_FADE       = 380    // fade final
 
 export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 }: DuelIntroOverlayProps) {
@@ -73,6 +77,35 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
   const accent     = master?.accentColor ?? "#38bdf8"
   const playerIcon = playerProfile?.avatarUrl || "/images/icons/fehnon-icon.png"
   const playerName = playerProfile?.name || "Duelista"
+
+  // Partículas de energia (fase 1) — geradas uma única vez, animadas por CSS
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, i) => ({
+        left: `${(i * 61) % 100}%`,
+        size: 3 + ((i * 7) % 6),
+        delay: `${(i * 173) % 1600}ms`,
+        dur: `${2200 + ((i * 311) % 1400)}ms`,
+      })),
+    [],
+  )
+
+  // Faíscas do impacto (fase 2) — voam do centro em todas as direções
+  const sparks = useMemo(
+    () =>
+      Array.from({ length: 18 }, (_, i) => {
+        const ang = (i / 18) * Math.PI * 2 + 0.35
+        const dist = 34 + ((i * 137) % 26) // vmin
+        return {
+          dx: `${Math.cos(ang) * dist}vmin`,
+          dy: `${Math.sin(ang) * dist}vmin`,
+          size: 4 + ((i * 5) % 7),
+          delay: `${(i * 29) % 160}ms`,
+          hot: i % 3 === 0,
+        }
+      }),
+    [],
+  )
 
   // ── Encerra (natural ou por skip) ──────────────────────────────────────────
   const finish = () => {
@@ -158,14 +191,57 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         style={{ background: "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.07), rgba(0,0,0,0.85) 70%)" }}
       />
 
+      {/* Letterbox cinematográfico */}
+      <div className="di-letterbox di-letterbox-top" aria-hidden="true" />
+      <div className="di-letterbox di-letterbox-bottom" aria-hidden="true" />
+
       {/* ── FASE 1: chamado do Mestre ─────────────────────────────────────── */}
       {phase === "master" && (
         <div className="absolute inset-0 flex items-center justify-center px-6">
+          {/* Flash de entrada */}
+          <div className="di-enter-flash" aria-hidden="true" style={{ background: accent }} />
+
           <div
             className="di-master-glow"
             aria-hidden="true"
             style={{ background: `radial-gradient(circle, ${accent}55, transparent 65%)` }}
           />
+
+          {/* Aura girante atrás do Mestre */}
+          <div
+            className="di-aura"
+            aria-hidden="true"
+            style={{
+              background: `conic-gradient(from 0deg, transparent 0deg, ${accent}44 24deg, transparent 60deg, ${accent}2e 130deg, transparent 170deg, ${accent}44 250deg, transparent 300deg)`,
+            }}
+          />
+
+          {/* Partículas de energia subindo */}
+          <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+            {particles.map((p, i) => (
+              <span
+                key={i}
+                className="di-particle"
+                style={{
+                  left: p.left,
+                  width: p.size,
+                  height: p.size,
+                  background: accent,
+                  boxShadow: `0 0 ${p.size * 2}px ${accent}`,
+                  animationDelay: p.delay,
+                  animationDuration: p.dur,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Selo "DUELO IMINENTE" */}
+          <div className="di-callout" aria-hidden="true">
+            <span className="di-callout-text" style={{ color: accent, textShadow: `0 0 18px ${accent}` }}>
+              — DUELO IMINENTE —
+            </span>
+          </div>
+
           <div className="relative flex items-center gap-5 sm:gap-8 max-w-3xl w-full">
             {/* Ícone do Mestre */}
             <div className="di-master-in relative shrink-0">
@@ -174,16 +250,21 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 aria-hidden="true"
                 style={{ border: `2px solid ${accent}` }}
               />
+              <div
+                className="absolute -inset-6 rounded-full di-pulse-ring di-pulse-ring-2"
+                aria-hidden="true"
+                style={{ border: `1px solid ${accent}` }}
+              />
               <img
                 src={master?.iconPath || "/images/masters/fehnon-icon.png"}
                 alt={`Mestre ${master?.name ?? ""}`}
-                className="relative w-28 h-28 sm:w-40 sm:h-40 rounded-full object-cover"
-                style={{ border: `3px solid ${accent}`, boxShadow: `0 0 40px ${accent}88` }}
+                className="relative w-28 h-28 sm:w-40 sm:h-40 rounded-full object-cover di-master-breathe"
+                style={{ border: `3px solid ${accent}`, boxShadow: `0 0 40px ${accent}88, 0 0 90px ${accent}44` }}
                 draggable={false}
               />
               <div
                 className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase whitespace-nowrap"
-                style={{ background: accent, color: "#04030d" }}
+                style={{ background: accent, color: "#04030d", boxShadow: `0 0 18px ${accent}aa` }}
               >
                 {master?.name ?? "Mestre"}
               </div>
@@ -195,7 +276,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 className="relative rounded-2xl px-5 py-4 sm:px-6 sm:py-5"
                 style={{
                   background: "rgba(255,255,255,0.96)",
-                  boxShadow: `0 10px 40px rgba(0,0,0,0.6), 0 0 0 3px ${accent}`,
+                  boxShadow: `0 10px 40px rgba(0,0,0,0.6), 0 0 0 3px ${accent}, 0 0 34px ${accent}66`,
                 }}
               >
                 <p className="text-slate-900 font-extrabold text-base sm:text-2xl leading-relaxed text-balance">
@@ -224,14 +305,17 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       {/* ── FASE 2: choque jogador × oponente ─────────────────────────────── */}
       {(phase === "clash" || phase === "out") && (
         <div className="absolute inset-0 di-shake">
+          {/* Speed-lines radiais girando lentamente */}
+          <div className="di-speedlines" aria-hidden="true" />
+
           {/* Painel do oponente (topo) */}
           <div className="di-panel di-panel-opp">
             <img
               src={opponent.icon || "/images/gp-cg-logo.png"}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ opacity: 0.8, objectPosition: "center 22%", transform: "scale(1.1)" }}
+              className="absolute inset-0 w-full h-full object-cover di-kenburns"
+              style={{ opacity: 0.8, objectPosition: "center 22%" }}
               draggable={false}
             />
             <div
@@ -246,8 +330,8 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               src={playerIcon}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ opacity: 0.8, objectPosition: "center 30%", transform: "scale(1.1)" }}
+              className="absolute inset-0 w-full h-full object-cover di-kenburns"
+              style={{ opacity: 0.8, objectPosition: "center 30%" }}
               draggable={false}
             />
             <div
@@ -259,6 +343,32 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           {/* Barras brancas do corte diagonal */}
           <div className="di-bar di-bar-top" aria-hidden="true" />
           <div className="di-bar di-bar-bottom" aria-hidden="true" />
+
+          {/* Relâmpagos do impacto */}
+          <div className="di-bolt di-bolt-1" aria-hidden="true" />
+          <div className="di-bolt di-bolt-2" aria-hidden="true" />
+
+          {/* Faíscas voando do centro */}
+          <div className="absolute top-1/2 left-1/2 z-[35]" aria-hidden="true">
+            {sparks.map((s, i) => (
+              <span
+                key={i}
+                className="di-spark"
+                style={
+                  {
+                    "--dx": s.dx,
+                    "--dy": s.dy,
+                    width: s.size,
+                    height: s.size,
+                    background: s.hot ? "#ffffff" : oppAccent,
+                    boxShadow: `0 0 ${s.size * 3}px ${s.hot ? "#ffffff" : oppAccent}`,
+                    animationDelay: `${T_IMPACT}ms`,
+                    transitionDelay: s.delay,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+          </div>
 
           {/* Nome + ícone do oponente */}
           <div className="di-name di-name-opp">
@@ -300,17 +410,26 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
             </div>
           </div>
 
-          {/* Emblema central + shockwave + flash */}
+          {/* Emblema central + shockwaves + flash duplo */}
           <div className="di-vs-wrap">
             <div className="di-ring" aria-hidden="true" />
             <div className="di-ring di-ring-2" aria-hidden="true" />
+            <div className="di-ring di-ring-3" aria-hidden="true" />
             <div className="di-vs" style={{ WebkitTextStroke: `3px ${oppAccent}` }}>
               {opponent.isBoss ? "BOSS" : "VS"}
             </div>
           </div>
           <div className="di-flash" aria-hidden="true" />
+          <div className="di-flash-color" aria-hidden="true" style={{ background: oppAccent }} />
 
-          <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] sm:text-xs font-mono tracking-[0.3em] text-white/40 uppercase">
+          {/* Vinheta de energia pulsando nas bordas */}
+          <div
+            className="di-edge-glow"
+            aria-hidden="true"
+            style={{ boxShadow: `inset 0 0 120px 30px ${oppAccent}33, inset 0 0 60px 10px ${accent}22` }}
+          />
+
+          <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] sm:text-xs font-mono tracking-[0.3em] text-white/40 uppercase z-50">
             Toque para pular
           </p>
         </div>
@@ -335,7 +454,25 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
         @keyframes diStripes { from { transform: translate3d(0,0,0) } to { transform: translate3d(-40px,-86px,0) } }
 
+        /* Letterbox cinematográfico */
+        .di-letterbox {
+          position: absolute; left: 0; right: 0; height: 7vh; background: #000; z-index: 45;
+          will-change: transform;
+        }
+        .di-letterbox-top    { top: 0;    animation: diLbTop 600ms cubic-bezier(0.16,1,0.3,1) both; }
+        .di-letterbox-bottom { bottom: 0; animation: diLbBottom 600ms cubic-bezier(0.16,1,0.3,1) both; }
+        @keyframes diLbTop    { from { transform: translate3d(0,-100%,0) } to { transform: translate3d(0,0,0) } }
+        @keyframes diLbBottom { from { transform: translate3d(0,100%,0) }  to { transform: translate3d(0,0,0) } }
+
         /* ── Fase 1 ── */
+        .di-enter-flash {
+          position: absolute; inset: 0; pointer-events: none; z-index: 5;
+          animation: diEnterFlash 520ms ease-out both; will-change: opacity;
+        }
+        @keyframes diEnterFlash {
+          0%   { opacity: 0.55 }
+          100% { opacity: 0 }
+        }
         .di-master-glow {
           position: absolute; width: 90vmin; height: 90vmin; border-radius: 9999px;
           animation: diGlow 2.6s ease-out forwards; will-change: transform, opacity;
@@ -345,13 +482,52 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           25%  { opacity: 1; transform: scale(1) }
           100% { opacity: 0.55; transform: scale(1.12) }
         }
+        .di-aura {
+          position: absolute; width: 120vmin; height: 120vmin; border-radius: 9999px;
+          animation: diAura 6s linear infinite; opacity: 0.8;
+          will-change: transform;
+        }
+        @keyframes diAura { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+        .di-particle {
+          position: absolute; bottom: -12px; border-radius: 9999px; opacity: 0;
+          animation-name: diParticle; animation-timing-function: linear; animation-iteration-count: infinite;
+          will-change: transform, opacity;
+        }
+        @keyframes diParticle {
+          0%   { opacity: 0;   transform: translate3d(0,0,0) }
+          12%  { opacity: 0.9; }
+          85%  { opacity: 0.5; }
+          100% { opacity: 0;   transform: translate3d(14px,-105vh,0) }
+        }
+
+        .di-callout {
+          position: absolute; top: 12vh; left: 0; right: 0; text-align: center; z-index: 20;
+          animation: diCallout 700ms cubic-bezier(0.16,1,0.3,1) 120ms both;
+          will-change: transform, opacity;
+        }
+        .di-callout-text {
+          font-size: clamp(11px, 2.2vw, 16px); font-weight: 900;
+          letter-spacing: 0.5em; text-transform: uppercase;
+          animation: diCalloutBlink 1.1s ease-in-out 800ms infinite alternate;
+        }
+        @keyframes diCallout {
+          0%   { opacity: 0; transform: translate3d(0,-18px,0) scale(1.4); letter-spacing: 1em }
+          100% { opacity: 1; transform: translate3d(0,0,0) scale(1) }
+        }
+        @keyframes diCalloutBlink { from { opacity: 1 } to { opacity: 0.45 } }
+
         .di-master-in { animation: diMasterIn 620ms cubic-bezier(0.16,1,0.3,1) both; will-change: transform, opacity; }
         @keyframes diMasterIn {
           0%   { opacity: 0; transform: translate3d(-60px,0,0) scale(0.7) }
           60%  { opacity: 1; transform: translate3d(6px,0,0) scale(1.06) }
           100% { opacity: 1; transform: translate3d(0,0,0) scale(1) }
         }
+        .di-master-breathe { animation: diBreathe 1.6s ease-in-out 700ms infinite alternate; will-change: transform; }
+        @keyframes diBreathe { from { transform: scale(1) } to { transform: scale(1.045) } }
+
         .di-pulse-ring { animation: diPulseRing 1.4s ease-out infinite; will-change: transform, opacity; }
+        .di-pulse-ring-2 { animation-delay: 0.45s; animation-duration: 1.7s; }
         @keyframes diPulseRing {
           0%   { opacity: 0.9; transform: scale(0.92) }
           100% { opacity: 0;   transform: scale(1.35) }
@@ -365,16 +541,30 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         @keyframes diCaret { 0%,49% { opacity: 1 } 50%,100% { opacity: 0 } }
 
         /* ── Fase 2 ── */
-        .di-shake { animation: diShake 420ms cubic-bezier(0.36,0.07,0.19,0.97) ${T_IMPACT}ms both; will-change: transform; }
+        .di-shake { animation: diShake 560ms cubic-bezier(0.36,0.07,0.19,0.97) ${T_IMPACT}ms both; will-change: transform; }
         @keyframes diShake {
           0%   { transform: translate3d(0,0,0) }
-          12%  { transform: translate3d(-10px,6px,0) }
-          26%  { transform: translate3d(9px,-7px,0) }
-          42%  { transform: translate3d(-7px,4px,0) }
-          58%  { transform: translate3d(5px,-3px,0) }
-          76%  { transform: translate3d(-3px,2px,0) }
+          10%  { transform: translate3d(-16px,10px,0) rotate(-0.5deg) }
+          22%  { transform: translate3d(14px,-11px,0) rotate(0.4deg) }
+          36%  { transform: translate3d(-11px,7px,0) rotate(-0.3deg) }
+          50%  { transform: translate3d(8px,-5px,0) rotate(0.2deg) }
+          66%  { transform: translate3d(-5px,3px,0) }
+          82%  { transform: translate3d(3px,-2px,0) }
           100% { transform: translate3d(0,0,0) }
         }
+
+        .di-speedlines {
+          position: absolute; inset: -30%; z-index: 5; opacity: 0;
+          background: repeating-conic-gradient(
+            from 0deg at 50% 50%,
+            rgba(255,255,255,0.09) 0deg, rgba(255,255,255,0.09) 1.4deg,
+            transparent 1.4deg, transparent 9deg
+          );
+          animation: diSpeedIn 400ms ease-out ${T_IMPACT}ms forwards, diSpeedSpin 9s linear infinite;
+          will-change: transform, opacity;
+        }
+        @keyframes diSpeedIn   { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes diSpeedSpin { from { transform: rotate(0deg) } to { transform: rotate(14deg) } }
 
         .di-panel {
           position: absolute; inset: 0; overflow: hidden;
@@ -398,6 +588,8 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           70%  { opacity: 1; transform: translate3d(1.5%,-0.6%,0) }
           100% { opacity: 1; transform: translate3d(0,0,0) }
         }
+        .di-kenburns { animation: diKenburns 3.2s ease-out ${T_IMPACT}ms both; will-change: transform; }
+        @keyframes diKenburns { from { transform: scale(1.1) } to { transform: scale(1.22) } }
 
         .di-bar {
           position: absolute; left: -10%; width: 120%; height: 6px; z-index: 10;
@@ -412,17 +604,45 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           100% { opacity: 1; transform: rotate(-9.5deg) scaleX(1) }
         }
 
+        /* Relâmpagos do impacto */
+        .di-bolt {
+          position: absolute; top: -12%; height: 124%; width: 4px; z-index: 32; opacity: 0;
+          background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.95) 70%, transparent);
+          box-shadow: 0 0 22px rgba(255,255,255,0.85);
+          will-change: transform, opacity;
+        }
+        .di-bolt-1 { left: 30%; transform: rotate(16deg) skewX(-8deg); animation: diBolt 460ms ease-out ${T_IMPACT - 40}ms both; }
+        .di-bolt-2 { left: 66%; transform: rotate(-14deg) skewX(6deg); animation: diBolt 520ms ease-out ${T_IMPACT + 90}ms both; }
+        @keyframes diBolt {
+          0%   { opacity: 0 }
+          8%   { opacity: 1 }
+          22%  { opacity: 0.2 }
+          34%  { opacity: 0.95 }
+          100% { opacity: 0 }
+        }
+
+        /* Faíscas radiais */
+        .di-spark {
+          position: absolute; top: 0; left: 0; border-radius: 9999px; opacity: 0;
+          animation: diSpark 780ms cubic-bezier(0.16,1,0.3,1) both;
+          will-change: transform, opacity;
+        }
+        @keyframes diSpark {
+          0%   { opacity: 1; transform: translate3d(0,0,0) scale(1.4) }
+          100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(0.15) }
+        }
+
         .di-name {
           position: absolute; z-index: 20; padding: 10px 18px; border-radius: 18px;
           background: radial-gradient(ellipse at center, rgba(4,3,13,0.62), rgba(4,3,13,0) 72%);
           will-change: transform, opacity;
         }
         .di-name-opp {
-          top: 8%; right: 5%;
+          top: 9%; right: 5%;
           animation: diNameOpp 520ms cubic-bezier(0.16,1,0.3,1) 150ms both;
         }
         .di-name-me {
-          bottom: 12%; left: 5%;
+          bottom: 13%; left: 5%;
           animation: diNameMe 520ms cubic-bezier(0.16,1,0.3,1) 240ms both;
         }
         @keyframes diNameOpp {
@@ -449,7 +669,9 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           font-size: clamp(56px, 14vw, 150px); font-weight: 900; color: #ffffff;
           letter-spacing: -0.04em; line-height: 1;
           text-shadow: 0 0 50px rgba(255,255,255,0.6);
-          animation: diVs 620ms cubic-bezier(0.22,1.4,0.36,1) ${T_IMPACT - 120}ms both;
+          animation:
+            diVs 620ms cubic-bezier(0.22,1.4,0.36,1) ${T_IMPACT - 120}ms both,
+            diVsPulse 1s ease-in-out ${T_IMPACT + 520}ms infinite alternate;
           will-change: transform, opacity;
         }
         @keyframes diVs {
@@ -458,6 +680,10 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           75%  { transform: scale(1.08) rotate(-2deg) }
           100% { opacity: 1; transform: scale(1) rotate(0deg) }
         }
+        @keyframes diVsPulse {
+          from { text-shadow: 0 0 50px rgba(255,255,255,0.6) }
+          to   { text-shadow: 0 0 85px rgba(255,255,255,0.95), 0 0 30px rgba(255,255,255,0.8) }
+        }
         .di-ring {
           position: absolute; width: 120px; height: 120px; border-radius: 9999px;
           border: 4px solid rgba(255,255,255,0.85);
@@ -465,6 +691,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           will-change: transform, opacity;
         }
         .di-ring-2 { animation-delay: ${T_IMPACT + 110}ms; border-color: rgba(225,29,72,0.8); }
+        .di-ring-3 { animation-delay: ${T_IMPACT + 230}ms; animation-duration: 850ms; border-width: 2px; border-color: rgba(255,255,255,0.5); }
         @keyframes diRing {
           0%   { opacity: 0.95; transform: scale(0.2) }
           100% { opacity: 0;    transform: scale(7) }
@@ -479,9 +706,27 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           14%  { opacity: 0.85 }
           100% { opacity: 0 }
         }
+        .di-flash-color {
+          position: absolute; inset: 0; pointer-events: none; z-index: 39;
+          animation: diFlashColor 460ms ease-out ${T_IMPACT + 130}ms both;
+          will-change: opacity;
+        }
+        @keyframes diFlashColor {
+          0%   { opacity: 0 }
+          18%  { opacity: 0.35 }
+          100% { opacity: 0 }
+        }
+        .di-edge-glow {
+          position: absolute; inset: 0; pointer-events: none; z-index: 38;
+          animation: diEdgeGlow 1.2s ease-in-out ${T_IMPACT + 300}ms infinite alternate both;
+          will-change: opacity;
+        }
+        @keyframes diEdgeGlow { from { opacity: 0.35 } to { opacity: 1 } }
 
         @media (prefers-reduced-motion: reduce) {
-          .di-stripes, .di-shake, .di-pulse-ring { animation: none !important; }
+          .di-stripes, .di-shake, .di-pulse-ring, .di-pulse-ring-2, .di-aura,
+          .di-particle, .di-speedlines, .di-kenburns, .di-master-breathe,
+          .di-spark, .di-edge-glow { animation: none !important; }
         }
       `}</style>
     </div>
