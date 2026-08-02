@@ -1111,13 +1111,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
   /* ── Music player ── */
   const TRACKS = [
+    { id: "menu", name: "Timelapse",       sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3?v=2" },
     { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%201.mp3" },
     { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%202.mp3" },
-    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3?v=2" },
   ]
   const MUSIC_LS = "gpgame_menu_track"
   const [currentTrackId, setCurrentTrackId] = useState<string>(() =>
-    typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "ost1") : "ost1"
+    typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "menu") : "menu"
   )
   const [showMusicPanel, setShowMusicPanel] = useState(false)
   // audioRef is intentionally module-level so music persists across screens
