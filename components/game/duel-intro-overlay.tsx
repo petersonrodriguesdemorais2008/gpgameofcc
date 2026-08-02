@@ -346,6 +346,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       {/* ── FASE 2: choque jogador × oponente ─────────────────────────────── */}
       {(phase === "clash" || phase === "out" || (phase === "gears" && !revealed)) && (
         <div className={`absolute inset-0 di-shake`}>
+          {/* Na transição final (onda), escondemos linhas brancas e nomes */}
           {/* Painel do oponente (topo) */}
           <div className="di-panel di-panel-opp">
             <img
@@ -361,7 +362,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               style={{ background: `linear-gradient(200deg, ${oppAccent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
             {/* Speed lines varrendo o painel */}
-            <div className="di-speedlines di-speedlines-opp" aria-hidden="true" />
+            {phase !== "gears" && <div className="di-speedlines di-speedlines-opp" aria-hidden="true" />}
           </div>
 
           {/* Painel do jogador (base) */}
@@ -378,30 +379,36 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               className="absolute inset-0"
               style={{ background: `linear-gradient(20deg, ${accent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
-            <div className="di-speedlines di-speedlines-me" aria-hidden="true" />
+            {phase !== "gears" && <div className="di-speedlines di-speedlines-me" aria-hidden="true" />}
           </div>
 
           {/* Barras do corte diagonal com energia dos dois lados */}
-          <div
-            className="di-bar di-bar-top"
-            aria-hidden="true"
-            style={{ background: `linear-gradient(to right, ${oppAccent}, #ffffff 45%, #ffffff 55%, ${oppAccent})` }}
-          />
-          <div
-            className="di-bar di-bar-bottom"
-            aria-hidden="true"
-            style={{ background: `linear-gradient(to right, ${accent}, #ffffff 45%, #ffffff 55%, ${accent})` }}
-          />
+          {phase !== "gears" && (
+            <>
+              <div
+                className="di-bar di-bar-top"
+                aria-hidden="true"
+                style={{ background: `linear-gradient(to right, ${oppAccent}, #ffffff 45%, #ffffff 55%, ${oppAccent})` }}
+              />
+              <div
+                className="di-bar di-bar-bottom"
+                aria-hidden="true"
+                style={{ background: `linear-gradient(to right, ${accent}, #ffffff 45%, #ffffff 55%, ${accent})` }}
+              />
+            </>
+          )}
 
           {/* Energia incandescente pulsando na zona do choque */}
-          <div
-            className="di-cut-glow"
-            aria-hidden="true"
-            style={{ background: `linear-gradient(to right, ${accent}30, rgba(255,255,255,0.22) 50%, ${oppAccent}30)` }}
-          />
+          {phase !== "gears" && (
+            <div
+              className="di-cut-glow"
+              aria-hidden="true"
+              style={{ background: `linear-gradient(to right, ${accent}30, rgba(255,255,255,0.22) 50%, ${oppAccent}30)` }}
+            />
+          )}
 
           {/* Faísca correndo na linha de corte */}
-          <div className="di-cut-spark" aria-hidden="true" />
+          {phase !== "gears" && <div className="di-cut-spark" aria-hidden="true" />}
 
           {/* Impact frames estilo anime: frames alternados preto/branco no choque */}
           <div className="di-impact-frame" aria-hidden="true" />
@@ -426,6 +433,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           ))}
 
           {/* Nome + ícone do oponente */}
+          {phase !== "gears" && (
           <div className="di-name di-name-opp">
             <div
               className="di-name-bar di-name-bar-opp"
@@ -451,8 +459,10 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               />
             </div>
           </div>
+          )}
 
           {/* Nome + ícone do jogador */}
+          {phase !== "gears" && (
           <div className="di-name di-name-me">
             <div
               className="di-name-bar di-name-bar-me"
@@ -476,6 +486,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               </div>
             </div>
           </div>
+          )}
 
           {/* VS central com duplo impacto */}
           <div className="di-vs-wrap">
