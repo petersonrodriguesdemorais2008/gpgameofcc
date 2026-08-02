@@ -68,12 +68,25 @@ const SPARKS = [
   { a: 315,  d: 155, dl: 25 },
 ]
 
+// Destroços que voam do centro e caem com "gravidade" (dx/dy em px)
+const DEBRIS = [
+  { x: -180, y: -60,  s: 5, dl: 0,   t: 0.9 },
+  { x: 150,  y: -90,  s: 4, dl: 30,  t: 1.0 },
+  { x: -110, y: 40,   s: 6, dl: 60,  t: 0.8 },
+  { x: 200,  y: 20,   s: 3, dl: 10,  t: 1.1 },
+  { x: -230, y: -20,  s: 4, dl: 80,  t: 0.95 },
+  { x: 90,   y: -130, s: 5, dl: 45,  t: 0.85 },
+  { x: -60,  y: -150, s: 3, dl: 20,  t: 1.05 },
+  { x: 240,  y: -50,  s: 4, dl: 70,  t: 0.9 },
+]
+
 export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 }: DuelIntroOverlayProps) {
   const { playerProfile } = useGame()
   const [phase, setPhase] = useState<"master" | "clash" | "out">("master")
   const [typed, setTyped] = useState("")
 
   const audioRef  = useRef<HTMLAudioElement | null>(null)
+  const impactRef = useRef<HTMLAudioElement | null>(null)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const doneRef   = useRef(false)
 
@@ -102,6 +115,11 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
     if (a) {
       try { a.pause(); a.currentTime = 0 } catch { /* ignore */ }
       audioRef.current = null
+    }
+    const imp = impactRef.current
+    if (imp) {
+      try { imp.pause(); imp.currentTime = 0 } catch { /* ignore */ }
+      impactRef.current = null
     }
     onComplete()
   }
@@ -132,6 +150,14 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
     }, 26)
 
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("clash") }, T_MASTER_END))
+    // Impacto sonoro sincronizado com o choque dos painéis
+    timersRef.current.push(setTimeout(() => {
+      if (cancelled) return
+      const impact = new Audio("/audio/duel/Unit Atack.wav")
+      impact.volume = Math.max(0, Math.min(1, (sfxVolume / 100) * 0.9))
+      impactRef.current = impact
+      impact.play().catch(() => { /* autoplay bloqueado */ })
+    }, T_MASTER_END + T_IMPACT - 80))
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("out") }, T_MASTER_END + T_CLASH_END))
     timersRef.current.push(setTimeout(() => { if (!cancelled) finish() }, T_MASTER_END + T_CLASH_END + T_FADE))
 
@@ -141,6 +167,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       timersRef.current.forEach(clearTimeout)
       timersRef.current = []
       try { voice.pause() } catch { /* ignore */ }
+      try { impactRef.current?.pause() } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterId, line])
@@ -316,6 +343,28 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           <div className="di-bolt di-bolt-2" aria-hidden="true" />
           <div className="di-bolt di-bolt-3" aria-hidden="true" />
 
+          {/* Impact frames estilo anime: frames alternados preto/branco no choque */}
+          <div className="di-impact-frame" aria-hidden="true" />
+
+          {/* Destroços voando do centro com gravidade */}
+          {DEBRIS.map((d, idx) => (
+            <span
+              key={idx}
+              className="di-debris"
+              aria-hidden="true"
+              style={{
+                width: `${d.s}px`,
+                height: `${d.s}px`,
+                background: idx % 3 === 0 ? oppAccent : "#ffffff",
+                boxShadow: `0 0 ${d.s * 2}px ${idx % 3 === 0 ? oppAccent : "rgba(255,255,255,0.8)"}`,
+                animationDelay: `${T_IMPACT + d.dl}ms`,
+                animationDuration: `${d.t}s`,
+                ["--dx" as string]: `${d.x}px`,
+                ["--dy" as string]: `${d.y}px`,
+              }}
+            />
+          ))}
+
           {/* Nome + ícone do oponente */}
           <div className="di-name di-name-opp">
             <div
@@ -332,6 +381,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 )}
                 <h2 className="di-title text-2xl sm:text-5xl">{opponent.name}</h2>
               </div>
+              <span className="di-shine di-shine-opp" aria-hidden="true" />
               <img
                 src={opponent.icon || "/images/gp-cg-logo.png"}
                 alt={opponent.name}
@@ -363,13 +413,21 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 </p>
                 <h2 className="di-title text-2xl sm:text-5xl">{playerName}</h2>
               </div>
+              <span className="di-shine di-shine-me" aria-hidden="true" />
             </div>
           </div>
 
           {/* VS central com duplo impacto */}
           <div className="di-vs-wrap">
+            {/* Brasa incandescente pulsando atrás do VS */}
+            <div
+              className="di-vs-core"
+              aria-hidden="true"
+              style={{ background: `radial-gradient(circle, rgba(255,255,255,0.5), ${oppAccent}33 40%, transparent 70%)` }}
+            />
             <div className="di-ring"   aria-hidden="true" />
             <div className="di-ring di-ring-2" aria-hidden="true" style={{ borderColor: `${oppAccent}b3` }} />
+            <div className="di-ring di-ring-3" aria-hidden="true" style={{ borderColor: `${accent}99` }} />
             {/* Faíscas voando do centro */}
             {SPARKS.map((s, idx) => (
               <span
@@ -424,14 +482,19 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
 
         /* ── Fase 1 ── */
-        /* Zoom de saída: no fim da fase o palco inteiro é puxado pra frente */
+        /* Dolly lento pra dentro durante toda a fase + zoom violento de saída */
         .di-stage-master {
-          animation: diStageOut 380ms cubic-bezier(0.55,0,1,0.45) ${T_MASTER_END - 380}ms both;
+          animation: diStageIn ${T_MASTER_END - 380}ms ease-out both,
+                     diStageOut 380ms cubic-bezier(0.55,0,1,0.45) ${T_MASTER_END - 380}ms both;
           will-change: transform, opacity;
         }
+        @keyframes diStageIn {
+          from { transform: scale(1) }
+          to   { transform: scale(1.045) }
+        }
         @keyframes diStageOut {
-          0%   { transform: scale(1); opacity: 1 }
-          100% { transform: scale(1.35); opacity: 0 }
+          0%   { transform: scale(1.045); opacity: 1 }
+          100% { transform: scale(1.4); opacity: 0 }
         }
 
         .di-enter-flash {
@@ -524,8 +587,17 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
         /* ── Fase 2 ── */
         .di-shake {
-          animation: diShake 620ms cubic-bezier(0.36,0.07,0.19,0.97) ${T_IMPACT}ms both;
+          animation: diShake 620ms cubic-bezier(0.36,0.07,0.19,0.97) ${T_IMPACT}ms both,
+                     diRumble 260ms linear ${T_IMPACT + 640}ms 5;
           will-change: transform;
+        }
+        /* Réplica do tremor: micro-abalos que vão morrendo depois do impacto */
+        @keyframes diRumble {
+          0%   { transform: translate3d(0,0,0) }
+          25%  { transform: translate3d(1.5px,-1px,0) }
+          50%  { transform: translate3d(-1px,1.5px,0) }
+          75%  { transform: translate3d(1px,0.5px,0) }
+          100% { transform: translate3d(0,0,0) }
         }
         @keyframes diShake {
           0%   { transform: translate3d(0,0,0) }
@@ -730,9 +802,75 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           animation-delay: ${T_IMPACT + 120}ms;
           border-width: 2px;
         }
+        .di-ring-3 {
+          animation-delay: ${T_IMPACT + 240}ms;
+          border-width: 1px;
+        }
         @keyframes diRing {
           0%   { opacity: 0.9; transform: scale(0.2) }
           100% { opacity: 0;   transform: scale(6) }
+        }
+
+        /* Impact frames estilo anime: alternância seca branco/preto por 4 frames */
+        .di-impact-frame {
+          position: absolute; inset: 0; pointer-events: none; z-index: 41;
+          opacity: 0;
+          animation: diImpactFrame 190ms steps(1) ${T_IMPACT - 40}ms both;
+          will-change: opacity, background;
+        }
+        @keyframes diImpactFrame {
+          0%   { opacity: 1; background: #ffffff }
+          25%  { opacity: 1; background: #000000 }
+          50%  { opacity: 1; background: #ffffff }
+          75%  { opacity: 0.6; background: #000000 }
+          100% { opacity: 0 }
+        }
+
+        /* Destroços com arco de gravidade: sobem/voam e caem apagando */
+        .di-debris {
+          position: absolute; top: 50%; left: 50%; z-index: 31;
+          border-radius: 2px; opacity: 0;
+          animation-name: diDebris;
+          animation-timing-function: cubic-bezier(0.2,0.6,0.6,1);
+          animation-fill-mode: both;
+          will-change: transform, opacity;
+        }
+        @keyframes diDebris {
+          0%   { opacity: 1; transform: translate3d(0,0,0) rotate(0deg) }
+          55%  { opacity: 1; transform: translate3d(var(--dx), var(--dy), 0) rotate(180deg) }
+          100% { opacity: 0; transform: translate3d(calc(var(--dx) * 1.25), calc(var(--dy) + 120px), 0) rotate(340deg) }
+        }
+
+        /* Brasa incandescente atrás do VS */
+        .di-vs-core {
+          position: absolute; width: 46vmin; height: 46vmin; border-radius: 9999px;
+          animation: diVsCore 900ms ease-out ${T_IMPACT}ms both,
+                     diVsCorePulse 1.4s ease-in-out ${T_IMPACT + 900}ms infinite;
+          will-change: transform, opacity;
+        }
+        @keyframes diVsCore {
+          0%   { opacity: 0; transform: scale(0.3) }
+          40%  { opacity: 1; transform: scale(1.15) }
+          100% { opacity: 0.7; transform: scale(1) }
+        }
+        @keyframes diVsCorePulse {
+          0%, 100% { opacity: 0.7; transform: scale(1) }
+          50%      { opacity: 0.45; transform: scale(0.94) }
+        }
+
+        /* Shine metálico varrendo as placas de nome */
+        .di-shine {
+          position: absolute; inset: -6px; pointer-events: none; z-index: 5;
+          background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,0.55) 50%, transparent 58%);
+          background-size: 260% 100%; background-position: 130% 0;
+          animation: diShine 750ms ease-in-out both;
+          will-change: background-position;
+        }
+        .di-shine-opp { animation-delay: ${T_IMPACT + 620}ms; }
+        .di-shine-me  { animation-delay: ${T_IMPACT + 760}ms; }
+        @keyframes diShine {
+          from { background-position: 130% 0 }
+          to   { background-position: -30% 0 }
         }
 
         .di-flash {
@@ -782,7 +920,8 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-ember, .di-orbit, .di-orbit-2, .di-master-breathe,
           .di-speedlines-opp, .di-speedlines-me, .di-cut-spark,
           .di-spark, .di-vs-ghost, .di-chroma-r, .di-chroma-b,
-          .di-panel-img, .di-stage-master {
+          .di-panel-img, .di-stage-master,
+          .di-impact-frame, .di-debris, .di-vs-core, .di-shine {
             animation: none !important;
           }
         }
