@@ -346,6 +346,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       {/* ── FASE 2: choque jogador × oponente ─────────────────────────────── */}
       {(phase === "clash" || phase === "out" || (phase === "gears" && !revealed)) && (
         <div className={`absolute inset-0 di-shake`}>
+          {/* Na transição final (onda), escondemos linhas brancas e nomes */}
           {/* Painel do oponente (topo) */}
           <div className="di-panel di-panel-opp">
             <img
@@ -360,8 +361,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               className="absolute inset-0"
               style={{ background: `linear-gradient(200deg, ${oppAccent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
-            {/* Speed lines varrendo o painel */}
-            <div className="di-speedlines di-speedlines-opp" aria-hidden="true" />
+
           </div>
 
           {/* Painel do jogador (base) */}
@@ -378,30 +378,14 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               className="absolute inset-0"
               style={{ background: `linear-gradient(20deg, ${accent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
-            <div className="di-speedlines di-speedlines-me" aria-hidden="true" />
+
           </div>
 
-          {/* Barras do corte diagonal com energia dos dois lados */}
-          <div
-            className="di-bar di-bar-top"
-            aria-hidden="true"
-            style={{ background: `linear-gradient(to right, ${oppAccent}, #ffffff 45%, #ffffff 55%, ${oppAccent})` }}
-          />
-          <div
-            className="di-bar di-bar-bottom"
-            aria-hidden="true"
-            style={{ background: `linear-gradient(to right, ${accent}, #ffffff 45%, #ffffff 55%, ${accent})` }}
-          />
 
-          {/* Energia incandescente pulsando na zona do choque */}
-          <div
-            className="di-cut-glow"
-            aria-hidden="true"
-            style={{ background: `linear-gradient(to right, ${accent}30, rgba(255,255,255,0.22) 50%, ${oppAccent}30)` }}
-          />
 
-          {/* Faísca correndo na linha de corte */}
-          <div className="di-cut-spark" aria-hidden="true" />
+
+
+
 
           {/* Impact frames estilo anime: frames alternados preto/branco no choque */}
           <div className="di-impact-frame" aria-hidden="true" />
@@ -426,12 +410,8 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           ))}
 
           {/* Nome + ícone do oponente */}
+          {phase === "clash" && (
           <div className="di-name di-name-opp">
-            <div
-              className="di-name-bar di-name-bar-opp"
-              aria-hidden="true"
-              style={{ background: `linear-gradient(to left, ${oppAccent}, transparent)` }}
-            />
             <div className="relative flex items-center gap-3 sm:gap-4">
               <div className="di-plate" aria-hidden="true" style={{ borderColor: `${oppAccent}66`, borderRightColor: oppAccent }} />
               <div className="relative text-right">
@@ -451,14 +431,11 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               />
             </div>
           </div>
+          )}
 
           {/* Nome + ícone do jogador */}
+          {phase === "clash" && (
           <div className="di-name di-name-me">
-            <div
-              className="di-name-bar di-name-bar-me"
-              aria-hidden="true"
-              style={{ background: `linear-gradient(to right, ${accent}, transparent)` }}
-            />
             <div className="relative flex items-center gap-3 sm:gap-4">
               <div className="di-plate" aria-hidden="true" style={{ borderColor: `${accent}66`, borderLeftColor: accent }} />
               <img
@@ -476,6 +453,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               </div>
             </div>
           </div>
+          )}
 
           {/* VS central com duplo impacto */}
           <div className="di-vs-wrap">
@@ -528,10 +506,8 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
           {/* Onda de energia: muralha de luz que cobre a tela e revela o duelo */}
           <div className="di-wave">
-            {/* Corpo profundo com textura de circuito em paralaxe */}
+            {/* Corpo profundo da onda */}
             <div className="di-wave-body" />
-            <div className="di-wave-tex" />
-            <div className="di-wave-tex di-wave-tex-2" />
             {/* Crista: brilho largo difuso + lâmina incandescente */}
             <div className="di-wave-edge" />
             <div className="di-wave-edge-core" />
@@ -786,62 +762,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
         @keyframes diPanelZoom { from { transform: scale(1.12) } to { transform: scale(1) } }
 
-        .di-speedlines {
-          position: absolute; inset: -20%; opacity: 0.09; pointer-events: none;
-          background: repeating-linear-gradient(
-            -9.5deg,
-            transparent 0px, transparent 26px,
-            rgba(255,255,255,0.85) 26px, rgba(255,255,255,0.85) 28px
-          );
-          will-change: transform;
-        }
-        .di-speedlines-opp { animation: diLinesOpp 1.4s linear infinite; }
-        .di-speedlines-me  { animation: diLinesMe 1.4s linear infinite; }
-        @keyframes diLinesOpp { from { transform: translate3d(0,0,0) }    to { transform: translate3d(-56px,9px,0) } }
-        @keyframes diLinesMe  { from { transform: translate3d(0,0,0) }    to { transform: translate3d(56px,-9px,0) } }
-
-        .di-bar {
-          position: absolute; left: -10%; width: 120%; height: 5px; z-index: 10;
-          box-shadow: 0 0 18px rgba(255,255,255,0.5);
-          will-change: transform, opacity;
-        }
-        .di-bar-top    { top: 45%; transform-origin: left center;  animation: diBar 420ms cubic-bezier(0.16,1,0.3,1) 100ms both; }
-        .di-bar-bottom { top: 58%; transform-origin: right center; animation: diBar 420ms cubic-bezier(0.16,1,0.3,1) 180ms both; }
-        @keyframes diBar {
-          0%   { opacity: 0; transform: rotate(-9.5deg) scaleX(0) }
-          100% { opacity: 1; transform: rotate(-9.5deg) scaleX(1) }
-        }
-
-        /* Energia incandescente respirando na zona do choque, entre as barras */
-        .di-cut-glow {
-          position: absolute; top: 44%; left: -10%; width: 120%; height: 15%;
-          z-index: 9; pointer-events: none;
-          transform: rotate(-9.5deg);
-          -webkit-mask-image: linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent);
-          mask-image: linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent);
-          animation: diCutGlowIn 500ms ease-out ${T_IMPACT}ms both,
-                     diCutGlowPulse 1.5s ease-in-out ${T_IMPACT + 500}ms infinite;
-          will-change: opacity;
-        }
-        @keyframes diCutGlowIn    { from { opacity: 0 } to { opacity: 0.8 } }
-        @keyframes diCutGlowPulse { 0%, 100% { opacity: 0.8 } 50% { opacity: 0.45 } }
-
-        /* Faísca que percorre a linha de corte */
-        .di-cut-spark {
-          position: absolute; top: 51.5%; left: -6%; z-index: 12;
-          width: 90px; height: 4px; border-radius: 9999px;
-          background: linear-gradient(to right, transparent, #fff);
-          box-shadow: 0 0 22px rgba(255,255,255,0.95), 0 0 44px rgba(255,255,255,0.5);
-          transform: rotate(-9.5deg);
-          animation: diCutSpark 900ms cubic-bezier(0.5,0,0.3,1) ${T_IMPACT + 150}ms both;
-          will-change: transform, opacity;
-        }
-        @keyframes diCutSpark {
-          0%   { opacity: 0; transform: rotate(-9.5deg) translate3d(0,0,0) }
-          8%   { opacity: 1 }
-          88%  { opacity: 1 }
-          100% { opacity: 0; transform: rotate(-9.5deg) translate3d(115vw,0,0) }
-        }
 
         .di-name {
           position: absolute; z-index: 20; padding: 8px 14px;
@@ -862,24 +782,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         @keyframes diNameMe {
           0%   { opacity: 0; transform: translate3d(-60px,20px,0) }
           100% { opacity: 1; transform: translate3d(0,0,0) }
-        }
-        /* Barra de energia atrás das placas de nome */
-        .di-name-bar {
-          position: absolute; top: 50%; height: 3px; width: 46vw; max-width: 420px;
-          transform: translateY(-50%); opacity: 0.85; border-radius: 9999px;
-          will-change: transform;
-        }
-        .di-name-bar-opp {
-          right: -14px; transform-origin: right center;
-          animation: diNameBar 520ms cubic-bezier(0.16,1,0.3,1) 320ms both;
-        }
-        .di-name-bar-me {
-          left: -14px; transform-origin: left center;
-          animation: diNameBar 520ms cubic-bezier(0.16,1,0.3,1) 400ms both;
-        }
-        @keyframes diNameBar {
-          from { transform: translateY(-50%) scaleX(0) }
-          to   { transform: translateY(-50%) scaleX(1) }
         }
         .di-title {
           font-weight: 900; color: #ffffff; line-height: 1;
@@ -1061,21 +963,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
             radial-gradient(ellipse 40% 50% at 86% 24%, rgba(14,116,144,0.18), transparent 70%),
             linear-gradient(to right, rgba(2,8,26,0) 0%, rgba(2,8,26,0.97) 3%, #030b20 8%, #041030 52%, #030b20 94%, rgba(3,11,32,0) 100%);
         }
-        /* Textura de circuito: linhas verticais em paralaxe dentro do corpo */
-        .di-wave-tex {
-          position: absolute; inset: 0; opacity: 0.5;
-          background: repeating-linear-gradient(to right, transparent 0 54px, rgba(56,189,248,0.09) 54px 56px);
-          -webkit-mask-image: linear-gradient(to right, transparent 2%, #000 10%, #000 92%, transparent 98%);
-          mask-image: linear-gradient(to right, transparent 2%, #000 10%, #000 92%, transparent 98%);
-          animation: diWaveTex 900ms linear infinite;
-          will-change: transform;
-        }
-        .di-wave-tex-2 {
-          opacity: 0.35;
-          background: repeating-linear-gradient(to right, transparent 0 26px, rgba(125,211,252,0.07) 26px 27px);
-          animation-duration: 500ms;
-        }
-        @keyframes diWaveTex { from { transform: translate3d(0,0,0) } to { transform: translate3d(56px,0,0) } }
         /* Crista: brilho largo difuso + lâmina incandescente */
         .di-wave-edge {
           position: absolute; top: 0; bottom: 0; left: -110px; width: 200px;
@@ -1181,13 +1068,12 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-shake, .di-master-glow, .di-master-in, .di-bubble-in,
           .di-panel-opp, .di-panel-me,
           .di-ember, .di-orbit, .di-orbit-2, .di-master-breathe,
-          .di-speedlines-opp, .di-speedlines-me, .di-cut-spark,
           .di-spark, .di-vs-ghost,
           .di-panel-img, .di-stage-master,
-          .di-rays, .di-floor-glow, .di-cut-glow,
+          .di-rays, .di-floor-glow,
           .di-impact-frame, .di-debris, .di-vs-core,
           .di-gear-spin,
-          .di-wave-tex, .di-hero-gear-halo, .di-after-spark,
+          .di-hero-gear-halo, .di-after-spark,
           .di-reveal-flash, .di-edge-pulse, .di-sweep-charge {
             animation: none !important;
           }
