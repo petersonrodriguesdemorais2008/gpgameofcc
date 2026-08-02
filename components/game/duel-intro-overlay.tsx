@@ -48,36 +48,6 @@ const T_GEAR_COVER = 700  // momento em que a onda cobre 100% da tela (revela o 
 
 const GEAR_IMG = "/images/modes/gear-blue.png"
 
-// Riscos de luz em hipervelocidade — traços puros de energia azul cruzando a
-// tela. Poucos, finos e elegantes: velocidade sem poluição visual.
-// core = risco com núcleo branco incandescente · op = opacidade da camada
-const LIGHT_STREAKS = [
-  // vanguarda — abrem caminho na frente da onda
-  { top: 8,  w: 34, h: 3, dl: 0,   t: 520, op: 0.9,  core: true  },
-  { top: 19, w: 22, h: 2, dl: 90,  t: 560, op: 0.6,  core: false },
-  { top: 31, w: 40, h: 3, dl: 40,  t: 480, op: 1,    core: true  },
-  { top: 44, w: 18, h: 2, dl: 150, t: 600, op: 0.5,  core: false },
-  { top: 57, w: 36, h: 3, dl: 20,  t: 500, op: 0.95, core: true  },
-  { top: 69, w: 24, h: 2, dl: 120, t: 580, op: 0.55, core: false },
-  { top: 81, w: 42, h: 3, dl: 60,  t: 490, op: 1,    core: true  },
-  { top: 92, w: 20, h: 2, dl: 170, t: 610, op: 0.5,  core: false },
-  // retaguarda — ecos discretos por cima do duelo já revelado
-  { top: 14, w: 26, h: 2, dl: 860, t: 560, op: 0.55, core: false },
-  { top: 40, w: 32, h: 2, dl: 930, t: 520, op: 0.6,  core: true  },
-  { top: 64, w: 22, h: 2, dl: 900, t: 580, op: 0.5,  core: false },
-  { top: 86, w: 30, h: 2, dl: 980, t: 540, op: 0.55, core: false },
-]
-
-// Filamentos de plasma que serpenteiam à frente da crista da onda
-const WAVE_FILAMENTS = [
-  { top: 10, w: 220, h: 2,   dl: 0,   op: 0.9  },
-  { top: 26, w: 150, h: 1.5, dl: 70,  op: 0.7  },
-  { top: 41, w: 260, h: 2,   dl: 30,  op: 1    },
-  { top: 55, w: 180, h: 1.5, dl: 110, op: 0.75 },
-  { top: 71, w: 240, h: 2,   dl: 50,  op: 0.9  },
-  { top: 87, w: 160, h: 1.5, dl: 90,  op: 0.7  },
-]
-
 // Engrenagens-herói: poucas, grandes e elegantes, cravadas na crista de luz.
 // glow = espessura do halo de energia (px) atrás de cada uma.
 const HERO_GEARS = [
@@ -472,7 +442,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 )}
                 <h2 className="di-title text-2xl sm:text-5xl">{opponent.name}</h2>
               </div>
-              <span className="di-shine di-shine-opp" aria-hidden="true" />
               <img
                 src={opponent.icon || "/images/gp-cg-logo.png"}
                 alt={opponent.name}
@@ -505,7 +474,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 </p>
                 <h2 className="di-title text-2xl sm:text-5xl">{playerName}</h2>
               </div>
-              <span className="di-shine di-shine-me" aria-hidden="true" />
             </div>
           </div>
 
@@ -558,28 +526,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           {/* Sucção de luz: pulso azul vindo da direita anunciando a onda */}
           {!revealed && <div className="di-sweep-charge" />}
 
-          {/* Riscos de luz em hipervelocidade */}
-          {LIGHT_STREAKS.map((l, idx) => (
-            <div
-              key={`streak-${idx}`}
-              className="di-light-streak"
-              style={{
-                top: `${l.top}%`,
-                height: `${l.h}px`,
-                width: `${l.w}vw`,
-                animationDelay: `${l.dl}ms`,
-                animationDuration: `${l.t}ms`,
-                ["--op" as string]: l.op,
-                background: l.core
-                  ? "linear-gradient(to right, transparent, rgba(125,211,252,0.9) 40%, #ffffff)"
-                  : "linear-gradient(to right, transparent, rgba(56,189,248,0.75))",
-                boxShadow: l.core
-                  ? "0 0 18px rgba(56,189,248,0.8)"
-                  : "0 0 10px rgba(56,189,248,0.45)",
-              }}
-            />
-          ))}
-
           {/* Onda de energia: muralha de luz que cobre a tela e revela o duelo */}
           <div className="di-wave">
             {/* Corpo profundo com textura de circuito em paralaxe */}
@@ -591,21 +537,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
             <div className="di-wave-edge-core" />
             {/* Cauda: véu azul que se dissipa sobre o duelo revelado */}
             <div className="di-wave-tail" />
-
-            {/* Filamentos de plasma disparando à frente da crista */}
-            {WAVE_FILAMENTS.map((f, idx) => (
-              <span
-                key={`fil-${idx}`}
-                className="di-wave-filament"
-                style={{
-                  top: `${f.top}%`,
-                  width: `${f.w}px`,
-                  height: `${f.h}px`,
-                  opacity: f.op,
-                  animationDelay: `${f.dl}ms`,
-                }}
-              />
-            ))}
 
             {/* Engrenagens-herói na crista — poucas, grandes, cinematográficas */}
             {HERO_GEARS.map((g, idx) => (
@@ -634,8 +565,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
           {/* Clarão sincronizado com o instante do reveal */}
           <div className="di-reveal-flash" />
-          {/* Flare horizontal rasgando a tela no reveal */}
-          <div className="di-reveal-flare" />
           {/* Névoa azul que se dissipa sobre o duelo já revelado */}
           <div className="di-afterglow" />
           {/* Energia escorrendo pelas bordas da tela */}
@@ -1077,19 +1006,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
 
         /* Shine metálico varrendo as placas de nome */
-        .di-shine {
-          position: absolute; inset: -6px; pointer-events: none; z-index: 5;
-          background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,0.55) 50%, transparent 58%);
-          background-size: 260% 100%; background-position: 130% 0;
-          animation: diShine 750ms ease-in-out both;
-          will-change: background-position;
-        }
-        .di-shine-opp { animation-delay: ${T_IMPACT + 620}ms; }
-        .di-shine-me  { animation-delay: ${T_IMPACT + 760}ms; }
-        @keyframes diShine {
-          from { background-position: 130% 0 }
-          to   { background-position: -30% 0 }
-        }
 
         .di-flash {
           position: absolute; inset: 0; background: #ffffff;
@@ -1123,20 +1039,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
 
         /* Riscos de luz em hipervelocidade — traços puros de energia */
-        .di-light-streak {
-          position: absolute; left: 0; z-index: 5; border-radius: 9999px;
-          transform: translate3d(112vw,0,0); opacity: 0;
-          animation-name: diLightStreak;
-          animation-timing-function: cubic-bezier(0.3,0,0.55,1);
-          animation-fill-mode: both;
-          will-change: transform, opacity;
-        }
-        @keyframes diLightStreak {
-          0%   { opacity: 0; transform: translate3d(112vw,0,0) }
-          10%  { opacity: var(--op, 1) }
-          85%  { opacity: var(--op, 1) }
-          100% { opacity: 0; transform: translate3d(-60vw,0,0) }
-        }
 
         /* A onda em si: entra em disparada, cobre a tela (reveal) e acelera
            pra fora pela esquerda. Pacing nos percentuais dos keyframes. */
@@ -1194,20 +1096,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           filter: blur(10px);
         }
 
-        /* Filamentos de plasma disparando à frente da crista */
-        .di-wave-filament {
-          position: absolute; left: 0; border-radius: 9999px;
-          transform: translateX(-100%); transform-origin: right center;
-          background: linear-gradient(to left, #bae6fd, rgba(56,189,248,0.5) 45%, transparent);
-          box-shadow: 0 0 12px rgba(56,189,248,0.7);
-          animation: diFilament 240ms ease-in-out infinite alternate;
-          will-change: transform;
-        }
-        @keyframes diFilament {
-          from { transform: translateX(-100%) scaleX(0.55) }
-          to   { transform: translateX(-100%) scaleX(1) }
-        }
-
         /* Engrenagem-herói: cravada na crista, com halo de energia pulsando */
         .di-hero-gear { position: absolute; z-index: 4; }
         .di-hero-gear-halo {
@@ -1244,20 +1132,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           0%   { opacity: 0 }
           18%  { opacity: 0.9 }
           100% { opacity: 0 }
-        }
-        /* Flare horizontal rasgando a tela no reveal */
-        .di-reveal-flare {
-          position: absolute; top: 50%; left: 0; right: 0; height: 3px; z-index: 21;
-          transform: translateY(-50%) scaleX(0); opacity: 0;
-          background: linear-gradient(to right, transparent, #e0f2fe 28%, #ffffff 50%, #e0f2fe 72%, transparent);
-          box-shadow: 0 0 32px rgba(125,211,252,0.9), 0 0 64px rgba(56,189,248,0.5);
-          animation: diRevealFlare 560ms cubic-bezier(0.16,1,0.3,1) ${T_GEAR_COVER - 40}ms both;
-          will-change: transform, opacity;
-        }
-        @keyframes diRevealFlare {
-          0%   { opacity: 0; transform: translateY(-50%) scaleX(0) scaleY(1) }
-          28%  { opacity: 1; transform: translateY(-50%) scaleX(1) scaleY(1) }
-          100% { opacity: 0; transform: translateY(-50%) scaleX(1) scaleY(9) }
         }
         /* Névoa azul que se dissipa sobre o duelo já revelado */
         .di-afterglow {
@@ -1311,15 +1185,15 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-spark, .di-vs-ghost,
           .di-panel-img, .di-stage-master,
           .di-rays, .di-floor-glow, .di-cut-glow,
-          .di-impact-frame, .di-debris, .di-vs-core, .di-shine,
-          .di-gear-spin, .di-light-streak, .di-wave-filament,
+          .di-impact-frame, .di-debris, .di-vs-core,
+          .di-gear-spin,
           .di-wave-tex, .di-hero-gear-halo, .di-after-spark,
-          .di-reveal-flash, .di-reveal-flare, .di-edge-pulse, .di-sweep-charge {
+          .di-reveal-flash, .di-edge-pulse, .di-sweep-charge {
             animation: none !important;
           }
           /* Com motion reduzido a onda não varre: apenas cobre e some no fade */
           .di-wave { animation: none !important; transform: translate3d(-20vw,0,0); }
-          .di-light-streak, .di-after-spark, .di-reveal-flare { opacity: 0 !important; }
+          .di-after-spark { opacity: 0 !important; }
         }
       `}</style>
     </div>
