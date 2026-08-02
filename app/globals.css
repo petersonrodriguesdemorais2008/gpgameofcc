@@ -2253,6 +2253,26 @@
   image-rendering: auto;
 }
 
+/* Nitidez das cartas no campo 3D (supersampling 2x):
+   dentro de um contexto com perspective/rotateX, cada carta animada
+   vira uma textura de GPU rasterizada no tamanho pequeno do slot e
+   depois reprojetada — o que causa o borrão/baixa resolução.
+   Renderizamos a arte em 200% do tamanho e reduzimos com scale(0.5),
+   forçando o navegador a rasterizar com o dobro de pixels.
+   Visualmente idêntico (mesmo enquadramento), apenas mais nítido.
+   O efeito flutuante (gp-card-float) e a inclinação 3D do tabuleiro
+   permanecem intactos. */
+.duel-board-tilt .gp-card-float img,
+.duel-board-tilt .gp-card-shadow img {
+  width: 200% !important;
+  height: 200% !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: scale(0.5);
+  transform-origin: top left;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gp-card-float {
     animation: none;
