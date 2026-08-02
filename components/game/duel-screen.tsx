@@ -2650,7 +2650,7 @@ function StarfieldCanvas() {
       ctx.restore()
     }
 
-    /* ── Runtime particles ── */
+    /* ─��� Runtime particles ── */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -8496,7 +8496,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
 
-            // ── TRAP CHECK: ESCUDO DE MANA ────────────────────────────────────
+            // ── TRAP CHECK: ESCUDO DE MANA ────────────────────���───────────────
             // Ativa quando o bot usa Magic Function ou Item Function de dano.
             // Efeito: anula o efeito da carta e a destrói (manda para o cemitério
             // do bot sem aplicar o efeito).
@@ -9368,7 +9368,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         break
 
-      // ── Opponent moved TAP card to hand ───────────────────────────────────
+      // ── Opponent moved TAP card to hand ───────────��───────────────────────
       case "tap_to_hand":
         setEnemyField(prev => ({
           ...prev,
@@ -10657,12 +10657,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
            certa pra cada carta, então o movimento começa na hora (sem espera de ~2s),
            mas continua dessincronizado entre as cartas. */
         @keyframes gp-float {
+          /* NOTA: transform (translate/rotate) removido da animação — rotação
+             fracionária forçava o navegador a rasterizar a carta como textura
+             e reamostrá-la a cada frame, deixando a arte borrada/baixa resolução.
+             A "respiração" da sombra mantém a sensação de flutuação. */
           0%, 100% {
-            transform: translateY(0) translateX(0) rotate(0deg);
             box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45);
           }
           50% {
-            transform: translateY(-5px) translateX(var(--float-x, 0px)) rotate(var(--float-rot, 0deg));
             box-shadow: 0 14px 16px -4px rgba(0,0,0,0.42), 0 6px 8px -3px rgba(0,0,0,0.22);
           }
         }
@@ -10676,14 +10678,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           .gp-card-float { animation: none; box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45); }
         }
 
-        /* ── Tabuleiro: visão de cima levemente inclinada pra frente, tipo mesa física ── */
+        /* ── Tabuleiro plano: o tilt 3D (rotateX + perspective) foi removido
+           porque forçava o navegador a rasterizar o campo inteiro como textura
+           e reamostrar as cartas, deixando as imagens borradas/baixa resolução ── */
         .duel-arena-perspective {
-          perspective: 1500px;
-          perspective-origin: 50% 12%;
+          perspective: none;
         }
         .duel-board-tilt {
-          transform: rotateX(17deg);
-          transform-origin: 50% 88%;
+          transform: none;
         }
 
         /* ── Animação de ativação de armadilha: impacto + onda de choque + brilho duplo ── */

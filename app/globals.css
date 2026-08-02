@@ -2199,16 +2199,18 @@
 
 /* ============================================================
    DUEL FIELD — Tabletop perspective (PVZ style)
+   NOTE: a perspectiva 3D (rotateX + perspective) foi removida.
+   Ela forçava o navegador a rasterizar o tabuleiro inteiro como
+   uma textura de GPU e reamostrá-la, deixando as imagens das
+   cartas borradas / em baixa resolução. Sem o tilt, as cartas
+   renderizam pixel-perfect.
    ============================================================ */
 .duel-arena-perspective {
-  perspective: 1200px;
-  perspective-origin: 50% 22%;
+  perspective: none;
 }
 
 .duel-board-tilt {
-  transform: rotateX(13deg) scale(1.045);
-  transform-origin: 50% 62%;
-  transform-style: preserve-3d;
+  transform: none;
 }
 
 /* ============================================================
