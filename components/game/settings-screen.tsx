@@ -203,6 +203,7 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
     if (!result.success) {
       setAuthError(result.error || "Erro ao registrar")
     } else {
+      if (typeof window !== "undefined") localStorage.setItem("gpgame_menu_track", "menu")
       setEmail("")
       setPassword("")
       setConfirmPassword("")
@@ -242,6 +243,7 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
     if (!result.success) {
       setAuthError(result.error || "Erro ao criar conta")
     } else {
+      if (typeof window !== "undefined") localStorage.setItem("gpgame_menu_track", "menu")
       setGeneratedCode(result.code || null)
       setPassword("")
       setConfirmPassword("")

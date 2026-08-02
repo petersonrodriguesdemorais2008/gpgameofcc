@@ -673,9 +673,24 @@ const GP_CSS = `
 
 /* ── Music Player ── */
 @keyframes gp-disc-spin { to { transform: rotate(360deg); } }
+@keyframes gp-eq1 { 0%,100%{height:4px} 50%{height:12px} }
+@keyframes gp-eq2 { 0%,100%{height:10px} 50%{height:3px} }
+@keyframes gp-eq3 { 0%,100%{height:6px} 30%{height:13px} 70%{height:2px} }
+@keyframes gp-eq4 { 0%,100%{height:8px} 40%{height:2px} 80%{height:11px} }
+.gp-eq-bars {
+  display: flex; align-items: flex-end; gap: 2px; height: 14px; flex-shrink: 0;
+}
+.gp-eq-bar {
+  width: 3px; border-radius: 2px;
+  background: linear-gradient(180deg, rgba(232,121,249,0.95), rgba(139,92,246,0.8));
+}
+.gp-eq-bar:nth-child(1) { animation: gp-eq1 0.7s ease-in-out infinite; }
+.gp-eq-bar:nth-child(2) { animation: gp-eq2 0.9s ease-in-out infinite; }
+.gp-eq-bar:nth-child(3) { animation: gp-eq3 0.6s ease-in-out infinite; }
+.gp-eq-bar:nth-child(4) { animation: gp-eq4 0.8s ease-in-out infinite; }
 .gp-disc {
   will-change: transform;
-  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
   background: conic-gradient(
     rgba(139,92,246,0.9) 0deg, rgba(232,121,249,0.85) 90deg,
     rgba(56,189,248,0.8) 180deg, rgba(167,139,250,0.9) 270deg,
@@ -683,40 +698,44 @@ const GP_CSS = `
   );
   animation: gp-disc-spin 2.8s linear infinite;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 10px rgba(139,92,246,0.45);
+  box-shadow: 0 0 14px rgba(139,92,246,0.5);
 }
 .gp-disc-inner {
-  width: 11px; height: 11px; border-radius: 50%;
-  background: rgba(4,2,16,0.95);
-  border: 1px solid rgba(139,92,246,0.4);
+  width: 13px; height: 13px; border-radius: 50%;
+  background: rgba(4,2,16,0.97);
+  border: 1.5px solid rgba(139,92,246,0.45);
 }
 .gp-disc.paused { animation-play-state: paused; }
 .gp-music-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 10px 5px 6px;
-  background: rgba(4,2,16,0.88);
-  border: 1px solid rgba(139,92,246,0.22);
-  border-radius: 20px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 13px 7px 8px;
+  background: rgba(4,2,16,0.92);
+  border: 1px solid rgba(139,92,246,0.28);
+  border-radius: 14px;
   cursor: pointer;
-  transition: border-color .25s, background .25s;
+  transition: border-color .25s, background .25s, box-shadow .25s;
   overflow: hidden;
-  max-width: 230px;
+  width: 250px;
+  position: relative;
 }
-.gp-music-bar:hover { border-color: rgba(139,92,246,0.5); background: rgba(8,4,28,0.94); }
+.gp-music-bar:hover {
+  border-color: rgba(139,92,246,0.55);
+  background: rgba(8,4,28,0.96);
+  box-shadow: 0 0 18px rgba(139,92,246,0.18);
+}
 .gp-music-bar::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-  background: linear-gradient(180deg, rgba(232,121,249,0.8), rgba(139,92,246,0.8));
-  border-radius: 1px;
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, #E879F9, #7C3AED);
+  border-radius: 2px 0 0 2px;
 }
 .gp-music-title {
-  font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px;
-  color: rgba(196,165,250,0.9); white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; max-width: 140px;
-  text-transform: uppercase;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
+  color: rgba(216,180,254,0.95); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
 }
 .gp-music-sub {
-  font-size: 7.5px; font-weight: 600; letter-spacing: 1px;
-  color: rgba(109,40,217,0.65); text-transform: uppercase;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.8px;
+  color: rgba(109,40,217,0.7); text-transform: uppercase; margin-top: 1px;
 }
 @keyframes gp-music-scroll {
   0%   { transform: translateX(0); }
@@ -727,29 +746,61 @@ const GP_CSS = `
 }
 .gp-music-scroll { animation: gp-music-scroll 8s linear infinite; display: inline-block; white-space: nowrap; }
 
-/* Track selector mini-panel */
+/* Track selector panel */
 .gp-music-panel {
-  position: fixed; z-index: 200;
-  background: rgba(3,1,14,0.97);
-  border: 1px solid rgba(139,92,246,0.3);
+  background: rgba(5,2,18,0.98);
+  border: 1px solid rgba(139,92,246,0.28);
   border-radius: 16px;
-  box-shadow: 0 0 40px rgba(124,58,237,0.25), 0 12px 40px rgba(0,0,0,0.7);
-  backdrop-filter: blur(20px);
-  padding: 16px;
-  width: 260px;
+  box-shadow: 0 0 50px rgba(109,40,217,0.22), 0 16px 48px rgba(0,0,0,0.75);
+  backdrop-filter: blur(24px);
+  padding: 14px;
+  width: 270px;
+  overflow: hidden;
 }
+.gp-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(139,92,246,0.14);
+  margin-bottom: 10px;
+}
+.gp-panel-title {
+  font-size: 9px; font-weight: 800; letter-spacing: 2.5px;
+  text-transform: uppercase; color: rgba(139,92,246,0.55);
+}
+.gp-panel-close {
+  width: 22px; height: 22px; border-radius: 6px; border: none; cursor: pointer;
+  background: rgba(139,92,246,0.1); color: rgba(139,92,246,0.5);
+  font-size: 11px; display: flex; align-items: center; justify-content: center;
+  transition: background .2s, color .2s;
+}
+.gp-panel-close:hover { background: rgba(139,92,246,0.22); color: rgba(196,165,250,0.9); }
 .gp-track-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px; border-radius: 10px; cursor: pointer;
+  padding: 9px 10px; border-radius: 10px; cursor: pointer;
   border: 1px solid transparent;
-  transition: all .2s;
+  transition: all .18s;
 }
-.gp-track-item:hover { background: rgba(124,58,237,0.12); border-color: rgba(139,92,246,0.25); }
-.gp-track-item.active { background: rgba(109,40,217,0.18); border-color: rgba(139,92,246,0.45); }
-.gp-track-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.gp-track-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: rgba(196,165,250,0.9); }
+.gp-track-item:hover { background: rgba(124,58,237,0.1); border-color: rgba(139,92,246,0.2); }
+.gp-track-item.active {
+  background: rgba(109,40,217,0.16);
+  border-color: rgba(139,92,246,0.4);
+}
+.gp-track-num {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.5px;
+  background: rgba(139,92,246,0.1); color: rgba(139,92,246,0.5);
+}
+.gp-track-num.active {
+  background: rgba(124,58,237,0.25); color: rgba(232,121,249,0.95);
+}
+.gp-track-name { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; color: rgba(196,165,250,0.85); line-height: 1.2; }
 .gp-track-name.active { color: rgba(232,121,249,1); }
-.gp-track-sub { font-size: 9px; color: rgba(109,40,217,0.6); letter-spacing: 0.5px; }
+.gp-track-sub { font-size: 9px; color: rgba(109,40,217,0.55); letter-spacing: 0.4px; margin-top: 1px; }
+.gp-track-playing {
+  font-size: 8px; font-weight: 800; letter-spacing: 1.2px;
+  color: rgba(232,121,249,0.8); text-transform: uppercase; flex-shrink: 0;
+}
 
 /* Misc */
 .rarity-lr{box-shadow:0 0 20px rgba(239,68,68,0.5),0 0 40px rgba(251,191,36,0.3);border:2px solid #fbbf24;}
@@ -1111,13 +1162,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
 
   /* ── Music player ── */
   const TRACKS = [
+    { id: "menu", name: "Timelapse",       sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3?v=2" },
     { id: "ost1", name: "Main Menu OST 1", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%201.mp3" },
     { id: "ost2", name: "Main Menu OST 2", sub: "Gear of Perks OST", src: "/audio/Main%20Menu%20OST%202.mp3" },
-    { id: "menu", name: "Menu Game OST",   sub: "Gear of Perks OST", src: "/audio/Menu%20Game%20OST.mp3?v=2" },
   ]
   const MUSIC_LS = "gpgame_menu_track"
   const [currentTrackId, setCurrentTrackId] = useState<string>(() =>
-    typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "ost1") : "ost1"
+    typeof window !== "undefined" ? (localStorage.getItem(MUSIC_LS) ?? "menu") : "menu"
   )
   const [showMusicPanel, setShowMusicPanel] = useState(false)
   // audioRef is intentionally module-level so music persists across screens
@@ -1762,55 +1813,54 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
         </div>
       </div>
 
-      {/* ══ MUSIC BAR — barra fixa topo, alinhada à esquerda perto do perfil ══ */}
+      {/* ══ MUSIC BAR ══ */}
       <button
         onClick={() => setShowMusicPanel(v => !v)}
         className={"gp-music-bar" + (mounted ? " gp-anim-music" : " gp-pre-mount")}
-        style={{ position:"fixed", zIndex:50, bottom:110, left:20, width:230 }}>
+        style={{ position:"fixed", zIndex:50, bottom:110, left:20 }}>
         <div className="gp-disc"><div className="gp-disc-inner" /></div>
-        <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
+        <div className="flex flex-col overflow-hidden flex-1" style={{ gap: 2 }}>
           <span className="gp-music-sub">Tocando agora</span>
-          <div style={{ overflow: "hidden" }}>
-            <span className="gp-music-title gp-music-scroll">
-              {currentTrack.name}&nbsp;&nbsp;·&nbsp;&nbsp;{currentTrack.name}
-            </span>
-          </div>
+          <span className="gp-music-title">{currentTrack.name}</span>
         </div>
-        <span style={{ color: "rgba(167,139,250,0.6)", fontSize: 10, flexShrink: 0 }}>
-          {showMusicPanel ? "▲" : "▼"}
-        </span>
+        <div className="gp-eq-bars" style={{ marginRight: 2 }}>
+          <div className="gp-eq-bar" />
+          <div className="gp-eq-bar" />
+          <div className="gp-eq-bar" />
+          <div className="gp-eq-bar" />
+        </div>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink:0, opacity:0.45, transform: showMusicPanel ? "rotate(180deg)" : "none", transition:"transform .2s" }}>
+          <path d="M1 3.5L5 7L9 3.5" stroke="rgba(167,139,250,1)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </button>
 
-      {/* ── Music panel — separate fixed element so it's never clipped ── */}
+      {/* ── Music panel ── */}
       {showMusicPanel && (
-        <div className="fixed z-[9999]" style={{ bottom: 200, left: 20 }}>
+        <div className="fixed z-[9999]" style={{ bottom: 208, left: 20 }}>
           <div className="gp-music-panel">
-            <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize:10, fontWeight:800, letterSpacing:"2px", textTransform:"uppercase", color:"rgba(139,92,246,0.6)" }}>
-                🎵 Músicas do Menu
-              </p>
-              <button
-                onClick={e => { e.stopPropagation(); setShowMusicPanel(false) }}
-                style={{ color:"rgba(139,92,246,0.5)", fontSize:14, background:"none", border:"none", cursor:"pointer", lineHeight:1 }}>✕</button>
+            <div className="gp-panel-header">
+              <span className="gp-panel-title">Faixas do Menu</span>
+              <button className="gp-panel-close"
+                onClick={e => { e.stopPropagation(); setShowMusicPanel(false) }}>✕</button>
             </div>
-            <div className="flex flex-col gap-1.5">
-              {TRACKS.map(track => (
-                <div key={track.id}
-                  className={"gp-track-item" + (track.id === currentTrackId ? " active" : "")}
-                  onClick={e => { e.stopPropagation(); handleSelectTrack(track.id) }}>
-                  <div className="gp-track-dot" style={{
-                    background: track.id === currentTrackId ? "linear-gradient(135deg,#E879F9,#8B5CF6)" : "rgba(109,40,217,0.35)",
-                    boxShadow: track.id === currentTrackId ? "0 0 6px rgba(232,121,249,0.6)" : "none",
-                  }} />
-                  <div className="flex-1">
-                    <p className={"gp-track-name" + (track.id === currentTrackId ? " active" : "")}>{track.name}</p>
-                    <p className="gp-track-sub">{track.sub}</p>
+            <div className="flex flex-col gap-1">
+              {TRACKS.map((track, i) => {
+                const isActive = track.id === currentTrackId
+                return (
+                  <div key={track.id}
+                    className={"gp-track-item" + (isActive ? " active" : "")}
+                    onClick={e => { e.stopPropagation(); handleSelectTrack(track.id) }}>
+                    <div className={"gp-track-num" + (isActive ? " active" : "")}>
+                      {isActive ? "▶" : String(i + 1).padStart(2, "0")}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={"gp-track-name" + (isActive ? " active" : "")}>{track.name}</p>
+                      <p className="gp-track-sub">{track.sub}</p>
+                    </div>
+                    {isActive && <span className="gp-track-playing">Playing</span>}
                   </div>
-                  {track.id === currentTrackId && (
-                    <span style={{ fontSize:9, color:"rgba(232,121,249,0.85)", fontWeight:800, letterSpacing:"1px" }}>▶ NOW</span>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
