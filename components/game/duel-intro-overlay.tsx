@@ -43,8 +43,8 @@ const T_IMPACT     = 300
 const T_CLASH_END  = 2500
 const T_FADE       = 350
 // Transição final: cortina de engrenagens varrendo pra esquerda
-const T_GEAR_TOTAL = 1500 // duração total da varredura
-const T_GEAR_COVER = 640  // momento em que a cortina cobre 100% da tela (revela o duelo por trás)
+const T_GEAR_TOTAL = 1700 // duração total da varredura
+const T_GEAR_COVER = 700  // momento em que a cortina cobre 100% da tela (revela o duelo por trás)
 
 const GEAR_IMG = "/images/modes/gear-blue.png"
 
@@ -73,29 +73,70 @@ const GEAR_STREAKS = [
   { top: 59, s: 18, dl: 20,  t: 780, spin: 460,  dy: -6,  op: 0.55 },
   { top: 73, s: 20, dl: 200, t: 760, spin: 480,  dy: 8,   op: 0.55 },
   { top: 88, s: 16, dl: 120, t: 800, spin: 420,  dy: -10, op: 0.55 },
+  // onda intermediária — preenche o intervalo enquanto a cortina cobre a tela
+  { top: 8,  s: 30, dl: 380, t: 600, spin: 600,  dy: 12,  op: 0.9 },
+  { top: 24, s: 24, dl: 440, t: 640, spin: 520,  dy: -14, op: 0.8 },
+  { top: 41, s: 38, dl: 400, t: 560, spin: 700,  dy: 8,   op: 0.95 },
+  { top: 58, s: 26, dl: 470, t: 620, spin: 540,  dy: -10, op: 0.85 },
+  { top: 74, s: 32, dl: 410, t: 580, spin: 640,  dy: 16,  op: 0.9 },
+  { top: 90, s: 22, dl: 450, t: 660, spin: 500,  dy: -8,  op: 0.8 },
   // retaguarda — cruzam por cima do duelo já revelado (eco da varredura)
-  { top: 14, s: 26, dl: 800, t: 580, spin: 560,  dy: -12, op: 0.9 },
-  { top: 33, s: 40, dl: 880, t: 540, spin: 720,  dy: 10,  op: 0.9 },
-  { top: 51, s: 22, dl: 840, t: 620, spin: 500,  dy: -8,  op: 0.8 },
-  { top: 68, s: 34, dl: 920, t: 560, spin: 660,  dy: 14,  op: 0.9 },
-  { top: 83, s: 24, dl: 860, t: 600, spin: 540,  dy: -10, op: 0.8 },
+  { top: 14, s: 26, dl: 880, t: 580, spin: 560,  dy: -12, op: 0.9 },
+  { top: 33, s: 40, dl: 960, t: 540, spin: 720,  dy: 10,  op: 0.9 },
+  { top: 51, s: 22, dl: 920, t: 620, spin: 500,  dy: -8,  op: 0.8 },
+  { top: 68, s: 34, dl: 1010, t: 560, spin: 660, dy: 14,  op: 0.9 },
+  { top: 83, s: 24, dl: 940, t: 600, spin: 540,  dy: -10, op: 0.8 },
+  { top: 27, s: 18, dl: 1080, t: 640, spin: 480, dy: 8,   op: 0.65 },
+  { top: 60, s: 20, dl: 1120, t: 620, spin: 460, dy: -12, op: 0.6 },
 ]
 
-// Poeira de micro engrenagens — enxame de partículas minúsculas que dá
-// densidade e sensação de velocidade extrema à varredura
+// Poeira de micro engrenagens — enxame denso de partículas minúsculas que dá
+// densidade e sensação de velocidade extrema à varredura.
+// dy = deriva vertical · op = opacidade · spin = rotação individual (variação
+// pra nenhuma partícula parecer clone da vizinha)
 const GEAR_DUST = [
-  { top: 4,  s: 10, dl: 40,  t: 480 }, { top: 11, s: 8,  dl: 190, t: 520 },
-  { top: 18, s: 12, dl: 90,  t: 460 }, { top: 25, s: 9,  dl: 280, t: 540 },
-  { top: 32, s: 11, dl: 140, t: 500 }, { top: 40, s: 8,  dl: 20,  t: 560 },
-  { top: 48, s: 13, dl: 230, t: 470 }, { top: 56, s: 9,  dl: 110, t: 530 },
-  { top: 63, s: 11, dl: 320, t: 490 }, { top: 71, s: 8,  dl: 70,  t: 550 },
-  { top: 78, s: 12, dl: 260, t: 480 }, { top: 86, s: 10, dl: 160, t: 520 },
-  { top: 93, s: 9,  dl: 340, t: 500 }, { top: 15, s: 8,  dl: 820, t: 500 },
-  { top: 44, s: 10, dl: 880, t: 480 }, { top: 66, s: 9,  dl: 850, t: 520 },
-  { top: 90, s: 11, dl: 900, t: 490 },
+  // 1ª rajada — antes da cortina
+  { top: 4,  s: 10, dl: 40,  t: 480, dy: 8,   op: 0.5,  spin: 380 },
+  { top: 8,  s: 7,  dl: 220, t: 440, dy: -12, op: 0.4,  spin: 300 },
+  { top: 11, s: 8,  dl: 190, t: 520, dy: -6,  op: 0.45, spin: 420 },
+  { top: 15, s: 12, dl: 60,  t: 460, dy: 14,  op: 0.55, spin: 340 },
+  { top: 18, s: 12, dl: 90,  t: 460, dy: 10,  op: 0.5,  spin: 360 },
+  { top: 22, s: 7,  dl: 300, t: 500, dy: -16, op: 0.4,  spin: 280 },
+  { top: 25, s: 9,  dl: 280, t: 540, dy: -8,  op: 0.45, spin: 400 },
+  { top: 29, s: 11, dl: 10,  t: 470, dy: 12,  op: 0.55, spin: 320 },
+  { top: 32, s: 11, dl: 140, t: 500, dy: 6,   op: 0.5,  spin: 440 },
+  { top: 36, s: 8,  dl: 330, t: 450, dy: -10, op: 0.4,  spin: 300 },
+  { top: 40, s: 8,  dl: 20,  t: 560, dy: -14, op: 0.45, spin: 380 },
+  { top: 44, s: 13, dl: 250, t: 480, dy: 16,  op: 0.55, spin: 340 },
+  { top: 48, s: 13, dl: 230, t: 470, dy: 8,   op: 0.5,  spin: 420 },
+  { top: 52, s: 7,  dl: 100, t: 520, dy: -6,  op: 0.4,  spin: 260 },
+  { top: 56, s: 9,  dl: 110, t: 530, dy: -12, op: 0.45, spin: 360 },
+  { top: 60, s: 12, dl: 350, t: 460, dy: 10,  op: 0.55, spin: 300 },
+  { top: 63, s: 11, dl: 320, t: 490, dy: 14,  op: 0.5,  spin: 400 },
+  { top: 67, s: 8,  dl: 170, t: 510, dy: -8,  op: 0.4,  spin: 320 },
+  { top: 71, s: 8,  dl: 70,  t: 550, dy: -16, op: 0.45, spin: 440 },
+  { top: 75, s: 12, dl: 290, t: 470, dy: 6,   op: 0.55, spin: 340 },
+  { top: 78, s: 12, dl: 260, t: 480, dy: 12,  op: 0.5,  spin: 380 },
+  { top: 82, s: 7,  dl: 130, t: 500, dy: -10, op: 0.4,  spin: 280 },
+  { top: 86, s: 10, dl: 160, t: 520, dy: -6,  op: 0.45, spin: 360 },
+  { top: 90, s: 12, dl: 30,  t: 490, dy: 14,  op: 0.55, spin: 420 },
+  { top: 93, s: 9,  dl: 340, t: 500, dy: 8,   op: 0.5,  spin: 300 },
+  { top: 97, s: 8,  dl: 200, t: 460, dy: -12, op: 0.4,  spin: 340 },
+  // 2ª rajada — junto da onda intermediária
+  { top: 6,  s: 9,  dl: 480, t: 500, dy: 10,  op: 0.5,  spin: 360 },
+  { top: 34, s: 11, dl: 520, t: 470, dy: -14, op: 0.55, spin: 400 },
+  { top: 54, s: 8,  dl: 500, t: 530, dy: 8,   op: 0.45, spin: 300 },
+  { top: 80, s: 10, dl: 540, t: 490, dy: -10, op: 0.5,  spin: 340 },
+  // 3ª rajada — eco sobre o duelo revelado
+  { top: 10, s: 8,  dl: 900, t: 500, dy: -8,  op: 0.45, spin: 320 },
+  { top: 24, s: 10, dl: 960, t: 470, dy: 12,  op: 0.5,  spin: 380 },
+  { top: 44, s: 10, dl: 930, t: 480, dy: -14, op: 0.5,  spin: 420 },
+  { top: 58, s: 7,  dl: 1020, t: 520, dy: 8,  op: 0.4,  spin: 280 },
+  { top: 72, s: 9,  dl: 950, t: 510, dy: -6,  op: 0.45, spin: 360 },
+  { top: 88, s: 11, dl: 990, t: 490, dy: 10,  op: 0.5,  spin: 340 },
 ]
 
-// Engrenagens grandes cravadas nas bordas da cortina (metade pra fora)
+// Engrenagens grandes cravadas nas bordas da muralha (metade pra fora)
 const CURTAIN_EDGE_GEARS = [
   { top: -3, s: 120, spin: 2600, rev: false },
   { top: 9,  s: 72,  spin: 1800, rev: true  },
@@ -108,18 +149,29 @@ const CURTAIN_EDGE_GEARS = [
   { top: 89, s: 118, spin: 2700, rev: false },
 ]
 
-// Colunas internas de engrenagens menores (profundidade dentro da cortina)
-const CURTAIN_INNER_GEARS = [
-  { top: 5,  s: 46, x: 96,  spin: 1400, rev: true  },
-  { top: 16, s: 30, x: 210, spin: 1100, rev: false },
-  { top: 28, s: 58, x: 150, spin: 1900, rev: false },
-  { top: 39, s: 26, x: 250, spin: 1000, rev: true  },
-  { top: 50, s: 42, x: 88,  spin: 1300, rev: true  },
-  { top: 61, s: 32, x: 220, spin: 1150, rev: false },
-  { top: 72, s: 54, x: 160, spin: 1800, rev: false },
-  { top: 83, s: 28, x: 240, spin: 1050, rev: true  },
-  { top: 92, s: 44, x: 104, spin: 1500, rev: true  },
-]
+// Muralha de mini engrenagens: grade densa gerada deterministicamente
+// (sem Math.random pra não piscar em re-render). É ela quem "cobre" a tela
+// durante a troca de cena — SEM painel sólido, só engrenagens.
+const WALL_GEARS: { top: number; left: number; s: number; spin: number; rev: boolean; op: number }[] = []
+{
+  const COLS = 12
+  const ROWS = 9
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      // hash determinístico (pseudo-aleatório estável) pra jitter orgânico
+      const h  = Math.abs(Math.sin(r * 12.9898 + c * 78.233) * 43758.5453) % 1
+      const h2 = Math.abs(Math.sin(r * 39.3468 + c * 11.135) * 24634.6345) % 1
+      WALL_GEARS.push({
+        top:  (r / (ROWS - 1)) * 100 + (h - 0.5) * 9,
+        left: (c / COLS) * 100 + (h2 - 0.5) * 5,
+        s: 30 + Math.round(h * 66),          // 30–96px
+        spin: 800 + Math.round(h2 * 1700),   // 800–2500ms
+        rev: (r + c) % 2 === 0,
+        op: 0.8 + h2 * 0.2,
+      })
+    }
+  }
+}
 
 // Brasas da fase 1 (posições determinísticas pra não piscar em re-render)
 const EMBERS = [
@@ -580,9 +632,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       {/* ── TRANSIÇÃO FINAL: cortina de engrenagens varrendo pra esquerda ──── */}
       {phase === "gears" && (
         <div className="absolute inset-0 z-[60] pointer-events-none" aria-hidden="true">
-          {/* Flash de revelação: pulso ciano no instante em que a cortina cobre */}
-          <div className="di-gear-flash" style={{ animationDelay: `${T_GEAR_COVER - 80}ms` }} />
-
           {/* Poeira de micro engrenagens (enxame de fundo) */}
           {GEAR_DUST.map((g, idx) => (
             <div
@@ -592,13 +641,15 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 top: `${g.top}%`,
                 animationDelay: `${g.dl}ms`,
                 animationDuration: `${g.t}ms`,
+                ["--dy" as string]: `${g.dy}px`,
+                ["--op" as string]: g.op,
               }}
             >
               <img
                 src={GEAR_IMG || "/placeholder.svg"}
                 alt=""
                 className={`di-gear-spin${idx % 2 ? " di-gear-spin-rev" : ""}`}
-                style={{ width: `${g.s}px`, height: `${g.s}px`, animationDuration: "400ms" }}
+                style={{ width: `${g.s}px`, height: `${g.s}px`, animationDuration: `${g.spin}ms` }}
                 draggable={false}
               />
             </div>
@@ -632,26 +683,28 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
             </div>
           ))}
 
-          {/* Cortina de máquina: corpo metálico com engrenagens nas bordas */}
+          {/* Muralha de engrenagens: parede feita SÓ de mini engrenagens */}
           <div className="di-gear-curtain">
-            <div className="di-gear-curtain-body" />
-            <div className="di-gear-curtain-lines" />
-            <div className="di-gear-edge di-gear-edge-l" />
-            <div className="di-gear-edge di-gear-edge-r" />
+            {/* Mosaico de fundo: camadas de mini engrenagens repetidas (densidade) */}
+            <div className="di-gear-wall-bg" />
+            <div className="di-gear-wall-bg di-gear-wall-bg-2" />
 
-            {/* Coluna interna (profundidade) */}
-            {CURTAIN_INNER_GEARS.map((g, idx) => (
+            {/* Grade de mini engrenagens girando que forma o corpo da muralha */}
+            {WALL_GEARS.map((g, idx) => (
               <img
-                key={`in-${idx}`}
+                key={`wall-${idx}`}
                 src={GEAR_IMG || "/placeholder.svg"}
                 alt=""
-                className={`di-gear-spin di-gear-dim${g.rev ? " di-gear-spin-rev" : ""}`}
+                className={`di-gear-spin${g.rev ? " di-gear-spin-rev" : ""}`}
                 style={{
                   position: "absolute",
                   top: `${g.top}%`,
-                  left: `${g.x}px`,
+                  left: `${g.left}%`,
                   width: `${g.s}px`,
                   height: `${g.s}px`,
+                  opacity: g.op,
+                  marginTop: `${-g.s / 2}px`,
+                  marginLeft: `${-g.s / 2}px`,
                   animationDuration: `${g.spin}ms`,
                 }}
                 draggable={false}
@@ -1148,39 +1201,32 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
            (momento em que o duelo é revelado por trás) e acelera pra fora
            pela esquerda. Pacing controlado pelos percentuais dos keyframes. */
         .di-gear-curtain {
-          position: absolute; top: -6%; bottom: -6%; left: 0; width: 165vw;
+          position: absolute; top: -8%; bottom: -8%; left: 0; width: 165vw;
           animation: diGearSweep ${T_GEAR_TOTAL}ms linear both;
           will-change: transform; backface-visibility: hidden;
         }
+        /* Entrada em disparada com leve inclinação de velocidade, mordida com
+           micro-creep (peso da máquina) e saída explosiva endireitando */
         @keyframes diGearSweep {
-          0%   { transform: translate3d(102vw,0,0); animation-timing-function: cubic-bezier(0.2,0.7,0.4,1); }
-          42%  { transform: translate3d(-10vw,0,0); animation-timing-function: linear; }
-          55%  { transform: translate3d(-17vw,0,0); animation-timing-function: cubic-bezier(0.6,0,0.9,0.4); }
-          100% { transform: translate3d(-178vw,0,0); }
+          0%   { transform: translate3d(104vw,0,0) skewX(-3deg); animation-timing-function: cubic-bezier(0.16,0.8,0.35,1); }
+          41%  { transform: translate3d(-10vw,0,0) skewX(0deg); animation-timing-function: linear; }
+          54%  { transform: translate3d(-16vw,0,0) skewX(0deg); animation-timing-function: cubic-bezier(0.55,0,0.85,0.35); }
+          100% { transform: translate3d(-180vw,0,0) skewX(3deg); }
         }
-        .di-gear-curtain-body {
-          position: absolute; inset: 0;
-          background: linear-gradient(to right,
-            #071022 0%, #0a1730 8%, #060b1c 30%, #081226 55%, #0a1730 82%, #071022 100%);
-          box-shadow: 0 0 80px rgba(0,0,0,0.9);
+        /* Mosaico de fundo da muralha: mini engrenagens repetidas em duas
+           camadas defasadas — dá densidade sem custo de DOM extra */
+        .di-gear-wall-bg {
+          position: absolute; inset: 0; opacity: 0.75;
+          background-image: url(${GEAR_IMG}), url(${GEAR_IMG});
+          background-size: 42px 42px, 22px 22px;
+          background-position: 0 0, 14px 19px;
+          background-repeat: repeat, repeat;
         }
-        /* Estrias de velocidade sutis dentro do corpo da cortina */
-        .di-gear-curtain-lines {
-          position: absolute; inset: 0; opacity: 0.14;
-          background: repeating-linear-gradient(
-            to right,
-            transparent 0px, transparent 54px,
-            rgba(56,189,248,0.5) 54px, rgba(56,189,248,0.5) 56px
-          );
+        .di-gear-wall-bg-2 {
+          opacity: 0.55;
+          background-size: 66px 66px, 30px 30px;
+          background-position: 27px 8px, 3px 41px;
         }
-        /* Bordas incandescentes da cortina */
-        .di-gear-edge {
-          position: absolute; top: 0; bottom: 0; width: 4px;
-          background: linear-gradient(to bottom, #38bdf8, #7dd3fc, #38bdf8);
-          box-shadow: 0 0 24px rgba(56,189,248,0.9), 0 0 60px rgba(56,189,248,0.45);
-        }
-        .di-gear-edge-l { left: 0; }
-        .di-gear-edge-r { right: 0; }
 
         /* Rotação das engrenagens (duração individual via style) */
         .di-gear-spin {
@@ -1191,19 +1237,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           will-change: transform;
         }
         .di-gear-spin-rev { animation-direction: reverse; }
-        .di-gear-dim { opacity: 0.38; filter: drop-shadow(0 0 6px rgba(56,189,248,0.3)); }
         @keyframes diGearRot { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
-
-        /* Flash de revelação no instante em que a cortina cobre a tela */
-        .di-gear-flash {
-          position: absolute; inset: 0; z-index: 8; opacity: 0;
-          background: radial-gradient(ellipse at center, rgba(186,230,253,0.5), rgba(56,189,248,0.18) 45%, transparent 75%);
-          animation: diGearFlash 260ms ease-out both;
-          will-change: opacity;
-        }
-        @keyframes diGearFlash {
-          0% { opacity: 0 } 30% { opacity: 1 } 100% { opacity: 0 }
-        }
 
         /* Engrenagens soltas cruzando a tela em disparada (com rastro de luz).
            --dy = deriva vertical durante o voo · --op = opacidade da camada */
@@ -1251,12 +1285,12 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           animation-fill-mode: both;
           will-change: transform, opacity;
         }
-        .di-gear-dust img { opacity: 0.45; filter: drop-shadow(0 0 4px rgba(56,189,248,0.5)); }
+        .di-gear-dust img { filter: drop-shadow(0 0 4px rgba(56,189,248,0.5)); }
         @keyframes diGearDust {
           0%   { opacity: 0; transform: translate3d(112vw,0,0) }
-          10%  { opacity: 1 }
-          85%  { opacity: 1 }
-          100% { opacity: 0; transform: translate3d(-30vw,0,0) }
+          10%  { opacity: var(--op, 0.45) }
+          85%  { opacity: var(--op, 0.45) }
+          100% { opacity: 0; transform: translate3d(-30vw, var(--dy, 0px), 0) }
         }
 
         .di-skip-hint { animation: diHint 1.8s ease-in-out 600ms infinite; }
@@ -1274,12 +1308,12 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-panel-img, .di-stage-master,
           .di-rays, .di-floor-glow, .di-cut-glow,
           .di-impact-frame, .di-debris, .di-vs-core, .di-shine,
-          .di-gear-spin, .di-gear-streak, .di-gear-dust, .di-gear-flash {
+            .di-gear-spin, .di-gear-streak, .di-gear-dust {
             animation: none !important;
           }
-          /* Com motion reduzido a cortina não varre: apenas cobre e some no fade */
-          .di-gear-curtain { animation: none !important; transform: translate3d(-17vw,0,0); }
-          .di-gear-streak, .di-gear-dust, .di-gear-flash { opacity: 0 !important; }
+          /* Com motion reduzido a muralha não varre: apenas cobre e some no fade */
+          .di-gear-curtain { animation: none !important; transform: translate3d(-16vw,0,0); }
+          .di-gear-streak, .di-gear-dust { opacity: 0 !important; }
         }
       `}</style>
     </div>
