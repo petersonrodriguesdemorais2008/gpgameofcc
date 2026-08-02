@@ -9512,7 +9512,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         break
       }
 
-      // ── Opponent ended their turn ─────────────────────────────────────────
+      // ── Opponent ended their turn ────────────────���────────────────────────
       case "end_turn":
         setIsPlayerTurn(true)
         setTurn(prev => prev + 1)
@@ -10676,154 +10676,139 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       </div>
 
       {/* ── FIXED LEFT PANEL: Card Detail ── */}
-      <div className="fixed left-0 z-30 flex flex-col"
-        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"rgba(7,11,18,0.97)",borderRight:"1px solid rgba(255,255,255,0.07)"}}>
-        <div className="flex-shrink-0 px-3 py-2.5 flex items-center justify-between border-b border-white/[0.07]">
-          <p className="text-slate-400 text-[10px] font-semibold tracking-[0.14em] uppercase">Detalhe</p>
-          {(inspectedCard || logCardDetail) && (
-            <span className="block w-1.5 h-1.5 rounded-full bg-cyan-400/80" />
-          )}
+      <div className="gp-panel fixed left-0 z-30 flex flex-col"
+        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",borderRight:"1px solid var(--gp-line)"}}>
+        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5">
+          <p className="gp-panel-title">Detalhe</p>
         </div>
         {(inspectedCard || logCardDetail) ? (() => {
           const card: any = inspectedCard || logCardDetail
           return (
-            <div key={card.name} className="panel-detail-in flex-1 overflow-y-auto p-2.5 space-y-2.5" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
-              <div className="relative w-full overflow-hidden rounded-lg bg-black/40 border border-white/[0.08]"
-                style={{aspectRatio:"3/4"}}>
+            <div key={card.name} className="panel-detail-in gp-scroll flex-1 overflow-y-auto px-3.5 pb-4 space-y-3">
+              <div className="relative w-full overflow-hidden rounded-sm" style={{aspectRatio:"3/4",background:"rgba(0,0,0,0.35)"}}>
                 <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
               </div>
-              <div className="space-y-2 px-0.5">
-                <p className="font-bold text-sm leading-tight text-balance text-white">{card.name}</p>
-                {card.dp > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`font-bold text-xs px-2 py-0.5 rounded ${
-                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "bg-green-500/15 text-green-300" :
-                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "bg-red-500/15 text-red-300" :
-                      "bg-amber-500/15 text-amber-300"
-                    }`}>
-                      {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
-                    </span>
-                    {card.element && (() => {
-                      const el = card.element as string
-                      const elMap: Record<string, { color: string; bg: string }> = {
-                        Aquos:     { color: "#38bdf8", bg: "rgba(56,189,248,0.12)" },
-                        Pyrus:     { color: "#f97316", bg: "rgba(249,115,22,0.12)" },
-                        Ventus:    { color: "#4ade80", bg: "rgba(74,222,128,0.12)" },
-                        Subterra:  { color: "#d97706", bg: "rgba(217,119,6,0.12)" },
-                        Haos:      { color: "#fde68a", bg: "rgba(253,230,138,0.12)" },
-                        Lightness: { color: "#fde68a", bg: "rgba(253,230,138,0.12)" },
-                        Darkus:    { color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
-                        Darkness:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
-                        Void:      { color: "#9ca3af", bg: "rgba(107,114,128,0.14)" },
-                        Neutral:   { color: "#94a3b8", bg: "rgba(148,163,184,0.10)" },
-                      }
-                      const e = elMap[el] || { color: "#94a3b8", bg: "rgba(148,163,184,0.10)" }
+
+              <div className="space-y-2.5">
+                <p className="gp-card-name">{card.name}</p>
+
+                {(card.dp > 0 || card.element || card.category) && (
+                  <div className="gp-meta">
+                    {card.dp > 0 && (() => {
+                      const cur = inspectedCard ? (inspectedCard as any).currentDp : undefined
+                      const shown = cur !== undefined ? cur : card.dp
+                      const tone = cur === undefined || cur === card.dp ? "var(--gp-ink)"
+                        : cur > card.dp ? "#7fb069" : "#c9736b"
                       return (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded"
-                          style={{ color: e.color, background: e.bg }}>
-                          {el}
+                        <span className="gp-meta-item">
+                          <span className="gp-meta-key">DP</span>
+                          <span className="gp-meta-val" style={{color:tone}}>{shown}</span>
                         </span>
                       )
                     })()}
-                  </div>
-                )}
-                {card.category && <p className="text-slate-500 text-[11px]">{card.category}</p>}
-
-                {/* ── Bloco de habilidade para cartas de Unidade ── */}
-                {card.ability && card.abilityDescription && (
-                  <div className="rounded-md bg-white/[0.03] border border-white/[0.07] px-2.5 py-2 space-y-1">
-                    <p className="text-cyan-400/90 text-[10px] font-semibold uppercase tracking-wide">Habilidade</p>
-                    <p className="text-slate-100 text-xs font-semibold leading-tight">{card.ability}</p>
-                    <p className="text-slate-400 text-[11px] leading-relaxed">{card.abilityDescription}</p>
-                  </div>
-                )}
-                {/* Apenas nome da habilidade sem descrição (ex: alguns UG) */}
-                {card.ability && !card.abilityDescription && (
-                  <div className="rounded-md bg-white/[0.03] border border-white/[0.07] px-2.5 py-2 space-y-1">
-                    <p className="text-cyan-400/90 text-[10px] font-semibold uppercase tracking-wide">Habilidade</p>
-                    <p className="text-slate-100 text-xs font-semibold leading-tight">{card.ability}</p>
-                  </div>
-                )}
-                {/* Ataque — para Unidades de Tropas e cartas com ataque nomeado */}
-                {card.attack && (
-                  <div className="rounded-md bg-white/[0.03] border border-white/[0.07] px-2.5 py-2 space-y-1">
-                    <p className="text-amber-400/90 text-[10px] font-semibold uppercase tracking-wide">Ataque</p>
-                    <p className="text-slate-100 text-xs font-semibold leading-tight">{card.attack}</p>
-                    {card.attackDescription && (
-                      <p className="text-slate-400 text-[11px] leading-relaxed">{card.attackDescription}</p>
+                    {card.element && (() => {
+                      const elMap: Record<string, string> = {
+                        Aquos: "#6aa9c9", Pyrus: "#c9805a", Ventus: "#7fa87a",
+                        Subterra: "#b08d5c", Haos: "#cbb277", Lightness: "#cbb277",
+                        Darkus: "#8f86ab", Darkness: "#8f86ab",
+                        Void: "#8a8a8a", Neutral: "#8b8781",
+                      }
+                      return (
+                        <span className="gp-meta-item">
+                          <span className="gp-meta-key">Elemento</span>
+                          <span className="gp-meta-val" style={{color: elMap[card.element as string] || "var(--gp-ink)"}}>
+                            {card.element}
+                          </span>
+                        </span>
+                      )
+                    })()}
+                    {card.category && (
+                      <span className="gp-meta-item">
+                        <span className="gp-meta-key">Tipo</span>
+                        <span className="gp-meta-val">{card.category}</span>
+                      </span>
                     )}
                   </div>
+                )}
+
+                {card.ability && (
+                  <section className="gp-block">
+                    <h4 className="gp-block-label">Habilidade</h4>
+                    <p className="gp-block-name">{card.ability}</p>
+                    {card.abilityDescription && <p className="gp-block-body">{card.abilityDescription}</p>}
+                  </section>
+                )}
+
+                {card.attack && (
+                  <section className="gp-block">
+                    <h4 className="gp-block-label">Ataque</h4>
+                    <p className="gp-block-name">{card.attack}</p>
+                    {card.attackDescription && <p className="gp-block-body">{card.attackDescription}</p>}
+                  </section>
                 )}
               </div>
             </div>
           )
         })() : (
-          <div className="flex-1 flex items-center justify-center p-4">
-            <p className="text-slate-600 text-[10px] text-center leading-relaxed">Toque e segure uma carta para ver os detalhes</p>
+          <div className="flex-1 flex items-center justify-center px-5">
+            <p className="gp-empty">Toque e segure uma carta para ver os detalhes.</p>
           </div>
         )}
       </div>
 
       {/* ── FIXED RIGHT PANEL: Duel Log ── */}
-      <div className="fixed right-0 z-30 flex flex-col"
+      <div className="gp-panel fixed right-0 z-30 flex flex-col"
         style={{
           top:"56px", bottom:"0",
-          width: isLogOpen ? "clamp(140px,17vw,230px)" : "36px",
-          background:"rgba(7,11,18,0.97)",
-          borderLeft:"1px solid rgba(255,255,255,0.07)",
+          width: isLogOpen ? "clamp(140px,17vw,230px)" : "34px",
+          borderLeft:"1px solid var(--gp-line)",
           transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
           overflow:"hidden",
         }}>
-        <div className="flex-shrink-0 px-3 py-2.5 flex items-center justify-between gap-1.5 border-b border-white/[0.07]"
-          style={{minWidth: isLogOpen ? 0 : 36}}>
+        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5 flex items-baseline gap-2"
+          style={{minWidth: isLogOpen ? 0 : 34, paddingLeft: isLogOpen ? undefined : 8, paddingRight: isLogOpen ? undefined : 8}}>
+          {isLogOpen && <p className="gp-panel-title whitespace-nowrap">Log</p>}
           {isLogOpen && (
-            <p className="text-slate-400 text-[10px] font-semibold tracking-[0.14em] uppercase whitespace-nowrap">Log</p>
+            <span className="gp-turn-tag whitespace-nowrap">
+              Turno {turn} · {isPlayerTurn ? "Você" : "Bot"}
+            </span>
           )}
-          <div className="flex items-center gap-1.5 ml-auto">
-            {isLogOpen && (
-              <div className={`px-1.5 py-0.5 rounded text-[9px] font-semibold whitespace-nowrap ${isPlayerTurn?"bg-blue-500/15 text-blue-300":"bg-red-500/15 text-red-300"}`}>
-                T{turn} · {isPlayerTurn?"Você":"Bot"}
-              </div>
-            )}
-            <button
-              onClick={() => setIsLogOpen(v => !v)}
-              className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
-              title={isLogOpen ? "Recolher log" : "Expandir log"}
-            >
-              <span className="text-[10px] font-bold" style={{transition:"transform 0.28s", display:"inline-block", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setIsLogOpen(v => !v)}
+            className="gp-collapse ml-auto flex-shrink-0"
+            title={isLogOpen ? "Recolher log" : "Expandir log"}
+            aria-label={isLogOpen ? "Recolher log" : "Expandir log"}
+          >
+            <span style={{display:"inline-block", transition:"transform 0.28s", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
+          </button>
         </div>
         {isLogOpen && (
-          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-1"
-            style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+          <div ref={duelLogRef} className="gp-scroll flex-1 overflow-y-auto px-3.5 pb-4">
             {duelLog.length === 0 ? (
-              <p className="text-slate-600 text-[10px] text-center leading-relaxed mt-8">As ações do duelo aparecerão aqui.</p>
+              <p className="gp-empty mt-6">As ações do duelo aparecerão aqui.</p>
             ) : duelLog.map(entry => {
-              const typeMeta: Record<string, { label: string; color: string; dot: string }> = {
-                draw:   { label: "Compra", color: "text-slate-400",  dot: "#94a3b8" },
-                play:   { label: "Jogada", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", dot: entry.isPlayerTurn ? "#22d3ee" : "#f87171" },
-                attack: { label: "Ataque", color: "text-amber-300",  dot: "#fbbf24" },
-                lp:     { label: "LP",     color: "text-red-400",    dot: "#ef4444" },
-                effect: { label: "Efeito", color: "text-purple-300", dot: "#c084fc" },
+              const typeMeta: Record<string, { label: string; color: string }> = {
+                draw:   { label: "Compra", color: "var(--gp-muted)" },
+                play:   { label: entry.isPlayerTurn ? "Jogada" : "Jogada do Bot", color: "var(--gp-ink)" },
+                attack: { label: "Ataque", color: "var(--gp-accent)" },
+                lp:     { label: "Vida",   color: "#c9736b" },
+                effect: { label: "Efeito", color: "#9f95bd" },
               }
-              const meta = typeMeta[entry.type] || { label: "", color: "text-slate-500", dot: "#64748b" }
+              const meta = typeMeta[entry.type] || { label: "Registro", color: "var(--gp-muted)" }
+
               if (entry.type === "turn") {
                 return (
-                  <div key={entry.id} className="log-entry-in my-2.5 flex items-center gap-2">
-                    <div className="flex-1 h-px bg-white/[0.08]" />
-                    <p className={`text-[9px] font-semibold tracking-wide uppercase whitespace-nowrap ${
-                      entry.isPlayerTurn ? "text-blue-400" : "text-red-400"
-                    }`}>{entry.message}</p>
-                    <div className="flex-1 h-px bg-white/[0.08]" />
+                  <div key={entry.id} className="log-entry-in gp-turn-rule">
+                    <span>{entry.message}</span>
                   </div>
                 )
               }
+
               return (
-                <div key={entry.id} className="log-entry-in log-entry-row flex items-start gap-2 px-2 py-1.5 rounded-md"
-                  style={{background:"rgba(255,255,255,0.025)"}}>
+                <div key={entry.id} className="log-entry-in gp-log-row">
                   {entry.cardImage && (
-                    <button className="log-thumb flex-shrink-0 w-7 h-10 rounded overflow-hidden cursor-pointer border border-white/10"
+                    <button className="gp-log-thumb"
+                      title={entry.cardName || "Ver detalhe"}
                       onClick={() => setLogCardDetail({
                         image: entry.cardImage!,
                         name: entry.cardName || "",
@@ -10835,16 +10820,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         element: entry.cardElement,
                         category: entry.cardCategory,
                       })}>
-                      <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-contain" />
+                      <img src={entry.cardImage} alt={entry.cardName||""} />
                     </button>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="block w-1 h-1 rounded-full flex-shrink-0" style={{background: meta.dot}} />
-                      {meta.label && <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">{meta.label}</p>}
-                      <p className="text-[9px] text-slate-600 font-medium ml-auto">T{entry.turn}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="gp-log-label" style={{color: meta.color}}>{meta.label}</span>
+                      <span className="gp-log-turn">{entry.turn}</span>
                     </div>
-                    <p className={`text-[10px] leading-snug ${meta.color}`}>{entry.message}</p>
+                    <p className="gp-log-msg">{entry.message}</p>
                   </div>
                 </div>
               )
@@ -11213,7 +11197,160 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           .trap-dim-overlay { animation: none; opacity: 0; }
         }
 
-        /* ══ PAINÉIS LATERAIS: Detalhe & Log ══ */
+        /* ══ PAINÉIS LATERAIS: Detalhe & Log ══
+           Direção: editorial escuro e sóbrio. Papel de fundo sólido, hierarquia
+           por tipografia e espaço em branco — sem neon, sem molduras luminosas,
+           sem uppercase espaçado em blocos de texto. */
+        .gp-panel {
+          --gp-paper: #101215;
+          --gp-line: rgba(255,255,255,0.08);
+          --gp-line-soft: rgba(255,255,255,0.05);
+          --gp-ink: #e6e3dd;
+          --gp-muted: #8b8781;
+          --gp-faint: #63615d;
+          --gp-accent: #c2a06a;
+          background: var(--gp-paper);
+          color: var(--gp-ink);
+        }
+
+        /* Título do painel: serif, discreto, sem caixa alta espaçada */
+        .gp-panel-title {
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          color: var(--gp-ink);
+        }
+        .gp-turn-tag {
+          font-size: 10px;
+          color: var(--gp-faint);
+          letter-spacing: 0.01em;
+        }
+        .gp-collapse {
+          width: 18px; height: 18px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 13px; line-height: 1;
+          color: var(--gp-faint);
+          background: none; border: 0;
+          transition: color 0.15s;
+        }
+        .gp-collapse:hover { color: var(--gp-ink); }
+
+        .gp-empty {
+          font-size: 11px;
+          line-height: 1.6;
+          color: var(--gp-faint);
+          text-align: center;
+        }
+
+        /* Scroll discreto, sem setas (Firefox + WebKit) */
+        .gp-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+        .gp-scroll::-webkit-scrollbar { width: 6px; }
+        .gp-scroll::-webkit-scrollbar-track { background: transparent; }
+        .gp-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+        .gp-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+
+        /* ── Detalhe ── */
+        .gp-card-name {
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
+          font-size: 15px;
+          font-weight: 600;
+          line-height: 1.25;
+          text-wrap: balance;
+          color: var(--gp-ink);
+        }
+        /* Metadados como lista de definição, não como pastilhas coloridas */
+        .gp-meta { display: flex; flex-direction: column; }
+        .gp-meta-item {
+          display: flex; align-items: baseline; justify-content: space-between;
+          gap: 8px;
+          padding: 4px 0;
+          border-bottom: 1px solid var(--gp-line-soft);
+        }
+        .gp-meta-item:last-child { border-bottom: 0; }
+        .gp-meta-key {
+          font-size: 10px;
+          color: var(--gp-faint);
+          letter-spacing: 0.02em;
+        }
+        .gp-meta-val {
+          font-size: 11px;
+          font-weight: 600;
+          text-align: right;
+          color: var(--gp-ink);
+        }
+        /* Blocos de texto: régua vertical em vez de caixa com borda */
+        .gp-block { padding-left: 9px; border-left: 1px solid var(--gp-line); }
+        .gp-block + .gp-block { margin-top: 10px; }
+        .gp-block-label {
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
+          font-size: 10px;
+          font-style: italic;
+          color: var(--gp-accent);
+          margin-bottom: 3px;
+        }
+        .gp-block-name {
+          font-size: 11.5px;
+          font-weight: 600;
+          line-height: 1.35;
+          color: var(--gp-ink);
+        }
+        .gp-block-body {
+          margin-top: 3px;
+          font-size: 11px;
+          line-height: 1.55;
+          color: var(--gp-muted);
+        }
+
+        /* ── Log ── */
+        .gp-turn-rule {
+          display: flex; align-items: center; gap: 8px;
+          margin: 12px 0 8px;
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
+          font-size: 10px;
+          font-style: italic;
+          color: var(--gp-muted);
+        }
+        .gp-turn-rule::after {
+          content: ""; flex: 1; height: 1px;
+          background: var(--gp-line);
+        }
+        .gp-log-row {
+          display: flex; gap: 8px;
+          padding: 7px 0;
+          border-bottom: 1px solid var(--gp-line-soft);
+        }
+        .gp-log-row:last-child { border-bottom: 0; }
+        .gp-log-thumb {
+          flex-shrink: 0;
+          width: 26px; height: 36px;
+          overflow: hidden;
+          border-radius: 2px;
+          background: rgba(0,0,0,0.3);
+          cursor: pointer;
+          border: 0; padding: 0;
+          opacity: 0.85;
+          transition: opacity 0.15s;
+        }
+        .gp-log-thumb:hover { opacity: 1; }
+        .gp-log-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .gp-log-label {
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
+          font-size: 10px;
+          font-style: italic;
+        }
+        .gp-log-turn {
+          margin-left: auto;
+          font-size: 9px;
+          color: var(--gp-faint);
+        }
+        .gp-log-msg {
+          margin-top: 1px;
+          font-size: 11px;
+          line-height: 1.5;
+          color: var(--gp-muted);
+        }
+
         @keyframes panel-detail-in {
           0%   { opacity: 0; transform: translateY(4px); }
           100% { opacity: 1; transform: translateY(0); }
@@ -11221,16 +11358,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         .panel-detail-in { animation: panel-detail-in 0.22s ease-out both; }
 
         @keyframes log-entry-in {
-          0%   { opacity: 0; transform: translateY(3px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
         }
         .log-entry-in { animation: log-entry-in 0.2s ease-out both; }
-
-        /* Log: hover sutil, thumbnail com leve zoom */
-        .log-entry-row { transition: background 0.15s; }
-        .log-entry-row:hover { background: rgba(255,255,255,0.05) !important; }
-        .log-thumb { transition: transform 0.15s ease-out; }
-        .log-thumb:hover { transform: scale(1.08); }
 
         @media (prefers-reduced-motion: reduce) {
           .panel-detail-in, .log-entry-in { animation: none; }
@@ -13384,7 +13515,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           </div>
         </div>
       )}
-      {/* ─── MOBILE DUEL LOG OVERLAY ─────────────────────────────────────── */}
+      {/* ─── MOBILE DUEL LOG OVERLAY ───────────────���─────────────────────── */}
       {showDuelLog && (
         <div className="lg:hidden fixed inset-0 z-[8400] flex flex-col"
           style={{background:"linear-gradient(180deg, rgba(14,9,3,0.96), rgba(0,0,0,0.94))",backdropFilter:"blur(8px)"}}>
