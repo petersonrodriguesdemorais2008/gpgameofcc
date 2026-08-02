@@ -390,8 +390,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               className="absolute inset-0"
               style={{ background: `linear-gradient(200deg, ${oppAccent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
-            {/* Speed lines varrendo o painel */}
-            <div className="di-speedlines di-speedlines-opp" aria-hidden="true" />
           </div>
 
           {/* Painel do jogador (base) */}
@@ -408,7 +406,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               className="absolute inset-0"
               style={{ background: `linear-gradient(20deg, ${accent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
-            <div className="di-speedlines di-speedlines-me" aria-hidden="true" />
           </div>
 
           {/* Barras do corte diagonal com energia dos dois lados */}
@@ -857,20 +854,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
         @keyframes diPanelZoom { from { transform: scale(1.12) } to { transform: scale(1) } }
 
-        .di-speedlines {
-          position: absolute; inset: -20%; opacity: 0.09; pointer-events: none;
-          background: repeating-linear-gradient(
-            -9.5deg,
-            transparent 0px, transparent 26px,
-            rgba(255,255,255,0.85) 26px, rgba(255,255,255,0.85) 28px
-          );
-          will-change: transform;
-        }
-        .di-speedlines-opp { animation: diLinesOpp 1.4s linear infinite; }
-        .di-speedlines-me  { animation: diLinesMe 1.4s linear infinite; }
-        @keyframes diLinesOpp { from { transform: translate3d(0,0,0) }    to { transform: translate3d(-56px,9px,0) } }
-        @keyframes diLinesMe  { from { transform: translate3d(0,0,0) }    to { transform: translate3d(56px,-9px,0) } }
-
         .di-bar {
           position: absolute; left: -10%; width: 120%; height: 5px; z-index: 10;
           box-shadow: 0 0 18px rgba(255,255,255,0.5);
@@ -1307,7 +1290,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-shake, .di-master-glow, .di-master-in, .di-bubble-in,
           .di-panel-opp, .di-panel-me,
           .di-ember, .di-orbit, .di-orbit-2, .di-master-breathe,
-          .di-speedlines-opp, .di-speedlines-me, .di-cut-spark,
+          .di-cut-spark,
           .di-spark, .di-vs-ghost,
           .di-panel-img, .di-stage-master,
           .di-rays, .di-floor-glow, .di-cut-glow,
