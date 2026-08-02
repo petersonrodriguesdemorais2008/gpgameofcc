@@ -42,6 +42,47 @@ const T_MASTER_END = 2600
 const T_IMPACT     = 300
 const T_CLASH_END  = 2500
 const T_FADE       = 350
+// Transição final: cortina de engrenagens varrendo pra esquerda
+const T_GEAR_TOTAL = 1500 // duração total da varredura
+const T_GEAR_COVER = 640  // momento em que a cortina cobre 100% da tela (revela o duelo por trás)
+
+const GEAR_IMG = "/images/modes/gear-blue.png"
+
+// Engrenagens soltas que riscam a tela na frente da cortina (vanguarda)
+// e uma 2ª leva que cruza por cima do duelo já revelado (retaguarda)
+const GEAR_STREAKS = [
+  { top: 8,  s: 34, dl: 0,   t: 620, spin: 700 },
+  { top: 22, s: 52, dl: 120, t: 560, spin: 900 },
+  { top: 37, s: 28, dl: 60,  t: 680, spin: 600 },
+  { top: 52, s: 44, dl: 200, t: 600, spin: 800 },
+  { top: 66, s: 30, dl: 40,  t: 640, spin: 650 },
+  { top: 80, s: 56, dl: 160, t: 580, spin: 950 },
+  { top: 15, s: 24, dl: 780, t: 600, spin: 550 },
+  { top: 47, s: 32, dl: 860, t: 640, spin: 700 },
+  { top: 74, s: 26, dl: 820, t: 580, spin: 600 },
+]
+
+// Engrenagens grandes cravadas nas bordas da cortina (metade pra fora)
+const CURTAIN_EDGE_GEARS = [
+  { top: -3, s: 120, spin: 2600, rev: false },
+  { top: 9,  s: 72,  spin: 1800, rev: true  },
+  { top: 20, s: 96,  spin: 2200, rev: false },
+  { top: 33, s: 60,  spin: 1500, rev: true  },
+  { top: 42, s: 112, spin: 2400, rev: false },
+  { top: 57, s: 68,  spin: 1700, rev: true  },
+  { top: 67, s: 100, spin: 2300, rev: false },
+  { top: 81, s: 64,  spin: 1600, rev: true  },
+  { top: 89, s: 118, spin: 2700, rev: false },
+]
+
+// Coluna interna de engrenagens menores (profundidade dentro da cortina)
+const CURTAIN_INNER_GEARS = [
+  { top: 5,  s: 46, x: 96,  spin: 1400, rev: true  },
+  { top: 28, s: 58, x: 150, spin: 1900, rev: false },
+  { top: 50, s: 42, x: 88,  spin: 1300, rev: true  },
+  { top: 72, s: 54, x: 160, spin: 1800, rev: false },
+  { top: 92, s: 44, x: 104, spin: 1500, rev: true  },
+]
 
 // Brasas da fase 1 (posições determinísticas pra não piscar em re-render)
 const EMBERS = [
@@ -98,7 +139,10 @@ function TypewriterText({ line }: { line: string }) {
 
 export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 }: DuelIntroOverlayProps) {
   const { playerProfile } = useGame()
-  const [phase, setPhase] = useState<"master" | "clash" | "out">("master")
+  const [phase, setPhase] = useState<"master" | "clash" | "gears" | "out">("master")
+  // true a partir do instante em que a cortina de engrenagens cobre a tela:
+  // o conteúdo do choque some e o fundo fica transparente, revelando o duelo
+  const [revealed, setRevealed] = useState(false)
 
   const audioRef  = useRef<HTMLAudioElement | null>(null)
   const impactRef = useRef<HTMLAudioElement | null>(null)
@@ -141,6 +185,9 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
   const skip = () => {
     if (doneRef.current) return
+    // Durante a varredura de engrenagens o duelo já está sendo revelado —
+    // pular aqui cortaria a transição no meio, então ignoramos
+    if (phase === "gears") return
     setPhase("out")
     timersRef.current.push(setTimeout(finish, 180))
   }
@@ -158,8 +205,12 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("clash") }, T_MASTER_END))
 
-    timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("out") }, T_MASTER_END + T_CLASH_END))
-    timersRef.current.push(setTimeout(() => { if (!cancelled) finish() }, T_MASTER_END + T_CLASH_END + T_FADE))
+    // Fim do choque → cortina de engrenagens varre a tela pra esquerda.
+    // No instante em que ela cobre tudo, o duelo é revelado por trás; quando
+    // ela termina de sair pela esquerda, o overlay se encerra.
+    timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("gears") }, T_MASTER_END + T_CLASH_END))
+    timersRef.current.push(setTimeout(() => { if (!cancelled) setRevealed(true) }, T_MASTER_END + T_CLASH_END + T_GEAR_COVER))
+    timersRef.current.push(setTimeout(() => { if (!cancelled) finish() }, T_MASTER_END + T_CLASH_END + T_GEAR_TOTAL))
 
     return () => {
       cancelled = true
@@ -186,14 +237,16 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       onClick={skip}
       onTouchStart={skip}
       className={`fixed inset-0 z-[880] overflow-hidden cursor-pointer${phase === "out" ? " di-out" : ""}`}
-      style={{ background: "#04030d" }}
+      style={{ background: revealed ? "transparent" : "#04030d" }}
     >
-      {/* Letterbox cinematográfico */}
-      <div className="di-letterbox di-letterbox-top"    aria-hidden="true" />
-      <div className="di-letterbox di-letterbox-bottom" aria-hidden="true" />
-
-      {/* Vinheta constante pra dar profundidade de cinema */}
-      <div className="di-vignette" aria-hidden="true" />
+      {/* Letterbox + vinheta somem quando o duelo é revelado atrás da cortina */}
+      {!revealed && (
+        <>
+          <div className="di-letterbox di-letterbox-top"    aria-hidden="true" />
+          <div className="di-letterbox di-letterbox-bottom" aria-hidden="true" />
+          <div className="di-vignette" aria-hidden="true" />
+        </>
+      )}
 
       {/* ── FASE 1: chamado do Mestre ─────────────────────────────────────── */}
       {phase === "master" && (
@@ -309,7 +362,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       )}
 
       {/* ── FASE 2: choque jogador × oponente ─────────────────────────────── */}
-      {(phase === "clash" || phase === "out") && (
+      {(phase === "clash" || phase === "out" || (phase === "gears" && !revealed)) && (
         <div className={`absolute inset-0 di-shake`}>
           {/* Painel do oponente (topo) */}
           <div className="di-panel di-panel-opp">
@@ -484,6 +537,98 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           <p className="di-skip-hint absolute bottom-4 left-0 right-0 text-center text-[10px] sm:text-xs font-mono tracking-[0.3em] text-white/35 uppercase z-50">
             Toque para pular
           </p>
+        </div>
+      )}
+
+      {/* ── TRANSIÇÃO FINAL: cortina de engrenagens varrendo pra esquerda ──── */}
+      {phase === "gears" && (
+        <div className="absolute inset-0 z-[60] pointer-events-none" aria-hidden="true">
+          {/* Vanguarda + retaguarda: engrenagens soltas riscando a tela */}
+          {GEAR_STREAKS.map((g, idx) => (
+            <div
+              key={idx}
+              className="di-gear-streak"
+              style={{
+                top: `${g.top}%`,
+                animationDelay: `${g.dl}ms`,
+                animationDuration: `${g.t}ms`,
+              }}
+            >
+              <span className="di-gear-trail" style={{ width: `${g.s * 3.4}px` }} />
+              <img
+                src={GEAR_IMG || "/placeholder.svg"}
+                alt=""
+                className={`di-gear-spin${idx % 2 ? " di-gear-spin-rev" : ""}`}
+                style={{ width: `${g.s}px`, height: `${g.s}px`, animationDuration: `${g.spin}ms` }}
+                draggable={false}
+              />
+            </div>
+          ))}
+
+          {/* Cortina de máquina: corpo metálico com engrenagens nas bordas */}
+          <div className="di-gear-curtain">
+            <div className="di-gear-curtain-body" />
+            <div className="di-gear-curtain-lines" />
+            <div className="di-gear-edge di-gear-edge-l" />
+            <div className="di-gear-edge di-gear-edge-r" />
+
+            {/* Coluna interna (profundidade) */}
+            {CURTAIN_INNER_GEARS.map((g, idx) => (
+              <img
+                key={`in-${idx}`}
+                src={GEAR_IMG || "/placeholder.svg"}
+                alt=""
+                className={`di-gear-spin di-gear-dim${g.rev ? " di-gear-spin-rev" : ""}`}
+                style={{
+                  position: "absolute",
+                  top: `${g.top}%`,
+                  left: `${g.x}px`,
+                  width: `${g.s}px`,
+                  height: `${g.s}px`,
+                  animationDuration: `${g.spin}ms`,
+                }}
+                draggable={false}
+              />
+            ))}
+
+            {/* Borda de ataque (esquerda): engrenagens grandes meio pra fora */}
+            {CURTAIN_EDGE_GEARS.map((g, idx) => (
+              <img
+                key={`l-${idx}`}
+                src={GEAR_IMG || "/placeholder.svg"}
+                alt=""
+                className={`di-gear-spin${g.rev ? " di-gear-spin-rev" : ""}`}
+                style={{
+                  position: "absolute",
+                  top: `${g.top}%`,
+                  left: `${-g.s / 2}px`,
+                  width: `${g.s}px`,
+                  height: `${g.s}px`,
+                  animationDuration: `${g.spin}ms`,
+                }}
+                draggable={false}
+              />
+            ))}
+
+            {/* Borda de fuga (direita): espelhada, gira ao contrário */}
+            {CURTAIN_EDGE_GEARS.map((g, idx) => (
+              <img
+                key={`r-${idx}`}
+                src={GEAR_IMG || "/placeholder.svg"}
+                alt=""
+                className={`di-gear-spin${g.rev ? "" : " di-gear-spin-rev"}`}
+                style={{
+                  position: "absolute",
+                  top: `${g.top}%`,
+                  right: `${-g.s / 2}px`,
+                  width: `${g.s}px`,
+                  height: `${g.s}px`,
+                  animationDuration: `${g.spin}ms`,
+                }}
+                draggable={false}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -931,6 +1076,82 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           100% { opacity: 0 }
         }
 
+        /* ── Transição final: cortina de engrenagens ── */
+        /* A cortina entra em disparada pela direita, "morde" a tela inteira
+           (momento em que o duelo é revelado por trás) e acelera pra fora
+           pela esquerda. Pacing controlado pelos percentuais dos keyframes. */
+        .di-gear-curtain {
+          position: absolute; top: -6%; bottom: -6%; left: 0; width: 165vw;
+          animation: diGearSweep ${T_GEAR_TOTAL}ms linear both;
+          will-change: transform; backface-visibility: hidden;
+        }
+        @keyframes diGearSweep {
+          0%   { transform: translate3d(102vw,0,0); animation-timing-function: cubic-bezier(0.2,0.7,0.4,1); }
+          42%  { transform: translate3d(-10vw,0,0); animation-timing-function: linear; }
+          55%  { transform: translate3d(-17vw,0,0); animation-timing-function: cubic-bezier(0.6,0,0.9,0.4); }
+          100% { transform: translate3d(-178vw,0,0); }
+        }
+        .di-gear-curtain-body {
+          position: absolute; inset: 0;
+          background: linear-gradient(to right,
+            #071022 0%, #0a1730 8%, #060b1c 30%, #081226 55%, #0a1730 82%, #071022 100%);
+          box-shadow: 0 0 80px rgba(0,0,0,0.9);
+        }
+        /* Estrias de velocidade sutis dentro do corpo da cortina */
+        .di-gear-curtain-lines {
+          position: absolute; inset: 0; opacity: 0.14;
+          background: repeating-linear-gradient(
+            to right,
+            transparent 0px, transparent 54px,
+            rgba(56,189,248,0.5) 54px, rgba(56,189,248,0.5) 56px
+          );
+        }
+        /* Bordas incandescentes da cortina */
+        .di-gear-edge {
+          position: absolute; top: 0; bottom: 0; width: 4px;
+          background: linear-gradient(to bottom, #38bdf8, #7dd3fc, #38bdf8);
+          box-shadow: 0 0 24px rgba(56,189,248,0.9), 0 0 60px rgba(56,189,248,0.45);
+        }
+        .di-gear-edge-l { left: 0; }
+        .di-gear-edge-r { right: 0; }
+
+        /* Rotação das engrenagens (duração individual via style) */
+        .di-gear-spin {
+          animation-name: diGearRot;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+          filter: drop-shadow(0 0 10px rgba(56,189,248,0.55));
+          will-change: transform;
+        }
+        .di-gear-spin-rev { animation-direction: reverse; }
+        .di-gear-dim { opacity: 0.38; filter: drop-shadow(0 0 6px rgba(56,189,248,0.3)); }
+        @keyframes diGearRot { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+        /* Engrenagens soltas cruzando a tela em disparada (com rastro de luz) */
+        .di-gear-streak {
+          position: absolute; left: 0; z-index: 5;
+          display: flex; align-items: center;
+          transform: translate3d(110vw,0,0); opacity: 0;
+          animation-name: diGearStreak;
+          animation-timing-function: cubic-bezier(0.3,0,0.6,1);
+          animation-fill-mode: both;
+          will-change: transform, opacity;
+        }
+        @keyframes diGearStreak {
+          0%   { opacity: 0; transform: translate3d(112vw,0,0) }
+          8%   { opacity: 1 }
+          88%  { opacity: 1 }
+          100% { opacity: 0; transform: translate3d(-38vw,0,0) }
+        }
+        .di-gear-streak img { position: relative; z-index: 2; }
+        /* Rastro: risco de luz atrás da engrenagem (ela voa pra esquerda) */
+        .di-gear-trail {
+          position: absolute; left: 55%; top: 50%; height: 3px;
+          transform: translateY(-50%); border-radius: 9999px;
+          background: linear-gradient(to right, rgba(125,211,252,0.95), rgba(56,189,248,0.35) 55%, transparent);
+          box-shadow: 0 0 14px rgba(56,189,248,0.6);
+        }
+
         .di-skip-hint { animation: diHint 1.8s ease-in-out 600ms infinite; }
         @keyframes diHint {
           0%, 100% { opacity: 0.35 }
@@ -945,9 +1166,13 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-spark, .di-vs-ghost,
           .di-panel-img, .di-stage-master,
           .di-rays, .di-floor-glow, .di-cut-glow,
-          .di-impact-frame, .di-debris, .di-vs-core, .di-shine {
+          .di-impact-frame, .di-debris, .di-vs-core, .di-shine,
+          .di-gear-spin, .di-gear-streak {
             animation: none !important;
           }
+          /* Com motion reduzido a cortina não varre: apenas cobre e some no fade */
+          .di-gear-curtain { animation: none !important; transform: translate3d(-17vw,0,0); }
+          .di-gear-streak { opacity: 0 !important; }
         }
       `}</style>
     </div>
