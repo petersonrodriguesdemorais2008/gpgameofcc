@@ -362,7 +362,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               style={{ background: `linear-gradient(200deg, ${oppAccent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
             {/* Speed lines varrendo o painel */}
-            {phase !== "gears" && <div className="di-speedlines di-speedlines-opp" aria-hidden="true" />}
+            {phase === "clash" && <div className="di-speedlines di-speedlines-opp" aria-hidden="true" />}
           </div>
 
           {/* Painel do jogador (base) */}
@@ -379,11 +379,11 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
               className="absolute inset-0"
               style={{ background: `linear-gradient(20deg, ${accent}44, rgba(4,3,13,0.5) 45%, rgba(4,3,13,0.88) 100%)` }}
             />
-            {phase !== "gears" && <div className="di-speedlines di-speedlines-me" aria-hidden="true" />}
+            {phase === "clash" && <div className="di-speedlines di-speedlines-me" aria-hidden="true" />}
           </div>
 
           {/* Barras do corte diagonal com energia dos dois lados */}
-          {phase !== "gears" && (
+          {phase === "clash" && (
             <>
               <div
                 className="di-bar di-bar-top"
@@ -399,7 +399,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           )}
 
           {/* Energia incandescente pulsando na zona do choque */}
-          {phase !== "gears" && (
+          {phase === "clash" && (
             <div
               className="di-cut-glow"
               aria-hidden="true"
@@ -408,7 +408,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           )}
 
           {/* Faísca correndo na linha de corte */}
-          {phase !== "gears" && <div className="di-cut-spark" aria-hidden="true" />}
+          {phase === "clash" && <div className="di-cut-spark" aria-hidden="true" />}
 
           {/* Impact frames estilo anime: frames alternados preto/branco no choque */}
           <div className="di-impact-frame" aria-hidden="true" />
@@ -433,7 +433,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           ))}
 
           {/* Nome + ícone do oponente */}
-          {phase !== "gears" && (
+          {phase === "clash" && (
           <div className="di-name di-name-opp">
             <div
               className="di-name-bar di-name-bar-opp"
@@ -462,7 +462,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           )}
 
           {/* Nome + ícone do jogador */}
-          {phase !== "gears" && (
+          {phase === "clash" && (
           <div className="di-name di-name-me">
             <div
               className="di-name-bar di-name-bar-me"
