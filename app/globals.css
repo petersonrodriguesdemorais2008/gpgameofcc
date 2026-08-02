@@ -2216,15 +2216,18 @@
    Soft idle bob + tilt, with a grounded drop shadow that
    breathes in sync so the card reads as hovering over the mat.
    ============================================================ */
+/* NOTE: rotation was removed from this animation. Fractional-degree
+   rotation + will-change forced the browser to rasterize each card as a
+   tiny GPU texture and resample it every frame, making the card art look
+   blurry / low-res. A pure shadow "breath" keeps the hover feel while the
+   card image stays pixel-perfect. */
 @keyframes gp-card-float {
   0%, 100% {
-    transform: translateY(0px) rotate(var(--float-rot, -0.7deg));
     box-shadow:
       0 7px 8px -5px rgba(0, 0, 0, 0.8),
       0 3px 4px -2px rgba(0, 0, 0, 0.55);
   }
   50% {
-    transform: translateY(-3px) rotate(calc(var(--float-rot, -0.7deg) * -1));
     box-shadow:
       0 13px 13px -6px rgba(0, 0, 0, 0.62),
       0 6px 7px -3px rgba(0, 0, 0, 0.42);
@@ -2234,7 +2237,6 @@
 .gp-card-float {
   animation: gp-card-float var(--float-dur, 3.8s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
-  will-change: transform, box-shadow;
 }
 
 /* Static resting shadow for field cards that shouldn't animate
