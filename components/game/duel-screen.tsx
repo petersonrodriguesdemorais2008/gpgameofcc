@@ -3864,7 +3864,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     run?.()
   }
 
-  // ── Multiplayer Supabase layer ────────────────────────────────────────────
+  // ── Multiplayer Supabase layer ────────��───────────────────────────────────
   const supabaseRef = useRef(createClient())  // created once, never changes
   const supabase = supabaseRef.current
   const mpActionsChannelRef  = useRef<RealtimeChannel | null>(null)
@@ -10678,15 +10678,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {/* ── FIXED LEFT PANEL: Card Detail ── */}
       <div className="gp-panel fixed left-0 z-30 flex flex-col"
         style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",borderRight:"1px solid var(--gp-line)"}}>
-        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5">
+        <div className="flex-shrink-0 px-3.5 pt-3.5 pb-3">
           <p className="gp-panel-title">Detalhe</p>
+          <div className="gp-title-rule" aria-hidden="true" />
         </div>
         {(inspectedCard || logCardDetail) ? (() => {
           const card: any = inspectedCard || logCardDetail
           return (
             <div key={card.name} className="panel-detail-in gp-scroll flex-1 overflow-y-auto px-3.5 pb-4 space-y-3">
-              <div className="relative w-full overflow-hidden rounded-sm" style={{aspectRatio:"3/4",background:"rgba(0,0,0,0.35)"}}>
-                <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
+              <div className="gp-card-frame">
+                <span className="gp-corner gp-corner--tl" aria-hidden="true" />
+                <span className="gp-corner gp-corner--tr" aria-hidden="true" />
+                <span className="gp-corner gp-corner--bl" aria-hidden="true" />
+                <span className="gp-corner gp-corner--br" aria-hidden="true" />
+                <div className="relative w-full overflow-hidden" style={{aspectRatio:"3/4",background:"rgba(0,0,0,0.4)"}}>
+                  <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
+                </div>
               </div>
 
               <div className="space-y-2.5">
@@ -10765,22 +10772,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
           overflow:"hidden",
         }}>
-        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5 flex items-baseline gap-2"
+        <div className="flex-shrink-0 px-3.5 pt-3.5 pb-3"
           style={{minWidth: isLogOpen ? 0 : 34, paddingLeft: isLogOpen ? undefined : 8, paddingRight: isLogOpen ? undefined : 8}}>
-          {isLogOpen && <p className="gp-panel-title whitespace-nowrap">Log</p>}
-          {isLogOpen && (
-            <span className="gp-turn-tag whitespace-nowrap">
-              Turno {turn} · {isPlayerTurn ? "Você" : "Bot"}
-            </span>
-          )}
-          <button
-            onClick={() => setIsLogOpen(v => !v)}
-            className="gp-collapse ml-auto flex-shrink-0"
-            title={isLogOpen ? "Recolher log" : "Expandir log"}
-            aria-label={isLogOpen ? "Recolher log" : "Expandir log"}
-          >
-            <span style={{display:"inline-block", transition:"transform 0.28s", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
-          </button>
+          <div className="flex items-baseline gap-2">
+            {isLogOpen && <p className="gp-panel-title whitespace-nowrap">Log</p>}
+            {isLogOpen && (
+              <span className="gp-turn-tag whitespace-nowrap">
+                Turno {turn} · {isPlayerTurn ? "Você" : "Bot"}
+              </span>
+            )}
+            <button
+              onClick={() => setIsLogOpen(v => !v)}
+              className="gp-collapse ml-auto flex-shrink-0"
+              title={isLogOpen ? "Recolher log" : "Expandir log"}
+              aria-label={isLogOpen ? "Recolher log" : "Expandir log"}
+            >
+              <span style={{display:"inline-block", transition:"transform 0.28s", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
+            </button>
+          </div>
+          {isLogOpen && <div className="gp-title-rule" aria-hidden="true" />}
         </div>
         {isLogOpen && (
           <div ref={duelLogRef} className="gp-scroll flex-1 overflow-y-auto px-3.5 pb-4">
@@ -11198,33 +11208,66 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
 
         /* ══ PAINÉIS LATERAIS: Detalhe & Log ══
-           Direção: editorial escuro e sóbrio. Papel de fundo sólido, hierarquia
-           por tipografia e espaço em branco — sem neon, sem molduras luminosas,
-           sem uppercase espaçado em blocos de texto. */
+           Direção: grimório épico — pergaminho escuro, filetes e ornamentos
+           dourados, brilho quente e discreto. Fantasia, não hi-tech:
+           nada de neon, nada de grid, nada de poluição. */
         .gp-panel {
-          --gp-paper: #101215;
-          --gp-line: rgba(255,255,255,0.08);
-          --gp-line-soft: rgba(255,255,255,0.05);
-          --gp-ink: #e6e3dd;
-          --gp-muted: #8b8781;
-          --gp-faint: #63615d;
-          --gp-accent: #c2a06a;
-          background: var(--gp-paper);
+          --gp-paper: #12100c;
+          --gp-line: rgba(212,175,111,0.16);
+          --gp-line-soft: rgba(212,175,111,0.09);
+          --gp-ink: #ece7dd;
+          --gp-muted: #948d81;
+          --gp-faint: #6b6559;
+          --gp-accent: #d4af6f;
+          background:
+            radial-gradient(120% 60% at 50% 0%, rgba(212,175,111,0.05), transparent 55%),
+            linear-gradient(180deg, #16130e 0%, #100e0a 45%, #0c0a07 100%);
           color: var(--gp-ink);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+        }
+        /* Filete dourado interno acompanhando a borda que encara a arena */
+        .gp-panel::after {
+          content: "";
+          position: absolute; inset: 0;
+          pointer-events: none;
+          box-shadow: inset 0 1px 0 rgba(212,175,111,0.14);
         }
 
-        /* Título do painel: serif, discreto, sem caixa alta espaçada */
+        /* Título do painel: serif dourado com brilho quente sutil */
         .gp-panel-title {
           font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: 0.01em;
-          color: var(--gp-ink);
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          color: var(--gp-accent);
+          text-shadow: 0 0 14px rgba(212,175,111,0.3);
+        }
+        /* Régua ornamental sob o título: losango + linha que se desvanece */
+        .gp-title-rule {
+          position: relative;
+          margin-top: 7px;
+          height: 5px;
+        }
+        .gp-title-rule::before {
+          content: "";
+          position: absolute; left: 0; top: 0;
+          width: 5px; height: 5px;
+          transform: rotate(45deg);
+          background: var(--gp-accent);
+          box-shadow: 0 0 8px rgba(212,175,111,0.55);
+        }
+        .gp-title-rule::after {
+          content: "";
+          position: absolute; left: 11px; right: 0; top: 2px;
+          height: 1px;
+          background: linear-gradient(90deg, rgba(212,175,111,0.5), rgba(212,175,111,0.1) 65%, transparent);
         }
         .gp-turn-tag {
           font-size: 10px;
-          color: var(--gp-faint);
-          letter-spacing: 0.01em;
+          color: var(--gp-muted);
+          letter-spacing: 0.02em;
+          font-style: italic;
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
         }
         .gp-collapse {
           width: 18px; height: 18px;
@@ -11232,66 +11275,113 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           font-size: 13px; line-height: 1;
           color: var(--gp-faint);
           background: none; border: 0;
-          transition: color 0.15s;
+          transition: color 0.2s, text-shadow 0.2s;
         }
-        .gp-collapse:hover { color: var(--gp-ink); }
+        .gp-collapse:hover { color: var(--gp-accent); text-shadow: 0 0 8px rgba(212,175,111,0.5); }
 
         .gp-empty {
           font-size: 11px;
           line-height: 1.6;
           color: var(--gp-faint);
           text-align: center;
+          font-style: italic;
+          font-family: ui-serif, Georgia, "Times New Roman", serif;
         }
 
-        /* Scroll discreto, sem setas (Firefox + WebKit) */
-        .gp-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+        /* Scroll discreto, dourado apagado */
+        .gp-scroll { scrollbar-width: thin; scrollbar-color: rgba(212,175,111,0.22) transparent; }
         .gp-scroll::-webkit-scrollbar { width: 6px; }
         .gp-scroll::-webkit-scrollbar-track { background: transparent; }
-        .gp-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+        .gp-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,111,0.22); border-radius: 999px; }
         .gp-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
-        /* ── Detalhe ── */
+        /* ── Detalhe: moldura de relíquia para a arte da carta ── */
+        .gp-card-frame {
+          position: relative;
+          padding: 4px;
+          background: linear-gradient(180deg, rgba(212,175,111,0.08), rgba(0,0,0,0.25));
+          border: 1px solid rgba(212,175,111,0.28);
+          box-shadow:
+            0 0 22px rgba(212,175,111,0.08),
+            0 8px 18px -8px rgba(0,0,0,0.8),
+            inset 0 0 12px rgba(0,0,0,0.55);
+        }
+        .gp-corner {
+          position: absolute;
+          width: 9px; height: 9px;
+          border-color: var(--gp-accent);
+          border-style: solid;
+          border-width: 0;
+          filter: drop-shadow(0 0 4px rgba(212,175,111,0.5));
+          pointer-events: none;
+        }
+        .gp-corner--tl { top: -1px; left: -1px; border-top-width: 2px; border-left-width: 2px; }
+        .gp-corner--tr { top: -1px; right: -1px; border-top-width: 2px; border-right-width: 2px; }
+        .gp-corner--bl { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
+        .gp-corner--br { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
+
         .gp-card-name {
           font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 15px;
-          font-weight: 600;
+          font-size: 16px;
+          font-weight: 700;
           line-height: 1.25;
           text-wrap: balance;
           color: var(--gp-ink);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.7);
         }
-        /* Metadados como lista de definição, não como pastilhas coloridas */
-        .gp-meta { display: flex; flex-direction: column; }
+        /* Metadados: lista de definição com filete dourado apagado */
+        .gp-meta {
+          display: flex; flex-direction: column;
+          padding: 2px 10px;
+          background: rgba(212,175,111,0.04);
+          border-top: 1px solid var(--gp-line);
+          border-bottom: 1px solid var(--gp-line);
+        }
         .gp-meta-item {
           display: flex; align-items: baseline; justify-content: space-between;
           gap: 8px;
-          padding: 4px 0;
+          padding: 5px 0;
           border-bottom: 1px solid var(--gp-line-soft);
         }
         .gp-meta-item:last-child { border-bottom: 0; }
         .gp-meta-key {
           font-size: 10px;
           color: var(--gp-faint);
-          letter-spacing: 0.02em;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
         }
         .gp-meta-val {
-          font-size: 11px;
-          font-weight: 600;
+          font-size: 11.5px;
+          font-weight: 700;
           text-align: right;
           color: var(--gp-ink);
         }
-        /* Blocos de texto: régua vertical em vez de caixa com borda */
-        .gp-block { padding-left: 9px; border-left: 1px solid var(--gp-line); }
+        /* Blocos de texto: régua dourada que se desvanece + fundo quente sutil */
+        .gp-block {
+          position: relative;
+          padding: 6px 8px 7px 11px;
+          background: linear-gradient(90deg, rgba(212,175,111,0.05), transparent 70%);
+        }
+        .gp-block::before {
+          content: "";
+          position: absolute; left: 0; top: 0; bottom: 0;
+          width: 2px;
+          background: linear-gradient(180deg, var(--gp-accent), rgba(212,175,111,0.1));
+          box-shadow: 0 0 6px rgba(212,175,111,0.35);
+        }
         .gp-block + .gp-block { margin-top: 10px; }
         .gp-block-label {
           font-family: ui-serif, Georgia, "Times New Roman", serif;
           font-size: 10px;
           font-style: italic;
+          letter-spacing: 0.05em;
           color: var(--gp-accent);
           margin-bottom: 3px;
+          text-shadow: 0 0 10px rgba(212,175,111,0.25);
         }
         .gp-block-name {
-          font-size: 11.5px;
-          font-weight: 600;
+          font-size: 12px;
+          font-weight: 700;
           line-height: 1.35;
           color: var(--gp-ink);
         }
@@ -11302,42 +11392,62 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           color: var(--gp-muted);
         }
 
-        /* ── Log ── */
+        /* ── Log: crônica do duelo ── */
         .gp-turn-rule {
           display: flex; align-items: center; gap: 8px;
-          margin: 12px 0 8px;
+          margin: 14px 0 8px;
           font-family: ui-serif, Georgia, "Times New Roman", serif;
           font-size: 10px;
           font-style: italic;
-          color: var(--gp-muted);
+          letter-spacing: 0.04em;
+          color: var(--gp-accent);
+          text-shadow: 0 0 10px rgba(212,175,111,0.25);
+        }
+        .gp-turn-rule::before {
+          content: "";
+          width: 4px; height: 4px; flex-shrink: 0;
+          transform: rotate(45deg);
+          background: var(--gp-accent);
+          box-shadow: 0 0 6px rgba(212,175,111,0.5);
         }
         .gp-turn-rule::after {
           content: ""; flex: 1; height: 1px;
-          background: var(--gp-line);
+          background: linear-gradient(90deg, rgba(212,175,111,0.4), transparent);
         }
         .gp-log-row {
           display: flex; gap: 8px;
-          padding: 7px 0;
+          padding: 7px 6px;
+          margin: 0 -6px;
           border-bottom: 1px solid var(--gp-line-soft);
+          border-radius: 3px;
+          transition: background 0.2s;
         }
+        .gp-log-row:hover { background: rgba(212,175,111,0.05); }
         .gp-log-row:last-child { border-bottom: 0; }
         .gp-log-thumb {
           flex-shrink: 0;
-          width: 26px; height: 36px;
+          width: 27px; height: 37px;
           overflow: hidden;
           border-radius: 2px;
-          background: rgba(0,0,0,0.3);
+          background: rgba(0,0,0,0.35);
           cursor: pointer;
-          border: 0; padding: 0;
-          opacity: 0.85;
-          transition: opacity 0.15s;
+          border: 1px solid rgba(212,175,111,0.18);
+          padding: 0;
+          opacity: 0.88;
+          transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
         }
-        .gp-log-thumb:hover { opacity: 1; }
+        .gp-log-thumb:hover {
+          opacity: 1;
+          border-color: rgba(212,175,111,0.6);
+          box-shadow: 0 0 10px rgba(212,175,111,0.3);
+          transform: translateY(-1px);
+        }
         .gp-log-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .gp-log-label {
           font-family: ui-serif, Georgia, "Times New Roman", serif;
           font-size: 10px;
           font-style: italic;
+          letter-spacing: 0.03em;
         }
         .gp-log-turn {
           margin-left: auto;
@@ -11351,17 +11461,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           color: var(--gp-muted);
         }
 
+        /* ── Animações: entrada fluida, sem exagero ── */
         @keyframes panel-detail-in {
-          0%   { opacity: 0; transform: translateY(4px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .panel-detail-in { animation: panel-detail-in 0.22s ease-out both; }
+        .panel-detail-in { animation: panel-detail-in 0.35s cubic-bezier(0.22,1,0.36,1) both; }
 
         @keyframes log-entry-in {
-          0%   { opacity: 0; }
-          100% { opacity: 1; }
+          0%   { opacity: 0; transform: translateX(10px); }
+          100% { opacity: 1; transform: translateX(0); }
         }
-        .log-entry-in { animation: log-entry-in 0.2s ease-out both; }
+        .log-entry-in { animation: log-entry-in 0.3s cubic-bezier(0.22,1,0.36,1) both; }
 
         @media (prefers-reduced-motion: reduce) {
           .panel-detail-in, .log-entry-in { animation: none; }
