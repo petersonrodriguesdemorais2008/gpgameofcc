@@ -2650,7 +2650,7 @@ function StarfieldCanvas() {
       ctx.restore()
     }
 
-    /* ─������ Runtime particles ── */
+    /* ─�������� Runtime particles ── */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -3300,11 +3300,28 @@ function TrapChainsFX() {
     size: 2.5 + (i % 3) * 1.5,
     hue: i % 3 === 0 ? "#fbbf24" : i % 3 === 1 ? "#f87171" : "#fde68a",
   }))
+  // Faíscas de impacto quando as correntes cravam na carta
+  const impactSparks = Array.from({ length: 12 }).map((_, i) => ({
+    x: Math.cos((i / 12) * Math.PI * 2 + 0.9) * (34 + (i % 4) * 12),
+    y: Math.sin((i / 12) * Math.PI * 2 + 0.9) * (28 + (i % 3) * 10),
+    delay: 0.08 + (i % 5) * 0.022,
+    size: 2 + (i % 3),
+  }))
+  // Arcos elétricos que estalam nos elos durante a fase de tensão
+  const arcs = [
+    { rot: -18, top: "26%", left: "12%", delay: 0.55, flip: 1 },
+    { rot: 26,  top: "68%", left: "58%", delay: 0.86, flip: -1 },
+    { rot: -40, top: "48%", left: "34%", delay: 1.14, flip: 1 },
+    { rot: 12,  top: "20%", left: "56%", delay: 1.32, flip: -1 },
+  ]
   return (
     <div className="absolute pointer-events-none" style={{ inset: "-30px", zIndex: 40 }} aria-hidden="true">
-      {/* Selo rúnico discreto girando lento atrás da carta */}
+      {/* Selos rúnicos: anel interno + anel externo contra-rotativo */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="trap-seal" />
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="trap-seal trap-seal--outer" />
       </div>
       {/* Ondas de choque: uma no impacto das correntes, outra dourada na quebra */}
       <div className="absolute inset-0 flex items-center justify-center">
@@ -3327,6 +3344,27 @@ function TrapChainsFX() {
       <div className="trap-lock">
         <TrapPadlock />
       </div>
+      {/* Faíscas radiais no impacto das correntes */}
+      {impactSparks.map((s, i) => (
+        <div key={`sp-${i}`} className="trap-spark"
+          style={{
+            ["--sp-x" as any]: `${s.x}px`,
+            ["--sp-y" as any]: `${s.y}px`,
+            width: s.size, height: s.size,
+            animationDelay: `${s.delay}s`,
+          }} />
+      ))}
+      {/* Arcos elétricos estalando nos elos durante a tensão */}
+      {arcs.map((a, i) => (
+        <div key={`arc-${i}`} className="trap-arc"
+          style={{ top: a.top, left: a.left, transform: `rotate(${a.rot}deg) scaleX(${a.flip})`, animationDelay: `${a.delay}s` }}>
+          <svg viewBox="0 0 40 14" width="34" height="12" aria-hidden="true">
+            <polyline points="0,7 9,3 14,10 22,2 28,9 34,5 40,7"
+              fill="none" stroke="#fca5a5" strokeWidth="1.6" strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 0 3px rgba(239,68,68,0.95))" }} />
+          </svg>
+        </div>
+      ))}
       {/* Estilhaços de metal voando na quebra */}
       {shards.map((s, i) => (
         <div key={i} className="trap-shard"
@@ -10637,16 +10675,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ── FIXED LEFT PANEL: Card Detail ── */}
       <div className="fixed left-0 z-30 flex flex-col"
-        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"linear-gradient(180deg, rgba(4,10,18,0.97) 0%, rgba(4,3,13,0.97) 40%, rgba(4,3,13,0.97) 100%)",borderRight:"1px solid rgba(6,182,212,0.22)",backdropFilter:"blur(12px)",boxShadow:"inset -18px 0 24px -22px rgba(6,182,212,0.35)"}}>
+        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"linear-gradient(180deg, rgba(4,10,18,0.98) 0%, rgba(4,3,13,0.98) 40%, rgba(4,3,13,0.98) 100%)",borderRight:"1px solid rgba(6,182,212,0.22)",boxShadow:"inset -18px 0 24px -22px rgba(6,182,212,0.35)"}}>
         <div className="flex-shrink-0">
-          <div className="px-2.5 py-2 flex items-center gap-1.5"
+          <div className="px-2.5 py-2 flex items-center gap-2"
             style={{background:"linear-gradient(90deg, rgba(6,182,212,0.14), rgba(6,182,212,0.03))"}}>
-            <span className="flex items-center justify-center w-4 h-4 rounded"
-              style={{background:"rgba(6,182,212,0.18)",border:"1px solid rgba(34,211,238,0.4)",boxShadow:"0 0 8px rgba(34,211,238,0.35)"}}>
-              <span className="text-cyan-300 text-[9px] leading-none">◈</span>
-            </span>
+            <span className="block w-2 h-2 flex-shrink-0 rotate-45"
+              style={{background:"rgba(34,211,238,0.85)",boxShadow:"0 0 8px rgba(34,211,238,0.6)"}} />
             <p className="text-cyan-300 text-[10px] font-black tracking-[0.25em] uppercase"
               style={{textShadow:"0 0 10px rgba(34,211,238,0.5)"}}>Detalhe</p>
+            <span className="flex-1 h-px" style={{background:"linear-gradient(90deg, rgba(34,211,238,0.35), transparent)"}} />
           </div>
           <div className="panel-header-line text-cyan-400/80" />
         </div>
@@ -10664,8 +10701,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
               <div className="space-y-2 px-0.5">
                 <div>
-                  <p className="font-black text-sm leading-tight text-balance"
-                    style={{background:"linear-gradient(180deg, #ffffff 30%, #a5f3fc 100%)",WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent",textShadow:"0 2px 8px rgba(6,182,212,0.25)"}}>{card.name}</p>
+                  <p className="font-black text-sm leading-tight text-balance text-white"
+                    style={{textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{card.name}</p>
                   <div className="detail-name-rule mt-1.5" />
                 </div>
                 {card.dp > 0 && (
@@ -10679,23 +10716,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     </span>
                     {card.element && (() => {
                       const el = card.element as string
-                      const elMap: Record<string, { icon: string; color: string; bg: string; border: string }> = {
-                        Aquos:     { icon: "💧", color: "#38bdf8", bg: "rgba(56,189,248,0.12)",  border: "rgba(56,189,248,0.30)" },
-                        Pyrus:     { icon: "🔥", color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.30)" },
-                        Ventus:    { icon: "🌿", color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.30)" },
-                        Subterra:  { icon: "🪨", color: "#d97706", bg: "rgba(217,119,6,0.12)",   border: "rgba(217,119,6,0.30)"  },
-                        Haos:      { icon: "✨", color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
-                        Lightness: { icon: "✨", color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
-                        Darkus:    { icon: "🌑", color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
-                        Darkness:  { icon: "🌑", color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
-                        Void:      { icon: "⬛", color: "#6b7280", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)"},
-                        Neutral:   { icon: "⚪", color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)"},
+                      const elMap: Record<string, { color: string; bg: string; border: string }> = {
+                        Aquos:     { color: "#38bdf8", bg: "rgba(56,189,248,0.12)",  border: "rgba(56,189,248,0.30)" },
+                        Pyrus:     { color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.30)" },
+                        Ventus:    { color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.30)" },
+                        Subterra:  { color: "#d97706", bg: "rgba(217,119,6,0.12)",   border: "rgba(217,119,6,0.30)"  },
+                        Haos:      { color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
+                        Lightness: { color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
+                        Darkus:    { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
+                        Darkness:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
+                        Void:      { color: "#6b7280", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)"},
+                        Neutral:   { color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)"},
                       }
-                      const e = elMap[el] || { icon: "◆", color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)" }
+                      const e = elMap[el] || { color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)" }
                       return (
-                        <span className="flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-md"
+                        <span className="flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md"
                           style={{ color: e.color, background: e.bg, border: `1px solid ${e.border}` }}>
-                          <span className="text-[11px]">{e.icon}</span>
+                          <span className="block w-1.5 h-1.5 rotate-45 flex-shrink-0"
+                            style={{ background: e.color, boxShadow: `0 0 6px ${e.color}` }} />
                           {el}
                         </span>
                       )
@@ -10706,8 +10744,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
                 {/* ── Bloco de habilidade para cartas de Unidade ── */}
                 {card.ability && card.abilityDescription && (
-                  <div className="relative rounded-md overflow-hidden"
-                    style={{background:"linear-gradient(135deg,rgba(6,182,212,0.06),rgba(6,182,212,0.02))",border:"1px solid rgba(6,182,212,0.18)"}}>
+                  <div className="relative overflow-hidden"
+                    style={{background:"rgba(6,182,212,0.05)",border:"1px solid rgba(6,182,212,0.2)",clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"}}>
                     <span className="absolute left-0 top-0 bottom-0 w-[2px]"
                       style={{background:"linear-gradient(180deg, rgba(34,211,238,0.9), rgba(34,211,238,0.15))"}} />
                     <div className="px-2.5 pt-1.5">
@@ -10719,8 +10757,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 )}
                 {/* Apenas nome da habilidade sem descrição (ex: alguns UG) */}
                 {card.ability && !card.abilityDescription && (
-                  <div className="relative rounded-md px-2.5 py-1.5 overflow-hidden"
-                    style={{background:"rgba(6,182,212,0.06)",border:"1px solid rgba(6,182,212,0.18)"}}>
+                  <div className="relative px-2.5 py-1.5 overflow-hidden"
+                    style={{background:"rgba(6,182,212,0.05)",border:"1px solid rgba(6,182,212,0.2)",clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"}}>
                     <span className="absolute left-0 top-0 bottom-0 w-[2px]"
                       style={{background:"linear-gradient(180deg, rgba(34,211,238,0.9), rgba(34,211,238,0.15))"}} />
                     <p className="text-cyan-500/80 text-[8px] font-black tracking-[0.28em] uppercase">Habilidade</p>
@@ -10729,8 +10767,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 )}
                 {/* Ataque — para Unidades de Tropas e cartas com ataque nomeado */}
                 {card.attack && (
-                  <div className="relative rounded-md overflow-hidden"
-                    style={{background:"linear-gradient(135deg,rgba(251,191,36,0.06),rgba(251,191,36,0.02))",border:"1px solid rgba(251,191,36,0.16)"}}>
+                  <div className="relative overflow-hidden"
+                    style={{background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.2)",clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"}}>
                     <span className="absolute left-0 top-0 bottom-0 w-[2px]"
                       style={{background:"linear-gradient(180deg, rgba(251,191,36,0.9), rgba(251,191,36,0.15))"}} />
                     <div className="px-2.5 pt-1.5">
@@ -10749,7 +10787,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <div className="flex-1 flex flex-col items-center justify-center gap-3 p-3">
             <div className="detail-empty-card relative rounded-md"
               style={{width:46,height:62,border:"1.5px dashed rgba(34,211,238,0.45)"}}>
-              <span className="absolute inset-0 flex items-center justify-center text-cyan-500/50 text-base">◈</span>
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="block w-2.5 h-2.5 rotate-45" style={{border:"1.5px solid rgba(34,211,238,0.55)"}} />
+              </span>
             </div>
             <p className="text-slate-500 text-[9px] text-center leading-relaxed opacity-70">Toque e segure<br/>uma carta para<br/>ver os detalhes</p>
           </div>
@@ -10761,9 +10801,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         style={{
           top:"56px", bottom:"0",
           width: isLogOpen ? "clamp(140px,17vw,230px)" : "36px",
-          background:"linear-gradient(180deg, rgba(14,9,3,0.97) 0%, rgba(4,3,13,0.97) 40%, rgba(4,3,13,0.97) 100%)",
+          background:"linear-gradient(180deg, rgba(14,9,3,0.98) 0%, rgba(4,3,13,0.98) 40%, rgba(4,3,13,0.98) 100%)",
           borderLeft:"1px solid rgba(251,191,36,0.22)",
-          backdropFilter:"blur(12px)",
           boxShadow:"inset 18px 0 24px -22px rgba(251,191,36,0.3)",
           transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
           overflow:"hidden",
@@ -10772,11 +10811,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <div className="px-2.5 py-2 flex items-center justify-between gap-1.5"
             style={{background:"linear-gradient(270deg, rgba(251,191,36,0.13), rgba(251,191,36,0.03))", minWidth: isLogOpen ? 0 : 36}}>
             {isLogOpen && (
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="flex items-center justify-center w-4 h-4 rounded flex-shrink-0"
-                  style={{background:"rgba(251,191,36,0.16)",border:"1px solid rgba(251,191,36,0.4)",boxShadow:"0 0 8px rgba(251,191,36,0.3)"}}>
-                  <span className="text-amber-300 text-[9px] leading-none">✦</span>
-                </span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="block w-2 h-2 flex-shrink-0 rotate-45"
+                  style={{background:"rgba(251,191,36,0.85)",boxShadow:"0 0 8px rgba(251,191,36,0.55)"}} />
                 <p className="text-amber-300 text-[10px] font-black tracking-[0.25em] uppercase whitespace-nowrap"
                   style={{textShadow:"0 0 10px rgba(251,191,36,0.45)"}}>Log</p>
               </div>
@@ -10804,36 +10841,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
             {duelLog.length === 0 ? (
               <div className="flex flex-col items-center gap-2.5 mt-8">
-                <span className="log-empty-pulse text-amber-500/70 text-base">✦</span>
+                <span className="log-empty-pulse block w-2 h-2 rotate-45" style={{background:"rgba(251,191,36,0.6)"}} />
                 <p className="text-slate-500 text-[9px] text-center leading-relaxed opacity-70">As ações do duelo<br/>aparecerão aqui.</p>
               </div>
             ) : duelLog.map(entry => {
-              const typeMeta: Record<string, { icon: string; color: string; border: string; chipBg: string }> = {
-                draw:   { icon: "⇪", color: "text-slate-400",  border: "rgba(148,163,184,0.4)",  chipBg: "rgba(148,163,184,0.10)" },
-                play:   { icon: "◈", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", border: entry.isPlayerTurn ? "rgba(34,211,238,0.5)" : "rgba(239,68,68,0.5)", chipBg: entry.isPlayerTurn ? "rgba(34,211,238,0.10)" : "rgba(239,68,68,0.10)" },
-                attack: { icon: "⚔", color: "text-amber-300",  border: "rgba(251,191,36,0.55)",  chipBg: "rgba(251,191,36,0.10)" },
-                lp:     { icon: "♥", color: "text-red-400",    border: "rgba(239,68,68,0.55)",   chipBg: "rgba(239,68,68,0.10)" },
-                effect: { icon: "✦", color: "text-purple-300", border: "rgba(168,85,247,0.5)",   chipBg: "rgba(168,85,247,0.10)" },
+              const typeMeta: Record<string, { label: string; color: string; border: string }> = {
+                draw:   { label: "Compra",  color: "text-slate-400",  border: "rgba(148,163,184,0.45)" },
+                play:   { label: "Jogada",  color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", border: entry.isPlayerTurn ? "rgba(34,211,238,0.55)" : "rgba(239,68,68,0.55)" },
+                attack: { label: "Ataque",  color: "text-amber-300",  border: "rgba(251,191,36,0.6)" },
+                lp:     { label: "LP",      color: "text-red-400",    border: "rgba(239,68,68,0.6)" },
+                effect: { label: "Efeito",  color: "text-purple-300", border: "rgba(168,85,247,0.55)" },
               }
-              const meta = typeMeta[entry.type] || { icon: "·", color: "text-slate-500", border: "rgba(100,116,139,0.3)", chipBg: "rgba(100,116,139,0.08)" }
+              const meta = typeMeta[entry.type] || { label: "", color: "text-slate-500", border: "rgba(100,116,139,0.35)" }
               if (entry.type === "turn") {
                 const c = entry.isPlayerTurn ? "59,130,246" : "239,68,68"
                 return (
-                  <div key={entry.id} className="log-entry-in relative my-2 flex items-center gap-1.5">
-                    <div className="flex-1 h-px" style={{background: `linear-gradient(90deg, transparent, rgba(${c},0.55))`}} />
-                    <span className="w-1 h-1 rotate-45 flex-shrink-0" style={{background:`rgba(${c},0.9)`, boxShadow:`0 0 6px rgba(${c},0.8)`}} />
-                    <p className={`text-[9px] font-black tracking-widest uppercase whitespace-nowrap px-2 py-0.5 rounded-full border ${
-                      entry.isPlayerTurn ? "text-blue-300 border-blue-500/40 bg-blue-900/40" : "text-red-300 border-red-500/40 bg-red-900/35"
-                    }`} style={{boxShadow: `0 0 12px rgba(${c},0.25)`}}>{entry.message}</p>
-                    <span className="w-1 h-1 rotate-45 flex-shrink-0" style={{background:`rgba(${c},0.9)`, boxShadow:`0 0 6px rgba(${c},0.8)`}} />
-                    <div className="flex-1 h-px" style={{background: `linear-gradient(270deg, transparent, rgba(${c},0.55))`}} />
+                  <div key={entry.id} className="log-entry-in relative my-2.5 flex items-center gap-1.5">
+                    <div className="flex-1 h-px" style={{background: `linear-gradient(90deg, transparent, rgba(${c},0.6))`}} />
+                    <p className={`text-[9px] font-black tracking-widest uppercase whitespace-nowrap px-2 py-0.5 border ${
+                      entry.isPlayerTurn ? "text-blue-300 border-blue-500/45 bg-blue-950/60" : "text-red-300 border-red-500/45 bg-red-950/50"
+                    }`} style={{clipPath:"polygon(6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0 50%)"}}>{entry.message}</p>
+                    <div className="flex-1 h-px" style={{background: `linear-gradient(270deg, transparent, rgba(${c},0.6))`}} />
                   </div>
                 )
               }
               return (
-                <div key={entry.id} className="log-entry-in log-entry-row relative flex items-start gap-1.5 rounded-md px-1.5 py-1.5 overflow-hidden"
-                  style={{background: entry.isPlayerTurn ? "linear-gradient(90deg, rgba(34,211,238,0.045), rgba(255,255,255,0.015))" : "linear-gradient(90deg, rgba(239,68,68,0.05), rgba(255,255,255,0.015))", border:"1px solid rgba(255,255,255,0.04)"}}>
-                  <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full"
+                <div key={entry.id} className="log-entry-in log-entry-row relative flex items-start gap-1.5 px-1.5 py-1.5 overflow-hidden"
+                  style={{background: entry.isPlayerTurn ? "rgba(34,211,238,0.035)" : "rgba(239,68,68,0.04)", border:"1px solid rgba(255,255,255,0.045)", clipPath:"polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%)"}}>
+                  <span className="absolute left-0 top-0 bottom-0 w-[2px]"
                     style={{background:`linear-gradient(180deg, ${meta.border}, transparent)`}} />
                   {entry.cardImage && (
                     <button className="log-thumb flex-shrink-0 w-7 h-10 rounded overflow-hidden cursor-pointer"
@@ -10854,9 +10889,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   )}
                   <div className="flex-1 min-w-0 pl-0.5">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-full text-[7px] leading-none flex-shrink-0 ${meta.color}`}
-                        style={{background: meta.chipBg, border:`1px solid ${meta.border}`}}>{meta.icon}</span>
-                      <p className="text-[8px] text-slate-500 font-black tracking-wider">T{entry.turn}</p>
+                      <span className="block w-1.5 h-1.5 rotate-45 flex-shrink-0"
+                        style={{background: meta.border, boxShadow:`0 0 5px ${meta.border}`}} />
+                      {meta.label && <p className={`text-[8px] font-black tracking-[0.18em] uppercase ${meta.color} opacity-80`}>{meta.label}</p>}
+                      <p className="text-[8px] text-slate-500 font-black tracking-wider ml-auto">T{entry.turn}</p>
                     </div>
                     <p className={`text-[10px] leading-tight ${meta.color}`}>{entry.message}</p>
                   </div>
@@ -11034,6 +11070,59 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           will-change: transform, opacity;
         }
 
+        /* Selo externo: maior, tracejado mais fino, gira ao contrário */
+        @keyframes trap-seal-spin-rev {
+          0%   { opacity: 0; transform: rotate(0deg) scale(0.4); }
+          12%  { opacity: 0.4; transform: rotate(-24deg) scale(1); }
+          62%  { opacity: 0.4; transform: rotate(-130deg) scale(1.02); }
+          74%  { opacity: 0.28; transform: rotate(-170deg) scale(1.25); }
+          100% { opacity: 0; transform: rotate(-230deg) scale(1.6); }
+        }
+        .trap-seal--outer {
+          width: 190%;
+          border-width: 1px;
+          border-color: rgba(251,146,60,0.4);
+          background: repeating-conic-gradient(from 0deg, rgba(251,146,60,0.38) 0deg 1.2deg, transparent 1.2deg 15deg);
+          box-shadow: 0 0 20px rgba(251,146,60,0.18), inset 0 0 14px rgba(251,146,60,0.12);
+          animation: trap-seal-spin-rev 2.2s ease-in-out 1 forwards;
+        }
+
+        /* Faíscas radiais no impacto das correntes */
+        @keyframes trap-spark-fly {
+          0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+          8%   { opacity: 1; }
+          100% { opacity: 0; transform: translate(calc(-50% + var(--sp-x)), calc(-50% + var(--sp-y))) scale(0.2); }
+        }
+        .trap-spark {
+          position: absolute;
+          top: 50%; left: 50%;
+          border-radius: 9999px;
+          background: #fecaca;
+          box-shadow: 0 0 6px 1px rgba(239,68,68,0.9);
+          opacity: 0;
+          animation: trap-spark-fly 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1 forwards;
+          will-change: transform, opacity;
+        }
+
+        /* Arcos elétricos: flicker rápido e irregular durante a tensão */
+        @keyframes trap-arc-flicker {
+          0%, 100% { opacity: 0; }
+          8%   { opacity: 1; }
+          16%  { opacity: 0.15; }
+          26%  { opacity: 0.95; }
+          38%  { opacity: 0.25; }
+          52%  { opacity: 1; }
+          70%  { opacity: 0.1; }
+          82%  { opacity: 0.7; }
+        }
+        .trap-arc {
+          position: absolute;
+          opacity: 0;
+          animation: trap-arc-flicker 0.42s steps(1, end) 1 forwards;
+          will-change: opacity;
+          z-index: 4;
+        }
+
         /* Ondas de choque em anel */
         @keyframes trap-ring-out {
           0%   { opacity: 0.9; transform: scale(0.4); border-width: 3px; }
@@ -11118,13 +11207,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           animation: trap-dim-io 2.2s ease-in-out 1 forwards;
         }
 
-        /* Banner "ARMADILHA ATIVADA" */
+        /* Banner "ARMADILHA ATIVADA" — entrada em estampa (sem blur):
+           cai com peso, quica com overshoot elástico e sai deslizando limpo */
         @keyframes trap-banner-io {
-          0%   { opacity: 0; transform: translate(-50%, 26px) scale(0.75); filter: blur(6px); }
-          10%  { opacity: 1; transform: translate(-50%, 0) scale(1.05); filter: blur(0); }
+          0%   { opacity: 0; transform: translate(-50%, -38px) scale(1.35); }
+          7%   { opacity: 1; transform: translate(-50%, 3px) scale(0.94); }
+          11%  { transform: translate(-50%, -2px) scale(1.04); }
           15%  { transform: translate(-50%, 0) scale(1); }
-          80%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -16px) scale(1.04); filter: blur(3px); }
+          82%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -22px) scale(1.03); }
         }
         .trap-banner {
           animation: trap-banner-io 2.2s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
@@ -11134,12 +11225,29 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           100% { transform: translateX(230%) skewX(-20deg); }
         }
         .trap-banner-sheen {
-          animation: trap-banner-sheen 1s ease-in-out 0.3s 1 both;
+          animation: trap-banner-sheen 0.85s ease-in-out 0.22s 1 both;
         }
+        /* Linhas de impacto que se expandem dos lados do banner na estampa */
+        @keyframes trap-banner-line {
+          0%, 6% { opacity: 0; transform: scaleX(0); }
+          14%  { opacity: 1; transform: scaleX(1.08); }
+          20%  { transform: scaleX(1); }
+          78%  { opacity: 1; transform: scaleX(1); }
+          100% { opacity: 0; transform: scaleX(0.6); }
+        }
+        .trap-banner-line {
+          height: 2px;
+          width: 46px;
+          background: linear-gradient(90deg, rgba(239,68,68,0.9), rgba(251,191,36,0.9));
+          box-shadow: 0 0 8px rgba(239,68,68,0.7);
+          animation: trap-banner-line 2.2s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
+        }
+        .trap-banner-line--l { transform-origin: right center; }
+        .trap-banner-line--r { transform-origin: left center; background: linear-gradient(270deg, rgba(239,68,68,0.9), rgba(251,191,36,0.9)); }
 
         @media (prefers-reduced-motion: reduce) {
           .trap-activating { animation: trap-card-glow 2.2s ease-out 1; }
-          .trap-chain-wrap, .trap-seal, .trap-ring, .trap-shard, .trap-ember, .trap-burst, .trap-lock { animation-duration: 0.01s; opacity: 0; }
+          .trap-chain-wrap, .trap-seal, .trap-ring, .trap-shard, .trap-ember, .trap-burst, .trap-lock, .trap-spark, .trap-arc, .trap-banner-line { animation-duration: 0.01s; opacity: 0; }
           .trap-dim-overlay { animation: none; opacity: 0; }
         }
 
@@ -11239,37 +11347,31 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         return (
           <>
             <div className="trap-dim-overlay" aria-hidden="true" />
-            <div className="trap-banner fixed left-1/2 z-[46] pointer-events-none flex flex-col items-center"
+            <div className="trap-banner fixed left-1/2 z-[46] pointer-events-none flex items-center gap-2.5"
               style={{ top: "18%" }}>
-              <div className="relative overflow-hidden px-7 py-2.5 rounded-lg"
+              <span className="trap-banner-line trap-banner-line--l block flex-shrink-0" />
+              <div className="relative overflow-hidden px-7 py-2.5"
                 style={{
                   background: "linear-gradient(180deg, rgba(28,8,10,0.97), rgba(10,3,5,0.97))",
-                  border: "1px solid rgba(239,68,68,0.55)",
-                  boxShadow: "0 0 36px rgba(239,68,68,0.45), 0 0 90px rgba(239,68,68,0.2), 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(239,68,68,0.6)",
+                  clipPath: "polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%)",
+                  boxShadow: "0 0 36px rgba(239,68,68,0.45), 0 10px 30px rgba(0,0,0,0.7)",
                 }}>
                 {/* fios de aço superior/inferior da placa */}
-                <div className="absolute top-0 inset-x-3 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(251,191,36,0.65), transparent)" }} />
-                <div className="absolute bottom-0 inset-x-3 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.55), transparent)" }} />
+                <div className="absolute top-0 inset-x-4 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(251,191,36,0.65), transparent)" }} />
+                <div className="absolute bottom-0 inset-x-4 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.55), transparent)" }} />
                 <div className="trap-banner-sheen absolute inset-y-0 w-1/3 pointer-events-none"
-                  style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }} />
-                <div className="flex items-center justify-center gap-2.5">
-                  <span className="block w-6 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(252,165,165,0.8))" }} />
-                  <p className="text-[10px] font-black tracking-[0.35em] uppercase text-center whitespace-nowrap"
-                    style={{ color: "#fca5a5", textShadow: "0 0 12px rgba(239,68,68,0.9)" }}>
-                    Armadilha Ativada
-                  </p>
-                  <span className="block w-6 h-px" style={{ background: "linear-gradient(270deg, transparent, rgba(252,165,165,0.8))" }} />
-                </div>
-                <p className="font-black text-lg text-center leading-tight text-balance mt-0.5"
-                  style={{
-                    background: "linear-gradient(180deg, #ffffff 25%, #fde68a 75%)",
-                    WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
-                    textShadow: "0 0 20px rgba(251,191,36,0.4)",
-                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.9))",
-                  }}>
+                  style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent)" }} />
+                <p className="text-[10px] font-black tracking-[0.4em] uppercase text-center whitespace-nowrap"
+                  style={{ color: "#fca5a5", textShadow: "0 0 12px rgba(239,68,68,0.9)" }}>
+                  Armadilha Ativada
+                </p>
+                <p className="font-black text-lg text-center leading-tight text-balance mt-0.5 text-amber-100"
+                  style={{ textShadow: "0 2px 4px rgba(0,0,0,0.9), 0 0 18px rgba(251,191,36,0.35)" }}>
                   {revealingTrap.name}
                 </p>
               </div>
+              <span className="trap-banner-line trap-banner-line--r block flex-shrink-0" />
             </div>
           </>
         )
