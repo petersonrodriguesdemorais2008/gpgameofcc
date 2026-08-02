@@ -48,36 +48,6 @@ const T_GEAR_COVER = 700  // momento em que a onda cobre 100% da tela (revela o 
 
 const GEAR_IMG = "/images/modes/gear-blue.png"
 
-// Riscos de luz em hipervelocidade — traços puros de energia azul cruzando a
-// tela. Poucos, finos e elegantes: velocidade sem poluição visual.
-// core = risco com núcleo branco incandescente · op = opacidade da camada
-const LIGHT_STREAKS = [
-  // vanguarda — abrem caminho na frente da onda
-  { top: 8,  w: 34, h: 3, dl: 0,   t: 520, op: 0.9,  core: true  },
-  { top: 19, w: 22, h: 2, dl: 90,  t: 560, op: 0.6,  core: false },
-  { top: 31, w: 40, h: 3, dl: 40,  t: 480, op: 1,    core: true  },
-  { top: 44, w: 18, h: 2, dl: 150, t: 600, op: 0.5,  core: false },
-  { top: 57, w: 36, h: 3, dl: 20,  t: 500, op: 0.95, core: true  },
-  { top: 69, w: 24, h: 2, dl: 120, t: 580, op: 0.55, core: false },
-  { top: 81, w: 42, h: 3, dl: 60,  t: 490, op: 1,    core: true  },
-  { top: 92, w: 20, h: 2, dl: 170, t: 610, op: 0.5,  core: false },
-  // retaguarda — ecos discretos por cima do duelo já revelado
-  { top: 14, w: 26, h: 2, dl: 860, t: 560, op: 0.55, core: false },
-  { top: 40, w: 32, h: 2, dl: 930, t: 520, op: 0.6,  core: true  },
-  { top: 64, w: 22, h: 2, dl: 900, t: 580, op: 0.5,  core: false },
-  { top: 86, w: 30, h: 2, dl: 980, t: 540, op: 0.55, core: false },
-]
-
-// Filamentos de plasma que serpenteiam à frente da crista da onda
-const WAVE_FILAMENTS = [
-  { top: 10, w: 220, h: 2,   dl: 0,   op: 0.9  },
-  { top: 26, w: 150, h: 1.5, dl: 70,  op: 0.7  },
-  { top: 41, w: 260, h: 2,   dl: 30,  op: 1    },
-  { top: 55, w: 180, h: 1.5, dl: 110, op: 0.75 },
-  { top: 71, w: 240, h: 2,   dl: 50,  op: 0.9  },
-  { top: 87, w: 160, h: 1.5, dl: 90,  op: 0.7  },
-]
-
 // Engrenagens-herói: poucas, grandes e elegantes, cravadas na crista de luz.
 // glow = espessura do halo de energia (px) atrás de cada uma.
 const HERO_GEARS = [
