@@ -442,7 +442,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 )}
                 <h2 className="di-title text-2xl sm:text-5xl">{opponent.name}</h2>
               </div>
-              <span className="di-shine di-shine-opp" aria-hidden="true" />
               <img
                 src={opponent.icon || "/images/gp-cg-logo.png"}
                 alt={opponent.name}
@@ -475,7 +474,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 </p>
                 <h2 className="di-title text-2xl sm:text-5xl">{playerName}</h2>
               </div>
-              <span className="di-shine di-shine-me" aria-hidden="true" />
             </div>
           </div>
 
@@ -1008,19 +1006,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
 
         /* Shine metálico varrendo as placas de nome */
-        .di-shine {
-          position: absolute; inset: -6px; pointer-events: none; z-index: 5;
-          background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,0.55) 50%, transparent 58%);
-          background-size: 260% 100%; background-position: 130% 0;
-          animation: diShine 750ms ease-in-out both;
-          will-change: background-position;
-        }
-        .di-shine-opp { animation-delay: ${T_IMPACT + 620}ms; }
-        .di-shine-me  { animation-delay: ${T_IMPACT + 760}ms; }
-        @keyframes diShine {
-          from { background-position: 130% 0 }
-          to   { background-position: -30% 0 }
-        }
 
         .di-flash {
           position: absolute; inset: 0; background: #ffffff;
@@ -1200,7 +1185,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-spark, .di-vs-ghost,
           .di-panel-img, .di-stage-master,
           .di-rays, .di-floor-glow, .di-cut-glow,
-          .di-impact-frame, .di-debris, .di-vs-core, .di-shine,
+          .di-impact-frame, .di-debris, .di-vs-core,
           .di-gear-spin,
           .di-wave-tex, .di-hero-gear-halo, .di-after-spark,
           .di-reveal-flash, .di-edge-pulse, .di-sweep-charge {
