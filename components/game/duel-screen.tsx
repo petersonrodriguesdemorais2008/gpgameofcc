@@ -10658,11 +10658,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
            mas continua dessincronizado entre as cartas. */
         @keyframes gp-float {
           0%, 100% {
-            transform: translateY(0) translateX(0) rotate(0deg) translateZ(0);
+            transform: translateY(0) translateX(0) rotate(0deg);
             box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45);
           }
           50% {
-            transform: translateY(-5px) translateX(var(--float-x, 0px)) rotate(var(--float-rot, 0deg)) translateZ(0);
+            transform: translateY(-5px) translateX(var(--float-x, 0px)) rotate(var(--float-rot, 0deg));
             box-shadow: 0 14px 16px -4px rgba(0,0,0,0.42), 0 6px 8px -3px rgba(0,0,0,0.22);
           }
         }
@@ -10685,12 +10685,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transform: rotateX(17deg);
           transform-origin: 50% 88%;
         }
-        /* Fix de nitidez: garante que as imagens das cartas dentro do
-           contexto 3D renderizem pixel-perfect sem reamostragem. */
-        .duel-board-tilt .gp-card-float,
-        .duel-board-tilt .gp-card-shadow {
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
+        /* Nitidez: reamostragem suave padrão do navegador — sem
+           crisp-edges (pixelava) e sem translateZ(0) (rasterizava
+           as cartas em baixa resolução dentro do contexto 3D). */
+        .duel-board-tilt .gp-card-float img,
+        .duel-board-tilt .gp-card-shadow img {
+          image-rendering: auto;
         }
 
         /* ── Animação de ativação de armadilha: impacto + onda de choque + brilho duplo ── */
@@ -12919,7 +12919,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ─────────────────────────────────────────────────────────────────────
            ── PAUSE MENU ──
-      ───────────────────────────────────────────────────────────────────── */}
+      ─��─────────────────────────────────────────────────────────────────── */}
       {showPauseMenu && !showAudioSettings && (
         <div className="fixed inset-0 z-[9000] flex items-center justify-center"
           style={{background:"rgba(0,0,0,0.85)",backdropFilter:"blur(8px)"}}>
