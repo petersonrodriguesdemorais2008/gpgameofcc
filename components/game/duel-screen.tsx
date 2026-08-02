@@ -10685,12 +10685,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transform: rotateX(17deg);
           transform-origin: 50% 88%;
         }
-        /* Nitidez: reamostragem suave padrão do navegador — sem
-           crisp-edges (pixelava) e sem translateZ(0) (rasterizava
-           as cartas em baixa resolução dentro do contexto 3D). */
+        /* Nitidez (supersampling 2x): dentro do contexto 3D, cada carta
+           animada vira uma textura de GPU rasterizada no tamanho pequeno
+           do slot e reprojetada pela perspectiva — causando o borrão.
+           Renderizamos a arte em 200% e reduzimos com scale(0.5), forçando
+           rasterização com o dobro de pixels. Visualmente idêntico, só que
+           nítido. Flutuação e inclinação 3D permanecem intactas. */
         .duel-board-tilt .gp-card-float img,
         .duel-board-tilt .gp-card-shadow img {
           image-rendering: auto;
+          width: 200% !important;
+          height: 200% !important;
+          max-width: none !important;
+          max-height: none !important;
+          transform: scale(0.5);
+          transform-origin: top left;
+          will-change: transform;
         }
 
         /* ── Animação de ativação de armadilha: impacto + onda de choque + brilho duplo ── */
