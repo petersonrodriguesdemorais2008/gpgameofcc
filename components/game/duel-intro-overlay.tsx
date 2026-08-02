@@ -150,14 +150,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
     }, 26)
 
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("clash") }, T_MASTER_END))
-    // Impacto sonoro sincronizado com o choque dos painéis
-    timersRef.current.push(setTimeout(() => {
-      if (cancelled) return
-      const impact = new Audio("/audio/duel/Unit Atack.wav")
-      impact.volume = Math.max(0, Math.min(1, (sfxVolume / 100) * 0.9))
-      impactRef.current = impact
-      impact.play().catch(() => { /* autoplay bloqueado */ })
-    }, T_MASTER_END + T_IMPACT - 80))
+
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("out") }, T_MASTER_END + T_CLASH_END))
     timersRef.current.push(setTimeout(() => { if (!cancelled) finish() }, T_MASTER_END + T_CLASH_END + T_FADE))
 
