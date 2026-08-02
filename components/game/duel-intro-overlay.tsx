@@ -85,8 +85,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
   const [phase, setPhase] = useState<"master" | "clash" | "out">("master")
   const [typed, setTyped] = useState("")
 
-  const audioRef  = useRef<HTMLAudioElement | null>(null)
-  const impactRef = useRef<HTMLAudioElement | null>(null)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const doneRef   = useRef(false)
 
@@ -111,16 +109,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
     doneRef.current = true
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
-    const a = audioRef.current
-    if (a) {
-      try { a.pause(); a.currentTime = 0 } catch { /* ignore */ }
-      audioRef.current = null
-    }
-    const imp = impactRef.current
-    if (imp) {
-      try { imp.pause(); imp.currentTime = 0 } catch { /* ignore */ }
-      impactRef.current = null
-    }
     onComplete()
   }
 
@@ -134,13 +122,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
   useEffect(() => {
     let cancelled = false
 
-    const voice = new Audio(`/audio/masters/${masterId}_voice_2_introduel.mp3`)
-    voice.volume = Math.max(0, Math.min(1, sfxVolume / 100))
-    audioRef.current = voice
-    timersRef.current.push(setTimeout(() => {
-      voice.play().catch(() => { /* autoplay bloqueado */ })
-    }, 220))
-
     let i = 0
     const typer = setInterval(() => {
       if (cancelled) return
@@ -150,14 +131,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
     }, 26)
 
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("clash") }, T_MASTER_END))
-    // Impacto sonoro sincronizado com o choque dos painéis
-    timersRef.current.push(setTimeout(() => {
-      if (cancelled) return
-      const impact = new Audio("/audio/duel/Unit Atack.wav")
-      impact.volume = Math.max(0, Math.min(1, (sfxVolume / 100) * 0.9))
-      impactRef.current = impact
-      impact.play().catch(() => { /* autoplay bloqueado */ })
-    }, T_MASTER_END + T_IMPACT - 80))
+
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("out") }, T_MASTER_END + T_CLASH_END))
     timersRef.current.push(setTimeout(() => { if (!cancelled) finish() }, T_MASTER_END + T_CLASH_END + T_FADE))
 
@@ -166,8 +140,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       clearInterval(typer)
       timersRef.current.forEach(clearTimeout)
       timersRef.current = []
-      try { voice.pause() } catch { /* ignore */ }
-      try { impactRef.current?.pause() } catch { /* ignore */ }
+
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterId, line])
