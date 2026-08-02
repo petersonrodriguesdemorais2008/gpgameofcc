@@ -80,10 +80,25 @@ const DEBRIS = [
   { x: 240,  y: -50,  s: 4, dl: 70,  t: 0.9 },
 ]
 
+// Typewriter isolado num componente próprio: o setState a cada 26ms
+// re-renderiza só este trecho, e não a intro inteira (evita lag na fase 1)
+function TypewriterText({ line }: { line: string }) {
+  const [typed, setTyped] = useState("")
+  useEffect(() => {
+    let i = 0
+    const typer = setInterval(() => {
+      i++
+      setTyped(line.slice(0, i))
+      if (i >= line.length) clearInterval(typer)
+    }, 26)
+    return () => clearInterval(typer)
+  }, [line])
+  return <>{typed}</>
+}
+
 export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 }: DuelIntroOverlayProps) {
   const { playerProfile } = useGame()
   const [phase, setPhase] = useState<"master" | "clash" | "out">("master")
-  const [typed, setTyped] = useState("")
 
   const audioRef  = useRef<HTMLAudioElement | null>(null)
   const impactRef = useRef<HTMLAudioElement | null>(null)
@@ -141,14 +156,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
       voice.play().catch(() => { /* autoplay bloqueado */ })
     }, 220))
 
-    let i = 0
-    const typer = setInterval(() => {
-      if (cancelled) return
-      i++
-      setTyped(line.slice(0, i))
-      if (i >= line.length) clearInterval(typer)
-    }, 26)
-
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("clash") }, T_MASTER_END))
 
     timersRef.current.push(setTimeout(() => { if (!cancelled) setPhase("out") }, T_MASTER_END + T_CLASH_END))
@@ -156,7 +163,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
     return () => {
       cancelled = true
-      clearInterval(typer)
       timersRef.current.forEach(clearTimeout)
       timersRef.current = []
       try { voice.pause() } catch { /* ignore */ }
@@ -281,7 +287,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
                 }}
               >
                 <p className="text-slate-900 font-extrabold text-base sm:text-2xl leading-relaxed text-balance">
-                  {typed}
+                  <TypewriterText line={line} />
                   <span className="di-caret">|</span>
                 </p>
                 <span
@@ -534,11 +540,12 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
         /* Raios de energia irradiando do centro, girando devagar */
         .di-rays {
-          position: absolute; width: 130vmin; height: 130vmin; border-radius: 9999px;
+          position: absolute; width: 96vmin; height: 96vmin; border-radius: 9999px;
           -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,0.9) 0%, transparent 58%);
           mask-image: radial-gradient(circle, rgba(0,0,0,0.9) 0%, transparent 58%);
-          animation: diRaysIn 900ms ease-out 150ms both, diRaysSpin 14s linear infinite;
-          will-change: transform, opacity;
+          animation: diRaysIn 900ms ease-out 150ms both, diRaysSpin 18s linear infinite;
+          will-change: transform;
+          transform: translateZ(0);
         }
         @keyframes diRaysIn  { from { opacity: 0 } to { opacity: 1 } }
         @keyframes diRaysSpin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
@@ -579,8 +586,8 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         }
         @keyframes diCalloutLine { from { transform: scaleX(0) } to { transform: scaleX(1) } }
         @keyframes diCallout {
-          0%   { opacity: 0; transform: translate3d(0,-12px,0); letter-spacing: 0.9em }
-          100% { opacity: 1; transform: translate3d(0,0,0); letter-spacing: 0.45em }
+          0%   { opacity: 0; transform: translate3d(0,-12px,0) scale(1.35) }
+          100% { opacity: 1; transform: translate3d(0,0,0) scale(1) }
         }
 
         .di-master-in {
@@ -708,7 +715,9 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
         .di-cut-glow {
           position: absolute; top: 44%; left: -10%; width: 120%; height: 15%;
           z-index: 9; pointer-events: none;
-          transform: rotate(-9.5deg); filter: blur(14px);
+          transform: rotate(-9.5deg);
+          -webkit-mask-image: linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent);
           animation: diCutGlowIn 500ms ease-out ${T_IMPACT}ms both,
                      diCutGlowPulse 1.5s ease-in-out ${T_IMPACT + 500}ms infinite;
           will-change: opacity;
@@ -796,8 +805,7 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           font-size: clamp(56px, 14vw, 150px); font-weight: 900; color: #ffffff;
           letter-spacing: -0.04em; line-height: 1;
           text-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.4);
-          animation: diVs 560ms cubic-bezier(0.22,1.4,0.36,1) ${T_IMPACT - 100}ms both,
-                     diVsPulse 1.6s ease-in-out ${T_IMPACT + 700}ms infinite;
+          animation: diVs 560ms cubic-bezier(0.22,1.4,0.36,1) ${T_IMPACT - 100}ms both;
           will-change: transform, opacity;
         }
         @keyframes diVs {
@@ -805,10 +813,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           55%  { opacity: 1; transform: scale(0.94) rotate(2deg) }
           78%  { transform: scale(1.06) rotate(-1deg) }
           100% { opacity: 1; transform: scale(1) rotate(0deg) }
-        }
-        @keyframes diVsPulse {
-          0%, 100% { text-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.4) }
-          50%      { text-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 0 70px rgba(255,255,255,0.75) }
         }
         /* Cópia fantasma do VS que estoura pra fora no impacto */
         .di-vs-ghost {
