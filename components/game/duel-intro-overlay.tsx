@@ -48,16 +48,6 @@ const T_GEAR_COVER = 700  // momento em que a onda cobre 100% da tela (revela o 
 
 const GEAR_IMG = "/images/modes/gear-blue.png"
 
-// Filamentos de plasma que serpenteiam à frente da crista da onda
-const WAVE_FILAMENTS = [
-  { top: 10, w: 220, h: 2,   dl: 0,   op: 0.9  },
-  { top: 26, w: 150, h: 1.5, dl: 70,  op: 0.7  },
-  { top: 41, w: 260, h: 2,   dl: 30,  op: 1    },
-  { top: 55, w: 180, h: 1.5, dl: 110, op: 0.75 },
-  { top: 71, w: 240, h: 2,   dl: 50,  op: 0.9  },
-  { top: 87, w: 160, h: 1.5, dl: 90,  op: 0.7  },
-]
-
 // Engrenagens-herói: poucas, grandes e elegantes, cravadas na crista de luz.
 // glow = espessura do halo de energia (px) atrás de cada uma.
 const HERO_GEARS = [
@@ -550,21 +540,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
             {/* Cauda: véu azul que se dissipa sobre o duelo revelado */}
             <div className="di-wave-tail" />
 
-            {/* Filamentos de plasma disparando à frente da crista */}
-            {WAVE_FILAMENTS.map((f, idx) => (
-              <span
-                key={`fil-${idx}`}
-                className="di-wave-filament"
-                style={{
-                  top: `${f.top}%`,
-                  width: `${f.w}px`,
-                  height: `${f.h}px`,
-                  opacity: f.op,
-                  animationDelay: `${f.dl}ms`,
-                }}
-              />
-            ))}
-
             {/* Engrenagens-herói na crista — poucas, grandes, cinematográficas */}
             {HERO_GEARS.map((g, idx) => (
               <div
@@ -592,8 +567,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
 
           {/* Clarão sincronizado com o instante do reveal */}
           <div className="di-reveal-flash" />
-          {/* Flare horizontal rasgando a tela no reveal */}
-          <div className="di-reveal-flare" />
           {/* Névoa azul que se dissipa sobre o duelo já revelado */}
           <div className="di-afterglow" />
           {/* Energia escorrendo pelas bordas da tela */}
@@ -1138,20 +1111,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           filter: blur(10px);
         }
 
-        /* Filamentos de plasma disparando à frente da crista */
-        .di-wave-filament {
-          position: absolute; left: 0; border-radius: 9999px;
-          transform: translateX(-100%); transform-origin: right center;
-          background: linear-gradient(to left, #bae6fd, rgba(56,189,248,0.5) 45%, transparent);
-          box-shadow: 0 0 12px rgba(56,189,248,0.7);
-          animation: diFilament 240ms ease-in-out infinite alternate;
-          will-change: transform;
-        }
-        @keyframes diFilament {
-          from { transform: translateX(-100%) scaleX(0.55) }
-          to   { transform: translateX(-100%) scaleX(1) }
-        }
-
         /* Engrenagem-herói: cravada na crista, com halo de energia pulsando */
         .di-hero-gear { position: absolute; z-index: 4; }
         .di-hero-gear-halo {
@@ -1188,20 +1147,6 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           0%   { opacity: 0 }
           18%  { opacity: 0.9 }
           100% { opacity: 0 }
-        }
-        /* Flare horizontal rasgando a tela no reveal */
-        .di-reveal-flare {
-          position: absolute; top: 50%; left: 0; right: 0; height: 3px; z-index: 21;
-          transform: translateY(-50%) scaleX(0); opacity: 0;
-          background: linear-gradient(to right, transparent, #e0f2fe 28%, #ffffff 50%, #e0f2fe 72%, transparent);
-          box-shadow: 0 0 32px rgba(125,211,252,0.9), 0 0 64px rgba(56,189,248,0.5);
-          animation: diRevealFlare 560ms cubic-bezier(0.16,1,0.3,1) ${T_GEAR_COVER - 40}ms both;
-          will-change: transform, opacity;
-        }
-        @keyframes diRevealFlare {
-          0%   { opacity: 0; transform: translateY(-50%) scaleX(0) scaleY(1) }
-          28%  { opacity: 1; transform: translateY(-50%) scaleX(1) scaleY(1) }
-          100% { opacity: 0; transform: translateY(-50%) scaleX(1) scaleY(9) }
         }
         /* Névoa azul que se dissipa sobre o duelo já revelado */
         .di-afterglow {
@@ -1256,14 +1201,14 @@ export default function DuelIntroOverlay({ opponent, onComplete, sfxVolume = 80 
           .di-panel-img, .di-stage-master,
           .di-rays, .di-floor-glow, .di-cut-glow,
           .di-impact-frame, .di-debris, .di-vs-core, .di-shine,
-          .di-gear-spin, .di-wave-filament,
+          .di-gear-spin,
           .di-wave-tex, .di-hero-gear-halo, .di-after-spark,
-          .di-reveal-flash, .di-reveal-flare, .di-edge-pulse, .di-sweep-charge {
+          .di-reveal-flash, .di-edge-pulse, .di-sweep-charge {
             animation: none !important;
           }
           /* Com motion reduzido a onda não varre: apenas cobre e some no fade */
           .di-wave { animation: none !important; transform: translate3d(-20vw,0,0); }
-          .di-after-spark, .di-reveal-flare { opacity: 0 !important; }
+          .di-after-spark { opacity: 0 !important; }
         }
       `}</style>
     </div>
