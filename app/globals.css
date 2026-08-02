@@ -2211,23 +2211,31 @@
   transform-style: preserve-3d;
 }
 
+/* Cartas dentro do tabuleiro inclinado: força cada carta a ter
+   sua própria camada de composição, evitando a reamostragem que
+   causava o borrão. O translateZ(0) eleva a carta ao plano do
+   tabuleiro dentro do contexto 3D e garante renderização nítida. */
+.duel-board-tilt .gp-card-float,
+.duel-board-tilt .gp-card-shadow {
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast; /* Safari */
+  image-rendering: crisp-edges;               /* Firefox / outros */
+}
+
 /* ============================================================
    DUEL FIELD — Floating cards (Balatro style)
    Soft idle bob + tilt, with a grounded drop shadow that
    breathes in sync so the card reads as hovering over the mat.
    ============================================================ */
-/* NOTE: rotation was removed from this animation. Fractional-degree
-   rotation + will-change forced the browser to rasterize each card as a
-   tiny GPU texture and resample it every frame, making the card art look
-   blurry / low-res. A pure shadow "breath" keeps the hover feel while the
-   card image stays pixel-perfect. */
 @keyframes gp-card-float {
   0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg) translateZ(0);
     box-shadow:
       0 7px 8px -5px rgba(0, 0, 0, 0.8),
       0 3px 4px -2px rgba(0, 0, 0, 0.55);
   }
   50% {
+    transform: translateY(-5px) translateX(var(--float-x, 0px)) rotate(var(--float-rot, 0deg)) translateZ(0);
     box-shadow:
       0 13px 13px -6px rgba(0, 0, 0, 0.62),
       0 6px 7px -3px rgba(0, 0, 0, 0.42);
@@ -2245,6 +2253,17 @@
   box-shadow:
     0 8px 9px -5px rgba(0, 0, 0, 0.75),
     0 3px 4px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* Imagens dentro de containers no campo 3D: forçam renderização
+   pixel-perfect mesmo dentro de contextos perspective/rotateX.
+   O translateZ(0) promove o <img> a camada própria de composição,
+   evitando a reamostragem que causava o borrão. */
+.duel-board-tilt img,
+.duel-arena-perspective img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform: translateZ(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
