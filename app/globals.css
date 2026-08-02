@@ -985,27 +985,41 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-/* Premium Scrollbar */
+/* Scrollbar — discreta, sem setas de incremento */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.6) 0%, rgba(168, 85, 247, 0.6) 100%);
-  border-radius: 5px;
-  border: 2px solid rgba(15, 23, 42, 0.8);
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.9) 0%, rgba(168, 85, 247, 0.9) 100%);
+  background: rgba(255, 255, 255, 0.26);
+  background-clip: padding-box;
+}
+
+/* Chrome desenha botões de seta no topo/base quando a scrollbar é
+   customizada — desativamos explicitamente. */
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-button:start,
+::-webkit-scrollbar-button:end,
+::-webkit-scrollbar-button:vertical:start,
+::-webkit-scrollbar-button:vertical:end,
+::-webkit-scrollbar-button:horizontal:start,
+::-webkit-scrollbar-button:horizontal:end {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 ::-webkit-scrollbar-corner {
