@@ -3272,23 +3272,25 @@ function TrapPadlock() {
 }
 
 // Overlay renderizado dentro do slot da trap enquanto isRevealing=true.
-// Fases (~2.2s): correntes chicoteiam de fora e cravam → cadeado desce e sela
-// → tensão (carta presa treme, elos rangem) → calor sobe pelos elos → SNAP:
-// tudo estilhaça, clarão dourado, brasas sobem e a carta se liberta.
+// Fases (~2.6s): correntes chicoteiam UMA A UMA, cada uma crava e APERTA
+// (cinch) prendendo a carta → cadeado despenca e trava com clique → tensão
+// (elos rangem, arcos estalam) → calor sobe → SNAP: tudo estilhaça, clarão
+// dourado, brasas sobem e a carta se liberta.
 function TrapChainsFX() {
-  // Duas faixas quase horizontais + duas diagonais cruzadas = carta "enrolada"
+  // Duas faixas quase horizontais + duas diagonais cruzadas = carta "enrolada".
+  // Delays escalonados: cada corrente chega, crava e aperta antes da próxima.
   const chains = [
     { rot: -7,  top: "24%", delay: 0,    dir: -1 },
-    { rot: 6,   top: "72%", delay: 0.07, dir: 1 },
-    { rot: -34, top: "50%", delay: 0.14, dir: -1 },
-    { rot: 33,  top: "48%", delay: 0.2,  dir: 1 },
+    { rot: 6,   top: "72%", delay: 0.14, dir: 1 },
+    { rot: -34, top: "50%", delay: 0.28, dir: -1 },
+    { rot: 33,  top: "48%", delay: 0.42, dir: 1 },
   ]
   // Estilhaços metálicos radiais no momento da quebra
   const shards = Array.from({ length: 8 }).map((_, i) => ({
     px: Math.cos((i / 8) * Math.PI * 2 + 0.4) * (42 + (i % 3) * 18),
     py: Math.sin((i / 8) * Math.PI * 2 + 0.4) * (34 + (i % 3) * 14),
     rot: (i % 2 === 0 ? 1 : -1) * (70 + i * 28),
-    delay: 1.56 + (i % 4) * 0.035,
+    delay: 1.96 + (i % 4) * 0.035,
     w: 6 + (i % 3) * 3,
   }))
   // Brasas que sobem flutuando depois da quebra (em vez de faíscas geométricas)
@@ -3296,23 +3298,23 @@ function TrapChainsFX() {
     x: (i - 4.5) * 11 + ((i * 7) % 5) - 2,
     drift: (i % 2 === 0 ? -1 : 1) * (7 + (i % 3) * 6),
     rise: 46 + (i % 4) * 15,
-    delay: 1.6 + (i % 5) * 0.055,
+    delay: 2.0 + (i % 5) * 0.055,
     size: 2.5 + (i % 3) * 1.5,
     hue: i % 3 === 0 ? "#fbbf24" : i % 3 === 1 ? "#f87171" : "#fde68a",
   }))
-  // Faíscas de impacto quando as correntes cravam na carta
+  // Faíscas de impacto: cada leva acompanha a chegada de uma corrente
   const impactSparks = Array.from({ length: 12 }).map((_, i) => ({
     x: Math.cos((i / 12) * Math.PI * 2 + 0.9) * (34 + (i % 4) * 12),
     y: Math.sin((i / 12) * Math.PI * 2 + 0.9) * (28 + (i % 3) * 10),
-    delay: 0.08 + (i % 5) * 0.022,
+    delay: 0.12 + (i % 4) * 0.14 + (i % 3) * 0.03,
     size: 2 + (i % 3),
   }))
   // Arcos elétricos que estalam nos elos durante a fase de tensão
   const arcs = [
-    { rot: -18, top: "26%", left: "12%", delay: 0.55, flip: 1 },
-    { rot: 26,  top: "68%", left: "58%", delay: 0.86, flip: -1 },
-    { rot: -40, top: "48%", left: "34%", delay: 1.14, flip: 1 },
-    { rot: 12,  top: "20%", left: "56%", delay: 1.32, flip: -1 },
+    { rot: -18, top: "26%", left: "12%", delay: 0.95, flip: 1 },
+    { rot: 26,  top: "68%", left: "58%", delay: 1.22, flip: -1 },
+    { rot: -40, top: "48%", left: "34%", delay: 1.48, flip: 1 },
+    { rot: 12,  top: "20%", left: "56%", delay: 1.68, flip: -1 },
   ]
   return (
     <div className="absolute pointer-events-none" style={{ inset: "-30px", zIndex: 40 }} aria-hidden="true">
@@ -3323,10 +3325,10 @@ function TrapChainsFX() {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="trap-seal trap-seal--outer" />
       </div>
-      {/* Ondas de choque: uma no impacto das correntes, outra dourada na quebra */}
+      {/* Ondas de choque: uma no primeiro impacto, outra dourada na quebra */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="trap-ring" style={{ animationDelay: "0.16s" }} />
-        <div className="trap-ring trap-ring--gold" style={{ animationDelay: "1.58s" }} />
+        <div className="trap-ring" style={{ animationDelay: "0.14s" }} />
+        <div className="trap-ring trap-ring--gold" style={{ animationDelay: "1.98s" }} />
       </div>
       {/* Correntes que envolvem a carta */}
       {chains.map((c, i) => (
@@ -6344,7 +6346,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isRevealing: false }
         return { ...prev, functionZone: nz }
       })
-    }, 2500)
+    }, 2700)
 
     const result = effect.resolve(effectContext, targets)
 
@@ -10675,65 +10677,50 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ── FIXED LEFT PANEL: Card Detail ── */}
       <div className="fixed left-0 z-30 flex flex-col"
-        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"linear-gradient(180deg, rgba(4,10,18,0.98) 0%, rgba(4,3,13,0.98) 40%, rgba(4,3,13,0.98) 100%)",borderRight:"1px solid rgba(6,182,212,0.22)",boxShadow:"inset -18px 0 24px -22px rgba(6,182,212,0.35)"}}>
-        <div className="flex-shrink-0">
-          <div className="px-2.5 py-2 flex items-center gap-2"
-            style={{background:"linear-gradient(90deg, rgba(6,182,212,0.14), rgba(6,182,212,0.03))"}}>
-            <span className="block w-2 h-2 flex-shrink-0 rotate-45"
-              style={{background:"rgba(34,211,238,0.85)",boxShadow:"0 0 8px rgba(34,211,238,0.6)"}} />
-            <p className="text-cyan-300 text-[10px] font-black tracking-[0.25em] uppercase"
-              style={{textShadow:"0 0 10px rgba(34,211,238,0.5)"}}>Detalhe</p>
-            <span className="flex-1 h-px" style={{background:"linear-gradient(90deg, rgba(34,211,238,0.35), transparent)"}} />
-          </div>
-          <div className="panel-header-line text-cyan-400/80" />
+        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",background:"rgba(7,11,18,0.97)",borderRight:"1px solid rgba(255,255,255,0.07)"}}>
+        <div className="flex-shrink-0 px-3 py-2.5 flex items-center justify-between border-b border-white/[0.07]">
+          <p className="text-slate-400 text-[10px] font-semibold tracking-[0.14em] uppercase">Detalhe</p>
+          {(inspectedCard || logCardDetail) && (
+            <span className="block w-1.5 h-1.5 rounded-full bg-cyan-400/80" />
+          )}
         </div>
         {(inspectedCard || logCardDetail) ? (() => {
           const card: any = inspectedCard || logCardDetail
           return (
-            <div key={card.name} className="panel-detail-in flex-1 overflow-y-auto p-2 space-y-2" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
-              <div className="detail-card-frame detail-art-ambient relative w-full overflow-hidden rounded-lg"
-                style={{aspectRatio:"3/4",border:"1px solid rgba(34,211,238,0.25)",background:"radial-gradient(ellipse at 50% 30%, rgba(6,182,212,0.08), transparent 70%)"}}>
-                <span className="detail-corner detail-corner--tl" />
-                <span className="detail-corner detail-corner--tr" />
-                <span className="detail-corner detail-corner--bl" />
-                <span className="detail-corner detail-corner--br" />
+            <div key={card.name} className="panel-detail-in flex-1 overflow-y-auto p-2.5 space-y-2.5" style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
+              <div className="relative w-full overflow-hidden rounded-lg bg-black/40 border border-white/[0.08]"
+                style={{aspectRatio:"3/4"}}>
                 <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
               </div>
               <div className="space-y-2 px-0.5">
-                <div>
-                  <p className="font-black text-sm leading-tight text-balance text-white"
-                    style={{textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{card.name}</p>
-                  <div className="detail-name-rule mt-1.5" />
-                </div>
+                <p className="font-bold text-sm leading-tight text-balance text-white">{card.name}</p>
                 {card.dp > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`font-black text-sm px-2 py-0.5 rounded-md ${
-                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "bg-green-500/20 text-green-300 border border-green-500/30" :
-                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "bg-red-500/20 text-red-300 border border-red-500/30" :
-                      "bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`font-bold text-xs px-2 py-0.5 rounded ${
+                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp > card.dp ? "bg-green-500/15 text-green-300" :
+                      inspectedCard && (inspectedCard as any).currentDp !== undefined && (inspectedCard as any).currentDp < card.dp ? "bg-red-500/15 text-red-300" :
+                      "bg-amber-500/15 text-amber-300"
                     }`}>
                       {inspectedCard && (inspectedCard as any).currentDp !== undefined ? (inspectedCard as any).currentDp : card.dp} DP
                     </span>
                     {card.element && (() => {
                       const el = card.element as string
-                      const elMap: Record<string, { color: string; bg: string; border: string }> = {
-                        Aquos:     { color: "#38bdf8", bg: "rgba(56,189,248,0.12)",  border: "rgba(56,189,248,0.30)" },
-                        Pyrus:     { color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.30)" },
-                        Ventus:    { color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.30)" },
-                        Subterra:  { color: "#d97706", bg: "rgba(217,119,6,0.12)",   border: "rgba(217,119,6,0.30)"  },
-                        Haos:      { color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
-                        Lightness: { color: "#fde68a", bg: "rgba(253,230,138,0.12)", border: "rgba(253,230,138,0.30)"},
-                        Darkus:    { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
-                        Darkness:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)"},
-                        Void:      { color: "#6b7280", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)"},
-                        Neutral:   { color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)"},
+                      const elMap: Record<string, { color: string; bg: string }> = {
+                        Aquos:     { color: "#38bdf8", bg: "rgba(56,189,248,0.12)" },
+                        Pyrus:     { color: "#f97316", bg: "rgba(249,115,22,0.12)" },
+                        Ventus:    { color: "#4ade80", bg: "rgba(74,222,128,0.12)" },
+                        Subterra:  { color: "#d97706", bg: "rgba(217,119,6,0.12)" },
+                        Haos:      { color: "#fde68a", bg: "rgba(253,230,138,0.12)" },
+                        Lightness: { color: "#fde68a", bg: "rgba(253,230,138,0.12)" },
+                        Darkus:    { color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+                        Darkness:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+                        Void:      { color: "#9ca3af", bg: "rgba(107,114,128,0.14)" },
+                        Neutral:   { color: "#94a3b8", bg: "rgba(148,163,184,0.10)" },
                       }
-                      const e = elMap[el] || { color: "#94a3b8", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.25)" }
+                      const e = elMap[el] || { color: "#94a3b8", bg: "rgba(148,163,184,0.10)" }
                       return (
-                        <span className="flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md"
-                          style={{ color: e.color, background: e.bg, border: `1px solid ${e.border}` }}>
-                          <span className="block w-1.5 h-1.5 rotate-45 flex-shrink-0"
-                            style={{ background: e.color, boxShadow: `0 0 6px ${e.color}` }} />
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded"
+                          style={{ color: e.color, background: e.bg }}>
                           {el}
                         </span>
                       )
@@ -10744,54 +10731,35 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
                 {/* ── Bloco de habilidade para cartas de Unidade ── */}
                 {card.ability && card.abilityDescription && (
-                  <div className="relative overflow-hidden"
-                    style={{background:"rgba(6,182,212,0.05)",border:"1px solid rgba(6,182,212,0.2)",clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"}}>
-                    <span className="absolute left-0 top-0 bottom-0 w-[2px]"
-                      style={{background:"linear-gradient(180deg, rgba(34,211,238,0.9), rgba(34,211,238,0.15))"}} />
-                    <div className="px-2.5 pt-1.5">
-                      <p className="text-cyan-500/80 text-[8px] font-black tracking-[0.28em] uppercase">Habilidade</p>
-                      <p className="text-cyan-200 text-xs font-black leading-tight mt-0.5">{card.ability}</p>
-                    </div>
-                    <p className="text-slate-300 text-[11px] leading-relaxed px-2.5 pt-1 pb-2">{card.abilityDescription}</p>
+                  <div className="rounded-md bg-white/[0.03] border border-white/[0.07] px-2.5 py-2 space-y-1">
+                    <p className="text-cyan-400/90 text-[10px] font-semibold uppercase tracking-wide">Habilidade</p>
+                    <p className="text-slate-100 text-xs font-semibold leading-tight">{card.ability}</p>
+                    <p className="text-slate-400 text-[11px] leading-relaxed">{card.abilityDescription}</p>
                   </div>
                 )}
                 {/* Apenas nome da habilidade sem descrição (ex: alguns UG) */}
                 {card.ability && !card.abilityDescription && (
-                  <div className="relative px-2.5 py-1.5 overflow-hidden"
-                    style={{background:"rgba(6,182,212,0.05)",border:"1px solid rgba(6,182,212,0.2)",clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"}}>
-                    <span className="absolute left-0 top-0 bottom-0 w-[2px]"
-                      style={{background:"linear-gradient(180deg, rgba(34,211,238,0.9), rgba(34,211,238,0.15))"}} />
-                    <p className="text-cyan-500/80 text-[8px] font-black tracking-[0.28em] uppercase">Habilidade</p>
-                    <p className="text-cyan-200 text-xs font-bold leading-tight mt-0.5">{card.ability}</p>
+                  <div className="rounded-md bg-white/[0.03] border border-white/[0.07] px-2.5 py-2 space-y-1">
+                    <p className="text-cyan-400/90 text-[10px] font-semibold uppercase tracking-wide">Habilidade</p>
+                    <p className="text-slate-100 text-xs font-semibold leading-tight">{card.ability}</p>
                   </div>
                 )}
                 {/* Ataque — para Unidades de Tropas e cartas com ataque nomeado */}
                 {card.attack && (
-                  <div className="relative overflow-hidden"
-                    style={{background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.2)",clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"}}>
-                    <span className="absolute left-0 top-0 bottom-0 w-[2px]"
-                      style={{background:"linear-gradient(180deg, rgba(251,191,36,0.9), rgba(251,191,36,0.15))"}} />
-                    <div className="px-2.5 pt-1.5">
-                      <p className="text-amber-500/80 text-[8px] font-black tracking-[0.28em] uppercase">Ataque</p>
-                      <p className="text-amber-200 text-xs font-black leading-tight mt-0.5">{card.attack}</p>
-                    </div>
-                    {card.attackDescription ? (
-                      <p className="text-slate-300 text-[11px] leading-relaxed px-2.5 pt-1 pb-2">{card.attackDescription}</p>
-                    ) : <div className="pb-1.5" />}
+                  <div className="rounded-md bg-white/[0.03] border border-white/[0.07] px-2.5 py-2 space-y-1">
+                    <p className="text-amber-400/90 text-[10px] font-semibold uppercase tracking-wide">Ataque</p>
+                    <p className="text-slate-100 text-xs font-semibold leading-tight">{card.attack}</p>
+                    {card.attackDescription && (
+                      <p className="text-slate-400 text-[11px] leading-relaxed">{card.attackDescription}</p>
+                    )}
                   </div>
                 )}
               </div>
             </div>
           )
         })() : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-3">
-            <div className="detail-empty-card relative rounded-md"
-              style={{width:46,height:62,border:"1.5px dashed rgba(34,211,238,0.45)"}}>
-              <span className="absolute inset-0 flex items-center justify-center">
-                <span className="block w-2.5 h-2.5 rotate-45" style={{border:"1.5px solid rgba(34,211,238,0.55)"}} />
-              </span>
-            </div>
-            <p className="text-slate-500 text-[9px] text-center leading-relaxed opacity-70">Toque e segure<br/>uma carta para<br/>ver os detalhes</p>
+          <div className="flex-1 flex items-center justify-center p-4">
+            <p className="text-slate-600 text-[10px] text-center leading-relaxed">Toque e segure uma carta para ver os detalhes</p>
           </div>
         )}
       </div>
@@ -10801,78 +10769,61 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         style={{
           top:"56px", bottom:"0",
           width: isLogOpen ? "clamp(140px,17vw,230px)" : "36px",
-          background:"linear-gradient(180deg, rgba(14,9,3,0.98) 0%, rgba(4,3,13,0.98) 40%, rgba(4,3,13,0.98) 100%)",
-          borderLeft:"1px solid rgba(251,191,36,0.22)",
-          boxShadow:"inset 18px 0 24px -22px rgba(251,191,36,0.3)",
+          background:"rgba(7,11,18,0.97)",
+          borderLeft:"1px solid rgba(255,255,255,0.07)",
           transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
           overflow:"hidden",
         }}>
-        <div className="flex-shrink-0">
-          <div className="px-2.5 py-2 flex items-center justify-between gap-1.5"
-            style={{background:"linear-gradient(270deg, rgba(251,191,36,0.13), rgba(251,191,36,0.03))", minWidth: isLogOpen ? 0 : 36}}>
+        <div className="flex-shrink-0 px-3 py-2.5 flex items-center justify-between gap-1.5 border-b border-white/[0.07]"
+          style={{minWidth: isLogOpen ? 0 : 36}}>
+          {isLogOpen && (
+            <p className="text-slate-400 text-[10px] font-semibold tracking-[0.14em] uppercase whitespace-nowrap">Log</p>
+          )}
+          <div className="flex items-center gap-1.5 ml-auto">
             {isLogOpen && (
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="block w-2 h-2 flex-shrink-0 rotate-45"
-                  style={{background:"rgba(251,191,36,0.85)",boxShadow:"0 0 8px rgba(251,191,36,0.55)"}} />
-                <p className="text-amber-300 text-[10px] font-black tracking-[0.25em] uppercase whitespace-nowrap"
-                  style={{textShadow:"0 0 10px rgba(251,191,36,0.45)"}}>Log</p>
+              <div className={`px-1.5 py-0.5 rounded text-[9px] font-semibold whitespace-nowrap ${isPlayerTurn?"bg-blue-500/15 text-blue-300":"bg-red-500/15 text-red-300"}`}>
+                T{turn} · {isPlayerTurn?"Você":"Bot"}
               </div>
             )}
-            <div className="flex items-center gap-1.5 ml-auto">
-              {isLogOpen && (
-                <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ${isPlayerTurn?"bg-blue-600/40 text-blue-200 border border-blue-400/40":"bg-red-700/40 text-red-200 border border-red-500/40"}`}
-                  style={{boxShadow: isPlayerTurn ? "0 0 10px rgba(59,130,246,0.35)" : "0 0 10px rgba(239,68,68,0.35)"}}>
-                  T{turn}·{isPlayerTurn?"Você":"Bot"}
-                </div>
-              )}
-              <button
-                onClick={() => setIsLogOpen(v => !v)}
-                className="w-5 h-5 rounded flex items-center justify-center text-amber-400 hover:text-amber-200 hover:bg-amber-400/10 transition-colors flex-shrink-0"
-                title={isLogOpen ? "Recolher log" : "Expandir log"}
-              >
-                <span className="text-[10px] font-black" style={{transition:"transform 0.28s", display:"inline-block", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setIsLogOpen(v => !v)}
+              className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+              title={isLogOpen ? "Recolher log" : "Expandir log"}
+            >
+              <span className="text-[10px] font-bold" style={{transition:"transform 0.28s", display:"inline-block", transform: isLogOpen ? "rotate(0deg)" : "rotate(180deg)"}}>›</span>
+            </button>
           </div>
-          <div className="panel-header-line text-amber-400/80" />
         </div>
         {isLogOpen && (
-          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-1.5 space-y-1"
+          <div ref={duelLogRef} className="flex-1 overflow-y-auto p-2 space-y-1"
             style={{scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.08) transparent"}}>
             {duelLog.length === 0 ? (
-              <div className="flex flex-col items-center gap-2.5 mt-8">
-                <span className="log-empty-pulse block w-2 h-2 rotate-45" style={{background:"rgba(251,191,36,0.6)"}} />
-                <p className="text-slate-500 text-[9px] text-center leading-relaxed opacity-70">As ações do duelo<br/>aparecerão aqui.</p>
-              </div>
+              <p className="text-slate-600 text-[10px] text-center leading-relaxed mt-8">As ações do duelo aparecerão aqui.</p>
             ) : duelLog.map(entry => {
-              const typeMeta: Record<string, { label: string; color: string; border: string }> = {
-                draw:   { label: "Compra",  color: "text-slate-400",  border: "rgba(148,163,184,0.45)" },
-                play:   { label: "Jogada",  color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", border: entry.isPlayerTurn ? "rgba(34,211,238,0.55)" : "rgba(239,68,68,0.55)" },
-                attack: { label: "Ataque",  color: "text-amber-300",  border: "rgba(251,191,36,0.6)" },
-                lp:     { label: "LP",      color: "text-red-400",    border: "rgba(239,68,68,0.6)" },
-                effect: { label: "Efeito",  color: "text-purple-300", border: "rgba(168,85,247,0.55)" },
+              const typeMeta: Record<string, { label: string; color: string; dot: string }> = {
+                draw:   { label: "Compra", color: "text-slate-400",  dot: "#94a3b8" },
+                play:   { label: "Jogada", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", dot: entry.isPlayerTurn ? "#22d3ee" : "#f87171" },
+                attack: { label: "Ataque", color: "text-amber-300",  dot: "#fbbf24" },
+                lp:     { label: "LP",     color: "text-red-400",    dot: "#ef4444" },
+                effect: { label: "Efeito", color: "text-purple-300", dot: "#c084fc" },
               }
-              const meta = typeMeta[entry.type] || { label: "", color: "text-slate-500", border: "rgba(100,116,139,0.35)" }
+              const meta = typeMeta[entry.type] || { label: "", color: "text-slate-500", dot: "#64748b" }
               if (entry.type === "turn") {
-                const c = entry.isPlayerTurn ? "59,130,246" : "239,68,68"
                 return (
-                  <div key={entry.id} className="log-entry-in relative my-2.5 flex items-center gap-1.5">
-                    <div className="flex-1 h-px" style={{background: `linear-gradient(90deg, transparent, rgba(${c},0.6))`}} />
-                    <p className={`text-[9px] font-black tracking-widest uppercase whitespace-nowrap px-2 py-0.5 border ${
-                      entry.isPlayerTurn ? "text-blue-300 border-blue-500/45 bg-blue-950/60" : "text-red-300 border-red-500/45 bg-red-950/50"
-                    }`} style={{clipPath:"polygon(6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0 50%)"}}>{entry.message}</p>
-                    <div className="flex-1 h-px" style={{background: `linear-gradient(270deg, transparent, rgba(${c},0.6))`}} />
+                  <div key={entry.id} className="log-entry-in my-2.5 flex items-center gap-2">
+                    <div className="flex-1 h-px bg-white/[0.08]" />
+                    <p className={`text-[9px] font-semibold tracking-wide uppercase whitespace-nowrap ${
+                      entry.isPlayerTurn ? "text-blue-400" : "text-red-400"
+                    }`}>{entry.message}</p>
+                    <div className="flex-1 h-px bg-white/[0.08]" />
                   </div>
                 )
               }
               return (
-                <div key={entry.id} className="log-entry-in log-entry-row relative flex items-start gap-1.5 px-1.5 py-1.5 overflow-hidden"
-                  style={{background: entry.isPlayerTurn ? "rgba(34,211,238,0.035)" : "rgba(239,68,68,0.04)", border:"1px solid rgba(255,255,255,0.045)", clipPath:"polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%)"}}>
-                  <span className="absolute left-0 top-0 bottom-0 w-[2px]"
-                    style={{background:`linear-gradient(180deg, ${meta.border}, transparent)`}} />
+                <div key={entry.id} className="log-entry-in log-entry-row flex items-start gap-2 px-2 py-1.5 rounded-md"
+                  style={{background:"rgba(255,255,255,0.025)"}}>
                   {entry.cardImage && (
-                    <button className="log-thumb flex-shrink-0 w-7 h-10 rounded overflow-hidden cursor-pointer"
-                      style={{border:`1px solid ${meta.border}`, boxShadow:"0 2px 6px rgba(0,0,0,0.6)"}}
+                    <button className="log-thumb flex-shrink-0 w-7 h-10 rounded overflow-hidden cursor-pointer border border-white/10"
                       onClick={() => setLogCardDetail({
                         image: entry.cardImage!,
                         name: entry.cardName || "",
@@ -10887,14 +10838,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <img src={entry.cardImage} alt={entry.cardName||""} className="w-full h-full object-contain" />
                     </button>
                   )}
-                  <div className="flex-1 min-w-0 pl-0.5">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="block w-1.5 h-1.5 rotate-45 flex-shrink-0"
-                        style={{background: meta.border, boxShadow:`0 0 5px ${meta.border}`}} />
-                      {meta.label && <p className={`text-[8px] font-black tracking-[0.18em] uppercase ${meta.color} opacity-80`}>{meta.label}</p>}
-                      <p className="text-[8px] text-slate-500 font-black tracking-wider ml-auto">T{entry.turn}</p>
+                      <span className="block w-1 h-1 rounded-full flex-shrink-0" style={{background: meta.dot}} />
+                      {meta.label && <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">{meta.label}</p>}
+                      <p className="text-[9px] text-slate-600 font-medium ml-auto">T{entry.turn}</p>
                     </div>
-                    <p className={`text-[10px] leading-tight ${meta.color}`}>{entry.message}</p>
+                    <p className={`text-[10px] leading-snug ${meta.color}`}>{entry.message}</p>
                   </div>
                 </div>
               )
@@ -10957,93 +10907,105 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         /* ══ ATIVAÇÃO DE ARMADILHA — correntes de aço + cadeado + estilhaço ══
            Linha do tempo (~2.2s):
-           0–0.25s    correntes chicoteiam de fora da tela e cravam na carta
-           0.25–0.45s cadeado desce e sela o cruzamento das correntes
-           0.45–1.4s  tensão: carta presa treme contida, elos rangem
-           1.4–1.6s   a carta reage — calor dourado sobe pelos elos
-           1.6–2.2s   SNAP: tudo estilhaça, clarão, brasas sobem, carta liberta */
+           0–0.6s     correntes chicoteiam UMA A UMA; cada uma crava e APERTA
+           0.68–0.95s cadeado despenca e trava com clique no cruzamento
+           0.95–1.8s  tensão: carta presa treme contida, elos rangem, arcos estalam
+           1.8–2.0s   a carta reage — calor dourado sobe pelos elos
+           2.0–2.6s   SNAP: tudo estilhaça, clarão, brasas sobem, carta liberta */
 
-        /* Carta: jolt no impacto, comprimida sob tensão, explode livre no fim */
+        /* Carta: jolt a cada corrente que crava, comprimida sob tensão,
+           explode livre no fim */
         @keyframes trap-card-bound {
-          0%   { transform: scale(1); filter: brightness(1); }
-          7%   { transform: scale(1.16) rotate(-1deg); filter: brightness(2.1) saturate(1.4); }
-          11%  { transform: scale(0.93); filter: brightness(1.25); }
-          15%  { transform: scale(0.96) rotate(0.8deg); filter: brightness(1.1); }
-          22%  { transform: scale(0.955) rotate(-0.7deg) translateX(-1px); }
-          30%  { transform: scale(0.955) rotate(0.6deg) translateX(1px); }
-          38%  { transform: scale(0.955) rotate(-0.5deg); }
-          46%  { transform: scale(0.955) rotate(0.4deg) translateX(-0.5px); }
-          54%  { transform: scale(0.955) rotate(-0.3deg); filter: brightness(1.12); }
-          62%  { transform: scale(0.94); filter: brightness(1.3) saturate(1.2); }
-          68%  { transform: scale(0.92); filter: brightness(1.7) saturate(1.4); }
-          73%  { transform: scale(1.24); filter: brightness(2.8) saturate(1.6); }
-          80%  { transform: scale(1.05); filter: brightness(1.5); }
-          88%  { transform: scale(0.99); filter: brightness(1.12); }
-          100% { transform: scale(1); filter: brightness(1); }
+          0%    { transform: scale(1); filter: brightness(1); }
+          5.5%  { transform: scale(1.1) rotate(-1deg); filter: brightness(1.9) saturate(1.35); }
+          8%    { transform: scale(0.97); filter: brightness(1.2); }
+          11%   { transform: scale(0.99) rotate(0.9deg) translateX(1px); filter: brightness(1.45); }
+          13.5% { transform: scale(0.965); filter: brightness(1.15); }
+          16.5% { transform: scale(0.975) rotate(-0.9deg) translateX(-1px); filter: brightness(1.4); }
+          19%   { transform: scale(0.955); filter: brightness(1.12); }
+          22%   { transform: scale(0.962) rotate(0.7deg); filter: brightness(1.35); }
+          25%   { transform: scale(0.95); filter: brightness(1.1); }
+          34%   { transform: scale(0.95) rotate(-0.5deg) translateX(-0.7px); }
+          44%   { transform: scale(0.95) rotate(0.5deg) translateX(0.7px); }
+          53%   { transform: scale(0.95) rotate(-0.4deg); }
+          61%   { transform: scale(0.95) rotate(0.3deg) translateX(-0.4px); filter: brightness(1.12); }
+          70%   { transform: scale(0.94); filter: brightness(1.35) saturate(1.2); }
+          75%   { transform: scale(0.915); filter: brightness(1.8) saturate(1.45); }
+          79%   { transform: scale(1.24); filter: brightness(2.8) saturate(1.6); }
+          86%   { transform: scale(1.04); filter: brightness(1.45); }
+          93%   { transform: scale(0.99); filter: brightness(1.1); }
+          100%  { transform: scale(1); filter: brightness(1); }
         }
         @keyframes trap-card-glow {
-          0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-          8%   { box-shadow: 0 0 26px 7px rgba(239,68,68,0.85), 0 0 60px 18px rgba(127,29,29,0.4); }
-          30%  { box-shadow: 0 0 14px 4px rgba(239,68,68,0.5), 0 0 36px 12px rgba(127,29,29,0.25); }
-          55%  { box-shadow: 0 0 18px 5px rgba(239,68,68,0.6), 0 0 44px 14px rgba(127,29,29,0.3); }
-          68%  { box-shadow: 0 0 26px 8px rgba(251,146,60,0.75), 0 0 60px 20px rgba(239,68,68,0.4); }
-          73%  { box-shadow: 0 0 60px 22px rgba(251,191,36,0.95), 0 0 120px 48px rgba(239,68,68,0.45); }
-          100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+          0%    { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+          6%    { box-shadow: 0 0 24px 6px rgba(239,68,68,0.8), 0 0 56px 16px rgba(127,29,29,0.38); }
+          25%   { box-shadow: 0 0 16px 5px rgba(239,68,68,0.6), 0 0 40px 13px rgba(127,29,29,0.3); }
+          55%   { box-shadow: 0 0 18px 5px rgba(239,68,68,0.62), 0 0 44px 14px rgba(127,29,29,0.3); }
+          73%   { box-shadow: 0 0 28px 9px rgba(251,146,60,0.78), 0 0 64px 22px rgba(239,68,68,0.42); }
+          79%   { box-shadow: 0 0 60px 22px rgba(251,191,36,0.95), 0 0 120px 48px rgba(239,68,68,0.45); }
+          100%  { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
         }
         .trap-activating {
-          animation: trap-card-bound 2.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1,
-                     trap-card-glow 2.2s ease-out 1;
+          animation: trap-card-bound 2.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1,
+                     trap-card-glow 2.6s ease-out 1;
           z-index: 45;
         }
 
-        /* Correntes: chicoteiam de fora (com blur de movimento), travam com
-           overshoot elástico, rangem sob tensão, esquentam e estilhaçam */
+        /* Correntes: cada uma chicoteia de fora (blur de movimento na própria
+           direção), crava com overshoot elástico e APERTA (cinch: contrai e
+           esmaga levemente a faixa = "se prendendo"), range sob tensão,
+           esquenta e estilhaça no snap */
         @keyframes trap-chain-life {
-          0%   { opacity: 0; transform: translateY(-50%) translateX(calc(var(--ch-dir) * 55%)) rotate(var(--ch-rot)) scaleX(2.4); filter: brightness(2.2) blur(3px); }
-          6%   { opacity: 1; transform: translateY(-50%) translateX(0) rotate(var(--ch-rot)) scaleX(0.94); filter: brightness(1.5) blur(0px) drop-shadow(0 3px 4px rgba(0,0,0,0.75)); }
-          9%   { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(1.04); }
-          12%  { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.985); }
-          16%  { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(1.005); filter: brightness(1.1) drop-shadow(0 3px 4px rgba(0,0,0,0.75)); }
-          32%  { transform: translateY(calc(-50% + 0.8px)) rotate(calc(var(--ch-rot) + 0.5deg)) scaleX(0.995); }
-          46%  { transform: translateY(calc(-50% - 0.8px)) rotate(calc(var(--ch-rot) - 0.5deg)) scaleX(0.99); }
-          58%  { transform: translateY(-50%) rotate(calc(var(--ch-rot) + 0.4deg)) scaleX(0.985); filter: brightness(1.05); }
-          66%  { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.975); filter: brightness(1.4) drop-shadow(0 0 6px rgba(251,146,60,0.6)); }
-          71%  { opacity: 1; transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(1.035); filter: brightness(2.6) drop-shadow(0 0 12px rgba(251,191,36,0.9)); }
-          84%  { opacity: 0.5; }
-          100% { opacity: 0; transform: translateY(calc(-50% + var(--ch-dir) * 30px)) translateX(calc(var(--ch-dir) * 14px)) rotate(calc(var(--ch-rot) + var(--ch-dir) * 22deg)) scaleX(1.35); filter: brightness(2) blur(2px); }
+          0%    { opacity: 0; transform: translateY(-50%) translateX(calc(var(--ch-dir) * 60%)) rotate(var(--ch-rot)) scaleX(2.2) scaleY(0.8); filter: brightness(2.2) blur(4px); }
+          3%    { opacity: 0.7; filter: brightness(2) blur(3px); }
+          5.5%  { opacity: 1; transform: translateY(-50%) translateX(0) rotate(var(--ch-rot)) scaleX(1.07) scaleY(0.94); filter: brightness(1.6) blur(0px) drop-shadow(0 3px 4px rgba(0,0,0,0.75)); }
+          7.5%  { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.965) scaleY(1.05); }
+          10%   { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.925) scaleY(1.12); filter: brightness(1.25) drop-shadow(0 3px 5px rgba(0,0,0,0.8)); }
+          12.5% { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.965) scaleY(1.02); }
+          15%   { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.95) scaleY(1.05); filter: brightness(1.08) drop-shadow(0 3px 4px rgba(0,0,0,0.75)); }
+          30%   { transform: translateY(calc(-50% + 0.8px)) rotate(calc(var(--ch-rot) + 0.5deg)) scaleX(0.955) scaleY(1.04); }
+          42%   { transform: translateY(calc(-50% - 0.8px)) rotate(calc(var(--ch-rot) - 0.5deg)) scaleX(0.948) scaleY(1.05); }
+          54%   { transform: translateY(-50%) rotate(calc(var(--ch-rot) + 0.4deg)) scaleX(0.952) scaleY(1.04); filter: brightness(1.05); }
+          63%   { transform: translateY(calc(-50% + 0.5px)) rotate(calc(var(--ch-rot) - 0.3deg)) scaleX(0.945) scaleY(1.05); }
+          70%   { transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(0.94) scaleY(1.06); filter: brightness(1.45) drop-shadow(0 0 6px rgba(251,146,60,0.65)); }
+          76%   { opacity: 1; transform: translateY(-50%) rotate(var(--ch-rot)) scaleX(1.04) scaleY(0.96); filter: brightness(2.6) drop-shadow(0 0 12px rgba(251,191,36,0.9)); }
+          86%   { opacity: 0.45; }
+          100%  { opacity: 0; transform: translateY(calc(-50% + var(--ch-dir) * 32px)) translateX(calc(var(--ch-dir) * 16px)) rotate(calc(var(--ch-rot) + var(--ch-dir) * 24deg)) scaleX(1.35) scaleY(0.9); filter: brightness(2) blur(2px); }
         }
         .trap-chain-wrap {
           position: absolute;
           left: -36%;
           right: -36%;
           height: 14px;
-          transform: translateY(-50%) translateX(calc(var(--ch-dir) * 55%)) rotate(var(--ch-rot)) scaleX(2.4);
+          transform: translateY(-50%) translateX(calc(var(--ch-dir) * 60%)) rotate(var(--ch-rot)) scaleX(2.2) scaleY(0.8);
           opacity: 0;
-          animation: trap-chain-life 2.2s cubic-bezier(0.22, 1, 0.36, 1) var(--ch-delay) 1 forwards;
+          animation: trap-chain-life 2.6s cubic-bezier(0.22, 1, 0.36, 1) var(--ch-delay) 1 forwards;
           will-change: transform, opacity, filter;
         }
 
-        /* Cadeado: despenca de cima, quica ao travar, treme junto com a carta,
-           esquenta e despenca partido na quebra */
+        /* Cadeado: despenca de cima depois que as correntes prendem, quica ao
+           travar (clique), treme junto com a carta, esquenta e despenca
+           partido na quebra */
         @keyframes trap-lock-life {
-          0%   { opacity: 0; transform: translate(-50%, calc(-50% - 90px)) scale(1.5); filter: brightness(2) blur(2px); }
-          9%   { opacity: 1; transform: translate(-50%, -50%) scale(0.92); filter: brightness(1.3) blur(0px); }
-          13%  { transform: translate(-50%, -50%) scale(1.08); }
-          17%  { transform: translate(-50%, -50%) scale(1); }
-          34%  { transform: translate(calc(-50% - 1px), -50%) rotate(-2deg) scale(1); }
-          48%  { transform: translate(calc(-50% + 1px), -50%) rotate(2deg) scale(1); }
-          58%  { transform: translate(-50%, -50%) rotate(-1.5deg) scale(1); }
-          64%  { transform: translate(-50%, -50%) scale(1.03); filter: brightness(1.6) drop-shadow(0 0 10px rgba(239,68,68,0.8)); }
-          68%  { opacity: 1; transform: translate(-50%, -50%) scale(1.16); filter: brightness(2.6) drop-shadow(0 0 16px rgba(251,191,36,0.95)); }
-          100% { opacity: 0; transform: translate(-50%, calc(-50% + 60px)) rotate(24deg) scale(0.85); filter: brightness(1.4) blur(2px); }
+          0%    { opacity: 0; transform: translate(-50%, calc(-50% - 96px)) scale(1.5); filter: brightness(2) blur(2px); }
+          8%    { opacity: 1; transform: translate(-50%, calc(-50% + 3px)) scale(0.88); filter: brightness(1.4) blur(0px); }
+          12%   { transform: translate(-50%, calc(-50% - 2px)) scale(1.1); }
+          16%   { transform: translate(-50%, -50%) scale(0.98); }
+          20%   { transform: translate(-50%, -50%) scale(1); }
+          34%   { transform: translate(calc(-50% - 1px), -50%) rotate(-2deg) scale(1); }
+          46%   { transform: translate(calc(-50% + 1px), -50%) rotate(2deg) scale(1); }
+          56%   { transform: translate(-50%, -50%) rotate(-1.5deg) scale(1); }
+          62%   { transform: translate(-50%, -50%) scale(1.03); filter: brightness(1.6) drop-shadow(0 0 10px rgba(239,68,68,0.8)); }
+          69%   { opacity: 1; transform: translate(-50%, -50%) scale(1.16); filter: brightness(2.6) drop-shadow(0 0 16px rgba(251,191,36,0.95)); }
+          100%  { opacity: 0; transform: translate(-50%, calc(-50% + 64px)) rotate(26deg) scale(0.82); filter: brightness(1.4) blur(2px); }
         }
         .trap-lock {
           position: absolute;
           top: 50%; left: 50%;
           width: 34px; height: 42px;
           opacity: 0;
-          transform: translate(-50%, calc(-50% - 90px)) scale(1.5);
-          animation: trap-lock-life 1.9s cubic-bezier(0.22, 1, 0.36, 1) 0.3s 1 forwards;
+          transform: translate(-50%, calc(-50% - 96px)) scale(1.5);
+          animation: trap-lock-life 1.92s cubic-bezier(0.22, 1, 0.36, 1) 0.68s 1 forwards;
           filter: drop-shadow(0 4px 6px rgba(0,0,0,0.8));
           will-change: transform, opacity, filter;
           z-index: 3;
@@ -11052,10 +11014,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         /* Selo rúnico: anel fino com marcas, giro lento e discreto (sem poluir) */
         @keyframes trap-seal-spin {
           0%   { opacity: 0; transform: rotate(0deg) scale(0.5); }
-          10%  { opacity: 0.55; transform: rotate(18deg) scale(1); }
-          62%  { opacity: 0.55; transform: rotate(120deg) scale(1.01); }
-          74%  { opacity: 0.4; transform: rotate(160deg) scale(1.2); }
-          100% { opacity: 0; transform: rotate(220deg) scale(1.5); }
+          9%   { opacity: 0.55; transform: rotate(18deg) scale(1); }
+          66%  { opacity: 0.55; transform: rotate(126deg) scale(1.01); }
+          79%  { opacity: 0.4; transform: rotate(168deg) scale(1.2); }
+          100% { opacity: 0; transform: rotate(226deg) scale(1.5); }
         }
         .trap-seal {
           width: 155%;
@@ -11066,17 +11028,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
           mask: radial-gradient(circle, transparent 60%, #000 61%);
           box-shadow: 0 0 28px rgba(239,68,68,0.3), inset 0 0 20px rgba(239,68,68,0.2);
-          animation: trap-seal-spin 2.2s ease-in-out 1 forwards;
+          animation: trap-seal-spin 2.6s ease-in-out 1 forwards;
           will-change: transform, opacity;
         }
 
         /* Selo externo: maior, tracejado mais fino, gira ao contrário */
         @keyframes trap-seal-spin-rev {
           0%   { opacity: 0; transform: rotate(0deg) scale(0.4); }
-          12%  { opacity: 0.4; transform: rotate(-24deg) scale(1); }
-          62%  { opacity: 0.4; transform: rotate(-130deg) scale(1.02); }
-          74%  { opacity: 0.28; transform: rotate(-170deg) scale(1.25); }
-          100% { opacity: 0; transform: rotate(-230deg) scale(1.6); }
+          11%  { opacity: 0.4; transform: rotate(-24deg) scale(1); }
+          66%  { opacity: 0.4; transform: rotate(-136deg) scale(1.02); }
+          79%  { opacity: 0.28; transform: rotate(-176deg) scale(1.25); }
+          100% { opacity: 0; transform: rotate(-236deg) scale(1.6); }
         }
         .trap-seal--outer {
           width: 190%;
@@ -11084,7 +11046,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           border-color: rgba(251,146,60,0.4);
           background: repeating-conic-gradient(from 0deg, rgba(251,146,60,0.38) 0deg 1.2deg, transparent 1.2deg 15deg);
           box-shadow: 0 0 20px rgba(251,146,60,0.18), inset 0 0 14px rgba(251,146,60,0.12);
-          animation: trap-seal-spin-rev 2.2s ease-in-out 1 forwards;
+          animation: trap-seal-spin-rev 2.6s ease-in-out 1 forwards;
         }
 
         /* Faíscas radiais no impacto das correntes */
@@ -11176,8 +11138,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         /* Clarão central no momento da quebra */
         @keyframes trap-burst-flash {
-          0%, 68% { opacity: 0; transform: scale(0.3); }
-          73%  { opacity: 0.95; transform: scale(1.12); }
+          0%, 74% { opacity: 0; transform: scale(0.3); }
+          79%  { opacity: 0.95; transform: scale(1.12); }
           100% { opacity: 0; transform: scale(1.9); }
         }
         .trap-burst {
@@ -11186,7 +11148,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           border-radius: 9999px;
           background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(251,191,36,0.55) 35%, rgba(239,68,68,0.25) 60%, transparent 75%);
           opacity: 0;
-          animation: trap-burst-flash 2.2s ease-out 1 forwards;
+          animation: trap-burst-flash 2.6s ease-out 1 forwards;
           will-change: transform, opacity;
           pointer-events: none;
         }
@@ -11194,8 +11156,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         /* Vinheta escura no campo enquanto a trap ativa (holofote dramático) */
         @keyframes trap-dim-io {
           0%   { opacity: 0; }
-          9%   { opacity: 1; }
-          74%  { opacity: 1; }
+          8%   { opacity: 1; }
+          78%  { opacity: 1; }
           100% { opacity: 0; }
         }
         .trap-dim-overlay {
@@ -11204,21 +11166,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           z-index: 35;
           pointer-events: none;
           background: radial-gradient(ellipse at 50% 62%, transparent 18%, rgba(2,2,8,0.55) 55%, rgba(2,2,8,0.82) 100%);
-          animation: trap-dim-io 2.2s ease-in-out 1 forwards;
+          animation: trap-dim-io 2.6s ease-in-out 1 forwards;
         }
 
         /* Banner "ARMADILHA ATIVADA" — entrada em estampa (sem blur):
            cai com peso, quica com overshoot elástico e sai deslizando limpo */
         @keyframes trap-banner-io {
           0%   { opacity: 0; transform: translate(-50%, -38px) scale(1.35); }
-          7%   { opacity: 1; transform: translate(-50%, 3px) scale(0.94); }
-          11%  { transform: translate(-50%, -2px) scale(1.04); }
-          15%  { transform: translate(-50%, 0) scale(1); }
-          82%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+          6%   { opacity: 1; transform: translate(-50%, 3px) scale(0.94); }
+          9.5% { transform: translate(-50%, -2px) scale(1.04); }
+          13%  { transform: translate(-50%, 0) scale(1); }
+          84%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
           100% { opacity: 0; transform: translate(-50%, -22px) scale(1.03); }
         }
         .trap-banner {
-          animation: trap-banner-io 2.2s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
+          animation: trap-banner-io 2.6s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
         }
         @keyframes trap-banner-sheen {
           0%   { transform: translateX(-130%) skewX(-20deg); }
@@ -11229,10 +11191,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         /* Linhas de impacto que se expandem dos lados do banner na estampa */
         @keyframes trap-banner-line {
-          0%, 6% { opacity: 0; transform: scaleX(0); }
-          14%  { opacity: 1; transform: scaleX(1.08); }
-          20%  { transform: scaleX(1); }
-          78%  { opacity: 1; transform: scaleX(1); }
+          0%, 5% { opacity: 0; transform: scaleX(0); }
+          12%  { opacity: 1; transform: scaleX(1.08); }
+          17%  { transform: scaleX(1); }
+          80%  { opacity: 1; transform: scaleX(1); }
           100% { opacity: 0; transform: scaleX(0.6); }
         }
         .trap-banner-line {
@@ -11240,103 +11202,38 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           width: 46px;
           background: linear-gradient(90deg, rgba(239,68,68,0.9), rgba(251,191,36,0.9));
           box-shadow: 0 0 8px rgba(239,68,68,0.7);
-          animation: trap-banner-line 2.2s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
+          animation: trap-banner-line 2.6s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
         }
         .trap-banner-line--l { transform-origin: right center; }
         .trap-banner-line--r { transform-origin: left center; background: linear-gradient(270deg, rgba(239,68,68,0.9), rgba(251,191,36,0.9)); }
 
         @media (prefers-reduced-motion: reduce) {
-          .trap-activating { animation: trap-card-glow 2.2s ease-out 1; }
+          .trap-activating { animation: trap-card-glow 2.6s ease-out 1; }
           .trap-chain-wrap, .trap-seal, .trap-ring, .trap-shard, .trap-ember, .trap-burst, .trap-lock, .trap-spark, .trap-arc, .trap-banner-line { animation-duration: 0.01s; opacity: 0; }
           .trap-dim-overlay { animation: none; opacity: 0; }
         }
 
         /* ══ PAINÉIS LATERAIS: Detalhe & Log ══ */
         @keyframes panel-detail-in {
-          0%   { opacity: 0; transform: translateX(-14px) scale(0.97); }
-          100% { opacity: 1; transform: translateX(0) scale(1); }
+          0%   { opacity: 0; transform: translateY(4px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
-        .panel-detail-in { animation: panel-detail-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
-
-        @keyframes detail-sheen-sweep {
-          0%   { transform: translateX(-140%) skewX(-18deg); }
-          100% { transform: translateX(260%) skewX(-18deg); }
-        }
-        .detail-card-frame { position: relative; }
-        .detail-card-frame::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          width: 45%;
-          background: linear-gradient(100deg, transparent, rgba(255,255,255,0.14), transparent);
-          transform: translateX(-140%) skewX(-18deg);
-          animation: detail-sheen-sweep 1s ease-in-out 0.25s 1 both;
-          pointer-events: none;
-        }
-        .detail-corner {
-          position: absolute;
-          width: 14px; height: 14px;
-          border-color: rgba(34,211,238,0.75);
-          border-style: solid;
-          pointer-events: none;
-          z-index: 2;
-        }
-        .detail-corner--tl { top: 3px; left: 3px; border-width: 2px 0 0 2px; border-top-left-radius: 4px; }
-        .detail-corner--tr { top: 3px; right: 3px; border-width: 2px 2px 0 0; border-top-right-radius: 4px; }
-        .detail-corner--bl { bottom: 3px; left: 3px; border-width: 0 0 2px 2px; border-bottom-left-radius: 4px; }
-        .detail-corner--br { bottom: 3px; right: 3px; border-width: 0 2px 2px 0; border-bottom-right-radius: 4px; }
-
-        @keyframes panel-header-glow {
-          0%, 100% { opacity: 0.55; }
-          50%      { opacity: 1; }
-        }
-        .panel-header-line {
-          height: 1px;
-          background: linear-gradient(90deg, transparent, currentColor 30%, currentColor 70%, transparent);
-          animation: panel-header-glow 3s ease-in-out infinite;
-        }
+        .panel-detail-in { animation: panel-detail-in 0.22s ease-out both; }
 
         @keyframes log-entry-in {
-          0%   { opacity: 0; transform: translateX(10px); }
-          100% { opacity: 1; transform: translateX(0); }
+          0%   { opacity: 0; transform: translateY(3px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
-        .log-entry-in { animation: log-entry-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .log-entry-in { animation: log-entry-in 0.2s ease-out both; }
 
-        /* Glow ambiente que "respira" atrás da arte no painel Detalhe */
-        @keyframes detail-ambient-breathe {
-          0%, 100% { box-shadow: 0 0 16px -4px rgba(34,211,238,0.3), 0 8px 16px -8px rgba(0,0,0,0.8); }
-          50%      { box-shadow: 0 0 26px -2px rgba(34,211,238,0.45), 0 8px 16px -8px rgba(0,0,0,0.8); }
-        }
-        .detail-art-ambient { animation: detail-ambient-breathe 3.6s ease-in-out infinite; }
-
-        /* Régua fina sob o nome da carta, com fade nas pontas */
-        .detail-name-rule {
-          height: 1px;
-          background: linear-gradient(90deg, rgba(34,211,238,0.65), rgba(34,211,238,0.12) 70%, transparent);
-        }
-
-        /* Estado vazio do Detalhe: carta fantasma pulsando devagar */
-        @keyframes detail-empty-pulse {
-          0%, 100% { opacity: 0.3; box-shadow: 0 0 10px -2px rgba(34,211,238,0.15); }
-          50%      { opacity: 0.55; box-shadow: 0 0 16px -2px rgba(34,211,238,0.35); }
-        }
-        .detail-empty-card { animation: detail-empty-pulse 2.8s ease-in-out infinite; }
-
-        /* Log: hover sutil que levanta a entrada, thumbnail com zoom */
-        .log-entry-row { transition: background 0.18s, transform 0.18s; }
-        .log-entry-row:hover { transform: translateX(-1px); background: rgba(255,255,255,0.05) !important; }
-        .log-thumb { transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s; }
-        .log-thumb:hover { transform: scale(1.12); box-shadow: 0 4px 12px rgba(0,0,0,0.7), 0 0 10px rgba(251,191,36,0.25); }
-
-        @keyframes log-empty-pulse {
-          0%, 100% { opacity: 0.4; text-shadow: 0 0 6px rgba(251,191,36,0.2); }
-          50%      { opacity: 0.85; text-shadow: 0 0 14px rgba(251,191,36,0.55); }
-        }
-        .log-empty-pulse { animation: log-empty-pulse 2.6s ease-in-out infinite; }
+        /* Log: hover sutil, thumbnail com leve zoom */
+        .log-entry-row { transition: background 0.15s; }
+        .log-entry-row:hover { background: rgba(255,255,255,0.05) !important; }
+        .log-thumb { transition: transform 0.15s ease-out; }
+        .log-thumb:hover { transform: scale(1.08); }
 
         @media (prefers-reduced-motion: reduce) {
-          .panel-detail-in, .log-entry-in, .detail-art-ambient, .detail-empty-card, .log-empty-pulse { animation: none; }
-          .detail-card-frame::after { animation: none; opacity: 0; }
+          .panel-detail-in, .log-entry-in { animation: none; }
         }
       `}</style>
 
@@ -13491,60 +13388,50 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {showDuelLog && (
         <div className="lg:hidden fixed inset-0 z-[8400] flex flex-col"
           style={{background:"linear-gradient(180deg, rgba(14,9,3,0.96), rgba(0,0,0,0.94))",backdropFilter:"blur(8px)"}}>
-          <div className="flex-shrink-0">
-            <div className="flex items-center justify-between px-4 py-3"
-              style={{background:"linear-gradient(90deg, rgba(251,191,36,0.10), transparent)"}}>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-md"
-                  style={{background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.4)",boxShadow:"0 0 10px rgba(251,191,36,0.3)"}}>
-                  <span className="text-amber-300 text-xs leading-none">✦</span>
-                </span>
-                <h2 className="text-amber-300 font-black text-base tracking-[0.2em]"
-                  style={{textShadow:"0 0 14px rgba(251,191,36,0.5)"}}>DUEL LOG</h2>
-              </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-black border ${isPlayerTurn ? "bg-blue-600/30 text-blue-300 border-blue-500/40" : "bg-red-700/30 text-red-300 border-red-500/40"}`}
-                style={{boxShadow: isPlayerTurn ? "0 0 12px rgba(59,130,246,0.3)" : "0 0 12px rgba(239,68,68,0.3)"}}>
-                Turno {turn} — {isPlayerTurn ? "Seu Turno" : "Vez do Oponente"}
-              </div>
-              <button onClick={() => setShowDuelLog(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 text-slate-400 hover:text-white transition-all">
-                ✕
-              </button>
+          <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.08]">
+            <h2 className="text-slate-200 font-semibold text-sm tracking-[0.14em] uppercase">Log do Duelo</h2>
+            <div className={`px-2.5 py-1 rounded text-xs font-semibold ${isPlayerTurn ? "bg-blue-500/15 text-blue-300" : "bg-red-500/15 text-red-300"}`}>
+              Turno {turn} — {isPlayerTurn ? "Seu Turno" : "Oponente"}
             </div>
-            <div className="panel-header-line text-amber-400/80" />
+            <button onClick={() => setShowDuelLog(false)}
+              aria-label="Fechar log"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M1 1l10 10M11 1L1 11" />
+              </svg>
+            </button>
           </div>
           <div ref={duelLogRef} className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {duelLog.map(entry => {
-              const mMeta: Record<string, { icon: string; color: string; border: string }> = {
-                draw:   { icon: "⇪", color: "text-slate-300",  border: "rgba(148,163,184,0.4)" },
-                play:   { icon: "◈", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", border: entry.isPlayerTurn ? "rgba(34,211,238,0.5)" : "rgba(239,68,68,0.5)" },
-                attack: { icon: "⚔", color: "text-amber-300",  border: "rgba(251,191,36,0.55)" },
-                lp:     { icon: "♥", color: "text-red-400",    border: "rgba(239,68,68,0.55)" },
-                effect: { icon: "✦", color: "text-purple-300", border: "rgba(168,85,247,0.5)" },
+              const mMeta: Record<string, { label: string; color: string; dot: string }> = {
+                draw:   { label: "Compra", color: "text-slate-300",  dot: "#94a3b8" },
+                play:   { label: "Jogada", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", dot: entry.isPlayerTurn ? "#22d3ee" : "#f87171" },
+                attack: { label: "Ataque", color: "text-amber-300",  dot: "#fbbf24" },
+                lp:     { label: "LP",     color: "text-red-400",    dot: "#ef4444" },
+                effect: { label: "Efeito", color: "text-purple-300", dot: "#c084fc" },
               }
-              const m = mMeta[entry.type] || { icon: "·", color: "text-slate-300", border: "rgba(100,116,139,0.3)" }
+              const m = mMeta[entry.type] || { label: "", color: "text-slate-300", dot: "#64748b" }
               if (entry.type === "turn") {
                 return (
-                  <div key={entry.id} className="log-entry-in relative my-2 flex items-center gap-2">
-                    <div className="flex-1 h-px" style={{background: entry.isPlayerTurn ? "linear-gradient(90deg, transparent, rgba(59,130,246,0.6))" : "linear-gradient(90deg, transparent, rgba(239,68,68,0.6))"}} />
-                    <p className={`text-xs font-black tracking-widest uppercase whitespace-nowrap px-3 py-1 rounded-full border ${
-                      entry.isPlayerTurn ? "text-blue-300 border-blue-500/40 bg-blue-900/40" : "text-red-300 border-red-500/40 bg-red-900/35"
-                    }`} style={{boxShadow: entry.isPlayerTurn ? "0 0 14px rgba(59,130,246,0.25)" : "0 0 14px rgba(239,68,68,0.25)"}}>{entry.message}</p>
-                    <div className="flex-1 h-px" style={{background: entry.isPlayerTurn ? "linear-gradient(270deg, transparent, rgba(59,130,246,0.6))" : "linear-gradient(270deg, transparent, rgba(239,68,68,0.6))"}} />
+                  <div key={entry.id} className="log-entry-in my-3 flex items-center gap-2.5">
+                    <div className="flex-1 h-px bg-white/[0.08]" />
+                    <p className={`text-[11px] font-semibold tracking-wide uppercase whitespace-nowrap ${
+                      entry.isPlayerTurn ? "text-blue-400" : "text-red-400"
+                    }`}>{entry.message}</p>
+                    <div className="flex-1 h-px bg-white/[0.08]" />
                   </div>
                 )
               }
               return (
-                <div key={entry.id} className="log-entry-in flex items-start gap-2 rounded-xl px-3 py-2 bg-white/[0.04]"
-                  style={{borderLeft:`3px solid ${m.border}`, border:"1px solid rgba(255,255,255,0.06)", borderLeftWidth:3, borderLeftColor:m.border}}>
+                <div key={entry.id} className="log-entry-in flex items-start gap-2.5 rounded-lg px-3 py-2 bg-white/[0.03]">
                   {entry.cardImage && (
-                    <img src={entry.cardImage} alt={entry.cardName||""} className="w-8 h-11 object-contain rounded flex-shrink-0"
-                      style={{border:`1px solid ${m.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.6)"}} />
+                    <img src={entry.cardImage} alt={entry.cardName||""} className="w-8 h-11 object-contain rounded flex-shrink-0 border border-white/10" />
                   )}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] leading-none ${m.color} opacity-80`}>{m.icon}</span>
-                      <p className="text-slate-600 text-[10px] font-bold">Turno {entry.turn}</p>
+                      <span className="block w-1 h-1 rounded-full flex-shrink-0" style={{background: m.dot}} />
+                      {m.label && <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{m.label}</p>}
+                      <p className="text-slate-600 text-[10px] font-medium ml-auto">Turno {entry.turn}</p>
                     </div>
                     <p className={`text-sm leading-snug ${m.color}`}>{entry.message}</p>
                   </div>
