@@ -2650,7 +2650,7 @@ function StarfieldCanvas() {
       ctx.restore()
     }
 
-    /* ─�������� Runtime particles ── */
+    /* ─���������� Runtime particles ── */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -9354,7 +9354,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const sb = supabaseRef.current
     const rd = onlineRoomDataRef.current
     console.log("[MP] sendAction called:", action.type, "| sb:", !!sb, "| rd:", !!rd)
-    if (!sb || !rd) { console.warn("[MP] sendAction ABORTED — missing sb or rd"); return }
+    if (!sb || !rd) { console.warn("[MP] sendAction ABORTED ��� missing sb or rd"); return }
     const mpId = rd.isHost ? rd.hostId : (rd.guestId || "")
     // Use a safe sequence number (not timestamp — too large for integer column)
     const { error } = await sb.from("duel_actions").insert({
@@ -10877,6 +10877,207 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transform: rotateX(17deg);
           transform-origin: 50% 88%;
         }
+
+        /* ══════════════════════════════════════════════════════════════
+           TABULEIRO — "Arena Cósmica"
+           A mesa é uma laje de obsidiana polida flutuando no mesmo
+           cosmos do fundo (nebulosas + estrelas do StarfieldCanvas).
+           Camadas, de baixo pra cima:
+             1. db-nebula-*  → brilho de nebulosa carmesim (inimigo)
+                               e azul (jogador), dando profundidade
+             2. db-weave     → trama de tecido do playmat (mata o
+                               aspecto "gradiente liso de IA")
+             3. db-stardust  → poeira estelar refletida na pedra
+             4. db-lattice   → malha arcana em losangos (circuito)
+             5. db-sigil     → círculos de invocação atrás de cada
+                               fileira de unidades (giro lentíssimo)
+             6. db-sheen     → reflexo diagonal de pedra polida
+             7. db-vignette  → escurecimento das bordas (a laje "fecha")
+             8. db-seam      → meridiano dourado + runa central + faísca
+             9. db-corners   → cantoneiras de metal dourado
+           Tudo é decorativo: pointer-events:none e alfas baixos, pra
+           não competir com as cartas nem apagar playmats custom.
+           ══════════════════════════════════════════════════════════════ */
+        .db-layer { position: absolute; inset: 0; pointer-events: none; }
+
+        /* As duas metades se sobrepõem e se dissolvem no meridiano
+           (máscara), então não existe corte reto no meio do tabuleiro. */
+        .db-nebula-foe, .db-nebula-ally { pointer-events: none; }
+        .db-nebula-foe {
+          -webkit-mask: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+                  mask: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+        }
+        .db-nebula-ally {
+          -webkit-mask: linear-gradient(0deg, #000 0%, #000 62%, transparent 100%);
+                  mask: linear-gradient(0deg, #000 0%, #000 62%, transparent 100%);
+        }
+        .db-nebula-foe {
+          background:
+            radial-gradient(ellipse 150% 120% at 50% 34%, rgba(158,30,48,0.52) 0%, rgba(92,18,44,0.40) 40%, rgba(40,12,32,0.26) 72%, rgba(16,8,22,0.14) 100%),
+            radial-gradient(ellipse 70% 60% at 18% 20%, rgba(216,74,58,0.20) 0%, transparent 72%),
+            radial-gradient(ellipse 56% 52% at 86% 44%, rgba(130,52,162,0.22) 0%, transparent 74%);
+        }
+        .db-nebula-ally {
+          background:
+            radial-gradient(ellipse 150% 120% at 50% 66%, rgba(26,74,170,0.52) 0%, rgba(14,36,96,0.40) 40%, rgba(8,20,52,0.26) 72%, rgba(6,12,30,0.14) 100%),
+            radial-gradient(ellipse 70% 60% at 82% 80%, rgba(56,168,216,0.20) 0%, transparent 72%),
+            radial-gradient(ellipse 56% 52% at 14% 56%, rgba(76,98,216,0.20) 0%, transparent 74%);
+        }
+
+        .db-weave {
+          background-image:
+            repeating-linear-gradient(45deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 3px),
+            repeating-linear-gradient(-45deg, rgba(0,0,0,0.10) 0 1px, transparent 1px 3px);
+          mix-blend-mode: overlay;
+          opacity: 0.9;
+        }
+
+        /* Três "tiles" de tamanhos diferentes = padrão sem repetição óbvia */
+        .db-stardust {
+          background-image:
+            radial-gradient(1.3px 1.3px at 18% 26%, rgba(255,255,255,0.55), transparent 62%),
+            radial-gradient(1px 1px at 63% 11%, rgba(200,226,255,0.45), transparent 62%),
+            radial-gradient(1.6px 1.6px at 84% 68%, rgba(255,244,214,0.40), transparent 60%),
+            radial-gradient(1px 1px at 34% 79%, rgba(255,255,255,0.35), transparent 62%),
+            radial-gradient(1px 1px at 8% 58%, rgba(186,214,255,0.40), transparent 62%),
+            radial-gradient(1.2px 1.2px at 71% 41%, rgba(255,255,255,0.30), transparent 62%);
+          background-size: 190px 190px, 143px 143px, 271px 271px, 227px 227px, 167px 167px, 313px 313px;
+          opacity: 0.6;
+        }
+
+        .db-lattice {
+          background-image:
+            repeating-linear-gradient(63deg, rgba(216,180,120,0.055) 0 1px, transparent 1px 46px),
+            repeating-linear-gradient(-63deg, rgba(140,190,230,0.05) 0 1px, transparent 1px 46px);
+          -webkit-mask: radial-gradient(ellipse 92% 96% at 50% 50%, #000 30%, transparent 82%);
+                  mask: radial-gradient(ellipse 92% 96% at 50% 50%, #000 30%, transparent 82%);
+        }
+
+        .db-sigil {
+          position: absolute;
+          left: 50%;
+          width: 76%;
+          aspect-ratio: 1;
+          transform: translateX(-50%);
+          border-radius: 50%;
+          pointer-events: none;
+          border: 1px solid var(--db-ring, rgba(216,180,120,0.14));
+          box-shadow: inset 0 0 42px rgba(216,180,120,0.045);
+        }
+        .db-sigil::before,
+        .db-sigil::after { content: ""; position: absolute; border-radius: 50%; }
+        /* anel externo de "dentes" (ticks) girando devagaríssimo */
+        .db-sigil::before {
+          inset: 7%;
+          background: repeating-conic-gradient(from 0deg,
+            var(--db-ring, rgba(216,180,120,0.14)) 0deg 1.1deg, transparent 1.1deg 9deg);
+          -webkit-mask: radial-gradient(circle, transparent 91%, #000 92%);
+                  mask: radial-gradient(circle, transparent 91%, #000 92%);
+          animation: db-sigil-spin 120s linear infinite;
+        }
+        /* anel interno tracejado no sentido oposto */
+        .db-sigil::after {
+          inset: 26%;
+          border: 1px dashed var(--db-ring, rgba(216,180,120,0.14));
+          animation: db-sigil-spin 190s linear infinite reverse;
+        }
+        .db-sigil--foe  { top: 24%; transform: translate(-50%,-50%); --db-ring: rgba(226,110,96,0.13); }
+        .db-sigil--ally { top: 77%; transform: translate(-50%,-50%); --db-ring: rgba(126,186,226,0.13); }
+        @keyframes db-sigil-spin { to { transform: rotate(360deg); } }
+
+        .db-sheen {
+          background: linear-gradient(112deg,
+            rgba(255,255,255,0.055) 0%,
+            rgba(255,255,255,0.012) 26%,
+            transparent 44%,
+            transparent 62%,
+            rgba(255,255,255,0.030) 88%,
+            rgba(255,255,255,0.055) 100%);
+        }
+
+        .db-vignette {
+          background:
+            radial-gradient(ellipse 108% 94% at 50% 50%, transparent 52%, rgba(2,2,10,0.30) 84%, rgba(2,2,10,0.60) 100%),
+            linear-gradient(180deg, rgba(2,2,10,0.22) 0%, transparent 12%, transparent 88%, rgba(2,2,10,0.22) 100%);
+        }
+
+        /* ── Meridiano: a linha de batalha ── */
+        .db-seam-halo {
+          position: absolute; left: 0; right: 0; top: 50%;
+          height: 130px; margin-top: -65px; pointer-events: none;
+          background: radial-gradient(ellipse 72% 100% at 50% 50%,
+            rgba(226,190,126,0.20) 0%, rgba(216,180,120,0.085) 42%, transparent 76%);
+        }
+        .db-seam {
+          position: absolute; left: 0; right: 0; top: 50%;
+          height: 1px; margin-top: -0.5px; pointer-events: none;
+          background: linear-gradient(90deg,
+            transparent 0%, rgba(216,180,120,0.10) 10%,
+            rgba(255,234,186,0.72) 50%,
+            rgba(216,180,120,0.10) 90%, transparent 100%);
+          box-shadow: 0 0 10px rgba(216,180,120,0.35);
+        }
+        .db-seam-edge {
+          position: absolute; left: 8%; right: 8%; top: 50%;
+          height: 1px; pointer-events: none;
+          background: linear-gradient(90deg, transparent, rgba(216,180,120,0.22), transparent);
+        }
+        .db-seam-edge--up   { margin-top: -4px; }
+        .db-seam-edge--down { margin-top: 3px; }
+        .db-seam-spark {
+          position: absolute; left: 0; right: 0; top: 50%;
+          height: 2px; margin-top: -1px; overflow: hidden; pointer-events: none;
+        }
+        .db-seam-spark > i {
+          position: absolute; top: 0; left: 0; height: 100%; width: 34%;
+          background: linear-gradient(90deg, transparent, rgba(255,244,214,0.85), transparent);
+          animation: db-seam-run 9s cubic-bezier(0.45,0,0.55,1) infinite;
+        }
+        @keyframes db-seam-run {
+          0%   { transform: translateX(-40%); opacity: 0; }
+          14%  { opacity: 0.9; }
+          82%  { opacity: 0.9; }
+          100% { transform: translateX(300%); opacity: 0; }
+        }
+        /* runa central: losango dourado com núcleo pulsante */
+        .db-rune {
+          position: absolute; left: 50%; top: 50%;
+          width: 16px; height: 16px; margin: -8px 0 0 -8px;
+          transform: rotate(45deg); pointer-events: none;
+          border: 1px solid rgba(216,180,120,0.55);
+          background: linear-gradient(135deg, rgba(30,22,12,0.85), rgba(12,10,20,0.85));
+          box-shadow: 0 0 14px rgba(216,180,120,0.28);
+        }
+        .db-rune::after {
+          content: ""; position: absolute; inset: 4px;
+          background: rgba(255,238,196,0.85);
+          box-shadow: 0 0 8px rgba(255,222,150,0.75);
+          animation: db-rune-breathe 4.5s ease-in-out infinite;
+        }
+        @keyframes db-rune-breathe {
+          0%, 100% { opacity: 0.45; transform: scale(0.82); }
+          50%      { opacity: 1;    transform: scale(1); }
+        }
+
+        /* cantoneiras de metal dourado nos 4 cantos da laje */
+        .db-corners {
+          --dbc: rgba(216,180,120,0.42);
+          background:
+            linear-gradient(var(--dbc), var(--dbc)) top    left  / 26px 1.5px,
+            linear-gradient(var(--dbc), var(--dbc)) top    left  / 1.5px 26px,
+            linear-gradient(var(--dbc), var(--dbc)) top    right / 26px 1.5px,
+            linear-gradient(var(--dbc), var(--dbc)) top    right / 1.5px 26px,
+            linear-gradient(var(--dbc), var(--dbc)) bottom left  / 26px 1.5px,
+            linear-gradient(var(--dbc), var(--dbc)) bottom left  / 1.5px 26px,
+            linear-gradient(var(--dbc), var(--dbc)) bottom right / 26px 1.5px,
+            linear-gradient(var(--dbc), var(--dbc)) bottom right / 1.5px 26px;
+          background-repeat: no-repeat;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .db-sigil::before, .db-sigil::after,
+          .db-seam-spark > i, .db-rune::after { animation: none; }
+        }
         /* Nitidez (supersampling 2x): dentro do contexto 3D, cada carta
            animada vira uma textura de GPU rasterizada no tamanho pequeno
            do slot e reprojetada pela perspectiva — causando o borrão.
@@ -11560,15 +11761,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           style={{
             aspectRatio: "9/16",
             maxHeight: "calc(100vh - 220px)",
-            boxShadow: "0 0 40px rgba(0,0,0,0.85)",
+            // Laje flutuando no espaço: sombra profunda + fio de metal dourado
+            // na borda + halo quente sutil, pra separar a mesa da nebulosa.
+            boxShadow:
+              "0 34px 74px -20px rgba(0,0,0,0.95)," +
+              "0 0 0 1px rgba(216,180,120,0.24)," +
+              "0 0 38px rgba(216,180,120,0.07)," +
+              "inset 0 0 90px rgba(0,0,0,0.55)",
           }}
         >
-          {/* Playmat container with epic border */}
+          {/* ── Playmat: laje de obsidiana + nebulosa + runas ── */}
           <div className="absolute inset-0"
             style={{
-              background: "linear-gradient(180deg, rgba(20,10,40,0.94) 0%, rgba(12,18,40,0.94) 50%, rgba(8,14,32,0.94) 100%)",
-              borderTop: "1px solid rgba(140,110,40,0.45)",
-              borderBottom: "1px solid rgba(140,110,40,0.45)",
+              background: "linear-gradient(180deg, rgba(17,9,26,0.96) 0%, rgba(11,9,28,0.96) 48%, rgba(6,11,26,0.96) 100%)",
+              borderTop: "1px solid rgba(216,180,120,0.42)",
+              borderBottom: "1px solid rgba(216,180,120,0.42)",
             }}>
             {/* Opponent Playmat Background (top half) */}
             {mode === "player" && opponentPlaymatImage ? (
@@ -11582,8 +11789,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/60" />
               </div>
             ) : (
-              <div className="absolute inset-x-0 top-0 h-1/2"
-                style={{background:"rgba(60,8,8,0.30)"}} />
+              <div className="absolute inset-x-0 top-0 h-1/2 db-nebula-foe" />
             )}
 
             {/* Player Playmat Background (bottom half) */}
@@ -11598,15 +11804,32 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   </div>
                 )
               }
-              return (
-                <div className="absolute inset-x-0 bottom-0 h-1/2"
-                  style={{background:"rgba(6,14,45,0.30)"}} />
-              )
+              return <div className="absolute inset-x-0 bottom-0 h-1/2 db-nebula-ally" />
             })()}
 
-            {/* Center divider glow line */}
+            {/* Textura de tecido do playmat + poeira estelar refletida */}
+            <div className="db-layer db-weave" />
+            <div className="db-layer db-stardust" />
 
+            {/* Malha arcana (circuito) e círculos de invocação */}
+            <div className="db-layer db-lattice" />
+            <div className="db-sigil db-sigil--foe" />
+            <div className="db-sigil db-sigil--ally" />
 
+            {/* Reflexo de pedra polida + vinheta que fecha a laje */}
+            <div className="db-layer db-sheen" />
+            <div className="db-layer db-vignette" />
+
+            {/* Meridiano — a linha de batalha entre os dois campos */}
+            <div className="db-seam-halo" />
+            <div className="db-seam-edge db-seam-edge--up" />
+            <div className="db-seam" />
+            <div className="db-seam-edge db-seam-edge--down" />
+            <div className="db-seam-spark"><i /></div>
+            <div className="db-rune" />
+
+            {/* Cantoneiras de metal */}
+            <div className="db-layer db-corners" />
           </div>{/* end background div */}
 
           {/* Field content */}
