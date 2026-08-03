@@ -1766,6 +1766,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem(`gear-perks-${key}`) || localStorage.getItem(`gearperks-${key}`) || null
   }
 
+  // Key for redeemed codes, scoped per account (prevents codes from one
+  // account appearing as "already redeemed" on another account in the same browser)
+  const redeemedCodesLSKey = (uniqueCode: string | null | undefined) =>
+    `redeemed-codes-${uniqueCode ? uniqueCode.toUpperCase() : "guest"}`
+
   // Save to localStorage with unified key format
   const setLS = (key: string, value: string) => {
     localStorage.setItem(`gearperks-${key}`, value)
@@ -1914,10 +1919,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setGlobalPlaymatId(savedGlobalPlaymat)
       }
 
-      // Redeemed codes
-      const savedRedeemedCodes = getLS("redeemed-codes")
+      // Redeemed codes (scoped per account)
+      const codesKey = redeemedCodesLSKey(auth?.isLoggedIn ? auth.uniqueCode : null)
+      const savedRedeemedCodes = getLS(codesKey)
       if (savedRedeemedCodes) {
         try { setRedeemedCodes(JSON.parse(savedRedeemedCodes)) } catch { }
+      } else {
+        // Migrate legacy global key (old bug: codes were shared between all accounts).
+        // Assign them to the currently active account and remove the global key
+        // so other accounts stop seeing codes they never redeemed.
+        const legacyCodes = getLS("redeemed-codes")
+        if (legacyCodes) {
+          try {
+            setRedeemedCodes(JSON.parse(legacyCodes))
+            setLS(codesKey, legacyCodes)
+          } catch { }
+          localStorage.removeItem("gearperks-redeemed-codes")
+          localStorage.removeItem("gear-perks-redeemed-codes")
+        }
       }
 
       // Mobile mode
@@ -2435,6 +2454,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setAccountAuth(auth)
     localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
 
+    // Carry over codes redeemed as guest to the new account (progress converts to account)
+    setLS(redeemedCodesLSKey(code), JSON.stringify(redeemedCodes))
+
     return { success: true, code }
   }
 
@@ -2515,6 +2537,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setAccountAuth(auth)
       localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
 
+      // Load redeemed codes scoped to THIS account (not shared between accounts)
+      const savedAccountCodes = getLS(redeemedCodesLSKey(normalizedCode))
+      try {
+        setRedeemedCodes(savedAccountCodes ? JSON.parse(savedAccountCodes) : [])
+      } catch {
+        setRedeemedCodes([])
+      }
+
       return { success: true }
     } catch (err) {
       console.error("Login error:", err)
@@ -2584,6 +2614,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Reset playmat states on logout
     setOwnedPlaymats([])
     setGlobalPlaymatId(null)
+
+    // Load guest-scoped redeemed codes (don't keep the previous account's codes)
+    const guestCodes = getLS(redeemedCodesLSKey(null))
+    try {
+      setRedeemedCodes(guestCodes ? JSON.parse(guestCodes) : [])
+    } catch {
+      setRedeemedCodes([])
+    }
   }
 
   const saveProgressManually = async () => {
@@ -2710,10 +2748,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setCollection(allCardsWithCopies)
       setLS("collection", JSON.stringify(allCardsWithCopies))
 
-      // Mark code as redeemed and persist immediately
+      // Mark code as redeemed and persist immediately (scoped per account)
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
-      setLS("redeemed-codes", JSON.stringify(newRedeemedCodes))
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
 
       return { success: true, message: `Todas as ${ALL_CARDS.length} cartas foram desbloqueadas com 4 copias cada!` }
     }
@@ -2729,7 +2767,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
-      setLS("redeemed-codes", JSON.stringify(newRedeemedCodes))
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
 
       return { success: true, message: `Todos os ${ALL_PLAYMATS.length} playmats foram desbloqueados!` }
     }
@@ -2778,6 +2816,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks_owned_playmats")
       localStorage.removeItem("gearperks_global_playmat")
       localStorage.removeItem("gearperks-redeemed-codes")
+      localStorage.removeItem("gear-perks-redeemed-codes")
+      const currentCodesKey = redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null)
+      localStorage.removeItem(`gearperks-${currentCodesKey}`)
+      localStorage.removeItem(`gear-perks-${currentCodesKey}`)
       localStorage.removeItem("gpgame_selected_wallpaper")
       localStorage.removeItem("gpgame_unlocked_wallpapers")
 
