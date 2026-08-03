@@ -2256,45 +2256,110 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return available
   }
 
-  // Account Auth Functions
+  // ---------- Account Auth (nuvem via /api/account) ----------
+  const SESSION_TOKEN_KEY = "gear-perks-session-token"
+
+  // Monta o payload de progresso completo para salvar na nuvem
+  const buildProgressPayload = () => ({
+    coins,
+    gearCoins,
+    collection,
+    decks,
+    matchHistory,
+    giftBoxes,
+    friends,
+    friendRequests,
+    friendPoints,
+    spendableFP,
+    playerProfile,
+    playerId,
+    ownedPlaymatIds: ownedPlaymats.map((p) => p.id),
+    globalPlaymatId,
+    redeemedCodes,
+  })
+
+  // Aplica um progresso vindo da nuvem em todos os estados do jogo
+  const applyProgressPayload = (p: any) => {
+    if (!p || typeof p !== "object") return
+    if (typeof p.coins === "number") setCoins(p.coins)
+    if (typeof p.gearCoins === "number") setGearCoins(p.gearCoins)
+    if (Array.isArray(p.collection)) setCollection(p.collection)
+    if (Array.isArray(p.decks)) setDecks(p.decks)
+    if (Array.isArray(p.matchHistory)) setMatchHistory(p.matchHistory)
+    if (Array.isArray(p.giftBoxes)) setGiftBoxes(p.giftBoxes)
+    if (Array.isArray(p.friends)) {
+      const hasGuest = p.friends.some((f: Friend) => f.id === "GUEST-001")
+      setFriends(hasGuest ? p.friends : [DEFAULT_GUEST_FRIEND, ...p.friends])
+    }
+    if (Array.isArray(p.friendRequests)) setFriendRequests(p.friendRequests)
+    if (typeof p.friendPoints === "number") setFriendPoints(p.friendPoints)
+    if (typeof p.spendableFP === "number") setSpendableFP(p.spendableFP)
+    if (p.playerProfile && typeof p.playerProfile === "object") setPlayerProfile(p.playerProfile)
+    if (typeof p.playerId === "string" && p.playerId) {
+      setPlayerId(p.playerId)
+      setLS("playerid", p.playerId)
+      localStorage.setItem("gear-perks-player-id", p.playerId)
+    }
+    if (Array.isArray(p.ownedPlaymatIds)) {
+      setOwnedPlaymats(ALL_PLAYMATS.filter((pm) => p.ownedPlaymatIds.includes(pm.id)))
+      localStorage.setItem("gearperks_owned_playmats", JSON.stringify(p.ownedPlaymatIds))
+    }
+    if (typeof p.globalPlaymatId === "string" && p.globalPlaymatId) {
+      setGlobalPlaymatId(p.globalPlaymatId)
+      localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
+    }
+    if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
+
+    // Sincroniza com localStorage para acesso offline
+    if (typeof p.coins === "number") setLS("coins", p.coins.toString())
+    if (typeof p.gearCoins === "number") setLS("gearcoins", p.gearCoins.toString())
+    if (Array.isArray(p.collection)) setLS("collection", JSON.stringify(p.collection))
+    if (Array.isArray(p.decks)) setLS("decks", JSON.stringify(p.decks))
+    if (Array.isArray(p.matchHistory)) setLS("history", JSON.stringify(p.matchHistory))
+    if (p.playerProfile) setLS("profile", JSON.stringify(p.playerProfile))
+  }
+
+  // Chamada padrão à API de contas
+  const accountApi = async (payload: Record<string, unknown>): Promise<any> => {
+    try {
+      const res = await fetch("/api/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      return await res.json()
+    } catch {
+      return { success: false, error: "Erro de conexao. Verifique sua internet." }
+    }
+  }
+
   const loginAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulated login - in production this would call a real API
-    const storedAccounts = localStorage.getItem("gear-perks-accounts")
-    const accounts = storedAccounts ? JSON.parse(storedAccounts) : {}
-
-    if (!accounts[email]) {
-      return { success: false, error: "Conta nao encontrada" }
+    const result = await accountApi({ action: "login", email, password })
+    if (!result.success) {
+      return { success: false, error: result.error || "Erro ao entrar. Tente novamente." }
     }
 
-    if (accounts[email].password !== password) {
-      return { success: false, error: "Senha incorreta" }
-    }
-
-    // Load saved progress
-    const savedProgress = accounts[email].progress
-    if (savedProgress) {
-      if (savedProgress.coins) setCoins(savedProgress.coins)
-      if (savedProgress.collection) setCollection(savedProgress.collection)
-      if (savedProgress.decks) setDecks(savedProgress.decks)
-      if (savedProgress.matchHistory) setMatchHistory(savedProgress.matchHistory)
-      if (savedProgress.giftBoxes) setGiftBoxes(savedProgress.giftBoxes)
-      if (savedProgress.friends) setFriends(savedProgress.friends)
-      if (savedProgress.friendRequests) setFriendRequests(savedProgress.friendRequests)
-      if (savedProgress.friendPoints) setFriendPoints(savedProgress.friendPoints)
-      if (savedProgress.spendableFP) setSpendableFP(savedProgress.spendableFP)
-      if (savedProgress.playerProfile) setPlayerProfile(savedProgress.playerProfile)
-      // Player ID is generated locally, so not loaded from account progress to maintain uniqueness.
-      // However, if you wanted to sync playerId across devices for the same account, you'd load it here.
-    }
+    localStorage.setItem(SESSION_TOKEN_KEY, result.token)
+    applyProgressPayload(result.progress)
 
     const auth: AccountAuth = {
       isLoggedIn: true,
-      email,
+      email: email.trim().toLowerCase(),
       uniqueCode: null,
-      lastSaved: savedProgress?.lastSaved || null,
+      lastSaved: result.lastSaved || null,
     }
     setAccountAuth(auth)
     localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
+
+    // Códigos resgatados vêm da nuvem; se não houver, usa os do dispositivo
+    if (!Array.isArray(result.progress?.redeemedCodes)) {
+      const savedCodes = getLS(redeemedCodesLSKey(null))
+      try {
+        setRedeemedCodes(savedCodes ? JSON.parse(savedCodes) : [])
+      } catch {
+        setRedeemedCodes([])
+      }
+    }
 
     return { success: true }
   }
@@ -2307,39 +2372,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Senha deve ter pelo menos 6 caracteres" }
     }
 
-    const storedAccounts = localStorage.getItem("gear-perks-accounts")
-    const accounts = storedAccounts ? JSON.parse(storedAccounts) : {}
-
-    if (accounts[email]) {
-      return { success: false, error: "Este email ja esta registrado" }
-    }
-
-    // Save current progress to new account
-    const now = new Date().toISOString()
-    accounts[email] = {
+    // Registra na nuvem levando o progresso atual do dispositivo
+    const result = await accountApi({
+      action: "register",
+      email,
       password,
-      progress: {
-        coins,
-        collection,
-        decks,
-        matchHistory,
-        giftBoxes,
-        friends,
-        friendRequests,
-        friendPoints,
-        spendableFP,
-        playerProfile,
-        playerId, // Save current playerId
-        lastSaved: now,
-      },
+      progress: buildProgressPayload(),
+    })
+    if (!result.success) {
+      return { success: false, error: result.error || "Erro ao criar conta. Tente novamente." }
     }
-    localStorage.setItem("gear-perks-accounts", JSON.stringify(accounts))
+
+    localStorage.setItem(SESSION_TOKEN_KEY, result.token)
 
     const auth: AccountAuth = {
       isLoggedIn: true,
-      email,
+      email: email.trim().toLowerCase(),
       uniqueCode: null,
-      lastSaved: now,
+      lastSaved: result.lastSaved || new Date().toISOString(),
     }
     setAccountAuth(auth)
     localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
@@ -2347,209 +2397,70 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return { success: true }
   }
 
-  // Generate unique code for account
-  const generateUniqueCode = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let code = ""
-    for (let i = 0; i < 12; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return code
-  }
-
-  // Simple hash function for password (for local storage fallback)
-  const simpleHash = async (text: string): Promise<string> => {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(text)
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
-  }
-
-  // Register with unique code
+  // Register with unique code (o código é gerado no servidor)
   const registerWithCode = async (password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
     if (password.length < 6) {
       return { success: false, error: "Senha deve ter pelo menos 6 caracteres" }
     }
 
-    let supabase
-    try {
-      supabase = createClient()
-      console.log("[v0] Supabase client created successfully")
-    } catch (clientError) {
-      console.error("[v0] Failed to create Supabase client:", clientError)
-      return { success: false, error: "Erro de conexao com o servidor. Verifique sua internet." }
+    const result = await accountApi({
+      action: "register-code",
+      password,
+      progress: buildProgressPayload(),
+    })
+    if (!result.success || !result.code) {
+      return { success: false, error: result.error || "Erro ao criar conta. Tente novamente." }
     }
 
-    const code = generateUniqueCode()
-    const passwordHash = await simpleHash(password)
+    localStorage.setItem(SESSION_TOKEN_KEY, result.token)
 
-    // Generate a valid UUID for user_id
-    const userUUID = crypto.randomUUID()
-
-    // Try to save to Supabase
-    try {
-      console.log("[v0] Registering with code:", code, "userUUID:", userUUID)
-      console.log("[v0] Supabase URL configured:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
-
-      // First, save the unique code
-      const { data: codeData, error: codeError } = await supabase.from("unique_codes").insert({
-        user_id: userUUID,
-        code,
-        password_hash: passwordHash,
-      }).select().single()
-
-      console.log("[v0] unique_codes insert result:", { data: codeData, error: codeError })
-
-      if (codeError) {
-        // If unique constraint error, generate new code
-        if (codeError.code === "23505") {
-          return registerWithCode(password) // Retry with new code
-        }
-        console.error("[v0] Supabase error:", codeError)
-        return { success: false, error: `Erro ao criar conta: ${codeError.message}` }
-      }
-
-      // Now save the player profile to the new player_profiles table
-      const profileData = {
-        user_code: code,
-        player_name: playerProfile.name || "Jogador",
-        player_title: playerProfile.title || "Iniciante",
-        avatar_id: playerProfile.avatarUrl || null,
-        coins: coins,
-        gems: 0,
-        collection: collection,
-        decks: decks,
-        duel_history: matchHistory,
-        gacha_pity: 0,
-        total_wins: matchHistory.filter(m => m.result === "won").length,
-        total_losses: matchHistory.filter(m => m.result === "lost").length,
-      }
-
-      const { data: profileResult, error: profileError } = await supabase.from("player_profiles").insert(profileData).select().single()
-
-      console.log("[v0] player_profiles insert result:", { data: profileResult, error: profileError })
-
-      if (profileError) {
-        console.error("[v0] Error saving player profile:", profileError)
-        // Continue anyway, the code was created successfully
-      }
-
-      // Update local playerId with the new UUID
-      setPlayerId(userUUID)
-      localStorage.setItem("gear-perks-player-id", userUUID)
-
-    } catch (err) {
-      console.error("[v0] Registration exception:", err)
-      return { success: false, error: `Erro ao criar conta: ${err instanceof Error ? err.message : "Tente novamente."}` }
-    }
-
-    const now = new Date().toISOString()
     const auth: AccountAuth = {
       isLoggedIn: true,
       email: null,
-      uniqueCode: code,
-      lastSaved: now,
+      uniqueCode: result.code,
+      lastSaved: result.lastSaved || new Date().toISOString(),
     }
     setAccountAuth(auth)
     localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
 
     // Carry over codes redeemed as guest to the new account (progress converts to account)
-    setLS(redeemedCodesLSKey(code), JSON.stringify(redeemedCodes))
+    setLS(redeemedCodesLSKey(result.code), JSON.stringify(redeemedCodes))
 
-    return { success: true, code }
+    return { success: true, code: result.code }
   }
 
   // Login with unique code
   const loginWithCode = async (code: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    const supabase = createClient()
-    const passwordHash = await simpleHash(password)
     const normalizedCode = code.toUpperCase().replace(/[^A-Z0-9]/g, "")
 
-    // Try Supabase first
-    try {
-      // Verify the code and password
-      const { data: codeData, error: codeError } = await supabase
-        .from("unique_codes")
-        .select("*")
-        .eq("code", normalizedCode)
-        .single()
+    const result = await accountApi({ action: "login-code", code: normalizedCode, password })
+    if (!result.success) {
+      return { success: false, error: result.error || "Erro ao fazer login. Verifique sua conexao." }
+    }
 
-      if (codeError || !codeData) {
-        return { success: false, error: "Codigo nao encontrado" }
-      }
+    localStorage.setItem(SESSION_TOKEN_KEY, result.token)
+    applyProgressPayload(result.progress)
 
-      if (codeData.password_hash !== passwordHash) {
-        return { success: false, error: "Senha incorreta" }
-      }
+    const auth: AccountAuth = {
+      isLoggedIn: true,
+      email: null,
+      uniqueCode: normalizedCode,
+      lastSaved: result.lastSaved || null,
+    }
+    setAccountAuth(auth)
+    localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
 
-      // Load player profile from Supabase
-      const { data: profileData, error: profileError } = await supabase
-        .from("player_profiles")
-        .select("*")
-        .eq("user_code", normalizedCode)
-        .single()
-
-      if (profileData && !profileError) {
-        // Load all data from the cloud profile
-        setCoins(profileData.coins ?? 999)
-        setCollection(profileData.collection ?? [])
-        setDecks(profileData.decks ?? [])
-        setMatchHistory(profileData.duel_history ?? [])
-        setGiftBoxes(INITIAL_GIFT_BOXES)
-        setFriends([DEFAULT_GUEST_FRIEND])
-        setFriendRequests([])
-        setFriendPoints(0)
-        setSpendableFP(0)
-
-        // Update player profile
-        const loadedProfile: PlayerProfile = {
-          id: profileData.id,
-          name: profileData.player_name || "Jogador",
-          title: profileData.player_title || "Iniciante",
-          level: 1,
-          avatarUrl: profileData.avatar_id,
-          showcaseCards: [],
-          hasCompletedSetup: true,
-        }
-        setPlayerProfile(loadedProfile)
-        setPlayerId(codeData.user_id)
-
-        // Also save to localStorage for offline access (both key formats)
-        setLS("coins", profileData.coins?.toString() ?? "999")
-        setLS("collection", JSON.stringify(profileData.collection ?? []))
-        setLS("decks", JSON.stringify(profileData.decks ?? []))
-        setLS("history", JSON.stringify(profileData.duel_history ?? []))
-        setLS("profile", JSON.stringify(loadedProfile))
-        setLS("playerid", codeData.user_id)
-      } else {
-        // Profile not found in cloud, use local data but still log in
-        console.log("Profile not found in cloud, using local data")
-      }
-
-      const now = new Date().toISOString()
-      const auth: AccountAuth = {
-        isLoggedIn: true,
-        email: null,
-        uniqueCode: normalizedCode,
-        lastSaved: now,
-      }
-      setAccountAuth(auth)
-      localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
-
-      // Load redeemed codes scoped to THIS account (not shared between accounts)
+    // Códigos resgatados vêm da nuvem; se não houver, usa os salvos neste dispositivo
+    if (!Array.isArray(result.progress?.redeemedCodes)) {
       const savedAccountCodes = getLS(redeemedCodesLSKey(normalizedCode))
       try {
         setRedeemedCodes(savedAccountCodes ? JSON.parse(savedAccountCodes) : [])
       } catch {
         setRedeemedCodes([])
       }
-
-      return { success: true }
-    } catch (err) {
-      console.error("Login error:", err)
-      return { success: false, error: "Erro ao fazer login. Verifique sua conexao." }
     }
+
+    return { success: true }
   }
 
   // Link email to existing code account
@@ -2627,55 +2538,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const saveProgressManually = async () => {
     if (!accountAuth.isLoggedIn) return
 
-    const now = new Date().toISOString()
-
-    // Save to Supabase if we have a unique code
-    if (accountAuth.uniqueCode) {
-      const supabase = createClient()
-
-      const profileUpdate = {
-        player_name: playerProfile.name,
-        player_title: playerProfile.title,
-        avatar_id: playerProfile.avatarUrl,
-        coins: coins,
-        collection: collection,
-        decks: decks,
-        duel_history: matchHistory,
-        total_wins: matchHistory.filter(m => m.result === "won").length,
-        total_losses: matchHistory.filter(m => m.result === "lost").length,
-        updated_at: now,
-      }
-
-      try {
-        const { error } = await supabase
-          .from("player_profiles")
-          .update(profileUpdate)
-          .eq("user_code", accountAuth.uniqueCode)
-
-        if (error) {
-          console.error("Error saving to cloud:", error)
-          // If profile doesn't exist, create it
-          if (error.code === "PGRST116") {
-            await supabase.from("player_profiles").insert({
-              user_code: accountAuth.uniqueCode,
-              ...profileUpdate,
-            })
-          }
-        }
-      } catch (err) {
-        console.error("Error saving progress:", err)
-      }
-
-      // Also save to localStorage for offline access (both key formats)
-      setLS("coins", coins.toString())
-      setLS("collection", JSON.stringify(collection))
-      setLS("decks", JSON.stringify(decks))
-      setLS("history", JSON.stringify(matchHistory))
-      setLS("profile", JSON.stringify(playerProfile))
-
-      setAccountAuth((prev) => ({ ...prev, lastSaved: now }))
-      localStorage.setItem("gear-perks-auth", JSON.stringify({ ...accountAuth, lastSaved: now }))
+    const token = localStorage.getItem(SESSION_TOKEN_KEY)
+    if (!token) {
+      console.error("Sem token de sessao para salvar na nuvem")
+      return
     }
+
+    const result = await accountApi({
+      action: "save",
+      token,
+      progress: buildProgressPayload(),
+    })
+
+    if (!result.success) {
+      console.error("Erro ao salvar na nuvem:", result.error)
+      return
+    }
+
+    const now = result.lastSaved || new Date().toISOString()
+
+    // Also save to localStorage for offline access (both key formats)
+    setLS("coins", coins.toString())
+    setLS("collection", JSON.stringify(collection))
+    setLS("decks", JSON.stringify(decks))
+    setLS("history", JSON.stringify(matchHistory))
+    setLS("profile", JSON.stringify(playerProfile))
+
+    setAccountAuth((prev) => {
+      const updated = { ...prev, lastSaved: now }
+      localStorage.setItem("gear-perks-auth", JSON.stringify(updated))
+      return updated
+    })
   }
 
   // Autosave every 30 seconds when logged in
