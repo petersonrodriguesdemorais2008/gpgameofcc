@@ -10981,8 +10981,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           border: 1px dashed var(--db-ring, rgba(216,180,120,0.14));
           animation: db-sigil-spin 190s linear infinite reverse;
         }
-        .db-sigil--foe  { top: 24%; transform: translate(-50%,-50%); --db-ring: rgba(226,110,96,0.13); }
-        .db-sigil--ally { top: 77%; transform: translate(-50%,-50%); --db-ring: rgba(126,186,226,0.13); }
+        .db-sigil--foe  { top: 24%; transform: translate(-50%,-50%); --db-ring: rgba(240,132,110,0.22); }
+        .db-sigil--ally { top: 77%; transform: translate(-50%,-50%); --db-ring: rgba(140,200,240,0.22); }
         @keyframes db-sigil-spin { to { transform: rotate(360deg); } }
 
         .db-sheen {
