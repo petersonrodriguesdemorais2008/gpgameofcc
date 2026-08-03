@@ -2567,55 +2567,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const saveProgressManually = async () => {
-    if (!accountAuth.isLoggedIn) return
-
-    const token = localStorage.getItem(SESSION_TOKEN_KEY)
-    if (!token) {
-      console.error("Sem token de sessao para salvar na nuvem")
-      return
-    }
-
-    const result = await accountApi({
-      action: "save",
-      token,
-      progress: buildProgressPayload(),
-    })
-
-    if (!result.success) {
-      console.error("Erro ao salvar na nuvem:", result.error)
-      return
-    }
-
-    const now = result.lastSaved || new Date().toISOString()
-
-    // Also save to localStorage for offline access (both key formats)
-    setLS("coins", coins.toString())
-    setLS("collection", JSON.stringify(collection))
-    setLS("decks", JSON.stringify(decks))
-    setLS("history", JSON.stringify(matchHistory))
-    setLS("profile", JSON.stringify(playerProfile))
-
-    setAccountAuth((prev) => {
-      const updated = { ...prev, lastSaved: now }
-      localStorage.setItem("gear-perks-auth", JSON.stringify(updated))
-      return updated
-    })
-  }
-
-  // Autosave every 30 seconds when logged in
-  useEffect(() => {
-    if (!accountAuth.isLoggedIn) return
-
-    const autoSaveInterval = setInterval(() => {
-      saveProgressManually()
-    }, 30000) // 30 seconds
-
-    // Cleanup interval on component unmount or when isLoggedIn changes to false
-    return () => clearInterval(autoSaveInterval)
-  }, [
-    accountAuth.isLoggedIn,
+  // Ref sempre atualizada com os valores mais recentes — evita closure stale no interval
+  const progressRef = useRef({
     coins,
+    gearCoins,
     collection,
     decks,
     matchHistory,
@@ -2626,9 +2581,143 @@ export function GameProvider({ children }: { children: ReactNode }) {
     spendableFP,
     playerProfile,
     playerId,
-    ownedPlaymats, // Include playmat states in dependency array
+    ownedPlaymats,
     globalPlaymatId,
+    redeemedCodes,
+    accountAuth,
+  })
+  useEffect(() => {
+    progressRef.current = {
+      coins,
+      gearCoins,
+      collection,
+      decks,
+      matchHistory,
+      giftBoxes,
+      friends,
+      friendRequests,
+      friendPoints,
+      spendableFP,
+      playerProfile,
+      playerId,
+      ownedPlaymats,
+      globalPlaymatId,
+      redeemedCodes,
+      accountAuth,
+    }
+  })
+
+  // Ref para controlar se ja tem um save em andamento (evita saves paralelos)
+  const isSavingRef = useRef(false)
+  // Ref para marcar que houve mudanca desde o ultimo save
+  const hasPendingSaveRef = useRef(false)
+
+  // Marca que houve mudanca sempre que qualquer estado de progresso mudar
+  useEffect(() => {
+    if (accountAuth.isLoggedIn) {
+      hasPendingSaveRef.current = true
+    }
+  }, [
+    coins,
+    gearCoins,
+    collection,
+    decks,
+    matchHistory,
+    giftBoxes,
+    friends,
+    friendRequests,
+    friendPoints,
+    spendableFP,
+    playerProfile,
+    playerId,
+    ownedPlaymats,
+    globalPlaymatId,
+    redeemedCodes,
+    accountAuth.isLoggedIn,
   ])
+
+  const saveProgressManually = async () => {
+    const { accountAuth: auth } = progressRef.current
+    if (!auth.isLoggedIn) return
+    if (isSavingRef.current) return
+
+    const token = localStorage.getItem(SESSION_TOKEN_KEY)
+    if (!token) return
+
+    isSavingRef.current = true
+    hasPendingSaveRef.current = false
+
+    const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
+    const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+
+    try {
+      const result = await accountApi({
+        action: "save",
+        token,
+        progress: payload,
+      })
+
+      if (!result.success) {
+        hasPendingSaveRef.current = true // reagenda para proxima tentativa
+        return
+      }
+
+      const now = result.lastSaved || new Date().toISOString()
+
+      // Sincroniza localStorage
+      const cur = progressRef.current
+      setLS("coins", cur.coins.toString())
+      setLS("gearcoins", cur.gearCoins.toString())
+      setLS("collection", JSON.stringify(cur.collection))
+      setLS("decks", JSON.stringify(cur.decks))
+      setLS("history", JSON.stringify(cur.matchHistory))
+      setLS("profile", JSON.stringify(cur.playerProfile))
+
+      setAccountAuth((prev) => {
+        const updated = { ...prev, lastSaved: now }
+        localStorage.setItem("gear-perks-auth", JSON.stringify(updated))
+        return updated
+      })
+    } finally {
+      isSavingRef.current = false
+    }
+  }
+
+  // Autosave: interval fixo de 60s — so salva se houve mudanca real desde o ultimo save
+  useEffect(() => {
+    if (!accountAuth.isLoggedIn) return
+
+    const interval = setInterval(() => {
+      if (hasPendingSaveRef.current) {
+        saveProgressManually()
+      }
+    }, 60_000)
+
+    return () => clearInterval(interval)
+  }, [accountAuth.isLoggedIn])
+
+  // Salva imediatamente ao fechar/sair da aba se houver mudancas pendentes
+  useEffect(() => {
+    if (!accountAuth.isLoggedIn) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasPendingSaveRef.current) {
+        const token = localStorage.getItem(SESSION_TOKEN_KEY)
+        if (!token) return
+        const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
+        const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+        // sendBeacon é fire-and-forget: funciona mesmo enquanto a aba esta fechando
+        navigator.sendBeacon(
+          "/api/account",
+          JSON.stringify({ action: "save", token, progress: payload })
+        )
+        hasPendingSaveRef.current = false
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [accountAuth.isLoggedIn])
 
   const setGlobalPlaymat = (playmatId: string | null) => {
     setGlobalPlaymatId(playmatId)
