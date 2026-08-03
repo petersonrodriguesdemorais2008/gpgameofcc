@@ -6204,7 +6204,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
 
     playSound("cardSummon", 0.6)
-    logEvent("play", `Voc�� equipou ${cardToPlace.name}`, {
+    logEvent("play", `Voc��� equipou ${cardToPlace.name}`, {
       image: getActiveSkin(cardToPlace.image || ""),
       name: cardToPlace.name,
       ability: (cardToPlace as any).ability,
@@ -10590,40 +10590,44 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         @keyframes aimReticle { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(1.6); opacity: 0; } }
       `}</style>
 
-      {/* Top HUD - Turn info (LP do oponente movido para fixed abaixo) */}
-      <div className="relative z-20 flex items-center justify-end px-4 py-2 bg-gradient-to-b from-black/80 to-transparent gap-3">
-          <div className="text-center px-4 py-1 bg-black/50 rounded-lg border border-amber-500/30">
-            <span className="text-xs text-slate-400">{t("turn")}</span>
-            <span className="block text-2xl font-bold text-amber-400">{turn}</span>
+      {/* Top HUD — placas de comando forjadas na mesma linguagem do tabuleiro */}
+      <div className="relative z-20 flex items-center justify-end px-4 py-2 gap-2"
+        style={{background:"linear-gradient(180deg, rgba(2,2,10,0.88) 0%, rgba(2,2,10,0.35) 70%, transparent 100%)"}}>
+          {/* Placa do turno */}
+          <div className="hud-plate flex items-center gap-2.5 px-3.5 py-1">
+            <span className="hud-diamond" aria-hidden="true" />
+            <div className="leading-none text-center">
+              <span className="hud-microlabel block">{t("turn")}</span>
+              <span className="hud-turn-num block">{turn}</span>
+            </div>
           </div>
           {mode === 'bot' && (
-            <div className={`px-2 py-1 rounded text-[9px] font-bold border ${
-              difficulty === 'easy' ? 'bg-green-900/50 border-green-600/40 text-green-300'
-              : difficulty === 'medium' ? 'bg-amber-900/50 border-amber-600/40 text-amber-300'
-              : 'bg-red-900/50 border-red-600/40 text-red-300'
-            }`}>
-              {difficulty === 'easy' ? '🟢 Fácil' : difficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
+            <div className="hud-chip" style={{
+              "--chip-c": difficulty === 'easy' ? "#7fd18a" : difficulty === 'medium' ? "#e5c46f" : "#e8756a",
+            } as React.CSSProperties}>
+              <span className="hud-chip-dot" aria-hidden="true" />
+              {difficulty === 'easy' ? 'Fácil' : difficulty === 'medium' ? 'Médio' : 'Difícil'}
             </div>
           )}
           {catastropheMode && (
-            <div className="px-2 py-1 rounded text-[9px] font-bold border border-red-500/50 bg-red-900/40 text-red-300 animate-pulse">
-              ☄️ Catástrofe
+            <div className="hud-chip hud-chip--alert" style={{"--chip-c":"#e8756a"} as React.CSSProperties}>
+              <span className="hud-chip-dot" aria-hidden="true" />
+              Catástrofe
             </div>
           )}
-          <div
-            className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${isPlayerTurn
-              ? "bg-green-600/20 border-green-500 text-green-400"
-              : "bg-red-600/20 border-red-500 text-red-400"
-              }`}
-          >
-            {isPlayerTurn ? t("yourTurn") : t("enemyTurn")}
+          {/* Estandarte do turno ativo */}
+          <div className={`hud-turnbanner ${isPlayerTurn ? "hud-turnbanner--ally" : "hud-turnbanner--foe"}`}>
+            <span className="hud-turnbanner-edge" aria-hidden="true" />
+            <span className="hud-turnbanner-dot" aria-hidden="true" />
+            <span className="hud-turnbanner-text">{isPlayerTurn ? t("yourTurn") : t("enemyTurn")}</span>
           </div>
           {/* Morgana passive effects indicator */}
           {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)) && (
-            <div className="px-2 py-1 rounded text-[9px] font-bold bg-purple-900/60 border border-purple-500/50 text-purple-300">
+            <div className="hud-chip" style={{"--chip-c":"#b49ae0"} as React.CSSProperties}>
+              <span className="hud-chip-dot" aria-hidden="true" />
               {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
-                ? "🌑 Actions+Traps bloqueados"
-                : "🌑 Traps bloqueadas"}
+                ? "Actions+Traps bloqueados"
+                : "Traps bloqueadas"}
             </div>
           )}
 
@@ -10636,21 +10640,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         <div className="flex items-center gap-1.5 ml-2">
           {/* Speed badge */}
           {gameSpeed > 1 && (
-            <div className="px-2 py-0.5 rounded text-[9px] font-black text-amber-300 border border-amber-500/40 bg-amber-900/40">
+            <div className="hud-chip" style={{"--chip-c":"#e5c46f"} as React.CSSProperties}>
               {gameSpeed}x
             </div>
           )}
           {/* Auto badge */}
           {autoPlay && (
-            <div className="px-2 py-0.5 rounded text-[9px] font-black text-cyan-300 border border-cyan-500/40 bg-cyan-900/40 animate-pulse">
+            <div className="hud-chip hud-chip--alert" style={{"--chip-c":"#7ad4e0"} as React.CSSProperties}>
               AUTO
             </div>
           )}
           {/* Pause / Menu button */}
           <button
             onClick={() => { setShowPauseMenu(true); setShowAudioSettings(false) }}
-            className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 hover:border-white/25 hover:bg-white/10 transition-all"
-            style={{background:"rgba(0,0,0,0.5)"}}>
+            className="w-8 h-8 flex items-center justify-center border transition-all"
+            style={{
+              background:"linear-gradient(180deg, rgba(20,16,10,0.9), rgba(8,8,14,0.92))",
+              borderColor:"rgba(216,180,120,0.28)",
+              clipPath:"polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)",
+            }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" className="text-slate-300">
               <rect x="1" y="2" width="4" height="10" rx="1"/>
               <rect x="9" y="2" width="4" height="10" rx="1"/>
@@ -10665,12 +10673,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           {enemyField.hand.map((_, i) => (
             <div
               key={i}
-              className="w-6 h-8 bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 rounded border border-slate-500/50 shadow-md"
+              className="w-6 h-8 rounded-[3px] shadow-md relative overflow-hidden"
               style={{
+                background: "linear-gradient(160deg, #3d1220 0%, #24101e 46%, #150a18 100%)",
+                border: "1px solid rgba(232,120,106,0.35)",
+                boxShadow: "0 3px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)",
                 transform: `rotate(${(i - enemyField.hand.length / 2) * 3}deg) translateY(${Math.abs(i - enemyField.hand.length / 2) * 2}px)`,
                 transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
               }}
-            />
+            >
+              {/* losango central do verso */}
+              <span className="absolute left-1/2 top-1/2 w-2 h-2 -translate-x-1/2 -translate-y-1/2 rotate-45"
+                style={{border:"1px solid rgba(232,150,120,0.45)", background:"rgba(120,32,40,0.5)"}} aria-hidden="true" />
+              <span className="absolute inset-x-0 top-0 h-1/3"
+                style={{background:"linear-gradient(180deg, rgba(255,255,255,0.10), transparent)"}} aria-hidden="true" />
+            </div>
           ))}
         </div>
       </div>
@@ -12091,19 +12108,40 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               {/* Solid separator line */}
               <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px"
                 style={{background:"rgba(180,140,60,0.50)"}}/>
-              {/* Phase label */}
+              {/* Phase tracker — as três fases gravadas na linha de batalha */}
               <div className="relative flex items-center gap-2 pointer-events-auto">
-                <div className="flex items-center gap-1.5 px-3 py-0.5"
-                  style={{background:"rgba(12,10,28,0.98)",border:"1px solid rgba(160,130,50,0.50)"}}>
-                  {attackState && <span className="text-[8px] text-red-400">⚔</span>}
-                  {attackTarget?.type === "direct" && (
-                    <span className="text-[8px] font-black text-red-300 animate-pulse">ATAQUE DIRETO</span>
+                <div className="flex items-center gap-0 px-2 py-0.5"
+                  style={{
+                    background:"linear-gradient(180deg, rgba(18,14,26,0.98), rgba(10,9,20,0.98))",
+                    border:"1px solid rgba(180,146,72,0.55)",
+                    boxShadow:"0 0 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)",
+                    clipPath:"polygon(7px 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 7px 100%, 0 50%)",
+                  }}>
+                  {attackTarget?.type === "direct" ? (
+                    <span className="px-2 text-[8px] font-black tracking-[0.18em] text-red-300 animate-pulse whitespace-nowrap">
+                      ATAQUE DIRETO
+                    </span>
+                  ) : (
+                    (["draw","main","battle"] as const).map((p, pi) => {
+                      const active = phase === p
+                      const cMap = { draw:"#93c5fd", main:"#fbbf24", battle:"#fca5a5" }
+                      const lMap = { draw:"COMPRA", main:"PRINCIPAL", battle:"BATALHA" }
+                      return (
+                        <React.Fragment key={p}>
+                          {pi > 0 && <span className="mx-1 w-2.5 h-px" style={{background:"rgba(180,146,72,0.4)"}} aria-hidden="true" />}
+                          <span
+                            className="text-[7px] font-black tracking-[0.16em] uppercase transition-all duration-300 whitespace-nowrap"
+                            style={{
+                              color: active ? cMap[p] : "rgba(150,146,140,0.45)",
+                              textShadow: active ? `0 0 8px ${cMap[p]}88` : "none",
+                            }}>
+                            {lMap[p]}
+                          </span>
+                        </React.Fragment>
+                      )
+                    })
                   )}
-                  <span className="text-[8px] font-black tracking-[0.18em] uppercase"
-                    style={{color:phase==="draw"?"#93c5fd":phase==="main"?"#fbbf24":"#fca5a5"}}>
-                    {phase==="draw"?"DRAW":phase==="main"?"MAIN":"BATTLE"}
-                  </span>
-                  {selectedHandCard !== null && <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse"/>}
+                  {selectedHandCard !== null && <span className="ml-1.5 w-1 h-1 rounded-full bg-green-400 animate-pulse"/>}
                 </div>
               </div>
             </div>
@@ -12694,15 +12732,183 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         .lp-box-damage { animation: lp-glow-damage 0.7s ease-out, lp-shake 0.4s ease-out; }
         .lp-box-heal   { animation: lp-glow-heal   0.7s ease-out; }
         .lp-delta      { animation: lp-delta-up 0.75s ease-out forwards; pointer-events:none; }
+
+        /* ══ HUD FORJADO — placas de comando, chips e estandarte de turno ══ */
+        .hud-plate {
+          background: linear-gradient(180deg, rgba(24,19,12,0.92), rgba(10,9,16,0.94));
+          border: 1px solid rgba(216,180,120,0.32);
+          box-shadow: 0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+          clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+        }
+        .hud-diamond {
+          width: 5px; height: 5px; flex-shrink: 0; transform: rotate(45deg);
+          background: #d8b478; box-shadow: 0 0 7px rgba(216,180,120,0.7);
+          animation: gp-diamond-pulse 2.4s ease-in-out infinite;
+        }
+        .hud-microlabel {
+          font-size: 8px; font-weight: 700; letter-spacing: 0.22em;
+          text-transform: uppercase; color: #9a968e; margin-bottom: 2px;
+        }
+        .hud-turn-num {
+          font-size: 20px; font-weight: 900; line-height: 1; color: #e5c46f;
+          text-shadow: 0 0 12px rgba(229,196,111,0.4);
+          font-variant-numeric: tabular-nums;
+        }
+        .hud-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 3px 9px;
+          font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+          color: var(--chip-c, #d8b478);
+          background: linear-gradient(180deg, rgba(16,14,20,0.92), rgba(8,8,14,0.94));
+          border: 1px solid color-mix(in srgb, var(--chip-c, #d8b478) 38%, transparent);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+          clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+          white-space: nowrap;
+        }
+        .hud-chip--alert { animation: hud-chip-blink 1.6s ease-in-out infinite; }
+        @keyframes hud-chip-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .hud-chip-dot {
+          width: 5px; height: 5px; flex-shrink: 0; transform: rotate(45deg);
+          background: var(--chip-c, #d8b478);
+          box-shadow: 0 0 6px var(--chip-c, #d8b478);
+        }
+        .hud-turnbanner {
+          position: relative; display: inline-flex; align-items: center; gap: 7px;
+          padding: 7px 16px; overflow: hidden;
+          font-size: 11px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase;
+          clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 9px 100%, 0 50%);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+        }
+        .hud-turnbanner--ally {
+          color: #a7e8b4;
+          background: linear-gradient(180deg, rgba(14,42,26,0.95), rgba(8,22,16,0.95));
+          border: 1px solid rgba(110,220,140,0.45);
+          text-shadow: 0 0 10px rgba(110,220,140,0.5);
+        }
+        .hud-turnbanner--foe {
+          color: #f3a9a0;
+          background: linear-gradient(180deg, rgba(46,14,18,0.95), rgba(24,8,12,0.95));
+          border: 1px solid rgba(232,110,100,0.45);
+          text-shadow: 0 0 10px rgba(232,110,100,0.5);
+        }
+        .hud-turnbanner-dot {
+          width: 6px; height: 6px; transform: rotate(45deg); flex-shrink: 0;
+          background: currentColor; box-shadow: 0 0 8px currentColor;
+          animation: gp-diamond-pulse 1.8s ease-in-out infinite;
+        }
+        .hud-turnbanner-edge {
+          position: absolute; inset: 0; pointer-events: none;
+          background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.10) 48%, transparent 62%);
+          background-size: 220% 100%;
+          animation: hud-banner-sheen 3.2s ease-in-out infinite;
+        }
+        @keyframes hud-banner-sheen {
+          0%, 55% { background-position: 130% 0; }
+          100%    { background-position: -60% 0; }
+        }
+        .hud-turnbanner-text { position: relative; white-space: nowrap; }
+
+        /* ══ PLACAR DE LP — placa angular com barra de vida ══ */
+        .lp-plate {
+          position: relative;
+          display: flex; align-items: center; gap: 11px;
+          padding: 9px 16px 9px 11px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.045), transparent 40%),
+            linear-gradient(180deg, rgba(14,12,20,0.94), rgba(7,7,14,0.96));
+          border: 1px solid var(--lp-line, rgba(216,180,120,0.3));
+          box-shadow: 0 8px 26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+          clip-path: polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px);
+          backdrop-filter: blur(4px);
+        }
+        .lp-plate--foe  { --lp-line: rgba(232,110,100,0.42); --lp-c: #e8756a; }
+        .lp-plate--ally { --lp-line: rgba(96,160,240,0.42);  --lp-c: #6aa3e8; }
+        .lp-avatar {
+          position: relative; width: 44px; height: 44px; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 999px;
+        }
+        .lp-avatar::before {
+          content: ""; position: absolute; inset: -3px; border-radius: 999px;
+          border: 1.5px solid var(--lp-c);
+          box-shadow: 0 0 12px color-mix(in srgb, var(--lp-c) 55%, transparent);
+          -webkit-mask: conic-gradient(#000 0 78%, transparent 78% 84%, #000 84%);
+                  mask: conic-gradient(#000 0 78%, transparent 78% 84%, #000 84%);
+          animation: lp-ring-spin 14s linear infinite;
+        }
+        @keyframes lp-ring-spin { to { transform: rotate(360deg); } }
+        .lp-name {
+          font-size: 9px; font-weight: 800; letter-spacing: 0.2em;
+          text-transform: uppercase; color: #9a968e; display: block; margin-bottom: 3px;
+        }
+        .lp-value {
+          font-size: 24px; font-weight: 900; line-height: 1;
+          font-variant-numeric: tabular-nums;
+        }
+        .lp-value-max {
+          font-size: 11px; font-weight: 700; color: #6b6862; margin-left: 2px;
+        }
+        .lp-bar {
+          position: relative; margin-top: 5px;
+          width: 108px; height: 5px; overflow: hidden;
+          background: rgba(255,255,255,0.07);
+          clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%);
+        }
+        .lp-bar > i {
+          position: absolute; inset: 0 auto 0 0; display: block;
+          background: linear-gradient(90deg, var(--bar-a), var(--bar-b));
+          box-shadow: 0 0 8px var(--bar-b);
+          transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background 0.4s;
+        }
+        .lp-bar--low > i { animation: lp-bar-panic 1.1s ease-in-out infinite; }
+        @keyframes lp-bar-panic { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.7); } }
+
+        /* ══ BOTÃO DE FASE — placa de ação forjada ══ */
+        .phase-btn {
+          position: relative; width: 100%; overflow: hidden;
+          padding: 10px 12px;
+          font-size: 11px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase;
+          color: #fff; white-space: nowrap;
+          display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+          border: 1px solid var(--pb-line);
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.14), transparent 45%),
+            linear-gradient(180deg, var(--pb-a), var(--pb-b));
+          box-shadow: 0 0 18px var(--pb-glow), 0 6px 16px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.22);
+          clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+          transition: filter 0.15s, transform 0.1s;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+        }
+        .phase-btn:hover  { filter: brightness(1.14); }
+        .phase-btn:active { transform: scale(0.96); }
+        .phase-btn::after {
+          content: ""; position: absolute; inset: 0; pointer-events: none;
+          background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,0.22) 48%, transparent 60%);
+          background-size: 230% 100%;
+          animation: hud-banner-sheen 2.8s ease-in-out infinite;
+        }
+        .phase-btn--draw   { --pb-a:#1d7a3f; --pb-b:#0c4423; --pb-line:rgba(130,230,160,0.6); --pb-glow:rgba(46,204,113,0.4); }
+        .phase-btn--battle { --pb-a:#1f4fb0; --pb-b:#122a66; --pb-line:rgba(130,175,255,0.6); --pb-glow:rgba(72,132,246,0.4); }
+        .phase-btn--end    { --pb-a:#b07414; --pb-b:#6e4208; --pb-line:rgba(255,205,110,0.6); --pb-glow:rgba(245,166,35,0.4); }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hud-turnbanner-edge, .phase-btn::after, .lp-avatar::before,
+          .hud-chip--alert, .lp-bar--low > i { animation: none; }
+        }
       `}</style>
 
       {/* ── LP OPONENTE — fixed, canto superior esquerdo da arena (círculo verde cima) ── */}
-      {gameStarted && (
+      {gameStarted && (() => {
+        const maxLp = Math.max(50, roguelikeConfig?.startingLP ?? 0, propStartingLP ?? 0, enemyField.life)
+        const pct = Math.max(0, Math.min(100, (enemyField.life / maxLp) * 100))
+        const barA = pct > 50 ? "#e8756a" : pct > 25 ? "#e5a44f" : "#ef4444"
+        const barB = pct > 50 ? "#c94a3e" : pct > 25 ? "#d97706" : "#b91c1c"
+        return (
         <div className="fixed z-30" style={{ top: "8px", left: `calc(clamp(130px,16vw,210px) + 14px)` }}>
-          <div className={`relative flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm ${
-            enemyLpAnim === "damage" ? "lp-box-damage border-red-400/70" :
-            enemyLpAnim === "heal"   ? "lp-box-heal border-green-400/70" : "border-red-500/40"
-          }`} style={{background:"rgba(0,0,0,0.80)"}}>
+          <div className={`lp-plate lp-plate--foe ${
+            enemyLpAnim === "damage" ? "lp-box-damage" :
+            enemyLpAnim === "heal"   ? "lp-box-heal" : ""
+          }`}>
             {/* Delta flutuante */}
             {enemyLpAnim && (
               <span key={`ed-${enemyField.life}`} className="lp-delta absolute -top-1 right-2 font-black text-sm z-10" style={{
@@ -12711,28 +12917,42 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 {enemyLpAnim === "damage" ? `${enemyLpDelta}` : `+${enemyLpDelta}`}
               </span>
             )}
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center flex-shrink-0">
-              <Swords className="w-5 h-5 text-white" />
+            <div className="lp-avatar">
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-red-700 to-red-950 flex items-center justify-center">
+                <Swords className="w-5 h-5 text-red-200" />
+              </div>
             </div>
             <div className="leading-none">
-              <span className="text-[11px] text-slate-400 block mb-1">Oponente</span>
+              <span className="lp-name">Oponente</span>
               <span key={`elp-${enemyField.life}`} className={
-                enemyLpAnim === "damage" ? "lp-num-damage text-2xl font-black" :
-                enemyLpAnim === "heal"   ? "lp-num-heal text-2xl font-black" :
-                "text-2xl font-black text-red-400"
-              }>LP: {enemyField.life}</span>
+                enemyLpAnim === "damage" ? "lp-num-damage lp-value" :
+                enemyLpAnim === "heal"   ? "lp-num-heal lp-value" :
+                "lp-value"
+              } style={{color:"#f3a9a0"}}>
+                {enemyField.life}<span className="lp-value-max">/ {maxLp} LP</span>
+              </span>
+              <div className={`lp-bar ${pct <= 25 ? "lp-bar--low" : ""}`}
+                style={{"--bar-a": barA, "--bar-b": barB} as React.CSSProperties}>
+                <i style={{width: `${pct}%`}} />
+              </div>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* ── LP JOGADOR — fixed, canto inferior direito da arena (círculo verde baixo) ── */}
-      {gameStarted && (
+      {gameStarted && (() => {
+        const maxLp = Math.max(50, roguelikeConfig?.startingLP ?? 0, propStartingLP ?? 0, playerField.life)
+        const pct = Math.max(0, Math.min(100, (playerField.life / maxLp) * 100))
+        const barA = pct > 50 ? "#6aa3e8" : pct > 25 ? "#e5a44f" : "#ef4444"
+        const barB = pct > 50 ? "#3b82f6" : pct > 25 ? "#d97706" : "#b91c1c"
+        return (
         <div className="fixed z-30" style={{ bottom: "10px", right: `calc(clamp(140px,17vw,230px) + 16px)` }}>
-          <div className={`relative flex items-center gap-3 rounded-2xl px-4 py-2.5 border-2 backdrop-blur-sm ${
-            playerLpAnim === "damage" ? "lp-box-damage border-red-400/70" :
-            playerLpAnim === "heal"   ? "lp-box-heal border-green-400/70" : "border-blue-500/40"
-          }`} style={{background:"rgba(0,0,0,0.80)"}}>
+          <div className={`lp-plate lp-plate--ally ${
+            playerLpAnim === "damage" ? "lp-box-damage" :
+            playerLpAnim === "heal"   ? "lp-box-heal" : ""
+          }`}>
             {/* Delta flutuante */}
             {playerLpAnim && (
               <span key={`pd-${playerField.life}`} className="lp-delta absolute -top-1 right-2 font-black text-sm z-10" style={{
@@ -12741,24 +12961,33 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 {playerLpAnim === "damage" ? `${playerLpDelta}` : `+${playerLpDelta}`}
               </span>
             )}
-            {playerAvatarUrl ? (
-              <img src={playerAvatarUrl} alt="avatar" className="w-11 h-11 rounded-full object-cover border-2 border-blue-400 flex-shrink-0" />
-            ) : (
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-black text-sm">P1</span>
-              </div>
-            )}
+            <div className="lp-avatar">
+              {playerAvatarUrl ? (
+                <img src={playerAvatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-700 to-blue-950 flex items-center justify-center">
+                  <span className="text-blue-200 font-black text-sm">P1</span>
+                </div>
+              )}
+            </div>
             <div className="leading-none">
-              <span className="text-[11px] text-slate-400 block mb-1">Você</span>
+              <span className="lp-name">Você</span>
               <span key={`plp-${playerField.life}`} className={
-                playerLpAnim === "damage" ? "lp-num-damage text-2xl font-black" :
-                playerLpAnim === "heal"   ? "lp-num-heal text-2xl font-black" :
-                "text-2xl font-black text-blue-400"
-              }>LP: {playerField.life}</span>
+                playerLpAnim === "damage" ? "lp-num-damage lp-value" :
+                playerLpAnim === "heal"   ? "lp-num-heal lp-value" :
+                "lp-value"
+              } style={{color:"#a9c8f3"}}>
+                {playerField.life}<span className="lp-value-max">/ {maxLp} LP</span>
+              </span>
+              <div className={`lp-bar ${pct <= 25 ? "lp-bar--low" : ""}`}
+                style={{"--bar-a": barA, "--bar-b": barB} as React.CSSProperties}>
+                <i style={{width: `${pct}%`}} />
+              </div>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* ── PHASE ACTION BUTTON — fixed, lado direito (entre arena e LOG) ── */}
       {isPlayerTurn && gameStarted && !gameResult && (
@@ -12771,42 +13000,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }}
         >
           {phase === "draw" && (
-            <button
-              onClick={advancePhase}
-              className="w-full font-black text-xs text-white rounded-xl border-2 border-green-400/70 transition-all active:scale-95 hover:brightness-110 whitespace-nowrap"
-              style={{
-                background: "linear-gradient(135deg,#15803d,#22c55e,#16a34a)",
-                boxShadow: "0 0 16px rgba(34,197,94,0.50), 0 4px 14px rgba(0,0,0,0.7)",
-                padding: "9px 10px",
-              }}
-            >
-              🃏 {t("drawCard")}
+            <button onClick={advancePhase} className="phase-btn phase-btn--draw">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="2" y="1.5" width="9" height="12" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
+                <path d="M13.5 4.5v9a1.2 1.2 0 0 1-1.2 1.2H5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+              <span className="relative">{t("drawCard")}</span>
             </button>
           )}
           {phase === "main" && (
-            <button
-              onClick={advancePhase}
-              className="w-full font-black text-xs text-white rounded-xl border-2 border-blue-400/70 transition-all active:scale-95 hover:brightness-110 whitespace-nowrap"
-              style={{
-                background: "linear-gradient(135deg,#1e40af,#3b82f6,#1d4ed8)",
-                boxShadow: "0 0 16px rgba(59,130,246,0.50), 0 4px 14px rgba(0,0,0,0.7)",
-                padding: "9px 10px",
-              }}
-            >
-              ⚔️ {t("toBattle")}
+            <button onClick={advancePhase} className="phase-btn phase-btn--battle">
+              <Swords className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="relative">{t("toBattle")}</span>
             </button>
           )}
           {phase === "battle" && (
-            <button
-              onClick={endTurn}
-              className="w-full font-black text-xs text-white rounded-xl border-2 border-amber-400/70 transition-all active:scale-95 hover:brightness-110 whitespace-nowrap"
-              style={{
-                background: "linear-gradient(135deg,#b45309,#f59e0b,#d97706)",
-                boxShadow: "0 0 16px rgba(245,158,11,0.50), 0 4px 14px rgba(0,0,0,0.7)",
-                padding: "9px 10px",
-              }}
-            >
-              ✅ {t("endTurn")}
+            <button onClick={endTurn} className="phase-btn phase-btn--end">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M2.5 8.5l3.5 3.5 7.5-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="relative">{t("endTurn")}</span>
             </button>
           )}
         </div>
