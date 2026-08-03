@@ -66,7 +66,15 @@ function validProgress(progress: unknown): boolean {
 export async function POST(request: Request) {
   let body: Record<string, unknown>
   try {
-    body = await request.json()
+    // sendBeacon envia como text/plain; fetch normal envia como application/json
+    const contentType = request.headers.get("content-type") ?? ""
+    if (contentType.includes("application/json")) {
+      body = await request.json()
+    } else {
+      // text/plain ou blob — tenta parsear o texto como JSON de qualquer forma
+      const text = await request.text()
+      body = JSON.parse(text)
+    }
   } catch {
     return NextResponse.json({ success: false, error: "Requisicao invalida" }, { status: 400 })
   }

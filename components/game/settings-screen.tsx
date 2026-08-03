@@ -481,12 +481,18 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
                     )}
 
                     <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Cloud className="w-4 h-4 text-emerald-400" />
-                        <span className="text-slate-400 text-sm">Ultimo salvamento:</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="w-4 h-4 text-emerald-400" />
+                          <span className="text-slate-400 text-sm">Ultimo salvamento:</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-emerald-400 text-xs">Auto</span>
+                        </div>
                       </div>
                       <p className="text-white font-medium">{formatLastSaved(accountAuth.lastSaved)}</p>
-                      <p className="text-xs text-slate-500 mt-1">Salvamento automatico a cada 30 segundos</p>
+                      <p className="text-xs text-slate-500 mt-1">Salva automaticamente ao fechar a aba e a cada 60 segundos quando ha mudancas</p>
                     </div>
 
                     <div className="flex gap-3">

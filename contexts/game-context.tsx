@@ -1792,47 +1792,80 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 2. If logged in with a unique code, try loading from Supabase cloud first
+      // 2. If logged in, try loading progress from cloud using the session token
       let cloudLoaded = false
-      if (auth?.isLoggedIn && auth?.uniqueCode) {
-        try {
-          const supabase = createClient()
-          const { data: profileData, error: profileError } = await supabase
-            .from("player_profiles")
-            .select("*")
-            .eq("user_code", auth.uniqueCode)
-            .single()
+      if (auth?.isLoggedIn) {
+        const savedToken = localStorage.getItem("gear-perks-session-token")
+        if (savedToken) {
+          try {
+            const res = await fetch("/api/account", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "load", token: savedToken }),
+            })
+            const result = await res.json()
 
-          if (profileData && !profileError) {
-            // Load all data from cloud
-            setCoins(profileData.coins ?? 999)
-            setCollection(profileData.collection ?? [])
-            setDecks(profileData.decks ?? [])
-            setMatchHistory(profileData.duel_history ?? [])
+            if (result.success && result.progress) {
+              // Apply progress payload inline (applyProgressPayload declared later in this component)
+              const p = result.progress
+              if (p && typeof p === "object") {
+                if (typeof p.coins === "number") setCoins(p.coins)
+                if (typeof p.gearCoins === "number") setGearCoins(p.gearCoins)
+                if (Array.isArray(p.collection)) setCollection(p.collection)
+                if (Array.isArray(p.decks)) setDecks(p.decks)
+                if (Array.isArray(p.matchHistory)) setMatchHistory(p.matchHistory)
+                if (Array.isArray(p.giftBoxes)) setGiftBoxes(p.giftBoxes)
+                if (Array.isArray(p.friends)) {
+                  const hasGuest = p.friends.some((f: Friend) => f.id === "GUEST-001")
+                  setFriends(hasGuest ? p.friends : [DEFAULT_GUEST_FRIEND, ...p.friends])
+                }
+                if (Array.isArray(p.friendRequests)) setFriendRequests(p.friendRequests)
+                if (typeof p.friendPoints === "number") setFriendPoints(p.friendPoints)
+                if (typeof p.spendableFP === "number") setSpendableFP(p.spendableFP)
+                if (p.playerProfile && typeof p.playerProfile === "object") setPlayerProfile(p.playerProfile)
+                if (typeof p.playerId === "string" && p.playerId) {
+                  setPlayerId(p.playerId)
+                  setLS("playerid", p.playerId)
+                  localStorage.setItem("gear-perks-player-id", p.playerId)
+                }
+                if (Array.isArray(p.ownedPlaymatIds)) {
+                  setOwnedPlaymats(ALL_PLAYMATS.filter((pm) => p.ownedPlaymatIds.includes(pm.id)))
+                  localStorage.setItem("gearperks_owned_playmats", JSON.stringify(p.ownedPlaymatIds))
+                }
+                if (typeof p.globalPlaymatId === "string" && p.globalPlaymatId) {
+                  setGlobalPlaymatId(p.globalPlaymatId)
+                  localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
+                }
+                if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
+                // Sync to localStorage for offline access
+                if (typeof p.coins === "number") setLS("coins", p.coins.toString())
+                if (typeof p.gearCoins === "number") setLS("gearcoins", p.gearCoins.toString())
+                if (Array.isArray(p.collection)) setLS("collection", JSON.stringify(p.collection))
+                if (Array.isArray(p.decks)) setLS("decks", JSON.stringify(p.decks))
+                if (Array.isArray(p.matchHistory)) setLS("history", JSON.stringify(p.matchHistory))
+                if (p.playerProfile) setLS("profile", JSON.stringify(p.playerProfile))
+              }
 
-            const loadedProfile: PlayerProfile = {
-              id: profileData.id,
-              name: profileData.player_name || "Jogador",
-              title: profileData.player_title || "Iniciante",
-              level: 1,
-              avatarUrl: profileData.avatar_id,
-              showcaseCards: [],
-              hasCompletedSetup: true,
+              // Update auth with any server-side corrections (e.g. email or code)
+              const updatedAuth: AccountAuth = {
+                isLoggedIn: true,
+                email: result.email ?? auth.email,
+                uniqueCode: result.code ?? auth.uniqueCode,
+                lastSaved: result.lastSaved ?? auth.lastSaved,
+              }
+              setAccountAuth(updatedAuth)
+              localStorage.setItem("gear-perks-auth", JSON.stringify(updatedAuth))
+
+              cloudLoaded = true
+            } else if (result.error === "Sessao expirada. Entre novamente.") {
+              // Token is invalid — clear auth so user is prompted to log in again
+              localStorage.removeItem("gear-perks-session-token")
+              localStorage.removeItem("gear-perks-auth")
+              setAccountAuth({ isLoggedIn: false, email: null, uniqueCode: null, lastSaved: null })
             }
-            setPlayerProfile(loadedProfile)
-            if (profileData.player_id) setPlayerId(profileData.player_id)
-
-            // Sync cloud data to localStorage for offline access
-            setLS("coins", (profileData.coins ?? 999).toString())
-            setLS("collection", JSON.stringify(profileData.collection ?? []))
-            setLS("decks", JSON.stringify(profileData.decks ?? []))
-            setLS("history", JSON.stringify(profileData.duel_history ?? []))
-            setLS("profile", JSON.stringify(loadedProfile))
-
-            cloudLoaded = true
+          } catch (err) {
+            console.error("Failed to load from cloud, falling back to localStorage:", err)
           }
-        } catch (err) {
-          console.error("Failed to load from cloud, falling back to localStorage:", err)
         }
       }
 
@@ -2490,10 +2523,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // For simplicity here, we just clear the auth token.
     // In a more robust system, you might have a way to specifically clear or isolate account data.
 
-    // Clear the auth token
+    // Clear auth tokens
     localStorage.removeItem("gear-perks-auth")
-    // Optionally clear other account-specific data if they exist and are tied to login state
-    // localStorage.removeItem("gear-perks-accounts"); // Be careful, this clears ALL accounts
+    localStorage.removeItem("gear-perks-session-token")
 
     // Reset game state to defaults
     setCoins(999)
@@ -2535,55 +2567,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const saveProgressManually = async () => {
-    if (!accountAuth.isLoggedIn) return
-
-    const token = localStorage.getItem(SESSION_TOKEN_KEY)
-    if (!token) {
-      console.error("Sem token de sessao para salvar na nuvem")
-      return
-    }
-
-    const result = await accountApi({
-      action: "save",
-      token,
-      progress: buildProgressPayload(),
-    })
-
-    if (!result.success) {
-      console.error("Erro ao salvar na nuvem:", result.error)
-      return
-    }
-
-    const now = result.lastSaved || new Date().toISOString()
-
-    // Also save to localStorage for offline access (both key formats)
-    setLS("coins", coins.toString())
-    setLS("collection", JSON.stringify(collection))
-    setLS("decks", JSON.stringify(decks))
-    setLS("history", JSON.stringify(matchHistory))
-    setLS("profile", JSON.stringify(playerProfile))
-
-    setAccountAuth((prev) => {
-      const updated = { ...prev, lastSaved: now }
-      localStorage.setItem("gear-perks-auth", JSON.stringify(updated))
-      return updated
-    })
-  }
-
-  // Autosave every 30 seconds when logged in
-  useEffect(() => {
-    if (!accountAuth.isLoggedIn) return
-
-    const autoSaveInterval = setInterval(() => {
-      saveProgressManually()
-    }, 30000) // 30 seconds
-
-    // Cleanup interval on component unmount or when isLoggedIn changes to false
-    return () => clearInterval(autoSaveInterval)
-  }, [
-    accountAuth.isLoggedIn,
+  // Ref sempre atualizada com os valores mais recentes — evita closure stale no interval
+  const progressRef = useRef({
     coins,
+    gearCoins,
     collection,
     decks,
     matchHistory,
@@ -2594,9 +2581,143 @@ export function GameProvider({ children }: { children: ReactNode }) {
     spendableFP,
     playerProfile,
     playerId,
-    ownedPlaymats, // Include playmat states in dependency array
+    ownedPlaymats,
     globalPlaymatId,
+    redeemedCodes,
+    accountAuth,
+  })
+  useEffect(() => {
+    progressRef.current = {
+      coins,
+      gearCoins,
+      collection,
+      decks,
+      matchHistory,
+      giftBoxes,
+      friends,
+      friendRequests,
+      friendPoints,
+      spendableFP,
+      playerProfile,
+      playerId,
+      ownedPlaymats,
+      globalPlaymatId,
+      redeemedCodes,
+      accountAuth,
+    }
+  })
+
+  // Ref para controlar se ja tem um save em andamento (evita saves paralelos)
+  const isSavingRef = useRef(false)
+  // Ref para marcar que houve mudanca desde o ultimo save
+  const hasPendingSaveRef = useRef(false)
+
+  // Marca que houve mudanca sempre que qualquer estado de progresso mudar
+  useEffect(() => {
+    if (accountAuth.isLoggedIn) {
+      hasPendingSaveRef.current = true
+    }
+  }, [
+    coins,
+    gearCoins,
+    collection,
+    decks,
+    matchHistory,
+    giftBoxes,
+    friends,
+    friendRequests,
+    friendPoints,
+    spendableFP,
+    playerProfile,
+    playerId,
+    ownedPlaymats,
+    globalPlaymatId,
+    redeemedCodes,
+    accountAuth.isLoggedIn,
   ])
+
+  const saveProgressManually = async () => {
+    const { accountAuth: auth } = progressRef.current
+    if (!auth.isLoggedIn) return
+    if (isSavingRef.current) return
+
+    const token = localStorage.getItem(SESSION_TOKEN_KEY)
+    if (!token) return
+
+    isSavingRef.current = true
+    hasPendingSaveRef.current = false
+
+    const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
+    const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+
+    try {
+      const result = await accountApi({
+        action: "save",
+        token,
+        progress: payload,
+      })
+
+      if (!result.success) {
+        hasPendingSaveRef.current = true // reagenda para proxima tentativa
+        return
+      }
+
+      const now = result.lastSaved || new Date().toISOString()
+
+      // Sincroniza localStorage
+      const cur = progressRef.current
+      setLS("coins", cur.coins.toString())
+      setLS("gearcoins", cur.gearCoins.toString())
+      setLS("collection", JSON.stringify(cur.collection))
+      setLS("decks", JSON.stringify(cur.decks))
+      setLS("history", JSON.stringify(cur.matchHistory))
+      setLS("profile", JSON.stringify(cur.playerProfile))
+
+      setAccountAuth((prev) => {
+        const updated = { ...prev, lastSaved: now }
+        localStorage.setItem("gear-perks-auth", JSON.stringify(updated))
+        return updated
+      })
+    } finally {
+      isSavingRef.current = false
+    }
+  }
+
+  // Autosave: interval fixo de 60s — so salva se houve mudanca real desde o ultimo save
+  useEffect(() => {
+    if (!accountAuth.isLoggedIn) return
+
+    const interval = setInterval(() => {
+      if (hasPendingSaveRef.current) {
+        saveProgressManually()
+      }
+    }, 60_000)
+
+    return () => clearInterval(interval)
+  }, [accountAuth.isLoggedIn])
+
+  // Salva imediatamente ao fechar/sair da aba se houver mudancas pendentes
+  useEffect(() => {
+    if (!accountAuth.isLoggedIn) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasPendingSaveRef.current) {
+        const token = localStorage.getItem(SESSION_TOKEN_KEY)
+        if (!token) return
+        const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
+        const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+        // sendBeacon é fire-and-forget: funciona mesmo enquanto a aba esta fechando
+        navigator.sendBeacon(
+          "/api/account",
+          JSON.stringify({ action: "save", token, progress: payload })
+        )
+        hasPendingSaveRef.current = false
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [accountAuth.isLoggedIn])
 
   const setGlobalPlaymat = (playmatId: string | null) => {
     setGlobalPlaymatId(playmatId)
@@ -2761,33 +2882,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_checkin")
       localStorage.removeItem("gpgame_last_checkin")
 
-      // If logged in with Supabase, also clear cloud data
-      if (accountAuth.isLoggedIn && accountAuth.uniqueCode) {
-        try {
-          const { createClient } = await import("@/lib/supabase/client")
-          const supabase = createClient()
-
-          // Update the player profile in the cloud with reset data
-          await supabase
-            .from("player_profiles")
-            .update({
-              coins: 999,
-              collection: [],
-              decks: [],
-              duel_history: [],
-              total_wins: 0,
-              total_losses: 0,
-              player_name: "Jogador",
-              player_title: "Iniciante",
-              avatar_id: null,
-              gacha_pity: 0,
-              updated_at: new Date().toISOString(),
+      // If logged in, also wipe cloud progress via the account API
+      if (accountAuth.isLoggedIn) {
+        const token = localStorage.getItem("gear-perks-session-token")
+        if (token) {
+          try {
+            await fetch("/api/account", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "save", token, progress: null }),
             })
-            .eq("user_id", playerId)
-        } catch (err) {
-          console.error("Error clearing cloud data:", err)
+          } catch (err) {
+            console.error("Error clearing cloud data:", err)
+          }
         }
+        localStorage.removeItem("gear-perks-session-token")
+        localStorage.removeItem("gear-perks-auth")
       }
+      setAccountAuth({ isLoggedIn: false, email: null, uniqueCode: null, lastSaved: null })
 
       return { success: true }
     } catch (err) {
