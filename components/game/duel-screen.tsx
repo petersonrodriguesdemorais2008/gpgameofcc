@@ -6204,7 +6204,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
 
     playSound("cardSummon", 0.6)
-    logEvent("play", `Você equipou ${cardToPlace.name}`, {
+    logEvent("play", `Voc�� equipou ${cardToPlace.name}`, {
       image: getActiveSkin(cardToPlace.image || ""),
       name: cardToPlace.name,
       ability: (cardToPlace as any).ability,
@@ -10676,17 +10676,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       </div>
 
       {/* ── FIXED LEFT PANEL: Card Detail ── */}
-      <div className="gp-panel fixed left-0 z-30 flex flex-col"
-        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)",borderRight:"1px solid var(--gp-line)"}}>
-        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5">
+      <div className="gp-panel gp-panel--left fixed left-0 z-30 flex flex-col"
+        style={{top:"56px",bottom:"0",width:"clamp(130px,16vw,210px)"}}>
+        <div className="gp-panel-head flex-shrink-0 px-3.5 pt-3 pb-2.5">
+          <span className="gp-head-diamond" aria-hidden="true" />
           <p className="gp-panel-title">Detalhe</p>
+          <span className="gp-head-rule" aria-hidden="true" />
         </div>
         {(inspectedCard || logCardDetail) ? (() => {
           const card: any = inspectedCard || logCardDetail
           return (
             <div key={card.name} className="panel-detail-in gp-scroll flex-1 overflow-y-auto px-3.5 pb-4 space-y-3">
-              <div className="relative w-full overflow-hidden rounded-sm" style={{aspectRatio:"3/4",background:"rgba(0,0,0,0.35)"}}>
-                <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
+              <div className="gp-card-frame relative w-full" style={{aspectRatio:"3/4"}}>
+                <div className="gp-card-frame-inner absolute overflow-hidden">
+                  <Image src={getActiveSkin(card.image||"")||"/placeholder.svg"} alt={card.name||""} fill quality={100} sizes="210px" className="object-contain" />
+                  <span className="gp-card-scan" aria-hidden="true" />
+                </div>
               </div>
 
               <div className="space-y-2.5">
@@ -10740,7 +10745,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 )}
 
                 {card.attack && (
-                  <section className="gp-block">
+                  <section className="gp-block gp-block--attack">
                     <h4 className="gp-block-label">Ataque</h4>
                     <p className="gp-block-name">{card.attack}</p>
                     {card.attackDescription && <p className="gp-block-body">{card.attackDescription}</p>}
@@ -10757,16 +10762,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       </div>
 
       {/* ── FIXED RIGHT PANEL: Duel Log ── */}
-      <div className="gp-panel fixed right-0 z-30 flex flex-col"
+      <div className="gp-panel gp-panel--right fixed right-0 z-30 flex flex-col"
         style={{
           top:"56px", bottom:"0",
           width: isLogOpen ? "clamp(140px,17vw,230px)" : "34px",
-          borderLeft:"1px solid var(--gp-line)",
           transition:"width 0.28s cubic-bezier(0.4,0,0.2,1)",
           overflow:"hidden",
         }}>
-        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5 flex items-baseline gap-2"
+        <div className="flex-shrink-0 px-3.5 pt-3 pb-2.5 flex items-center gap-2"
           style={{minWidth: isLogOpen ? 0 : 34, paddingLeft: isLogOpen ? undefined : 8, paddingRight: isLogOpen ? undefined : 8}}>
+          {isLogOpen && <span className="gp-head-diamond flex-shrink-0" aria-hidden="true" />}
           {isLogOpen && <p className="gp-panel-title whitespace-nowrap">Log</p>}
           {isLogOpen && (
             <span className="gp-turn-tag whitespace-nowrap">
@@ -10789,10 +10794,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             ) : duelLog.map(entry => {
               const typeMeta: Record<string, { label: string; color: string }> = {
                 draw:   { label: "Compra", color: "var(--gp-muted)" },
-                play:   { label: entry.isPlayerTurn ? "Jogada" : "Jogada do Bot", color: "var(--gp-ink)" },
+                play:   { label: entry.isPlayerTurn ? "Jogada" : "Jogada do Bot", color: entry.isPlayerTurn ? "var(--gp-cyan)" : "#e0857a" },
                 attack: { label: "Ataque", color: "var(--gp-accent)" },
-                lp:     { label: "Vida",   color: "#c9736b" },
-                effect: { label: "Efeito", color: "#9f95bd" },
+                lp:     { label: "Vida",   color: "#e0685e" },
+                effect: { label: "Efeito", color: "#b49ae0" },
               }
               const meta = typeMeta[entry.type] || { label: "Registro", color: "var(--gp-muted)" }
 
@@ -10805,7 +10810,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }
 
               return (
-                <div key={entry.id} className="log-entry-in gp-log-row">
+                <div key={entry.id} className="log-entry-in gp-log-row"
+                  style={{"--row-c": meta.color} as React.CSSProperties}>
                   {entry.cardImage && (
                     <button className="gp-log-thumb"
                       title={entry.cardName || "Ver detalhe"}
@@ -11197,44 +11203,99 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           .trap-dim-overlay { animation: none; opacity: 0; }
         }
 
-        /* ══ PAINÉIS LATERAIS: Detalhe & Log ══
-           Direção: editorial escuro e sóbrio. Papel de fundo sólido, hierarquia
-           por tipografia e espaço em branco — sem neon, sem molduras luminosas,
-           sem uppercase espaçado em blocos de texto. */
+        /* ══ PAINÉIS LATERAIS: Detalhe & Log — HUD hi-tech épico ══
+           Direção: console de batalha. Fundo profundo com scanlines sutis,
+           aresta de energia voltada pro campo, cantoneiras de mira no card,
+           varredura holográfica e trilhos de energia coloridos no log.
+           Tudo em camadas leves — brilho contido, zero poluição. */
         .gp-panel {
-          --gp-paper: #101215;
-          --gp-line: rgba(255,255,255,0.08);
-          --gp-line-soft: rgba(255,255,255,0.05);
-          --gp-ink: #e6e3dd;
-          --gp-muted: #8b8781;
-          --gp-faint: #63615d;
-          --gp-accent: #c2a06a;
-          background: var(--gp-paper);
+          --gp-line: rgba(216,180,120,0.20);
+          --gp-line-soft: rgba(255,255,255,0.06);
+          --gp-ink: #eceae4;
+          --gp-muted: #9a968e;
+          --gp-faint: #6b6862;
+          --gp-accent: #d8b478;
+          --gp-cyan: #7ad4e0;
+          background:
+            linear-gradient(180deg, rgba(216,180,120,0.05), transparent 140px),
+            repeating-linear-gradient(0deg, rgba(255,255,255,0.013) 0 1px, transparent 1px 3px),
+            linear-gradient(180deg, #0d1017, #0a0c11);
           color: var(--gp-ink);
+          box-shadow: inset 0 0 46px rgba(0,0,0,0.5);
         }
+        .gp-panel--left  { border-right: 1px solid var(--gp-line); }
+        .gp-panel--right { border-left: 1px solid var(--gp-line); }
+        /* Aresta de energia voltada pro campo de batalha */
+        .gp-panel::before {
+          content: ""; position: absolute; top: 0; bottom: 0; width: 2px;
+          background: linear-gradient(180deg,
+            transparent,
+            rgba(216,180,120,0.55) 16%,
+            rgba(216,180,120,0.14) 50%,
+            rgba(122,212,224,0.35) 84%,
+            transparent);
+          pointer-events: none;
+        }
+        .gp-panel--left::before  { right: -1px; }
+        .gp-panel--right::before { left: -1px; }
 
-        /* Título do painel: serif, discreto, sem caixa alta espaçada */
+        /* ── Cabeçalho: losango pulsante + título + régua com varredura ── */
+        .gp-panel-head { display: flex; align-items: center; gap: 8px; }
+        .gp-head-diamond {
+          width: 6px; height: 6px; flex-shrink: 0;
+          transform: rotate(45deg);
+          background: var(--gp-accent);
+          box-shadow: 0 0 8px rgba(216,180,120,0.7);
+          animation: gp-diamond-pulse 2.4s ease-in-out infinite;
+        }
+        @keyframes gp-diamond-pulse {
+          0%, 100% { box-shadow: 0 0 4px rgba(216,180,120,0.4); opacity: 0.85; }
+          50%      { box-shadow: 0 0 11px rgba(216,180,120,0.9); opacity: 1; }
+        }
+        .gp-head-rule {
+          flex: 1; height: 1px; position: relative; overflow: hidden;
+          background: linear-gradient(90deg, rgba(216,180,120,0.45), rgba(216,180,120,0.05));
+        }
+        .gp-head-rule::after {
+          content: ""; position: absolute; top: -1px; left: -45%;
+          width: 45%; height: 3px;
+          background: linear-gradient(90deg, transparent, rgba(255,240,210,0.75), transparent);
+          animation: gp-rule-sweep 3.4s ease-in-out infinite;
+        }
+        @keyframes gp-rule-sweep {
+          0%, 55% { left: -45%; }
+          85%, 100% { left: 105%; }
+        }
         .gp-panel-title {
-          font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: 0.01em;
-          color: var(--gp-ink);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--gp-accent);
+          text-shadow: 0 0 14px rgba(216,180,120,0.35);
         }
         .gp-turn-tag {
-          font-size: 10px;
-          color: var(--gp-faint);
-          letter-spacing: 0.01em;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--gp-muted);
         }
         .gp-collapse {
-          width: 18px; height: 18px;
+          width: 20px; height: 20px;
           display: flex; align-items: center; justify-content: center;
           font-size: 13px; line-height: 1;
-          color: var(--gp-faint);
-          background: none; border: 0;
-          transition: color 0.15s;
+          color: var(--gp-muted);
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 3px;
+          transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
         }
-        .gp-collapse:hover { color: var(--gp-ink); }
+        .gp-collapse:hover {
+          color: var(--gp-accent);
+          border-color: rgba(216,180,120,0.55);
+          box-shadow: 0 0 9px rgba(216,180,120,0.25);
+        }
 
         .gp-empty {
           font-size: 11px;
@@ -11243,49 +11304,105 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           text-align: center;
         }
 
-        /* Scroll discreto, sem setas (Firefox + WebKit) */
-        .gp-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+        /* Scroll fino com brilho âmbar */
+        .gp-scroll { scrollbar-width: thin; scrollbar-color: rgba(216,180,120,0.25) transparent; }
         .gp-scroll::-webkit-scrollbar { width: 6px; }
         .gp-scroll::-webkit-scrollbar-track { background: transparent; }
-        .gp-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+        .gp-scroll::-webkit-scrollbar-thumb { background: rgba(216,180,120,0.25); border-radius: 999px; }
+        .gp-scroll::-webkit-scrollbar-thumb:hover { background: rgba(216,180,120,0.45); }
         .gp-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
-        /* ── Detalhe ── */
+        /* ── Detalhe: moldura de mira com cantoneiras + varredura holográfica ── */
+        .gp-card-frame { padding: 6px; }
+        .gp-card-frame::before {
+          content: ""; position: absolute; inset: 0; pointer-events: none;
+          --br: rgba(216,180,120,0.6);
+          background:
+            linear-gradient(var(--br), var(--br)) top left    / 14px 1.5px,
+            linear-gradient(var(--br), var(--br)) top left    / 1.5px 14px,
+            linear-gradient(var(--br), var(--br)) top right   / 14px 1.5px,
+            linear-gradient(var(--br), var(--br)) top right   / 1.5px 14px,
+            linear-gradient(var(--br), var(--br)) bottom left / 14px 1.5px,
+            linear-gradient(var(--br), var(--br)) bottom left / 1.5px 14px,
+            linear-gradient(var(--br), var(--br)) bottom right/ 14px 1.5px,
+            linear-gradient(var(--br), var(--br)) bottom right/ 1.5px 14px;
+          background-repeat: no-repeat;
+          filter: drop-shadow(0 0 4px rgba(216,180,120,0.45));
+          animation: gp-frame-in 0.5s cubic-bezier(0.34,1.4,0.64,1) both;
+        }
+        @keyframes gp-frame-in {
+          0%   { opacity: 0; transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        .gp-card-frame-inner {
+          inset: 6px;
+          border-radius: 3px;
+          background: rgba(0,0,0,0.4);
+          box-shadow: 0 0 20px rgba(216,180,120,0.08), inset 0 0 24px rgba(0,0,0,0.55);
+        }
+        /* Varredura de scan: passa uma vez quando a carta é inspecionada */
+        .gp-card-scan {
+          position: absolute; inset: 0; pointer-events: none;
+          background: linear-gradient(115deg,
+            transparent 32%,
+            rgba(255,255,255,0.13) 47%,
+            rgba(122,212,224,0.10) 53%,
+            transparent 68%);
+          transform: translateX(-130%);
+          animation: gp-card-scan 1s cubic-bezier(0.4,0,0.2,1) 0.15s both;
+        }
+        @keyframes gp-card-scan { to { transform: translateX(130%); } }
+
         .gp-card-name {
-          font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 15px;
-          font-weight: 600;
-          line-height: 1.25;
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          line-height: 1.3;
           text-wrap: balance;
           color: var(--gp-ink);
+          text-shadow: 0 0 18px rgba(216,180,120,0.18);
         }
-        /* Metadados como lista de definição, não como pastilhas coloridas */
+        /* Metadados: leitura de console, chave técnica + valor forte */
         .gp-meta { display: flex; flex-direction: column; }
         .gp-meta-item {
           display: flex; align-items: baseline; justify-content: space-between;
           gap: 8px;
-          padding: 4px 0;
+          padding: 5px 0;
           border-bottom: 1px solid var(--gp-line-soft);
         }
         .gp-meta-item:last-child { border-bottom: 0; }
         .gp-meta-key {
-          font-size: 10px;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
           color: var(--gp-faint);
-          letter-spacing: 0.02em;
         }
         .gp-meta-val {
-          font-size: 11px;
-          font-weight: 600;
+          font-size: 11.5px;
+          font-weight: 700;
           text-align: right;
           color: var(--gp-ink);
         }
-        /* Blocos de texto: régua vertical em vez de caixa com borda */
-        .gp-block { padding-left: 9px; border-left: 1px solid var(--gp-line); }
+        /* Blocos: trilho de energia vertical com brilho */
+        .gp-block { position: relative; padding: 6px 0 6px 11px; }
         .gp-block + .gp-block { margin-top: 10px; }
+        .gp-block::before {
+          content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 2px;
+          border-radius: 2px;
+          background: linear-gradient(180deg, var(--gp-accent), rgba(216,180,120,0.06));
+          box-shadow: 0 0 7px rgba(216,180,120,0.35);
+        }
+        .gp-block--attack::before {
+          background: linear-gradient(180deg, var(--gp-cyan), rgba(122,212,224,0.06));
+          box-shadow: 0 0 7px rgba(122,212,224,0.35);
+        }
+        .gp-block--attack .gp-block-label { color: var(--gp-cyan); }
         .gp-block-label {
-          font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 10px;
-          font-style: italic;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
           color: var(--gp-accent);
           margin-bottom: 3px;
         }
@@ -11302,42 +11419,66 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           color: var(--gp-muted);
         }
 
-        /* ── Log ── */
+        /* ── Log: separador de turno em destaque + linhas com trilho de energia ── */
         .gp-turn-rule {
           display: flex; align-items: center; gap: 8px;
-          margin: 12px 0 8px;
-          font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 10px;
-          font-style: italic;
-          color: var(--gp-muted);
+          margin: 14px 0 8px;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          white-space: nowrap;
+          color: var(--gp-accent);
+          text-shadow: 0 0 10px rgba(216,180,120,0.3);
+        }
+        .gp-turn-rule::before {
+          content: ""; flex: 1; height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(216,180,120,0.4));
         }
         .gp-turn-rule::after {
           content: ""; flex: 1; height: 1px;
-          background: var(--gp-line);
+          background: linear-gradient(90deg, rgba(216,180,120,0.4), transparent);
         }
         .gp-log-row {
+          position: relative;
           display: flex; gap: 8px;
-          padding: 7px 0;
-          border-bottom: 1px solid var(--gp-line-soft);
+          margin: 3px 0;
+          padding: 7px 6px 7px 11px;
+          border-radius: 3px;
+          background: linear-gradient(90deg, rgba(255,255,255,0.025), transparent 80%);
+          transition: background 0.2s;
         }
-        .gp-log-row:last-child { border-bottom: 0; }
+        .gp-log-row:hover { background: linear-gradient(90deg, rgba(255,255,255,0.055), transparent 85%); }
+        /* Trilho colorido pelo tipo do evento */
+        .gp-log-row::before {
+          content: ""; position: absolute; left: 0; top: 5px; bottom: 5px; width: 2px;
+          border-radius: 2px;
+          background: var(--row-c, var(--gp-faint));
+          opacity: 0.8;
+          box-shadow: 0 0 6px var(--row-c, transparent);
+        }
         .gp-log-thumb {
           flex-shrink: 0;
-          width: 26px; height: 36px;
+          width: 28px; height: 38px;
           overflow: hidden;
           border-radius: 2px;
-          background: rgba(0,0,0,0.3);
+          background: rgba(0,0,0,0.35);
           cursor: pointer;
-          border: 0; padding: 0;
-          opacity: 0.85;
-          transition: opacity 0.15s;
+          border: 1px solid rgba(255,255,255,0.10);
+          padding: 0;
+          transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
         }
-        .gp-log-thumb:hover { opacity: 1; }
+        .gp-log-thumb:hover {
+          border-color: rgba(216,180,120,0.7);
+          box-shadow: 0 0 10px rgba(216,180,120,0.35);
+          transform: translateY(-1px);
+        }
         .gp-log-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .gp-log-label {
-          font-family: ui-serif, Georgia, "Times New Roman", serif;
-          font-size: 10px;
-          font-style: italic;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
         }
         .gp-log-turn {
           margin-left: auto;
@@ -11352,19 +11493,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
 
         @keyframes panel-detail-in {
-          0%   { opacity: 0; transform: translateY(4px); }
+          0%   { opacity: 0; transform: translateY(6px); }
           100% { opacity: 1; transform: translateY(0); }
         }
-        .panel-detail-in { animation: panel-detail-in 0.22s ease-out both; }
+        .panel-detail-in { animation: panel-detail-in 0.28s cubic-bezier(0.22,1,0.36,1) both; }
 
         @keyframes log-entry-in {
-          0%   { opacity: 0; }
-          100% { opacity: 1; }
+          0%   { opacity: 0; transform: translateX(8px); }
+          100% { opacity: 1; transform: translateX(0); }
         }
-        .log-entry-in { animation: log-entry-in 0.2s ease-out both; }
+        .log-entry-in { animation: log-entry-in 0.26s cubic-bezier(0.22,1,0.36,1) both; }
 
         @media (prefers-reduced-motion: reduce) {
-          .panel-detail-in, .log-entry-in { animation: none; }
+          .panel-detail-in, .log-entry-in, .gp-head-diamond, .gp-head-rule::after,
+          .gp-card-scan, .gp-card-frame::before { animation: none; }
+          .gp-card-scan { opacity: 0; }
         }
       `}</style>
 
@@ -13610,7 +13753,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE BADGE in HUD ─────��──────────────────────────────── */}
+      {/* ─── CATASTROPHE BADGE in HUD ─────��─────────────────────��────────── */}
 
       {/* ──────────────────────────────────────────────────���──────────────────
            ── PAUSE MENU ──
