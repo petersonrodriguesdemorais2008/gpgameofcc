@@ -10868,6 +10868,40 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           .gp-card-float { animation: none; box-shadow: 0 3px 6px -2px rgba(0,0,0,0.65), 0 2px 3px -1px rgba(0,0,0,0.45); }
         }
 
+        /* ── Arena épica: anéis arcanos, linha de colisão central e respiração ── */
+        @keyframes gp-arena-ring {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .gp-arena-ring     { animation: gp-arena-ring 60s linear infinite; }
+        .gp-arena-ring-rev { animation: gp-arena-ring 60s linear infinite reverse; }
+        @keyframes gp-arena-breathe {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 1; }
+        }
+        .gp-arena-breathe { animation: gp-arena-breathe 5s ease-in-out infinite; }
+        @keyframes gp-arena-clash {
+          0%, 100% { opacity: 0.65; transform: scaleY(1); }
+          50%      { opacity: 1;    transform: scaleY(1.35); }
+        }
+        .gp-arena-clash { animation: gp-arena-clash 3.2s ease-in-out infinite; }
+        @keyframes gp-arena-sweep {
+          0%   { left: -22%; opacity: 0; }
+          12%  { opacity: 0.9; }
+          88%  { opacity: 0.9; }
+          100% { left: 100%; opacity: 0; }
+        }
+        .gp-arena-sweep { animation: gp-arena-sweep 4.5s ease-in-out infinite; }
+        @keyframes gp-arena-gem {
+          0%, 100% { box-shadow: 0 0 12px rgba(250,210,120,0.85), 0 0 30px rgba(240,190,90,0.4); }
+          50%      { box-shadow: 0 0 18px rgba(255,225,150,1), 0 0 46px rgba(245,200,100,0.65); }
+        }
+        .gp-arena-gem { animation: gp-arena-gem 2.4s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .gp-arena-ring, .gp-arena-ring-rev, .gp-arena-breathe,
+          .gp-arena-clash, .gp-arena-sweep, .gp-arena-gem { animation: none; }
+        }
+
         /* ── Tabuleiro inclinado: visão mesa estilo PVZ ── */
         .duel-arena-perspective {
           perspective: 1500px;
@@ -11566,9 +11600,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           {/* Playmat container with epic border */}
           <div className="absolute inset-0"
             style={{
-              background: "linear-gradient(180deg, rgba(20,10,40,0.94) 0%, rgba(12,18,40,0.94) 50%, rgba(8,14,32,0.94) 100%)",
-              borderTop: "1px solid rgba(140,110,40,0.45)",
-              borderBottom: "1px solid rgba(140,110,40,0.45)",
+              background: "linear-gradient(180deg, #150826 0%, #0c1230 48%, #081028 52%, #060a1e 100%)",
+              borderTop: "1px solid rgba(212,168,70,0.55)",
+              borderBottom: "1px solid rgba(212,168,70,0.55)",
+              borderLeft: "1px solid rgba(212,168,70,0.22)",
+              borderRight: "1px solid rgba(212,168,70,0.22)",
+              boxShadow: "inset 0 0 60px rgba(0,0,0,0.7), inset 0 0 22px rgba(120,90,220,0.10)",
             }}>
             {/* Opponent Playmat Background (top half) */}
             {mode === "player" && opponentPlaymatImage ? (
@@ -11582,8 +11619,29 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/60" />
               </div>
             ) : (
-              <div className="absolute inset-x-0 top-0 h-1/2"
-                style={{background:"rgba(60,8,8,0.30)"}} />
+              <div className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
+                {/* Crimson dominion — enemy side */}
+                <div className="absolute inset-0" style={{
+                  background: `radial-gradient(ellipse 90% 85% at 50% 0%, rgba(150,20,30,0.42) 0%, rgba(90,12,26,0.22) 45%, transparent 75%),
+                               radial-gradient(ellipse 55% 45% at 18% 22%, rgba(200,60,30,0.14) 0%, transparent 70%),
+                               radial-gradient(ellipse 55% 45% at 82% 22%, rgba(170,30,70,0.14) 0%, transparent 70%)`,
+                }} />
+                {/* Arcane ring — enemy */}
+                <div className="absolute gp-arena-ring" style={{
+                  left: "50%", top: "48%", width: "min(72%, 340px)", aspectRatio: "1",
+                  marginLeft: "calc(min(72%, 340px) / -2)", marginTop: "calc(min(72%, 340px) / -2)",
+                  borderRadius: "50%",
+                  border: "1px solid rgba(255,110,90,0.16)",
+                  boxShadow: "inset 0 0 40px rgba(200,40,40,0.10), 0 0 24px rgba(200,40,40,0.08)",
+                  background: "repeating-conic-gradient(from 0deg, rgba(255,120,80,0.10) 0deg 3deg, transparent 3deg 30deg)",
+                  maskImage: "radial-gradient(circle, transparent 58%, black 60%, black 78%, transparent 80%)",
+                  WebkitMaskImage: "radial-gradient(circle, transparent 58%, black 60%, black 78%, transparent 80%)",
+                }} />
+                {/* Rising heat shimmer */}
+                <div className="absolute inset-x-0 top-0 h-2/3 gp-arena-breathe" style={{
+                  background: "linear-gradient(180deg, rgba(255,90,50,0.07), transparent)",
+                }} />
+              </div>
             )}
 
             {/* Player Playmat Background (bottom half) */}
@@ -11599,13 +11657,94 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 )
               }
               return (
-                <div className="absolute inset-x-0 bottom-0 h-1/2"
-                  style={{background:"rgba(6,14,45,0.30)"}} />
+                <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden">
+                  {/* Sapphire dominion — player side */}
+                  <div className="absolute inset-0" style={{
+                    background: `radial-gradient(ellipse 90% 85% at 50% 100%, rgba(20,80,190,0.40) 0%, rgba(12,45,120,0.20) 45%, transparent 75%),
+                                 radial-gradient(ellipse 55% 45% at 18% 78%, rgba(30,160,200,0.14) 0%, transparent 70%),
+                                 radial-gradient(ellipse 55% 45% at 82% 78%, rgba(70,60,220,0.14) 0%, transparent 70%)`,
+                  }} />
+                  {/* Arcane ring — player */}
+                  <div className="absolute gp-arena-ring-rev" style={{
+                    left: "50%", top: "52%", width: "min(72%, 340px)", aspectRatio: "1",
+                    marginLeft: "calc(min(72%, 340px) / -2)", marginTop: "calc(min(72%, 340px) / -2)",
+                    borderRadius: "50%",
+                    border: "1px solid rgba(90,170,255,0.16)",
+                    boxShadow: "inset 0 0 40px rgba(40,110,220,0.10), 0 0 24px rgba(40,110,220,0.08)",
+                    background: "repeating-conic-gradient(from 0deg, rgba(90,160,255,0.10) 0deg 3deg, transparent 3deg 30deg)",
+                    maskImage: "radial-gradient(circle, transparent 58%, black 60%, black 78%, transparent 80%)",
+                    WebkitMaskImage: "radial-gradient(circle, transparent 58%, black 60%, black 78%, transparent 80%)",
+                  }} />
+                  {/* Rising cool shimmer */}
+                  <div className="absolute inset-x-0 bottom-0 h-2/3 gp-arena-breathe" style={{
+                    background: "linear-gradient(0deg, rgba(60,140,255,0.07), transparent)",
+                    animationDelay: "-2.5s",
+                  }} />
+                </div>
               )
             })()}
 
-            {/* Center divider glow line */}
+            {/* Faint tactical hex-grid over the whole arena */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              opacity: 0.05,
+              backgroundImage: `linear-gradient(rgba(190,210,255,0.55) 1px, transparent 1px),
+                                linear-gradient(90deg, rgba(190,210,255,0.55) 1px, transparent 1px)`,
+              backgroundSize: "34px 34px",
+              maskImage: "radial-gradient(ellipse 85% 80% at 50% 50%, black 30%, transparent 100%)",
+              WebkitMaskImage: "radial-gradient(ellipse 85% 80% at 50% 50%, black 30%, transparent 100%)",
+            }} />
 
+            {/* Center clash line — where the two energies collide */}
+            <div className="absolute inset-x-0 pointer-events-none" style={{ top: "50%", height: 0 }}>
+              {/* Wide soft glow of the collision */}
+              <div className="absolute inset-x-0 gp-arena-clash" style={{
+                top: -14, height: 28,
+                background: "linear-gradient(90deg, transparent 4%, rgba(200,60,60,0.14) 28%, rgba(240,200,120,0.22) 50%, rgba(60,120,240,0.14) 72%, transparent 96%)",
+                filter: "blur(6px)",
+              }} />
+              {/* Sharp golden core line */}
+              <div className="absolute inset-x-4" style={{
+                top: -0.5, height: 1,
+                background: "linear-gradient(90deg, transparent, rgba(240,205,120,0.85) 30%, rgba(255,240,200,0.95) 50%, rgba(240,205,120,0.85) 70%, transparent)",
+                boxShadow: "0 0 8px rgba(240,200,110,0.55), 0 0 22px rgba(240,190,90,0.25)",
+              }} />
+              {/* Sweeping energy pulse along the line */}
+              <div className="absolute gp-arena-sweep" style={{
+                top: -1.5, height: 3, width: "22%", left: "-22%",
+                background: "linear-gradient(90deg, transparent, rgba(255,250,230,0.95), transparent)",
+                borderRadius: 999,
+                filter: "blur(0.5px)",
+              }} />
+              {/* Center emblem diamond */}
+              <div className="absolute gp-arena-gem" style={{
+                left: "50%", top: 0, width: 10, height: 10,
+                marginLeft: -5, marginTop: -5,
+                transform: "rotate(45deg)",
+                background: "linear-gradient(135deg, #ffe9b0, #d4a846)",
+                boxShadow: "0 0 12px rgba(250,210,120,0.85), 0 0 30px rgba(240,190,90,0.4)",
+                border: "1px solid rgba(255,245,220,0.8)",
+              }} />
+            </div>
+
+            {/* Golden corner accents */}
+            {([
+              { top: 0, left: 0, bt: 1, bl: 1 }, { top: 0, right: 0, bt: 1, br: 1 },
+              { bottom: 0, left: 0, bb: 1, bl: 1 }, { bottom: 0, right: 0, bb: 1, br: 1 },
+            ] as Array<{ top?: number; bottom?: number; left?: number; right?: number; bt?: number; bb?: number; bl?: number; br?: number }>).map((c, i) => (
+              <div key={i} className="absolute pointer-events-none" style={{
+                width: 26, height: 26,
+                top: c.top, bottom: c.bottom, left: c.left, right: c.right,
+                borderTop: c.bt ? "2px solid rgba(222,180,90,0.65)" : undefined,
+                borderBottom: c.bb ? "2px solid rgba(222,180,90,0.65)" : undefined,
+                borderLeft: c.bl ? "2px solid rgba(222,180,90,0.65)" : undefined,
+                borderRight: c.br ? "2px solid rgba(222,180,90,0.65)" : undefined,
+              }} />
+            ))}
+
+            {/* Cinematic vignette for depth */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: "radial-gradient(ellipse 100% 92% at 50% 50%, transparent 55%, rgba(2,2,10,0.42) 100%)",
+            }} />
 
           </div>{/* end background div */}
 
