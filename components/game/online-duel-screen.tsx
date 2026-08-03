@@ -8626,97 +8626,174 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         </div>
       )}
 
-      {/* ── Draw Animations ── */}
+      {/* ── Draw Animations — voo em arco com flash no deck, aura e faíscas ── */}
       {(drawAnimation || enemyDrawAnimation) && (()=>{
         const anim  = drawAnimation
         const eAnim = enemyDrawAnimation
         const W = 56, H = 80   // matches actual hand card proportions
 
-        function flyCSS(a:{fromX:number;fromY:number;midX:number;midY:number;toX:number;toY:number}, id:string) {
-          // Quadratic bezier arc via 3 keyframe positions
+        // Ponto na curva bezier quadrática
+        const bez = (t:number, a:number, b:number, c:number) => (1-t)*(1-t)*a + 2*(1-t)*t*b + t*t*c
+
+        function flyCSS(a:{fromX:number;fromY:number;midX:number;midY:number;toX:number;toY:number}, id:string, flip:boolean) {
           const p0x = a.fromX - W/2,  p0y = a.fromY - H/2
           const p1x = a.midX  - W/2,  p1y = a.midY  - H/2
           const p2x = a.toX   - W/2,  p2y = a.toY   - H/2
-          // t=0.5 point on the quadratic curve
-          const qx = p0x*.25 + p1x*.5 + p2x*.25
-          const qy = p0y*.25 + p1y*.5 + p2y*.25
+          const X = (t:number)=>bez(t,p0x,p1x,p2x).toFixed(1)
+          const Y = (t:number)=>bez(t,p0y,p1y,p2y).toFixed(1)
+          const ry = (deg:number)=> flip ? ` rotateY(${deg}deg)` : ''
           return `
             @keyframes ${id}-fly {
-              0%   { transform:translate(${p0x}px,${p0y}px) scale(0.80) rotateY(0deg);   opacity:0 }
-              6%   { opacity:1 }
-              50%  { transform:translate(${qx}px,${qy}px)   scale(1.05) rotateY(90deg) }
-              100% { transform:translate(${p2x}px,${p2y}px) scale(1)    rotateY(180deg); opacity:1 }
+              0%   { transform:translate(${p0x}px,${p0y}px) scale(0.55)${ry(0)} rotateZ(-9deg); opacity:0 }
+              10%  { transform:translate(${X(.10)}px,${Y(.10)}px) scale(0.98)${ry(20)} rotateZ(-5deg); opacity:1 }
+              50%  { transform:translate(${X(.50)}px,${Y(.50)}px) scale(1.26)${ry(90)} rotateZ(3deg) }
+              80%  { transform:translate(${X(.80)}px,${Y(.80)}px) scale(1.08)${ry(162)} rotateZ(1deg) }
+              100% { transform:translate(${p2x}px,${p2y}px) scale(1)${ry(180)} rotateZ(0deg); opacity:1 }
             }
           `
         }
 
+        // Direções das faíscas na chegada (espalhamento fixo, sem random no render)
+        const SPARKS: Array<[number,number]> = [[-30,-26],[26,-32],[38,10],[-38,14],[-12,-42],[16,34],[44,-14],[-46,-6]]
+
         return (
           <div style={{position:'fixed',inset:0,zIndex:55,pointerEvents:'none',overflow:'hidden'}}>
             <style>{`
-              ${anim  ? flyCSS(anim,  'dcp') : ''}
-              ${eAnim ? flyCSS(eAnim, 'dce') : ''}
-              @keyframes dc-shine { 0%{left:-120%;opacity:.6} 100%{left:230%;opacity:0} }
-              @keyframes dc-land  { 0%{opacity:.5;transform:translate(var(--lx),var(--ly)) scale(.9)} 100%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(1.15)} }
+              ${anim  ? flyCSS(anim,  'dcp', true)  : ''}
+              ${eAnim ? flyCSS(eAnim, 'dce', false) : ''}
+              @keyframes dc-shine { 0%{left:-120%;opacity:.85} 100%{left:230%;opacity:0} }
+              @keyframes dc-land  { 0%{opacity:.75;transform:translate(var(--lx),var(--ly)) scale(.85)} 100%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(1.28)} }
+              @keyframes dc-burst { 0%{opacity:.9;transform:translate(var(--bx),var(--by)) scale(.35)} 100%{opacity:0;transform:translate(var(--bx),var(--by)) scale(1.9)} }
+              @keyframes dc-flash { 0%{opacity:.85;transform:translate(var(--bx),var(--by)) scale(.5)} 100%{opacity:0;transform:translate(var(--bx),var(--by)) scale(2.3)} }
+              @keyframes dc-spark {
+                0%   { opacity:1; transform:translate(var(--px),var(--py)) scale(1.25) }
+                100% { opacity:0; transform:translate(calc(var(--px) + var(--dx)), calc(var(--py) + var(--dy))) scale(0) }
+              }
             `}</style>
 
-            {/* ── PLAYER draw ── */}
+            {/* ── PLAYER draw — flash dourado no deck, arco com giro, faíscas ── */}
             {anim && (<>
-              {/* Card: back → flip → front */}
+              {/* Explosão de energia na origem (deck) */}
+              <div style={{
+                position:'absolute', left:0, top:0, width:W+26, height:H+26, borderRadius:12,
+                border:'2px solid rgba(255,222,150,0.75)',
+                boxShadow:'0 0 24px rgba(255,215,120,0.55), inset 0 0 18px rgba(255,215,120,0.30)',
+                animation:'dc-burst .42s ease-out both',
+                '--bx':`${anim.fromX - (W+26)/2}px`, '--by':`${anim.fromY - (H+26)/2}px`,
+              } as React.CSSProperties}/>
+              <div style={{
+                position:'absolute', left:0, top:0, width:64, height:64, borderRadius:'50%',
+                background:'radial-gradient(circle, rgba(255,236,180,0.65) 0%, rgba(255,215,120,0.25) 42%, transparent 70%)',
+                animation:'dc-flash .40s ease-out both',
+                '--bx':`${anim.fromX - 32}px`, '--by':`${anim.fromY - 32}px`,
+              } as React.CSSProperties}/>
+
+              {/* Carta: verso → giro → frente, com aura dourada */}
               <div style={{
                 position:'absolute', left:0, top:0, width:W, height:H,
                 transformStyle:'preserve-3d',
-                animation:'dcp-fly .68s cubic-bezier(.33,.6,.4,.97) forwards',
-                filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
+                animation:'dcp-fly .72s cubic-bezier(.3,.55,.35,1) forwards',
+                filter:'drop-shadow(0 6px 16px rgba(0,0,0,0.65)) drop-shadow(0 0 14px rgba(255,215,120,0.55))',
               }}>
-                {/* Back face */}
-                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
+                {/* Verso */}
+                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:8,overflow:'hidden',border:'1px solid rgba(255,222,150,0.50)'}}>
                   <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                 </div>
-                {/* Front face — revealed after flip */}
+                {/* Frente — revelada no giro */}
                 <div style={{
                   position:'absolute',inset:0,backfaceVisibility:'hidden',
-                  transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',
+                  transform:'rotateY(180deg)',borderRadius:8,overflow:'hidden',
+                  border:'1px solid rgba(255,236,180,0.65)',
+                  boxShadow:'inset 0 0 14px rgba(255,222,150,0.25)',
                 }}>
                   <img src={anim.cardImage} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                  {/* One-shot shine sweep on reveal */}
+                  {/* Varredura de brilho na revelação */}
                   <div style={{
-                    position:'absolute',top:0,bottom:0,width:'40%',
-                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)',
-                    animation:'dc-shine .30s ease-out .52s both',
+                    position:'absolute',top:0,bottom:0,width:'45%',
+                    background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.38),transparent)',
+                    animation:'dc-shine .34s ease-out .50s both',
                     pointerEvents:'none',
                   }}/>
                 </div>
               </div>
 
-              {/* Arrival: tiny soft pulse at destination only */}
+              {/* Chegada: pulso dourado + faíscas */}
               <div style={{
                 position:'absolute', left:0, top:0,
-                width:W+12, height:H+12,
-                borderRadius:9,
-                border:'1px solid rgba(180,210,255,0.25)',
-                animation:'dc-land .50s ease-out .65s both',
-                '--lx':`${anim.toX - (W+12)/2}px`,
-                '--ly':`${anim.toY - (H+12)/2}px`,
+                width:W+16, height:H+16, borderRadius:10,
+                border:'1.5px solid rgba(255,222,150,0.60)',
+                boxShadow:'0 0 18px rgba(255,215,120,0.45)',
+                animation:'dc-land .45s ease-out .68s both',
+                '--lx':`${anim.toX - (W+16)/2}px`,
+                '--ly':`${anim.toY - (H+16)/2}px`,
               } as React.CSSProperties}/>
+              {SPARKS.map(([dx,dy],i)=>(
+                <div key={`ps-${i}`} style={{
+                  position:'absolute', left:0, top:0,
+                  width:i%2?4:5, height:i%2?4:5, borderRadius:'50%',
+                  background: i%3===0 ? '#ffeecb' : '#ffd878',
+                  boxShadow:'0 0 8px rgba(255,215,120,0.9)',
+                  animation:`dc-spark .40s ease-out ${(0.66+(i%4)*0.02).toFixed(2)}s both`,
+                  '--px':`${anim.toX}px`, '--py':`${anim.toY}px`,
+                  '--dx':`${dx}px`, '--dy':`${dy}px`,
+                } as React.CSSProperties}/>
+              ))}
             </>)}
 
-            {/* ── ENEMY draw — back only, red tint ── */}
-            {eAnim && (
+            {/* ── ENEMY draw — flash carmesim no deck, verso com aura vermelha, faíscas ── */}
+            {eAnim && (<>
+              {/* Explosão de energia na origem (deck inimigo) */}
+              <div style={{
+                position:'absolute', left:0, top:0, width:W+26, height:H+26, borderRadius:12,
+                border:'2px solid rgba(240,110,96,0.70)',
+                boxShadow:'0 0 24px rgba(232,80,64,0.50), inset 0 0 18px rgba(232,80,64,0.28)',
+                animation:'dc-burst .42s ease-out both',
+                '--bx':`${eAnim.fromX - (W+26)/2}px`, '--by':`${eAnim.fromY - (H+26)/2}px`,
+              } as React.CSSProperties}/>
+              <div style={{
+                position:'absolute', left:0, top:0, width:64, height:64, borderRadius:'50%',
+                background:'radial-gradient(circle, rgba(255,170,150,0.55) 0%, rgba(232,80,64,0.22) 42%, transparent 70%)',
+                animation:'dc-flash .40s ease-out both',
+                '--bx':`${eAnim.fromX - 32}px`, '--by':`${eAnim.fromY - 32}px`,
+              } as React.CSSProperties}/>
+
+              {/* Carta voando (verso, tinta vermelha, aura carmesim) */}
               <div style={{
                 position:'absolute', left:0, top:0, width:W, height:H,
-                transformStyle:'preserve-3d',
-                animation:'dce-fly .68s cubic-bezier(.33,.6,.4,.97) forwards',
-                filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
+                animation:'dce-fly .72s cubic-bezier(.3,.55,.35,1) forwards',
+                filter:'drop-shadow(0 6px 16px rgba(0,0,0,0.65)) drop-shadow(0 0 14px rgba(239,88,72,0.50))',
               }}>
-                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
+                <div style={{position:'absolute',inset:0,borderRadius:8,overflow:'hidden',border:'1px solid rgba(240,132,110,0.50)'}}>
                   <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                  <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:7}}/>
+                  <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:8}}/>
                 </div>
               </div>
-            )}
+
+              {/* Chegada: pulso carmesim + faíscas */}
+              <div style={{
+                position:'absolute', left:0, top:0,
+                width:W+16, height:H+16, borderRadius:10,
+                border:'1.5px solid rgba(240,110,96,0.55)',
+                boxShadow:'0 0 18px rgba(232,80,64,0.40)',
+                animation:'dc-land .45s ease-out .68s both',
+                '--lx':`${eAnim.toX - (W+16)/2}px`,
+                '--ly':`${eAnim.toY - (H+16)/2}px`,
+              } as React.CSSProperties}/>
+              {SPARKS.slice(0,6).map(([dx,dy],i)=>(
+                <div key={`es-${i}`} style={{
+                  position:'absolute', left:0, top:0,
+                  width:i%2?4:5, height:i%2?4:5, borderRadius:'50%',
+                  background: i%3===0 ? '#ffc4b4' : '#f07060',
+                  boxShadow:'0 0 8px rgba(232,80,64,0.9)',
+                  animation:`dc-spark .40s ease-out ${(0.66+(i%4)*0.02).toFixed(2)}s both`,
+                  '--px':`${eAnim.toX}px`, '--py':`${eAnim.toY}px`,
+                  '--dx':`${dx}px`, '--dy':`${dy}px`,
+                } as React.CSSProperties}/>
+              ))}
+            </>)}
           </div>
         )
       })()}
