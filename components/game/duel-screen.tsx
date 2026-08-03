@@ -9512,7 +9512,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         break
       }
 
-      // ── Opponent ended their turn ────────────────���────────────────────────
+      // ── Opponent ended their turn ────────────────����────────────────────────
       case "end_turn":
         setIsPlayerTurn(true)
         setTurn(prev => prev + 1)
@@ -11203,13 +11203,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           .trap-dim-overlay { animation: none; opacity: 0; }
         }
 
-        /* ══ PAINÉIS LATERAIS: Detalhe & Log — HUD hi-tech épico ══
-           Direção: console de batalha. Fundo profundo com scanlines sutis,
-           aresta de energia voltada pro campo, cantoneiras de mira no card,
-           varredura holográfica e trilhos de energia coloridos no log.
-           Tudo em camadas leves — brilho contido, zero poluição. */
+        /* ══ PAINÉIS LATERAIS: Detalhe & Log — HUD hi-tech épico v2 ══
+           Direção: consoles de batalha de uma nave de guerra. Abismo escuro
+           com malha tática diagonal, aresta de energia viva com faísca que
+           viaja, brilho ambiente que respira no topo, cantoneiras de mira
+           animadas e trilhos de energia no log. Camadas leves, zero poluição. */
         .gp-panel {
-          --gp-line: rgba(216,180,120,0.20);
+          --gp-line: rgba(216,180,120,0.22);
           --gp-line-soft: rgba(255,255,255,0.06);
           --gp-ink: #eceae4;
           --gp-muted: #9a968e;
@@ -11217,49 +11217,83 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           --gp-accent: #d8b478;
           --gp-cyan: #7ad4e0;
           background:
-            linear-gradient(180deg, rgba(216,180,120,0.05), transparent 140px),
-            repeating-linear-gradient(0deg, rgba(255,255,255,0.013) 0 1px, transparent 1px 3px),
-            linear-gradient(180deg, #0d1017, #0a0c11);
+            radial-gradient(120% 60px at 50% 0%, rgba(216,180,120,0.085), transparent),
+            radial-gradient(120% 90px at 50% 100%, rgba(122,212,224,0.05), transparent),
+            repeating-linear-gradient(135deg, rgba(255,255,255,0.011) 0 1px, transparent 1px 9px),
+            repeating-linear-gradient(0deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 3px),
+            linear-gradient(180deg, #0a0d14, #060810 55%, #05070c);
           color: var(--gp-ink);
-          box-shadow: inset 0 0 46px rgba(0,0,0,0.5);
+          box-shadow: inset 0 0 56px rgba(0,0,0,0.62);
         }
         .gp-panel--left  { border-right: 1px solid var(--gp-line); }
         .gp-panel--right { border-left: 1px solid var(--gp-line); }
-        /* Aresta de energia voltada pro campo de batalha */
+        /* Aresta de energia voltada pro campo de batalha — pulsa devagar */
         .gp-panel::before {
           content: ""; position: absolute; top: 0; bottom: 0; width: 2px;
           background: linear-gradient(180deg,
             transparent,
-            rgba(216,180,120,0.55) 16%,
-            rgba(216,180,120,0.14) 50%,
-            rgba(122,212,224,0.35) 84%,
+            rgba(216,180,120,0.6) 16%,
+            rgba(216,180,120,0.16) 50%,
+            rgba(122,212,224,0.4) 84%,
             transparent);
           pointer-events: none;
+          animation: gp-edge-breathe 4.5s ease-in-out infinite;
+        }
+        @keyframes gp-edge-breathe {
+          0%, 100% { opacity: 0.7; filter: none; }
+          50%      { opacity: 1; filter: drop-shadow(0 0 5px rgba(216,180,120,0.5)); }
         }
         .gp-panel--left::before  { right: -1px; }
         .gp-panel--right::before { left: -1px; }
+        /* Faísca de energia que percorre a aresta */
+        .gp-panel::after {
+          content: ""; position: absolute; width: 2px; height: 64px;
+          background: linear-gradient(180deg, transparent, rgba(255,240,210,0.9), rgba(122,212,224,0.6), transparent);
+          filter: drop-shadow(0 0 6px rgba(255,240,210,0.7));
+          pointer-events: none;
+          animation: gp-edge-spark 7s cubic-bezier(0.4,0,0.6,1) infinite;
+        }
+        .gp-panel--left::after  { right: -1px; }
+        .gp-panel--right::after { left: -1px; animation-delay: 3.5s; }
+        @keyframes gp-edge-spark {
+          0%, 58%  { top: -70px; opacity: 0; }
+          62%      { opacity: 1; }
+          96%, 100%{ top: 100%; opacity: 0; }
+        }
 
-        /* ── Cabeçalho: losango pulsante + título + régua com varredura ── */
-        .gp-panel-head { display: flex; align-items: center; gap: 8px; }
+        /* ── Cabeçalho: losango de energia orbital + título gravado + régua viva ── */
+        .gp-panel-head { display: flex; align-items: center; gap: 8px; position: relative; }
         .gp-head-diamond {
-          width: 6px; height: 6px; flex-shrink: 0;
+          position: relative;
+          width: 7px; height: 7px; flex-shrink: 0;
           transform: rotate(45deg);
-          background: var(--gp-accent);
-          box-shadow: 0 0 8px rgba(216,180,120,0.7);
+          background: linear-gradient(135deg, #f0dcae, var(--gp-accent) 60%, #9c7a44);
+          box-shadow: 0 0 9px rgba(216,180,120,0.75);
           animation: gp-diamond-pulse 2.4s ease-in-out infinite;
+        }
+        /* Anel orbital ao redor do losango */
+        .gp-head-diamond::before {
+          content: ""; position: absolute; inset: -4px;
+          border: 1px solid rgba(216,180,120,0.4);
+          animation: gp-diamond-orbit 3.2s linear infinite;
+        }
+        @keyframes gp-diamond-orbit {
+          0%   { transform: rotate(0deg) scale(1);   opacity: 0.7; }
+          50%  { transform: rotate(180deg) scale(1.18); opacity: 0.3; }
+          100% { transform: rotate(360deg) scale(1); opacity: 0.7; }
         }
         @keyframes gp-diamond-pulse {
           0%, 100% { box-shadow: 0 0 4px rgba(216,180,120,0.4); opacity: 0.85; }
-          50%      { box-shadow: 0 0 11px rgba(216,180,120,0.9); opacity: 1; }
+          50%      { box-shadow: 0 0 13px rgba(216,180,120,0.95); opacity: 1; }
         }
         .gp-head-rule {
           flex: 1; height: 1px; position: relative; overflow: hidden;
-          background: linear-gradient(90deg, rgba(216,180,120,0.45), rgba(216,180,120,0.05));
+          background: linear-gradient(90deg, rgba(216,180,120,0.5), rgba(122,212,224,0.12) 70%, transparent);
         }
         .gp-head-rule::after {
           content: ""; position: absolute; top: -1px; left: -45%;
           width: 45%; height: 3px;
-          background: linear-gradient(90deg, transparent, rgba(255,240,210,0.75), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255,240,210,0.8), rgba(122,212,224,0.5), transparent);
           animation: gp-rule-sweep 3.4s ease-in-out infinite;
         }
         @keyframes gp-rule-sweep {
@@ -11268,18 +11302,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         .gp-panel-title {
           font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.22em;
+          font-weight: 800;
+          letter-spacing: 0.26em;
           text-transform: uppercase;
           color: var(--gp-accent);
-          text-shadow: 0 0 14px rgba(216,180,120,0.35);
+          text-shadow: 0 0 16px rgba(216,180,120,0.45), 0 1px 0 rgba(0,0,0,0.8);
         }
         .gp-turn-tag {
           font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.08em;
+          font-weight: 700;
+          letter-spacing: 0.1em;
           text-transform: uppercase;
-          color: var(--gp-muted);
+          color: var(--gp-cyan);
+          padding: 2px 7px;
+          border: 1px solid rgba(122,212,224,0.25);
+          border-radius: 2px;
+          background: rgba(122,212,224,0.06);
+          box-shadow: inset 0 0 8px rgba(122,212,224,0.06);
+          clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
         }
         .gp-collapse {
           width: 20px; height: 20px;
@@ -11312,58 +11352,100 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         .gp-scroll::-webkit-scrollbar-thumb:hover { background: rgba(216,180,120,0.45); }
         .gp-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
-        /* ── Detalhe: moldura de mira com cantoneiras + varredura holográfica ── */
-        .gp-card-frame { padding: 6px; }
+        /* ── Detalhe: mira tática — cantoneiras que respiram + aura + scan duplo ── */
+        .gp-card-frame { padding: 7px; }
         .gp-card-frame::before {
           content: ""; position: absolute; inset: 0; pointer-events: none;
-          --br: rgba(216,180,120,0.6);
+          --br: rgba(216,180,120,0.7);
           background:
-            linear-gradient(var(--br), var(--br)) top left    / 14px 1.5px,
-            linear-gradient(var(--br), var(--br)) top left    / 1.5px 14px,
-            linear-gradient(var(--br), var(--br)) top right   / 14px 1.5px,
-            linear-gradient(var(--br), var(--br)) top right   / 1.5px 14px,
-            linear-gradient(var(--br), var(--br)) bottom left / 14px 1.5px,
-            linear-gradient(var(--br), var(--br)) bottom left / 1.5px 14px,
-            linear-gradient(var(--br), var(--br)) bottom right/ 14px 1.5px,
-            linear-gradient(var(--br), var(--br)) bottom right/ 1.5px 14px;
+            linear-gradient(var(--br), var(--br)) top left    / 16px 1.5px,
+            linear-gradient(var(--br), var(--br)) top left    / 1.5px 16px,
+            linear-gradient(var(--br), var(--br)) top right   / 16px 1.5px,
+            linear-gradient(var(--br), var(--br)) top right   / 1.5px 16px,
+            linear-gradient(var(--br), var(--br)) bottom left / 16px 1.5px,
+            linear-gradient(var(--br), var(--br)) bottom left / 1.5px 16px,
+            linear-gradient(var(--br), var(--br)) bottom right/ 16px 1.5px,
+            linear-gradient(var(--br), var(--br)) bottom right/ 1.5px 16px;
           background-repeat: no-repeat;
-          filter: drop-shadow(0 0 4px rgba(216,180,120,0.45));
-          animation: gp-frame-in 0.5s cubic-bezier(0.34,1.4,0.64,1) both;
+          filter: drop-shadow(0 0 5px rgba(216,180,120,0.5));
+          animation:
+            gp-frame-in 0.5s cubic-bezier(0.34,1.4,0.64,1) both,
+            gp-frame-breathe 3.6s ease-in-out 0.5s infinite;
         }
         @keyframes gp-frame-in {
-          0%   { opacity: 0; transform: scale(1.05); }
+          0%   { opacity: 0; transform: scale(1.08); }
           100% { opacity: 1; transform: scale(1); }
         }
-        .gp-card-frame-inner {
-          inset: 6px;
-          border-radius: 3px;
-          background: rgba(0,0,0,0.4);
-          box-shadow: 0 0 20px rgba(216,180,120,0.08), inset 0 0 24px rgba(0,0,0,0.55);
+        @keyframes gp-frame-breathe {
+          0%, 100% { filter: drop-shadow(0 0 3px rgba(216,180,120,0.35)); }
+          50%      { filter: drop-shadow(0 0 8px rgba(216,180,120,0.65)); }
         }
-        /* Varredura de scan: passa uma vez quando a carta é inspecionada */
+        /* Marcas centrais de mira nas 4 bordas */
+        .gp-card-frame::after {
+          content: ""; position: absolute; inset: 0; pointer-events: none;
+          --tk: rgba(122,212,224,0.55);
+          background:
+            linear-gradient(var(--tk), var(--tk)) top center    / 8px 1px,
+            linear-gradient(var(--tk), var(--tk)) bottom center / 8px 1px,
+            linear-gradient(var(--tk), var(--tk)) left center   / 1px 8px,
+            linear-gradient(var(--tk), var(--tk)) right center  / 1px 8px;
+          background-repeat: no-repeat;
+          animation: gp-frame-in 0.5s cubic-bezier(0.34,1.4,0.64,1) 0.1s both;
+        }
+        .gp-card-frame-inner {
+          inset: 7px;
+          border-radius: 3px;
+          background:
+            radial-gradient(70% 55% at 50% 40%, rgba(216,180,120,0.07), transparent),
+            rgba(0,0,0,0.45);
+          box-shadow: 0 0 26px rgba(216,180,120,0.12), inset 0 0 28px rgba(0,0,0,0.6);
+        }
+        /* Varredura de scan: passe inicial forte + shimmer holográfico contínuo sutil */
         .gp-card-scan {
           position: absolute; inset: 0; pointer-events: none;
           background: linear-gradient(115deg,
             transparent 32%,
-            rgba(255,255,255,0.13) 47%,
-            rgba(122,212,224,0.10) 53%,
+            rgba(255,255,255,0.15) 47%,
+            rgba(122,212,224,0.12) 53%,
             transparent 68%);
           transform: translateX(-130%);
-          animation: gp-card-scan 1s cubic-bezier(0.4,0,0.2,1) 0.15s both;
+          animation:
+            gp-card-scan 1s cubic-bezier(0.4,0,0.2,1) 0.15s both,
+            gp-card-idle-scan 7s ease-in-out 3s infinite;
         }
         @keyframes gp-card-scan { to { transform: translateX(130%); } }
+        @keyframes gp-card-idle-scan {
+          0%, 72%  { transform: translateX(-130%); opacity: 0.45; }
+          100%     { transform: translateX(130%); opacity: 0.45; }
+        }
 
         .gp-card-name {
+          position: relative;
           font-size: 14px;
-          font-weight: 700;
-          letter-spacing: 0.02em;
+          font-weight: 800;
+          letter-spacing: 0.03em;
           line-height: 1.3;
           text-wrap: balance;
           color: var(--gp-ink);
-          text-shadow: 0 0 18px rgba(216,180,120,0.18);
+          text-shadow: 0 0 20px rgba(216,180,120,0.25), 0 1px 0 rgba(0,0,0,0.7);
+          padding-bottom: 6px;
         }
-        /* Metadados: leitura de console, chave técnica + valor forte */
-        .gp-meta { display: flex; flex-direction: column; }
+        .gp-card-name::after {
+          content: ""; position: absolute; left: 0; bottom: 0;
+          width: 34px; height: 2px; border-radius: 2px;
+          background: linear-gradient(90deg, var(--gp-accent), transparent);
+          box-shadow: 0 0 8px rgba(216,180,120,0.5);
+        }
+        /* Metadados: leitura de console em placa recortada */
+        .gp-meta {
+          display: flex; flex-direction: column;
+          padding: 2px 9px;
+          border: 1px solid rgba(216,180,120,0.14);
+          border-radius: 2px;
+          background: linear-gradient(180deg, rgba(216,180,120,0.045), rgba(0,0,0,0.2));
+          box-shadow: inset 0 0 14px rgba(0,0,0,0.35);
+          clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+        }
         .gp-meta-item {
           display: flex; align-items: baseline; justify-content: space-between;
           gap: 8px;
@@ -11372,39 +11454,60 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         .gp-meta-item:last-child { border-bottom: 0; }
         .gp-meta-key {
+          position: relative;
+          padding-left: 9px;
           font-size: 9px;
-          font-weight: 600;
+          font-weight: 700;
           letter-spacing: 0.14em;
           text-transform: uppercase;
           color: var(--gp-faint);
         }
+        .gp-meta-key::before {
+          content: ""; position: absolute; left: 0; top: 50%;
+          width: 4px; height: 4px; margin-top: -3px;
+          transform: rotate(45deg);
+          background: rgba(216,180,120,0.45);
+        }
         .gp-meta-val {
           font-size: 11.5px;
-          font-weight: 700;
+          font-weight: 800;
           text-align: right;
           color: var(--gp-ink);
+          text-shadow: 0 0 10px rgba(216,180,120,0.15);
         }
-        /* Blocos: trilho de energia vertical com brilho */
-        .gp-block { position: relative; padding: 6px 0 6px 11px; }
+        /* Blocos: trilho de energia vertical que acende ao entrar */
+        .gp-block { position: relative; padding: 6px 0 6px 12px; }
         .gp-block + .gp-block { margin-top: 10px; }
         .gp-block::before {
           content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 2px;
           border-radius: 2px;
           background: linear-gradient(180deg, var(--gp-accent), rgba(216,180,120,0.06));
-          box-shadow: 0 0 7px rgba(216,180,120,0.35);
+          box-shadow: 0 0 8px rgba(216,180,120,0.4);
+          transform-origin: top;
+          animation: gp-rail-ignite 0.45s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        @keyframes gp-rail-ignite {
+          0%   { transform: scaleY(0); opacity: 0; }
+          100% { transform: scaleY(1); opacity: 1; }
         }
         .gp-block--attack::before {
           background: linear-gradient(180deg, var(--gp-cyan), rgba(122,212,224,0.06));
-          box-shadow: 0 0 7px rgba(122,212,224,0.35);
+          box-shadow: 0 0 8px rgba(122,212,224,0.4);
         }
         .gp-block--attack .gp-block-label { color: var(--gp-cyan); }
+        .gp-block--attack .gp-block-label::after { background: rgba(122,212,224,0.35); }
         .gp-block-label {
+          display: flex; align-items: center; gap: 6px;
           font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.18em;
+          font-weight: 800;
+          letter-spacing: 0.2em;
           text-transform: uppercase;
           color: var(--gp-accent);
           margin-bottom: 3px;
+        }
+        .gp-block-label::after {
+          content: ""; flex: 1; height: 1px;
+          background: rgba(216,180,120,0.22);
         }
         .gp-block-name {
           font-size: 11.5px;
@@ -11419,70 +11522,103 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           color: var(--gp-muted);
         }
 
-        /* ── Log: separador de turno em destaque + linhas com trilho de energia ── */
+        /* ── Log: separador de turno com losango central + linhas em placa tática ── */
         .gp-turn-rule {
+          position: relative;
           display: flex; align-items: center; gap: 8px;
-          margin: 14px 0 8px;
+          margin: 15px 0 9px;
+          padding: 3px 0;
           font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.18em;
+          font-weight: 800;
+          letter-spacing: 0.2em;
           text-transform: uppercase;
           white-space: nowrap;
           color: var(--gp-accent);
-          text-shadow: 0 0 10px rgba(216,180,120,0.3);
+          text-shadow: 0 0 12px rgba(216,180,120,0.4);
         }
         .gp-turn-rule::before {
           content: ""; flex: 1; height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(216,180,120,0.4));
+          background: linear-gradient(90deg, transparent, rgba(216,180,120,0.55));
+          box-shadow: 0 0 4px rgba(216,180,120,0.25);
         }
         .gp-turn-rule::after {
           content: ""; flex: 1; height: 1px;
-          background: linear-gradient(90deg, rgba(216,180,120,0.4), transparent);
+          background: linear-gradient(90deg, rgba(216,180,120,0.55), transparent);
+          box-shadow: 0 0 4px rgba(216,180,120,0.25);
+        }
+        .gp-turn-rule > span {
+          position: relative;
+          padding: 2px 9px;
+          border: 1px solid rgba(216,180,120,0.3);
+          background: linear-gradient(180deg, rgba(216,180,120,0.08), rgba(0,0,0,0.25));
+          clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0 50%);
         }
         .gp-log-row {
           position: relative;
           display: flex; gap: 8px;
-          margin: 3px 0;
-          padding: 7px 6px 7px 11px;
-          border-radius: 3px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.025), transparent 80%);
-          transition: background 0.2s;
+          margin: 4px 0;
+          padding: 7px 7px 7px 12px;
+          border-radius: 2px;
+          background: linear-gradient(90deg, rgba(255,255,255,0.03), transparent 82%);
+          border: 1px solid transparent;
+          clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+          transition: background 0.2s, border-color 0.2s;
         }
-        .gp-log-row:hover { background: linear-gradient(90deg, rgba(255,255,255,0.055), transparent 85%); }
+        .gp-log-row:hover {
+          background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.012) 85%);
+          border-color: rgba(255,255,255,0.06);
+        }
+        /* Entrada mais recente acende com a cor do evento */
+        .gp-log-row:last-child {
+          background:
+            linear-gradient(90deg, color-mix(in srgb, var(--row-c, transparent) 9%, transparent), transparent 75%),
+            linear-gradient(90deg, rgba(255,255,255,0.03), transparent 82%);
+        }
         /* Trilho colorido pelo tipo do evento */
         .gp-log-row::before {
-          content: ""; position: absolute; left: 0; top: 5px; bottom: 5px; width: 2px;
+          content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px;
           border-radius: 2px;
           background: var(--row-c, var(--gp-faint));
-          opacity: 0.8;
-          box-shadow: 0 0 6px var(--row-c, transparent);
+          opacity: 0.85;
+          box-shadow: 0 0 7px var(--row-c, transparent);
+        }
+        /* Nó de conexão do trilho */
+        .gp-log-row::after {
+          content: ""; position: absolute; left: -1px; top: 50%; margin-top: -2px;
+          width: 4px; height: 4px;
+          transform: rotate(45deg);
+          background: var(--row-c, var(--gp-faint));
+          box-shadow: 0 0 5px var(--row-c, transparent);
+          opacity: 0.9;
         }
         .gp-log-thumb {
           flex-shrink: 0;
           width: 28px; height: 38px;
           overflow: hidden;
           border-radius: 2px;
-          background: rgba(0,0,0,0.35);
+          background: rgba(0,0,0,0.4);
           cursor: pointer;
-          border: 1px solid rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.12);
           padding: 0;
           transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
         }
         .gp-log-thumb:hover {
-          border-color: rgba(216,180,120,0.7);
-          box-shadow: 0 0 10px rgba(216,180,120,0.35);
-          transform: translateY(-1px);
+          border-color: rgba(216,180,120,0.75);
+          box-shadow: 0 0 12px rgba(216,180,120,0.45);
+          transform: translateY(-1px) scale(1.04);
         }
         .gp-log-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .gp-log-label {
           font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
+          font-weight: 800;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
+          text-shadow: 0 0 8px color-mix(in srgb, currentColor 45%, transparent);
         }
         .gp-log-turn {
           margin-left: auto;
           font-size: 9px;
+          font-weight: 600;
           color: var(--gp-faint);
         }
         .gp-log-msg {
@@ -11505,9 +11641,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         .log-entry-in { animation: log-entry-in 0.26s cubic-bezier(0.22,1,0.36,1) both; }
 
         @media (prefers-reduced-motion: reduce) {
-          .panel-detail-in, .log-entry-in, .gp-head-diamond, .gp-head-rule::after,
-          .gp-card-scan, .gp-card-frame::before { animation: none; }
+          .panel-detail-in, .log-entry-in, .gp-head-diamond, .gp-head-diamond::before,
+          .gp-head-rule::after, .gp-card-scan, .gp-card-frame::before, .gp-card-frame::after,
+          .gp-block::before, .gp-panel::before, .gp-panel::after { animation: none; }
           .gp-card-scan { opacity: 0; }
+          .gp-panel::after { opacity: 0; }
         }
       `}</style>
 
