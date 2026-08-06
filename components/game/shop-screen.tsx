@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
+import ItemPreview3D, { type Preview3DItem } from "@/components/game/item-preview-3d"
 import { useGame } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -231,6 +232,49 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
   const [selectedPlaymat, setSelectedPlaymat] = useState<PlaymatShopItem | null>(null)
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>("featured")
+  const [preview3D, setPreview3D] = useState<Preview3DItem | null>(null)
+
+  // Long-press (clicar e segurar) para abrir a visualizacao 3D
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressStart = useRef<{ x: number; y: number } | null>(null)
+  const suppressClick = useRef(false)
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    longPressStart.current = null
+  }, [])
+
+  const longPressHandlers = (item: Preview3DItem) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      suppressClick.current = false
+      longPressStart.current = { x: e.clientX, y: e.clientY }
+      longPressTimer.current = setTimeout(() => {
+        suppressClick.current = true
+        longPressTimer.current = null
+        setPreview3D(item)
+      }, 450)
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!longPressStart.current) return
+      const dx = e.clientX - longPressStart.current.x
+      const dy = e.clientY - longPressStart.current.y
+      if (Math.hypot(dx, dy) > 12) cancelLongPress()
+    },
+    onPointerUp: cancelLongPress,
+    onPointerLeave: cancelLongPress,
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+  })
+
+  const guardClick = (fn: () => void) => () => {
+    if (suppressClick.current) {
+      suppressClick.current = false
+      return
+    }
+    fn()
+  }
 
   const ownsPlaymat = (playmatId: string) => ownedPlaymats.some((p) => p.id === playmatId)
 
@@ -285,8 +329,10 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
     return (
       <div
         key={item.id}
-        onClick={() => setSelectedItem(item)}
-        className="group relative rounded-lg overflow-hidden cursor-pointer bg-[#12141f] border border-white/[0.06] hover:border-amber-400/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)] shop-shine shop-frame"
+        onClick={guardClick(() => setSelectedItem(item))}
+        {...longPressHandlers({ image: item.image, name: item.name, kind: "pack" })}
+        className="group relative rounded-lg overflow-hidden cursor-pointer bg-[#12141f] border border-white/[0.06] hover:border-amber-400/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)] shop-shine shop-frame select-none"
+        style={{ touchAction: "pan-y" }}
       >
         {/* Fio de raridade no topo */}
         <div className={`absolute top-0 inset-x-0 h-px bg-gradient-to-r ${r.edge} z-20`} />
@@ -458,8 +504,10 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
             {/* Vitrine hero */}
             {heroItem && (
               <section
-                onClick={() => setSelectedItem(heroItem)}
-                className="group relative rounded-xl overflow-hidden cursor-pointer border border-amber-400/20 hover:border-amber-400/45 transition-colors duration-300 shop-shine shop-frame"
+                onClick={guardClick(() => setSelectedItem(heroItem))}
+                {...longPressHandlers({ image: heroItem.image, name: heroItem.name, kind: "pack" })}
+                className="group relative rounded-xl overflow-hidden cursor-pointer border border-amber-400/20 hover:border-amber-400/45 transition-colors duration-300 shop-shine shop-frame select-none"
+                style={{ touchAction: "pan-y" }}
                 aria-label={`Oferta em destaque: ${heroItem.name}`}
               >
                 <div className="absolute inset-0 bg-[#12141f]" />
@@ -569,12 +617,14 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
                 return (
                   <div
                     key={item.playmatId}
-                    onClick={() => !owned && setSelectedPlaymat(item)}
-                    className={`group relative rounded-lg overflow-hidden border bg-[#12141f] transition-all duration-300 shop-frame ${
+                    onClick={guardClick(() => !owned && setSelectedPlaymat(item))}
+                    {...longPressHandlers({ image: item.image, name: item.name, kind: "playmat" })}
+                    className={`group relative rounded-lg overflow-hidden border bg-[#12141f] transition-all duration-300 shop-frame select-none ${
                       owned
-                        ? "border-white/[0.08]"
+                        ? "border-white/[0.08] cursor-pointer"
                         : "border-white/[0.06] hover:border-amber-400/35 cursor-pointer hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)] shop-shine"
                     }`}
+                    style={{ touchAction: "pan-y" }}
                   >
                     <div className="relative aspect-[3/2] overflow-hidden">
                       <Image
@@ -886,6 +936,9 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
           </div>
         </div>
       )}
+
+      {/* Visualizacao 3D (clique e segure em um item) */}
+      {preview3D && <ItemPreview3D item={preview3D} onClose={() => setPreview3D(null)} />}
     </div>
   )
 }
