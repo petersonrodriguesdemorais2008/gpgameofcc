@@ -162,6 +162,7 @@ interface GameContextType {
   globalPlaymatId: string | null
   setGlobalPlaymat: (playmatId: string | null) => void
   getPlaymatForDeck: (deck: Deck) => Playmat | null
+  unlockPlaymat: (playmatId: string) => boolean
   redeemCode: (code: string) => { success: boolean; message: string }
   redeemedCodes: string[]
   deleteAccountData: () => Promise<{ success: boolean; error?: string }>
@@ -1609,6 +1610,30 @@ const ALL_PLAYMATS: Playmat[] = [
     image: "/images/playmats/uller_e_isgrimm_playmat.png",
     description: "Uller e seu fiel companheiro Isgrimm unidos pelo vento.",
   },
+  {
+    id: "playmat-morgana",
+    name: "Morgana: Riff Sombrio",
+    image: "/images/playmats/morgana_playmat.png",
+    description: "A melodia de Morgana ecoa em ondas de energia purpura por todo o campo.",
+  },
+  {
+    id: "playmat-fehnon",
+    name: "Fehnon: Lamina Azul",
+    image: "/images/playmats/fehnon_playmat.png",
+    description: "A lamina gelida de Fehnon corta o campo com correntes de energia azul.",
+  },
+  {
+    id: "playmat-arthur",
+    name: "Arthur: Vulto das Sombras",
+    image: "/images/playmats/arthur_playmat.png",
+    description: "O misterioso Arthur envolve o campo em um turbilhao de sombras violetas.",
+  },
+  {
+    id: "playmat-calem",
+    name: "Calem: Luz Celestial",
+    image: "/images/playmats/calem_playmat.png",
+    description: "Calem e seu guardiao celestial banham o campo em luz divina.",
+  },
 ]
 
 const INITIAL_GIFT_BOXES: GiftBox[] = [
@@ -2723,6 +2748,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGlobalPlaymatId(playmatId)
   }
 
+  // Unlocks a playmat directly into the player's account (used by shop purchases)
+  const unlockPlaymat = (playmatId: string): boolean => {
+    const playmat = ALL_PLAYMATS.find((p) => p.id === playmatId)
+    if (!playmat) return false
+    if (ownedPlaymats.some((p) => p.id === playmatId)) return false
+    const updated = [...ownedPlaymats, playmat]
+    setOwnedPlaymats(updated)
+    localStorage.setItem("gearperks_owned_playmats", JSON.stringify(updated.map((p) => p.id)))
+    return true
+  }
+
   const getPlaymatForDeck = (deck: Deck): Playmat | null => {
     // If deck uses global playmat or has no specific setting
     if (deck.useGlobalPlaymat !== false && globalPlaymatId) {
@@ -2960,6 +2996,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         globalPlaymatId,
         setGlobalPlaymat,
         getPlaymatForDeck,
+        unlockPlaymat,
         // Code redemption
         redeemCode,
         redeemedCodes,
