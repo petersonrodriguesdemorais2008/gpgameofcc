@@ -178,8 +178,25 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
     }
   }, [onClose])
 
-  /* Só fecha em clique limpo no fundo: nao fecha ao arrastar nem ao clicar no modelo */
-  const gesture = useRef({ x: 0, y: 0, moved: false, onModel: false, active: false })
+  /* Só fecha em clique limpo e rapido no fundo:
+     - ignora o "pointerup" do long-press que abriu a previa (periodo de carencia)
+     - nao fecha ao arrastar, ao segurar ou ao interagir com o modelo */
+  const gesture = useRef({ x: 0, y: 0, t: 0, moved: false, onModel: false, active: false })
+  const openedAt = useRef(0)
+  useEffect(() => {
+    openedAt.current = Date.now()
+  }, [])
+
+  const endGesture = () => {
+    const g = gesture.current
+    const wasActive = g.active
+    g.active = false
+    if (!wasActive) return
+    if (Date.now() - openedAt.current < 500) return // carencia pos-abertura
+    if (g.moved || g.onModel) return
+    if (Date.now() - g.t > 320) return // segurou: intencao de girar, nao de fechar
+    onClose()
+  }
 
   /* Fade-in apenas por opacidade: qualquer transform aqui criaria um backdrop root
      e o backdrop-blur deixaria de desfocar a tela atras do overlay. */
@@ -200,18 +217,21 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
       aria-modal="true"
       aria-label={`Visualizacao 3D de ${item.name}`}
       onPointerDownCapture={(e) => {
-        gesture.current = { x: e.clientX, y: e.clientY, moved: false, onModel: false, active: true }
+        gesture.current = {
+          x: e.clientX,
+          y: e.clientY,
+          t: Date.now(),
+          moved: false,
+          onModel: false,
+          active: true,
+        }
       }}
       onPointerMove={(e) => {
         const g = gesture.current
         if (!g.active) return
-        if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 8) g.moved = true
+        if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 6) g.moved = true
       }}
-      onPointerUp={() => {
-        const g = gesture.current
-        g.active = false
-        if (!g.moved && !g.onModel) onClose()
-      }}
+      onPointerUp={endGesture}
       onPointerCancel={() => {
         gesture.current.active = false
       }}
@@ -298,7 +318,7 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
           {item.name}
         </h3>
         <p className="text-slate-300/80 text-[13px] text-center">
-          Arraste para girar &middot; Role para aproximar &middot; Clique no fundo para sair
+          Arraste para girar &middot; Role para aproximar &middot; Clique rapido no fundo ou Esc para sair
         </p>
       </div>
     </div>,

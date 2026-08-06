@@ -251,9 +251,17 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
     onPointerDown: (e: React.PointerEvent) => {
       suppressClick.current = false
       longPressStart.current = { x: e.clientX, y: e.clientY }
+      const target = e.currentTarget as HTMLElement
+      const pointerId = e.pointerId
       longPressTimer.current = setTimeout(() => {
         suppressClick.current = true
         longPressTimer.current = null
+        // Libera a captura implicita (toque) para que a cena 3D receba o arraste
+        try {
+          if (target.hasPointerCapture?.(pointerId)) target.releasePointerCapture(pointerId)
+        } catch {
+          // ignora
+        }
         setPreview3D(item)
       }, 450)
     },
