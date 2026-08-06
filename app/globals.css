@@ -54,6 +54,7 @@
 
 @theme inline {
   --font-sans: var(--font-sans, "Inter", system-ui, sans-serif);
+  --font-serif: var(--font-serif, "Cinzel", serif);
   --font-mono: var(--font-mono, "JetBrains Mono", monospace);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -676,6 +677,87 @@
 
 .animate-rainbow-border {
   animation: rainbow-border 3s linear infinite;
+}
+
+/* ===== SHOP v2 — Vitrine Profissional ===== */
+
+/* Varredura de brilho no hover (efeito "foil" sutil) */
+.shop-shine {
+  position: relative;
+  overflow: hidden;
+}
+.shop-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.07) 48%,
+    rgba(255, 255, 255, 0.12) 52%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.shop-shine:hover::after {
+  transform: translateX(120%);
+}
+
+/* Moldura ornamental com cantos (estilo relíquia) */
+.shop-frame {
+  position: relative;
+}
+.shop-frame::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(232, 180, 76, 0.14);
+  border-radius: inherit;
+  pointer-events: none;
+  transition: border-color 0.3s ease;
+}
+.shop-frame:hover::before {
+  border-color: rgba(232, 180, 76, 0.35);
+}
+
+/* Pedestal do produto: reflexo elíptico sob a arte do pack */
+.shop-pedestal {
+  position: relative;
+}
+.shop-pedestal::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(232, 180, 76, 0.22) 0%, transparent 70%);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+/* Flutuação lenta da arte do produto */
+@keyframes shopFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.shop-float {
+  animation: shopFloat 5s ease-in-out infinite;
+}
+
+/* Textura de linhas diagonais bem sutil para superfícies */
+.shop-texture {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 8px
+  );
 }
 
 /* Gacha button styles */
