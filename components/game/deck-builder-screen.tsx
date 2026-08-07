@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame, type Card, type Deck } from "@/contexts/game-context"
+import { useGame, CARD_BACK_IMAGE, type Card, type Deck } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -106,7 +106,8 @@ interface DeckBuilderScreenProps {
 
 export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const { t } = useLanguage()
-  const { collection, decks, saveDeck, deleteDeck, ownedPlaymats, globalPlaymatId, setGlobalPlaymat, ownedSleeves, globalSleeveId, setGlobalSleeve } = useGame()
+  const { collection, decks, saveDeck, deleteDeck, ownedPlaymats, globalPlaymatId, setGlobalPlaymat, ownedSleeves, globalSleeveId, setGlobalSleeve, getActiveCardBack } = useGame()
+  const defaultCardBack = getActiveCardBack()
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null)
   const [deckName, setDeckName] = useState("")
   const [deckCards, setDeckCards] = useState<Card[]>([])
@@ -1078,15 +1079,19 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                   className="object-cover"
                 />
               ) : (
-                <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
-                  <span className="text-slate-500 text-[10px] text-center leading-tight px-1">Padrao</span>
-                </div>
+                <Image
+                  src={CARD_BACK_IMAGE}
+                  alt="Verso padrao da carta"
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
               )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
                 <p className="text-[9px] text-white truncate text-center">
                   {globalSleeveId && ownedSleeves.find((s) => s.id === globalSleeveId)
                     ? ownedSleeves.find((s) => s.id === globalSleeveId)!.name
-                    : "Sem sleeve"}
+                    : "Padrao"}
                 </p>
               </div>
             </div>
@@ -1098,7 +1103,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                   <p className="text-slate-500 text-xs text-center py-2">Nenhum sleeve adquirido ainda.</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
-                    {/* None option */}
+                    {/* None option — mostra o verso padrao da carta */}
                     <div
                       onClick={() => setGlobalSleeve(null)}
                       className={`relative overflow-hidden cursor-pointer border rounded-lg ${
@@ -1106,8 +1111,15 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                       }`}
                       style={{ aspectRatio: "2/3" }}
                     >
-                      <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
-                        <span className="text-slate-500 text-[10px]">Padrao</span>
+                      <Image
+                        src={CARD_BACK_IMAGE}
+                        alt="Verso padrao da carta"
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                        <span className="text-white text-[9px] text-center block">Padrao</span>
                       </div>
                       {!globalSleeveId && (
                         <div className="absolute top-1 right-1 w-3 h-3 bg-green-400 rounded-full" />
