@@ -1629,6 +1629,48 @@ const ALL_SLEEVES: Sleeve[] = [
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/morgana_sleeve_2-8IsYSKP4HRhoK255Fo7NIdZdTfnMJM.png",
     description: "Morgana e Fehnon lado a lado — a musica e a batalha em perfeita harmonia.",
   },
+  {
+    id: "sleeve-morgana-1",
+    name: "Morgana: Riff Purpura",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/morgana_sleeve_1-jxCZ76JsebohEJKsws6ACaOCekrWwO.png",
+    description: "Morgana rasga o ar com sua guitarra purpura — a musica como arma, o palco como campo de batalha.",
+  },
+  {
+    id: "sleeve-fehnon-5",
+    name: "Fehnon: Tempestade Azul",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fehnon_sleeve_5-pErjJ1zUoO9zPNRDSKU0tnozbQ5FGh.png",
+    description: "Fehnon envolvido em correntes de energia glacial — o guerreiro que domina o caos azul.",
+  },
+  {
+    id: "sleeve-fehnon-4",
+    name: "Fehnon: Espirito do Guerreiro",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fehnon_sleeve_4-RRidTWQsMbJc13yaF6oLdVwpkR0kBo.png",
+    description: "A forma jovem de Fehnon empunha a lamina azul com determinacao inabalavel.",
+  },
+  {
+    id: "sleeve-fehnon-2",
+    name: "Fehnon: Furia Glacial",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fehnon_sleeve_2-zIQLGZr0sKvBRQrvFZIYcFYuEhFcpU.png",
+    description: "Fehnon avanca com sua espada em meio a uma tempestade de fragmentos de gelo e eletricidade azul.",
+  },
+  {
+    id: "sleeve-calem-5",
+    name: "Calem: Punho de Luz",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/calem_sleeve_5-bztuRheEXYm6nbzuSVLe8LgyxCybPs.png",
+    description: "Calem libera um soco carregado de luz pura — a forca bruta encontra o poder celestial.",
+  },
+  {
+    id: "sleeve-arthur-2",
+    name: "Arthur: Mago das Sombras",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arthur_sleeve_2-dMm88ohC4p4jBcbFFf0OKrVoVoIwJs.png",
+    description: "Arthur canaliza energia purpura nas palmas das maos — o feiticeiro sombrio em toda sua gloria.",
+  },
+  {
+    id: "sleeve-calem-3",
+    name: "Calem: Espirito do Vento",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/calem_sleeve_3-KB81IHvk1w8j6oJHqTOUfefWDj8aUQ.png",
+    description: "A forma jovem de Calem canaliza a energia do vento — calma antes da tempestade.",
+  },
 ]
 
 const ALL_PLAYMATS: Playmat[] = [
@@ -3016,7 +3058,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_gear_pass")
       localStorage.removeItem("gpgame_pass_missions")
 
-      // ── Missions (Missões diárias/eventos) ────────────────────────────────
+      // ── Missions (Missões diárias/eventos) ─────────────────────���──────────
       localStorage.removeItem("claimed_missions")
       localStorage.removeItem("claimed_bonus")
       localStorage.removeItem("missions_event_end")
