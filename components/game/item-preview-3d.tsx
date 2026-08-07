@@ -59,8 +59,9 @@ function CenterMessage({ text }: { text: string }) {
   )
 }
 
-/* Rotacao por arraste com resposta imediata (1:1) e inercia ao soltar.
-   Substitui o PresentationControls, cuja mola deixava o giro lento e "elastico". */
+/* Rotacao por arraste com velocidade controlada e amortecimento leve.
+   O arraste move um "alvo" e o modelo o segue com interpolacao rapida:
+   fica fluido, sem tranco e sem parecer rapido demais. */
 function DragRotate({ children }: { children: ReactNode }) {
   const group = useRef<Group>(null)
   const gl = useThree((s) => s.gl)
@@ -70,6 +71,8 @@ function DragRotate({ children }: { children: ReactNode }) {
     lastY: 0,
     rotX: 0.07,
     rotY: 0,
+    targetX: 0.07,
+    targetY: 0,
     velX: 0,
     velY: 0,
   })
@@ -77,8 +80,9 @@ function DragRotate({ children }: { children: ReactNode }) {
   useEffect(() => {
     const el = gl.domElement
     const s = st.current
-    const SPEED = 0.0092
+    const SPEED = 0.0048
     const MAX_POLAR = Math.PI / 3
+    const MAX_VEL = 0.045
 
     const onDown = (e: PointerEvent) => {
       s.dragging = true
@@ -98,12 +102,11 @@ function DragRotate({ children }: { children: ReactNode }) {
       const dy = e.clientY - s.lastY
       s.lastX = e.clientX
       s.lastY = e.clientY
-      // Aplica direto: o modelo acompanha o ponteiro sem atraso
-      s.rotY += dx * SPEED
-      s.rotX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.rotX + dy * SPEED))
-      // Guarda a velocidade para a inercia
-      s.velY = dx * SPEED
-      s.velX = dy * SPEED
+      s.targetY += dx * SPEED
+      s.targetX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.targetX + dy * SPEED))
+      // Velocidade limitada para a inercia nao disparar
+      s.velY = Math.min(MAX_VEL, Math.max(-MAX_VEL, dx * SPEED))
+      s.velX = Math.min(MAX_VEL, Math.max(-MAX_VEL, dy * SPEED))
     }
     const onUp = () => {
       s.dragging = false
@@ -125,13 +128,17 @@ function DragRotate({ children }: { children: ReactNode }) {
     const s = st.current
     if (!group.current) return
     if (!s.dragging) {
-      // Inercia: continua girando e desacelera suavemente
-      const decay = Math.pow(0.02, delta) // ~perde 98% da velocidade por segundo
-      s.rotY += s.velY * delta * 60
-      s.rotX = Math.min(Math.PI / 3, Math.max(-Math.PI / 3, s.rotX + s.velX * delta * 60))
+      // Inercia curta: continua um pouco e desacelera rapido
+      const decay = Math.pow(0.004, delta)
+      s.targetY += s.velY * delta * 60
+      s.targetX = Math.min(Math.PI / 3, Math.max(-Math.PI / 3, s.targetX + s.velX * delta * 60))
       s.velY *= decay
       s.velX *= decay
     }
+    // Segue o alvo com interpolacao rapida (sem sensacao de atraso)
+    const k = 1 - Math.pow(0.000001, delta)
+    s.rotX += (s.targetX - s.rotX) * k
+    s.rotY += (s.targetY - s.rotY) * k
     group.current.rotation.set(s.rotX, s.rotY, 0)
   })
 
@@ -203,11 +210,12 @@ function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) 
           <meshStandardMaterial attach="material-2" color="#14161f" roughness={0.75} />
           <meshStandardMaterial attach="material-3" color="#14161f" roughness={0.75} />
           {/* Frente com a arte em alta qualidade */}
+          {/* Rugosidade alta e sem metalness: evita reflexos estourados na arte */}
           <meshStandardMaterial
             attach="material-4"
             map={texture}
-            roughness={0.38}
-            metalness={0.08}
+            roughness={0.62}
+            metalness={0}
           />
           <meshStandardMaterial attach="material-5" color="#0d0e15" roughness={0.9} />
         </mesh>
@@ -220,8 +228,8 @@ function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) 
             transparent
             alphaTest={0.35}
             side={DoubleSide}
-            roughness={0.42}
-            metalness={0.06}
+            roughness={0.65}
+            metalness={0}
           />
         </mesh>
       )}
@@ -342,9 +350,9 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
           style={{ touchAction: "none" }}
         >
           <AdaptiveDpr pixelated />
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[4, 5, 6]} intensity={1.15} />
-          <directionalLight position={[-4, -2, 4]} intensity={0.35} />
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[4, 5, 6]} intensity={0.7} />
+          <directionalLight position={[-4, -2, 4]} intensity={0.25} />
           <Suspense fallback={<CenterMessage text="Carregando previa..." />}>
             <SceneBoundary fallback={<CenterMessage text="Nao foi possivel carregar a previa." />}>
               <DragRotate>
@@ -363,19 +371,19 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
                   renderizada uma unica vez em resolucao reduzida */}
               <Environment resolution={128} frames={1}>
                 <Lightformer
-                  intensity={2.2}
+                  intensity={1.0}
                   position={[0, 3, 3]}
                   scale={[8, 3, 1]}
                   color="#ffffff"
                 />
                 <Lightformer
-                  intensity={1.1}
+                  intensity={0.5}
                   position={[-4, 1, 2]}
                   scale={[4, 4, 1]}
                   color="#8ab4ff"
                 />
                 <Lightformer
-                  intensity={1.2}
+                  intensity={0.55}
                   position={[4, -1, 2]}
                   scale={[4, 4, 1]}
                   color="#ffd68a"
