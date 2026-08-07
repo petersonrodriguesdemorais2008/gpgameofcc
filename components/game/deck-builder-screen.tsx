@@ -106,7 +106,7 @@ interface DeckBuilderScreenProps {
 
 export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const { t } = useLanguage()
-  const { collection, decks, saveDeck, deleteDeck, ownedPlaymats, globalPlaymatId, setGlobalPlaymat } = useGame()
+  const { collection, decks, saveDeck, deleteDeck, ownedPlaymats, globalPlaymatId, setGlobalPlaymat, ownedSleeves, globalSleeveId, setGlobalSleeve } = useGame()
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null)
   const [deckName, setDeckName] = useState("")
   const [deckCards, setDeckCards] = useState<Card[]>([])
@@ -119,6 +119,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const [selectedPlaymatId, setSelectedPlaymatId] = useState<string | null>(null)
   const [useGlobalPlaymat, setUseGlobalPlaymat] = useState(true)
   const [showPlaymatSelector, setShowPlaymatSelector] = useState(false)
+  const [showSleeveSelector, setShowSleeveSelector] = useState(false)
   const [zoomedCard,      setZoomedCard]      = useState<Card | null>(null)
   const [showSkinPanel,   setShowSkinPanel]   = useState(false)
   const [skinRefresh,     setSkinRefresh]     = useState(0)  // increment to force re-render
@@ -1041,6 +1042,97 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                           sizes="100px"
                           className="object-cover"
                         />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Sleeve Section ── */}
+          <div className="p-3 border-b border-indigo-500/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-purple-400" />
+                Sleeve
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSleeveSelector(!showSleeveSelector)}
+                className="text-indigo-400 hover:text-indigo-300 text-xs"
+              >
+                {showSleeveSelector ? "Fechar" : "Alterar"}
+              </Button>
+            </div>
+
+            {/* Current sleeve preview */}
+            <div className="relative overflow-hidden border border-indigo-500/30 rounded-lg mx-auto" style={{ width: 64, height: 96 }}>
+              {globalSleeveId && ownedSleeves.find((s) => s.id === globalSleeveId) ? (
+                <Image
+                  src={ownedSleeves.find((s) => s.id === globalSleeveId)!.image || "/placeholder.svg"}
+                  alt={ownedSleeves.find((s) => s.id === globalSleeveId)!.name}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
+                  <span className="text-slate-500 text-[10px] text-center leading-tight px-1">Padrao</span>
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                <p className="text-[9px] text-white truncate text-center">
+                  {globalSleeveId && ownedSleeves.find((s) => s.id === globalSleeveId)
+                    ? ownedSleeves.find((s) => s.id === globalSleeveId)!.name
+                    : "Sem sleeve"}
+                </p>
+              </div>
+            </div>
+
+            {/* Sleeve selector dropdown */}
+            {showSleeveSelector && (
+              <div className="mt-2">
+                {ownedSleeves.length === 0 ? (
+                  <p className="text-slate-500 text-xs text-center py-2">Nenhum sleeve adquirido ainda.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* None option */}
+                    <div
+                      onClick={() => setGlobalSleeve(null)}
+                      className={`relative overflow-hidden cursor-pointer border rounded-lg ${
+                        !globalSleeveId ? "border-green-400" : "border-slate-600"
+                      }`}
+                      style={{ aspectRatio: "2/3" }}
+                    >
+                      <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
+                        <span className="text-slate-500 text-[10px]">Padrao</span>
+                      </div>
+                      {!globalSleeveId && (
+                        <div className="absolute top-1 right-1 w-3 h-3 bg-green-400 rounded-full" />
+                      )}
+                    </div>
+
+                    {ownedSleeves.map((sleeve) => (
+                      <div
+                        key={sleeve.id}
+                        onClick={() => setGlobalSleeve(sleeve.id)}
+                        className={`relative overflow-hidden cursor-pointer border rounded-lg ${
+                          globalSleeveId === sleeve.id ? "border-green-400" : "border-slate-600"
+                        }`}
+                        style={{ aspectRatio: "2/3" }}
+                      >
+                        <Image
+                          src={sleeve.image || "/placeholder.svg"}
+                          alt={sleeve.name}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                        />
+                        {globalSleeveId === sleeve.id && (
+                          <div className="absolute top-1 right-1 w-3 h-3 bg-green-400 rounded-full" />
+                        )}
                       </div>
                     ))}
                   </div>

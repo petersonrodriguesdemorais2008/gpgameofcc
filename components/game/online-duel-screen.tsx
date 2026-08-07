@@ -4,7 +4,7 @@ import type React from "react"
 import type { Deck as GameDeck, Card as GameCard } from "@/contexts/game-context"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame } from "@/contexts/game-context"
+import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords, X, MessageCircle, Send } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -7690,7 +7690,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                               }}
                             >
                               <Image
-                                src={activeCardBack || "/placeholder.svg"}
+                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Deck"
                                 fill
                                 className="object-cover"
@@ -7809,7 +7809,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                           <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
                             <div className="absolute inset-0 [backface-visibility:hidden]">
                               <Image
-                                src={activeCardBack || "/placeholder.svg"}
+                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Face down card"
                                 fill
                                 className="object-cover rounded"
@@ -8712,7 +8712,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
               }}>
                 <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
-                  <img src={activeCardBack||"/placeholder.svg"} alt=""
+                  <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:7}}/>
                 </div>
