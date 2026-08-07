@@ -52,6 +52,15 @@ interface PlaymatShopItem {
   gachaPrice: number
 }
 
+interface SleeveShopItem {
+  sleeveId: string
+  name: string
+  description: string
+  image: string
+  gearPrice: number
+  gachaPrice: number
+}
+
 const SHOP_ITEMS: ShopItem[] = [
   // Featured Bundles
   {
@@ -133,6 +142,57 @@ const SHOP_ITEMS: ShopItem[] = [
   },
 ]
 
+const SLEEVE_SHOP_ITEMS: SleeveShopItem[] = [
+  {
+    sleeveId: "sleeve-anjo-vencedor",
+    name: "Anjo Vencedor no Campo de Batalha",
+    description: "O arcanjo de luz triunfa sobre as trevas — proteja seu deck com a forca divina.",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Anjo%20vencedor%20no%20campo%20de%20batalha-1mIlywFgRp0WLSe44yNgnGIsyDRvRx.png",
+    gearPrice: 750,
+    gachaPrice: 300,
+  },
+  {
+    sleeveId: "sleeve-calem-2",
+    name: "Calem: Energia Relampago",
+    description: "Calem carregado de energia eletrica, pronto para dominar qualquer duelo.",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/calem_sleeve_2-6ppAxjYajtuwrmuM1veQDQSYv5BZfh.png",
+    gearPrice: 750,
+    gachaPrice: 300,
+  },
+  {
+    sleeveId: "sleeve-arthur-3",
+    name: "Arthur: Pose Misterio",
+    description: "Arthur relaxado e confiante, com sua aura violeta caracteristica.",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arthur_sleeve_3-GbLMVycvunxWvnMBp4OBzstftEmllk.jpg",
+    gearPrice: 750,
+    gachaPrice: 300,
+  },
+  {
+    sleeveId: "sleeve-arthur-1",
+    name: "Arthur: Vulto das Sombras",
+    description: "Arthur desencadeia um turbilhao de energia purpura — o poder das sombras em cada carta.",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arthur_sleeve_1-lKFk4H0VNekCZQH1Vv2C9verWDfIi4.png",
+    gearPrice: 750,
+    gachaPrice: 300,
+  },
+  {
+    sleeveId: "sleeve-fehnon-1",
+    name: "Fehnon: Lamina Azul",
+    description: "Fehnon em postura de batalha, com raios azuis e fundo rosa energetico.",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fehnon_sleeve_1-EAaVhr0pKB7Zcxhq1uc7JgvKR3OycY.png",
+    gearPrice: 750,
+    gachaPrice: 300,
+  },
+  {
+    sleeveId: "sleeve-morgana-2",
+    name: "Morgana e Fehnon: Dueto",
+    description: "Morgana e Fehnon lado a lado — a musica e a batalha em perfeita harmonia.",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/morgana_sleeve_2-8IsYSKP4HRhoK255Fo7NIdZdTfnMJM.png",
+    gearPrice: 750,
+    gachaPrice: 300,
+  },
+]
+
 const PLAYMAT_SHOP_ITEMS: PlaymatShopItem[] = [
   {
     playmatId: "playmat-morgana",
@@ -168,13 +228,14 @@ const PLAYMAT_SHOP_ITEMS: PlaymatShopItem[] = [
   },
 ]
 
-type TabId = "featured" | "packs" | "bundles" | "playmats"
+type TabId = "featured" | "packs" | "bundles" | "playmats" | "sleeves"
 
 const TABS: { id: TabId; label: string; icon: typeof Star }[] = [
   { id: "featured", label: "Destaque", icon: Star },
   { id: "packs", label: "Packs", icon: Package },
   { id: "bundles", label: "Bundles", icon: Gift },
   { id: "playmats", label: "Playmats", icon: LayoutGrid },
+  { id: "sleeves", label: "Sleeves", icon: Zap },
 ]
 
 /* Sistema de raridade: cor funcional unica por tier, usada com parcimonia */
@@ -230,9 +291,10 @@ function WalletChip({
 
 export default function ShopScreen({ onBack }: ShopScreenProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, gearCoins, setGearCoins, addGift, ownedPlaymats, unlockPlaymat } = useGame()
+  const { coins, setCoins, gearCoins, setGearCoins, addGift, ownedPlaymats, unlockPlaymat, ownedSleeves, unlockSleeve, globalSleeveId, setGlobalSleeve } = useGame()
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null)
   const [selectedPlaymat, setSelectedPlaymat] = useState<PlaymatShopItem | null>(null)
+  const [selectedSleeve, setSelectedSleeve] = useState<SleeveShopItem | null>(null)
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>("featured")
   const [preview3D, setPreview3D] = useState<Preview3DItem | null>(null)
@@ -291,6 +353,28 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
   }
 
   const ownsPlaymat = (playmatId: string) => ownedPlaymats.some((p) => p.id === playmatId)
+  const ownsSleeve = (sleeveId: string) => ownedSleeves.some((s) => s.id === sleeveId)
+
+  const handleSleevePurchase = (item: SleeveShopItem, currency: "gear" | "gacha") => {
+    if (ownsSleeve(item.sleeveId)) return
+    if (currency === "gear") {
+      if (gearCoins < item.gearPrice) return
+      setGearCoins((prev) => prev - item.gearPrice)
+    } else {
+      if (coins < item.gachaPrice) return
+      setCoins(coins - item.gachaPrice)
+    }
+    unlockSleeve(item.sleeveId)
+    // Equipa automaticamente se nao houver sleeve ativo
+    if (!globalSleeveId) {
+      setGlobalSleeve(item.sleeveId)
+    }
+    setPurchaseSuccess(true)
+    setTimeout(() => {
+      setPurchaseSuccess(false)
+      setSelectedSleeve(null)
+    }, 2000)
+  }
 
   const handlePurchase = (item: ShopItem) => {
     if (item.currency === "coins" && coins < item.price) return
@@ -718,6 +802,119 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
             </div>
           </section>
         )}
+
+        {activeTab === "sleeves" && (
+          <section aria-label="Sleeves">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="font-serif text-sm font-bold tracking-[0.2em] text-slate-200 uppercase">
+                Sleeves de Carta
+              </h2>
+              <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+            </div>
+            <p className="text-slate-400 text-sm mb-5">
+              Compra unica. O sleeve substitui a parte de tras das cartas durante os duelos.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {SLEEVE_SHOP_ITEMS.map((item) => {
+                const owned = ownsSleeve(item.sleeveId)
+                const isActive = globalSleeveId === item.sleeveId
+                return (
+                  <div
+                    key={item.sleeveId}
+                    onClick={guardClick(() => !owned && setSelectedSleeve(item))}
+                    {...longPressHandlers({ image: item.image, name: item.name, kind: "playmat" })}
+                    className={`group relative rounded-lg overflow-hidden border bg-[#12141f] transition-all duration-300 shop-frame select-none flex flex-col ${
+                      owned
+                        ? "border-white/[0.08] cursor-pointer"
+                        : "border-white/[0.06] hover:border-amber-400/35 cursor-pointer hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)] shop-shine"
+                    }`}
+                    style={{ touchAction: "pan-y" }}
+                  >
+                    {/* Arte do sleeve — proporcao de carta de baralho */}
+                    <div className="relative overflow-hidden" style={{ aspectRatio: "2/3" }}>
+                      <Image
+                        src={item.image}
+                        alt={`Sleeve ${item.name}`}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                        className={`object-cover transition-transform duration-700 ${
+                          owned ? "saturate-[0.85]" : "group-hover:scale-[1.04]"
+                        }`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#12141f] via-[#12141f]/5 to-transparent" />
+                      <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(10,11,18,0.4)]" />
+
+                      {isActive && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-400/90 text-[#0a0b12] text-[10px] font-bold px-2 py-0.5 rounded">
+                          <Zap className="w-2.5 h-2.5" />
+                          Ativo
+                        </div>
+                      )}
+                      {owned && !isActive && (
+                        <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#0a0b12]/85 border border-emerald-400/30 text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-sm">
+                          <Check className="w-2.5 h-2.5" />
+                          Adquirido
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rodape */}
+                    <div className="px-3 pt-2 pb-3 border-t border-white/[0.05] flex flex-col gap-2">
+                      <h3 className="font-serif text-white font-bold text-[13px] leading-snug line-clamp-2 text-balance">
+                        {item.name}
+                      </h3>
+
+                      {owned ? (
+                        owned && isActive ? (
+                          <span className="text-amber-300 text-[11px] font-semibold flex items-center gap-1">
+                            <Zap className="w-3 h-3" />
+                            Equipado
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setGlobalSleeve(item.sleeveId) }}
+                            className="text-[11px] font-semibold text-slate-300 hover:text-amber-300 transition-colors text-left"
+                          >
+                            Equipar sleeve
+                          </button>
+                        )
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Image
+                              src="/images/gear-coin.png"
+                              alt="Gear Coins"
+                              width={14}
+                              height={14}
+                              className="w-[14px] h-[14px] object-contain"
+                            />
+                            <span className="text-slate-100 font-bold text-[11px] tabular-nums">
+                              {item.gearPrice.toLocaleString()}
+                            </span>
+                          </span>
+                          <span className="text-slate-600 text-[9px] font-bold tracking-widest">OU</span>
+                          <span className="flex items-center gap-1">
+                            <Image
+                              src="/images/icons/gacha-coin.png"
+                              alt="Gacha Coins"
+                              width={14}
+                              height={14}
+                              className="w-[14px] h-[14px] object-contain"
+                            />
+                            <span className="text-amber-300 font-bold text-[11px] tabular-nums">
+                              {item.gachaPrice.toLocaleString()}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Modal de compra (packs/bundles) */}
@@ -940,6 +1137,116 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
                   </div>
 
                   {gearCoins < selectedPlaymat.gearPrice && coins < selectedPlaymat.gachaPrice && (
+                    <p className="text-center text-red-300 text-sm mt-3">
+                      Saldo insuficiente nas duas moedas para esta compra.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de compra (sleeves) */}
+      {selectedSleeve && (
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !purchaseSuccess && setSelectedSleeve(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Comprar sleeve ${selectedSleeve.name}`}
+        >
+          <div
+            className="relative w-full max-w-sm bg-[#12141f] rounded-xl border border-white/[0.08] overflow-hidden shadow-[0_32px_80px_-16px_rgba(0,0,0,0.9)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {purchaseSuccess ? (
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-500/10 border border-emerald-400/25 flex items-center justify-center">
+                  <Check className="w-10 h-10 text-emerald-300" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-white mb-2">Sleeve Adquirido!</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  O sleeve foi adicionado a sua conta e equipado automaticamente.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setSelectedSleeve(null)}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-[#0a0b12]/70 hover:bg-[#0a0b12] transition-colors z-20 backdrop-blur-sm"
+                  aria-label="Fechar"
+                >
+                  <X className="w-4 h-4 text-slate-300" />
+                </button>
+
+                {/* Arte do sleeve — proporcao de carta de baralho */}
+                <div className="relative overflow-hidden" style={{ aspectRatio: "2/3" }}>
+                  <Image
+                    src={selectedSleeve.image}
+                    alt={`Sleeve ${selectedSleeve.name}`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 384px"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#12141f] via-transparent to-transparent" />
+                  <div className="absolute inset-0 shadow-[inset_0_0_60px_rgba(10,11,18,0.5)]" />
+                  <div className="absolute bottom-0 inset-x-0 p-5">
+                    <span className="text-[10px] font-bold tracking-[0.3em] text-amber-400 uppercase">
+                      Sleeve Exclusivo
+                    </span>
+                    <h3 className="font-serif text-xl font-bold text-white mt-1 text-balance">
+                      {selectedSleeve.name}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <p className="text-slate-400 text-sm leading-relaxed mb-4">{selectedSleeve.description}</p>
+
+                  <div className="flex items-center gap-2.5 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2.5 mb-5 text-sm text-slate-300">
+                    <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                    Compra unica — o sleeve substitui a parte de tras das cartas nos duelos.
+                  </div>
+
+                  <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400 uppercase mb-2.5">
+                    Escolha como pagar
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => handleSleevePurchase(selectedSleeve, "gear")}
+                      disabled={gearCoins < selectedSleeve.gearPrice}
+                      className="h-auto py-3.5 flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.12] hover:border-white/25 text-slate-100 font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Image
+                        src="/images/gear-coin.png"
+                        alt="Gear Coins"
+                        width={22}
+                        height={22}
+                        className="w-[22px] h-[22px] object-contain"
+                      />
+                      <span className="tabular-nums">{selectedSleeve.gearPrice.toLocaleString()}</span>
+                      <span className="font-medium text-slate-400 text-xs">Gear</span>
+                    </Button>
+                    <Button
+                      onClick={() => handleSleevePurchase(selectedSleeve, "gacha")}
+                      disabled={coins < selectedSleeve.gachaPrice}
+                      className="h-auto py-3.5 flex items-center justify-center gap-2 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/50 text-amber-200 font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Image
+                        src="/images/icons/gacha-coin.png"
+                        alt="Gacha Coins"
+                        width={22}
+                        height={22}
+                        className="w-[22px] h-[22px] object-contain"
+                      />
+                      <span className="tabular-nums">{selectedSleeve.gachaPrice.toLocaleString()}</span>
+                      <span className="font-medium text-amber-300/70 text-xs">Gacha</span>
+                    </Button>
+                  </div>
+
+                  {gearCoins < selectedSleeve.gearPrice && coins < selectedSleeve.gachaPrice && (
                     <p className="text-center text-red-300 text-sm mt-3">
                       Saldo insuficiente nas duas moedas para esta compra.
                     </p>

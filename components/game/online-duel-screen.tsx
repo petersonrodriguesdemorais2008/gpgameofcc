@@ -2761,7 +2761,8 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
 
 export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const { t } = useLanguage()
-  const { addMatchRecord, getPlaymatForDeck } = useGame()
+  const { addMatchRecord, getPlaymatForDeck, getActiveCardBack } = useGame()
+  const activeCardBack = getActiveCardBack()
   const mode = "online"
 
   const supabase = createClient()
@@ -8088,7 +8089,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                             {/* Back of Card */}
                             <div className="absolute inset-0 [backface-visibility:hidden]">
                               <Image
-                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                src={activeCardBack || "/placeholder.svg"}
                                 alt="Face down card"
                                 fill
                                 className="object-cover rounded"
@@ -8231,7 +8232,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                               }}
                             >
                               <Image
-                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                src={activeCardBack || "/placeholder.svg"}
                                 alt="Deck"
                                 fill
                                 className="object-cover"
@@ -8670,7 +8671,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               }}>
                 {/* Back face */}
                 <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
-                  <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
+                  <img src={activeCardBack||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                 </div>
                 {/* Front face — revealed after flip */}

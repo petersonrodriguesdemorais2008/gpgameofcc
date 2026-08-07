@@ -28,6 +28,13 @@ export interface Playmat {
   description: string
 }
 
+export interface Sleeve {
+  id: string
+  name: string
+  image: string
+  description: string
+}
+
 export interface Deck {
   id: string
   name: string
@@ -163,6 +170,12 @@ interface GameContextType {
   setGlobalPlaymat: (playmatId: string | null) => void
   getPlaymatForDeck: (deck: Deck) => Playmat | null
   unlockPlaymat: (playmatId: string) => boolean
+  allSleeves: Sleeve[]
+  ownedSleeves: Sleeve[]
+  globalSleeveId: string | null
+  setGlobalSleeve: (sleeveId: string | null) => void
+  unlockSleeve: (sleeveId: string) => boolean
+  getActiveCardBack: () => string
   redeemCode: (code: string) => { success: boolean; message: string }
   redeemedCodes: string[]
   deleteAccountData: () => Promise<{ success: boolean; error?: string }>
@@ -1579,6 +1592,45 @@ const ALL_CARDS: Card[] = [
   },
 ]
 
+const ALL_SLEEVES: Sleeve[] = [
+  {
+    id: "sleeve-anjo-vencedor",
+    name: "Anjo Vencedor no Campo de Batalha",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Anjo%20vencedor%20no%20campo%20de%20batalha-1mIlywFgRp0WLSe44yNgnGIsyDRvRx.png",
+    description: "O arcanjo de luz triunfa sobre as trevas — proteja seu deck com a forca divina.",
+  },
+  {
+    id: "sleeve-calem-2",
+    name: "Calem: Energia Relampago",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/calem_sleeve_2-6ppAxjYajtuwrmuM1veQDQSYv5BZfh.png",
+    description: "Calem carregado de energia eletrica, pronto para dominar qualquer duelo.",
+  },
+  {
+    id: "sleeve-arthur-3",
+    name: "Arthur: Pose Misterio",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arthur_sleeve_3-GbLMVycvunxWvnMBp4OBzstftEmllk.jpg",
+    description: "Arthur relaxado e confiante, com sua aura violeta caracteristica.",
+  },
+  {
+    id: "sleeve-arthur-1",
+    name: "Arthur: Vulto das Sombras",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arthur_sleeve_1-lKFk4H0VNekCZQH1Vv2C9verWDfIi4.png",
+    description: "Arthur desencadeia um turbilhao de energia purpura — o poder das sombras em cada carta.",
+  },
+  {
+    id: "sleeve-fehnon-1",
+    name: "Fehnon: Lamina Azul",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fehnon_sleeve_1-EAaVhr0pKB7Zcxhq1uc7JgvKR3OycY.png",
+    description: "Fehnon em postura de batalha, com raios azuis e fundo rosa energetico.",
+  },
+  {
+    id: "sleeve-morgana-2",
+    name: "Morgana e Fehnon: Dueto",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/morgana_sleeve_2-8IsYSKP4HRhoK255Fo7NIdZdTfnMJM.png",
+    description: "Morgana e Fehnon lado a lado — a musica e a batalha em perfeita harmonia.",
+  },
+]
+
 const ALL_PLAYMATS: Playmat[] = [
   {
     id: "playmat-hrotti-water",
@@ -1699,6 +1751,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [ownedPlaymats, setOwnedPlaymats] = useState<Playmat[]>([])
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
+  const [ownedSleeves, setOwnedSleeves] = useState<Sleeve[]>([])
+  const [globalSleeveId, setGlobalSleeveId] = useState<string | null>(null)
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   const [mobileMode, setMobileModeState] = useState(false)
 
@@ -1861,6 +1915,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
                   setGlobalPlaymatId(p.globalPlaymatId)
                   localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
                 }
+                if (Array.isArray(p.ownedSleeveIds)) {
+                  setOwnedSleeves(ALL_SLEEVES.filter((s) => p.ownedSleeveIds.includes(s.id)))
+                  localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(p.ownedSleeveIds))
+                }
+                if (typeof p.globalSleeveId === "string" && p.globalSleeveId) {
+                  setGlobalSleeveId(p.globalSleeveId)
+                  localStorage.setItem("gearperks_global_sleeve", p.globalSleeveId)
+                }
                 if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
                 // Sync to localStorage for offline access
                 if (typeof p.coins === "number") setLS("coins", p.coins.toString())
@@ -1975,6 +2037,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
       if (savedGlobalPlaymat) {
         setGlobalPlaymatId(savedGlobalPlaymat)
+      }
+
+      // Sleeves
+      const savedOwnedSleeves = localStorage.getItem("gearperks_owned_sleeves")
+      const savedGlobalSleeve = localStorage.getItem("gearperks_global_sleeve")
+      if (savedOwnedSleeves) {
+        try {
+          const sleeveIds = JSON.parse(savedOwnedSleeves)
+          setOwnedSleeves(ALL_SLEEVES.filter((s) => sleeveIds.includes(s.id)))
+        } catch { }
+      }
+      if (savedGlobalSleeve) {
+        setGlobalSleeveId(savedGlobalSleeve)
       }
 
       // Redeemed codes (scoped per account)
@@ -2094,6 +2169,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks_global_playmat")
     }
   }, [globalPlaymatId])
+
+  useEffect(() => {
+    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(ownedSleeves.map((s) => s.id)))
+  }, [ownedSleeves])
+
+  useEffect(() => {
+    if (globalSleeveId) {
+      localStorage.setItem("gearperks_global_sleeve", globalSleeveId)
+    } else {
+      localStorage.removeItem("gearperks_global_sleeve")
+    }
+  }, [globalSleeveId])
 
   const addToCollection = (cards: Card[]) => {
     setCollection((prev) => [...prev, ...cards])
@@ -2333,6 +2420,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playerId,
     ownedPlaymatIds: ownedPlaymats.map((p) => p.id),
     globalPlaymatId,
+    ownedSleeveIds: ownedSleeves.map((s) => s.id),
+    globalSleeveId,
     redeemedCodes,
   })
 
@@ -2365,6 +2454,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (typeof p.globalPlaymatId === "string" && p.globalPlaymatId) {
       setGlobalPlaymatId(p.globalPlaymatId)
       localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
+    }
+    if (Array.isArray(p.ownedSleeveIds)) {
+      setOwnedSleeves(ALL_SLEEVES.filter((s) => p.ownedSleeveIds.includes(s.id)))
+      localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(p.ownedSleeveIds))
+    }
+    if (typeof p.globalSleeveId === "string" && p.globalSleeveId) {
+      setGlobalSleeveId(p.globalSleeveId)
+      localStorage.setItem("gearperks_global_sleeve", p.globalSleeveId)
     }
     if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
 
@@ -2582,6 +2679,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Reset playmat states on logout
     setOwnedPlaymats([])
     setGlobalPlaymatId(null)
+    // Reset sleeve states on logout
+    setOwnedSleeves([])
+    setGlobalSleeveId(null)
 
     // Load guest-scoped redeemed codes (don't keep the previous account's codes)
     const guestCodes = getLS(redeemedCodesLSKey(null))
@@ -2608,6 +2708,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playerId,
     ownedPlaymats,
     globalPlaymatId,
+    ownedSleeves,
+    globalSleeveId,
     redeemedCodes,
     accountAuth,
   })
@@ -2627,6 +2729,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       playerId,
       ownedPlaymats,
       globalPlaymatId,
+      ownedSleeves,
+      globalSleeveId,
       redeemedCodes,
       accountAuth,
     }
@@ -2657,6 +2761,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playerId,
     ownedPlaymats,
     globalPlaymatId,
+    ownedSleeves,
+    globalSleeveId,
     redeemedCodes,
     accountAuth.isLoggedIn,
   ])
@@ -2672,8 +2778,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     isSavingRef.current = true
     hasPendingSaveRef.current = false
 
-    const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
-    const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+    const { accountAuth: _auth, ownedPlaymats: mats, ownedSleeves: sleeves, ...rest } = progressRef.current
+    const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id), ownedSleeveIds: sleeves.map((s) => s.id) }
 
     try {
       const result = await accountApi({
@@ -2729,8 +2835,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "hidden" && hasPendingSaveRef.current) {
         const token = localStorage.getItem(SESSION_TOKEN_KEY)
         if (!token) return
-        const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
-        const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+        const { accountAuth: _auth, ownedPlaymats: mats, ownedSleeves: sleeves, ...rest } = progressRef.current
+        const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id), ownedSleeveIds: sleeves.map((s) => s.id) }
         // sendBeacon é fire-and-forget: funciona mesmo enquanto a aba esta fechando
         navigator.sendBeacon(
           "/api/account",
@@ -2746,6 +2852,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const setGlobalPlaymat = (playmatId: string | null) => {
     setGlobalPlaymatId(playmatId)
+  }
+
+  const setGlobalSleeve = (sleeveId: string | null) => {
+    setGlobalSleeveId(sleeveId)
+  }
+
+  // Unlocks a sleeve directly into the player's account (used by shop purchases)
+  const unlockSleeve = (sleeveId: string): boolean => {
+    const sleeve = ALL_SLEEVES.find((s) => s.id === sleeveId)
+    if (!sleeve) return false
+    if (ownedSleeves.some((s) => s.id === sleeveId)) return false
+    const updated = [...ownedSleeves, sleeve]
+    setOwnedSleeves(updated)
+    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(updated.map((s) => s.id)))
+    return true
+  }
+
+  // Returns the active card back image: active sleeve image or default card-back
+  const getActiveCardBack = (): string => {
+    if (globalSleeveId) {
+      const sleeve = ownedSleeves.find((s) => s.id === globalSleeveId)
+      if (sleeve) return sleeve.image
+    }
+    return CARD_BACK_IMAGE
   }
 
   // Unlocks a playmat directly into the player's account (used by shop purchases)
@@ -2865,6 +2995,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks-spendable-fp")
       localStorage.removeItem("gearperks_owned_playmats")
       localStorage.removeItem("gearperks_global_playmat")
+      localStorage.removeItem("gearperks_owned_sleeves")
+      localStorage.removeItem("gearperks_global_sleeve")
       localStorage.removeItem("gearperks-redeemed-codes")
       localStorage.removeItem("gear-perks-redeemed-codes")
       const currentCodesKey = redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null)
@@ -2997,6 +3129,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setGlobalPlaymat,
         getPlaymatForDeck,
         unlockPlaymat,
+        // Sleeve-related values
+        allSleeves: ALL_SLEEVES,
+        ownedSleeves,
+        globalSleeveId,
+        setGlobalSleeve,
+        unlockSleeve,
+        getActiveCardBack,
         // Code redemption
         redeemCode,
         redeemedCodes,
