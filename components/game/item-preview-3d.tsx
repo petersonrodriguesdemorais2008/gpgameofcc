@@ -12,12 +12,12 @@ import {
 import { createPortal } from "react-dom"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import {
+  AdaptiveDpr,
   ContactShadows,
   Environment,
   Float,
   Html,
   Lightformer,
-  PresentationControls,
   useTexture,
 } from "@react-three/drei"
 import { DoubleSide, SRGBColorSpace, type Group } from "three"
@@ -27,6 +27,16 @@ export interface Preview3DItem {
   image: string
   name: string
   kind: "playmat" | "pack"
+}
+
+/* Pre-carrega a textura no cache do loader ANTES do overlay abrir.
+   Chamado no inicio do long-press: quando a previa monta, a imagem ja esta pronta. */
+export function preloadPreviewTexture(image: string) {
+  try {
+    useTexture.preload(image)
+  } catch {
+    // se falhar aqui, o Suspense da cena cuida do carregamento normal
+  }
 }
 
 interface ItemPreview3DProps {
@@ -59,31 +69,165 @@ function CenterMessage({ text }: { text: string }) {
   )
 }
 
-/* Zoom suave com a roda do mouse / pinca */
-function ZoomGroup({ children }: { children: ReactNode }) {
-  const group = useRef<Group>(null)
-  const target = useRef(1)
+const MAX_POLAR = Math.PI / 3
+const ZOOM_MIN = 0.6
+const ZOOM_MAX = 2.4
+
+/* Controlador de gestos unificado: rotacao 1:1 suavizada, inercia de "flick"
+   medida por tempo real, pinca para zoom no toque, roda do mouse no desktop
+   e duplo clique/toque para resetar a vista. */
+function GestureControls({ children }: { children: ReactNode }) {
+  const rotGroup = useRef<Group>(null)
+  const zoomGroup = useRef<Group>(null)
   const gl = useThree((s) => s.gl)
+  const size = useThree((s) => s.size)
+
+  const st = useRef({
+    pointers: new Map<number, { x: number; y: number }>(),
+    rotX: 0.07,
+    rotY: 0,
+    targetX: 0.07,
+    targetY: 0,
+    velX: 0,
+    velY: 0,
+    zoom: 1,
+    targetZoom: 1,
+    pinchDist: 0,
+    lastTapAt: 0,
+    // Amostras recentes do arraste para calcular a velocidade real do flick
+    samples: [] as { x: number; y: number; t: number }[],
+  })
 
   useEffect(() => {
     const el = gl.domElement
+    const s = st.current
+    // Sensibilidade proporcional a tela: mesmo "peso" no celular e no desktop
+    const SPEED = 2.6 / Math.max(320, size.width)
+
+    const resetView = () => {
+      s.targetX = 0.07
+      s.targetY = 0
+      s.targetZoom = 1
+      s.velX = 0
+      s.velY = 0
+    }
+
+    const onDown = (e: PointerEvent) => {
+      s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      s.velX = 0
+      s.velY = 0
+      s.samples = [{ x: e.clientX, y: e.clientY, t: performance.now() }]
+      if (s.pointers.size === 2) {
+        const [a, b] = [...s.pointers.values()]
+        s.pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
+      }
+      // Duplo toque/clique: reseta rotacao e zoom
+      const now = performance.now()
+      if (s.pointers.size === 1) {
+        if (now - s.lastTapAt < 300) resetView()
+        s.lastTapAt = now
+      }
+      try {
+        el.setPointerCapture(e.pointerId)
+      } catch {
+        // ignora
+      }
+    }
+
+    const onMove = (e: PointerEvent) => {
+      const prev = s.pointers.get(e.pointerId)
+      if (!prev) return
+      s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      if (s.pointers.size === 2) {
+        // Pinca: ajusta o zoom pela variacao da distancia entre os dedos
+        const [a, b] = [...s.pointers.values()]
+        const dist = Math.hypot(a.x - b.x, a.y - b.y)
+        if (s.pinchDist > 0) {
+          s.targetZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.targetZoom * (dist / s.pinchDist)))
+        }
+        s.pinchDist = dist
+        return
+      }
+
+      const dx = e.clientX - prev.x
+      const dy = e.clientY - prev.y
+      s.targetY += dx * SPEED
+      s.targetX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.targetX + dy * SPEED))
+
+      // Guarda amostras dos ultimos ~90ms para medir a velocidade do flick
+      const now = performance.now()
+      s.samples.push({ x: e.clientX, y: e.clientY, t: now })
+      while (s.samples.length > 2 && now - s.samples[0].t > 90) s.samples.shift()
+    }
+
+    const onUp = (e: PointerEvent) => {
+      s.pointers.delete(e.pointerId)
+      s.pinchDist = 0
+      if (s.pointers.size > 0) return
+
+      // Velocidade real do gesto: deslocamento / tempo das amostras recentes
+      const first = s.samples[0]
+      const last = s.samples[s.samples.length - 1]
+      if (first && last && last.t - first.t > 15) {
+        const dt = (last.t - first.t) / 1000
+        const MAX_VEL = 2.4 // rad/s
+        s.velY = Math.min(MAX_VEL, Math.max(-MAX_VEL, ((last.x - first.x) * SPEED) / dt))
+        s.velX = Math.min(MAX_VEL, Math.max(-MAX_VEL, ((last.y - first.y) * SPEED) / dt))
+      }
+      s.samples = []
+    }
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      target.current = Math.min(2.2, Math.max(0.6, target.current - e.deltaY * 0.0012))
+      s.targetZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.targetZoom - e.deltaY * 0.0014))
     }
+
+    el.addEventListener("pointerdown", onDown)
+    el.addEventListener("pointermove", onMove)
+    el.addEventListener("pointerup", onUp)
+    el.addEventListener("pointercancel", onUp)
     el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
-  }, [gl])
+    return () => {
+      el.removeEventListener("pointerdown", onDown)
+      el.removeEventListener("pointermove", onMove)
+      el.removeEventListener("pointerup", onUp)
+      el.removeEventListener("pointercancel", onUp)
+      el.removeEventListener("wheel", onWheel)
+    }
+  }, [gl, size.width])
 
   useFrame((_, delta) => {
-    if (!group.current) return
-    const k = 1 - Math.pow(0.0015, delta) // interpolacao estavel por frame
-    const s = group.current.scale.x
-    const next = s + (target.current - s) * k
-    group.current.scale.setScalar(next)
+    const s = st.current
+    const dragging = s.pointers.size > 0
+
+    if (!dragging && (Math.abs(s.velX) > 0.001 || Math.abs(s.velY) > 0.001)) {
+      // Inercia do flick com atrito exponencial
+      s.targetY += s.velY * delta
+      s.targetX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.targetX + s.velX * delta))
+      const friction = Math.pow(0.06, delta)
+      s.velX *= friction
+      s.velY *= friction
+      // Se bateu no limite vertical, mata a velocidade vertical
+      if (Math.abs(s.targetX) >= MAX_POLAR) s.velX = 0
+    }
+
+    // Suavizacao critica: firme durante o arraste, macia na inercia
+    const k = 1 - Math.pow(dragging ? 0.00000001 : 0.0002, delta)
+    s.rotX += (s.targetX - s.rotX) * k
+    s.rotY += (s.targetY - s.rotY) * k
+    if (rotGroup.current) rotGroup.current.rotation.set(s.rotX, s.rotY, 0)
+
+    const kz = 1 - Math.pow(0.001, delta)
+    s.zoom += (s.targetZoom - s.zoom) * kz
+    if (zoomGroup.current) zoomGroup.current.scale.setScalar(s.zoom)
   })
 
-  return <group ref={group}>{children}</group>
+  return (
+    <group ref={rotGroup}>
+      <group ref={zoomGroup}>{children}</group>
+    </group>
+  )
 }
 
 function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) {
@@ -124,11 +268,12 @@ function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) 
           <meshStandardMaterial attach="material-2" color="#14161f" roughness={0.75} />
           <meshStandardMaterial attach="material-3" color="#14161f" roughness={0.75} />
           {/* Frente com a arte em alta qualidade */}
+          {/* Rugosidade alta e sem metalness: evita reflexos estourados na arte */}
           <meshStandardMaterial
             attach="material-4"
             map={texture}
-            roughness={0.38}
-            metalness={0.08}
+            roughness={0.62}
+            metalness={0}
           />
           <meshStandardMaterial attach="material-5" color="#0d0e15" roughness={0.9} />
         </mesh>
@@ -141,18 +286,20 @@ function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) 
             transparent
             alphaTest={0.35}
             side={DoubleSide}
-            roughness={0.42}
-            metalness={0.06}
+            roughness={0.65}
+            metalness={0}
           />
         </mesh>
       )}
+      {/* frames={1}: a sombra e "assada" uma unica vez em vez de re-renderizar todo frame */}
       <ContactShadows
+        frames={1}
         position={[0, -height / 2 - 0.35, 0]}
         opacity={0.45}
         scale={width * 2.2}
         blur={2.6}
         far={2}
-        resolution={512}
+        resolution={256}
         color="#000000"
       />
     </group>
@@ -178,8 +325,25 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
     }
   }, [onClose])
 
-  /* Só fecha em clique limpo no fundo: nao fecha ao arrastar nem ao clicar no modelo */
-  const gesture = useRef({ x: 0, y: 0, moved: false, onModel: false, active: false })
+  /* Só fecha em clique limpo e rapido no fundo:
+     - ignora o "pointerup" do long-press que abriu a previa (periodo de carencia)
+     - nao fecha ao arrastar, ao segurar ou ao interagir com o modelo */
+  const gesture = useRef({ x: 0, y: 0, t: 0, moved: false, onModel: false, active: false })
+  const openedAt = useRef(0)
+  useEffect(() => {
+    openedAt.current = Date.now()
+  }, [])
+
+  const endGesture = () => {
+    const g = gesture.current
+    const wasActive = g.active
+    g.active = false
+    if (!wasActive) return
+    if (Date.now() - openedAt.current < 500) return // carencia pos-abertura
+    if (g.moved || g.onModel) return
+    if (Date.now() - g.t > 320) return // segurou: intencao de girar, nao de fechar
+    onClose()
+  }
 
   /* Fade-in apenas por opacidade: qualquer transform aqui criaria um backdrop root
      e o backdrop-blur deixaria de desfocar a tela atras do overlay. */
@@ -200,25 +364,31 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
       aria-modal="true"
       aria-label={`Visualizacao 3D de ${item.name}`}
       onPointerDownCapture={(e) => {
-        gesture.current = { x: e.clientX, y: e.clientY, moved: false, onModel: false, active: true }
+        gesture.current = {
+          x: e.clientX,
+          y: e.clientY,
+          t: Date.now(),
+          moved: false,
+          onModel: false,
+          active: true,
+        }
       }}
       onPointerMove={(e) => {
         const g = gesture.current
         if (!g.active) return
-        if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 8) g.moved = true
+        if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 6) g.moved = true
       }}
-      onPointerUp={() => {
-        const g = gesture.current
-        g.active = false
-        if (!g.moved && !g.onModel) onClose()
-      }}
+      onPointerUp={endGesture}
       onPointerCancel={() => {
         gesture.current.active = false
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Fundo borrado */}
-      <div className="absolute inset-0 bg-[#0a0b12]/75 backdrop-blur-2xl" aria-hidden="true" />
+      {/* Fundo escurecido (sem backdrop-blur: ele disputava GPU com o WebGL e causava travamentos) */}
+      <div
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(20,22,34,0.94),rgba(6,7,12,0.97))]"
+        aria-hidden="true"
+      />
 
       {/* Cena 3D */}
       <div
@@ -226,52 +396,50 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
         style={{ touchAction: "none" }}
       >
         <Canvas
-          dpr={[1, 2]}
-          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+          dpr={[1, 1.5]}
+          gl={{
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance",
+            stencil: false,
+            depth: true,
+          }}
           camera={{ position: [0, 0, 5.4], fov: 42 }}
           style={{ touchAction: "none" }}
         >
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[4, 5, 6]} intensity={1.15} />
-          <directionalLight position={[-4, -2, 4]} intensity={0.35} />
+          <AdaptiveDpr pixelated />
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[4, 5, 6]} intensity={0.7} />
+          <directionalLight position={[-4, -2, 4]} intensity={0.25} />
           <Suspense fallback={<CenterMessage text="Carregando previa..." />}>
             <SceneBoundary fallback={<CenterMessage text="Nao foi possivel carregar a previa." />}>
-              <PresentationControls
-                global
-                cursor={false}
-                speed={1.3}
-                rotation={[0.07, 0, 0]}
-                polar={[-Math.PI / 3, Math.PI / 3]}
-                azimuth={[-Math.PI, Math.PI]}
-                config={{ mass: 1, tension: 170, friction: 26 }}
-              >
-                <ZoomGroup>
-                  <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
-                    <ItemModel
-                      item={item}
-                      onHit={() => {
-                        gesture.current.onModel = true
-                      }}
-                    />
-                  </Float>
-                </ZoomGroup>
-              </PresentationControls>
-              {/* Iluminacao de estudio gerada localmente (sem download de HDR) */}
-              <Environment resolution={256}>
+              <GestureControls>
+                <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
+                  <ItemModel
+                    item={item}
+                    onHit={() => {
+                      gesture.current.onModel = true
+                    }}
+                  />
+                </Float>
+              </GestureControls>
+              {/* Iluminacao de estudio gerada localmente (sem download de HDR),
+                  renderizada uma unica vez em resolucao reduzida */}
+              <Environment resolution={128} frames={1}>
                 <Lightformer
-                  intensity={2.2}
+                  intensity={1.0}
                   position={[0, 3, 3]}
                   scale={[8, 3, 1]}
                   color="#ffffff"
                 />
                 <Lightformer
-                  intensity={1.1}
+                  intensity={0.5}
                   position={[-4, 1, 2]}
                   scale={[4, 4, 1]}
                   color="#8ab4ff"
                 />
                 <Lightformer
-                  intensity={1.2}
+                  intensity={0.55}
                   position={[4, -1, 2]}
                   scale={[4, 4, 1]}
                   color="#ffd68a"
@@ -298,7 +466,7 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
           {item.name}
         </h3>
         <p className="text-slate-300/80 text-[13px] text-center">
-          Arraste para girar &middot; Role para aproximar &middot; Clique no fundo para sair
+          Arraste para girar &middot; Role ou pince para aproximar &middot; Toque duplo para centralizar &middot; Esc para sair
         </p>
       </div>
     </div>,
