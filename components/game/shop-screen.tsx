@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   Lock,
   Plus,
+  Sparkles,
 } from "lucide-react"
 import Image from "next/image"
 
@@ -60,6 +61,49 @@ interface SleeveShopItem {
   gearPrice: number
   gachaPrice: number
 }
+
+interface CardSkinShopItem {
+  skinId: string        // id da skin (deve casar com CARD_SKINS no deck-builder e duel-screen)
+  name: string
+  description: string
+  image: string
+  character: string     // nome do personagem
+  gearPrice: number
+  gachaPrice: number
+}
+
+// ─── Skins de Carta — linha Pixel Art ────────────────────────────────────────
+// O skinId precisa ser exatamente igual ao usado em CARD_SKINS (deck-builder)
+// e DUEL_CARD_SKINS (duel-screen) para que a skin funcione no jogo.
+const CARD_SKIN_SHOP_ITEMS: CardSkinShopItem[] = [
+  {
+    skinId: "fehnon_skin_pixel",
+    name: "Fehnon: Aquos Pixel",
+    description: "Fehnon Hoskie em estilo Pixel Art, envolto em chamas de energia azul Aquos.",
+    image: "/uploads/fehnon_skin_3.jpg",
+    character: "Fehnon Hoskie",
+    gearPrice: 1200,
+    gachaPrice: 500,
+  },
+  {
+    skinId: "calem_skin_pixel",
+    name: "Calem: Guardiao do Vazio",
+    description: "Calem Hidenori e o arcanjo Miguel em Pixel Art, banhados pela luz celestial.",
+    image: "/uploads/calem_skin_3.jpg",
+    character: "Calem Hidenori",
+    gearPrice: 1200,
+    gachaPrice: 500,
+  },
+  {
+    skinId: "morgana_skin_pixel",
+    name: "Morgana: Acorde do Abismo",
+    description: "Morgana Pendragon em Pixel Art, dominando o palco com sua guitarra das trevas.",
+    image: "/uploads/morgana_skin_3.jpg",
+    character: "Morgana Pendragon",
+    gearPrice: 1200,
+    gachaPrice: 500,
+  },
+]
 
 const SHOP_ITEMS: ShopItem[] = [
   // Featured Bundles
@@ -228,7 +272,7 @@ const PLAYMAT_SHOP_ITEMS: PlaymatShopItem[] = [
   },
 ]
 
-type TabId = "featured" | "packs" | "bundles" | "playmats" | "sleeves"
+type TabId = "featured" | "packs" | "bundles" | "playmats" | "sleeves" | "skins"
 
 const TABS: { id: TabId; label: string; icon: typeof Star }[] = [
   { id: "featured", label: "Destaque", icon: Star },
@@ -236,6 +280,7 @@ const TABS: { id: TabId; label: string; icon: typeof Star }[] = [
   { id: "bundles", label: "Bundles", icon: Gift },
   { id: "playmats", label: "Playmats", icon: LayoutGrid },
   { id: "sleeves", label: "Sleeves", icon: Zap },
+  { id: "skins", label: "Skins", icon: Sparkles },
 ]
 
 /* Sistema de raridade: cor funcional unica por tier, usada com parcimonia */
@@ -295,6 +340,13 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null)
   const [selectedPlaymat, setSelectedPlaymat] = useState<PlaymatShopItem | null>(null)
   const [selectedSleeve, setSelectedSleeve] = useState<SleeveShopItem | null>(null)
+  const [selectedSkin, setSelectedSkin] = useState<CardSkinShopItem | null>(null)
+  const [ownedSkins, setOwnedSkins] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      return JSON.parse(localStorage.getItem("gpgame_card_skins") ?? "[]") as string[]
+    } catch { return [] }
+  })
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>("featured")
   const [preview3D, setPreview3D] = useState<Preview3DItem | null>(null)
@@ -373,6 +425,33 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
     setTimeout(() => {
       setPurchaseSuccess(false)
       setSelectedSleeve(null)
+    }, 2000)
+  }
+
+  const ownsSkin = (skinId: string) => ownedSkins.includes(skinId)
+
+  const handleSkinPurchase = (item: CardSkinShopItem, currency: "gear" | "gacha") => {
+    if (ownsSkin(item.skinId)) return
+    if (currency === "gear") {
+      if (gearCoins < item.gearPrice) return
+      setGearCoins((prev) => prev - item.gearPrice)
+    } else {
+      if (coins < item.gachaPrice) return
+      setCoins(coins - item.gachaPrice)
+    }
+    // Persiste a posse da skin no mesmo formato que o deck-builder/duel esperam
+    try {
+      const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
+      const skins: string[] = JSON.parse(raw)
+      if (!skins.includes(item.skinId)) skins.push(item.skinId)
+      localStorage.setItem("gpgame_card_skins", JSON.stringify(skins))
+      window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId: item.skinId } }))
+      setOwnedSkins(skins)
+    } catch {}
+    setPurchaseSuccess(true)
+    setTimeout(() => {
+      setPurchaseSuccess(false)
+      setSelectedSkin(null)
     }, 2000)
   }
 
@@ -915,6 +994,108 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
             </div>
           </section>
         )}
+
+        {activeTab === "skins" && (
+          <section aria-label="Skins de Carta">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="font-serif text-sm font-bold tracking-[0.2em] text-slate-200 uppercase">
+                Skins de Carta — Pixel Art
+              </h2>
+              <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+            </div>
+            <p className="text-slate-400 text-sm mb-5">
+              Compra unica. Apos adquirir, equipe a skin no editor de decks — ela aparece nas cartas
+              durante os duelos.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {CARD_SKIN_SHOP_ITEMS.map((item) => {
+                const owned = ownsSkin(item.skinId)
+                return (
+                  <div
+                    key={item.skinId}
+                    onClick={guardClick(() => !owned && setSelectedSkin(item))}
+                    {...longPressHandlers({ image: item.image, name: item.name, kind: "playmat" })}
+                    className={`group relative rounded-lg overflow-hidden border bg-[#12141f] transition-all duration-300 shop-frame select-none flex flex-col ${
+                      owned
+                        ? "border-white/[0.08] cursor-default"
+                        : "border-white/[0.06] hover:border-amber-400/35 cursor-pointer hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)] shop-shine"
+                    }`}
+                    style={{ touchAction: "pan-y" }}
+                  >
+                    {/* Arte da skin — proporcao de carta */}
+                    <div className="relative overflow-hidden" style={{ aspectRatio: "3/4" }}>
+                      <Image
+                        src={item.image || "/placeholder.svg"}
+                        alt={`Skin ${item.name}`}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className={`object-cover transition-transform duration-700 ${
+                          owned ? "saturate-[0.85]" : "group-hover:scale-[1.04]"
+                        }`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#12141f] via-[#12141f]/5 to-transparent" />
+                      <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(10,11,18,0.4)]" />
+
+                      <span className="absolute top-2 left-2 flex items-center gap-1 bg-[#0a0b12]/85 border border-violet-400/30 text-violet-200 text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-sm">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Pixel Art
+                      </span>
+                      {owned && (
+                        <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#0a0b12]/85 border border-emerald-400/30 text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-sm">
+                          <Check className="w-2.5 h-2.5" />
+                          Adquirida
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rodape */}
+                    <div className="px-3 pt-2 pb-3 border-t border-white/[0.05] flex flex-col gap-2">
+                      <h3 className="font-serif text-white font-bold text-[13px] leading-snug line-clamp-2 text-balance">
+                        {item.name}
+                      </h3>
+
+                      {owned ? (
+                        <span className="text-emerald-300 text-[11px] font-semibold flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          Equipe no editor de decks
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Image
+                              src="/images/gear-coin.png"
+                              alt="Gear Coins"
+                              width={14}
+                              height={14}
+                              className="w-[14px] h-[14px] object-contain"
+                            />
+                            <span className="text-slate-100 font-bold text-[11px] tabular-nums">
+                              {item.gearPrice.toLocaleString()}
+                            </span>
+                          </span>
+                          <span className="text-slate-600 text-[9px] font-bold tracking-widest">OU</span>
+                          <span className="flex items-center gap-1">
+                            <Image
+                              src="/images/icons/gacha-coin.png"
+                              alt="Gacha Coins"
+                              width={14}
+                              height={14}
+                              className="w-[14px] h-[14px] object-contain"
+                            />
+                            <span className="text-amber-300 font-bold text-[11px] tabular-nums">
+                              {item.gachaPrice.toLocaleString()}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Modal de compra (packs/bundles) */}
@@ -1247,6 +1428,118 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
                   </div>
 
                   {gearCoins < selectedSleeve.gearPrice && coins < selectedSleeve.gachaPrice && (
+                    <p className="text-center text-red-300 text-sm mt-3">
+                      Saldo insuficiente nas duas moedas para esta compra.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de compra (skins de carta) */}
+      {selectedSkin && (
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !purchaseSuccess && setSelectedSkin(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Comprar skin ${selectedSkin.name}`}
+        >
+          <div
+            className="relative w-full max-w-sm bg-[#12141f] rounded-xl border border-white/[0.08] overflow-hidden shadow-[0_32px_80px_-16px_rgba(0,0,0,0.9)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {purchaseSuccess ? (
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-500/10 border border-emerald-400/25 flex items-center justify-center">
+                  <Check className="w-10 h-10 text-emerald-300" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-white mb-2">Skin Adquirida!</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Equipe a skin no editor de decks para usa-la nos seus duelos.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setSelectedSkin(null)}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-[#0a0b12]/70 hover:bg-[#0a0b12] transition-colors z-20 backdrop-blur-sm"
+                  aria-label="Fechar"
+                >
+                  <X className="w-4 h-4 text-slate-300" />
+                </button>
+
+                {/* Arte da skin — proporcao de carta */}
+                <div className="relative overflow-hidden" style={{ aspectRatio: "3/4" }}>
+                  <Image
+                    src={selectedSkin.image || "/placeholder.svg"}
+                    alt={`Skin ${selectedSkin.name}`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 384px"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#12141f] via-transparent to-transparent" />
+                  <div className="absolute inset-0 shadow-[inset_0_0_60px_rgba(10,11,18,0.5)]" />
+                  <div className="absolute bottom-0 inset-x-0 p-5">
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.3em] text-violet-300 uppercase">
+                      <Sparkles className="w-3 h-3" />
+                      Skin Pixel Art
+                    </span>
+                    <h3 className="font-serif text-xl font-bold text-white mt-1 text-balance">
+                      {selectedSkin.name}
+                    </h3>
+                    <p className="text-slate-300/80 text-xs mt-0.5">{selectedSkin.character}</p>
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <p className="text-slate-400 text-sm leading-relaxed mb-4">{selectedSkin.description}</p>
+
+                  <div className="flex items-center gap-2.5 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2.5 mb-5 text-sm text-slate-300">
+                    <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                    Compra unica — apos comprar, equipe a skin no editor de decks.
+                  </div>
+
+                  <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400 uppercase mb-2.5">
+                    Escolha como pagar
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => handleSkinPurchase(selectedSkin, "gear")}
+                      disabled={gearCoins < selectedSkin.gearPrice}
+                      className="h-auto py-3.5 flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.12] hover:border-white/25 text-slate-100 font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Image
+                        src="/images/gear-coin.png"
+                        alt="Gear Coins"
+                        width={22}
+                        height={22}
+                        className="w-[22px] h-[22px] object-contain"
+                      />
+                      <span className="tabular-nums">{selectedSkin.gearPrice.toLocaleString()}</span>
+                      <span className="font-medium text-slate-400 text-xs">Gear</span>
+                    </Button>
+                    <Button
+                      onClick={() => handleSkinPurchase(selectedSkin, "gacha")}
+                      disabled={coins < selectedSkin.gachaPrice}
+                      className="h-auto py-3.5 flex items-center justify-center gap-2 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/50 text-amber-200 font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Image
+                        src="/images/icons/gacha-coin.png"
+                        alt="Gacha Coins"
+                        width={22}
+                        height={22}
+                        className="w-[22px] h-[22px] object-contain"
+                      />
+                      <span className="tabular-nums">{selectedSkin.gachaPrice.toLocaleString()}</span>
+                      <span className="font-medium text-amber-300/70 text-xs">Gacha</span>
+                    </Button>
+                  </div>
+
+                  {gearCoins < selectedSkin.gearPrice && coins < selectedSkin.gachaPrice && (
                     <p className="text-center text-red-300 text-sm mt-3">
                       Saldo insuficiente nas duas moedas para esta compra.
                     </p>

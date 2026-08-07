@@ -15,11 +15,12 @@ import { trackDeckEdit } from "@/lib/mission-tracker"
 // cardId is the image filename (without path) of the original card art.
 // skins: list of skins available for that card.
 interface CardSkin {
-  id:         string   // unique skin id
-  label:      string   // display name
-  image:      string   // path to skin image
-  masterId:   string   // which master unlocks this skin
-  unlockLevel:number   // master level required
+  id:          string   // unique skin id
+  label:       string   // display name
+  image:       string   // path to skin image
+  masterId?:   string   // which master unlocks this skin (se for skin de mestre)
+  unlockLevel?:number    // master level required (se for skin de mestre)
+  source?:     "master" | "shop"  // origem da skin
 }
 
 const CARD_SKINS: Record<string, CardSkin[]> = {
@@ -31,6 +32,13 @@ const CARD_SKINS: Record<string, CardSkin[]> = {
       image:        "/uploads/fehnon_skin_lv50.jpg",
       masterId:     "fehnon",
       unlockLevel:  50,
+      source:       "master",
+    },
+    {
+      id:           "fehnon_skin_pixel",
+      label:        "Pixel Art — Fehnon",
+      image:        "/uploads/fehnon_skin_3.jpg",
+      source:       "shop",
     },
   ],
   // Morgana Pendragon — Darkness SR card
@@ -41,6 +49,13 @@ const CARD_SKINS: Record<string, CardSkin[]> = {
       image:        "/uploads/morgana_skin_lv50.jpg",
       masterId:     "morgana",
       unlockLevel:  50,
+      source:       "master",
+    },
+    {
+      id:           "morgana_skin_pixel",
+      label:        "Pixel Art — Morgana",
+      image:        "/uploads/morgana_skin_3.jpg",
+      source:       "shop",
     },
   ],
   // Calem Hidenori — Void LR card
@@ -51,6 +66,13 @@ const CARD_SKINS: Record<string, CardSkin[]> = {
       image:        "/uploads/calem_skin_lv50.jpg",
       masterId:     "calem",
       unlockLevel:  50,
+      source:       "master",
+    },
+    {
+      id:           "calem_skin_pixel",
+      label:        "Pixel Art — Calem",
+      image:        "/uploads/calem_skin_3.jpg",
+      source:       "shop",
     },
   ],
 }

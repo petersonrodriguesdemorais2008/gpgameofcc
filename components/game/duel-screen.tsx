@@ -24,9 +24,18 @@ import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
 const DUEL_CARD_SKINS: Record<string, { id: string; image: string }[]> = {
-  "fehnon-20ur.png":  [{ id: "fehnon_skin_lv50",  image: "/uploads/fehnon_skin_lv50.jpg"  }],
-  "morgana-20sr.png": [{ id: "morgana_skin_lv50", image: "/uploads/morgana_skin_lv50.jpg" }],
-  "Calem_LR.png":     [{ id: "calem_skin_lv50",   image: "/uploads/calem_skin_lv50.jpg"   }],
+  "fehnon-20ur.png":  [
+    { id: "fehnon_skin_lv50",  image: "/uploads/fehnon_skin_lv50.jpg"  },
+    { id: "fehnon_skin_pixel", image: "/uploads/fehnon_skin_3.jpg"     },
+  ],
+  "morgana-20sr.png": [
+    { id: "morgana_skin_lv50",  image: "/uploads/morgana_skin_lv50.jpg" },
+    { id: "morgana_skin_pixel", image: "/uploads/morgana_skin_3.jpg"    },
+  ],
+  "Calem_LR.png":     [
+    { id: "calem_skin_lv50",  image: "/uploads/calem_skin_lv50.jpg"   },
+    { id: "calem_skin_pixel", image: "/uploads/calem_skin_3.jpg"      },
+  ],
 }
 /** Retorna a imagem da skin ativa para uma carta, ou a imagem original se não houver skin equipada */
 function getActiveSkin(cardImageUrl: string): string {
