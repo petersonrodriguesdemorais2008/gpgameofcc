@@ -69,117 +69,165 @@ function CenterMessage({ text }: { text: string }) {
   )
 }
 
-/* Rotacao por arraste com velocidade controlada e amortecimento leve.
-   O arraste move um "alvo" e o modelo o segue com interpolacao rapida:
-   fica fluido, sem tranco e sem parecer rapido demais. */
-function DragRotate({ children }: { children: ReactNode }) {
-  const group = useRef<Group>(null)
+const MAX_POLAR = Math.PI / 3
+const ZOOM_MIN = 0.6
+const ZOOM_MAX = 2.4
+
+/* Controlador de gestos unificado: rotacao 1:1 suavizada, inercia de "flick"
+   medida por tempo real, pinca para zoom no toque, roda do mouse no desktop
+   e duplo clique/toque para resetar a vista. */
+function GestureControls({ children }: { children: ReactNode }) {
+  const rotGroup = useRef<Group>(null)
+  const zoomGroup = useRef<Group>(null)
   const gl = useThree((s) => s.gl)
+  const size = useThree((s) => s.size)
+
   const st = useRef({
-    dragging: false,
-    lastX: 0,
-    lastY: 0,
+    pointers: new Map<number, { x: number; y: number }>(),
     rotX: 0.07,
     rotY: 0,
     targetX: 0.07,
     targetY: 0,
     velX: 0,
     velY: 0,
+    zoom: 1,
+    targetZoom: 1,
+    pinchDist: 0,
+    lastTapAt: 0,
+    // Amostras recentes do arraste para calcular a velocidade real do flick
+    samples: [] as { x: number; y: number; t: number }[],
   })
 
   useEffect(() => {
     const el = gl.domElement
     const s = st.current
-    const SPEED = 0.0048
-    const MAX_POLAR = Math.PI / 3
-    const MAX_VEL = 0.045
+    // Sensibilidade proporcional a tela: mesmo "peso" no celular e no desktop
+    const SPEED = 2.6 / Math.max(320, size.width)
 
-    const onDown = (e: PointerEvent) => {
-      s.dragging = true
-      s.lastX = e.clientX
-      s.lastY = e.clientY
+    const resetView = () => {
+      s.targetX = 0.07
+      s.targetY = 0
+      s.targetZoom = 1
       s.velX = 0
       s.velY = 0
+    }
+
+    const onDown = (e: PointerEvent) => {
+      s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      s.velX = 0
+      s.velY = 0
+      s.samples = [{ x: e.clientX, y: e.clientY, t: performance.now() }]
+      if (s.pointers.size === 2) {
+        const [a, b] = [...s.pointers.values()]
+        s.pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
+      }
+      // Duplo toque/clique: reseta rotacao e zoom
+      const now = performance.now()
+      if (s.pointers.size === 1) {
+        if (now - s.lastTapAt < 300) resetView()
+        s.lastTapAt = now
+      }
       try {
         el.setPointerCapture(e.pointerId)
       } catch {
         // ignora
       }
     }
+
     const onMove = (e: PointerEvent) => {
-      if (!s.dragging) return
-      const dx = e.clientX - s.lastX
-      const dy = e.clientY - s.lastY
-      s.lastX = e.clientX
-      s.lastY = e.clientY
+      const prev = s.pointers.get(e.pointerId)
+      if (!prev) return
+      s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      if (s.pointers.size === 2) {
+        // Pinca: ajusta o zoom pela variacao da distancia entre os dedos
+        const [a, b] = [...s.pointers.values()]
+        const dist = Math.hypot(a.x - b.x, a.y - b.y)
+        if (s.pinchDist > 0) {
+          s.targetZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.targetZoom * (dist / s.pinchDist)))
+        }
+        s.pinchDist = dist
+        return
+      }
+
+      const dx = e.clientX - prev.x
+      const dy = e.clientY - prev.y
       s.targetY += dx * SPEED
       s.targetX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.targetX + dy * SPEED))
-      // Velocidade limitada para a inercia nao disparar
-      s.velY = Math.min(MAX_VEL, Math.max(-MAX_VEL, dx * SPEED))
-      s.velX = Math.min(MAX_VEL, Math.max(-MAX_VEL, dy * SPEED))
+
+      // Guarda amostras dos ultimos ~90ms para medir a velocidade do flick
+      const now = performance.now()
+      s.samples.push({ x: e.clientX, y: e.clientY, t: now })
+      while (s.samples.length > 2 && now - s.samples[0].t > 90) s.samples.shift()
     }
-    const onUp = () => {
-      s.dragging = false
+
+    const onUp = (e: PointerEvent) => {
+      s.pointers.delete(e.pointerId)
+      s.pinchDist = 0
+      if (s.pointers.size > 0) return
+
+      // Velocidade real do gesto: deslocamento / tempo das amostras recentes
+      const first = s.samples[0]
+      const last = s.samples[s.samples.length - 1]
+      if (first && last && last.t - first.t > 15) {
+        const dt = (last.t - first.t) / 1000
+        const MAX_VEL = 2.4 // rad/s
+        s.velY = Math.min(MAX_VEL, Math.max(-MAX_VEL, ((last.x - first.x) * SPEED) / dt))
+        s.velX = Math.min(MAX_VEL, Math.max(-MAX_VEL, ((last.y - first.y) * SPEED) / dt))
+      }
+      s.samples = []
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      s.targetZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.targetZoom - e.deltaY * 0.0014))
     }
 
     el.addEventListener("pointerdown", onDown)
     el.addEventListener("pointermove", onMove)
     el.addEventListener("pointerup", onUp)
     el.addEventListener("pointercancel", onUp)
+    el.addEventListener("wheel", onWheel, { passive: false })
     return () => {
       el.removeEventListener("pointerdown", onDown)
       el.removeEventListener("pointermove", onMove)
       el.removeEventListener("pointerup", onUp)
       el.removeEventListener("pointercancel", onUp)
+      el.removeEventListener("wheel", onWheel)
     }
-  }, [gl])
+  }, [gl, size.width])
 
   useFrame((_, delta) => {
     const s = st.current
-    if (!group.current) return
-    if (!s.dragging) {
-      // Inercia curta: continua um pouco e desacelera rapido
-      const decay = Math.pow(0.004, delta)
-      s.targetY += s.velY * delta * 60
-      s.targetX = Math.min(Math.PI / 3, Math.max(-Math.PI / 3, s.targetX + s.velX * delta * 60))
-      s.velY *= decay
-      s.velX *= decay
+    const dragging = s.pointers.size > 0
+
+    if (!dragging && (Math.abs(s.velX) > 0.001 || Math.abs(s.velY) > 0.001)) {
+      // Inercia do flick com atrito exponencial
+      s.targetY += s.velY * delta
+      s.targetX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.targetX + s.velX * delta))
+      const friction = Math.pow(0.06, delta)
+      s.velX *= friction
+      s.velY *= friction
+      // Se bateu no limite vertical, mata a velocidade vertical
+      if (Math.abs(s.targetX) >= MAX_POLAR) s.velX = 0
     }
-    // Segue o alvo com interpolacao rapida (sem sensacao de atraso)
-    const k = 1 - Math.pow(0.000001, delta)
+
+    // Suavizacao critica: firme durante o arraste, macia na inercia
+    const k = 1 - Math.pow(dragging ? 0.00000001 : 0.0002, delta)
     s.rotX += (s.targetX - s.rotX) * k
     s.rotY += (s.targetY - s.rotY) * k
-    group.current.rotation.set(s.rotX, s.rotY, 0)
+    if (rotGroup.current) rotGroup.current.rotation.set(s.rotX, s.rotY, 0)
+
+    const kz = 1 - Math.pow(0.001, delta)
+    s.zoom += (s.targetZoom - s.zoom) * kz
+    if (zoomGroup.current) zoomGroup.current.scale.setScalar(s.zoom)
   })
 
-  return <group ref={group}>{children}</group>
-}
-
-/* Zoom suave com a roda do mouse / pinca */
-function ZoomGroup({ children }: { children: ReactNode }) {
-  const group = useRef<Group>(null)
-  const target = useRef(1)
-  const gl = useThree((s) => s.gl)
-
-  useEffect(() => {
-    const el = gl.domElement
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      target.current = Math.min(2.2, Math.max(0.6, target.current - e.deltaY * 0.0012))
-    }
-    el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
-  }, [gl])
-
-  useFrame((_, delta) => {
-    if (!group.current) return
-    const k = 1 - Math.pow(0.0015, delta) // interpolacao estavel por frame
-    const s = group.current.scale.x
-    const next = s + (target.current - s) * k
-    group.current.scale.setScalar(next)
-  })
-
-  return <group ref={group}>{children}</group>
+  return (
+    <group ref={rotGroup}>
+      <group ref={zoomGroup}>{children}</group>
+    </group>
+  )
 }
 
 function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) {
@@ -365,18 +413,16 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
           <directionalLight position={[-4, -2, 4]} intensity={0.25} />
           <Suspense fallback={<CenterMessage text="Carregando previa..." />}>
             <SceneBoundary fallback={<CenterMessage text="Nao foi possivel carregar a previa." />}>
-              <DragRotate>
-                <ZoomGroup>
-                  <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
-                    <ItemModel
-                      item={item}
-                      onHit={() => {
-                        gesture.current.onModel = true
-                      }}
-                    />
-                  </Float>
-                </ZoomGroup>
-              </DragRotate>
+              <GestureControls>
+                <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
+                  <ItemModel
+                    item={item}
+                    onHit={() => {
+                      gesture.current.onModel = true
+                    }}
+                  />
+                </Float>
+              </GestureControls>
               {/* Iluminacao de estudio gerada localmente (sem download de HDR),
                   renderizada uma unica vez em resolucao reduzida */}
               <Environment resolution={128} frames={1}>
@@ -420,7 +466,7 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
           {item.name}
         </h3>
         <p className="text-slate-300/80 text-[13px] text-center">
-          Arraste para girar &middot; Role para aproximar &middot; Clique rapido no fundo ou Esc para sair
+          Arraste para girar &middot; Role ou pince para aproximar &middot; Toque duplo para centralizar &middot; Esc para sair
         </p>
       </div>
     </div>,
