@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import {
+  AdaptiveDpr,
   ContactShadows,
   Environment,
   Float,
@@ -146,13 +147,15 @@ function ItemModel({ item, onHit }: { item: Preview3DItem; onHit: () => void }) 
           />
         </mesh>
       )}
+      {/* frames={1}: a sombra e "assada" uma unica vez em vez de re-renderizar todo frame */}
       <ContactShadows
+        frames={1}
         position={[0, -height / 2 - 0.35, 0]}
         opacity={0.45}
         scale={width * 2.2}
         blur={2.6}
         far={2}
-        resolution={512}
+        resolution={256}
         color="#000000"
       />
     </group>
@@ -237,8 +240,11 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Fundo borrado */}
-      <div className="absolute inset-0 bg-[#0a0b12]/75 backdrop-blur-2xl" aria-hidden="true" />
+      {/* Fundo escurecido (sem backdrop-blur: ele disputava GPU com o WebGL e causava travamentos) */}
+      <div
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(20,22,34,0.94),rgba(6,7,12,0.97))]"
+        aria-hidden="true"
+      />
 
       {/* Cena 3D */}
       <div
@@ -246,11 +252,18 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
         style={{ touchAction: "none" }}
       >
         <Canvas
-          dpr={[1, 2]}
-          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+          dpr={[1, 1.5]}
+          gl={{
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance",
+            stencil: false,
+            depth: true,
+          }}
           camera={{ position: [0, 0, 5.4], fov: 42 }}
           style={{ touchAction: "none" }}
         >
+          <AdaptiveDpr pixelated />
           <ambientLight intensity={0.7} />
           <directionalLight position={[4, 5, 6]} intensity={1.15} />
           <directionalLight position={[-4, -2, 4]} intensity={0.35} />
@@ -276,8 +289,9 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
                   </Float>
                 </ZoomGroup>
               </PresentationControls>
-              {/* Iluminacao de estudio gerada localmente (sem download de HDR) */}
-              <Environment resolution={256}>
+              {/* Iluminacao de estudio gerada localmente (sem download de HDR),
+                  renderizada uma unica vez em resolucao reduzida */}
+              <Environment resolution={128} frames={1}>
                 <Lightformer
                   intensity={2.2}
                   position={[0, 3, 3]}
