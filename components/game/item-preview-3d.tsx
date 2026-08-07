@@ -18,7 +18,6 @@ import {
   Float,
   Html,
   Lightformer,
-  PresentationControls,
   useTexture,
 } from "@react-three/drei"
 import { DoubleSide, SRGBColorSpace, type Group } from "three"
@@ -58,6 +57,85 @@ function CenterMessage({ text }: { text: string }) {
       <p className="text-slate-300 text-sm whitespace-nowrap select-none">{text}</p>
     </Html>
   )
+}
+
+/* Rotacao por arraste com resposta imediata (1:1) e inercia ao soltar.
+   Substitui o PresentationControls, cuja mola deixava o giro lento e "elastico". */
+function DragRotate({ children }: { children: ReactNode }) {
+  const group = useRef<Group>(null)
+  const gl = useThree((s) => s.gl)
+  const st = useRef({
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
+    rotX: 0.07,
+    rotY: 0,
+    velX: 0,
+    velY: 0,
+  })
+
+  useEffect(() => {
+    const el = gl.domElement
+    const s = st.current
+    const SPEED = 0.0092
+    const MAX_POLAR = Math.PI / 3
+
+    const onDown = (e: PointerEvent) => {
+      s.dragging = true
+      s.lastX = e.clientX
+      s.lastY = e.clientY
+      s.velX = 0
+      s.velY = 0
+      try {
+        el.setPointerCapture(e.pointerId)
+      } catch {
+        // ignora
+      }
+    }
+    const onMove = (e: PointerEvent) => {
+      if (!s.dragging) return
+      const dx = e.clientX - s.lastX
+      const dy = e.clientY - s.lastY
+      s.lastX = e.clientX
+      s.lastY = e.clientY
+      // Aplica direto: o modelo acompanha o ponteiro sem atraso
+      s.rotY += dx * SPEED
+      s.rotX = Math.min(MAX_POLAR, Math.max(-MAX_POLAR, s.rotX + dy * SPEED))
+      // Guarda a velocidade para a inercia
+      s.velY = dx * SPEED
+      s.velX = dy * SPEED
+    }
+    const onUp = () => {
+      s.dragging = false
+    }
+
+    el.addEventListener("pointerdown", onDown)
+    el.addEventListener("pointermove", onMove)
+    el.addEventListener("pointerup", onUp)
+    el.addEventListener("pointercancel", onUp)
+    return () => {
+      el.removeEventListener("pointerdown", onDown)
+      el.removeEventListener("pointermove", onMove)
+      el.removeEventListener("pointerup", onUp)
+      el.removeEventListener("pointercancel", onUp)
+    }
+  }, [gl])
+
+  useFrame((_, delta) => {
+    const s = st.current
+    if (!group.current) return
+    if (!s.dragging) {
+      // Inercia: continua girando e desacelera suavemente
+      const decay = Math.pow(0.02, delta) // ~perde 98% da velocidade por segundo
+      s.rotY += s.velY * delta * 60
+      s.rotX = Math.min(Math.PI / 3, Math.max(-Math.PI / 3, s.rotX + s.velX * delta * 60))
+      s.velY *= decay
+      s.velX *= decay
+    }
+    group.current.rotation.set(s.rotX, s.rotY, 0)
+  })
+
+  return <group ref={group}>{children}</group>
 }
 
 /* Zoom suave com a roda do mouse / pinca */
@@ -269,15 +347,7 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
           <directionalLight position={[-4, -2, 4]} intensity={0.35} />
           <Suspense fallback={<CenterMessage text="Carregando previa..." />}>
             <SceneBoundary fallback={<CenterMessage text="Nao foi possivel carregar a previa." />}>
-              <PresentationControls
-                global
-                cursor={false}
-                speed={1.3}
-                rotation={[0.07, 0, 0]}
-                polar={[-Math.PI / 3, Math.PI / 3]}
-                azimuth={[-Math.PI, Math.PI]}
-                config={{ mass: 1, tension: 170, friction: 26 }}
-              >
+              <DragRotate>
                 <ZoomGroup>
                   <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
                     <ItemModel
@@ -288,7 +358,7 @@ export default function ItemPreview3D({ item, onClose }: ItemPreview3DProps) {
                     />
                   </Float>
                 </ZoomGroup>
-              </PresentationControls>
+              </DragRotate>
               {/* Iluminacao de estudio gerada localmente (sem download de HDR),
                   renderizada uma unica vez em resolucao reduzida */}
               <Environment resolution={128} frames={1}>
