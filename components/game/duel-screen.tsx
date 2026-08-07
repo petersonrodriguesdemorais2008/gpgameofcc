@@ -2207,7 +2207,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ──────────────��─��─────────
+        // ── PHASE 2: SETTLE  spring 360ms ──────────────��─���─────────
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -4521,7 +4521,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type,
       fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
-    setTimeout(() => setDrawAnimation(null), 1100)
+    setTimeout(() => setDrawAnimation(null), 1300)
   }, [playerDeckRef, handContainerRef, playerField.hand.length])
   const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     playSound("cardDestruction")
@@ -8522,7 +8522,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const mx = (fx + tx) / 2
         const my = Math.max(fy, ty) + window.innerHeight * 0.10
         setEnemyDrawAnimation({ fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
-        setTimeout(() => setEnemyDrawAnimation(null), 1100)
+        setTimeout(() => setEnemyDrawAnimation(null), 1300)
       }
       setEnemyField((prev) => ({
         ...prev,
@@ -13238,11 +13238,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           `
         }
 
-        // 7 sparkle particles bursting outward on landing
-        const sparks = Array.from({length:7}, (_,i)=>{
-          const ang = (Math.PI*2/7)*i + 0.4
-          const dist = 26 + (i%3)*8
-          return { dx: Math.cos(ang)*dist, dy: Math.sin(ang)*dist, d: 0.62 + i*0.012 }
+        // 10 sparkle particles bursting outward on landing
+        const sparks = Array.from({length:10}, (_,i)=>{
+          const ang = (Math.PI*2/10)*i + 0.4
+          const dist = 24 + (i%4)*9
+          return { dx: Math.cos(ang)*dist, dy: Math.sin(ang)*dist, d: 0.60 + i*0.014, sz: 3 + (i%3)*1.5 }
         })
 
         return (
@@ -13250,23 +13250,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <style>{`
               ${anim  ? flyCSS(anim,  'dcp') : ''}
               ${eAnim ? flyCSS(eAnim, 'dce') : ''}
-              @keyframes dc-flip  { 0%{transform:rotateY(0deg)} 44%{transform:rotateY(85deg)} 62%{transform:rotateY(180deg)} 100%{transform:rotateY(180deg)} }
-              @keyframes dc-shine { 0%{left:-130%;opacity:0} 12%{opacity:.85} 100%{left:240%;opacity:0} }
-              @keyframes dc-glow  { 0%{opacity:0;transform:scale(.6)} 18%{opacity:.9} 55%{opacity:.75;transform:scale(1.15)} 100%{opacity:0;transform:scale(1)} }
-              @keyframes dc-depart{ 0%{opacity:.9;transform:translate(var(--dx),var(--dy)) scale(.2)} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(2.4)} }
-              @keyframes dc-flash { 0%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)} 25%{opacity:.85} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.8)} }
-              @keyframes dc-land  { 0%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(.5)} 22%{opacity:.9} 100%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(2.2)} }
+              @keyframes dc-flip  { 0%{transform:rotateY(0deg) rotateZ(0deg)} 44%{transform:rotateY(85deg) rotateZ(-4deg)} 62%{transform:rotateY(180deg) rotateZ(2deg)} 78%{transform:rotateY(180deg) rotateZ(0deg)} 100%{transform:rotateY(180deg) rotateZ(0deg)} }
+              @keyframes dc-pop   { 0%,60%{transform:scale(1)} 72%{transform:scale(1.14)} 86%{transform:scale(.97)} 100%{transform:scale(1)} }
+              @keyframes dc-shine { 0%{left:-130%;opacity:0} 12%{opacity:.9} 100%{left:240%;opacity:0} }
+              @keyframes dc-glow  { 0%{opacity:0;transform:scale(.6)} 18%{opacity:.95} 55%{opacity:.8;transform:scale(1.2)} 100%{opacity:0;transform:scale(1)} }
+              @keyframes dc-rays  { 0%{opacity:0;transform:scale(.3) rotate(0deg)} 30%{opacity:.85} 100%{opacity:0;transform:scale(1.9) rotate(40deg)} }
+              @keyframes dc-vig   { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
+              @keyframes dc-ghost { 0%{opacity:0} 15%{opacity:.45} 70%{opacity:.18} 100%{opacity:0} }
+              @keyframes dc-depart{ 0%{opacity:.9;transform:translate(var(--dx),var(--dy)) scale(.2)} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(2.6)} }
+              @keyframes dc-flash { 0%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)} 25%{opacity:.9} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(2)} }
+              @keyframes dc-land  { 0%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(.5)} 22%{opacity:.95} 100%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(2.3)} }
               @keyframes dc-spark { 0%{opacity:1;transform:translate(var(--lx),var(--ly)) scale(1)} 100%{opacity:0;transform:translate(calc(var(--lx) + var(--sx)),calc(var(--ly) + var(--sy))) scale(0)} }
             `}</style>
 
             {/* ── PLAYER draw ── */}
             {anim && (<>
+              {/* Full-screen vignette pulse tinted by card type — fires at reveal */}
+              <div style={{
+                position:'absolute', inset:0,
+                background:`radial-gradient(ellipse at ${anim.midX}px ${anim.midY}px, transparent 55%, ${typeColor}26 100%)`,
+                animation:'dc-vig .55s ease-out .3s both',
+              }}/>
+
               {/* Departure burst at the deck */}
               <div style={{
-                position:'absolute', left:0, top:0, width:34, height:34, borderRadius:'50%',
-                background:`radial-gradient(circle, ${typeColor}cc, ${typeColor}00 70%)`,
-                animation:'dc-flash .40s ease-out both',
-                '--dx':`${anim.fromX - 17}px`, '--dy':`${anim.fromY - 17}px`,
+                position:'absolute', left:0, top:0, width:38, height:38, borderRadius:'50%',
+                background:`radial-gradient(circle, ${typeColor}dd, ${typeColor}00 70%)`,
+                animation:'dc-flash .42s ease-out both',
+                '--dx':`${anim.fromX - 19}px`, '--dy':`${anim.fromY - 19}px`,
               } as React.CSSProperties}/>
               <div style={{
                 position:'absolute', left:0, top:0, width:30, height:30, borderRadius:'50%',
@@ -13274,78 +13285,150 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 animation:'dc-depart .45s ease-out both',
                 '--dx':`${anim.fromX - 15}px`, '--dy':`${anim.fromY - 15}px`,
               } as React.CSSProperties}/>
+              <div style={{
+                position:'absolute', left:0, top:0, width:30, height:30, borderRadius:'50%',
+                border:`1px solid ${typeColor}99`,
+                animation:'dc-depart .5s ease-out .08s both',
+                '--dx':`${anim.fromX - 15}px`, '--dy':`${anim.fromY - 15}px`,
+              } as React.CSSProperties}/>
+
+              {/* Afterimage trail — 3 ghost card backs chasing the flight path */}
+              {[0.055, 0.11, 0.165].map((delay, gi)=>(
+                <div key={`g${gi}`} style={{
+                  position:'absolute', left:0, top:0, width:W, height:H,
+                  animation:`dcp-fly .68s cubic-bezier(.33,.6,.4,.97) ${delay}s both, dc-ghost .68s linear ${delay}s both`,
+                  filter:`blur(${1.5 + gi}px)`,
+                }}>
+                  <div style={{position:'absolute',inset:0,borderRadius:7,overflow:'hidden',
+                    boxShadow:`0 0 10px ${typeColor}44`}}>
+                    <img src={activeCardBack||"/placeholder.svg"} alt=""
+                      style={{width:'100%',height:'100%',objectFit:'cover',display:'block',opacity:.8}}/>
+                    <div style={{position:'absolute',inset:0,background:`${typeColor}33`,mixBlendMode:'screen'}}/>
+                  </div>
+                </div>
+              ))}
 
               {/* Flying card wrapper — translate + scale (aura tracks it, stays flat) */}
               <div style={{
                 position:'absolute', left:0, top:0, width:W, height:H,
                 animation:'dcp-fly .68s cubic-bezier(.33,.6,.4,.97) forwards',
-                filter:'drop-shadow(0 6px 16px rgba(0,0,0,0.65))',
+                filter:'drop-shadow(0 8px 20px rgba(0,0,0,0.7))',
               }}>
+                {/* Radial light rays bursting at the reveal moment */}
+                <div style={{
+                  position:'absolute', left:'50%', top:'50%', width:W*2.6, height:W*2.6,
+                  marginLeft:-(W*1.3), marginTop:-(W*1.3), borderRadius:'50%',
+                  background:`conic-gradient(${typeColor}00 0deg, ${typeColor}66 12deg, ${typeColor}00 24deg, ${typeColor}00 60deg, ${typeColor}55 72deg, ${typeColor}00 84deg, ${typeColor}00 130deg, ${typeColor}66 142deg, ${typeColor}00 154deg, ${typeColor}00 200deg, ${typeColor}55 212deg, ${typeColor}00 224deg, ${typeColor}00 275deg, ${typeColor}66 287deg, ${typeColor}00 299deg, ${typeColor}00 360deg)`,
+                  animation:'dc-rays .5s ease-out .32s both',
+                  pointerEvents:'none',
+                }}/>
                 {/* Colored energy aura behind the card */}
                 <div style={{
-                  position:'absolute', left:-14, top:-14, right:-14, bottom:-14, borderRadius:14,
-                  background:`radial-gradient(ellipse at center, ${typeColor}88, ${typeColor}00 70%)`,
-                  filter:'blur(8px)',
+                  position:'absolute', left:-16, top:-16, right:-16, bottom:-16, borderRadius:16,
+                  background:`radial-gradient(ellipse at center, ${typeColor}99, ${typeColor}00 70%)`,
+                  filter:'blur(9px)',
                   animation:'dc-glow .68s ease-out forwards',
                   pointerEvents:'none',
                 }}/>
-                {/* Inner 3D card: back → flip → front */}
-                <div style={{
-                  position:'absolute', inset:0, transformStyle:'preserve-3d',
-                  animation:'dc-flip .68s cubic-bezier(.5,.1,.4,1) forwards',
-                }}>
-                  {/* Back face */}
-                  <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
-                    <img src={activeCardBack||"/placeholder.svg"} alt=""
-                      style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                  </div>
-                  {/* Front face — revealed after flip */}
+                {/* Pop wrapper — micro punch scale right after flip completes */}
+                <div style={{position:'absolute',inset:0,animation:'dc-pop .9s cubic-bezier(.34,1.56,.64,1) forwards'}}>
+                  {/* Inner 3D card: back → flip → front */}
                   <div style={{
-                    position:'absolute',inset:0,backfaceVisibility:'hidden',
-                    transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',
-                    boxShadow:`0 0 0 1px ${typeColor}66, 0 0 14px ${typeColor}55`,
+                    position:'absolute', inset:0, transformStyle:'preserve-3d',
+                    animation:'dc-flip .68s cubic-bezier(.5,.1,.4,1) forwards',
                   }}>
-                    <img src={anim.cardImage} alt=""
-                      style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                    {/* One-shot shine sweep on reveal */}
+                    {/* Back face */}
+                    <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
+                      <img src={activeCardBack||"/placeholder.svg"} alt=""
+                        style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                    </div>
+                    {/* Front face — revealed after flip */}
                     <div style={{
-                      position:'absolute',top:0,bottom:0,width:'45%',
-                      background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)',
-                      animation:'dc-shine .42s ease-out .5s both',
-                      pointerEvents:'none',
-                    }}/>
+                      position:'absolute',inset:0,backfaceVisibility:'hidden',
+                      transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',
+                      boxShadow:`0 0 0 1px ${typeColor}88, 0 0 18px ${typeColor}66, 0 0 40px ${typeColor}33`,
+                    }}>
+                      <img src={anim.cardImage} alt=""
+                        style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                      {/* Double shine sweep on reveal */}
+                      <div style={{
+                        position:'absolute',top:0,bottom:0,width:'45%',
+                        background:'linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent)',
+                        animation:'dc-shine .38s ease-out .48s both',
+                        pointerEvents:'none',
+                      }}/>
+                      <div style={{
+                        position:'absolute',top:0,bottom:0,width:'30%',
+                        background:'linear-gradient(105deg,transparent,rgba(255,255,255,0.25),transparent)',
+                        animation:'dc-shine .45s ease-out .62s both',
+                        pointerEvents:'none',
+                      }}/>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Landing: two expanding rings */}
+              {/* Landing: three expanding rings, staggered */}
+              {[
+                { b:`2px solid ${typeColor}`,   d:0.60, dur:0.55 },
+                { b:`1px solid ${typeColor}bb`, d:0.70, dur:0.55 },
+                { b:`1px solid ${typeColor}66`, d:0.80, dur:0.50 },
+              ].map((r,ri)=>(
+                <div key={`r${ri}`} style={{
+                  position:'absolute', left:0, top:0, width:W+16, height:H+16, borderRadius:11,
+                  border:r.b,
+                  animation:`dc-land ${r.dur}s ease-out ${r.d}s both`,
+                  '--lx':`${anim.toX - (W+16)/2}px`, '--ly':`${anim.toY - (H+16)/2}px`,
+                } as React.CSSProperties}/>
+              ))}
+
+              {/* Landing flash */}
               <div style={{
-                position:'absolute', left:0, top:0, width:W+16, height:H+16, borderRadius:11,
-                border:`2px solid ${typeColor}`,
-                animation:'dc-land .55s ease-out .62s both',
-                '--lx':`${anim.toX - (W+16)/2}px`, '--ly':`${anim.toY - (H+16)/2}px`,
-              } as React.CSSProperties}/>
-              <div style={{
-                position:'absolute', left:0, top:0, width:W+16, height:H+16, borderRadius:11,
-                border:`1px solid ${typeColor}aa`,
-                animation:'dc-land .55s ease-out .72s both',
-                '--lx':`${anim.toX - (W+16)/2}px`, '--ly':`${anim.toY - (H+16)/2}px`,
+                position:'absolute', left:0, top:0, width:W*1.6, height:H*1.4, borderRadius:'50%',
+                background:`radial-gradient(ellipse, ${typeColor}77, transparent 70%)`,
+                filter:'blur(6px)',
+                animation:'dc-flash .5s ease-out .6s both',
+                '--dx':`${anim.toX - W*0.8}px`, '--dy':`${anim.toY - H*0.7}px`,
               } as React.CSSProperties}/>
 
               {/* Landing sparkles */}
               {sparks.map((s,i)=>(
                 <div key={i} style={{
-                  position:'absolute', left:0, top:0, width:5, height:5, borderRadius:'50%',
-                  background:typeColor, boxShadow:`0 0 6px ${typeColor}`,
-                  animation:`dc-spark .5s ease-out ${s.d}s both`,
-                  '--lx':`${anim.toX - 2.5}px`, '--ly':`${anim.toY - 2.5}px`,
+                  position:'absolute', left:0, top:0, width:s.sz, height:s.sz, borderRadius:'50%',
+                  background: i%3===0 ? '#ffffff' : typeColor,
+                  boxShadow:`0 0 ${4+s.sz}px ${typeColor}`,
+                  animation:`dc-spark .55s ease-out ${s.d}s both`,
+                  '--lx':`${anim.toX - s.sz/2}px`, '--ly':`${anim.toY - s.sz/2}px`,
                   '--sx':`${s.dx}px`, '--sy':`${s.dy}px`,
                 } as React.CSSProperties}/>
               ))}
             </>)}
 
             {/* ── ENEMY draw — back only, red tint ── */}
-            {eAnim && (
+            {eAnim && (<>
+              {/* Departure flash at enemy deck */}
+              <div style={{
+                position:'absolute', left:0, top:0, width:32, height:32, borderRadius:'50%',
+                background:'radial-gradient(circle, rgba(248,113,113,0.8), rgba(248,113,113,0) 70%)',
+                animation:'dc-flash .4s ease-out both',
+                '--dx':`${eAnim.fromX - 16}px`, '--dy':`${eAnim.fromY - 16}px`,
+              } as React.CSSProperties}/>
+
+              {/* Ghost trail */}
+              {[0.06, 0.12].map((delay, gi)=>(
+                <div key={`eg${gi}`} style={{
+                  position:'absolute', left:0, top:0, width:W, height:H,
+                  animation:`dce-fly .68s cubic-bezier(.33,.6,.4,.97) ${delay}s both, dc-ghost .68s linear ${delay}s both`,
+                  filter:`blur(${1.5 + gi}px)`,
+                }}>
+                  <div style={{position:'absolute',inset:0,borderRadius:7,overflow:'hidden'}}>
+                    <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
+                      style={{width:'100%',height:'100%',objectFit:'cover',display:'block',opacity:.8}}/>
+                    <div style={{position:'absolute',inset:0,background:'rgba(248,113,113,0.25)',mixBlendMode:'screen'}}/>
+                  </div>
+                </div>
+              ))}
+
               <div style={{
                 position:'absolute', left:0, top:0, width:W, height:H,
                 animation:'dce-fly .68s cubic-bezier(.33,.6,.4,.97) forwards',
@@ -13362,7 +13445,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:7}}/>
                 </div>
               </div>
-            )}
+
+              {/* Landing ring at enemy hand */}
+              <div style={{
+                position:'absolute', left:0, top:0, width:W+14, height:H+14, borderRadius:10,
+                border:'1.5px solid rgba(248,113,113,0.8)',
+                animation:'dc-land .5s ease-out .62s both',
+                '--lx':`${eAnim.toX - (W+14)/2}px`, '--ly':`${eAnim.toY - (H+14)/2}px`,
+              } as React.CSSProperties}/>
+            </>)}
           </div>
         )
       })()}
