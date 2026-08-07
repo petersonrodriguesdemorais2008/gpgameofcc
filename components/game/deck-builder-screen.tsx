@@ -32,6 +32,13 @@ const CARD_SKINS: Record<string, CardSkin[]> = {
       masterId:     "fehnon",
       unlockLevel:  50,
     },
+    {
+      id:           "fehnon_skin_pixel_3",
+      label:        "Pixel Art — Fehnon",
+      image:        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fehnon_skin_3-9b12ilV2CARGbmDrTWPxSoX3IwVOSC.jpg",
+      masterId:     "fehnon",
+      unlockLevel:  0,
+    },
   ],
   // Morgana Pendragon — Darkness SR card
   "morgana-20sr.png": [
@@ -42,6 +49,13 @@ const CARD_SKINS: Record<string, CardSkin[]> = {
       masterId:     "morgana",
       unlockLevel:  50,
     },
+    {
+      id:           "morgana_skin_pixel_3",
+      label:        "Pixel Art — Morgana",
+      image:        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/morgana_skin_3-9IJL7cKfyna1XKbOeu3F9qa0qgd7aa.jpg",
+      masterId:     "morgana",
+      unlockLevel:  0,
+    },
   ],
   // Calem Hidenori — Void LR card
   "Calem_LR.png": [
@@ -51,6 +65,13 @@ const CARD_SKINS: Record<string, CardSkin[]> = {
       image:        "/uploads/calem_skin_lv50.jpg",
       masterId:     "calem",
       unlockLevel:  50,
+    },
+    {
+      id:           "calem_skin_pixel_3",
+      label:        "Pixel Art — Calem",
+      image:        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/calem_skin_3-zGcfoxquYxAsQXTSIwKgUE0HCvtEvD.jpg",
+      masterId:     "calem",
+      unlockLevel:  0,
     },
   ],
 }
