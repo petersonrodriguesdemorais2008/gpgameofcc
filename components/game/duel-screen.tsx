@@ -8,7 +8,7 @@ import type { Deck as GameDeck, Card as GameCard, DuelRewardKind } from "@/conte
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame, CARD_BACK_IMAGE } from "@/contexts/game-context"
+import { useGame } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords, X, MessageCircle, Send } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -3400,7 +3400,8 @@ function TrapChainsFX() {
 export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, startingLP: propStartingLP, roguelikeConfig, catastropheMode }: DuelScreenProps) {
   const { t } = useLanguage()
   // IMPORTED: const { decks, addMatchRecord, getPlaymatForDeck } = useGame()
-  const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId, allCards } = useGame()
+  const { decks, addMatchRecord, getPlaymatForDeck, ownedPlaymats, globalPlaymatId, allCards, getActiveCardBack } = useGame()
+  const activeCardBack = getActiveCardBack()
   // Ensure decks are typed correctly if they have playmat images
   const typedDecks = decks as DeckWithImages[]
   const [selectedDeck, setSelectedDeck] = useState<DeckWithImages | null>(null)
@@ -11878,7 +11879,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               }}
                             >
                               <Image
-                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                src={activeCardBack || "/placeholder.svg"}
                                 alt="Deck"
                                 fill quality={100} sizes="180px"
                                 className="object-cover"
@@ -12014,7 +12015,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
                             <div className="absolute inset-0 [backface-visibility:hidden]">
                               <Image
-                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                src={activeCardBack || "/placeholder.svg"}
                                 alt="Face down card"
                                 fill quality={100} sizes="180px"
                                 className="object-cover"
@@ -12345,7 +12346,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             {/* Back of Card */}
                             <div className="absolute inset-0 [backface-visibility:hidden]">
                               <Image
-                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                src={activeCardBack || "/placeholder.svg"}
                                 alt="Face down card"
                                 fill quality={100} sizes="180px"
                                 className="object-cover"
@@ -12508,7 +12509,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               }}
                             >
                               <Image
-                                src={CARD_BACK_IMAGE || "/placeholder.svg"}
+                                src={activeCardBack || "/placeholder.svg"}
                                 alt="Deck"
                                 fill quality={100} sizes="180px"
                                 className="object-cover"
@@ -13239,7 +13240,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }}>
                 {/* Back face */}
                 <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
-                  <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
+                  <img src={activeCardBack||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                 </div>
                 {/* Front face — revealed after flip */}
@@ -13280,7 +13281,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
               }}>
                 <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
-                  <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
+                  <img src={activeCardBack||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:7}}/>
                 </div>
