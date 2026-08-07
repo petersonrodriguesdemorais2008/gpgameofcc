@@ -29,6 +29,16 @@ export interface Preview3DItem {
   kind: "playmat" | "pack"
 }
 
+/* Pre-carrega a textura no cache do loader ANTES do overlay abrir.
+   Chamado no inicio do long-press: quando a previa monta, a imagem ja esta pronta. */
+export function preloadPreviewTexture(image: string) {
+  try {
+    useTexture.preload(image)
+  } catch {
+    // se falhar aqui, o Suspense da cena cuida do carregamento normal
+  }
+}
+
 interface ItemPreview3DProps {
   item: Preview3DItem
   onClose: () => void

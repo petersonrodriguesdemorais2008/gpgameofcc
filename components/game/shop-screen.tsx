@@ -2,7 +2,10 @@
 
 import { useState, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import ItemPreview3D, { type Preview3DItem } from "@/components/game/item-preview-3d"
+import ItemPreview3D, {
+  preloadPreviewTexture,
+  type Preview3DItem,
+} from "@/components/game/item-preview-3d"
 import { useGame } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -251,6 +254,9 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
     onPointerDown: (e: React.PointerEvent) => {
       suppressClick.current = false
       longPressStart.current = { x: e.clientX, y: e.clientY }
+      // Comeca a baixar a textura ja no inicio do toque: durante os 450ms
+      // do long-press a imagem carrega em paralelo e a previa abre pronta
+      preloadPreviewTexture(item.image)
       const target = e.currentTarget as HTMLElement
       const pointerId = e.pointerId
       longPressTimer.current = setTimeout(() => {
