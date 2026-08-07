@@ -28,6 +28,13 @@ export interface Playmat {
   description: string
 }
 
+export interface Sleeve {
+  id: string
+  name: string
+  image: string
+  description: string
+}
+
 export interface Deck {
   id: string
   name: string
@@ -163,6 +170,12 @@ interface GameContextType {
   setGlobalPlaymat: (playmatId: string | null) => void
   getPlaymatForDeck: (deck: Deck) => Playmat | null
   unlockPlaymat: (playmatId: string) => boolean
+  allSleeves: Sleeve[]
+  ownedSleeves: Sleeve[]
+  equippedSleeveId: string | null
+  setEquippedSleeve: (sleeveId: string | null) => void
+  unlockSleeve: (sleeveId: string) => boolean
+  cardBackImage: string
   redeemCode: (code: string) => { success: boolean; message: string }
   redeemedCodes: string[]
   deleteAccountData: () => Promise<{ success: boolean; error?: string }>
@@ -1636,6 +1649,57 @@ const ALL_PLAYMATS: Playmat[] = [
   },
 ]
 
+const ALL_SLEEVES: Sleeve[] = [
+  {
+    id: "sleeve-morgana-riff",
+    name: "Morgana: Solo Purpura",
+    image: "/images/sleeves/morgana_sleeve_1.png",
+    description: "Morgana dedilha seu riff enquanto ondas de energia purpura envolvem o deck.",
+  },
+  {
+    id: "sleeve-morgana-fehnon-duo",
+    name: "Morgana e Fehnon: Duo",
+    image: "/images/sleeves/morgana_sleeve_2.png",
+    description: "A dupla explosiva de Morgana e Fehnon lado a lado, pronta para o duelo.",
+  },
+  {
+    id: "sleeve-fehnon-spark",
+    name: "Fehnon: Faisca Azul",
+    image: "/images/sleeves/fehnon_sleeve_1.png",
+    description: "Raios azuis cortam o fundo magenta em torno de Fehnon.",
+  },
+  {
+    id: "sleeve-fehnon-blade",
+    name: "Fehnon: Lamina Desperta",
+    image: "/images/sleeves/fehnon_sleeve_2.png",
+    description: "Fehnon empunha sua lamina gelida em guarda total.",
+  },
+  {
+    id: "sleeve-arthur-shadow",
+    name: "Arthur: Espirais Violeta",
+    image: "/images/sleeves/arthur_sleeve_1.png",
+    description: "Arthur conduz espirais de aquarela violeta na ponta dos dedos.",
+  },
+  {
+    id: "sleeve-arthur-rest",
+    name: "Arthur: Pausa Sombria",
+    image: "/images/sleeves/arthur_sleeve_2.jpg",
+    description: "Arthur descansa com um sorriso enigmatico sobre um fundo purpura.",
+  },
+  {
+    id: "sleeve-calem-static",
+    name: "Calem: Estatica Prateada",
+    image: "/images/sleeves/calem_sleeve_1.png",
+    description: "Descargas prateadas irrompem ao redor de Calem em preto e branco.",
+  },
+  {
+    id: "sleeve-angel-victory",
+    name: "Anjo: Vitoria no Campo",
+    image: "/images/sleeves/angel_victory_sleeve.png",
+    description: "O anjo triunfante encerra a batalha banhado em luz dourada.",
+  },
+]
+
 const INITIAL_GIFT_BOXES: GiftBox[] = [
   {
     id: "beta-reward",
@@ -1699,6 +1763,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [ownedPlaymats, setOwnedPlaymats] = useState<Playmat[]>([])
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
+  const [ownedSleeves, setOwnedSleeves] = useState<Sleeve[]>([])
+  const [equippedSleeveId, setEquippedSleeveId] = useState<string | null>(null)
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   const [mobileMode, setMobileModeState] = useState(false)
 
@@ -1861,6 +1927,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
                   setGlobalPlaymatId(p.globalPlaymatId)
                   localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
                 }
+                if (Array.isArray(p.ownedSleeveIds)) {
+                  setOwnedSleeves(ALL_SLEEVES.filter((sv) => p.ownedSleeveIds.includes(sv.id)))
+                  localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(p.ownedSleeveIds))
+                }
+                if (typeof p.equippedSleeveId === "string" && p.equippedSleeveId) {
+                  setEquippedSleeveId(p.equippedSleeveId)
+                  localStorage.setItem("gearperks_equipped_sleeve", p.equippedSleeveId)
+                }
                 if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
                 // Sync to localStorage for offline access
                 if (typeof p.coins === "number") setLS("coins", p.coins.toString())
@@ -1975,6 +2049,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
       if (savedGlobalPlaymat) {
         setGlobalPlaymatId(savedGlobalPlaymat)
+      }
+
+      // Sleeves
+      const savedOwnedSleeves = localStorage.getItem("gearperks_owned_sleeves")
+      const savedEquippedSleeve = localStorage.getItem("gearperks_equipped_sleeve")
+      if (savedOwnedSleeves) {
+        try {
+          const sleeveIds = JSON.parse(savedOwnedSleeves)
+          setOwnedSleeves(ALL_SLEEVES.filter((s) => sleeveIds.includes(s.id)))
+        } catch { }
+      }
+      if (savedEquippedSleeve) {
+        setEquippedSleeveId(savedEquippedSleeve)
       }
 
       // Redeemed codes (scoped per account)
@@ -2094,6 +2181,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks_global_playmat")
     }
   }, [globalPlaymatId])
+
+  useEffect(() => {
+    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(ownedSleeves.map((s) => s.id)))
+  }, [ownedSleeves])
+
+  useEffect(() => {
+    if (equippedSleeveId) {
+      localStorage.setItem("gearperks_equipped_sleeve", equippedSleeveId)
+    } else {
+      localStorage.removeItem("gearperks_equipped_sleeve")
+    }
+  }, [equippedSleeveId])
 
   const addToCollection = (cards: Card[]) => {
     setCollection((prev) => [...prev, ...cards])
@@ -2333,6 +2432,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playerId,
     ownedPlaymatIds: ownedPlaymats.map((p) => p.id),
     globalPlaymatId,
+    ownedSleeveIds: ownedSleeves.map((s) => s.id),
+    equippedSleeveId,
     redeemedCodes,
   })
 
@@ -2365,6 +2466,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (typeof p.globalPlaymatId === "string" && p.globalPlaymatId) {
       setGlobalPlaymatId(p.globalPlaymatId)
       localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
+    }
+    if (Array.isArray(p.ownedSleeveIds)) {
+      setOwnedSleeves(ALL_SLEEVES.filter((sv) => p.ownedSleeveIds.includes(sv.id)))
+      localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(p.ownedSleeveIds))
+    }
+    if (typeof p.equippedSleeveId === "string" && p.equippedSleeveId) {
+      setEquippedSleeveId(p.equippedSleeveId)
+      localStorage.setItem("gearperks_equipped_sleeve", p.equippedSleeveId)
     }
     if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
 
@@ -2608,6 +2717,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playerId,
     ownedPlaymats,
     globalPlaymatId,
+    ownedSleeves,
+    equippedSleeveId,
     redeemedCodes,
     accountAuth,
   })
@@ -2627,6 +2738,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       playerId,
       ownedPlaymats,
       globalPlaymatId,
+      ownedSleeves,
+      equippedSleeveId,
       redeemedCodes,
       accountAuth,
     }
@@ -2657,6 +2770,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playerId,
     ownedPlaymats,
     globalPlaymatId,
+    ownedSleeves,
+    equippedSleeveId,
     redeemedCodes,
     accountAuth.isLoggedIn,
   ])
@@ -2672,8 +2787,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     isSavingRef.current = true
     hasPendingSaveRef.current = false
 
-    const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
-    const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+    const { accountAuth: _auth, ownedPlaymats: mats, ownedSleeves: svs, ...rest } = progressRef.current
+    const payload = {
+      ...rest,
+      ownedPlaymatIds: mats.map((p) => p.id),
+      ownedSleeveIds: svs.map((s) => s.id),
+    }
 
     try {
       const result = await accountApi({
@@ -2729,8 +2848,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "hidden" && hasPendingSaveRef.current) {
         const token = localStorage.getItem(SESSION_TOKEN_KEY)
         if (!token) return
-        const { accountAuth: _auth, ownedPlaymats: mats, ...rest } = progressRef.current
-        const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id) }
+        const { accountAuth: _auth, ownedPlaymats: mats, ownedSleeves: svs, ...rest } = progressRef.current
+        const payload = {
+          ...rest,
+          ownedPlaymatIds: mats.map((p) => p.id),
+          ownedSleeveIds: svs.map((s) => s.id),
+        }
         // sendBeacon é fire-and-forget: funciona mesmo enquanto a aba esta fechando
         navigator.sendBeacon(
           "/api/account",
