@@ -111,6 +111,202 @@ export const PROFILE_ICONS = [
   { id: "fehnon", name: "Fehnon", image: "/images/icons/fehnon-icon.png" },
 ]
 
+/** Icone de perfil vendido na loja (aba Icones). */
+export interface ProfileIcon {
+  id: string
+  name: string
+  image: string
+  description: string
+  element: string
+  rarity: "rare" | "epic" | "legendary"
+  gearPrice: number
+  gachaPrice: number
+}
+
+/**
+ * Precos propositalmente abaixo das skins de carta (1200 gear / 500 gacha)
+ * e dos sleeves (750 / 300) — icones sao o cosmetico de entrada.
+ */
+export const ICON_PRICES = {
+  rare: { gear: 350, gacha: 140 },
+  epic: { gear: 500, gacha: 200 },
+  legendary: { gear: 700, gacha: 280 },
+} as const
+
+export const SHOP_PROFILE_ICONS: ProfileIcon[] = [
+  {
+    id: "icon-phoenix-flame",
+    name: "Fenix Incandescente",
+    image: "/images/icons/avatars/phoenix-flame.png",
+    description: "Um rosto de fenix forjado apenas em chamas vivas, olhos brancos de brasa.",
+    element: "Fire",
+    rarity: "rare",
+    ...{ gearPrice: ICON_PRICES.rare.gear, gachaPrice: ICON_PRICES.rare.gacha },
+  },
+  {
+    id: "icon-ice-wolf",
+    name: "Lobo de Gelo Fraturado",
+    image: "/images/icons/avatars/ice-wolf.png",
+    description: "Lobo esculpido em lascas de gelo, exalando um uivo congelante azul.",
+    element: "Aquos",
+    rarity: "rare",
+    ...{ gearPrice: ICON_PRICES.rare.gear, gachaPrice: ICON_PRICES.rare.gacha },
+  },
+  {
+    id: "icon-void-kraken",
+    name: "Kraken do Vazio",
+    image: "/images/icons/avatars/void-kraken.png",
+    description: "Tentaculos violeta e presas infinitas emergindo de chamas do abismo.",
+    element: "Void",
+    rarity: "epic",
+    ...{ gearPrice: ICON_PRICES.epic.gear, gachaPrice: ICON_PRICES.epic.gacha },
+  },
+  {
+    id: "icon-forge-titan",
+    name: "Titan da Forja",
+    image: "/images/icons/avatars/forge-titan.png",
+    description: "Coloso de cobre rebitado com uma fornalha rugindo no lugar da boca.",
+    element: "Subterra",
+    rarity: "epic",
+    ...{ gearPrice: ICON_PRICES.epic.gear, gachaPrice: ICON_PRICES.epic.gacha },
+  },
+  {
+    id: "icon-bone-sovereign",
+    name: "Soberano de Ossos",
+    image: "/images/icons/avatars/bone-sovereign.png",
+    description: "Cavaleiro esqueletico coroado por chamas carmesim e runas ardentes.",
+    element: "Darkness",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+  {
+    id: "icon-eye-moth",
+    name: "Mariposa dos Mil Olhos",
+    image: "/images/icons/avatars/eye-moth.png",
+    description: "Asas cosmicas cobertas de olhos que observam cada jogada do oponente.",
+    element: "Void",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+  {
+    id: "icon-storm-wolf",
+    name: "Lobo da Tempestade",
+    image: "/images/icons/avatars/storm-wolf.png",
+    description: "Fera negra atravessada por galhos de relampago violeta.",
+    element: "Ventus",
+    rarity: "epic",
+    ...{ gearPrice: ICON_PRICES.epic.gear, gachaPrice: ICON_PRICES.epic.gacha },
+  },
+  {
+    id: "icon-gold-scorpion",
+    name: "Escorpiao Aureo",
+    image: "/images/icons/avatars/gold-scorpion.png",
+    description: "Carapaca de ouro e veneno esmeralda pingando do ferrao erguido.",
+    element: "Subterra",
+    rarity: "rare",
+    ...{ gearPrice: ICON_PRICES.rare.gear, gachaPrice: ICON_PRICES.rare.gacha },
+  },
+  {
+    id: "icon-shadow-devourer",
+    name: "Devorador de Sombras",
+    image: "/images/icons/avatars/shadow-devourer.png",
+    description: "Silhueta chifruda cercada por aneis runicos e relampagos purpura.",
+    element: "Darkness",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+  {
+    id: "icon-solar-lion",
+    name: "Leao Solar",
+    image: "/images/icons/avatars/solar-lion.png",
+    description: "Juba de luz dourada e asas de fogo que rasgam o horizonte.",
+    element: "Lightness",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+  {
+    id: "icon-ember-tiger",
+    name: "Tigre das Brasas",
+    image: "/images/icons/avatars/ember-tiger.png",
+    description: "Predador tatuado com runas incandescentes, rugindo entre labaredas.",
+    element: "Fire",
+    rarity: "epic",
+    ...{ gearPrice: ICON_PRICES.epic.gear, gachaPrice: ICON_PRICES.epic.gacha },
+  },
+  {
+    id: "icon-verdant-dragon",
+    name: "Dragao Verdejante",
+    image: "/images/icons/avatars/verdant-dragon.png",
+    description: "Escamas de ouro e folhas, com raios esmeralda escapando das presas.",
+    element: "Ventus",
+    rarity: "epic",
+    ...{ gearPrice: ICON_PRICES.epic.gear, gachaPrice: ICON_PRICES.epic.gacha },
+  },
+  {
+    id: "icon-magma-golem",
+    name: "Golem de Magma",
+    image: "/images/icons/avatars/magma-golem.png",
+    description: "Placas de pedra rachadas revelando o nucleo de lava incandescente.",
+    element: "Subterra",
+    rarity: "rare",
+    ...{ gearPrice: ICON_PRICES.rare.gear, gachaPrice: ICON_PRICES.rare.gacha },
+  },
+  {
+    id: "icon-abyss-serpent",
+    name: "Serpente do Abismo",
+    image: "/images/icons/avatars/abyss-serpent.png",
+    description: "Dragao de agua viva, brilhando em ciano nas profundezas escuras.",
+    element: "Aquos",
+    rarity: "epic",
+    ...{ gearPrice: ICON_PRICES.epic.gear, gachaPrice: ICON_PRICES.epic.gacha },
+  },
+  {
+    id: "icon-carnivore-bloom",
+    name: "Flor Carnivora",
+    image: "/images/icons/avatars/carnivore-bloom.png",
+    description: "Petalas carmesim escondendo uma bocarra repleta de presas douradas.",
+    element: "Ventus",
+    rarity: "rare",
+    ...{ gearPrice: ICON_PRICES.rare.gear, gachaPrice: ICON_PRICES.rare.gacha },
+  },
+  {
+    id: "icon-tomb-pharaoh",
+    name: "Farao do Tumulo",
+    image: "/images/icons/avatars/tomb-pharaoh.png",
+    description: "Mumia real acorrentada, com hieroglifos ardendo nas bandagens.",
+    element: "Subterra",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+  {
+    id: "icon-neon-ronin",
+    name: "Ronin Neon",
+    image: "/images/icons/avatars/neon-ronin.png",
+    description: "Samurai demoniaco cortando a matriz digital com uma lamina magenta.",
+    element: "Darkness",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+  {
+    id: "icon-prism-colossus",
+    name: "Coloso Prismatico",
+    image: "/images/icons/avatars/prism-colossus.png",
+    description: "Cristais iridescentes gravados com selos geometricos de energia rosa.",
+    element: "Lightness",
+    rarity: "legendary",
+    ...{ gearPrice: ICON_PRICES.legendary.gear, gachaPrice: ICON_PRICES.legendary.gacha },
+  },
+]
+
+/** Icones gratuitos (base) normalizados para o mesmo formato dos icones de loja. */
+export const FREE_PROFILE_ICONS = PROFILE_ICONS.map((i) => ({ ...i, free: true as const }))
+
+/** Procura um icone da loja pela imagem equipada. */
+export function findShopIconByImage(image?: string | null): ProfileIcon | undefined {
+  if (!image) return undefined
+  return SHOP_PROFILE_ICONS.find((i) => i.image === image)
+}
+
 export interface AccountAuth {
   isLoggedIn: boolean
   email: string | null
@@ -177,6 +373,14 @@ interface GameContextType {
   globalSleeveId: string | null
   setGlobalSleeve: (sleeveId: string | null) => void
   unlockSleeve: (sleeveId: string) => boolean
+  // Icones de perfil (avatares)
+  shopProfileIcons: ProfileIcon[]
+  ownedIconIds: string[]
+  ownsProfileIcon: (iconId: string) => boolean
+  unlockProfileIcon: (iconId: string) => boolean
+  equipProfileIcon: (iconId: string) => boolean
+  /** Todos os icones que o jogador pode equipar agora (gratuitos + comprados). */
+  availableProfileIcons: { id: string; name: string; image: string }[]
   getActiveCardBack: () => string
   redeemCode: (code: string) => { success: boolean; message: string }
   redeemedCodes: string[]
@@ -1755,6 +1959,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
   const [ownedSleeves, setOwnedSleeves] = useState<Sleeve[]>([])
   const [globalSleeveId, setGlobalSleeveId] = useState<string | null>(null)
+  const [ownedIconIds, setOwnedIconIds] = useState<string[]>([])
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   const [mobileMode, setMobileModeState] = useState(false)
 
@@ -1925,6 +2130,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
                   setGlobalSleeveId(p.globalSleeveId)
                   localStorage.setItem("gearperks_global_sleeve", p.globalSleeveId)
                 }
+                if (Array.isArray(p.ownedIconIds)) {
+                  const ids = p.ownedIconIds.filter((id: unknown) => typeof id === "string")
+                  setOwnedIconIds(ids)
+                  localStorage.setItem("gearperks_owned_icons", JSON.stringify(ids))
+                }
                 if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
                 // Sync to localStorage for offline access
                 if (typeof p.coins === "number") setLS("coins", p.coins.toString())
@@ -2054,6 +2264,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setGlobalSleeveId(savedGlobalSleeve)
       }
 
+      // Icones de perfil comprados na loja
+      const savedOwnedIcons = localStorage.getItem("gearperks_owned_icons")
+      if (savedOwnedIcons) {
+        try {
+          const iconIds = JSON.parse(savedOwnedIcons)
+          if (Array.isArray(iconIds)) setOwnedIconIds(iconIds.filter((id: unknown) => typeof id === "string"))
+        } catch { }
+      }
+
       // Redeemed codes (scoped per account)
       const codesKey = redeemedCodesLSKey(auth?.isLoggedIn ? auth.uniqueCode : null)
       const savedRedeemedCodes = getLS(codesKey)
@@ -2175,6 +2394,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(ownedSleeves.map((s) => s.id)))
   }, [ownedSleeves])
+
+  useEffect(() => {
+    localStorage.setItem("gearperks_owned_icons", JSON.stringify(ownedIconIds))
+  }, [ownedIconIds])
 
   useEffect(() => {
     if (globalSleeveId) {
@@ -2437,6 +2660,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     globalPlaymatId,
     ownedSleeveIds: ownedSleeves.map((s) => s.id),
     globalSleeveId,
+    ownedIconIds,
     redeemedCodes,
   })
 
@@ -2477,6 +2701,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (typeof p.globalSleeveId === "string" && p.globalSleeveId) {
       setGlobalSleeveId(p.globalSleeveId)
       localStorage.setItem("gearperks_global_sleeve", p.globalSleeveId)
+    }
+    if (Array.isArray(p.ownedIconIds)) {
+      const ids = p.ownedIconIds.filter((id: unknown) => typeof id === "string")
+      setOwnedIconIds(ids)
+      localStorage.setItem("gearperks_owned_icons", JSON.stringify(ids))
     }
     if (Array.isArray(p.redeemedCodes)) setRedeemedCodes(p.redeemedCodes)
 
@@ -2697,6 +2926,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Reset sleeve states on logout
     setOwnedSleeves([])
     setGlobalSleeveId(null)
+    // Reset owned profile icons on logout
+    setOwnedIconIds([])
 
     // Load guest-scoped redeemed codes (don't keep the previous account's codes)
     const guestCodes = getLS(redeemedCodesLSKey(null))
@@ -2884,6 +3115,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true
   }
 
+  // ── ICONES DE PERFIL (avatares) ──────────────────────────────────────────
+  const ownsProfileIcon = (iconId: string): boolean => ownedIconIds.includes(iconId)
+
+  /** Libera um icone da loja na conta do jogador (usado nas compras). */
+  const unlockProfileIcon = (iconId: string): boolean => {
+    const icon = SHOP_PROFILE_ICONS.find((i) => i.id === iconId)
+    if (!icon) return false
+    if (ownedIconIds.includes(iconId)) return false
+    const updated = [...ownedIconIds, iconId]
+    setOwnedIconIds(updated)
+    localStorage.setItem("gearperks_owned_icons", JSON.stringify(updated))
+    return true
+  }
+
+  /** Equipa um icone (gratuito ou comprado) como avatar do perfil. */
+  const equipProfileIcon = (iconId: string): boolean => {
+    const free = PROFILE_ICONS.find((i) => i.id === iconId)
+    if (free) {
+      setPlayerProfile((prev) => ({ ...prev, avatarUrl: free.image }))
+      return true
+    }
+    const shopIcon = SHOP_PROFILE_ICONS.find((i) => i.id === iconId)
+    if (!shopIcon || !ownedIconIds.includes(iconId)) return false
+    setPlayerProfile((prev) => ({ ...prev, avatarUrl: shopIcon.image }))
+    return true
+  }
+
+  /** Gratuitos + comprados, na ordem em que aparecem nos seletores. */
+  const availableProfileIcons = [
+    ...PROFILE_ICONS.map((i) => ({ id: i.id, name: i.name, image: i.image })),
+    ...SHOP_PROFILE_ICONS.filter((i) => ownedIconIds.includes(i.id)).map((i) => ({
+      id: i.id,
+      name: i.name,
+      image: i.image,
+    })),
+  ]
+
   // Returns the active card back image: active sleeve image or default card-back
   const getActiveCardBack = (): string => {
     if (globalSleeveId) {
@@ -3010,8 +3278,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gearperks-spendable-fp")
       localStorage.removeItem("gearperks_owned_playmats")
       localStorage.removeItem("gearperks_global_playmat")
-      localStorage.removeItem("gearperks_owned_sleeves")
-      localStorage.removeItem("gearperks_global_sleeve")
+    localStorage.removeItem("gearperks_owned_sleeves")
+    localStorage.removeItem("gearperks_global_sleeve")
+    localStorage.removeItem("gearperks_owned_icons")
       localStorage.removeItem("gearperks-redeemed-codes")
       localStorage.removeItem("gear-perks-redeemed-codes")
       const currentCodesKey = redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null)
@@ -3023,7 +3292,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // ── Masters system ─────────────────────────────────────────────────────
       localStorage.removeItem("gpgame_masters_v1")
 
-      // ── Story Mode (Campanha) ──────────────────────────────────────────────
+      // ── Story Mode (Campanha) ─────────────────────────────────────────���────
       localStorage.removeItem("gpgame_story_progress")
       localStorage.removeItem("gpgame_story_battle_pending")
 
@@ -3152,6 +3421,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         globalSleeveId,
         setGlobalSleeve,
         unlockSleeve,
+        // Profile icon values
+        shopProfileIcons: SHOP_PROFILE_ICONS,
+        ownedIconIds,
+        ownsProfileIcon,
+        unlockProfileIcon,
+        equipProfileIcon,
+        availableProfileIcons,
         getActiveCardBack,
         // Code redemption
         redeemCode,
