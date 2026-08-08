@@ -6,7 +6,7 @@ import ItemPreview3D, {
   preloadPreviewTexture,
   type Preview3DItem,
 } from "@/components/game/item-preview-3d"
-import { useGame } from "@/contexts/game-context"
+import { useGame, type ProfileIcon } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
   Lock,
   Plus,
   Sparkles,
+  CircleUser,
 } from "lucide-react"
 import Image from "next/image"
 
@@ -272,7 +273,7 @@ const PLAYMAT_SHOP_ITEMS: PlaymatShopItem[] = [
   },
 ]
 
-type TabId = "featured" | "packs" | "bundles" | "playmats" | "sleeves" | "skins"
+type TabId = "featured" | "packs" | "bundles" | "playmats" | "sleeves" | "skins" | "icons"
 
 const TABS: { id: TabId; label: string; icon: typeof Star }[] = [
   { id: "featured", label: "Destaque", icon: Star },
@@ -281,7 +282,15 @@ const TABS: { id: TabId; label: string; icon: typeof Star }[] = [
   { id: "playmats", label: "Playmats", icon: LayoutGrid },
   { id: "sleeves", label: "Sleeves", icon: Zap },
   { id: "skins", label: "Skins", icon: Sparkles },
+  { id: "icons", label: "Icones", icon: CircleUser },
 ]
+
+/* Estilo por raridade de icone — usado no anel do avatar e no chip */
+const ICON_RARITY = {
+  legendary: { label: "Lendario", ring: "#e8b44c", chip: "bg-amber-400/10 text-amber-300 border-amber-400/25" },
+  epic: { label: "Epico", ring: "#a78bfa", chip: "bg-violet-400/10 text-violet-300 border-violet-400/25" },
+  rare: { label: "Raro", ring: "#6fd9e8", chip: "bg-cyan-400/10 text-cyan-300 border-cyan-400/25" },
+} as const
 
 /* Sistema de raridade: cor funcional unica por tier, usada com parcimonia */
 const RARITY = {
@@ -336,11 +345,29 @@ function WalletChip({
 
 export default function ShopScreen({ onBack }: ShopScreenProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, gearCoins, setGearCoins, addGift, ownedPlaymats, unlockPlaymat, ownedSleeves, unlockSleeve, globalSleeveId, setGlobalSleeve } = useGame()
+  const {
+    coins,
+    setCoins,
+    gearCoins,
+    setGearCoins,
+    addGift,
+    ownedPlaymats,
+    unlockPlaymat,
+    ownedSleeves,
+    unlockSleeve,
+    globalSleeveId,
+    setGlobalSleeve,
+    shopProfileIcons,
+    ownsProfileIcon,
+    unlockProfileIcon,
+    equipProfileIcon,
+    playerProfile,
+  } = useGame()
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null)
   const [selectedPlaymat, setSelectedPlaymat] = useState<PlaymatShopItem | null>(null)
   const [selectedSleeve, setSelectedSleeve] = useState<SleeveShopItem | null>(null)
   const [selectedSkin, setSelectedSkin] = useState<CardSkinShopItem | null>(null)
+  const [selectedIcon, setSelectedIcon] = useState<ProfileIcon | null>(null)
   const [ownedSkins, setOwnedSkins] = useState<string[]>(() => {
     if (typeof window === "undefined") return []
     try {
