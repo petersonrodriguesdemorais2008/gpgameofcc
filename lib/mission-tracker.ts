@@ -35,6 +35,7 @@ const K = {
   duels_w:    () => `gpgame_mt_duels_w_${getWeekStartStr()}`,
   duels_total:    "gpgame_mt_duels_total",
   sr_total:       "gpgame_mt_sr_total",
+  cards_d:    () => `gpgame_mt_cards_d_${getTodayStr()}`,
   login_d:    () => `gpgame_mt_login_${getTodayStr()}`,
   deck_d:     () => `gpgame_mt_deck_${getTodayStr()}`,
   deck_w:     () => `gpgame_mt_deck_w_${getWeekStartStr()}`,
@@ -66,6 +67,7 @@ export function trackGachaPull(packCount: number, cards: Array<{ rarity: string 
   ai(K.gacha_d(),    packCount)
   ai(K.gacha_w(),    packCount)
   ai(K.gacha_total,  packCount)
+  if (cards.length > 0) ai(K.cards_d(), cards.length)
   const srCount = cards.filter(c => ["SR","UR","LR"].includes(c.rarity)).length
   if (srCount > 0) ai(K.sr_total, srCount)
 }
@@ -110,6 +112,8 @@ export const getMissionProgress = {
   duelsTotal:    () => ri(K.duels_total),
   // SRs obtidas
   srTotal:       () => ri(K.sr_total),
+  // Cartas adicionadas à coleção hoje (via gacha)
+  cardsToday:    () => ri(K.cards_d()),
   // Login
   loginToday:    () => rb(K.login_d()),
   // Deck

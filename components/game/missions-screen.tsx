@@ -10,6 +10,8 @@ import {
 import {
   getMissionProgress,
   trackDailyLogin,
+  getTodayStr,
+  getWeekStartStr,
 } from "@/lib/mission-tracker"
 
 // ─── Coin Icon com fallback SVG ───────────────────────────────────────────────
@@ -102,14 +104,11 @@ function formatCountdown(ms: number) {
 }
 const pad = (n: number) => String(n).padStart(2, "0")
 
-// Chaves de data para resetar claims por dia/semana
-function getDayKey()  { return new Date().toISOString().slice(0, 10) }
-function getWeekKey() {
-  const d = new Date(); const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  const mon = new Date(d); mon.setDate(diff)
-  return mon.toISOString().slice(0, 10)
-}
+// Chaves de data para resetar claims por dia/semana.
+// Usa as mesmas funções do mission-tracker (data local) para evitar
+// divergência UTC vs. local perto da meia-noite.
+const getDayKey  = getTodayStr
+const getWeekKey = getWeekStartStr
 // Tipo interno para claims com metadado de data
 type ClaimedMap = Record<string, { dayKey: string; weekKey: string }>
 
@@ -345,7 +344,7 @@ function MissionCard({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, collection, matchHistory } = useGame()
+  const { coins, addCoins, addFP, collection } = useGame()
 
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "special">("daily")
   const [claimingId, setClaimingId] = useState<string | null>(null)
@@ -381,12 +380,21 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     return true // special nunca reseta
   }, [claimedMissions])
 
-  const [dailyTarget]  = useState(getNextMidnightUTC)
-  const [weeklyTarget] = useState(getNextMondayMidnightUTC)
+  const [dailyTarget, setDailyTarget]   = useState(getNextMidnightUTC)
+  const [weeklyTarget, setWeeklyTarget] = useState(getNextMondayMidnightUTC)
   const [eventTarget]  = useState(getEventEndTimestamp)
 
-  const totalCards   = collection?.length || 0
-  const wins         = matchHistory?.filter(m => m.result === "won").length || 0
+  // Renova os alvos dos timers quando o reset acontece (evita countdown travado em 00:00:00)
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now()
+      if (now >= dailyTarget)  setDailyTarget(getNextMidnightUTC())
+      if (now >= weeklyTarget) setWeeklyTarget(getNextMondayMidnightUTC())
+    }, 1000)
+    return () => clearInterval(id)
+  }, [dailyTarget, weeklyTarget])
+
+  const totalCards = collection?.length || 0
 
   // ── Lê progresso real do tracker ────────────────────────────────────────────
   const [trackedProgress, setTrackedProgress] = useState({
@@ -394,9 +402,11 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     gachaWeek:   0,
     winsToday:   0,
     winsWeek:    0,
+    winsTotal:   0,
     duelsToday:  0,
     duelsWeek:   0,
     srTotal:     0,
+    cardsToday:  0,
     loginToday:  false,
     deckEditWeek: false,
   })
@@ -411,9 +421,11 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
       gachaWeek:    getMissionProgress.gachaWeek(),
       winsToday:    getMissionProgress.winsToday(),
       winsWeek:     getMissionProgress.winsWeek(),
+      winsTotal:    getMissionProgress.winsTotal(),
       duelsToday:   getMissionProgress.duelsToday(),
       duelsWeek:    getMissionProgress.duelsWeek(),
       srTotal:      getMissionProgress.srTotal(),
+      cardsToday:   getMissionProgress.cardsToday(),
       loginToday:   getMissionProgress.loginToday(),
       deckEditWeek: getMissionProgress.deckEditWeek(),
     })
@@ -460,12 +472,22 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
       {
         id: "daily-4",
         name: "Colecionador Ativo",
-        description: "Adicione 5 cartas à coleção",
+        description: "Adicione 5 cartas à coleção hoje",
         type: "daily", category: "collection",
         icon: <BookOpen className="w-5 h-5" />,
-        progress: Math.min(totalCards, 5), maxProgress: 5,
+        progress: Math.min(g.cardsToday, 5), maxProgress: 5,
         reward: { coins: 100, fp: 10 },
-        completed: totalCards >= 5, claimed: false,
+        completed: g.cardsToday >= 5, claimed: false,
+      },
+      {
+        id: "daily-5",
+        name: "Espírito de Luta",
+        description: "Jogue 3 duelos hoje (vitória ou derrota)",
+        type: "daily", category: "battle",
+        icon: <Target className="w-5 h-5" />,
+        progress: Math.min(g.duelsToday, 3), maxProgress: 3,
+        reward: { coins: 120, fp: 15 },
+        completed: g.duelsToday >= 3, claimed: false,
       },
       // ── Semanais ──
       {
@@ -488,6 +510,26 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
         reward: { coins: 700, fp: 150 },
         completed: g.winsWeek >= 10, claimed: false,
       },
+      {
+        id: "weekly-3",
+        name: "Maratona de Duelos",
+        description: "Jogue 15 duelos esta semana",
+        type: "weekly", category: "battle",
+        icon: <Target className="w-5 h-5" />,
+        progress: Math.min(g.duelsWeek, 15), maxProgress: 15,
+        reward: { coins: 400, fp: 60 },
+        completed: g.duelsWeek >= 15, claimed: false,
+      },
+      {
+        id: "weekly-4",
+        name: "Arquiteto de Decks",
+        description: "Salve ou edite um deck esta semana",
+        type: "weekly", category: "general",
+        icon: <Users className="w-5 h-5" />,
+        progress: g.deckEditWeek ? 1 : 0, maxProgress: 1,
+        reward: { coins: 250, fp: 30 },
+        completed: g.deckEditWeek, claimed: false,
+      },
       // ── Especiais ──
       {
         id: "special-1",
@@ -498,6 +540,26 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
         progress: Math.min(totalCards, 50), maxProgress: 50,
         reward: { coins: 1000, fp: 500 },
         completed: totalCards >= 50, claimed: false,
+      },
+      {
+        id: "special-2",
+        name: "Caçador de Raridades",
+        description: "Obtenha 10 cartas SR ou superiores no gacha",
+        type: "special", category: "gacha",
+        icon: <Star className="w-5 h-5" />,
+        progress: Math.min(g.srTotal, 10), maxProgress: 10,
+        reward: { coins: 800, fp: 300 },
+        completed: g.srTotal >= 10, claimed: false,
+      },
+      {
+        id: "special-3",
+        name: "Campeão Lendário",
+        description: "Vença 25 partidas no total",
+        type: "special", category: "battle",
+        icon: <Trophy className="w-5 h-5" />,
+        progress: Math.min(g.winsTotal, 25), maxProgress: 25,
+        reward: { coins: 1500, fp: 400 },
+        completed: g.winsTotal >= 25, claimed: false,
       },
     ]
   }, [trackedProgress, totalCards])
@@ -535,16 +597,30 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   // bonusCoins declarado aqui — antes de handleClaimBonus que o usa no deps array
   const bonusCoins = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
 
+  // ── Toast de recompensa coletada ────────────────────────────────────────────
+  const [rewardToast, setRewardToast] = useState<{ coins: number; fp: number; key: number } | null>(null)
+  useEffect(() => {
+    if (!rewardToast) return
+    const id = setTimeout(() => setRewardToast(null), 2400)
+    return () => clearTimeout(id)
+  }, [rewardToast])
+
+  const showRewardToast = useCallback((coinsGained: number, fpGained: number) => {
+    if (coinsGained <= 0 && fpGained <= 0) return
+    setRewardToast({ coins: coinsGained, fp: fpGained, key: Date.now() })
+  }, [])
+
   const handleClaimBonus = useCallback(() => {
     if (isBonusClaimed(activeTab)) return
-    setCoins(coins + bonusCoins)
+    addCoins(bonusCoins)
+    showRewardToast(bonusCoins, 0)
     setBonusClaimed(prev => ({
       ...prev,
       [activeTab]: { dayKey: getDayKey(), weekKey: getWeekKey() },
     }))
-  }, [activeTab, bonusClaimed, coins, bonusCoins, setCoins])
+  }, [activeTab, bonusClaimed, bonusCoins, addCoins, showRewardToast])
 
-  // Coleta recompensa de uma missão individual
+  // Coleta recompensa de uma missão individual (moedas + FP)
   const handleClaimReward = useCallback((id: string) => {
     if (claimingId !== null) return
     const mission = allMissions.find(m => m.id === id)
@@ -554,7 +630,11 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
     if (!mission.completed) return
     setClaimingId(id)
     setTimeout(() => {
-      if (mission.reward.coins && setCoins) setCoins(coins + mission.reward.coins)
+      const coinsGained = mission.reward.coins ?? 0
+      const fpGained    = mission.reward.fp ?? 0
+      if (coinsGained > 0) addCoins(coinsGained)
+      if (fpGained > 0)    addFP(fpGained)
+      showRewardToast(coinsGained, fpGained)
       // Grava com metadado de data para reset automático
       setClaimedMissions(prev => ({
         ...prev,
@@ -562,25 +642,29 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
       }))
       setClaimingId(null)
     }, 800)
-  }, [allMissions, isMissionClaimed, claimingId, setCoins, coins])
+  }, [allMissions, isMissionClaimed, claimingId, addCoins, addFP, showRewardToast])
 
   const filteredMissions = allMissions.filter(m => m.type === activeTab)
 
   const claimableAll = filteredMissions.filter(m => m.completed && !isMissionClaimed(m.id, m.type))
 
   const handleClaimAll = useCallback(() => {
-    if (claimableAll.length === 0) return
+    if (claimableAll.length === 0 || claimingId !== null) return
     let totalCoins = 0
+    let totalFP    = 0
     const dayKey  = getDayKey()
     const weekKey = getWeekKey()
     const newClaimed = { ...claimedMissions }
     claimableAll.forEach(m => {
       newClaimed[m.id] = { dayKey, weekKey }
-      if (m.reward.coins) totalCoins += m.reward.coins
+      totalCoins += m.reward.coins ?? 0
+      totalFP    += m.reward.fp ?? 0
     })
     setClaimedMissions(newClaimed)
-    if (totalCoins > 0 && setCoins) setCoins(coins + totalCoins)
-  }, [claimableAll, claimedMissions, isMissionClaimed, coins, setCoins])
+    if (totalCoins > 0) addCoins(totalCoins)
+    if (totalFP > 0)    addFP(totalFP)
+    showRewardToast(totalCoins, totalFP)
+  }, [claimableAll, claimedMissions, claimingId, addCoins, addFP, showRewardToast])
 
   const stats = useMemo(() => {
     const count = (type: string) => ({
@@ -633,6 +717,12 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
           0%   { transform: translateY(0);     opacity: 0; }
           15%  { opacity: 1; }
           100% { transform: translateY(-46px); opacity: 0; }
+        }
+        @keyframes toast-in {
+          0%   { transform: translate(-50%, 16px); opacity: 0; }
+          12%  { transform: translate(-50%, 0);    opacity: 1; }
+          85%  { transform: translate(-50%, 0);    opacity: 1; }
+          100% { transform: translate(-50%, -8px); opacity: 0; }
         }
         .animate-shimmer { animation: shimmer 2.5s linear infinite; }
         .animate-float   { animation: float 3s ease-in-out infinite; }
@@ -819,6 +909,32 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
           </div>
         </main>
       </div>
+
+      {/* ── Toast de recompensa ── */}
+      {rewardToast && (
+        <div
+          key={rewardToast.key}
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl border border-amber-400/40 bg-slate-900/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_24px_rgba(255,197,49,0.2)]"
+          style={{ animation: "toast-in 2.4s ease forwards" }}
+        >
+          <Gift className="w-5 h-5 text-[#FFC531]" />
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Recompensa coletada</span>
+            {rewardToast.coins > 0 && (
+              <span className="flex items-center gap-1 text-sm font-black text-amber-300 tabular-nums">
+                <CoinIcon size={15} /> +{rewardToast.coins.toLocaleString()}
+              </span>
+            )}
+            {rewardToast.fp > 0 && (
+              <span className="flex items-center gap-1 text-sm font-black text-purple-300 tabular-nums">
+                <Star className="w-3.5 h-3.5" /> +{rewardToast.fp} FP
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

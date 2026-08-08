@@ -124,6 +124,8 @@ export type DuelRewardKind = "normal" | "pvp" | { gacha: number; gear: number }
 interface GameContextType {
   coins: number
   setCoins: (coins: number) => void
+  addCoins: (amount: number) => void
+  addFP: (amount: number) => void
   gearCoins: number
   setGearCoins: React.Dispatch<React.SetStateAction<number>>
   addDuelRewards: (kind: DuelRewardKind) => { gacha: number; gear: number }
@@ -2374,6 +2376,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true
   }
 
+  /** Adiciona moedas de forma segura (functional update, sem closure stale) */
+  const addCoins = (amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) return
+    setCoins((prev) => prev + amount)
+  }
+
+  /** Adiciona Friend Points (acumulados + gastáveis) de forma segura */
+  const addFP = (amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) return
+    setFriendPoints((prev) => prev + amount)
+    setSpendableFP((prev) => prev + amount)
+  }
+
   const searchPlayerById = (id: string): Friend | null => {
     // In real app, this would query server
     // For demo, return a simulated player
@@ -3016,7 +3031,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_gear_pass")
       localStorage.removeItem("gpgame_pass_missions")
 
-      // ── Missions (Missões diárias/eventos) ────────────────────────────────
+      // ── Missions (Missões diárias/eventos) ─────────────────────���──────────
       localStorage.removeItem("claimed_missions")
       localStorage.removeItem("claimed_bonus")
       localStorage.removeItem("missions_event_end")
@@ -3081,6 +3096,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       value={{
         coins,
         setCoins,
+        addCoins,
+        addFP,
         gearCoins,
         setGearCoins,
         addDuelRewards,
