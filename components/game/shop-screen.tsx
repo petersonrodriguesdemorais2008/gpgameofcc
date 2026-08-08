@@ -482,6 +482,25 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
     }, 2000)
   }
 
+  const handleIconPurchase = (item: ProfileIcon, currency: "gear" | "gacha") => {
+    if (ownsProfileIcon(item.id)) return
+    if (currency === "gear") {
+      if (gearCoins < item.gearPrice) return
+      setGearCoins((prev) => prev - item.gearPrice)
+    } else {
+      if (coins < item.gachaPrice) return
+      setCoins(coins - item.gachaPrice)
+    }
+    unlockProfileIcon(item.id)
+    // Equipa automaticamente — icones sao o cosmetico de entrada, mesmo comportamento dos sleeves
+    equipProfileIcon(item.id)
+    setPurchaseSuccess(true)
+    setTimeout(() => {
+      setPurchaseSuccess(false)
+      setSelectedIcon(null)
+    }, 2000)
+  }
+
   const handlePurchase = (item: ShopItem) => {
     if (item.currency === "coins" && coins < item.price) return
 
@@ -1123,6 +1142,117 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
             </div>
           </section>
         )}
+
+        {activeTab === "icons" && (
+          <section aria-label="Icones de Perfil">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="font-serif text-sm font-bold tracking-[0.2em] text-slate-200 uppercase">
+                Icones de Perfil
+              </h2>
+              <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+            </div>
+            <p className="text-slate-400 text-sm mb-5">
+              Compra unica. Equipe para exibir seu icone no perfil, em duelos e no lobby versus jogador.
+            </p>
+
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+              {shopProfileIcons.map((item) => {
+                const owned = ownsProfileIcon(item.id)
+                const isActive = playerProfile.avatarUrl === item.image
+                const r = ICON_RARITY[item.rarity]
+                return (
+                  <div
+                    key={item.id}
+                    onClick={guardClick(() => !owned && setSelectedIcon(item))}
+                    className={`group relative rounded-lg overflow-hidden border bg-[#12141f] transition-all duration-300 select-none flex flex-col ${
+                      owned
+                        ? "border-white/[0.08] cursor-default"
+                        : "border-white/[0.06] hover:border-amber-400/35 cursor-pointer hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)]"
+                    }`}
+                  >
+                    <div className="relative flex items-center justify-center pt-3 pb-1">
+                      <div
+                        className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden"
+                        style={{ boxShadow: `0 0 0 2px ${r.ring}, 0 0 16px -2px ${r.ring}` }}
+                      >
+                        <Image
+                          src={item.image || "/placeholder.svg"}
+                          alt={item.name}
+                          fill
+                          sizes="80px"
+                          className={`object-cover transition-transform duration-500 ${
+                            owned ? "" : "group-hover:scale-110"
+                          }`}
+                        />
+                      </div>
+                      {isActive && (
+                        <div className="absolute top-1 right-2 flex items-center justify-center bg-amber-400/90 text-[#0a0b12] rounded-full p-1">
+                          <Zap className="w-2.5 h-2.5" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="px-2 pb-3 pt-1 border-t border-white/[0.05] mt-1 flex flex-col items-center gap-1 text-center">
+                      <span className={`text-[9px] font-bold tracking-[0.15em] uppercase ${r.chip.split(" ")[1]}`}>
+                        {r.label}
+                      </span>
+                      <h3 className="text-white text-[11px] font-semibold leading-snug line-clamp-1 text-balance">
+                        {item.name}
+                      </h3>
+
+                      {owned ? (
+                        isActive ? (
+                          <span className="text-amber-300 text-[10px] font-semibold flex items-center gap-1">
+                            <Zap className="w-2.5 h-2.5" />
+                            Equipado
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              equipProfileIcon(item.id)
+                            }}
+                            className="text-[10px] font-semibold text-slate-300 hover:text-amber-300 transition-colors"
+                          >
+                            Equipar
+                          </button>
+                        )
+                      ) : (
+                        <div className="flex items-center gap-1 flex-wrap justify-center">
+                          <span className="flex items-center gap-0.5">
+                            <Image
+                              src="/images/gear-coin.png"
+                              alt="Gear Coins"
+                              width={12}
+                              height={12}
+                              className="w-3 h-3 object-contain"
+                            />
+                            <span className="text-slate-100 font-bold text-[10px] tabular-nums">
+                              {item.gearPrice.toLocaleString()}
+                            </span>
+                          </span>
+                          <span className="text-slate-600 text-[8px] font-bold tracking-widest">OU</span>
+                          <span className="flex items-center gap-0.5">
+                            <Image
+                              src="/images/icons/gacha-coin.png"
+                              alt="Gacha Coins"
+                              width={12}
+                              height={12}
+                              className="w-3 h-3 object-contain"
+                            />
+                            <span className="text-amber-300 font-bold text-[10px] tabular-nums">
+                              {item.gachaPrice.toLocaleString()}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Modal de compra (packs/bundles) */}
@@ -1567,6 +1697,120 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
                   </div>
 
                   {gearCoins < selectedSkin.gearPrice && coins < selectedSkin.gachaPrice && (
+                    <p className="text-center text-red-300 text-sm mt-3">
+                      Saldo insuficiente nas duas moedas para esta compra.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de compra (icones de perfil) */}
+      {selectedIcon && (
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !purchaseSuccess && setSelectedIcon(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Comprar icone ${selectedIcon.name}`}
+        >
+          <div
+            className="relative w-full max-w-sm bg-[#12141f] rounded-xl border border-white/[0.08] overflow-hidden shadow-[0_32px_80px_-16px_rgba(0,0,0,0.9)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {purchaseSuccess ? (
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-500/10 border border-emerald-400/25 flex items-center justify-center">
+                  <Check className="w-10 h-10 text-emerald-300" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-white mb-2">Icone Adquirido!</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Ele foi equipado automaticamente e ja aparece no seu perfil, em duelos e no lobby.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setSelectedIcon(null)}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] transition-colors z-20"
+                  aria-label="Fechar"
+                >
+                  <X className="w-4 h-4 text-slate-400" />
+                </button>
+
+                <div className="p-6 pb-0 flex flex-col items-center text-center">
+                  <div
+                    className="relative w-28 h-28 rounded-full overflow-hidden mb-4"
+                    style={{
+                      boxShadow: `0 0 0 3px ${ICON_RARITY[selectedIcon.rarity].ring}, 0 0 28px -4px ${ICON_RARITY[selectedIcon.rarity].ring}`,
+                    }}
+                  >
+                    <Image
+                      src={selectedIcon.image || "/placeholder.svg"}
+                      alt={selectedIcon.name}
+                      fill
+                      sizes="112px"
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <span
+                    className={`inline-block text-[10px] font-bold tracking-[0.2em] uppercase px-2 py-0.5 rounded border ${ICON_RARITY[selectedIcon.rarity].chip}`}
+                  >
+                    {ICON_RARITY[selectedIcon.rarity].label}
+                  </span>
+                  <h3 className="font-serif text-xl font-bold text-white mt-2 mb-1 text-balance">
+                    {selectedIcon.name}
+                  </h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-4">{selectedIcon.description}</p>
+                </div>
+
+                <div className="p-5 pt-0">
+                  <div className="flex items-center gap-2.5 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2.5 mb-5 text-sm text-slate-300">
+                    <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                    Compra unica — o icone equipa automaticamente e vale para perfil, duelos e lobby PVP.
+                  </div>
+
+                  <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400 uppercase mb-2.5">
+                    Escolha como pagar
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => handleIconPurchase(selectedIcon, "gear")}
+                      disabled={gearCoins < selectedIcon.gearPrice}
+                      className="h-auto py-3.5 flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.12] hover:border-white/25 text-slate-100 font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Image
+                        src="/images/gear-coin.png"
+                        alt="Gear Coins"
+                        width={22}
+                        height={22}
+                        className="w-[22px] h-[22px] object-contain"
+                      />
+                      <span className="tabular-nums">{selectedIcon.gearPrice.toLocaleString()}</span>
+                      <span className="font-medium text-slate-400 text-xs">Gear</span>
+                    </Button>
+                    <Button
+                      onClick={() => handleIconPurchase(selectedIcon, "gacha")}
+                      disabled={coins < selectedIcon.gachaPrice}
+                      className="h-auto py-3.5 flex items-center justify-center gap-2 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/50 text-amber-200 font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Image
+                        src="/images/icons/gacha-coin.png"
+                        alt="Gacha Coins"
+                        width={22}
+                        height={22}
+                        className="w-[22px] h-[22px] object-contain"
+                      />
+                      <span className="tabular-nums">{selectedIcon.gachaPrice.toLocaleString()}</span>
+                      <span className="font-medium text-amber-300/70 text-xs">Gacha</span>
+                    </Button>
+                  </div>
+
+                  {gearCoins < selectedIcon.gearPrice && coins < selectedIcon.gachaPrice && (
                     <p className="text-center text-red-300 text-sm mt-3">
                       Saldo insuficiente nas duas moedas para esta compra.
                     </p>
