@@ -143,6 +143,11 @@ function CountdownTimer({ targetMs, label, color }: { targetMs: number; label: s
 }
 
 // ─── Mission Card ─────────────────────────────────────────────────────────────
+// Anatomia AAA: recorte diagonal sci-fi, número de progresso "herói",
+// estado PRONTO em ouro (#FFC531) com pulso de borda + sweep + partículas.
+const CARD_CLIP = "polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px))"
+const BTN_CLIP  = "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))"
+
 function MissionCard({
   mission, isClaimed, isClaiming, tabColor, onClaim,
 }: {
@@ -156,111 +161,182 @@ function MissionCard({
   const pct = Math.min(100, (mission.progress / mission.maxProgress) * 100)
 
   const catStyle = {
-    gacha:      { bg: "from-violet-600/20 to-violet-500/5",  icon: "bg-violet-500/20 border-violet-500/40 text-violet-300",  glow: "rgba(139,92,246,0.25)" },
-    battle:     { bg: "from-rose-600/20 to-rose-500/5",      icon: "bg-rose-500/20 border-rose-500/40 text-rose-300",        glow: "rgba(244,63,94,0.25)" },
-    collection: { bg: "from-amber-600/20 to-amber-500/5",    icon: "bg-amber-500/20 border-amber-500/40 text-amber-300",     glow: "rgba(245,158,11,0.25)" },
-    social:     { bg: "from-pink-600/20 to-pink-500/5",      icon: "bg-pink-500/20 border-pink-500/40 text-pink-300",        glow: "rgba(236,72,153,0.25)" },
-    general:    { bg: "from-sky-600/20 to-sky-500/5",        icon: "bg-sky-500/20 border-sky-500/40 text-sky-300",           glow: "rgba(14,165,233,0.25)" },
+    gacha:      { icon: "bg-violet-500/15 border-violet-500/30 text-violet-300" },
+    battle:     { icon: "bg-rose-500/15 border-rose-500/30 text-rose-300" },
+    collection: { icon: "bg-amber-500/15 border-amber-500/30 text-amber-300" },
+    social:     { icon: "bg-pink-500/15 border-pink-500/30 text-pink-300" },
+    general:    { icon: "bg-sky-500/15 border-sky-500/30 text-sky-300" },
   }[mission.category]
 
   const barColor = {
     cyan:   "from-cyan-400 to-teal-300",
-    purple: "from-purple-400 to-pink-400",
+    purple: "from-purple-400 to-fuchsia-400",
     amber:  "from-amber-400 to-yellow-300",
   }[tabColor]
 
-  const btnStyle = isClaimed
-    ? "bg-slate-800/60 border border-white/5 text-slate-600 cursor-default"
-    : canClaim
-    ? "bg-gradient-to-b from-emerald-400 to-emerald-600 border border-emerald-300/30 text-white shadow-[0_0_20px_rgba(52,211,153,0.5)] hover:shadow-[0_0_28px_rgba(52,211,153,0.7)] hover:scale-105 active:scale-95"
-    : "bg-slate-800/60 border border-white/5 text-slate-600 cursor-not-allowed"
-
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
-        isClaimed
-          ? "border-white/5 bg-slate-900/30 opacity-50 grayscale"
-          : canClaim
-          ? "border-emerald-500/40 bg-gradient-to-br from-slate-900/90 to-slate-800/60"
-          : "border-white/[0.07] bg-slate-900/60"
-      }`}
-      style={canClaim ? { boxShadow: "0 0 30px rgba(52,211,153,0.12)" } : undefined}
-    >
-      {/* Top shine line */}
-      {!isClaimed && (
-        <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r ${canClaim ? "from-transparent via-emerald-400/60 to-transparent" : "from-transparent via-white/10 to-transparent"}`} />
-      )}
-
-      {/* Category bg gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${catStyle.bg} pointer-events-none`} />
-
-      {/* Sweep animation when claimable */}
+    <div className="relative">
+      {/* Anel de pulso externo (fora do clip) quando pronto */}
       {canClaim && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-          <div className="absolute inset-0 animate-[shimmer_2.5s_linear_infinite]"
-            style={{ background: "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.07) 50%, transparent 70%)", backgroundSize: "200% 100%" }} />
-        </div>
+        <div
+          className="absolute -inset-px pointer-events-none animate-[claim-pulse_2s_ease-in-out_infinite]"
+          style={{ clipPath: CARD_CLIP, border: "1px solid rgba(255,197,49,0.9)" }}
+        />
       )}
 
-      <div className="relative flex items-center gap-4 p-4">
-        {/* Category icon */}
-        <div className={`w-13 h-13 min-w-[52px] min-h-[52px] rounded-xl flex items-center justify-center border ${catStyle.icon}`}
-          style={{ boxShadow: !isClaimed ? `0 0 18px ${catStyle.glow}` : undefined }}>
-          <div className="w-6 h-6">{mission.icon}</div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <h3 className={`font-bold text-sm truncate ${isClaimed ? "text-slate-500" : "text-white"}`}>{mission.name}</h3>
-            {isClaimed && <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
-          </div>
-          <p className="text-[11px] text-slate-400 mb-3 leading-relaxed">{mission.description}</p>
-
-          {/* Progress bar */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-1.5 bg-slate-950/80 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-1000 bg-gradient-to-r ${canClaim ? "from-emerald-400 to-teal-300 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : isClaimed ? "from-slate-600 to-slate-500" : barColor}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-slate-400 font-mono shrink-0 tabular-nums">
-              {mission.progress}/{mission.maxProgress}
-            </span>
-          </div>
-
-          {/* Rewards */}
-          <div className="flex gap-1.5 mt-2.5">
-            {mission.reward.coins && (
-              <div className="flex items-center gap-1 bg-slate-950/60 border border-white/10 px-2 py-1 rounded-lg">
-                <CoinIcon size={13} />
-                <span className="text-[10px] font-bold text-amber-300">+{mission.reward.coins.toLocaleString()}</span>
-              </div>
-            )}
-            {mission.reward.fp && (
-              <div className="flex items-center gap-1 bg-slate-950/60 border border-purple-500/20 px-2 py-1 rounded-lg">
-                <span className="text-[10px]">⚡</span>
-                <span className="text-[10px] font-bold text-purple-300">+{mission.reward.fp} FP</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Claim button */}
-        <button
-          onClick={onClaim}
-          disabled={!canClaim || isClaiming}
-          className={`w-11 h-11 min-w-[44px] rounded-xl flex items-center justify-center transition-all duration-200 ${btnStyle}`}
-        >
-          {isClaiming
-            ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            : isClaimed
-            ? <Check className="w-4 h-4" />
+      <div
+        className={`relative overflow-hidden transition-all duration-300 ${
+          isClaimed
+            ? "opacity-45 saturate-50"
             : canClaim
-            ? <Gift className="w-5 h-5" />
-            : <Lock className="w-4 h-4" />}
-        </button>
+            ? ""
+            : ""
+        }`}
+        style={{
+          clipPath: CARD_CLIP,
+          background: isClaimed
+            ? "linear-gradient(180deg, rgba(15,23,42,0.5), rgba(10,15,28,0.5))"
+            : canClaim
+            ? "linear-gradient(135deg, rgba(45,33,8,0.85) 0%, rgba(20,17,10,0.92) 45%, rgba(10,14,26,0.95) 100%)"
+            : "linear-gradient(180deg, rgba(17,25,44,0.75), rgba(10,15,28,0.85))",
+          border: canClaim ? "1px solid rgba(255,197,49,0.45)" : "1px solid rgba(255,255,255,0.07)",
+          boxShadow: canClaim ? "0 8px 32px rgba(255,180,0,0.12), inset 0 1px 0 rgba(255,255,255,0.06)" : "inset 0 1px 0 rgba(255,255,255,0.04)",
+        }}
+      >
+        {/* Textura scanline sutil */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.35]" style={{
+          backgroundImage: "repeating-linear-gradient(0deg, transparent 0 2px, rgba(255,255,255,0.012) 2px 4px)",
+        }} />
+
+        {/* Faixa diagonal decorativa no canto do recorte */}
+        {!isClaimed && (
+          <div className="absolute top-0 right-0 w-[72px] h-[72px] pointer-events-none" style={{
+            background: canClaim
+              ? "linear-gradient(225deg, rgba(255,197,49,0.22) 0%, transparent 55%)"
+              : "linear-gradient(225deg, rgba(255,255,255,0.05) 0%, transparent 55%)",
+          }} />
+        )}
+
+        {/* Sweep de luz quando pronto */}
+        {canClaim && (
+          <div className="absolute inset-0 pointer-events-none animate-[shimmer_2.4s_linear_infinite]"
+            style={{ background: "linear-gradient(105deg, transparent 35%, rgba(255,220,120,0.10) 50%, transparent 65%)", backgroundSize: "200% 100%" }} />
+        )}
+
+        {/* Partículas (só no estado pronto) */}
+        {canClaim && (
+          <div className="absolute inset-0 pointer-events-none">
+            {[
+              { l: "12%", d: "0s",   s: 3 },
+              { l: "38%", d: "0.7s", s: 2 },
+              { l: "63%", d: "1.3s", s: 3 },
+              { l: "85%", d: "0.4s", s: 2 },
+            ].map((p, i) => (
+              <span key={i}
+                className="absolute bottom-1 rounded-full bg-[#FFC531] animate-[spark_2.6s_ease-in_infinite]"
+                style={{ left: p.l, width: p.s, height: p.s, animationDelay: p.d, boxShadow: "0 0 6px rgba(255,197,49,0.9)" }} />
+            ))}
+          </div>
+        )}
+
+        <div className="relative flex items-stretch gap-3.5 p-4 sm:p-5">
+          {/* Placa do ícone com recorte */}
+          <div className="flex items-center">
+            <div
+              className={`w-[52px] h-[52px] flex items-center justify-center border ${canClaim ? "bg-[#FFC531]/15 border-[#FFC531]/40 text-[#FFC531]" : catStyle.icon}`}
+              style={{ clipPath: BTN_CLIP }}
+            >
+              <div className="w-6 h-6">{mission.icon}</div>
+            </div>
+          </div>
+
+          {/* Conteúdo */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className={`font-black text-[13px] uppercase tracking-wide truncate ${isClaimed ? "text-slate-500" : "text-white"}`}>
+                    {mission.name}
+                  </h3>
+                  {isClaimed && <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed truncate">{mission.description}</p>
+              </div>
+
+              {/* Número herói de progresso */}
+              <div className="shrink-0 text-right leading-none">
+                <span className={`font-mono font-black text-xl tabular-nums ${canClaim ? "text-[#FFC531]" : isClaimed ? "text-slate-600" : "text-white"}`}>
+                  {mission.progress}
+                </span>
+                <span className="font-mono text-[11px] text-slate-500 tabular-nums">/{mission.maxProgress}</span>
+              </div>
+            </div>
+
+            {/* Barra de progresso + recompensas: mesmo grupo semântico */}
+            <div className="mt-3">
+              <div className="relative h-2 bg-slate-950/90 overflow-hidden" style={{ clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 100%, 0 100%)" }}>
+                {/* ticks de segmento */}
+                {mission.maxProgress > 1 && mission.maxProgress <= 10 &&
+                  Array.from({ length: mission.maxProgress - 1 }).map((_, i) => (
+                    <span key={i} className="absolute top-0 bottom-0 w-px bg-black/60 z-10"
+                      style={{ left: `${((i + 1) / mission.maxProgress) * 100}%` }} />
+                  ))}
+                <div
+                  className={`h-full transition-all duration-1000 bg-gradient-to-r ${
+                    canClaim ? "from-[#FFC531] to-[#FFE08A]" : isClaimed ? "from-slate-600 to-slate-500" : barColor
+                  }`}
+                  style={{ width: `${pct}%`, boxShadow: canClaim ? "0 0 10px rgba(255,197,49,0.55)" : undefined }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-2.5">
+                <div className="flex gap-1.5">
+                  {mission.reward.coins && (
+                    <div className="flex items-center gap-1 bg-black/40 border border-amber-400/20 px-2 py-1" style={{ clipPath: BTN_CLIP }}>
+                      <CoinIcon size={13} />
+                      <span className="text-[10px] font-black text-amber-300 tabular-nums">+{mission.reward.coins.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {mission.reward.fp && (
+                    <div className="flex items-center gap-1 bg-black/40 border border-purple-400/20 px-2 py-1" style={{ clipPath: BTN_CLIP }}>
+                      <Star className="w-3 h-3 text-purple-300" />
+                      <span className="text-[10px] font-black text-purple-300 tabular-nums">+{mission.reward.fp} FP</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Botão de claim: retangular, CTA real */}
+          <div className="flex items-center">
+            <button
+              onClick={onClaim}
+              disabled={!canClaim || isClaiming}
+              className={`h-[52px] px-4 flex items-center justify-center gap-1.5 font-black text-[11px] uppercase tracking-wider transition-all duration-200 ${
+                isClaimed
+                  ? "bg-slate-800/50 text-slate-600 cursor-default border border-white/5"
+                  : canClaim
+                  ? "text-[#1A1000] hover:brightness-110 active:scale-95 cursor-pointer"
+                  : "bg-slate-800/50 text-slate-600 cursor-not-allowed border border-white/5"
+              }`}
+              style={{
+                clipPath: BTN_CLIP,
+                minWidth: canClaim ? 96 : 52,
+                background: canClaim ? "linear-gradient(180deg, #FFDF7E 0%, #FFC531 45%, #E8A812 100%)" : undefined,
+                boxShadow: canClaim ? "0 0 22px rgba(255,197,49,0.4), inset 0 1px 0 rgba(255,255,255,0.5)" : undefined,
+              }}
+            >
+              {isClaiming
+                ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                : isClaimed
+                ? <Check className="w-4 h-4" />
+                : canClaim
+                ? <><Gift className="w-4 h-4" /> Coletar</>
+                : <Lock className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -516,9 +592,9 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   }, [allMissions, isMissionClaimed])
 
   const TABS = [
-    { id: "daily",   label: "Diárias",   emoji: "☀️", color: "cyan"   as const, stats: stats.daily,   target: dailyTarget,  timerLabel: "Reset Diário"  },
-    { id: "weekly",  label: "Semanais",  emoji: "📅", color: "purple" as const, stats: stats.weekly,  target: weeklyTarget, timerLabel: "Reset Semanal" },
-    { id: "special", label: "Especiais", emoji: "⚡", color: "amber"  as const, stats: stats.special, target: eventTarget,  timerLabel: "Fim do Evento" },
+    { id: "daily",   label: "Diárias",   tabIcon: <Target   className="w-5 h-5" />, color: "cyan"   as const, stats: stats.daily,   target: dailyTarget,  timerLabel: "Reset Diário"  },
+    { id: "weekly",  label: "Semanais",  tabIcon: <Calendar className="w-5 h-5" />, color: "purple" as const, stats: stats.weekly,  target: weeklyTarget, timerLabel: "Reset Semanal" },
+    { id: "special", label: "Especiais", tabIcon: <Flame    className="w-5 h-5" />, color: "amber"  as const, stats: stats.special, target: eventTarget,  timerLabel: "Fim do Evento" },
   ]
 
   const activeTabData = TABS.find(t => t.id === activeTab)!
@@ -548,6 +624,15 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
         @keyframes pulse-glow {
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.6; }
+        }
+        @keyframes claim-pulse {
+          0%, 100% { opacity: 0.9; transform: scale(1); }
+          50%       { opacity: 0.25; transform: scale(1.008); }
+        }
+        @keyframes spark {
+          0%   { transform: translateY(0);     opacity: 0; }
+          15%  { opacity: 1; }
+          100% { transform: translateY(-46px); opacity: 0; }
         }
         .animate-shimmer { animation: shimmer 2.5s linear infinite; }
         .animate-float   { animation: float 3s ease-in-out infinite; }
@@ -609,27 +694,28 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`relative flex flex-col rounded-2xl border p-3.5 transition-all duration-300 overflow-hidden ${
-                      isActive ? `${c.active} shadow-[0_0_24px_${c.glow}]` : "bg-slate-900/40 border-white/[0.06] hover:border-white/10"
+                    className={`relative flex flex-col border p-3.5 transition-all duration-300 overflow-hidden ${
+                      isActive ? c.active : "bg-slate-900/40 border-white/[0.06] hover:border-white/10"
                     }`}
+                    style={{ clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)" }}
                   >
                     {isActive && (
-                      <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent`} />
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                     )}
                     <div className="flex items-center justify-between mb-2">
-                      <span className={isActive ? "animate-float text-xl" : "text-xl"}>{tab.emoji}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                      <span className={isActive ? c.text : "text-slate-600"}>{tab.tabIcon}</span>
+                      <span className={`text-[9px] font-black font-mono tabular-nums px-1.5 py-0.5 border ${
                         isActive ? `${c.text} border-current bg-white/5` : "text-slate-600 border-slate-700/50"
-                      }`}>
+                      }`} style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%)" }}>
                         {tab.stats.completed}/{tab.stats.total}
                       </span>
                     </div>
-                    <span className={`text-xs font-bold text-left mb-2.5 ${isActive ? "text-white" : "text-slate-500"}`}>
+                    <span className={`text-xs font-black uppercase tracking-wider text-left mb-2.5 ${isActive ? "text-white" : "text-slate-500"}`}>
                       {tab.label}
                     </span>
-                    <div className="w-full h-1 bg-slate-950/80 rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-slate-950/80 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${isActive ? c.bar : "bg-slate-700/60"}`}
+                        className={`h-full transition-all duration-700 bg-gradient-to-r ${isActive ? c.bar : "bg-slate-700/60"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -647,19 +733,20 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
               <button
                 onClick={handleClaimAll}
                 disabled={claimableAll.length === 0}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all whitespace-nowrap"
+                className="flex items-center gap-1.5 px-4 py-2.5 font-black text-xs uppercase tracking-wider transition-all whitespace-nowrap hover:brightness-110 active:scale-95"
                 style={{
+                  clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))",
                   background: claimableAll.length > 0
-                    ? "linear-gradient(135deg,#16a34a,#22c55e)"
+                    ? "linear-gradient(180deg,#34d399,#10b981 55%,#059669)"
                     : "rgba(255,255,255,0.04)",
-                  color: claimableAll.length > 0 ? "#fff" : "#334155",
-                  boxShadow: claimableAll.length > 0 ? "0 2px 12px rgba(34,197,94,0.30)" : "none",
+                  color: claimableAll.length > 0 ? "#03170e" : "#334155",
+                  boxShadow: claimableAll.length > 0 ? "0 0 18px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.4)" : "none",
                   border: "none",
                   cursor: claimableAll.length > 0 ? "pointer" : "not-allowed",
                   opacity: claimableAll.length > 0 ? 1 : 0.5,
                 }}
               >
-                ✓ Coletar Tudo{claimableAll.length > 0 ? ` (${claimableAll.length})` : ""}
+                <Check className="w-3.5 h-3.5" /> Coletar Tudo{claimableAll.length > 0 ? ` (${claimableAll.length})` : ""}
               </button>
             </div>
 
