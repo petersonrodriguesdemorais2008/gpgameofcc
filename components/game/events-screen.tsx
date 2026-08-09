@@ -18,6 +18,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { ArrowLeft, Check, Lock, Swords, Sparkles, Trophy } from "lucide-react"
 import GearBackdrop from "./gear-backdrop"
+import { useGame } from "@/contexts/game-context"
+import { trackDuelResult } from "@/lib/mission-tracker"
+import { grantMasterDuelXP } from "@/lib/masters-data"
+import { SKIP_TICKET_IMAGE, SKIP_TICKET_NAME } from "@/lib/skip-ticket"
+import { GameResultScreen } from "./duel-screen"
 import {
   COMMON_FRAGMENT_DROP,
   COMMON_FRAGMENT_ID,
@@ -245,6 +250,7 @@ function FragmentHighlight({
 
 function StagePanel({
   stage, index, accent, accentDark, fragmentId, state, delay, visible, onPlay,
+  skipTickets, onSkip,
 }: {
   stage: EventStageDef
   index: number
@@ -256,16 +262,17 @@ function StagePanel({
   delay: number
   visible: boolean
   onPlay: () => void
+  /** Skip Tíquetes que o jogador tem na conta. */
+  skipTickets: number
+  /** Pula o duelo consumindo 1 Skip Tíquete. */
+  onSkip: () => void
 }) {
   const locked = state === "locked"
   const done = state === "done"
+  const canSkip = !locked && skipTickets > 0
 
   return (
-    <button
-      type="button"
-      onClick={locked ? undefined : onPlay}
-      disabled={locked}
-      aria-label={`Fase ${index + 1} — ${stage.label}${locked ? " (bloqueada)" : ""}`}
+    <div
       className="group relative flex w-full flex-col overflow-hidden text-left transition-transform"
       style={{
         background: "linear-gradient(160deg, rgba(12,8,26,0.94) 0%, rgba(6,4,16,0.97) 100%)",
@@ -284,8 +291,17 @@ function StagePanel({
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24"
         style={{ background: `linear-gradient(180deg, ${locked ? "rgba(148,163,184,0.10)" : `${accent}22`} 0%, transparent 100%)` }} />
 
+      {/* Área clicável principal: entra no duelo da fase */}
+      <button
+        type="button"
+        onClick={locked ? undefined : onPlay}
+        disabled={locked}
+        aria-label={`Fase ${index + 1} — ${stage.label}${locked ? " (bloqueada)" : done ? " (rejogar)" : ""}`}
+        className="flex flex-1 flex-col text-left"
+        style={{ cursor: locked ? "not-allowed" : "pointer", background: "transparent", border: "none", padding: 0 }}
+      >
       {/* Cabeçalho: número da fase + dificuldade + status */}
-      <div className="relative flex items-center gap-3 px-4 pt-4">
+      <div className="relative flex w-full items-center gap-3 px-4 pt-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center"
           style={{
             background: locked
@@ -344,7 +360,7 @@ function StagePanel({
       </div>
 
       {/* Recompensas */}
-      <div className="relative mt-3 flex items-center justify-between gap-2 px-4 py-3"
+      <div className="relative mt-3 flex w-full items-center justify-between gap-2 px-4 py-3"
         style={{ background: "rgba(0,0,0,0.35)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center gap-3.5">
           <CoinTag src="/images/Gacha_Coin.png" alt="Gacha Coin" value={stage.gacha} color="#FCD34D" />
@@ -357,19 +373,56 @@ function StagePanel({
           {!locked && <Swords className="h-3.5 w-3.5" />}
         </span>
       </div>
-    </button>
+      </button>
+
+      {/* Pular com Tíquete — só aparece com Skip Tíquete na conta */}
+      {canSkip && (
+        <button
+          type="button"
+          onClick={onSkip}
+          aria-label={`Pular a fase ${stage.label} usando um ${SKIP_TICKET_NAME}`}
+          className="relative flex w-full items-center justify-center gap-2 px-4 py-3 transition-colors"
+          style={{
+            background: "linear-gradient(180deg, rgba(14,165,233,0.16) 0%, rgba(8,47,73,0.32) 100%)",
+            borderTop: "1px solid rgba(125,211,252,0.28)",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={SKIP_TICKET_IMAGE || "/placeholder.svg"}
+            alt=""
+            width={30}
+            height={30}
+            aria-hidden
+            className="h-[30px] w-[30px] shrink-0 object-contain"
+            style={{ filter: "drop-shadow(0 0 8px rgba(125,211,252,0.75))" }}
+          />
+          <span className="text-[11px] font-black uppercase tracking-[0.16em] text-sky-200">
+            Pular com Tíquete
+          </span>
+          <span className="ml-1 rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums text-sky-100"
+            style={{ background: "rgba(125,211,252,0.18)", border: "1px solid rgba(125,211,252,0.35)" }}>
+            {skipTickets}
+          </span>
+        </button>
+      )}
+    </div>
   )
 }
 
 // ─── Tela de fases de um evento ──────────────────────────────────────────────
 
 function EventStagesView({
-  event, cleared, onBack, onStart,
+  event, cleared, onBack, onStart, skipTickets, onSkip,
 }: {
   event: EventDef
   cleared: EventDifficulty[]
   onBack: () => void
   onStart: (stage: EventStageDef) => void
+  /** Skip Tíquetes disponíveis na conta do jogador. */
+  skipTickets: number
+  /** Pula o duelo da fase consumindo 1 tíquete. */
+  onSkip: (stage: EventStageDef) => void
 }) {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
@@ -476,6 +529,8 @@ function EventStagesView({
               delay={140 + i * 90}
               visible={visible}
               onPlay={() => onStart(stage)}
+              skipTickets={skipTickets}
+              onSkip={() => onSkip(stage)}
             />
           ))}
         </div>
@@ -632,9 +687,18 @@ interface EventsScreenProps {
 }
 
 export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProps) {
+  const { skipTickets, consumeSkipTicket, addMatchRecord } = useGame()
   const [progress, setProgress] = useState<Progress>(() => loadProgress())
   const [openEventId, setOpenEventId] = useState<string | null>(null)
   const [visible, setVisible] = useState(false)
+  /** Fase pulada com Skip Tíquete — mostra a tela de vitória com as recompensas. */
+  const [skippedStage, setSkippedStage] = useState<{
+    eventId: string
+    difficulty: EventDifficulty
+    gacha: number
+    gear: number
+    fragments: FragmentCounts
+  } | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 40)
@@ -677,7 +741,63 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
     })
   }, [onStartBattle])
 
+  /**
+   * Pula o duelo da fase usando 1 Skip Tíquete: marca a fase como concluída,
+   * concede XP de Mestre, registra a partida no histórico/missões e abre a tela
+   * de vitória, que entrega as recompensas da fase normalmente.
+   */
+  const handleSkip = useCallback((eventId: string, stage: EventStageDef) => {
+    const ev = EVENTS.find((e) => e.id === eventId)
+    if (!ev) return
+    if (!consumeSkipTicket()) return
+
+    setProgress((prev) => {
+      const list = prev[eventId] ?? []
+      if (list.includes(stage.difficulty)) return prev
+      const next = { ...prev, [eventId]: [...list, stage.difficulty] }
+      saveProgress(next)
+      return next
+    })
+
+    trackDuelResult(true)
+    grantMasterDuelXP({ won: true, duelMode: "pve" })
+    addMatchRecord({
+      id: `match-${Date.now()}`,
+      date: new Date().toISOString(),
+      opponent: stage.opponent,
+      mode: "bot",
+      result: "won",
+      deckUsed: `${ev.name} — ${stage.label} (Tíquete)`,
+    })
+
+    setSkippedStage({
+      eventId,
+      difficulty: stage.difficulty,
+      gacha: stage.gacha,
+      gear: stage.gear,
+      fragments: eventFragmentDrop(eventId, stage.difficulty),
+    })
+  }, [consumeSkipTicket, addMatchRecord])
+
   const openEvent = openEventId ? EVENTS.find((e) => e.id === openEventId) ?? null : null
+
+  // Tela de vitória da fase pulada — mesma tela do fim de um duelo real
+  if (skippedStage) {
+    return (
+      <GameResultScreen
+        result="won"
+        rewardKind={{
+          gacha: skippedStage.gacha,
+          gear: skippedStage.gear,
+          fragments: skippedStage.fragments,
+        }}
+        onBack={() => {
+          setOpenEventId(skippedStage.eventId)
+          setSkippedStage(null)
+        }}
+      />
+    )
+  }
 
   if (openEvent) {
     return (
@@ -686,6 +806,8 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
         cleared={progress[openEvent.id] ?? []}
         onBack={() => setOpenEventId(null)}
         onStart={(stage) => handleStart(openEvent.id, stage)}
+        skipTickets={skipTickets}
+        onSkip={(stage) => handleSkip(openEvent.id, stage)}
       />
     )
   }

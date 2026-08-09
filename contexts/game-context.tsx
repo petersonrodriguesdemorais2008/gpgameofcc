@@ -335,6 +335,12 @@ interface GameContextType {
   addFragments: (gain: FragmentCounts) => void
   /** Quantidade de um fragmento específico. */
   getFragmentCount: (id: FragmentId) => number
+  /** Skip Tíquetes: itens que pulam um duelo de Evento. */
+  skipTickets: number
+  /** Soma tíquetes ao inventário (bônus das missões diárias). */
+  addSkipTickets: (amount: number) => void
+  /** Consome 1 tíquete. Retorna false quando o jogador não tem nenhum. */
+  consumeSkipTicket: () => boolean
   collection: Card[]
   addToCollection: (cards: Card[]) => void
   decks: Deck[]
@@ -1928,6 +1934,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return raw ? normalizeFragmentCounts(JSON.parse(raw)) : {}
     } catch { return {} }
   })
+  // Skip Tíquetes — mesma estratégia dos fragmentos: leitura direta do
+  // localStorage no primeiro render pra não zerar o item durante o load.
+  const [skipTickets, setSkipTickets] = useState<number>(() => {
+    if (typeof window === "undefined") return 0
+    try {
+      const raw =
+        localStorage.getItem("gear-perks-skiptickets") || localStorage.getItem("gearperks-skiptickets")
+      const n = raw ? Number.parseInt(raw, 10) : 0
+      return Number.isFinite(n) && n > 0 ? n : 0
+    } catch { return 0 }
+  })
   const [collection, setCollection] = useState<Card[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([])
@@ -2349,6 +2366,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const getFragmentCount = useCallback((id: FragmentId) => fragments[id] ?? 0, [fragments])
 
+  // ── Skip Tíquetes ───────────────────────────────────────────────────────────
+  const addSkipTickets = useCallback((amount: number) => {
+    const gain = Math.floor(amount)
+    if (!Number.isFinite(gain) || gain <= 0) return
+    setSkipTickets((prev) => prev + gain)
+  }, [])
+
+  const consumeSkipTicket = useCallback(() => {
+    if (skipTickets <= 0) return false
+    setSkipTickets((prev) => Math.max(0, prev - 1))
+    return true
+  }, [skipTickets])
+
   const addDuelRewards = useCallback((kind: DuelRewardKind) => {
     const { gacha, gear, fragments: drop } =
       typeof kind === "object"
@@ -2366,6 +2396,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("fragments", JSON.stringify(fragments))
   }, [fragments])
+
+  useEffect(() => {
+    setLS("skiptickets", skipTickets.toString())
+  }, [skipTickets])
 
   useEffect(() => {
     setLS("collection", JSON.stringify(collection))
@@ -3517,6 +3551,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         fragments,
         addFragments,
         getFragmentCount,
+        skipTickets,
+        addSkipTickets,
+        consumeSkipTicket,
         collection,
         addToCollection,
         decks,

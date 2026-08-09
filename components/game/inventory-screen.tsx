@@ -13,10 +13,16 @@
 import { useMemo, useState } from "react"
 import { useGame } from "@/contexts/game-context"
 import { FRAGMENTS, type FragmentId } from "@/lib/fragments"
+import {
+  SKIP_TICKET_COLOR,
+  SKIP_TICKET_DESCRIPTION,
+  SKIP_TICKET_IMAGE,
+  SKIP_TICKET_NAME,
+} from "@/lib/skip-ticket"
 import { ArrowLeft, Search, X, Backpack, HeartHandshake } from "lucide-react"
 import Image from "next/image"
 
-type ItemCategory = "moedas" | "fragmentos" | "pontos"
+type ItemCategory = "moedas" | "fragmentos" | "pontos" | "itens"
 
 interface InventoryItem {
   id: string
@@ -33,15 +39,17 @@ interface InventoryItem {
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
   moedas: "Moedas",
+  itens: "Itens",
   fragmentos: "Fragmentos",
   pontos: "Pontos",
 }
 
-const CATEGORY_ORDER: ItemCategory[] = ["moedas", "fragmentos", "pontos"]
+const CATEGORY_ORDER: ItemCategory[] = ["moedas", "itens", "fragmentos", "pontos"]
 
 const FILTERS: { id: "todos" | ItemCategory; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "moedas", label: "Moedas" },
+  { id: "itens", label: "Itens" },
   { id: "fragmentos", label: "Fragmentos" },
   { id: "pontos", label: "Pontos" },
 ]
@@ -121,6 +129,15 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
         quantity: coins,
         image: "/images/Gacha_Coin.png",
         color: "#fcd34d",
+      },
+      {
+        id: "skip-ticket",
+        name: SKIP_TICKET_NAME,
+        description: SKIP_TICKET_DESCRIPTION,
+        category: "itens",
+        quantity: skipTickets,
+        image: SKIP_TICKET_IMAGE,
+        color: SKIP_TICKET_COLOR,
       },
       {
         id: "friend-points",

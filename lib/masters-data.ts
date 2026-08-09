@@ -261,3 +261,51 @@ export function loadMastersFromStorage(): Master[] {
     })
   } catch { return MASTERS_DATA }
 }
+
+/**
+ * Concede XP de Mestre pelo resultado de um duelo, salva no localStorage e
+ * dispara o evento "gpgame_master_xp" que a tela de resultado escuta.
+ *
+ * Mesma regra usada no fim de um duelo real — reaproveitada pelo Skip Tíquete,
+ * que pula a partida mas mantém todas as recompensas.
+ */
+export function grantMasterDuelXP(opts: {
+  won: boolean
+  duelMode: "pvp" | "pve" | "boss" | "war" | "draft"
+  opponentLevel?: number
+}): void {
+  try {
+    const masters = loadMastersFromStorage()
+    const xpGain = calcMasterXP({
+      won: opts.won,
+      opponentLevel: opts.opponentLevel ?? 1,
+      duelMode: opts.duelMode,
+    })
+    const prevActive = masters.find(m => m.isActive)
+    const updated = masters.map(m => {
+      if (!m.isActive) return m
+      if (m.currentLevel >= m.maxLevel) return m
+      let xp = m.currentXP + xpGain
+      let level = m.currentLevel
+      while (level < m.maxLevel) {
+        const needed = xpRequiredForLevel(level)
+        if (xp >= needed) { xp -= needed; level++ }
+        else break
+      }
+      if (level >= m.maxLevel) { level = m.maxLevel; xp = 0 }
+      return { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + xpGain, xpToNext: xpRequiredForLevel(level) }
+    })
+    saveMastersToStorage(updated)
+
+    const active = updated.find(m => m.isActive)
+    const leveledUp = !!(active && prevActive && active.currentLevel > prevActive.currentLevel)
+    window.dispatchEvent(new CustomEvent("gpgame_master_xp", {
+      detail: {
+        masterName: active?.name ?? "",
+        xpGain,
+        newLevel: active?.currentLevel ?? 1,
+        leveledUp,
+      },
+    }))
+  } catch { /* ignore */ }
+}
