@@ -20,6 +20,15 @@ export function EquipChainOverlay({
     <div className="gp-equip-chain pointer-events-none absolute -inset-7 -z-10" aria-hidden="true">
       {/* Brilho suave e transparente em volta da carta */}
       <div className="gp-equip-chain__halo absolute inset-6 rounded-sm bg-cyan-300/20 blur-[6px]" />
+      {/* Névoa circular holográfica por trás da engrenagem (mesmo diâmetro dela) */}
+      <div className="gp-equip-chain__glow absolute left-1/2 top-1/2 aspect-square w-full -translate-x-1/2 -translate-y-1/2 rounded-full" />
+      {/* Feixes de luz varrendo o aro da engrenagem */}
+      <div className="absolute left-1/2 top-1/2 aspect-square w-full -translate-x-1/2 -translate-y-1/2">
+        <div
+          className="gp-equip-chain__sweep absolute inset-0 rounded-full"
+          style={{ ["--gear-dir" as string]: reverse ? "reverse" : "normal" }}
+        />
+      </div>
       {/* Engrenagem girando */}
       <div
         className="gp-equip-chain__gear absolute inset-0"
