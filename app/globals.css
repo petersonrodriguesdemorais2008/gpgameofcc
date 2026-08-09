@@ -2687,25 +2687,104 @@
    Usado por components/game/field-card-fx.tsx
 ============================================================================ */
 
-/* ---- INVOCAÇÃO: a carta cai do céu e "slamma" no slot ---- */
-@keyframes fx-summon-drop {
+/* ---- INVOCAÇÃO: portal rúnico → pilar de luz → queda 3D → impacto ---- */
+
+/* Portal/círculo mágico que se abre no chão antes da carta cair */
+@keyframes fx-portal-open {
   0% {
-    transform: translateY(-110px) scale(2.3) rotateX(28deg);
+    transform: translateX(-50%) rotateX(72deg) scale(0.1) rotate(0deg);
     opacity: 0;
-    filter: blur(8px) brightness(2.2);
   }
-  18% {
+  22% {
+    opacity: 1;
+    transform: translateX(-50%) rotateX(72deg) scale(1.05) rotate(60deg);
+  }
+  70% {
+    opacity: 0.9;
+    transform: translateX(-50%) rotateX(72deg) scale(1) rotate(200deg);
+  }
+  100% {
+    transform: translateX(-50%) rotateX(72deg) scale(1.3) rotate(300deg);
+    opacity: 0;
+  }
+}
+.fx-portal-open {
+  animation: fx-portal-open 1.1s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Anel rúnico interno girando em sentido contrário */
+@keyframes fx-portal-runes {
+  0% {
+    transform: translateX(-50%) rotateX(72deg) scale(0.2) rotate(0deg);
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateX(-50%) rotateX(72deg) scale(0.95) rotate(-260deg);
+    opacity: 0;
+  }
+}
+.fx-portal-runes {
+  animation: fx-portal-runes 1.05s ease-out 0.05s both;
+  will-change: transform, opacity;
+}
+
+/* Pilar de energia que sobe do portal */
+@keyframes fx-summon-pillar {
+  0% {
+    transform: translateX(-50%) scaleY(0);
+    opacity: 0;
+  }
+  22% {
+    transform: translateX(-50%) scaleY(1.05);
     opacity: 1;
   }
-  62% {
-    transform: translateY(2px) scale(0.96) rotateX(0deg);
-    filter: blur(0px) brightness(1.5);
+  48% {
+    transform: translateX(-50%) scaleY(1);
+    opacity: 0.85;
   }
-  74% {
-    transform: translateY(0) scale(1.05);
-    filter: brightness(1.25);
+  100% {
+    transform: translateX(-50%) scaleY(1.1) scaleX(1.6);
+    opacity: 0;
   }
-  86% {
+}
+.fx-summon-pillar {
+  animation: fx-summon-pillar 0.72s cubic-bezier(0.2, 0.9, 0.3, 1) 0.06s both;
+  transform-origin: center bottom;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+/* A carta cai do céu com giro 3D e "slamma" no slot */
+@keyframes fx-summon-drop {
+  0% {
+    transform: translateY(-130px) scale(2.5) rotateX(38deg) rotateZ(-6deg);
+    opacity: 0;
+    filter: blur(10px) brightness(2.6) saturate(1.4);
+  }
+  16% {
+    opacity: 1;
+  }
+  45% {
+    transform: translateY(-24px) scale(1.35) rotateX(16deg) rotateZ(2deg);
+    filter: blur(2px) brightness(1.9);
+  }
+  60% {
+    transform: translateY(3px) scale(0.94) rotateX(0deg) rotateZ(0deg);
+    filter: blur(0px) brightness(1.6);
+  }
+  70% {
+    transform: translateY(-3px) scale(1.07);
+    filter: brightness(1.3);
+  }
+  80% {
+    transform: translateY(1px) scale(0.99);
+    filter: brightness(1.12);
+  }
+  90% {
     transform: translateY(0) scale(1);
     opacity: 1;
     filter: brightness(1.05);
@@ -2717,9 +2796,61 @@
   }
 }
 .fx-summon-drop {
-  animation: fx-summon-drop 0.95s cubic-bezier(0.22, 1.1, 0.36, 1) both;
+  animation: fx-summon-drop 1.05s cubic-bezier(0.22, 1.1, 0.36, 1) 0.18s both;
   transform-origin: center bottom;
   will-change: transform, opacity, filter;
+}
+
+/* Poeira/detritos que explodem para os lados no impacto */
+@keyframes fx-impact-dust {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(var(--fx-dust-x, 40px), var(--fx-dust-y, -6px)) scale(0.2);
+    opacity: 0;
+  }
+}
+.fx-impact-dust {
+  border-radius: 9999px;
+  animation: fx-impact-dust var(--fx-dur, 0.6s) cubic-bezier(0.1, 0.8, 0.4, 1) both;
+  animation-delay: var(--fx-delay, 0.78s);
+  will-change: transform, opacity;
+}
+
+/* Arcos elétricos que crepitam sobre a carta após o impacto */
+@keyframes fx-energy-arc {
+  0%, 100% { opacity: 0; }
+  10% { opacity: 1; clip-path: inset(0 70% 0 0); }
+  30% { opacity: 0.4; clip-path: inset(0 30% 0 20%); }
+  50% { opacity: 1; clip-path: inset(0 0 0 45%); }
+  70% { opacity: 0.3; clip-path: inset(0 55% 0 10%); }
+  85% { opacity: 0.9; clip-path: inset(0 10% 0 60%); }
+}
+.fx-energy-arc {
+  animation: fx-energy-arc 0.5s steps(6) both;
+  animation-delay: var(--fx-delay, 0.8s);
+  mix-blend-mode: screen;
+  will-change: opacity, clip-path;
+}
+
+/* Aura elemental residual que respira e some após o pouso */
+@keyframes fx-summon-afterglow {
+  0% { opacity: 0; transform: scale(0.92); }
+  25% { opacity: 0.85; transform: scale(1.03); }
+  55% { opacity: 0.5; transform: scale(1); }
+  75% { opacity: 0.7; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+.fx-summon-afterglow {
+  border-radius: 10px;
+  animation: fx-summon-afterglow 0.9s ease-in-out 0.82s both;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
 }
 
 @keyframes fx-ground-glow {
@@ -2737,7 +2868,7 @@
   100% { opacity: 0; }
 }
 .fx-summon-flash {
-  animation: fx-summon-flash 0.85s ease-out both;
+  animation: fx-summon-flash 0.85s ease-out 0.44s both;
   mix-blend-mode: screen;
 }
 
@@ -2778,7 +2909,7 @@
   width: 84px;
   height: 84px;
   border-radius: 9999px;
-  animation: fx-summon-ring 0.8s ease-out 0.34s both;
+  animation: fx-summon-ring 0.8s ease-out 0.78s both;
   -webkit-mask: radial-gradient(circle, transparent 58%, black 62%, black 72%, transparent 76%);
   mask: radial-gradient(circle, transparent 58%, black 62%, black 72%, transparent 76%);
   will-change: transform, opacity;
@@ -2938,6 +3069,12 @@
   .fx-summon-ring,
   .fx-summon-spark,
   .fx-slot-punch,
+  .fx-portal-open,
+  .fx-portal-runes,
+  .fx-summon-pillar,
+  .fx-impact-dust,
+  .fx-energy-arc,
+  .fx-summon-afterglow,
   .fx-buff-aura,
   .fx-buff-beam,
   .fx-buff-ring,

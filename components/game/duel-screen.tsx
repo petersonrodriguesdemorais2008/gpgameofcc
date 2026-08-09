@@ -22,6 +22,7 @@ import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps, getElementPalette, normalizeElement } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
@@ -9091,7 +9092,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const unitIdx = playerField.unitZone.findIndex((u) => u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
             if (unitIdx !== -1) {
               const unit = playerField.unitZone[unitIdx]
-              // ── GALAHAD: Coração Imaculado — immune to card effect removal ──
+              // ── GALAHAD: Coraç��o Imaculado — immune to card effect removal ──
               if (unit?.name.toLowerCase().includes("galahad")) {
                 showEffectFeedback("CORAÇÃO IMACULADO: Galahad é imune a efeitos! Bot TWILIGH AVALON falhou.", "error")
               } else {
@@ -10664,6 +10665,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
+      {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
+      <ScenarioRevealOverlay
+        playerScenario={playerField.scenarioZone}
+        enemyScenario={enemyField.scenarioZone}
+      />
       {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
           key={proj.id}

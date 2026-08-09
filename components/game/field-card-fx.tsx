@@ -70,6 +70,19 @@ const SPARKS = Array.from({ length: 10 }, (_, i) => ({
   drift: (((i * 41) % 21) - 10) * 1.6 // -16px a +16px
 }))
 
+/* Poeira/detritos do impacto — explodem para os dois lados */
+const IMPACT_DUST = Array.from({ length: 12 }, (_, i) => {
+  const side = i % 2 === 0 ? 1 : -1
+  const spread = 26 + ((i * 31) % 44) // 26-70px
+  return {
+    x: side * spread,
+    y: -(2 + ((i * 19) % 16)),        // sobe levemente
+    size: 2 + ((i * 23) % 4),          // 2-5px
+    delay: ((i * 37) % 14) / 100,      // 0-0.14s extra
+    dur: 0.5 + ((i * 13) % 30) / 100   // 0.5-0.8s
+  }
+})
+
 const DEBUFF_SHARDS = Array.from({ length: 6 }, (_, i) => ({
   x: ((i * 47 + 21) % 90) + 5,
   delay: ((i * 31) % 20) / 100,
@@ -123,8 +136,8 @@ export default function FieldCardFX({ card, image, disableSummon, disableDp }: F
         const { color, colorSoft } = elementColors(card?.element)
         fxSeq.current++
         setSummonFx({ key: fxSeq.current, image: resolvedImage, color, colorSoft })
-        cleanups.push(punchParent("fx-slot-punch", 340, 450))
-        const t = window.setTimeout(() => setSummonFx(null), 1250)
+        cleanups.push(punchParent("fx-slot-punch", 790, 450))
+        const t = window.setTimeout(() => setSummonFx(null), 1850)
         cleanups.push(() => window.clearTimeout(t))
       }
       return () => cleanups.forEach((c) => c())
@@ -156,19 +169,54 @@ export default function FieldCardFX({ card, image, disableSummon, disableDp }: F
     <div ref={rootRef} className="absolute inset-0 pointer-events-none" style={{ zIndex: 60 }} aria-hidden="true">
       {/* ===================== INVOCAÇÃO ===================== */}
       {summonFx && (
-        <div key={`summon-${summonFx.key}`} className="absolute -inset-8 overflow-visible">
-          {/* Brilho de solo (aparece antes da carta cair) */}
+        <div key={`summon-${summonFx.key}`} className="absolute -inset-8 overflow-visible" style={{ perspective: "400px" }}>
+          {/* Portal mágico se abrindo no chão (anel externo giratório) */}
+          <div
+            className="fx-portal-open absolute left-1/2 bottom-[10%]"
+            style={{
+              width: "115%",
+              aspectRatio: "1",
+              borderRadius: "9999px",
+              border: `2px solid ${summonFx.color}`,
+              boxShadow: `0 0 18px 2px ${summonFx.colorSoft}, inset 0 0 24px 4px ${summonFx.colorSoft}`,
+              background: `conic-gradient(from 0deg, transparent 0%, ${summonFx.colorSoft} 12%, transparent 26%, ${summonFx.colorSoft} 48%, transparent 62%, ${summonFx.colorSoft} 84%, transparent 100%)`,
+              maskImage: "radial-gradient(circle, transparent 48%, black 56%)",
+              WebkitMaskImage: "radial-gradient(circle, transparent 48%, black 56%)"
+            }}
+          />
+          {/* Anel rúnico interno (gira ao contrário, tracejado) */}
+          <div
+            className="fx-portal-runes absolute left-1/2 bottom-[14%]"
+            style={{
+              width: "80%",
+              aspectRatio: "1",
+              borderRadius: "9999px",
+              border: `2px dashed ${summonFx.color}`,
+              boxShadow: `0 0 10px 1px ${summonFx.colorSoft}`
+            }}
+          />
+          {/* Brilho de solo */}
           <div
             className="fx-ground-glow absolute left-1/2 bottom-2 -translate-x-1/2"
             style={{
-              width: "130%",
-              height: "34%",
+              width: "150%",
+              height: "38%",
               background: `radial-gradient(ellipse at center, ${summonFx.colorSoft} 0%, transparent 70%)`,
-              filter: "blur(4px)"
+              filter: "blur(5px)"
             }}
           />
-          {/* Cópia da carta caindo do céu (slam) */}
-          <div className="absolute inset-8">
+          {/* Pilar de energia subindo do portal */}
+          <div
+            className="fx-summon-pillar absolute left-1/2 bottom-[12%]"
+            style={{
+              width: "38%",
+              height: "150%",
+              background: `linear-gradient(to top, ${summonFx.color} 0%, ${summonFx.colorSoft} 40%, transparent 95%)`,
+              filter: "blur(6px)"
+            }}
+          />
+          {/* Cópia da carta caindo do céu com giro 3D (slam) */}
+          <div className="absolute inset-8" style={{ perspective: "500px" }}>
             <div
               className="fx-summon-drop absolute inset-0"
               style={{
@@ -176,7 +224,7 @@ export default function FieldCardFX({ card, image, disableSummon, disableDp }: F
                 backgroundSize: "contain",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
-                filter: `drop-shadow(0 0 14px ${summonFx.colorSoft})`
+                filter: `drop-shadow(0 0 18px ${summonFx.colorSoft}) drop-shadow(0 0 6px ${summonFx.color})`
               }}
             />
           </div>
@@ -187,20 +235,66 @@ export default function FieldCardFX({ card, image, disableSummon, disableDp }: F
               background: `radial-gradient(circle at center, rgba(255,255,255,0.95) 0%, ${summonFx.colorSoft} 40%, transparent 72%)`
             }}
           />
-          {/* Ondas de choque */}
+          {/* Ondas de choque (tripla: elemento → branco → elemento) */}
           <div
             className="fx-shockwave absolute left-1/2 top-1/2"
-            style={{ borderColor: summonFx.color, ["--fx-delay" as any]: "0.34s" }}
+            style={{ borderColor: summonFx.color, ["--fx-delay" as any]: "0.78s" }}
           />
           <div
             className="fx-shockwave absolute left-1/2 top-1/2"
-            style={{ borderColor: "rgba(255,255,255,0.9)", ["--fx-delay" as any]: "0.42s" }}
+            style={{ borderColor: "rgba(255,255,255,0.9)", ["--fx-delay" as any]: "0.86s" }}
+          />
+          <div
+            className="fx-shockwave absolute left-1/2 top-1/2"
+            style={{ borderColor: summonFx.colorSoft, ["--fx-delay" as any]: "0.95s" }}
           />
           {/* Anel de energia rotativo */}
           <div
             className="fx-summon-ring absolute left-1/2 top-1/2"
             style={{
               background: `conic-gradient(from 0deg, transparent 0%, ${summonFx.color} 18%, transparent 40%, ${summonFx.color} 62%, transparent 85%)`
+            }}
+          />
+          {/* Poeira/detritos explodindo para os lados no impacto */}
+          {IMPACT_DUST.map((d, i) => (
+            <span
+              key={`dust-${i}`}
+              className="fx-impact-dust absolute"
+              style={{
+                left: "50%",
+                bottom: "16%",
+                width: d.size,
+                height: d.size,
+                background: i % 3 === 0 ? "#ffffff" : summonFx.color,
+                boxShadow: `0 0 5px 1px ${summonFx.colorSoft}`,
+                ["--fx-delay" as any]: `${0.78 + d.delay}s`,
+                ["--fx-dur" as any]: `${d.dur}s`,
+                ["--fx-dust-x" as any]: `${d.x}px`,
+                ["--fx-dust-y" as any]: `${d.y}px`
+              }}
+            />
+          ))}
+          {/* Arcos elétricos crepitando sobre a carta */}
+          <div
+            className="fx-energy-arc absolute inset-6"
+            style={{
+              background: `linear-gradient(105deg, transparent 44%, ${summonFx.color} 47%, rgba(255,255,255,0.9) 50%, ${summonFx.color} 53%, transparent 56%)`,
+              ["--fx-delay" as any]: "0.8s"
+            }}
+          />
+          <div
+            className="fx-energy-arc absolute inset-6"
+            style={{
+              background: `linear-gradient(-70deg, transparent 46%, rgba(255,255,255,0.85) 49%, ${summonFx.color} 52%, transparent 55%)`,
+              ["--fx-delay" as any]: "0.92s"
+            }}
+          />
+          {/* Aura elemental residual (respira e some) */}
+          <div
+            className="fx-summon-afterglow absolute inset-7"
+            style={{
+              background: `radial-gradient(circle at 50% 60%, ${summonFx.colorSoft} 0%, transparent 70%)`,
+              boxShadow: `inset 0 0 16px 3px ${summonFx.colorSoft}`
             }}
           />
           {/* Fagulhas subindo */}
@@ -215,7 +309,7 @@ export default function FieldCardFX({ card, image, disableSummon, disableDp }: F
                 height: s.size,
                 background: i % 3 === 0 ? "#ffffff" : summonFx.color,
                 boxShadow: `0 0 6px 1px ${summonFx.colorSoft}`,
-                ["--fx-delay" as any]: `${0.36 + s.delay}s`,
+                ["--fx-delay" as any]: `${0.8 + s.delay}s`,
                 ["--fx-dur" as any]: `${s.dur}s`,
                 ["--fx-drift" as any]: `${s.drift}px`
               }}

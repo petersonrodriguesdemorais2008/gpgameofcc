@@ -14,6 +14,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 
 // ─── Multiplayer types ────────────────────────────────────────────────────────
 interface DuelAction {
@@ -7446,6 +7447,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
+      {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
+      <ScenarioRevealOverlay
+        playerScenario={playerField.scenarioZone}
+        enemyScenario={enemyField.scenarioZone}
+      />
       {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
           key={proj.id}
