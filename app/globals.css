@@ -2413,6 +2413,36 @@
   animation-delay: var(--float-delay, 0s);
 }
 
+/* ============================================================
+   EQUIP CHAIN — Engrenagem holográfica girando em volta da
+   Unidade e da Ultimate que estão equipadas uma na outra.
+   ============================================================ */
+@keyframes gp-gear-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes gp-gear-in {
+  from { opacity: 0; transform: scale(0.75); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes gp-gear-halo {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.7; }
+}
+
+.gp-equip-chain {
+  animation: gp-gear-in 0.18s ease-out both;
+}
+.gp-equip-chain__gear {
+  animation: gp-gear-spin var(--gear-dur, 6s) linear infinite;
+  animation-direction: var(--gear-dir, normal);
+  filter: drop-shadow(0 0 5px rgba(120, 255, 235, 0.55));
+  opacity: 0.85;
+}
+.gp-equip-chain__halo {
+  animation: gp-gear-halo 1.8s ease-in-out infinite;
+}
+
 /* Static resting shadow for field cards that shouldn't animate
    (piles, decks) or while an attack animation is in control */
 .gp-card-shadow {

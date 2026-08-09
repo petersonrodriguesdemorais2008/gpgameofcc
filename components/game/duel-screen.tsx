@@ -1,6 +1,7 @@
 "use client"
 
 import { pauseMenuMusic, resumeMenuMusic } from "@/components/game/main-menu"
+import { EquipChainOverlay } from "@/components/game/equip-chain-overlay"
 
 import React, { Component } from "react"
 import DUEL_OST_SRC from "./duel-ost"
@@ -3721,6 +3722,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // Which stacked Ultimate card is brought to the front (player / enemy)
   const [playerUltimateFocus, setPlayerUltimateFocus] = useState<number | null>(null)
   const [enemyUltimateFocus, setEnemyUltimateFocus] = useState<number | null>(null)
+  // Press & hold on an equipped Ultimate → show the spinning gear link
+  const [equipChainHighlight, setEquipChainHighlight] = useState<{
+    side: "player" | "enemy"
+    ultimateIndex: number
+    unitIndex: number | null
+  } | null>(null)
 
   // ── Fehnon double-attack & bonus DP flags ──
   const [fehnonSrDouble, setFehnonSrDouble] = useState(false)
@@ -8604,6 +8611,44 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
   }
 
+  /** Resolve which unit slot an Ultimate is attached to (index stored on equip, name as fallback). */
+  const resolveEquippedUnitIndex = (ult: FieldCard, unitZone: (FieldCard | null)[]) => {
+    if (typeof ult.equippedUnitIndex === "number" && unitZone[ult.equippedUnitIndex]) {
+      return ult.equippedUnitIndex
+    }
+    if (ult.equippedUnitName) {
+      const byName = findUnitByName(unitZone, ult.equippedUnitName)
+      if (byName !== -1) return byName
+    }
+    if (ult.requiresUnit) {
+      const byReq = findUnitByName(unitZone, ult.requiresUnit)
+      if (byReq !== -1) return byReq
+    }
+    return null
+  }
+
+  /** Press & hold an Ultimate card → highlight the equip chain (gear ring on both cards). */
+  const handleChainPressStart = (side: "player" | "enemy", ult: FieldCard, ultimateIndex: number) => {
+    const unitZone = side === "player" ? playerField.unitZone : enemyField.unitZone
+    setEquipChainHighlight({ side, ultimateIndex, unitIndex: resolveEquippedUnitIndex(ult, unitZone) })
+  }
+
+  const handleChainPressEnd = () => setEquipChainHighlight(null)
+
+  // Solta o destaque mesmo que o dedo/mouse seja liberado fora da carta
+  useEffect(() => {
+    if (!equipChainHighlight) return
+    const clear = () => setEquipChainHighlight(null)
+    window.addEventListener("mouseup", clear)
+    window.addEventListener("touchend", clear)
+    window.addEventListener("touchcancel", clear)
+    return () => {
+      window.removeEventListener("mouseup", clear)
+      window.removeEventListener("touchend", clear)
+      window.removeEventListener("touchcancel", clear)
+    }
+  }, [equipChainHighlight])
+
   // ── Bot difficulty helpers ──
   const botShouldPlayCard = () => {
     // easy: 50% chance to skip playing a card; medium: always; hard: always + prioritize
@@ -8940,7 +8985,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 }
                 // If needs targets or dice — bot can't handle them, skip (don't place in zone)
               } catch {
-                // effect error — skip this card
+                // effect error ��� skip this card
               }
             } else {
               // No registered effect — don't place in function zone, just skip
@@ -9727,7 +9772,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }))
         break
 
-      // ── Opponent surrendered ──────────────────────────────────────────────
+      // ── Opponent surrendered ─────────────────────────────────���────────────
       case "surrender":
         setGameResult("won")
         break
@@ -12141,19 +12186,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               style={{
                                 left: order * STEP_X,
                                 top: order * STEP_Y,
-                                zIndex: isFocused ? 40 : 10 + order,
+                                zIndex:
+                                  equipChainHighlight?.side === "enemy" && equipChainHighlight.ultimateIndex === i
+                                    ? 60
+                                    : isFocused ? 40 : 10 + order,
                                 background: "rgba(6,30,24,0.9)",
                               }}
                               title={`${c.name}${c.equippedUnitName ? ` → ${c.equippedUnitName}` : ""}`}
                             >
                               <Image src={c.image || "/placeholder.svg"} alt={c.name} fill quality={100} sizes="180px"
                                 className="object-contain"
-                                onMouseDown={() => handleCardPressStart(c)}
-                                onMouseUp={handleCardPressEnd}
-                                onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() => handleCardPressStart(c)}
-                                onTouchEnd={handleCardPressEnd}
+                                onMouseDown={() => { handleCardPressStart(c); handleChainPressStart("enemy", c, i) }}
+                                onMouseUp={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onMouseLeave={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchStart={() => { handleCardPressStart(c); handleChainPressStart("enemy", c, i) }}
+                                onTouchEnd={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchCancel={() => { handleCardPressEnd(); handleChainPressEnd() }}
                               />
+                              {equipChainHighlight?.side === "enemy" && equipChainHighlight.ultimateIndex === i && (
+                                <EquipChainOverlay reverse />
+                              )}
                             </div>
                           )
                         })}
@@ -12265,6 +12317,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         ["--float-x" as any]: `${((i * 4 + 1) % 5 - 2) * 1.8}px`,
                       }}
                     >
+                      {card && equipChainHighlight?.side === "enemy" && equipChainHighlight.unitIndex === i && (
+                        <EquipChainOverlay />
+                      )}
                       {card && (
                         <>
                           <Image
@@ -12441,6 +12496,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {/* Yellow glow for attackable cards */}
                         {!hasAbility && canAttack && (
                           <div className="absolute -inset-1 bg-yellow-400/40 blur-sm animate-pulse -z-10" />
+                        )}
+                        {card && equipChainHighlight?.side === "player" && equipChainHighlight.unitIndex === i && (
+                          <EquipChainOverlay />
                         )}
                         {card && (
                           <>
@@ -12689,19 +12747,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               style={{
                                 left: order * STEP_X,
                                 top: order * STEP_Y,
-                                zIndex: isFocused ? 40 : 10 + order,
+                                zIndex:
+                                  equipChainHighlight?.side === "player" && equipChainHighlight.ultimateIndex === i
+                                    ? 60
+                                    : isFocused ? 40 : 10 + order,
                                 background: "rgba(6,30,24,0.9)",
                               }}
                               title={`${c.name}${c.equippedUnitName ? ` → ${c.equippedUnitName}` : ""}`}
                             >
                               <Image src={c.image || "/placeholder.svg"} alt={c.name} fill quality={100} sizes="180px"
                                 className="object-contain"
-                                onMouseDown={() => handleCardPressStart(c)}
-                                onMouseUp={handleCardPressEnd}
-                                onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() => handleCardPressStart(c)}
-                                onTouchEnd={handleCardPressEnd}
+                                onMouseDown={() => { handleCardPressStart(c); handleChainPressStart("player", c, i) }}
+                                onMouseUp={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onMouseLeave={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchStart={() => { handleCardPressStart(c); handleChainPressStart("player", c, i) }}
+                                onTouchEnd={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchCancel={() => { handleCardPressEnd(); handleChainPressEnd() }}
                               />
+                              {equipChainHighlight?.side === "player" && equipChainHighlight.ultimateIndex === i && (
+                                <EquipChainOverlay reverse />
+                              )}
                               {isFocused && isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
                                 <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
                                   className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-30 text-center">
