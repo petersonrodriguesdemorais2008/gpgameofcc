@@ -2681,3 +2681,276 @@
       0 3px 4px -2px rgba(0, 0, 0, 0.5);
   }
 }
+
+/* ============================================================================
+   FieldCardFX — Invocação épica + buff/debuff de DP nas cartas de campo
+   Usado por components/game/field-card-fx.tsx
+============================================================================ */
+
+/* ---- INVOCAÇÃO: a carta cai do céu e "slamma" no slot ---- */
+@keyframes fx-summon-drop {
+  0% {
+    transform: translateY(-110px) scale(2.3) rotateX(28deg);
+    opacity: 0;
+    filter: blur(8px) brightness(2.2);
+  }
+  18% {
+    opacity: 1;
+  }
+  62% {
+    transform: translateY(2px) scale(0.96) rotateX(0deg);
+    filter: blur(0px) brightness(1.5);
+  }
+  74% {
+    transform: translateY(0) scale(1.05);
+    filter: brightness(1.25);
+  }
+  86% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: brightness(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+    filter: brightness(1);
+  }
+}
+.fx-summon-drop {
+  animation: fx-summon-drop 0.95s cubic-bezier(0.22, 1.1, 0.36, 1) both;
+  transform-origin: center bottom;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes fx-ground-glow {
+  0% { opacity: 0; transform: translateX(-50%) scaleX(0.4); }
+  35% { opacity: 0.95; transform: translateX(-50%) scaleX(1); }
+  100% { opacity: 0; transform: translateX(-50%) scaleX(1.35); }
+}
+.fx-ground-glow {
+  animation: fx-ground-glow 1s ease-out both;
+}
+
+@keyframes fx-summon-flash {
+  0%, 34% { opacity: 0; }
+  42% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.fx-summon-flash {
+  animation: fx-summon-flash 0.85s ease-out both;
+  mix-blend-mode: screen;
+}
+
+@keyframes fx-shockwave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.25);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+.fx-shockwave {
+  width: 70px;
+  height: 70px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  animation: fx-shockwave 0.6s cubic-bezier(0.15, 0.8, 0.3, 1) both;
+  animation-delay: var(--fx-delay, 0.34s);
+  will-change: transform, opacity;
+}
+
+@keyframes fx-summon-ring {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.4);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(240deg) scale(1.9);
+    opacity: 0;
+  }
+}
+.fx-summon-ring {
+  width: 84px;
+  height: 84px;
+  border-radius: 9999px;
+  animation: fx-summon-ring 0.8s ease-out 0.34s both;
+  -webkit-mask: radial-gradient(circle, transparent 58%, black 62%, black 72%, transparent 76%);
+  mask: radial-gradient(circle, transparent 58%, black 62%, black 72%, transparent 76%);
+  will-change: transform, opacity;
+}
+
+@keyframes fx-summon-spark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  15% { opacity: 1; }
+  100% {
+    transform: translate(var(--fx-drift, 0px), -74px) scale(0.3);
+    opacity: 0;
+  }
+}
+.fx-summon-spark {
+  border-radius: 9999px;
+  animation: fx-summon-spark var(--fx-dur, 0.7s) ease-out both;
+  animation-delay: var(--fx-delay, 0.36s);
+  will-change: transform, opacity;
+}
+
+/* O slot inteiro dá um "soco" no impacto da invocação */
+@keyframes fx-slot-punch {
+  0% { scale: 1; }
+  30% { scale: 1.12; }
+  55% { scale: 0.97; }
+  100% { scale: 1; }
+}
+.fx-slot-punch {
+  animation: fx-slot-punch 0.45s cubic-bezier(0.3, 1.4, 0.4, 1) both;
+}
+
+/* ---- BUFF DE DP ---- */
+@keyframes fx-buff-aura {
+  0% { opacity: 0; transform: scale(0.7); }
+  30% { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+.fx-buff-aura {
+  border-radius: 10px;
+  animation: fx-buff-aura 0.9s ease-out both;
+  mix-blend-mode: screen;
+}
+
+@keyframes fx-buff-beam {
+  0% { transform: translateY(100%) scaleY(0.3); opacity: 0; }
+  35% { opacity: 1; }
+  100% { transform: translateY(-40%) scaleY(1.1); opacity: 0; }
+}
+.fx-buff-beam {
+  animation: fx-buff-beam 0.75s ease-out both;
+  animation-delay: var(--fx-delay, 0s);
+  will-change: transform, opacity;
+}
+
+@keyframes fx-buff-ring {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.95; }
+  100% { transform: translate(-50%, -50%) scale(2.1); opacity: 0; }
+}
+.fx-buff-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  border: 2px solid;
+  animation: fx-buff-ring 0.65s cubic-bezier(0.15, 0.8, 0.3, 1) 0.08s both;
+  will-change: transform, opacity;
+}
+
+@keyframes fx-dp-buff-pop {
+  0% { scale: 1; filter: brightness(1); }
+  30% { scale: 1.14; filter: brightness(1.6) saturate(1.3); }
+  60% { scale: 0.98; filter: brightness(1.2); }
+  100% { scale: 1; filter: brightness(1); }
+}
+.fx-dp-buff-pop {
+  animation: fx-dp-buff-pop 0.6s cubic-bezier(0.3, 1.3, 0.4, 1) both;
+}
+
+@keyframes fx-dp-float-up {
+  0% { transform: translate(-50%, 14px) scale(0.4); opacity: 0; }
+  20% { transform: translate(-50%, 0) scale(1.25); opacity: 1; }
+  40% { transform: translate(-50%, -6px) scale(1); }
+  100% { transform: translate(-50%, -40px) scale(0.95); opacity: 0; }
+}
+.fx-dp-float-up {
+  animation: fx-dp-float-up 1.35s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* ---- DEBUFF DE DP ---- */
+@keyframes fx-debuff-flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  45% { opacity: 0.5; }
+  60% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.fx-debuff-flash {
+  border-radius: 10px;
+  animation: fx-debuff-flash 0.7s ease-out both;
+  mix-blend-mode: screen;
+}
+
+@keyframes fx-debuff-crack {
+  0% { opacity: 0; clip-path: inset(0 0 100% 0); }
+  30% { opacity: 1; clip-path: inset(0 0 0 0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.fx-debuff-crack {
+  animation: fx-debuff-crack 0.65s ease-out both;
+  animation-delay: var(--fx-delay, 0s);
+}
+
+@keyframes fx-debuff-shard {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(var(--fx-drift, 0px), 58px) rotate(160deg); opacity: 0; }
+}
+.fx-debuff-shard {
+  animation: fx-debuff-shard 0.8s cubic-bezier(0.4, 0.1, 0.7, 0.4) both;
+  animation-delay: var(--fx-delay, 0s);
+  will-change: transform, opacity;
+}
+
+@keyframes fx-dp-shake {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  15% { translate: -4px 1px; rotate: -2deg; }
+  30% { translate: 4px -1px; rotate: 2deg; }
+  45% { translate: -3px 0; rotate: -1.4deg; }
+  60% { translate: 3px 1px; rotate: 1.2deg; }
+  75% { translate: -2px 0; rotate: -0.6deg; }
+  90% { translate: 1px 0; rotate: 0.3deg; }
+}
+.fx-dp-shake {
+  animation: fx-dp-shake 0.55s ease-in-out both;
+}
+
+@keyframes fx-dp-float-down {
+  0% { transform: translate(-50%, -10px) scale(0.4); opacity: 0; }
+  20% { transform: translate(-50%, 0) scale(1.25); opacity: 1; }
+  40% { transform: translate(-50%, 4px) scale(1); }
+  100% { transform: translate(-50%, 34px) scale(0.9); opacity: 0; }
+}
+.fx-dp-float-down {
+  animation: fx-dp-float-down 1.35s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-summon-drop,
+  .fx-ground-glow,
+  .fx-summon-flash,
+  .fx-shockwave,
+  .fx-summon-ring,
+  .fx-summon-spark,
+  .fx-slot-punch,
+  .fx-buff-aura,
+  .fx-buff-beam,
+  .fx-buff-ring,
+  .fx-dp-buff-pop,
+  .fx-debuff-flash,
+  .fx-debuff-crack,
+  .fx-debuff-shard,
+  .fx-dp-shake {
+    animation: none;
+    opacity: 0;
+  }
+  .fx-dp-float-up,
+  .fx-dp-float-down {
+    animation-duration: 0.9s;
+  }
+}

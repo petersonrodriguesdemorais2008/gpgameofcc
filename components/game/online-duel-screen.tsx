@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
+import FieldCardFX from "./field-card-fx"
 
 // ─── Multiplayer types ────────────────────────────────────────────────────────
 interface DuelAction {
@@ -7849,7 +7850,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                           handleEnemyUnitSelect(i)
                         }
                       }}
-                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
+                      className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-visible transition-all ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
                         (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
@@ -7865,6 +7866,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         ["--float-dur" as any]: `${3.4 + (i % 3) * 0.5}s`,
                       }}
                     >
+                      <FieldCardFX card={card as FieldCard | null} />
                       {card && (
                         <>
                           <Image
@@ -7972,7 +7974,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         })() })
                           }
                         }}
-                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-hidden transition-all duration-75 ${card ? (cardAnimations[`player-${i}`] ? "gp-card-shadow" : "gp-card-float") : ""} ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
+                        className={`w-16 h-24 bg-blue-900/30 border-2 rounded relative overflow-visible transition-all duration-75 ${card ? (cardAnimations[`player-${i}`] ? "gp-card-shadow" : "gp-card-float") : ""} ${dropTarget?.type === "unit" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
                             ? "border-green-400/70 bg-green-500/30 scale-105"
@@ -8004,6 +8006,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         {!hasAbility && canAttack && (
                           <div className="absolute -inset-1 bg-yellow-400/40 rounded blur-sm animate-pulse -z-10" />
                         )}
+                        <FieldCardFX card={card as FieldCard | null} />
                         {card && (
                           <>
                             <Image
