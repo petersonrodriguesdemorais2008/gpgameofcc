@@ -1030,6 +1030,12 @@ export default function SettingsScreen({ onBack, onReturnToTitle }: SettingsScre
                       type="text"
                       value={codeInput}
                       onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+                          e.preventDefault()
+                          if (!codeLoading && codeInput.trim()) handleRedeemCode()
+                        }
+                      }}
                       placeholder="DIGITE O CODIGO"
                       className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3 uppercase tracking-widest font-mono"
                       maxLength={20}
