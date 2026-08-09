@@ -3235,8 +3235,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${ALL_PLAYMATS.length} playmats foram desbloqueados!` }
     }
 
-    // SLEVEE - Unlocks all sleeves
-    if (normalizedCode === "SLEVEE") {
+    // SLEVEE / SLEEVES - Unlocks every sleeve that exists at the moment the code is redeemed
+    if (normalizedCode === "SLEVEE" || normalizedCode === "SLEEVES") {
       const newOwnedSleeves = ALL_SLEEVES.filter(
         (s) => !ownedSleeves.some((os) => os.id === s.id)
       )
