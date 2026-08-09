@@ -2429,47 +2429,30 @@
   0%, 100% { opacity: 0.35; }
   50%      { opacity: 0.7; }
 }
-/* Brilho holográfico: o contorno da engrenagem troca de cor em loop */
+/* Brilho holográfico: brilho justo na silhueta da engrenagem, com as
+   cores deslizando de forma contínua via hue-rotate (sem "degraus") */
 @keyframes gp-gear-holo {
   0% {
     filter:
-      drop-shadow(0 0 4px rgba(140, 255, 170, 0.95))
-      drop-shadow(0 0 10px rgba(0, 230, 255, 0.7))
-      drop-shadow(0 0 18px rgba(180, 90, 255, 0.45));
-  }
-  25% {
-    filter:
-      drop-shadow(0 0 4px rgba(120, 240, 255, 0.95))
-      drop-shadow(0 0 10px rgba(180, 90, 255, 0.7))
-      drop-shadow(0 0 18px rgba(255, 90, 200, 0.45));
+      drop-shadow(0 0 3px rgba(130, 255, 190, 0.9))
+      drop-shadow(0 0 8px rgba(0, 220, 255, 0.5))
+      hue-rotate(0deg)
+      brightness(1);
   }
   50% {
     filter:
-      drop-shadow(0 0 4px rgba(255, 140, 235, 0.95))
-      drop-shadow(0 0 10px rgba(255, 210, 90, 0.7))
-      drop-shadow(0 0 18px rgba(120, 255, 180, 0.45));
-  }
-  75% {
-    filter:
-      drop-shadow(0 0 4px rgba(255, 235, 130, 0.95))
-      drop-shadow(0 0 10px rgba(120, 255, 190, 0.7))
-      drop-shadow(0 0 18px rgba(0, 200, 255, 0.45));
+      drop-shadow(0 0 4px rgba(130, 255, 190, 0.95))
+      drop-shadow(0 0 10px rgba(0, 220, 255, 0.6))
+      hue-rotate(180deg)
+      brightness(1.12);
   }
   100% {
     filter:
-      drop-shadow(0 0 4px rgba(140, 255, 170, 0.95))
-      drop-shadow(0 0 10px rgba(0, 230, 255, 0.7))
-      drop-shadow(0 0 18px rgba(180, 90, 255, 0.45));
+      drop-shadow(0 0 3px rgba(130, 255, 190, 0.9))
+      drop-shadow(0 0 8px rgba(0, 220, 255, 0.5))
+      hue-rotate(360deg)
+      brightness(1);
   }
-}
-/* Aura em arco-íris girando por trás da engrenagem */
-@keyframes gp-gear-aura {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(-360deg); }
-}
-@keyframes gp-gear-aura-pulse {
-  0%, 100% { opacity: 0.35; }
-  50%      { opacity: 0.7; }
 }
 
 .gp-equip-chain {
@@ -2484,33 +2467,18 @@
 /* A imagem recebe o brilho holográfico (separado do giro para que o
    filter animado não conflite com o transform) */
 .gp-equip-chain__gear img {
-  animation: gp-gear-holo 3.2s linear infinite;
-}
-.gp-equip-chain__aura {
-  background: conic-gradient(
-    from 0deg,
-    rgba(120, 255, 180, 0.9),
-    rgba(0, 225, 255, 0.9),
-    rgba(150, 110, 255, 0.9),
-    rgba(255, 110, 210, 0.9),
-    rgba(255, 225, 110, 0.9),
-    rgba(120, 255, 180, 0.9)
-  );
-  mask-image: radial-gradient(circle, transparent 46%, black 60%, black 78%, transparent 92%);
-  -webkit-mask-image: radial-gradient(circle, transparent 46%, black 60%, black 78%, transparent 92%);
-  filter: blur(7px);
-  animation:
-    gp-gear-aura 5s linear infinite,
-    gp-gear-aura-pulse 2.4s ease-in-out infinite;
+  animation: gp-gear-holo 6s linear infinite;
 }
 .gp-equip-chain__halo {
   animation: gp-gear-halo 1.8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gp-equip-chain__aura,
   .gp-equip-chain__gear img {
     animation: none;
+    filter:
+      drop-shadow(0 0 3px rgba(130, 255, 190, 0.9))
+      drop-shadow(0 0 8px rgba(0, 220, 255, 0.5));
   }
 }
 
