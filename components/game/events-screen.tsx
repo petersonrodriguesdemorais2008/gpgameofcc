@@ -18,6 +18,15 @@
 import { useCallback, useEffect, useState } from "react"
 import { ArrowLeft, Check, Lock, Swords, Sparkles, Trophy } from "lucide-react"
 import GearBackdrop from "./gear-backdrop"
+import {
+  COMMON_FRAGMENT_DROP,
+  COMMON_FRAGMENT_ID,
+  ELEMENTAL_FRAGMENT_DROP,
+  EVENT_FRAGMENT,
+  FRAGMENTS,
+  type FragmentCounts,
+  type FragmentId,
+} from "@/lib/fragments"
 
 export const EVENT_BATTLE_KEY = "gpgame_event_battle_pending"
 const LS_PROGRESS_KEY = "gpgame_event_progress"
@@ -143,6 +152,24 @@ export const EVENTS: EventDef[] = [
   },
 ]
 
+// ─── Fragmentos ──────────────────────────────────────────────────────────────
+
+/** Fragmento elemental exclusivo do evento (undefined se o evento não tiver). */
+export function eventFragmentId(eventId: string): FragmentId | undefined {
+  return EVENT_FRAGMENT[eventId]
+}
+
+/**
+ * Drop de fragmentos de uma fase: o fragmento elemental do evento
+ * (5 / 10 / 15) e o fragmento comum de Gálio (2 / 4 / 8).
+ */
+export function eventFragmentDrop(eventId: string, difficulty: EventDifficulty): FragmentCounts {
+  const drop: FragmentCounts = { [COMMON_FRAGMENT_ID]: COMMON_FRAGMENT_DROP[difficulty] }
+  const elemental = eventFragmentId(eventId)
+  if (elemental) drop[elemental] = ELEMENTAL_FRAGMENT_DROP[difficulty]
+  return drop
+}
+
 // ─── Progresso ───────────────────────────────────────────────────────────────
 
 type Progress = Record<string, EventDifficulty[]>
@@ -174,15 +201,57 @@ function CoinTag({ src, alt, value, color }: { src: string; alt: string; value: 
   )
 }
 
+// ─── Destaque do fragmento elemental do evento ───────────────────────────────
+
+function FragmentHighlight({
+  fragmentId, amount, accent, compact = false,
+}: {
+  fragmentId: FragmentId
+  amount: number
+  accent: string
+  compact?: boolean
+}) {
+  const frag = FRAGMENTS[fragmentId]
+  const size = compact ? 30 : 40
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+      style={{
+        background: `linear-gradient(120deg, ${frag.color}1f 0%, rgba(0,0,0,0.28) 100%)`,
+        border: `1px solid ${frag.color}55`,
+        boxShadow: `inset 0 0 18px ${frag.color}14`,
+      }}>
+      <img src={frag.image || "/placeholder.svg"} alt={frag.name}
+        width={size} height={size}
+        className="shrink-0 object-contain"
+        style={{ width: size, height: size, filter: `drop-shadow(0 0 9px ${frag.color}aa)` }} />
+      <div className="flex min-w-0 flex-col">
+        <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: `${accent}cc` }}>
+          Fragmento exclusivo
+        </span>
+        <span className="truncate text-[12px] font-black uppercase italic leading-tight text-white">
+          {frag.name.replace("Fragmento de ", "")}
+        </span>
+      </div>
+      <span className="ml-auto shrink-0 text-base font-black tabular-nums"
+        style={{ color: frag.color, textShadow: `0 0 10px ${frag.color}66` }}>
+        +{amount}
+      </span>
+    </div>
+  )
+}
+
 // ─── Painel de fase (estilo dos nós da Campanha) ─────────────────────────────
 
 function StagePanel({
-  stage, index, accent, accentDark, state, delay, visible, onPlay,
+  stage, index, accent, accentDark, fragmentId, state, delay, visible, onPlay,
 }: {
   stage: EventStageDef
   index: number
   accent: string
   accentDark: string
+  /** Fragmento elemental dropado por este evento. */
+  fragmentId?: FragmentId
   state: "done" | "open" | "locked"
   delay: number
   visible: boolean
@@ -263,6 +332,15 @@ function StagePanel({
             </span>
           </div>
         </div>
+
+        {/* Fragmento exclusivo do evento — o grande atrativo da fase */}
+        {fragmentId && (
+          <FragmentHighlight
+            fragmentId={fragmentId}
+            amount={ELEMENTAL_FRAGMENT_DROP[stage.difficulty]}
+            accent={accent}
+          />
+        )}
       </div>
 
       {/* Recompensas */}
@@ -393,6 +471,7 @@ function EventStagesView({
               index={i}
               accent={event.accent}
               accentDark={event.accentDark}
+              fragmentId={eventFragmentId(event.id)}
               state={stageState(i)}
               delay={140 + i * 90}
               visible={visible}
@@ -434,6 +513,7 @@ function EventCard({
 }) {
   const doneCount = EVENT_STAGES.filter((s) => cleared.includes(s.difficulty)).length
   const progPct = Math.round((doneCount / EVENT_STAGES.length) * 100)
+  const fragmentId = eventFragmentId(event.id)
 
   return (
     <button
@@ -458,6 +538,23 @@ function EventCard({
       {/* Gradiente + informações sobrepostas */}
       <div aria-hidden className="pointer-events-none absolute inset-0"
         style={{ background: "linear-gradient(180deg, transparent 40%, rgba(3,1,12,0.92) 100%)" }} />
+
+      {/* Fragmento exclusivo em destaque no canto do banner */}
+      {fragmentId && (
+        <div className="absolute right-3 top-3 flex items-center gap-2 rounded-xl px-2.5 py-1.5 backdrop-blur-sm"
+          style={{
+            background: `linear-gradient(120deg, ${FRAGMENTS[fragmentId].color}26, rgba(3,1,12,0.78))`,
+            border: `1px solid ${FRAGMENTS[fragmentId].color}66`,
+          }}>
+          <img src={FRAGMENTS[fragmentId].image || "/placeholder.svg"} alt={FRAGMENTS[fragmentId].name}
+            width={26} height={26} className="h-[26px] w-[26px] shrink-0 object-contain"
+            style={{ filter: `drop-shadow(0 0 8px ${FRAGMENTS[fragmentId].color}aa)` }} />
+          <span className="text-[10px] font-black uppercase tracking-[0.14em]"
+            style={{ color: FRAGMENTS[fragmentId].color }}>
+            {FRAGMENTS[fragmentId].name.replace("Fragmento de ", "")}
+          </span>
+        </div>
+      )}
 
       <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4">
         <div className="flex flex-col">
@@ -529,6 +626,8 @@ interface EventsScreenProps {
     lp: number
     gacha: number
     gear: number
+    /** Fragmentos dropados pela fase (elemental do evento + Gálio). */
+    fragments: FragmentCounts
   }) => void
 }
 
@@ -574,6 +673,7 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
       lp: stage.lp,
       gacha: stage.gacha,
       gear: stage.gear,
+      fragments: eventFragmentDrop(eventId, stage.difficulty),
     })
   }, [onStartBattle])
 
@@ -652,8 +752,14 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
               <span className="text-[11px] font-bold text-slate-400">{s.label}</span>
               <CoinTag src="/images/Gacha_Coin.png" alt="Gacha Coin" value={s.gacha} color="#FCD34D" />
               <CoinTag src="/images/gear-coin.png" alt="Gear Coin" value={s.gear} color="#FDE047" />
+              <span className="text-[11px] font-black tabular-nums text-fuchsia-200/90">
+                +{ELEMENTAL_FRAGMENT_DROP[s.difficulty]} frag.
+              </span>
             </div>
           ))}
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+            Cada treinamento dropa seu próprio fragmento elemental
+          </span>
         </div>
 
         {/* Lista de eventos */}

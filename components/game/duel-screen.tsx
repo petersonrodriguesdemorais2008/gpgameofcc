@@ -24,6 +24,7 @@ import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
+import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
 const DUEL_CARD_SKINS: Record<string, { id: string; image: string }[]> = {
@@ -2027,7 +2028,7 @@ const getElementGlow = (element: string): string => {
   }
 }
 
-// ─── DiceCanvas3D ─────────────────────────────────────────────────────────────
+// ─── DiceCanvas3D ──────────────────────────��──────────────────────────────────
 // CSS preserve-3d dice. rig handles scale/translateY, cube handles rotateX/Y.
 // Transforms set via rAF JS �� no @keyframes on preserve-3d elements (would flatten).
 interface DiceCanvas3DProps { result: number | null; cardName: string }
@@ -2363,7 +2364,7 @@ function StarfieldCanvas() {
       // Rich magenta/purple cloud — left-centre
       nebBlob(OW*.28,OH*.38, OW*.28,OH*.18,  .30, "rgba(160,40,220,1)", .16,.09)
       nebBlob(OW*.32,OH*.40, OW*.16,OH*.12,  .18, "rgba(200,80,255,1)", .22,.12)
-      // Cyan/teal cloud — right
+      // Cyan/teal cloud �� right
       nebBlob(OW*.76,OH*.22, OW*.24,OH*.16, -.22, "rgba(20,160,200,1)", .18,.10)
       nebBlob(OW*.80,OH*.25, OW*.14,OH*.10, -.15, "rgba(40,200,230,1)", .22,.12)
       // Gold/amber warm cloud — bottom centre
@@ -2813,7 +2814,9 @@ function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps)
   // ── Duel rewards: gacha + gear coins on victory (granted once) ──
   const { addDuelRewards } = useGame()
   const rewardsGrantedRef = useRef(false)
-  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number } | null>(null)
+  const [duelRewards, setDuelRewards] = useState<{
+    gacha: number; gear: number; fragments: FragmentCounts
+  } | null>(null)
 
   useEffect(() => {
     if (!isWon || !rewardKind || rewardsGrantedRef.current) return
@@ -3108,6 +3111,32 @@ function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps)
                 +{duelRewards.gear}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Fragmentos dropados (eventos de treinamento) */}
+        {isWon && duelRewards && Object.keys(duelRewards.fragments).length > 0 && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:12, flexWrap:"wrap", justifyContent:"center",
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:"1px solid rgba(168,85,247,0.30)", borderRadius:14,
+            padding:"10px 22px", animation:"gr-up 500ms ease-out 880ms both",
+          }}>
+            {(Object.entries(duelRewards.fragments) as [FragmentId, number][]).map(([id, amount]) => {
+              const frag = FRAGMENTS[id]
+              if (!frag) return null
+              return (
+                <div key={id} style={{ display:"flex", alignItems:"center", gap:7 }}>
+                  <img src={frag.image || "/placeholder.svg"} alt={frag.name}
+                    style={{ width:32, height:32, objectFit:"contain",
+                      filter:`drop-shadow(0 0 9px ${frag.color}b3)` }} />
+                  <span style={{ fontWeight:900, fontSize:17, color:frag.color,
+                    textShadow:`0 0 10px ${frag.color}80` }}>
+                    +{amount}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -6396,7 +6425,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
   }
 
-  // ── Manual Trap activation ──────────────────────────────────────────────
+  // ── Manual Trap activation ──────────────��───────────────────────────────
   // Previously, face-down Trap Function cards had NO way to be activated by
   // the player at all (only 2 specific traps had hardcoded auto-triggers
   // elsewhere). This adds a generic "ATIVAR" action for ANY face-down trap
@@ -10594,7 +10623,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const rewardKind: DuelRewardKind =
       eventBattle && typeof eventBattle.gacha === "number" && typeof eventBattle.gear === "number"
-        ? { gacha: eventBattle.gacha, gear: eventBattle.gear }
+        ? {
+            gacha: eventBattle.gacha,
+            gear: eventBattle.gear,
+            fragments: normalizeFragmentCounts(eventBattle.fragments),
+          }
         : mode === "player" ? "pvp" : "normal"
 
     return <GameResultScreen result={gameResult} rewardKind={rewardKind} onBack={() => {
@@ -11091,7 +11124,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
              9. db-corners   → cantoneiras de metal dourado
            Tudo é decorativo: pointer-events:none e alfas baixos, pra
            não competir com as cartas nem apagar playmats custom.
-           ════════════��═════════════════════════════════════════════════ */
+           ════════════��══════════════════════════════════════════���══════ */
         .db-layer { position: absolute; inset: 0; pointer-events: none; }
 
         /* As duas metades se sobrepõem e se dissolvem no meridiano
@@ -13529,7 +13562,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <img src={activeCardBack||"/placeholder.svg"} alt=""
                     style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                 </div>
-                {/* Front face — revealed after flip */}
+                {/* Front face ��� revealed after flip */}
                 <div style={{
                   position:'absolute',inset:0,backfaceVisibility:'hidden',
                   transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useCallback, type ReactNode, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
 
 export interface Card {
   id: string
@@ -315,7 +316,10 @@ export interface AccountAuth {
 }
 
 /** Recompensa de duelo: preset padrão ou valores explícitos (eventos). */
-export type DuelRewardKind = "normal" | "pvp" | { gacha: number; gear: number }
+export type DuelRewardKind =
+  | "normal"
+  | "pvp"
+  | { gacha: number; gear: number; fragments?: FragmentCounts }
 
 interface GameContextType {
   coins: number
@@ -324,7 +328,13 @@ interface GameContextType {
   addFP: (amount: number) => void
   gearCoins: number
   setGearCoins: React.Dispatch<React.SetStateAction<number>>
-  addDuelRewards: (kind: DuelRewardKind) => { gacha: number; gear: number }
+  addDuelRewards: (kind: DuelRewardKind) => { gacha: number; gear: number; fragments: FragmentCounts }
+  /** Fragmentos (itens de evento) no inventário do jogador. */
+  fragments: FragmentCounts
+  /** Soma fragmentos ao inventário e devolve o total atualizado. */
+  addFragments: (gain: FragmentCounts) => void
+  /** Quantidade de um fragmento específico. */
+  getFragmentCount: (id: FragmentId) => number
   collection: Card[]
   addToCollection: (cards: Card[]) => void
   decks: Deck[]
@@ -1907,6 +1917,17 @@ const INITIAL_GIFT_BOXES: GiftBox[] = [
 export function GameProvider({ children }: { children: ReactNode }) {
   const [coins, setCoins] = useState(999)
   const [gearCoins, setGearCoins] = useState(500)
+  // Fragmentos de evento (Nitrogênio, Irídio, Rubídio, Mercúrio, Hélio, Gálio).
+  // Lidos direto do localStorage no primeiro render pra não perder o inventário
+  // enquanto o resto do progresso é carregado (nuvem ou local).
+  const [fragments, setFragments] = useState<FragmentCounts>(() => {
+    if (typeof window === "undefined") return {}
+    try {
+      const raw =
+        localStorage.getItem("gear-perks-fragments") || localStorage.getItem("gearperks-fragments")
+      return raw ? normalizeFragmentCounts(JSON.parse(raw)) : {}
+    } catch { return {} }
+  })
   const [collection, setCollection] = useState<Card[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([])
@@ -2314,17 +2335,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // ── Duel rewards: gacha coins + gear coins per victory ──────────────────
   // Aceita um preset ("normal" / "pvp") ou valores explícitos (eventos).
+  const addFragments = useCallback((gain: FragmentCounts) => {
+    const clean = normalizeFragmentCounts(gain)
+    if (Object.keys(clean).length === 0) return
+    setFragments((prev) => {
+      const next: FragmentCounts = { ...prev }
+      for (const [id, amount] of Object.entries(clean) as [FragmentId, number][]) {
+        next[id] = (next[id] ?? 0) + amount
+      }
+      return next
+    })
+  }, [])
+
+  const getFragmentCount = useCallback((id: FragmentId) => fragments[id] ?? 0, [fragments])
+
   const addDuelRewards = useCallback((kind: DuelRewardKind) => {
-    const { gacha, gear } =
+    const { gacha, gear, fragments: drop } =
       typeof kind === "object"
         ? kind
         : kind === "pvp"
-          ? { gacha: 20, gear: 50 }
-          : { gacha: 10, gear: 30 }
+          ? { gacha: 20, gear: 50, fragments: undefined }
+          : { gacha: 10, gear: 30, fragments: undefined }
     setCoins((prev) => prev + gacha)
     setGearCoins((prev) => prev + gear)
-    return { gacha, gear }
-  }, [])
+    const fragmentDrop = normalizeFragmentCounts(drop)
+    addFragments(fragmentDrop)
+    return { gacha, gear, fragments: fragmentDrop }
+  }, [addFragments])
+
+  useEffect(() => {
+    setLS("fragments", JSON.stringify(fragments))
+  }, [fragments])
 
   useEffect(() => {
     setLS("collection", JSON.stringify(collection))
@@ -3392,6 +3433,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_story_progress")
       localStorage.removeItem("gpgame_story_battle_pending")
 
+      // ── Eventos (progresso + fragmentos) ──────────────────────────────────
+      localStorage.removeItem("gpgame_event_progress")
+      localStorage.removeItem("gpgame_event_battle_pending")
+      localStorage.removeItem("gearperks-fragments")
+      localStorage.removeItem("gear-perks-fragments")
+      setFragments({})
+
       // ── Gear Pass ─────────────────────────────────────────────────────────
       localStorage.removeItem("gpgame_gear_pass")
       localStorage.removeItem("gpgame_pass_missions")
@@ -3466,6 +3514,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         gearCoins,
         setGearCoins,
         addDuelRewards,
+        fragments,
+        addFragments,
+        getFragmentCount,
         collection,
         addToCollection,
         decks,
