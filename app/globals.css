@@ -2421,26 +2421,219 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+/* Entrada com leve overshoot e foco progressivo — mais "materialização" */
 @keyframes gp-gear-in {
-  from { opacity: 0; transform: scale(0.75); }
-  to   { opacity: 1; transform: scale(1); }
+  0%   { opacity: 0; transform: scale(0.6);  filter: blur(6px) brightness(2); }
+  60%  { opacity: 1; transform: scale(1.06); filter: blur(1px) brightness(1.4); }
+  100% { opacity: 1; transform: scale(1);    filter: blur(0) brightness(1); }
 }
 @keyframes gp-gear-halo {
   0%, 100% { opacity: 0.35; }
   50%      { opacity: 0.7; }
 }
+/* Brilho holográfico: brilho justo na silhueta da engrenagem, com as
+   cores deslizando de forma contínua via hue-rotate (sem "degraus") */
+@keyframes gp-gear-holo {
+  0% {
+    filter:
+      drop-shadow(0 0 3px rgba(130, 255, 190, 0.95))
+      drop-shadow(0 0 9px rgba(0, 220, 255, 0.6))
+      drop-shadow(0 0 20px rgba(0, 200, 255, 0.3))
+      hue-rotate(0deg)
+      brightness(1)
+      saturate(1.15);
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 5px rgba(130, 255, 190, 1))
+      drop-shadow(0 0 13px rgba(0, 220, 255, 0.75))
+      drop-shadow(0 0 26px rgba(0, 200, 255, 0.4))
+      hue-rotate(180deg)
+      brightness(1.18)
+      saturate(1.3);
+  }
+  100% {
+    filter:
+      drop-shadow(0 0 3px rgba(130, 255, 190, 0.95))
+      drop-shadow(0 0 9px rgba(0, 220, 255, 0.6))
+      drop-shadow(0 0 20px rgba(0, 200, 255, 0.3))
+      hue-rotate(360deg)
+      brightness(1)
+      saturate(1.15);
+  }
+}
+/* Névoa circular que respira e desliza pelas cores junto da engrenagem */
+@keyframes gp-gear-glow {
+  0% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(0.97);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1.04);
+    filter: hue-rotate(180deg);
+  }
+  100% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(0.97);
+    filter: hue-rotate(360deg);
+  }
+}
+/* Feixes de luz percorrendo o aro */
+@keyframes gp-gear-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* Onda de choque que expande e some quando a engrenagem surge */
+@keyframes gp-gear-shockwave {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.45);
+  }
+}
+/* Anel interno de energia em contra-rotação */
+@keyframes gp-gear-ring {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+/* Cintilar das partículas orbitando */
+@keyframes gp-gear-spark {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
 
 .gp-equip-chain {
-  animation: gp-gear-in 0.18s ease-out both;
+  animation: gp-gear-in 0.45s cubic-bezier(0.22, 1.4, 0.36, 1) both;
 }
+/* Camada que gira */
 .gp-equip-chain__gear {
   animation: gp-gear-spin var(--gear-dur, 6s) linear infinite;
   animation-direction: var(--gear-dir, normal);
-  filter: drop-shadow(0 0 5px rgba(120, 255, 235, 0.55));
-  opacity: 0.85;
+  opacity: 0.92;
+}
+/* A imagem recebe o brilho holográfico (separado do giro para que o
+   filter animado não conflite com o transform) */
+.gp-equip-chain__gear img {
+  animation: gp-gear-holo 6s linear infinite;
+}
+/* Névoa radial holográfica atrás da engrenagem — segue o diâmetro dela */
+.gp-equip-chain__glow {
+  background: radial-gradient(
+    circle,
+    transparent 30%,
+    rgba(0, 225, 255, 0.16) 46%,
+    rgba(90, 255, 190, 0.26) 58%,
+    rgba(0, 210, 255, 0.14) 70%,
+    transparent 82%
+  );
+  filter: blur(4px);
+  animation: gp-gear-glow 6s linear infinite;
+}
+/* Dois feixes suaves e opostos varrendo o aro da engrenagem */
+.gp-equip-chain__sweep {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.6) 14deg,
+    rgba(180, 255, 240, 0.25) 28deg,
+    transparent 48deg,
+    transparent 180deg,
+    rgba(160, 255, 230, 0.5) 194deg,
+    rgba(140, 230, 255, 0.2) 208deg,
+    transparent 228deg,
+    transparent 360deg
+  );
+  mask-image: radial-gradient(circle, transparent 52%, black 62%, black 74%, transparent 84%);
+  -webkit-mask-image: radial-gradient(circle, transparent 52%, black 62%, black 74%, transparent 84%);
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  opacity: 0.8;
+  animation: gp-gear-sweep 3.5s linear infinite;
+  animation-direction: var(--gear-dir, normal);
+}
+/* Onda de choque: um anel fino que expande e desvanece na entrada */
+.gp-equip-chain__shockwave {
+  border: 2px solid rgba(140, 255, 220, 0.9);
+  box-shadow:
+    0 0 12px rgba(0, 230, 255, 0.7),
+    inset 0 0 12px rgba(0, 230, 255, 0.5);
+  animation: gp-gear-shockwave 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+/* Anel interno de energia tracejado girando em contra-rotação */
+.gp-equip-chain__ring {
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(150, 255, 220, 0.55) 0deg 5deg,
+    transparent 5deg 24deg
+  );
+  mask-image: radial-gradient(circle, transparent 44%, black 47%, black 52%, transparent 55%);
+  -webkit-mask-image: radial-gradient(circle, transparent 44%, black 47%, black 52%, transparent 55%);
+  filter: blur(0.5px);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  animation: gp-gear-ring 9s linear infinite;
+  animation-direction: var(--gear-dir, normal);
+}
+/* Órbita das partículas: gira junto com a engrenagem */
+.gp-equip-chain__orbit {
+  animation: gp-gear-spin 7s linear infinite;
+  animation-direction: var(--gear-dir, normal);
+}
+/* Cada partícula fica na ponta de um "raio" rotacionado */
+.gp-equip-chain__spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 4px;
+  margin-top: -2px;
+  transform-origin: left center;
+  translate: 0 0;
+}
+.gp-equip-chain__spark::after {
+  content: "";
+  position: absolute;
+  right: 8%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 9999px;
+  background: rgba(210, 255, 245, 1);
+  box-shadow:
+    0 0 6px rgba(120, 255, 220, 0.95),
+    0 0 12px rgba(0, 220, 255, 0.6);
+  animation: gp-gear-spark 1.6s ease-in-out var(--spark-delay, 0s) infinite;
 }
 .gp-equip-chain__halo {
   animation: gp-gear-halo 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-equip-chain__gear img,
+  .gp-equip-chain__glow,
+  .gp-equip-chain__sweep,
+  .gp-equip-chain__ring,
+  .gp-equip-chain__orbit,
+  .gp-equip-chain__spark::after {
+    animation: none;
+  }
+  .gp-equip-chain__sweep,
+  .gp-equip-chain__shockwave,
+  .gp-equip-chain__ring,
+  .gp-equip-chain__orbit {
+    display: none;
+  }
+  .gp-equip-chain__gear img {
+    filter:
+      drop-shadow(0 0 3px rgba(130, 255, 190, 0.9))
+      drop-shadow(0 0 8px rgba(0, 220, 255, 0.5));
+  }
 }
 
 /* Static resting shadow for field cards that shouldn't animate
@@ -2463,7 +2656,7 @@
 /* Nitidez das cartas no campo 3D (supersampling 2x):
    dentro de um contexto com perspective/rotateX, cada carta animada
    vira uma textura de GPU rasterizada no tamanho pequeno do slot e
-   depois reprojetada — o que causa o borrão/baixa resolução.
+   depois reprojetada — o que causa o borr��o/baixa resolução.
    Renderizamos a arte em 200% do tamanho e reduzimos com scale(0.5),
    forçando o navegador a rasterizar com o dobro de pixels.
    Visualmente idêntico (mesmo enquadramento), apenas mais nítido.
