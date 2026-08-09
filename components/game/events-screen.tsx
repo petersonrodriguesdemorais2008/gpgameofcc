@@ -760,7 +760,6 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
     })
 
     trackDuelResult(true)
-    grantMasterDuelXP({ won: true, duelMode: "pve" })
     addMatchRecord({
       id: `match-${Date.now()}`,
       date: new Date().toISOString(),
@@ -778,6 +777,16 @@ export default function EventsScreen({ onBack, onStartBattle }: EventsScreenProp
       fragments: eventFragmentDrop(eventId, stage.difficulty),
     })
   }, [consumeSkipTicket, addMatchRecord])
+
+  /**
+   * O XP de Mestre é concedido só depois que a tela de vitória monta: ela ouve o
+   * evento "gpgame_master_xp" para exibir o aviso de XP/level up, e o listener
+   * só existe após a montagem. Conceder antes perderia a notificação.
+   */
+  useEffect(() => {
+    if (!skippedStage) return
+    grantMasterDuelXP({ won: true, duelMode: "pve" })
+  }, [skippedStage])
 
   const openEvent = openEventId ? EVENTS.find((e) => e.id === openEventId) ?? null : null
 
