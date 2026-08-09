@@ -3267,6 +3267,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${SHOP_PROFILE_ICONS.length} ícones foram desbloqueados!` }
     }
 
+    // PASS - Grants the maximum Gear Pass XP, reaching the max Gear Pass level
+    if (normalizedCode === "PASS") {
+      const GEAR_PASS_MAX_LEVEL = 100
+      // Σ(i=1..N) of (20 + 5i) = 20N + 5·N·(N+1)/2 — mesma fórmula usada na tela do Gear Pass
+      const maxPoints = 20 * GEAR_PASS_MAX_LEVEL + Math.round((5 * GEAR_PASS_MAX_LEVEL * (GEAR_PASS_MAX_LEVEL + 1)) / 2)
+
+      const LS_PASS_KEY = "gpgame_gear_pass"
+      let stored: Record<string, any> = {}
+      try {
+        stored = JSON.parse(localStorage.getItem(LS_PASS_KEY) || "{}")
+      } catch {}
+
+      const updatedPassData = {
+        currentPoints: maxPoints,
+        currentLevel: GEAR_PASS_MAX_LEVEL,
+        hasPremium: stored.hasPremium ?? false,
+        claimedCommon: stored.claimedCommon ?? [],
+        claimedPremium: stored.claimedPremium ?? [],
+        seasonStartedAt: stored.seasonStartedAt ?? Date.now(),
+        seasonNumber: stored.seasonNumber ?? 1,
+      }
+      localStorage.setItem(LS_PASS_KEY, JSON.stringify(updatedPassData))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Nível máximo do Gear Pass (nível ${GEAR_PASS_MAX_LEVEL}) alcançado!` }
+    }
+
     // GOLD - Grants 1,000,000 gear coins to the player's account
     if (normalizedCode === "GOLD") {
       setGearCoins((prev) => prev + 1_000_000)
