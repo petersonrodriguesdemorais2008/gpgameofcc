@@ -2027,7 +2027,7 @@ const getElementGlow = (element: string): string => {
 
 // ─── DiceCanvas3D ─────────────────────────────────────────────────────────────
 // CSS preserve-3d dice. rig handles scale/translateY, cube handles rotateX/Y.
-// Transforms set via rAF JS — no @keyframes on preserve-3d elements (would flatten).
+// Transforms set via rAF JS �� no @keyframes on preserve-3d elements (would flatten).
 interface DiceCanvas3DProps { result: number | null; cardName: string }
 
 const DICE_PIPS: Record<number,[number,number][]> = {
@@ -6175,13 +6175,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       .map(({ unit, index }) => {
         const name = normalizeCardName(unit.name)
         const matches = !required || name === required || name.includes(required) || required.includes(name)
-        // Already carrying an Ultimate? (match by slot index or by unit name)
-        const occupied = zones.some(
-          (z) =>
-            z !== null &&
-            (z.equippedUnitIndex === index ||
-              (!!z.equippedUnitName && normalizeCardName(z.equippedUnitName) === name)),
-        )
+        // Already carrying an Ultimate? Matched STRICTLY by slot index, never by name —
+        // two copies of the same Unit (ex: dois Fehnon) são Unidades distintas e
+        // cada uma pode receber a sua própria Ultimate.
+        const occupied = zones.some((z) => z !== null && z.equippedUnitIndex === index)
         return { unit, index, compatible: matches && !occupied, occupied }
       })
   }
@@ -8616,15 +8613,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (typeof ult.equippedUnitIndex === "number" && unitZone[ult.equippedUnitIndex]) {
       return ult.equippedUnitIndex
     }
-    if (ult.equippedUnitName) {
-      const byName = findUnitByName(unitZone, ult.equippedUnitName)
-      if (byName !== -1) return byName
+    // Fallback por nome só quando existe UMA única Unidade com aquele nome no campo,
+    // senão não há como saber qual das cópias (ex: dois Fehnon) está equipada.
+    const uniqueMatch = (rawName?: string) => {
+      if (!rawName) return null
+      const target = normalizeCardName(rawName)
+      const hits = unitZone
+        .map((u, idx) => ({ u, idx }))
+        .filter(({ u }) => u !== null && normalizeCardName(u.name) === target)
+      return hits.length === 1 ? hits[0].idx : null
     }
-    if (ult.requiresUnit) {
-      const byReq = findUnitByName(unitZone, ult.requiresUnit)
-      if (byReq !== -1) return byReq
-    }
-    return null
+    return uniqueMatch(ult.equippedUnitName) ?? uniqueMatch(ult.requiresUnit)
   }
 
   /** Press & hold an Ultimate card → highlight the equip chain (gear ring on both cards). */
