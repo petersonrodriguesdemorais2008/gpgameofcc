@@ -143,7 +143,14 @@ interface FieldCard extends GameCard {
   canAttack: boolean
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
+  /** For Ultimate cards: which unit on the field this Ultimate is equipped to */
+  equippedUnitName?: string
+  equippedUnitIndex?: number
 }
+
+/** Max Ultimate cards that can be equipped on the field at the same time */
+const MAX_ULTIMATE_SLOTS = 4
+const EMPTY_ULTIMATE_ZONES = (): (FieldCard | null)[] => Array(MAX_ULTIMATE_SLOTS).fill(null)
 
 interface FunctionZoneCard extends GameCard {
   isFaceDown?: boolean
@@ -2207,7 +2214,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ──────────────��───────────
+        // ── PHASE 2: SETTLE  spring 360ms ──────────────��──────���────
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -3445,7 +3452,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
-    ultimateZones: [null, null, null],
+    ultimateZones: EMPTY_ULTIMATE_ZONES(),
     hand: [],
     deck: [],
     graveyard: [],
@@ -3457,7 +3464,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
-    ultimateZones: [null, null, null],
+    ultimateZones: EMPTY_ULTIMATE_ZONES(),
     hand: [],
     deck: [],
     graveyard: [],
@@ -3705,6 +3712,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
   const [trapTargetMode, setTrapTargetMode] = useState<{ active: boolean; slotIndex: number | null }>({ active: false, slotIndex: null })
   const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
+  // ── Ultimate equip flow: ask which unit the Ultimate should be equipped to ──
+  const [ultimateEquipPrompt, setUltimateEquipPrompt] = useState<{
+    cardIndex: number
+    card: GameCard
+    source: "hand" | "tap"
+  } | null>(null)
+  // Which stacked Ultimate card is brought to the front (player / enemy)
+  const [playerUltimateFocus, setPlayerUltimateFocus] = useState<number | null>(null)
+  const [enemyUltimateFocus, setEnemyUltimateFocus] = useState<number | null>(null)
 
   // ── Fehnon double-attack & bonus DP flags ──
   const [fehnonSrDouble, setFehnonSrDouble] = useState(false)
@@ -4198,8 +4214,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               return (() => {
               const nextSlot = prev.ultimateZones.findIndex(z => z === null)
               if (nextSlot === -1) return prev
+              // Auto-equip: prefer the required unit, otherwise the first unit on field
+              const autoCandidates = getEquipCandidates(card, prev.unitZone)
+              const autoTarget = autoCandidates.find(c => c.compatible)
+              if (!autoTarget) return prev
               const newZones = [...prev.ultimateZones] as (FieldCard|null)[]
-              newZones[nextSlot] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turnRef2.current } as FieldCard
+              newZones[nextSlot] = {
+                ...card,
+                currentDp: card.dp,
+                canAttack: false,
+                hasAttacked: false,
+                canAttackTurn: turnRef2.current,
+                equippedUnitIndex: autoTarget.index,
+                equippedUnitName: autoTarget.unit.name,
+              } as FieldCard
               return { ...prev, hand: newHand, ultimateZones: newZones }
             })()
             })
@@ -5057,7 +5085,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
-      ultimateZones: [null, null, null],
+      ultimateZones: EMPTY_ULTIMATE_ZONES(),
       graveyard: [],
     }))
 
@@ -5074,7 +5102,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
-      ultimateZones: [null, null, null],
+      ultimateZones: EMPTY_ULTIMATE_ZONES(),
       graveyard: [],
     }))
 
@@ -5136,7 +5164,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         unitZone: [null, null, null, null],
         functionZone: [null, null, null, null],
         scenarioZone: null,
-        ultimateZones: [null, null, null],
+        ultimateZones: EMPTY_ULTIMATE_ZONES(),
         graveyard: [],
       }))
     }
@@ -6122,7 +6150,51 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return count
   }
 
-  const placeUltimateCard = (forcedCardIndex?: number) => {
+  /**
+   * Which units on the field are valid targets for a given Ultimate card.
+   * If the card declares `requiresUnit`, only that unit is allowed (blocked otherwise).
+   */
+  const getEquipCandidates = (card: GameCard, unitZone: (FieldCard | null)[]) => {
+    const required = normalizeCardName(card.requiresUnit)
+    return unitZone
+      .map((unit, index) => ({ unit, index }))
+      .filter((entry): entry is { unit: FieldCard; index: number } => entry.unit !== null)
+      .map(({ unit, index }) => {
+        const name = normalizeCardName(unit.name)
+        const compatible = !required || name === required || name.includes(required) || required.includes(name)
+        return { unit, index, compatible }
+      })
+  }
+
+  /** Step 1: ask the player which unit should receive the Ultimate */
+  const requestUltimateEquip = (forcedCardIndex?: number, source: "hand" | "tap" = "hand") => {
+    if (!isPlayerTurn || phase !== "main") return
+    const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
+    if (cardIndex === null || cardIndex === undefined) return
+
+    const card = source === "hand" ? playerField.hand[cardIndex] : playerField.tap[cardIndex]
+    if (!card || !isUltimateCard(card)) return
+
+    if (!playerField.ultimateZones.some(z => z === null)) {
+      showEffectFeedback(`Limite de ${MAX_ULTIMATE_SLOTS} Ultimates no campo!`, "error")
+      return
+    }
+
+    const candidates = getEquipCandidates(card, playerField.unitZone)
+    if (!candidates.length) {
+      showEffectFeedback("Você precisa de uma Unidade no campo para equipar uma Ultimate!", "error")
+      return
+    }
+    if (!candidates.some(c => c.compatible)) {
+      showEffectFeedback(`${card.name} só pode ser equipada em ${card.requiresUnit}!`, "error")
+      return
+    }
+
+    playSound("confirm", 0.4)
+    setUltimateEquipPrompt({ cardIndex, card, source })
+  }
+
+  const placeUltimateCard = (forcedCardIndex?: number, equipUnitIndex?: number) => {
     if (!isPlayerTurn) return
     if (phase !== "main") return
 
@@ -6131,11 +6203,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace || !isUltimateCard(cardToPlace)) return
-    // Single active ultimate: send current one to graveyard before placing new
-    if (playerField.ultimateZones.some(z => z !== null)) {
-      const oldUg = playerField.ultimateZones.find(z => z !== null) ?? null
-      setPlayerField(prev => ({ ...prev, graveyard: oldUg ? [...prev.graveyard, oldUg] : prev.graveyard }))
+    if (!playerField.ultimateZones.some(z => z === null)) {
+      showEffectFeedback(`Limite de ${MAX_ULTIMATE_SLOTS} Ultimates no campo!`, "error")
+      return
     }
+
+    // No unit chosen yet → open the equip prompt first
+    if (equipUnitIndex === undefined) {
+      requestUltimateEquip(cardIndex, "hand")
+      return
+    }
+
+    const chosenUnit = playerField.unitZone[equipUnitIndex] ?? null
 
     const fieldCard: FieldCard = {
       ...cardToPlace,
@@ -6143,12 +6222,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       canAttack: false,
       hasAttacked: false,
       canAttackTurn: turn,
+      equippedUnitIndex: equipUnitIndex,
+      equippedUnitName: chosenUnit?.name,
     }
 
     setPlayerField((prev) => {
       const newHand = prev.hand.filter((_, i) => i !== cardIndex)
       const requiredUnit = cardToPlace.requiresUnit
-      const unitIdx = requiredUnit ? findUnitByName(prev.unitZone, requiredUnit) : -1
+      const unitIdx = prev.unitZone[equipUnitIndex] ? equipUnitIndex : (requiredUnit ? findUnitByName(prev.unitZone, requiredUnit) : -1)
       const unitFound = unitIdx !== -1
 
       // Apply passive DP bonus to the matching unit if found
@@ -6234,12 +6315,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Activate Ultimate Gear one-time ability
-  const activateUgAbility = () => {
+  const activateUgAbility = (ugIndex?: number) => {
     if (!isPlayerTurn || phase !== "main") return
     if (playerUgAbilityUsed) return
     const __allUgs = playerField.ultimateZones.filter(z=>z!==null) as FieldCard[]
     if (!__allUgs.length) return
-    const ug = __allUgs[0]  // activateUgAbility operates on the first non-null UG
+    // Use the Ultimate the player clicked on; fall back to the first one on field
+    const ug = (ugIndex !== undefined ? playerField.ultimateZones[ugIndex] : null) ?? __allUgs[0]
     const requiredUnit = ug.requiresUnit
     if (!requiredUnit) return
 
@@ -6525,7 +6607,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Play a card from TAP (Tactical Access Pile)
-  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number) => {
+  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number, equipUnitIndex?: number) => {
     if (!isPlayerTurn || phase !== "main") return
 
     // Every 3 turns restriction
@@ -6543,6 +6625,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (zone === "function" && playerField.functionZone[targetIndex!] !== null) return
     if (zone === "scenario" && playerField.scenarioZone !== null) return
     if (zone === "ultimate" && playerField.ultimateZones.every(z=>z !== null)) return
+    // Ultimate cards must be equipped to a unit — ask first
+    if (zone === "ultimate" && equipUnitIndex === undefined) {
+      requestUltimateEquip(cardIndex, "tap")
+      return
+    }
 
     setPlayerField((prev) => {
       const newTap = prev.tap.filter((_, i) => i !== cardIndex)
@@ -6573,7 +6660,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           ultimateZones: (() => {
             const nz3 = [...prev.ultimateZones] as (FieldCard|null)[]
             const slot3 = nz3.findIndex(z => z === null)
-            if (slot3 !== -1) nz3[slot3] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn }
+            if (slot3 !== -1) nz3[slot3] = {
+              ...card,
+              currentDp: card.dp,
+              canAttack: false,
+              hasAttacked: false,
+              canAttackTurn: turn,
+              equippedUnitIndex: equipUnitIndex,
+              equippedUnitName: equipUnitIndex !== undefined ? prev.unitZone[equipUnitIndex]?.name : undefined,
+            }
             return nz3
           })(),
           tap: newTap,
@@ -6595,7 +6690,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       type === "unit" ? enemyField.unitZone[index] ?? null :
       type === "function" ? (enemyField.functionZone[index] ?? null) as FieldCard | null :
       type === "scenario" ? (enemyField.scenarioZone as FieldCard | null) :
-      type === "ultimate" ? (enemyField.ultimateZones.find(z=>z!==null) ?? null) : null
+      type === "ultimate" ? (enemyField.ultimateZones[index] ?? null) : null
     if (!targetCard) return
 
     if (ugTargetMode.type === "twiligh_avalon") {
@@ -6611,7 +6706,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         } else if (type === "scenario") {
           updated = { ...updated, scenarioZone: null, hand: [...prev.hand, targetCard] }
         } else if (type === "ultimate") {
-          updated = { ...updated, ultimateZones: [null, null, null], hand: [...prev.hand, targetCard] }
+          updated = { ...updated, ultimateZones: prev.ultimateZones.map((z, zi) => (zi === index ? null : z)) as (FieldCard | null)[], hand: [...prev.hand, targetCard] }
         }
         if (type === "unit") updated = { ...updated, life: Math.max(0, updated.life - 3) }
         return updated
@@ -7572,7 +7667,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 const freshAttackerDp = attacker.currentDp ?? attacker.dp
                 const freshDefenderDp = freshDefender.currentDp ?? freshDefender.dp
                 const freshNewDefenderDp = freshDefenderDp - freshAttackerDp
-                let newUltimateZones = [...(prev.ultimateZones||[null,null,null])] as (FieldCard|null)[]
+                let newUltimateZones = [...(prev.ultimateZones||EMPTY_ULTIMATE_ZONES())] as (FieldCard|null)[]
 
                 if (freshNewDefenderDp <= 0) {
                   if (targetRect) {
@@ -8355,7 +8450,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const sSlot = el.closest("[data-player-scenario-slot]")
         const gSlot = el.closest("[data-player-ultimate-slot]")
         if (gSlot && isUltimateCard(nc.card)) {
-          if (!playerField.ultimateZones.some(z => z)) { found = { type: "ultimate", index: 0 }; break }
+          if (playerField.ultimateZones.some(z => z === null)) { found = { type: "ultimate", index: 0 }; break }
         } else if (uSlot && isUnitCard(nc.card) && !isUltimateCard(nc.card)) {
           const si = Number.parseInt(uSlot.getAttribute("data-player-unit-slot") || "0")
           if (!playerField.unitZone[si]) { found = { type: "unit", index: si }; break }
@@ -8537,7 +8632,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const newUnitZone = [...prev.unitZone]
         const newFunctionZone = [...prev.functionZone]
         let newScenarioZone = prev.scenarioZone
-        let newUltimateZones = [...(prev.ultimateZones||[null,null,null])] as (FieldCard|null)[]
+        let newUltimateZones = [...(prev.ultimateZones||EMPTY_ULTIMATE_ZONES())] as (FieldCard|null)[]
         let newUltimateZone: FieldCard | null = null
 
         // Bot plays Scenario cards ONLY in Scenario zone
@@ -9123,7 +9218,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 setPlayerField((prevPlayer) => {
                   const newUnitZone = [...prevPlayer.unitZone]
                   const newGrave = [...prevPlayer.graveyard]
-                  let newUltimateZonesP = [...(prevPlayer.ultimateZones||[null,null,null])] as (FieldCard|null)[]
+                  let newUltimateZonesP = [...(prevPlayer.ultimateZones||EMPTY_ULTIMATE_ZONES())] as (FieldCard|null)[]
                   if (newDefenderDp <= 0) {
                     markDestroyed(defender)
                     newGrave.push(defender)
@@ -9648,7 +9743,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (d.myUnits     !== undefined) upd.unitZone     = d.myUnits
           if (d.myFuncs     !== undefined) upd.functionZone = d.myFuncs
           if (d.myScenario  !== undefined) upd.scenarioZone = d.myScenario
-          if (d.myUltimate !== undefined) upd.ultimateZones = Array.isArray(d.myUltimate) ? d.myUltimate : [d.myUltimate, null, null]
+          if (d.myUltimate !== undefined) upd.ultimateZones = Array.isArray(d.myUltimate) ? [...d.myUltimate, ...EMPTY_ULTIMATE_ZONES()].slice(0, MAX_ULTIMATE_SLOTS) : [d.myUltimate, ...EMPTY_ULTIMATE_ZONES()].slice(0, MAX_ULTIMATE_SLOTS)
           if (d.myGraveyard !== undefined) upd.graveyard    = d.myGraveyard
           if (d.myHandLen      !== undefined) upd.hand         = Array(d.myHandLen).fill(null)
           if (d.myDeckLen      !== undefined) upd.deck         = Array(d.myDeckLen).fill(null)
@@ -9886,7 +9981,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         unitZone: prev.unitZone.map((unit) =>
           unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
-        ultimateZones: (prev.ultimateZones||[null,null,null]).map((uz:FieldCard|null)=>uz?{...uz,hasAttacked:false,canAttack:nextTurn>(uz.canAttackTurn??0)}:null)as(FieldCard|null)[],
+        ultimateZones: (prev.ultimateZones||EMPTY_ULTIMATE_ZONES()).map((uz:FieldCard|null)=>uz?{...uz,hasAttacked:false,canAttack:nextTurn>(uz.canAttackTurn??0)}:null)as(FieldCard|null)[],
       }))
     }, 500)
   }
@@ -11953,33 +12048,76 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Enemy Ultimate Zone — single slot */}
+                  {/* Enemy Ultimate Zone — up to MAX_ULTIMATE_SLOTS stacked Ultimates */}
                   {(() => {
-                    const uz = enemyField.ultimateZones.find(z => z !== null) ?? null
-                    const isTarget = ugTargetMode.active && uz && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                    const eults = enemyField.ultimateZones
+                      .map((c, i) => ({ c, i }))
+                      .filter((e): e is { c: FieldCard; i: number } => e.c !== null)
+                    const targetable = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                    const STEP_X = 8
+                    const STEP_Y = 4
+                    const focusIdx =
+                      enemyUltimateFocus !== null && eults.some(u => u.i === enemyUltimateFocus)
+                        ? enemyUltimateFocus
+                        : eults.length ? eults[eults.length - 1].i : null
                     return (
                       <div
-                        className={`w-[69px] h-24 bg-emerald-900/40 border flex items-center justify-center relative overflow-visible transition-all ${uz ? "gp-card-float" : ""} ${
-                          isTarget ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
-                          : uz ? "border-emerald-500/60" : "border-emerald-600/40"
-                        }`}
+                        className={`relative ${eults.length ? "gp-card-float" : ""}`}
                         style={{
+                          width: 69 + STEP_X * (MAX_ULTIMATE_SLOTS - 1),
+                          height: 96 + STEP_Y * (MAX_ULTIMATE_SLOTS - 1),
                           ["--float-delay" as any]: "1.3s",
-                          ["--float-rot" as any]: "-0.5deg",
+                          ["--float-rot" as any]: "0deg",
                           ["--float-dur" as any]: "4.1s",
                           ["--float-x" as any]: "-1.8px",
                         }}
-                        onClick={() => { if (isTarget) handleUgTargetEnemyCard("ultimate", enemyField.ultimateZones.findIndex(z => z !== null)) }}
                       >
-                        {uz && (
-                          <Image src={uz.image || "/placeholder.svg"} alt={uz.name} fill quality={100} sizes="180px"
-                            className="object-contain"
-                            onMouseDown={() => handleCardPressStart(uz)}
-                            onMouseUp={handleCardPressEnd}
-                            onMouseLeave={handleCardPressEnd}
-                            onTouchStart={() => handleCardPressStart(uz)}
-                            onTouchEnd={handleCardPressEnd}
-                          />
+                        <div
+                          className={`absolute left-0 top-0 w-[69px] h-24 bg-emerald-900/40 border flex items-center justify-center ${
+                            eults.length ? "border-emerald-500/60" : "border-emerald-600/40"
+                          }`}
+                          style={{ zIndex: 1 }}
+                        >
+                          {!eults.length && <span className="text-emerald-500/40 text-[8px] text-center leading-tight">ULTIMATE</span>}
+                        </div>
+
+                        {eults.map(({ c, i }, order) => {
+                          const isFocused = focusIdx === i
+                          return (
+                            <div
+                              key={`euz-${c.id}-${i}`}
+                              onClick={() => {
+                                if (targetable) handleUgTargetEnemyCard("ultimate", i)
+                                else setEnemyUltimateFocus(isFocused ? null : i)
+                              }}
+                              className={`absolute w-[69px] h-24 border transition-all duration-150 ${
+                                targetable ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                                : isFocused ? "border-emerald-300 shadow-lg shadow-emerald-500/40" : "border-black/50"
+                              }`}
+                              style={{
+                                left: order * STEP_X,
+                                top: order * STEP_Y,
+                                zIndex: isFocused ? 40 : 10 + order,
+                                background: "rgba(6,30,24,0.9)",
+                              }}
+                              title={`${c.name}${c.equippedUnitName ? ` → ${c.equippedUnitName}` : ""}`}
+                            >
+                              <Image src={c.image || "/placeholder.svg"} alt={c.name} fill quality={100} sizes="180px"
+                                className="object-contain"
+                                onMouseDown={() => handleCardPressStart(c)}
+                                onMouseUp={handleCardPressEnd}
+                                onMouseLeave={handleCardPressEnd}
+                                onTouchStart={() => handleCardPressStart(c)}
+                                onTouchEnd={handleCardPressEnd}
+                              />
+                            </div>
+                          )
+                        })}
+
+                        {eults.length > 1 && (
+                          <span className="absolute -left-1 -top-2 bg-emerald-700 text-white text-[7px] font-black px-1 rounded-full border border-emerald-300/50 z-50">
+                            {eults.length}/{MAX_ULTIMATE_SLOTS}
+                          </span>
                         )}
                       </div>
                     )
@@ -12447,57 +12585,109 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
                   </div>
-                  {/* Player Ultimate Zone — single slot */}
+                  {/* Player Ultimate Zone — up to MAX_ULTIMATE_SLOTS stacked Ultimates */}
                   {(() => {
-                    const puz = playerField.ultimateZones.find(z => z !== null) ?? null
-                    const slotEmpty = puz === null
-                    const canDrop = slotEmpty && (dropTarget?.type === "ultimate" || (selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])))
+                    const ults = playerField.ultimateZones
+                      .map((c, i) => ({ c, i }))
+                      .filter((e): e is { c: FieldCard; i: number } => e.c !== null)
+                    const hasRoom = playerField.ultimateZones.some(z => z === null)
+                    const selHand = selectedHandCard !== null ? playerField.hand[selectedHandCard] : null
+                    const canClickPlace = !!(hasRoom && selHand && isUltimateCard(selHand))
+                    const canDrop = hasRoom && (dropTarget?.type === "ultimate" || canClickPlace)
+                    const STEP_X = 8
+                    const STEP_Y = 4
+                    const focusIdx =
+                      playerUltimateFocus !== null && ults.some(u => u.i === playerUltimateFocus)
+                        ? playerUltimateFocus
+                        : ults.length ? ults[ults.length - 1].i : null
                     return (
                       <div
                         data-player-ultimate-slot="0"
-                        onClick={() => slotEmpty && selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
-                        className={`w-[69px] h-24 bg-emerald-900/30 border-2 flex items-center justify-center relative transition-all duration-75 ${puz ? "gp-card-float" : ""} ${
-                          canDrop ? "border-green-400 bg-green-500/60 scale-105 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                          : draggedHandCard && isUltimateCard(draggedHandCard.card) && slotEmpty ? "border-emerald-400/50 bg-emerald-500/20"
-                          : puz ? "border-emerald-500/60" : "border-emerald-600/40"
-                        }`}
+                        onClick={() => canClickPlace && placeUltimateCard()}
+                        className={`relative ${ults.length ? "gp-card-float" : ""}`}
                         style={{
+                          width: 69 + STEP_X * (MAX_ULTIMATE_SLOTS - 1),
+                          height: 96 + STEP_Y * (MAX_ULTIMATE_SLOTS - 1),
                           ["--float-delay" as any]: "0.6s",
-                          ["--float-rot" as any]: "0.5deg",
+                          ["--float-rot" as any]: "0deg",
                           ["--float-dur" as any]: "4.0s",
                           ["--float-x" as any]: "1.6px",
                         }}
                       >
-                        {puz ? (
-                          <>
-                            <div className="absolute inset-0 overflow-visible">
-                              <Image src={puz.image || "/placeholder.svg"} alt={puz.name} fill quality={100} sizes="180px"
+                        {/* Base slot frame / drop target */}
+                        <div
+                          className={`absolute left-0 top-0 w-[69px] h-24 bg-emerald-900/30 border-2 flex items-center justify-center transition-all duration-75 ${
+                            canDrop ? "border-green-400 bg-green-500/60 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                            : draggedHandCard && isUltimateCard(draggedHandCard.card) && hasRoom ? "border-emerald-400/50 bg-emerald-500/20"
+                            : ults.length ? "border-emerald-500/60" : "border-emerald-600/40"
+                          }`}
+                          style={{ zIndex: 1 }}
+                        >
+                          {dropTarget?.type === "ultimate" && hasRoom ? (
+                            <span className="text-green-400 text-[9px] font-bold animate-pulse text-center">SOLTAR</span>
+                          ) : !ults.length ? (
+                            <span className="text-emerald-500/50 text-[8px] text-center leading-tight">ULTIMATE</span>
+                          ) : null}
+                        </div>
+
+                        {/* Stacked Ultimate cards — straight offset, no diagonal tilt */}
+                        {ults.map(({ c, i }, order) => {
+                          const isFocused = focusIdx === i
+                          const n = (c.name || "").toLowerCase()
+                          const a = (c.ability || "").toUpperCase()
+                          const unitOnField = !c.requiresUnit || findUnitByName(playerField.unitZone, c.requiresUnit) !== -1
+                          const canActivate = (a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto"))
+                          const canJudge = a.includes("MIGUEL ARCANJO") || n.includes("miguel arcanjo")
+                          return (
+                            <div
+                              key={`puz-${c.id}-${i}`}
+                              onClick={(e) => { e.stopPropagation(); setPlayerUltimateFocus(isFocused ? null : i) }}
+                              className={`absolute w-[69px] h-24 border transition-all duration-150 ${
+                                isFocused ? "border-emerald-300 shadow-lg shadow-emerald-500/40" : "border-black/50"
+                              }`}
+                              style={{
+                                left: order * STEP_X,
+                                top: order * STEP_Y,
+                                zIndex: isFocused ? 40 : 10 + order,
+                                background: "rgba(6,30,24,0.9)",
+                              }}
+                              title={`${c.name}${c.equippedUnitName ? ` → ${c.equippedUnitName}` : ""}`}
+                            >
+                              <Image src={c.image || "/placeholder.svg"} alt={c.name} fill quality={100} sizes="180px"
                                 className="object-contain"
-                                onMouseDown={() => handleCardPressStart(puz)}
+                                onMouseDown={() => handleCardPressStart(c)}
                                 onMouseUp={handleCardPressEnd}
                                 onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() => handleCardPressStart(puz)}
+                                onTouchStart={() => handleCardPressStart(c)}
                                 onTouchEnd={handleCardPressEnd}
                               />
+                              {/* Equipped unit tag */}
+                              {isFocused && c.equippedUnitName && (
+                                <span className="absolute -right-1 -top-2 max-w-[80px] truncate bg-emerald-600 text-white text-[6px] font-black px-1 py-0.5 rounded-sm border border-emerald-300/60 z-30">
+                                  {c.equippedUnitName}
+                                </span>
+                              )}
+                              {isFocused && isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
+                                <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
+                                  className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-30 text-center">
+                                  ⚡ ATIVAR
+                                </button>
+                              )}
+                              {isFocused && isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && canJudge && unitOnField && (
+                                <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
+                                  className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-30 text-center">
+                                  ✦ JULGAMENTO
+                                </button>
+                              )}
                             </div>
-                            {/* ATIVAR button */}
-                            {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && (() => {
-                              const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
-                              const ok=a.includes("ODEN SWORD")||n.includes("oden sword")||a.includes("TWILIGH")||n.includes("twiligh")||a.includes("MEFISTO")||n.includes("mefisto")
-                              if(!ok) return null
-                              if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
-                              return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-20 text-center">⚡ ATIVAR</button>
-                            })()}
-                            {/* JULGAMENTO button */}
-                            {isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && (() => {
-                              const n=(puz.name||"").toLowerCase(); const a=(puz.ability||"").toUpperCase()
-                              if(!a.includes("MIGUEL ARCANJO")&&!n.includes("miguel arcanjo")) return null
-                              if(puz.requiresUnit && findUnitByName(playerField.unitZone,puz.requiresUnit)===-1) return null
-                              return <button onClick={e=>{e.stopPropagation();activateUgAbility()}} className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-20 text-center">✦ JULGAMENTO</button>
-                            })()}
-                          </>
-                        ) : (
-                          dropTarget?.type === "ultimate" && <span className="text-green-400 text-[9px] font-bold animate-pulse text-center">SOLTAR</span>
+                          )
+                        })}
+
+                        {/* Stack counter */}
+                        {ults.length > 1 && (
+                          <span className="absolute -left-1 -top-2 bg-emerald-700 text-white text-[7px] font-black px-1 rounded-full border border-emerald-300/50 z-50">
+                            {ults.length}/{MAX_ULTIMATE_SLOTS}
+                          </span>
                         )}
                       </div>
                     )
@@ -14204,6 +14394,77 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {/* ──────────────────────────────────────────────────���──────────────────
            ── PAUSE MENU ──
       ─��─────────────────────────────────────────────────────────────────── */}
+      {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
+      {ultimateEquipPrompt && (() => {
+        const { card, cardIndex, source } = ultimateEquipPrompt
+        const candidates = getEquipCandidates(card, playerField.unitZone)
+        const close = () => setUltimateEquipPrompt(null)
+        return (
+          <div className="fixed inset-0 z-[9100] flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}>
+            <div className="w-full max-w-md rounded-2xl border border-emerald-500/25 overflow-hidden shadow-2xl"
+              style={{ background: "linear-gradient(160deg,#08150f,#0a0e1a)" }}>
+
+              <div className="px-5 py-4 border-b border-white/[0.07] flex items-center gap-3">
+                <div className="relative w-11 h-16 shrink-0 border border-emerald-500/40 rounded-sm overflow-hidden bg-black/40">
+                  <Image src={getActiveSkin(card.image || "") || "/placeholder.svg"} alt={card.name} fill quality={100} sizes="90px" className="object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-emerald-400 text-[10px] font-black tracking-widest uppercase">Equipar Ultimate</p>
+                  <h2 className="text-white font-black text-base leading-tight truncate">{card.name}</h2>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    {card.requiresUnit
+                      ? `Requer ${card.requiresUnit}`
+                      : "Escolha a Unidade que receberá esta Ultimate"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 flex flex-col gap-2 max-h-[55vh] overflow-y-auto">
+                {candidates.map(({ unit, index, compatible }) => (
+                  <button
+                    key={`equip-${index}`}
+                    disabled={!compatible}
+                    onClick={() => {
+                      close()
+                      if (source === "hand") placeUltimateCard(cardIndex, index)
+                      else playCardFromTap(cardIndex, "ultimate", undefined, index)
+                    }}
+                    className={`w-full flex items-center gap-3 p-2 rounded-xl border text-left transition-all ${
+                      compatible
+                        ? "border-emerald-500/35 hover:border-emerald-400 hover:bg-emerald-500/10"
+                        : "border-white/[0.06] opacity-40 cursor-not-allowed"
+                    }`}
+                  >
+                    <div className="relative w-10 h-14 shrink-0 border border-white/10 rounded-sm overflow-hidden bg-black/40">
+                      <Image src={getActiveSkin(unit.image || "") || "/placeholder.svg"} alt={unit.name} fill quality={100} sizes="80px" className="object-contain" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white font-bold text-sm truncate">{unit.name}</p>
+                      <p className="text-slate-400 text-[11px]">
+                        {unit.currentDp} DP · Slot {index + 1}
+                      </p>
+                    </div>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                      compatible ? "bg-emerald-500 text-black" : "bg-slate-700 text-slate-300"
+                    }`}>
+                      {compatible ? "EQUIPAR" : "INCOMPATÍVEL"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="px-3 pb-3">
+                <button onClick={close}
+                  className="w-full py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.05] font-bold text-sm transition-all">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {showPauseMenu && !showAudioSettings && (
         <div className="fixed inset-0 z-[9000] flex items-center justify-center"
           style={{background:"rgba(0,0,0,0.85)",backdropFilter:"blur(8px)"}}>
