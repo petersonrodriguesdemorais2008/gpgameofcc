@@ -17,9 +17,9 @@ export function EquipChainOverlay({
   duration?: number
 }) {
   return (
-    <div className="gp-equip-chain pointer-events-none absolute -inset-2 z-40" aria-hidden="true">
+    <div className="gp-equip-chain pointer-events-none absolute -inset-7 -z-10" aria-hidden="true">
       {/* Brilho suave e transparente em volta da carta */}
-      <div className="gp-equip-chain__halo absolute inset-1 rounded-sm bg-cyan-300/20 blur-[6px]" />
+      <div className="gp-equip-chain__halo absolute inset-6 rounded-sm bg-cyan-300/20 blur-[6px]" />
       {/* Engrenagem girando */}
       <div
         className="gp-equip-chain__gear absolute inset-0"
