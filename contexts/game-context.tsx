@@ -3251,6 +3251,29 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${ALL_SLEEVES.length} sleeves foram desbloqueados!` }
     }
 
+    // SKINS - Unlocks all card skins
+    if (normalizedCode === "SKINS") {
+      // As skins de carta ficam apenas no localStorage (gpgame_card_skins) e sao
+      // consumidas pela loja, deck-builder e duel-screen. Ids precisam casar com
+      // CARD_SKIN_SHOP_ITEMS (shop-screen.tsx) / CARD_SKINS (deck-builder-screen.tsx).
+      const ALL_CARD_SKIN_IDS = ["fehnon_skin_pixel", "calem_skin_pixel", "morgana_skin_pixel"]
+      try {
+        const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
+        const owned: string[] = JSON.parse(raw)
+        const merged = Array.from(new Set([...owned, ...ALL_CARD_SKIN_IDS]))
+        localStorage.setItem("gpgame_card_skins", JSON.stringify(merged))
+        ALL_CARD_SKIN_IDS.forEach((skinId) => {
+          window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
+        })
+      } catch {}
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Todas as ${ALL_CARD_SKIN_IDS.length} skins de carta foram desbloqueadas!` }
+    }
+
     // Invalid code
     return { success: false, message: "Codigo invalido!" }
   }
