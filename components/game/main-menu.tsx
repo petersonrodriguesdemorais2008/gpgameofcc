@@ -6,7 +6,7 @@ import { useGame } from "@/contexts/game-context"
 import type { GameScreen } from "@/components/game/game-wrapper"
 import {
   Swords, Users, Gift, BookOpen, Hammer, History, Settings,
-  Coins, X, Sparkles, Star, Target, Shield,
+  Coins, X, Sparkles, Star, Target, Shield, Backpack,
 } from "lucide-react"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -1596,7 +1596,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 2 }} />
       <canvas ref={fxCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 3 }} />
 
-      {/* ══ ACHIEVEMENT POP-UP ══ */}
+      {/* ══ ACHIEVEMENT POP-UP ��═ */}
       {achievement && (
         <div className={"gp-achieve" + (achievement.out ? " out" : "")}>
           <div className="gp-achieve-icon">{achievement.icon}</div>
@@ -1910,6 +1910,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       <div className={"fixed z-30 flex flex-col gap-2" + (mounted ? " gp-anim-sidebar" : " gp-pre-mount")} style={{ top:152, right:4 }}>
         {[
           { label:"Deck",   icon:<Hammer />,   onClick:()=>onNavigate("deck-builder"),  gold:false, dot:false    },
+          { label:"Itens",  icon:<Backpack />, onClick:()=>onNavigate("inventory"),     gold:false, dot:false    },
           { label:"Histórico",  icon:<History />,  onClick:()=>onNavigate("history"),       gold:false, dot:false    },
           { label:"Config.", icon:<Settings />, onClick:()=>onNavigate("settings"),      gold:false, dot:false    },
           { label:"Diárias",  icon:null,         onClick:()=>{ setShowDailyBonus(true); setDailyBonusJustClaimed(false) }, gold:false, dot:!dailyBonusClaimed, emoji: dailyBonusClaimed ? "✅" : "🎁", dotColor:"rgba(52,211,153,0.9)" },
