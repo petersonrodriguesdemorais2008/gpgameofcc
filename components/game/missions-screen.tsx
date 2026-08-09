@@ -13,6 +13,30 @@ import {
   getTodayStr,
   getWeekStartStr,
 } from "@/lib/mission-tracker"
+import {
+  SKIP_TICKET_DAILY_BONUS,
+  SKIP_TICKET_IMAGE,
+  SKIP_TICKET_NAME,
+} from "@/lib/skip-ticket"
+
+// ─── Skip Tíquete: ícone do item ──────────────────────────────────────────────
+function SkipTicketIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <img
+      src={SKIP_TICKET_IMAGE || "/placeholder.svg"}
+      alt={SKIP_TICKET_NAME}
+      width={size}
+      height={size}
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        objectFit: "contain",
+        filter: "drop-shadow(0 0 6px rgba(125,211,252,0.65))",
+      }}
+    />
+  )
+}
 
 // ─── Coin Icon com fallback SVG ───────────────────────────────────────────────
 function CoinIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
@@ -344,7 +368,7 @@ function MissionCard({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const { t } = useLanguage()
-  const { coins, addCoins, addFP, collection } = useGame()
+  const { coins, addCoins, addFP, collection, skipTickets, addSkipTickets } = useGame()
 
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "special">("daily")
   const [claimingId, setClaimingId] = useState<string | null>(null)
@@ -596,29 +620,32 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const bonusAlreadyClaimed = isBonusClaimed(activeTab)
   // bonusCoins declarado aqui — antes de handleClaimBonus que o usa no deps array
   const bonusCoins = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
+  // Só o bônus das missões DIÁRIAS entrega Skip Tíquete
+  const bonusTickets = activeTab === "daily" ? SKIP_TICKET_DAILY_BONUS : 0
 
   // ── Toast de recompensa coletada ────────────────────────────────────────────
-  const [rewardToast, setRewardToast] = useState<{ coins: number; fp: number; key: number } | null>(null)
+  const [rewardToast, setRewardToast] = useState<{ coins: number; fp: number; tickets?: number; key: number } | null>(null)
   useEffect(() => {
     if (!rewardToast) return
     const id = setTimeout(() => setRewardToast(null), 2400)
     return () => clearTimeout(id)
   }, [rewardToast])
 
-  const showRewardToast = useCallback((coinsGained: number, fpGained: number) => {
-    if (coinsGained <= 0 && fpGained <= 0) return
-    setRewardToast({ coins: coinsGained, fp: fpGained, key: Date.now() })
+  const showRewardToast = useCallback((coinsGained: number, fpGained: number, ticketsGained = 0) => {
+    if (coinsGained <= 0 && fpGained <= 0 && ticketsGained <= 0) return
+    setRewardToast({ coins: coinsGained, fp: fpGained, tickets: ticketsGained, key: Date.now() })
   }, [])
 
   const handleClaimBonus = useCallback(() => {
     if (isBonusClaimed(activeTab)) return
     addCoins(bonusCoins)
-    showRewardToast(bonusCoins, 0)
+    if (bonusTickets > 0) addSkipTickets(bonusTickets)
+    showRewardToast(bonusCoins, 0, bonusTickets)
     setBonusClaimed(prev => ({
       ...prev,
       [activeTab]: { dayKey: getDayKey(), weekKey: getWeekKey() },
     }))
-  }, [activeTab, bonusClaimed, bonusCoins, addCoins, showRewardToast])
+  }, [activeTab, bonusClaimed, bonusCoins, bonusTickets, addCoins, addSkipTickets, showRewardToast])
 
   // Coleta recompensa de uma missão individual (moedas + FP)
   const handleClaimReward = useCallback((id: string) => {
@@ -767,6 +794,17 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
               <CoinIcon size={18} />
               <span className="text-white font-bold text-sm tabular-nums">{coins?.toLocaleString() ?? "0"}</span>
             </div>
+
+            {/* Skip Tíquetes em posse */}
+            {skipTickets > 0 && (
+              <div
+                className="flex items-center gap-2 bg-slate-950/80 border border-sky-400/25 px-3 py-1.5 rounded-xl"
+                title={SKIP_TICKET_NAME}
+              >
+                <SkipTicketIcon size={20} />
+                <span className="text-sky-200 font-bold text-sm tabular-nums">{skipTickets}</span>
+              </div>
+            )}
           </div>
         </header>
 
@@ -877,6 +915,12 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       {allComplete ? "Parabéns! Colete seu bônus." : "Complete todas as missões para liberar."}
                     </p>
+                    {bonusTickets > 0 && (
+                      <p className="mt-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-sky-300/80">
+                        <SkipTicketIcon size={16} />
+                        Inclui {bonusTickets} {SKIP_TICKET_NAME} — pula um duelo de Evento
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -893,13 +937,27 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
                       {bonusAlreadyClaimed ? (
                         <><Check className="w-4 h-4 text-emerald-400" /> Coletado</>
                       ) : (
-                        <><CoinIcon size={16} /> +{bonusCoins.toLocaleString()}</>
+                        <>
+                          <CoinIcon size={16} /> +{bonusCoins.toLocaleString()}
+                          {bonusTickets > 0 && (
+                            <>
+                              <span aria-hidden className="mx-0.5 h-4 w-px bg-white/30" />
+                              <SkipTicketIcon size={18} /> +{bonusTickets}
+                            </>
+                          )}
+                        </>
                       )}
                     </button>
                   ) : (
                     <div className="flex items-center gap-1.5 opacity-40">
                       <CoinIcon size={16} />
                       <span className="text-slate-400 font-black">+{bonusCoins.toLocaleString()}</span>
+                      {bonusTickets > 0 && (
+                        <>
+                          <SkipTicketIcon size={18} />
+                          <span className="text-slate-400 font-black">+{bonusTickets}</span>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -930,6 +988,11 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
             {rewardToast.fp > 0 && (
               <span className="flex items-center gap-1 text-sm font-black text-purple-300 tabular-nums">
                 <Star className="w-3.5 h-3.5" /> +{rewardToast.fp} FP
+              </span>
+            )}
+            {(rewardToast.tickets ?? 0) > 0 && (
+              <span className="flex items-center gap-1 text-sm font-black text-sky-300 tabular-nums">
+                <SkipTicketIcon size={18} /> +{rewardToast.tickets}
               </span>
             )}
           </div>

@@ -2028,7 +2028,7 @@ const getElementGlow = (element: string): string => {
   }
 }
 
-// ─── DiceCanvas3D ──────────────────────────��──────────────────────────────────
+// ─── DiceCanvas3D ──────────────────────────���──────────────────────────────────
 // CSS preserve-3d dice. rig handles scale/translateY, cube handles rotateX/Y.
 // Transforms set via rAF JS �� no @keyframes on preserve-3d elements (would flatten).
 interface DiceCanvas3DProps { result: number | null; cardName: string }
@@ -2525,7 +2525,7 @@ function StarfieldCanvas() {
 
     function buildGalaxies() {
       const defs = [
-        // Large purple spiral — centre, tilt=0.50 (viewed ~30° from face), spin slow
+        // Large purple spiral ��� centre, tilt=0.50 (viewed ~30° from face), spin slow
         {x:.42,y:.55,r:W*.13, arms:4,tilt:.50,rotation:0,    spinSpeed:.000055,precPhase:0,   precSpeed:.00018,c1:"rgba(195,118,255,1)",c2:"rgba(105,152,255,1)",cc:"rgba(155,75,255,", cl:"#ead4ff",dc:"rgba(18,4,58,1)"},
         // Blue spiral — top-centre, tilt=0.42, slightly faster
         {x:.62,y:.10,r:W*.09, arms:3,tilt:.42,rotation:1.2,  spinSpeed:.000070,precPhase:2.0, precSpeed:.00022,c1:"rgba(75,158,255,1)", c2:"rgba(135,218,255,1)",cc:"rgba(38,115,255,",  cl:"#c6e8ff",dc:"rgba(4,8,50,1)"},
@@ -2806,7 +2806,7 @@ interface GameResultScreenProps {
   rewardKind?: DuelRewardKind
 }
 
-function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps) {
+export function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef    = useRef<number>(0)
   const isWon     = result === "won"
@@ -3244,7 +3244,7 @@ class OnlineDuelErrorBoundary extends Component<
   }
 }
 
-// ── FX de ativação de armadilha: correntes de aço que selam a carta ────────
+// ── FX de ativação de armadilha: correntes de aço que selam a carta ──────��─
 // Faixa de corrente em SVG: elos pesados alternados (anel aberto / elo de
 // perfil com rebite), com sombra própria e brilho de aresta pra ler como metal
 function ChainStrap({ links = 9 }: { links?: number }) {
@@ -11105,7 +11105,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           transform-origin: 50% 88%;
         }
 
-        /* ══════════════════════════════════════════════════════════════
+        /* ════════════════════════════════════════════��═════════════════
            TABULEIRO — "Arena Cósmica"
            A mesa é uma laje de obsidiana polida flutuando no mesmo
            cosmos do fundo (nebulosas + estrelas do StarfieldCanvas).
