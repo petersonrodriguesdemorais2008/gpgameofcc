@@ -3235,8 +3235,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${ALL_PLAYMATS.length} playmats foram desbloqueados!` }
     }
 
-    // SLEVEE - Unlocks all sleeves
-    if (normalizedCode === "SLEVEE") {
+    // SLEEVES - Unlocks every sleeve that exists at the moment the code is redeemed
+    if (normalizedCode === "SLEEVES") {
       const newOwnedSleeves = ALL_SLEEVES.filter(
         (s) => !ownedSleeves.some((os) => os.id === s.id)
       )
@@ -3249,6 +3249,63 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
 
       return { success: true, message: `Todos os ${ALL_SLEEVES.length} sleeves foram desbloqueados!` }
+    }
+
+    // ICONS - Unlocks every profile icon that exists at the moment the code is redeemed
+    if (normalizedCode === "ICONS") {
+      const newOwnedIconIds = SHOP_PROFILE_ICONS.filter(
+        (i) => !ownedIconIds.includes(i.id)
+      ).map((i) => i.id)
+      const updatedIconIds = [...ownedIconIds, ...newOwnedIconIds]
+      setOwnedIconIds(updatedIconIds)
+      localStorage.setItem("gearperks_owned_icons", JSON.stringify(updatedIconIds))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Todos os ${SHOP_PROFILE_ICONS.length} ícones foram desbloqueados!` }
+    }
+
+    // PASS - Grants the maximum Gear Pass XP, reaching the max Gear Pass level
+    if (normalizedCode === "PASS") {
+      const GEAR_PASS_MAX_LEVEL = 100
+      // Σ(i=1..N) of (20 + 5i) = 20N + 5·N·(N+1)/2 — mesma fórmula usada na tela do Gear Pass
+      const maxPoints = 20 * GEAR_PASS_MAX_LEVEL + Math.round((5 * GEAR_PASS_MAX_LEVEL * (GEAR_PASS_MAX_LEVEL + 1)) / 2)
+
+      const LS_PASS_KEY = "gpgame_gear_pass"
+      let stored: Record<string, any> = {}
+      try {
+        stored = JSON.parse(localStorage.getItem(LS_PASS_KEY) || "{}")
+      } catch {}
+
+      const updatedPassData = {
+        currentPoints: maxPoints,
+        currentLevel: GEAR_PASS_MAX_LEVEL,
+        hasPremium: stored.hasPremium ?? false,
+        claimedCommon: stored.claimedCommon ?? [],
+        claimedPremium: stored.claimedPremium ?? [],
+        seasonStartedAt: stored.seasonStartedAt ?? Date.now(),
+        seasonNumber: stored.seasonNumber ?? 1,
+      }
+      localStorage.setItem(LS_PASS_KEY, JSON.stringify(updatedPassData))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Nível máximo do Gear Pass (nível ${GEAR_PASS_MAX_LEVEL}) alcançado!` }
+    }
+
+    // GOLD - Grants 1,000,000 gear coins to the player's account
+    if (normalizedCode === "GOLD") {
+      setGearCoins((prev) => prev + 1_000_000)
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: "1.000.000 gear coins foram adicionados à sua conta!" }
     }
 
     // SKINS - Unlocks all card skins
@@ -3328,7 +3385,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_selected_wallpaper")
       localStorage.removeItem("gpgame_unlocked_wallpapers")
 
-      // ── Masters system ─────────────────────────────────────────────────────
+      // ── Masters system ────────────────��────────────────────────────────────
       localStorage.removeItem("gpgame_masters_v1")
 
       // ── Story Mode (Campanha) ─────────────────────────────────────────���────

@@ -3628,62 +3628,39 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
     // Check scenarios (both can be active at the same time in some games, but here we check both fields)
     const scenarios = [
-      { card: playerField.scenarioZone, isPlayer: true, field: playerField },
-      { card: enemyField.scenarioZone, isPlayer: false, field: enemyField }
+      { card: playerField.scenarioZone, isPlayer: true },
+      { card: enemyField.scenarioZone, isPlayer: false }
     ]
 
-    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer, field: scenarioField }) => {
+    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) => {
       if (!scenario) return
 
       const ability = scenario.ability
       const isCardOwner = !isEnemy === scenarioOwnerIsPlayer
 
+      // Scenario effects apply ONLY to the scenario OWNER's units.
+      // They never buff the opponent's cards nor debuff/destroy anyone's cards.
+      if (!isCardOwner) return
+
       if (ability === "RUÍNAS ABANDONADAS") {
-        let applied = false
-        if (isGreatOrderUnit(card)) {
-          dp += 2
-          applied = true
-        }
-        if (!applied && isTroopUnit(card)) {
+        if (isGreatOrderUnit(card) || isTroopUnit(card)) {
           dp += 2
         }
       } else if (ability === "REINO DE CAMELOT") {
-        let applied = false
         if (isAvalonUnit(card)) {
           dp += 3
-          applied = true
-        }
-        if (!applied && card.element === "Darkus") {
+        } else if (card.element === "Darkus") {
           dp += 2
-          applied = true
-        }
-        // Debuff: Only if this scenario belongs to the OPPONENT of this card
-        if (!applied && !isCardOwner) {
-          // Check if the scenario owner has Alvorada de Albion
-          const scenarioOwnerHasAlvorada = scenarioField.functionZone.some(f => f && !f.isFaceDown && f.name === "Alvorada de Albion");
-          dp -= (scenarioOwnerHasAlvorada ? 4 : 2);
         }
       } else if (ability === "ARENA ESCANDINAVA") {
-        let applied = false
         if (isScandinavianAngel(card)) {
           dp += 3
-          applied = true
-        }
-        if (!applied && !isCardOwner) {
-          dp -= 1
         }
       } else if (ability === "VILA DA PÓLVORA") {
-        let applied = false
         if (isTormentaProminence(card)) {
           dp += 2
-          applied = true
-        }
-        if (!applied && card.element === "Pyrus") {
+        } else if (card.element === "Pyrus") {
           dp += 1
-          applied = true
-        }
-        if (!applied && !isCardOwner) {
-          dp -= 3
         }
       }
     })
@@ -4495,20 +4472,29 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
       }
 
-      // Prepare updated zones with scenario buffs
+      // Apply ONLY the delta bonus of the new scenario to the OWNER's units,
+      // preserving previously accumulated buffs (equips, effects, etc).
+      // Scenarios never affect the opponent's units.
+      const getNewScenarioBonus = (u: FieldCard): number => {
+        const ability = cardToPlace.ability
+        if (ability === "RUÍNAS ABANDONADAS") {
+          if (isGreatOrderUnit(u) || isTroopUnit(u)) return 2
+        } else if (ability === "REINO DE CAMELOT") {
+          if (isAvalonUnit(u)) return 3
+          if (u.element === "Darkus") return 2
+        } else if (ability === "ARENA ESCANDINAVA") {
+          if (isScandinavianAngel(u)) return 3
+        } else if (ability === "VILA DA PÓLVORA") {
+          if (isTormentaProminence(u)) return 2
+          if (u.element === "Pyrus") return 1
+        }
+        return 0
+      }
+
       const updatedPlayerUnitZone = prev.unitZone.map(u => {
         if (!u) return null
-        return { ...u, currentDp: calculateCardDP(u, prev, false) }
+        return { ...u, currentDp: (u.currentDp ?? u.dp) + getNewScenarioBonus(u) }
       })
-
-      // Also update enemy units if scenario provides debuffs/buffs
-      setEnemyField(enemyPrev => ({
-        ...enemyPrev,
-        unitZone: enemyPrev.unitZone.map(u => {
-          if (!u) return null
-          return { ...u, currentDp: calculateCardDP(u, enemyPrev, true) }
-        })
-      }))
 
       if (cardToPlace.ability === "REINO DE CAMELOT" || cardToPlace.ability === "VILA DA PÓLVORA") {
         setTimeout(() => showEffectFeedback(`${cardToPlace.name} ativado! O campo mudou!`, "success"), 500)
