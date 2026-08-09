@@ -2681,3 +2681,216 @@
       0 3px 4px -2px rgba(0, 0, 0, 0.5);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DUEL CARD FX — Invocação, DP e Cenário
+   Animações épicas de campo (jogador e oponente)
+═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Invocação no slot: flash de impacto ── */
+@keyframes fx-summon-flash {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Invocação: anel de choque ── */
+@keyframes fx-summon-ring {
+  0%   { transform: scale(0.25); opacity: 0.95; border-width: 3px; }
+  70%  { opacity: 0.55; }
+  100% { transform: scale(2.1); opacity: 0; border-width: 1px; }
+}
+@keyframes fx-summon-ring2 {
+  0%   { transform: scale(0.2); opacity: 0; }
+  25%  { opacity: 0.85; }
+  100% { transform: scale(2.7); opacity: 0; }
+}
+
+/* ── Invocação: raios de luz girando ── */
+@keyframes fx-summon-rays {
+  0%   { transform: rotate(0deg) scale(0.4); opacity: 0; }
+  20%  { opacity: 0.9; }
+  75%  { opacity: 0.4; }
+  100% { transform: rotate(140deg) scale(1.45); opacity: 0; }
+}
+
+/* ── Invocação: faísca radial (usa --ang / --dist) ── */
+@keyframes fx-summon-spark {
+  0%   { transform: rotate(var(--ang)) translateY(0) scale(1); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: rotate(var(--ang)) translateY(calc(-1 * var(--dist))) scale(0.15); opacity: 0; }
+}
+
+/* ── Invocação: moldura da carta "slam" ── */
+@keyframes fx-summon-frame {
+  0%   { opacity: 1; box-shadow: 0 0 0 0 var(--fx-c-soft), inset 0 0 24px var(--fx-c-soft); }
+  40%  { box-shadow: 0 0 26px 8px var(--fx-c-soft), inset 0 0 12px var(--fx-c-soft); }
+  100% { opacity: 0; box-shadow: 0 0 0 0 transparent, inset 0 0 0 transparent; }
+}
+
+/* ── Invocação: bloom central ── */
+@keyframes fx-summon-bloom {
+  0%   { transform: scale(0.2); opacity: 0; }
+  18%  { transform: scale(1.15); opacity: 0.95; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* ── Invocação: brilho varrendo a arte ── */
+@keyframes fx-summon-sweep {
+  0%   { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  25%  { opacity: 0.9; }
+  100% { transform: translateX(170%) skewX(-18deg); opacity: 0; }
+}
+
+/* ── DP: texto flutuante ganho ── */
+@keyframes fx-dp-float-up {
+  0%   { transform: translate(-50%, 8px) scale(0.4); opacity: 0; }
+  18%  { transform: translate(-50%, -6px) scale(1.35); opacity: 1; }
+  32%  { transform: translate(-50%, -10px) scale(1); }
+  78%  { opacity: 1; }
+  100% { transform: translate(-50%, -40px) scale(0.9); opacity: 0; }
+}
+
+/* ── DP: texto flutuante perda ── */
+@keyframes fx-dp-float-down {
+  0%   { transform: translate(-50%, -14px) scale(1.7); opacity: 0; }
+  16%  { transform: translate(-50%, 0px) scale(1.15); opacity: 1; }
+  30%  { transform: translate(-50%, 2px) scale(1); }
+  78%  { opacity: 1; }
+  100% { transform: translate(-50%, 26px) scale(0.85); opacity: 0; }
+}
+
+/* ── DP: aura de buff (verde/dourada) ── */
+@keyframes fx-dp-aura-buff {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 rgba(74,222,128,0); }
+  20%  { opacity: 1; box-shadow: inset 0 0 22px rgba(74,222,128,0.85), 0 0 18px rgba(74,222,128,0.7); }
+  60%  { opacity: 0.8; box-shadow: inset 0 0 14px rgba(74,222,128,0.5), 0 0 10px rgba(74,222,128,0.4); }
+  100% { opacity: 0; box-shadow: inset 0 0 0 rgba(74,222,128,0), 0 0 0 rgba(74,222,128,0); }
+}
+
+/* ── DP: aura de dano (vermelha) ── */
+@keyframes fx-dp-aura-debuff {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 rgba(248,113,113,0); }
+  15%  { opacity: 1; box-shadow: inset 0 0 24px rgba(248,113,113,0.9), 0 0 20px rgba(239,68,68,0.75); }
+  55%  { opacity: 0.85; box-shadow: inset 0 0 14px rgba(248,113,113,0.55), 0 0 10px rgba(239,68,68,0.45); }
+  100% { opacity: 0; box-shadow: inset 0 0 0 rgba(248,113,113,0), 0 0 0 rgba(239,68,68,0); }
+}
+
+/* ── DP: tremor de dano ── */
+@keyframes fx-dp-shake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-3px, 1px) rotate(-1.2deg); }
+  30% { transform: translate(3px, -1px) rotate(1.2deg); }
+  45% { transform: translate(-2px, -1px) rotate(-0.8deg); }
+  60% { transform: translate(2px, 1px) rotate(0.8deg); }
+  75% { transform: translate(-1px, 0) rotate(-0.4deg); }
+}
+
+/* ── DP: pulso de energia subindo (buff, usa --px / --pd) ── */
+@keyframes fx-dp-particle {
+  0%   { transform: translate(var(--px), 12px) scale(1); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--px), -58px) scale(0.2); opacity: 0; }
+}
+
+/* ── DP: anel expandindo no buff ── */
+@keyframes fx-dp-ring {
+  0%   { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* ── DP: flash de rachadura no debuff ── */
+@keyframes fx-dp-crack {
+  0%   { opacity: 0; transform: scale(1.25); }
+  18%  { opacity: 1; transform: scale(1); }
+  50%  { opacity: 0.7; }
+  100% { opacity: 0; transform: scale(0.96); }
+}
+
+/* ═══ CENÁRIO — animação cinematográfica de campo ═══ */
+@keyframes fx-scn-backdrop {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes fx-scn-bar-top {
+  0%   { transform: translateY(-100%); }
+  12%  { transform: translateY(0); }
+  84%  { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+@keyframes fx-scn-bar-bottom {
+  0%   { transform: translateY(100%); }
+  12%  { transform: translateY(0); }
+  84%  { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+@keyframes fx-scn-rays {
+  0%   { transform: rotate(0deg) scale(0.5); opacity: 0; }
+  20%  { opacity: 0.75; }
+  80%  { opacity: 0.55; }
+  100% { transform: rotate(90deg) scale(1.3); opacity: 0; }
+}
+@keyframes fx-scn-card {
+  0%   { transform: scale(2.6) rotateX(18deg); opacity: 0; filter: blur(14px) brightness(2.4); }
+  16%  { transform: scale(1.04) rotateX(0deg); opacity: 1; filter: blur(0) brightness(1.35); }
+  22%  { transform: scale(0.97); filter: brightness(1.05); }
+  28%  { transform: scale(1); }
+  80%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.6) translateY(30px); opacity: 0; filter: blur(6px); }
+}
+@keyframes fx-scn-flash {
+  0%, 12% { opacity: 0; }
+  16%  { opacity: 0.95; }
+  30%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes fx-scn-ring {
+  0%, 14% { transform: scale(0.3); opacity: 0; }
+  18%  { opacity: 0.9; }
+  55%  { transform: scale(2.4); opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes fx-scn-shine {
+  0%, 24% { transform: translateX(-140%) skewX(-20deg); opacity: 0; }
+  32%  { opacity: 1; }
+  55%  { transform: translateX(180%) skewX(-20deg); opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes fx-scn-title {
+  0%, 18% { transform: translateY(14px); opacity: 0; letter-spacing: 0.6em; }
+  30%  { transform: translateY(0); opacity: 1; letter-spacing: 0.3em; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+@keyframes fx-scn-name {
+  0%, 24% { transform: translateY(16px) scale(0.92); opacity: 0; }
+  36%  { transform: translateY(0) scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(-8px); opacity: 0; }
+}
+@keyframes fx-scn-ember {
+  0%   { transform: translate(var(--ex), 20px) scale(1); opacity: 0; }
+  20%  { opacity: 0.95; }
+  100% { transform: translate(var(--ex), -160px) scale(0.2); opacity: 0; }
+}
+@keyframes fx-scn-groundwave {
+  0%, 14% { transform: scaleX(0); opacity: 0; }
+  22%  { transform: scaleX(1); opacity: 0.9; }
+  70%  { opacity: 0.4; }
+  100% { transform: scaleX(1.15); opacity: 0; }
+}
+
+/* ── Drop de carta melhorado (materialização) ── */
+@keyframes fx-drop-card {
+  0%   { transform: scale(1.7) translateY(-14px) rotateX(28deg); opacity: 0; filter: blur(6px) brightness(2.2); }
+  38%  { transform: scale(1.05) translateY(0) rotateX(0deg); opacity: 1; filter: blur(0) brightness(1.4); }
+  52%  { transform: scale(0.94); filter: brightness(1); }
+  68%  { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+}
+@keyframes fx-drop-fadeout {
+  0%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
