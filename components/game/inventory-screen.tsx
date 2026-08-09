@@ -19,6 +19,13 @@ import {
   SKIP_TICKET_IMAGE,
   SKIP_TICKET_NAME,
 } from "@/lib/skip-ticket"
+import {
+  STAMINA_BOTTLE_COLOR,
+  STAMINA_BOTTLE_IMAGE,
+  STAMINA_BOTTLE_MIN_MISSING,
+  STAMINA_BOTTLE_NAME,
+  STAMINA_BOTTLE_REFILL_AMOUNT,
+} from "@/lib/stamina-bottle"
 import { ArrowLeft, Search, X, Backpack, HeartHandshake } from "lucide-react"
 import Image from "next/image"
 
@@ -35,6 +42,10 @@ interface InventoryItem {
   color: string
   /** Ícone alternativo quando não há imagem. */
   fallbackIcon?: React.ReactNode
+  /** Itens consumíveis usáveis diretamente aqui mostram um botão "Usar". */
+  onUse?: () => void
+  /** Por que o botão "Usar" está desabilitado agora (undefined = habilitado). */
+  useDisabledReason?: string
 }
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {

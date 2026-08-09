@@ -15,6 +15,7 @@ import {
 } from "@/lib/mission-tracker"
 import {
   SKIP_TICKET_DAILY_BONUS,
+  SKIP_TICKET_WEEKLY_BONUS,
   SKIP_TICKET_IMAGE,
   SKIP_TICKET_NAME,
 } from "@/lib/skip-ticket"
@@ -620,8 +621,13 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
   const bonusAlreadyClaimed = isBonusClaimed(activeTab)
   // bonusCoins declarado aqui — antes de handleClaimBonus que o usa no deps array
   const bonusCoins = activeTab === "daily" ? 200 : activeTab === "weekly" ? 1000 : 2000
-  // Só o bônus das missões DIÁRIAS entrega Skip Tíquete
-  const bonusTickets = activeTab === "daily" ? SKIP_TICKET_DAILY_BONUS : 0
+  // Bônus das missões DIÁRIAS (3) e SEMANAIS (7) entregam Skip Tíquete
+  const bonusTickets =
+    activeTab === "daily"
+      ? SKIP_TICKET_DAILY_BONUS
+      : activeTab === "weekly"
+      ? SKIP_TICKET_WEEKLY_BONUS
+      : 0
 
   // ── Toast de recompensa coletada ────────────────────────────────────────────
   const [rewardToast, setRewardToast] = useState<{ coins: number; fp: number; tickets?: number; key: number } | null>(null)
@@ -918,7 +924,8 @@ export default function MissionsScreen({ onBack }: MissionsScreenProps) {
                     {bonusTickets > 0 && (
                       <p className="mt-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-sky-300/80">
                         <SkipTicketIcon size={16} />
-                        Inclui {bonusTickets} {SKIP_TICKET_NAME} — pula um duelo de Evento
+                        Inclui {bonusTickets} {SKIP_TICKET_NAME}
+                        {bonusTickets > 1 ? "s" : ""} — pula duelos de Evento
                       </p>
                     )}
                   </div>

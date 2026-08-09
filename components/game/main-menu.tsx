@@ -12,6 +12,16 @@ import Image from "next/image"
 import dynamic from "next/dynamic"
 import { loadMastersFromStorage } from "@/lib/masters-data"
 import { preloadImages, GAME_MODE_IMAGES } from "./image-preloader"
+import {
+  SKIP_TICKET_IMAGE,
+  SKIP_TICKET_NAME,
+  SKIP_TICKET_LOGIN_BONUS,
+} from "@/lib/skip-ticket"
+import {
+  STAMINA_BOTTLE_IMAGE,
+  STAMINA_BOTTLE_NAME,
+  STAMINA_BOTTLE_LOGIN_BONUS,
+} from "@/lib/stamina-bottle"
 
 const MasterMenuCard = dynamic(
   () => import("./master-screen").then(m => ({ default: m.MasterMenuCard })),
@@ -883,7 +893,7 @@ export function resumeMenuMusic() {
 
 export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, setCoins, gearCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends } = useGame()
+  const { coins, setCoins, gearCoins, giftBoxes, claimGift, playerProfile, mobileMode, stamina, maxStamina, staminaNextTickSeconds, decks, friends, addSkipTickets, addStaminaBottles } = useGame()
 
   // ── Entrance animation: hidden until mounted, then animate in ──
   const [mounted, setMounted] = useState(false)
@@ -1228,6 +1238,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const handleClaimDailyBonus = () => {
     if (dailyBonusClaimed) return
     setCoins((prev: number) => prev + 50)
+    addSkipTickets(SKIP_TICKET_LOGIN_BONUS)
+    addStaminaBottles(STAMINA_BOTTLE_LOGIN_BONUS)
     localStorage.setItem("gpgame_daily_bonus_date", new Date().toISOString())
     setDailyBonusClaimed(true)
     setDailyBonusJustClaimed(true)
@@ -2165,7 +2177,7 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
               <h2 className="text-white font-black text-2xl mb-1">Bônus Diário</h2>
               <p className="text-sm" style={{color:"rgba(167,139,250,0.58)"}}>{dailyBonusClaimed?"Você já coletou o b��nus de hoje. Volte amanhã!":"Colete suas recompensas diárias gratuitas!"}</p>
             </div>
-            <div className="px-6 py-5">
+            <div className="px-6 py-5 space-y-2.5">
               <div className="rounded-2xl p-5 flex items-center justify-center gap-4"
                 style={{background:dailyBonusClaimed?"rgba(255,255,255,0.03)":"rgba(34,197,94,0.08)",border:dailyBonusClaimed?"1px solid rgba(100,100,100,0.12)":"1px solid rgba(34,197,94,0.25)"}}>
                 <div className="relative">
@@ -2178,9 +2190,38 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
                   <p className="text-xs" style={{color:"rgba(124,58,237,0.5)"}}>Gacha Coins</p>
                 </div>
               </div>
+
+              {/* Skip Tíquetes do Bônus Diário */}
+              <div className="rounded-2xl p-5 flex items-center justify-center gap-4"
+                style={{background:dailyBonusClaimed?"rgba(255,255,255,0.03)":"rgba(56,189,248,0.08)",border:dailyBonusClaimed?"1px solid rgba(100,100,100,0.12)":"1px solid rgba(56,189,248,0.25)"}}>
+                <div className="relative">
+                  <Image src={SKIP_TICKET_IMAGE || "/placeholder.svg"} alt={SKIP_TICKET_NAME} width={56} height={56} className="drop-shadow-lg object-contain" />
+                  {!dailyBonusClaimed && <div className="absolute inset-0 rounded-full blur-xl" style={{background:"rgba(125,211,252,0.4)",transform:"scale(1.5)"}} />}
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-widest mb-0.5" style={{color:"rgba(167,139,250,0.5)"}}>Recompensa</p>
+                  <p className="text-4xl font-black" style={{color:dailyBonusClaimed?"rgba(100,100,100,0.5)":"#7dd3fc"}}>+{SKIP_TICKET_LOGIN_BONUS}</p>
+                  <p className="text-xs" style={{color:"rgba(56,189,248,0.6)"}}>{SKIP_TICKET_NAME}s</p>
+                </div>
+              </div>
+
+              {/* Garrafa de Energia do Bônus Diário */}
+              <div className="rounded-2xl p-5 flex items-center justify-center gap-4"
+                style={{background:dailyBonusClaimed?"rgba(255,255,255,0.03)":"rgba(96,165,250,0.08)",border:dailyBonusClaimed?"1px solid rgba(100,100,100,0.12)":"1px solid rgba(96,165,250,0.25)"}}>
+                <div className="relative">
+                  <Image src={STAMINA_BOTTLE_IMAGE || "/placeholder.svg"} alt={STAMINA_BOTTLE_NAME} width={56} height={56} className="drop-shadow-lg object-contain" />
+                  {!dailyBonusClaimed && <div className="absolute inset-0 rounded-full blur-xl" style={{background:"rgba(96,165,250,0.4)",transform:"scale(1.5)"}} />}
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-widest mb-0.5" style={{color:"rgba(167,139,250,0.5)"}}>Recompensa</p>
+                  <p className="text-4xl font-black" style={{color:dailyBonusClaimed?"rgba(100,100,100,0.5)":"#60a5fa"}}>+{STAMINA_BOTTLE_LOGIN_BONUS}</p>
+                  <p className="text-xs" style={{color:"rgba(96,165,250,0.6)"}}>{STAMINA_BOTTLE_NAME}</p>
+                </div>
+              </div>
+
               {dailyBonusJustClaimed && (
-                <div className="mt-3 text-center py-2.5 rounded-xl" style={{border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.10)"}}>
-                  <p className="font-black text-sm" style={{color:"#34d399"}}>🎉 +50 Coins coletados!</p>
+                <div className="text-center py-2.5 rounded-xl" style={{border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.10)"}}>
+                  <p className="font-black text-sm" style={{color:"#34d399"}}>🎉 +50 Coins, +{SKIP_TICKET_LOGIN_BONUS} {SKIP_TICKET_NAME}s e +{STAMINA_BOTTLE_LOGIN_BONUS} {STAMINA_BOTTLE_NAME} coletados!</p>
                 </div>
               )}
             </div>
