@@ -470,24 +470,24 @@ export default function FieldCardFX({ card, image, disableSummon, disableDp }: F
           />
           {/* Colunas de luz subindo + varredura de brilho (recortadas na carta) */}
           <div className="absolute inset-6 overflow-hidden">
-            {[14, 32, 50, 68, 86].map((x, i) => (
+            {[18, 40, 62, 84].map((x, i) => (
               <span
                 key={`beam-${i}`}
                 className="fx-buff-beam absolute bottom-0"
                 style={{
                   left: `${x}%`,
-                  width: 2,
-                  height: "92%",
-                  background: "linear-gradient(to top, transparent, rgba(74,222,128,0.95), rgba(255,255,255,0.95))",
-                  ["--fx-delay" as any]: `${i * 0.06}s`,
+                  width: 1.5,
+                  height: "78%",
+                  background: "linear-gradient(to top, transparent, rgba(74,222,128,0.7), rgba(190,255,215,0.85))",
+                  ["--fx-delay" as any]: `${i * 0.07}s`,
                 }}
               />
             ))}
             <span
-              className="fx-buff-shine absolute inset-y-[-20%] w-[55%]"
+              className="fx-buff-shine absolute inset-y-[-20%] w-[48%]"
               style={{
                 background:
-                  "linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.15) 35%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.15) 65%, transparent 100%)",
+                  "linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.08) 65%, transparent 100%)",
               }}
             />
           </div>

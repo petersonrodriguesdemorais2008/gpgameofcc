@@ -6902,7 +6902,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }
   }, [enemyField, playerField, turn, triggerExplosion])
 
-  // ─── Subscribe to opponent actions ───────────────────────────────────────
+  // ─── Subscribe to opponent actions ──────────────────────���────────────────
   const subscribeToActions = useCallback(() => {
     if (!supabase) return
     if (actionsChannelRef.current) actionsChannelRef.current.unsubscribe()
@@ -7872,7 +7872,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         ["--float-dur" as any]: `${3.4 + (i % 3) * 0.5}s`,
                       }}
                     >
-                      <FieldCardFX card={card as FieldCard | null} />
+                      <FieldCardFX card={card as FieldCard | null} image={card?.image || null} />
                       {card && (
                         <>
                           <Image
@@ -8012,7 +8012,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         {!hasAbility && canAttack && (
                           <div className="absolute -inset-1 bg-yellow-400/40 rounded blur-sm animate-pulse -z-10" />
                         )}
-                        <FieldCardFX card={card as FieldCard | null} />
+                        <FieldCardFX card={card as FieldCard | null} image={card?.image || null} />
                         {card && (
                           <>
                             <Image
