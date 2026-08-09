@@ -106,7 +106,7 @@ const INV_CSS = `
 `
 
 export default function InventoryScreen({ onBack }: { onBack: () => void }) {
-  const { coins, gearCoins, friendPoints, fragments } = useGame()
+  const { coins, gearCoins, friendPoints, fragments, skipTickets } = useGame()
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"todos" | ItemCategory>("todos")
 
@@ -169,7 +169,7 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
     }
 
     return list
-  }, [coins, gearCoins, friendPoints, fragments])
+  }, [coins, gearCoins, friendPoints, fragments, skipTickets])
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
