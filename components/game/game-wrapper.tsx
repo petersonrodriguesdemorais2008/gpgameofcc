@@ -23,6 +23,7 @@ import LoadingScreen from "./loading-screen"
 import { trackDailyLogin } from "@/lib/mission-tracker"
 import DraftDuelScreen from "./draft-duel-screen"
 import RoguelikeScreen from "./roguelike-screen"
+import InventoryScreen from "./inventory-screen"
 import CatastropheScreen from "./catastrophe-screen"
 // ── TUTORIAL ──────────────────────────────────────────────────────────────────
 import TutorialScreen, { TutorialGameOverlay, buildStarterDeckGrant, type TutorialMasterId } from "./tutorial-screen"
@@ -52,6 +53,7 @@ export type GameScreen =
   | "guild"
   | "masters"
   | "events"
+  | "inventory"
 
 export function GameWrapper() {
   const { playerProfile, mobileMode, addToCollection, saveDeck, coins, setCoins } = useGame()
@@ -420,6 +422,7 @@ export function GameWrapper() {
       {currentScreen === "missions" && <MissionsScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "gear-pass" && <GearPassScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "masters" && <MasterScreen onBack={() => navigateTo("menu")} />}
+      {currentScreen === "inventory" && <InventoryScreen onBack={() => navigateTo("menu")} />}
       {currentScreen === "events" && (
         <EventsScreen
           onBack={() => navigateTo("menu")}
