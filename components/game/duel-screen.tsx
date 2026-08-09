@@ -4963,62 +4963,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const enemyScenario  = overrideEnemyScenario  !== undefined ? overrideEnemyScenario  : enemyField.scenarioZone
 
     const scenarios = [
-      { card: playerScenario, isPlayer: true,  field: playerField },
-      { card: enemyScenario,  isPlayer: false, field: enemyField  }
+      { card: playerScenario, isPlayer: true  },
+      { card: enemyScenario,  isPlayer: false }
     ]
 
-    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer, field: scenarioField }) => {
+    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) => {
       if (!scenario) return
 
       const ability = scenario.ability
       const isCardOwner = !isEnemy === scenarioOwnerIsPlayer
 
+      // Scenario effects apply ONLY to the scenario OWNER's units.
+      // They never buff the opponent's cards nor debuff/destroy anyone's cards.
+      if (!isCardOwner) return
+
       if (ability === "RUÍNAS ABANDONADAS") {
-        let applied = false
-        if (isGreatOrderUnit(card)) {
-          dp += 2
-          applied = true
-        }
-        if (!applied && isTroopUnit(card)) {
+        if (isGreatOrderUnit(card) || isTroopUnit(card)) {
           dp += 2
         }
       } else if (ability === "REINO DE CAMELOT") {
-        let applied = false
-        // Buffs apply only to the scenario OWNER's matching units
-        if (isCardOwner && isAvalonUnit(card)) {
+        if (isAvalonUnit(card)) {
           dp += 3
-          applied = true
-        }
-        if (isCardOwner && !applied && card.element === "Darkus") {
+        } else if (card.element === "Darkus") {
           dp += 2
-          applied = true
-        }
-        // Debuff: applies to OPPONENT's cards that don't match
-        if (!isCardOwner && !applied) {
-          const scenarioOwnerHasAlvorada = scenarioField.functionZone.some(f => f && !f.isFaceDown && f.name === "Alvorada de Albion");
-          dp -= (scenarioOwnerHasAlvorada ? 4 : 2);
         }
       } else if (ability === "ARENA ESCANDINAVA") {
-        let applied = false
         if (isScandinavianAngel(card)) {
           dp += 3
-          applied = true
-        }
-        if (!applied && !isCardOwner) {
-          dp -= 1
         }
       } else if (ability === "VILA DA PÓLVORA") {
-        let applied = false
         if (isTormentaProminence(card)) {
           dp += 2
-          applied = true
-        }
-        if (!applied && card.element === "Pyrus") {
+        } else if (card.element === "Pyrus") {
           dp += 1
-          applied = true
-        }
-        if (!applied && !isCardOwner) {
-          dp -= 3
         }
       }
     })
@@ -8440,7 +8417,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
-    // ── Init refs ───────────────────────────────────────────────────────────
+    // ── Init refs ─────────────────────────────────────��─────────────────────
     nativePosRef.current  = { x: clientX, y: clientY }
     nativeRotRef.current  = 0
     nativeDropRef.current = null
