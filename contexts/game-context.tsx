@@ -3251,6 +3251,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${ALL_SLEEVES.length} sleeves foram desbloqueados!` }
     }
 
+    // ICONS - Unlocks every profile icon that exists at the moment the code is redeemed
+    if (normalizedCode === "ICONS") {
+      const newOwnedIconIds = SHOP_PROFILE_ICONS.filter(
+        (i) => !ownedIconIds.includes(i.id)
+      ).map((i) => i.id)
+      const updatedIconIds = [...ownedIconIds, ...newOwnedIconIds]
+      setOwnedIconIds(updatedIconIds)
+      localStorage.setItem("gearperks_owned_icons", JSON.stringify(updatedIconIds))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Todos os ${SHOP_PROFILE_ICONS.length} ícones foram desbloqueados!` }
+    }
+
     // SKINS - Unlocks all card skins
     if (normalizedCode === "SKINS") {
       // As skins de carta ficam apenas no localStorage (gpgame_card_skins) e sao
