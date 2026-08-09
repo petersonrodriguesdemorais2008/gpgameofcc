@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useRef, useCallback, type ReactNode, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
+import { STAMINA_BOTTLE_MIN_MISSING, STAMINA_BOTTLE_REFILL_AMOUNT } from "@/lib/stamina-bottle"
 
 export interface Card {
   id: string
@@ -341,6 +342,12 @@ interface GameContextType {
   addSkipTickets: (amount: number) => void
   /** Consome 1 tíquete. Retorna false quando o jogador não tem nenhum. */
   consumeSkipTicket: () => boolean
+  /** Garrafas de Energia: itens que recuperam stamina do jogador. */
+  staminaBottles: number
+  /** Soma garrafas ao inventário (ex.: Bônus Diário). */
+  addStaminaBottles: (amount: number) => void
+  /** Consome 1 garrafa e recupera stamina. Só funciona faltando 10+ de stamina; retorna false caso contrário. */
+  useStaminaBottle: () => boolean
   collection: Card[]
   addToCollection: (cards: Card[]) => void
   decks: Deck[]
@@ -1945,6 +1952,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return Number.isFinite(n) && n > 0 ? n : 0
     } catch { return 0 }
   })
+  // Garrafas de Energia — mesma estratégia dos Skip Tíquetes.
+  const [staminaBottles, setStaminaBottles] = useState<number>(() => {
+    if (typeof window === "undefined") return 0
+    try {
+      const raw =
+        localStorage.getItem("gear-perks-staminabottles") || localStorage.getItem("gearperks-staminabottles")
+      const n = raw ? Number.parseInt(raw, 10) : 0
+      return Number.isFinite(n) && n > 0 ? n : 0
+    } catch { return 0 }
+  })
   const [collection, setCollection] = useState<Card[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([])
@@ -2001,7 +2018,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   const [mobileMode, setMobileModeState] = useState(false)
 
-  // ── STAMINA ────────────────────────────────────────────────────────────────
+  // ── STAMINA ───────────────────────────────────────────────────────��────────
   const STAMINA_REGEN_SECS = 5 * 60
   const getMaxStamina = (level: number) => 19 + level
 
@@ -2379,6 +2396,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true
   }, [skipTickets])
 
+  // ── Garrafas de Energia ──────────────────────────────────────────────────────
+  const addStaminaBottles = useCallback((amount: number) => {
+    const gain = Math.floor(amount)
+    if (!Number.isFinite(gain) || gain <= 0) return
+    setStaminaBottles((prev) => prev + gain)
+  }, [])
+
+  const useStaminaBottle = useCallback(() => {
+    const max = getMaxStamina(playerProfile.level)
+    const missing = max - stamina
+    if (staminaBottles <= 0) return false
+    if (missing < STAMINA_BOTTLE_MIN_MISSING) return false
+    setStaminaBottles((prev) => Math.max(0, prev - 1))
+    setStamina((prev) => Math.min(max, prev + STAMINA_BOTTLE_REFILL_AMOUNT))
+    return true
+  }, [staminaBottles, stamina, playerProfile.level])
+
   const addDuelRewards = useCallback((kind: DuelRewardKind) => {
     const { gacha, gear, fragments: drop } =
       typeof kind === "object"
@@ -2400,6 +2434,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("skiptickets", skipTickets.toString())
   }, [skipTickets])
+
+  useEffect(() => {
+    setLS("staminabottles", staminaBottles.toString())
+  }, [staminaBottles])
 
   useEffect(() => {
     setLS("collection", JSON.stringify(collection))
@@ -3551,9 +3589,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         fragments,
         addFragments,
         getFragmentCount,
-        skipTickets,
-        addSkipTickets,
-        consumeSkipTicket,
+    skipTickets,
+    addSkipTickets,
+    consumeSkipTicket,
+    staminaBottles,
+    addStaminaBottles,
+    useStaminaBottle,
         collection,
         addToCollection,
         decks,
