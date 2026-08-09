@@ -146,7 +146,7 @@ interface Pt {
 }
 
 export function ElementalAttackAnimation({
-  id, startX, startY, targetX, targetY, element, attackerImage,
+  id, startX, startY, targetX, targetY, element, attackerImage, attackerName,
   portalTarget, onImpact, onComplete,
 }: AttackAnimationProps) {
   const [mounted, setMounted] = useState(false)
@@ -172,8 +172,10 @@ export function ElementalAttackAnimation({
     window.addEventListener("resize", resize)
 
     const el = (element || "neutral").toLowerCase().trim()
-    const E = normalizeElement(el)
-    const P = pal(el)
+    // ── FEHNON HOSKIE — animação exclusiva de corte de espada com água ──────
+    const isFehnon = !!attackerName && attackerName.toLowerCase().includes("fehnon")
+    const E = isFehnon ? "aquos" : normalizeElement(el)
+    const P = isFehnon ? pal("aquos") : pal(el)
     const [br, bg, bb] = hex2rgb(P.b)
     const [cr, cg, cb] = hex2rgb(P.c)
     const [ar, ag, ab] = hex2rgb(P.a)
@@ -231,6 +233,54 @@ export function ElementalAttackAnimation({
 
     // ── Explosão de impacto por elemento ─────────────────────────────────────
     const burst = () => {
+      if (isFehnon) {
+        const sa = ang + Math.PI / 5
+        // Explosão radial de gotas d'água com gravidade
+        spawn(72, () => {
+          const a = rnd() * TAU
+          const sp = 150 + rnd() * 540
+          const white = rnd() < 0.35
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 130, ay: 640,
+            size: 3 + rnd() * 6, life: 480 + rnd() * 540,
+            r: white ? 255 : 125, g: white ? 255 : 211, b: white ? 255 : 252,
+            drag: 0.982, kind: "glow",
+          }
+        })
+        // Lascas de água voando perpendiculares à linha do corte
+        spawn(28, () => {
+          const along = (rnd() - 0.5) * 2
+          const side = rnd() < 0.5 ? -1 : 1
+          const sp = 200 + rnd() * 400
+          return {
+            x: tx + Math.cos(sa) * along * 130, y: ty + Math.sin(sa) * along * 130,
+            vx: -Math.sin(sa) * sp * side, vy: Math.cos(sa) * sp * side - 90,
+            ay: 500, size: 2.5 + rnd() * 4, life: 520 + rnd() * 440,
+            r: 186, g: 230, b: 253, drag: 0.985, kind: "glitter",
+          }
+        })
+        // Névoa azul subindo (vapor do impacto)
+        spawn(14, () => {
+          const a = rnd() * TAU
+          const sp = 40 + rnd() * 130
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 55, ay: -34,
+            size: 12 + rnd() * 15, life: 820 + rnd() * 520,
+            r: 56, g: 189, b: 248, drag: 0.97, kind: "wisp",
+          }
+        })
+        // Cintilar branco duradouro
+        spawn(10, (i) => {
+          const a = (i / 10) * TAU
+          const sp = 30 + rnd() * 70
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, ay: -14,
+            size: 2 + rnd() * 2.5, life: 1000 + rnd() * 280,
+            r: 255, g: 255, b: 255, drag: 0.995, kind: "glitter",
+          }
+        })
+        return
+      }
       const speak = E === "haos" ? 620 : 540
       // Faíscas radiais principais
       spawn(E === "fire" ? 64 : 54, () => {
@@ -970,6 +1020,294 @@ export function ElementalAttackAnimation({
       }
     }
 
+    // ═══════════ FEHNON HOSKIE — CORTE DE ESPADA AQUÁTICO ÉPICO ═════════════
+    const fehnonSlashAng = ang + Math.PI / 5
+
+    const drawFehnonCharge = (k: number, now: number) => {
+      const t = now * 0.001
+      const grow = eoCubic(k)
+      // aura ambiente azul profunda
+      const amb = ctx.createRadialGradient(sx, sy, 0, sx, sy, 340)
+      amb.addColorStop(0, `rgba(14,165,233,${0.3 * k})`)
+      amb.addColorStop(1, "rgba(0,0,0,0)")
+      ctx.fillStyle = amb
+      ctx.fillRect(sx - 340, sy - 340, 680, 680)
+
+      ctx.globalCompositeOperation = "lighter"
+      // correntes de água espiralando para dentro (sucção)
+      for (let i = 0; i < 14; i++) {
+        const frac = 1 - ((t * 1.9 + i * 0.618) % 1)
+        const a = i * (TAU / 14) + t * 2.6 + frac * 2.2
+        const r = frac * 120
+        blit(ctx, i % 2 ? spC : spW, sx + Math.cos(a) * r, sy + Math.sin(a) * r, 4 + (1 - frac) * 8, (1 - frac) * 0.95 * k)
+      }
+      // anéis d'água colapsando
+      for (let i = 0; i < 3; i++) {
+        const fr = 1 - ((t * 1.5 + i / 3) % 1)
+        ring(ctx, sx, sy, fr * 130, 2.5, `rgba(56,189,248,${(1 - fr) * 0.8 * k})`)
+      }
+      // LÂMINA DE ÁGUA se materializando — espada erguida em diagonal
+      const bladeH = 128 * grow
+      const sway = Math.sin(t * 7) * 0.08
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(-Math.PI / 4 + sway)
+      const bl = ctx.createLinearGradient(0, 22, 0, -bladeH)
+      bl.addColorStop(0, "rgba(240,249,255,.95)")
+      bl.addColorStop(0.5, "rgba(56,189,248,.9)")
+      bl.addColorStop(1, "rgba(14,165,233,0)")
+      ctx.fillStyle = bl
+      ctx.beginPath()
+      ctx.moveTo(0, 22)
+      ctx.quadraticCurveTo(-10 - 4 * Math.sin(t * 12), -bladeH * 0.45, 0, -bladeH)
+      ctx.quadraticCurveTo(10 + 4 * Math.sin(t * 12 + 1), -bladeH * 0.45, 0, 22)
+      ctx.fill()
+      // fio branco da lâmina
+      ctx.strokeStyle = `rgba(255,255,255,${0.9 * grow})`
+      ctx.lineWidth = 2
+      ctx.beginPath(); ctx.moveTo(0, 22); ctx.lineTo(0, -bladeH); ctx.stroke()
+      // água espiralando ao longo da lâmina
+      for (let i = 0; i < 7; i++) {
+        const fr = (t * 1.6 + i / 7) % 1
+        const yy = 20 - fr * (bladeH + 20)
+        const xx = Math.sin(fr * TAU * 3 + i) * 15 * (1 - fr * 0.4)
+        blit(ctx, i % 2 ? spW : spC, xx, yy, 3.5 + (1 - fr) * 2.5, (1 - fr) * 0.9 * grow)
+      }
+      ctx.restore()
+      // núcleo pulsante no punho
+      const pulse = 1 + Math.sin(t * 24) * 0.14
+      blit(ctx, spB, sx, sy, (26 + 30 * grow) * pulse, 0.95)
+      blit(ctx, spW, sx, sy, (12 + 15 * grow) * pulse, 1)
+      ctx.globalCompositeOperation = "source-over"
+      // imagem residual do atacante
+      if (atkImg && atkImg.complete && atkImg.naturalWidth > 0) {
+        ctx.globalAlpha = 0.4 * (1 - k)
+        ctx.drawImage(atkImg, sx - 42, sy - 58, 84, 116)
+        ctx.globalAlpha = 1
+      }
+    }
+
+    const drawFehnonStrike = (k: number, now: number) => {
+      const t = now * 0.001
+      const p = eiCubic(k) * 0.35 + k * 0.65
+      const pos = { x: sx + cosA * dist * p, y: sy + sinA * dist * p }
+      trail.push({ x: pos.x, y: pos.y })
+      if (trail.length > 26) trail.shift()
+
+      ctx.globalCompositeOperation = "lighter"
+      // linhas de velocidade
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(ang)
+      for (let i = 0; i < 12; i++) {
+        const off = (i - 5.5) * 26
+        const len = 140 + ((i * 53) % 160)
+        const xw = p * (dist + 520) - len - ((i * 97) % 240)
+        ctx.strokeStyle = `rgba(14,165,233,${0.2 - Math.abs(i - 5.5) * 0.02})`
+        ctx.lineWidth = Math.abs(i - 5.5) < 1.5 ? 3 : 1.5
+        ctx.beginPath(); ctx.moveTo(xw, off); ctx.lineTo(xw + len, off); ctx.stroke()
+      }
+      ctx.restore()
+
+      // fitas d'água serpenteando atrás do corte
+      for (let s = -1; s <= 1; s += 2) {
+        ctx.beginPath()
+        for (let i = 0; i <= 22; i++) {
+          const q = (i / 22) * p
+          const wob = Math.sin(q * TAU * 3.2 + t * 9) * 24 * s * (1 - q * 0.3)
+          const wx = sx + cosA * dist * q - sinA * wob
+          const wy = sy + sinA * dist * q + cosA * wob
+          if (i === 0) ctx.moveTo(wx, wy)
+          else ctx.lineTo(wx, wy)
+        }
+        ctx.strokeStyle = "rgba(125,211,252,.55)"
+        ctx.lineWidth = 3
+        ctx.stroke()
+      }
+
+      // rastro (afterimages)
+      for (let i = 0; i < trail.length; i++) {
+        const f = i / trail.length
+        blit(ctx, spB, trail[i].x, trail[i].y, 5 + f * 20, f * 0.55)
+      }
+
+      // ── LÂMINA CRESCENTE GIGANTE — o corte voador ──
+      const R = 42 + p * 36
+      ctx.save()
+      ctx.translate(pos.x, pos.y)
+      ctx.rotate(ang)
+      const grad = ctx.createLinearGradient(-R, 0, R * 0.9, 0)
+      grad.addColorStop(0, "rgba(7,89,133,.15)")
+      grad.addColorStop(0.55, "rgba(56,189,248,.95)")
+      grad.addColorStop(1, "rgba(255,255,255,1)")
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.moveTo(-R * 0.2, -R)
+      ctx.quadraticCurveTo(R * 0.95, 0, -R * 0.2, R)
+      ctx.quadraticCurveTo(R * 0.25, 0, -R * 0.2, -R)
+      ctx.closePath()
+      ctx.fill()
+      // fio branco no gume do crescente
+      ctx.strokeStyle = "rgba(255,255,255,.95)"
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.moveTo(-R * 0.2, -R)
+      ctx.quadraticCurveTo(R * 0.95, 0, -R * 0.2, R)
+      ctx.stroke()
+      ctx.restore()
+      blit(ctx, spB, pos.x, pos.y, R, 0.75)
+      blit(ctx, spW, pos.x + 10 * cosA, pos.y + 10 * sinA, 14, 1)
+      // gotas orbitando a lâmina
+      for (let i = 0; i < 4; i++) {
+        const a = t * 16 + i * (TAU / 4)
+        blit(ctx, spC, pos.x + Math.cos(a) * R * 0.7, pos.y + Math.sin(a) * R * 0.35, 5, 0.85)
+      }
+
+      // gotículas deixadas para trás
+      if (!reduced && rnd() < 0.95) {
+        const off = (rnd() - 0.5) * 24
+        pts.push({
+          x: pos.x - sinA * off, y: pos.y + cosA * off,
+          vx: -cosA * 70 + (rnd() - 0.5) * 60, vy: -sinA * 70 + (rnd() - 0.5) * 60 + 40,
+          ax: 0, ay: 320, drag: 0.97,
+          age: 0, life: 300 + rnd() * 240, size: 2.5 + rnd() * 4,
+          r: 125, g: 211, b: 252, kind: "glow", seed: rnd(), rot: 0, spin: 0,
+        })
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
+    const drawFehnonImpact = (tk: number) => {
+      const inHitstop = tk < T.HITSTOP
+      const k = clamp01((tk - T.HITSTOP) / (T.IMPACT - T.HITSTOP))
+      ctx.globalCompositeOperation = "lighter"
+
+      // clarão central
+      const coreA = inHitstop ? 1 : (1 - k) * 0.9
+      blit(ctx, spW, tx, ty, inHitstop ? 100 : 100 + eoExpo(k) * 130, coreA)
+      blit(ctx, spB, tx, ty, inHitstop ? 160 : 160 + eoExpo(k) * 240, coreA * 0.8)
+
+      // ── LINHA DE CORTE GIGANTE (visível já no hitstop) ──
+      const cutL = inHitstop ? 250 : 250 + eoExpo(k) * 170
+      const fadeCut = inHitstop ? 1 : 1 - k * 0.85
+      ctx.save()
+      ctx.translate(tx, ty)
+      ctx.rotate(fehnonSlashAng)
+      const cg2 = ctx.createLinearGradient(-cutL, 0, cutL, 0)
+      cg2.addColorStop(0, "rgba(56,189,248,0)")
+      cg2.addColorStop(0.5, `rgba(255,255,255,${0.98 * fadeCut})`)
+      cg2.addColorStop(1, "rgba(56,189,248,0)")
+      ctx.fillStyle = cg2
+      ctx.beginPath()
+      ctx.moveTo(-cutL, 0)
+      ctx.quadraticCurveTo(0, -15, cutL, 0)
+      ctx.quadraticCurveTo(0, 15, -cutL, 0)
+      ctx.fill()
+      ctx.strokeStyle = `rgba(56,189,248,${0.85 * fadeCut})`
+      ctx.lineWidth = 5
+      ctx.beginPath(); ctx.moveTo(-cutL, 0); ctx.lineTo(cutL, 0); ctx.stroke()
+      ctx.restore()
+
+      // segundo corte cruzado (X) — chega um instante depois
+      if (!inHitstop && k > 0.1) {
+        const k2 = clamp01((k - 0.1) / 0.9)
+        const cut2 = eoExpo(k2) * 350
+        ctx.save()
+        ctx.translate(tx, ty)
+        ctx.rotate(fehnonSlashAng + Math.PI / 2.4)
+        const g3 = ctx.createLinearGradient(-cut2, 0, cut2, 0)
+        g3.addColorStop(0, "rgba(125,211,252,0)")
+        g3.addColorStop(0.5, `rgba(255,255,255,${0.9 * (1 - k2)})`)
+        g3.addColorStop(1, "rgba(125,211,252,0)")
+        ctx.fillStyle = g3
+        ctx.beginPath()
+        ctx.moveTo(-cut2, 0)
+        ctx.quadraticCurveTo(0, -11, cut2, 0)
+        ctx.quadraticCurveTo(0, 11, -cut2, 0)
+        ctx.fill()
+        ctx.restore()
+      }
+
+      if (!inHitstop) {
+        // ondas de choque aquáticas
+        for (let i = 0; i < 5; i++) {
+          const kk = clamp01(k * 1.35 - i * 0.09)
+          if (kk <= 0) continue
+          const r = eoExpo(kk) * (190 + i * 66)
+          const alpha = (1 - kk) * (0.95 - i * 0.14)
+          ring(ctx, tx, ty, r, Math.max(1, 11 - i * 2 - kk * 8), i < 2 ? `rgba(255,255,255,${alpha})` : `rgba(14,165,233,${alpha})`)
+        }
+        // aberração cromática
+        const rC = eoExpo(k) * 230
+        ring(ctx, tx - 4, ty, rC, 2, `rgba(255,60,60,${(1 - k) * 0.4})`)
+        ring(ctx, tx + 4, ty, rC, 2, `rgba(60,60,255,${(1 - k) * 0.4})`)
+        // GÊISER — coluna d'água explodindo para cima
+        const gk = clamp01(k * 1.25)
+        const gh = eoCubic(gk) * 220
+        const gw = 26 * (1 - gk * 0.35)
+        const gg = ctx.createLinearGradient(tx, ty, tx, ty - gh)
+        gg.addColorStop(0, `rgba(255,255,255,${(1 - gk) * 0.95})`)
+        gg.addColorStop(0.4, `rgba(56,189,248,${(1 - gk) * 0.8})`)
+        gg.addColorStop(1, "rgba(125,211,252,0)")
+        ctx.fillStyle = gg
+        ctx.fillRect(tx - gw / 2, ty - gh, gw, gh)
+        // coroa d'água (splash em coroa, achatada)
+        ctx.save()
+        ctx.translate(tx, ty)
+        ctx.scale(1, 0.4)
+        const crownR = eoExpo(k) * 155
+        ring(ctx, 0, 0, crownR, 4, `rgba(125,211,252,${(1 - k) * 0.9})`)
+        for (let i = 0; i < 12; i++) {
+          const a = i * (TAU / 12)
+          const dR = crownR + Math.sin(k * 20 + i * 3) * 8
+          blit(ctx, spC, Math.cos(a) * dR, Math.sin(a) * dR, 7 * (1 - k * 0.5), (1 - k) * 0.9)
+        }
+        ctx.restore()
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
+    const drawFehnonAftermath = (k: number, now: number) => {
+      const t = now * 0.001
+      ctx.globalCompositeOperation = "lighter"
+      blit(ctx, spB, tx, ty, 80 * (1 - k), (1 - k) * 0.5)
+      // linha de corte residual pulsando
+      if (k < 0.6) {
+        const rk = k / 0.6
+        const L = 270 * (1 - rk * 0.3)
+        ctx.save()
+        ctx.translate(tx, ty)
+        ctx.rotate(fehnonSlashAng)
+        ctx.strokeStyle = `rgba(125,211,252,${(1 - rk) * 0.8 * (0.6 + 0.4 * Math.sin(t * 30))})`
+        ctx.lineWidth = 2.5
+        ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(L, 0); ctx.stroke()
+        ctx.restore()
+      }
+      // vórtice que drena e explode
+      for (let i = 0; i < 3; i++) {
+        const rot = t * (6 - i) * (i % 2 ? -1 : 1)
+        const sz = k < 0.4 ? (1 - k / 0.4) * (80 + i * 26) : eoCubic((k - 0.4) / 0.6) * (170 + i * 55)
+        const al = k < 0.4 ? 0.85 : (1 - (k - 0.4) / 0.6) * 0.7
+        for (let s = 0; s < 5; s++) {
+          ctx.beginPath()
+          ctx.arc(tx, ty, sz, rot + s * (TAU / 5), rot + s * (TAU / 5) + 0.7)
+          ctx.lineWidth = 3 - i * 0.6
+          ctx.strokeStyle = `rgba(${i % 2 ? "56,189,248" : "125,211,252"},${al})`
+          ctx.stroke()
+        }
+      }
+      // névoa subindo (vapor se dissipando)
+      if (k < 0.9) {
+        for (let i = 0; i < 6; i++) {
+          const fr = (t * 0.5 + i / 6) % 1
+          const mx = tx + ((i % 3) - 1) * 60 + Math.sin(t * 2 + i) * 14
+          const my = ty - fr * 115
+          blit(ctx, spC, mx, my, 20 + fr * 16, (1 - fr) * (1 - k) * 0.35)
+        }
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
     // ═════════════════════════ LOOP PRINCIPAL ════════════════════════════════
     const frame = (now: number) => {
       if (done) return
@@ -986,27 +1324,31 @@ export function ElementalAttackAnimation({
       let shX = 0, shY = 0
       if (!reduced && t >= C2 + T.HITSTOP && t < C3) {
         const sk = 1 - (t - C2 - T.HITSTOP) / (T.IMPACT - T.HITSTOP)
-        const amp = 13 * sk * sk
+        const amp = (isFehnon ? 19 : 13) * sk * sk
         shX = Math.sin(t * 0.09) * amp
         shY = Math.cos(t * 0.117) * amp
       }
       ctx.translate(shX, shY)
 
       if (t < C0) {
-        drawCharge(clamp01(t / C0), now)
+        if (isFehnon) drawFehnonCharge(clamp01(t / C0), now)
+        else drawCharge(clamp01(t / C0), now)
       } else if (t < C1) {
         drawRelease(clamp01((t - C0) / T.RELEASE))
       } else if (t < C2) {
-        drawStrike(clamp01((t - C1) / T.STRIKE), now)
+        if (isFehnon) drawFehnonStrike(clamp01((t - C1) / T.STRIKE), now)
+        else drawStrike(clamp01((t - C1) / T.STRIKE), now)
       } else if (t < C3) {
         if (!impactFired) {
           impactFired = true
           burst()
           cbRef.current.onImpact?.(id, tx, ty, el)
         }
-        drawImpact(t - C2)
+        if (isFehnon) drawFehnonImpact(t - C2)
+        else drawImpact(t - C2)
       } else if (t < T.TOTAL) {
-        drawAftermath(clamp01((t - C3) / T.AFTERMATH), now)
+        if (isFehnon) drawFehnonAftermath(clamp01((t - C3) / T.AFTERMATH), now)
+        else drawAftermath(clamp01((t - C3) / T.AFTERMATH), now)
       }
 
       drawParticles(dt)
