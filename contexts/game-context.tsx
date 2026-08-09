@@ -3235,8 +3235,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${ALL_PLAYMATS.length} playmats foram desbloqueados!` }
     }
 
-    // SLEVEE / SLEEVES - Unlocks every sleeve that exists at the moment the code is redeemed
-    if (normalizedCode === "SLEVEE" || normalizedCode === "SLEEVES") {
+    // SLEEVES - Unlocks every sleeve that exists at the moment the code is redeemed
+    if (normalizedCode === "SLEEVES") {
       const newOwnedSleeves = ALL_SLEEVES.filter(
         (s) => !ownedSleeves.some((os) => os.id === s.id)
       )
@@ -3328,7 +3328,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_selected_wallpaper")
       localStorage.removeItem("gpgame_unlocked_wallpapers")
 
-      // ── Masters system ─────────────────────────────────────────────────────
+      // ── Masters system ────────────────��────────────────────────────────────
       localStorage.removeItem("gpgame_masters_v1")
 
       // ── Story Mode (Campanha) ─────────────────────────────────────────���────
