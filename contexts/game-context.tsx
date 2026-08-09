@@ -3267,6 +3267,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${SHOP_PROFILE_ICONS.length} ícones foram desbloqueados!` }
     }
 
+    // GOLD - Grants 1,000,000 gear coins to the player's account
+    if (normalizedCode === "GOLD") {
+      setGearCoins((prev) => prev + 1_000_000)
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: "1.000.000 gear coins foram adicionados à sua conta!" }
+    }
+
     // SKINS - Unlocks all card skins
     if (normalizedCode === "SKINS") {
       // As skins de carta ficam apenas no localStorage (gpgame_card_skins) e sao
