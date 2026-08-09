@@ -3235,6 +3235,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: true, message: `Todos os ${ALL_PLAYMATS.length} playmats foram desbloqueados!` }
     }
 
+    // SLEVEE - Unlocks all sleeves
+    if (normalizedCode === "SLEVEE") {
+      const newOwnedSleeves = ALL_SLEEVES.filter(
+        (s) => !ownedSleeves.some((os) => os.id === s.id)
+      )
+      const updatedSleeves = [...ownedSleeves, ...newOwnedSleeves]
+      setOwnedSleeves(updatedSleeves)
+      localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(updatedSleeves.map((s) => s.id)))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `Todos os ${ALL_SLEEVES.length} sleeves foram desbloqueados!` }
+    }
+
     // Invalid code
     return { success: false, message: "Codigo invalido!" }
   }
