@@ -21,6 +21,7 @@ import { loadMastersFromStorage, saveMastersToStorage, calcMasterXP, xpRequiredF
 import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps, getElementPalette, normalizeElement } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
+import FieldCardFX from "./field-card-fx"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
@@ -11107,7 +11108,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
              9. db-corners   → cantoneiras de metal dourado
            Tudo é decorativo: pointer-events:none e alfas baixos, pra
            não competir com as cartas nem apagar playmats custom.
-           ══════════════════════════════════════════════════════════════ */
+           ════════════��═════════════════════════════════════════════════ */
         .db-layer { position: absolute; inset: 0; pointer-events: none; }
 
         /* As duas metades se sobrepõem e se dissolvem no meridiano
@@ -12319,6 +12320,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       {card && equipChainHighlight?.side === "enemy" && equipChainHighlight.unitIndex === i && (
                         <EquipChainOverlay />
                       )}
+                      <FieldCardFX card={card as FieldCard | null} />
                       {card && (
                         <>
                           <Image
@@ -12499,6 +12501,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {card && equipChainHighlight?.side === "player" && equipChainHighlight.unitIndex === i && (
                           <EquipChainOverlay />
                         )}
+                        <FieldCardFX
+                          card={card as FieldCard | null}
+                          image={card ? getActiveSkin(card.image || "") || card.image : null}
+                        />
                         {card && (
                           <>
                             <Image
@@ -12584,6 +12590,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           ["--float-x" as any]: `${((i * 2 + 3) % 5 - 2) * 1.7}px`,
                         }}
                       >
+                        <FieldCardFX
+                          card={card}
+                          image={card ? (card.isFaceDown ? activeCardBack : getActiveSkin(card.image || "") || card.image) : null}
+                          disableDp
+                        />
                         {card && (
                           <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
                             {/* Back of Card */}
