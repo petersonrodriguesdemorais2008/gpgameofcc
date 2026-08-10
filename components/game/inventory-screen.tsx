@@ -13,6 +13,7 @@
 import { useMemo, useState } from "react"
 import { useGame } from "@/contexts/game-context"
 import { FRAGMENTS, type FragmentId } from "@/lib/fragments"
+import { CHESTS, ALL_CHEST_IDS, type ChestId, type ChestOpenResult } from "@/lib/chests"
 import {
   SKIP_TICKET_COLOR,
   SKIP_TICKET_DESCRIPTION,
@@ -26,8 +27,9 @@ import {
   STAMINA_BOTTLE_NAME,
   STAMINA_BOTTLE_REFILL_AMOUNT,
 } from "@/lib/stamina-bottle"
-import { ArrowLeft, Search, X, Backpack, HeartHandshake } from "lucide-react"
+import { ArrowLeft, Search, X, Backpack, HeartHandshake, PackageOpen } from "lucide-react"
 import Image from "next/image"
+import { ChestOpeningOverlay } from "./chest-opening-overlay"
 
 type ItemCategory = "moedas" | "fragmentos" | "pontos" | "itens"
 
@@ -46,6 +48,8 @@ interface InventoryItem {
   onUse?: () => void
   /** Por que o botão "Usar" está desabilitado agora (undefined = habilitado). */
   useDisabledReason?: string
+  /** Baús selecionáveis mostram um botão "Abrir" que dispara a animação de abertura. */
+  chestId?: ChestId
 }
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
@@ -117,9 +121,17 @@ const INV_CSS = `
 `
 
 export default function InventoryScreen({ onBack }: { onBack: () => void }) {
-  const { coins, gearCoins, friendPoints, fragments, skipTickets } = useGame()
+  const { coins, gearCoins, friendPoints, fragments, skipTickets, chests, openChest } = useGame()
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"todos" | ItemCategory>("todos")
+  const [selectedChestId, setSelectedChestId] = useState<ChestId | null>(null)
+  const [opening, setOpening] = useState<{ chestId: ChestId; result: ChestOpenResult & { cardName?: string } } | null>(null)
+
+  const handleOpenChest = (chestId: ChestId) => {
+    const result = openChest(chestId)
+    if (!result) return
+    setOpening({ chestId, result })
+  }
 
   const items = useMemo<InventoryItem[]>(() => {
     const list: InventoryItem[] = [
@@ -161,6 +173,22 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
       },
     ]
 
+    // Baús — dropam com chance ao vencer qualquer duelo. Selecionáveis e
+    // abríveis diretamente aqui (botão "Abrir").
+    for (const id of ALL_CHEST_IDS) {
+      const def = CHESTS[id]
+      list.push({
+        id: `chest-${id}`,
+        name: def.name,
+        description: def.description,
+        category: "itens",
+        quantity: chests[id] ?? 0,
+        image: def.image,
+        color: def.color,
+        chestId: id,
+      })
+    }
+
     // Fragmentos — só os que o jogador realmente possui aparecem com contagem,
     // mas todos são listados (quantidade 0 fica visível para referência).
     for (const id of Object.keys(FRAGMENTS) as FragmentId[]) {
@@ -180,7 +208,7 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
     }
 
     return list
-  }, [coins, gearCoins, friendPoints, fragments, skipTickets])
+  }, [coins, gearCoins, friendPoints, fragments, skipTickets, chests])
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -207,6 +235,7 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
   )
 
   return (
+    <>
     <div
       className="min-h-screen w-full"
       style={{ background: "linear-gradient(160deg, #050212 0%, #0a0520 55%, #050212 100%)" }}
@@ -330,73 +359,108 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {catItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="inv-card flex flex-col items-center gap-2.5 px-3 py-4 text-center"
-                  style={
-                    {
-                      "--inv-color": item.color,
-                      "--inv-glow": `${item.color}40`,
-                      opacity: item.quantity > 0 ? 1 : 0.45,
-                    } as React.CSSProperties
-                  }
-                >
-                  {/* Imagem / ícone */}
-                  <div
-                    className="relative flex items-center justify-center rounded-xl"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      background: `radial-gradient(circle at 50% 45%, ${item.color}22 0%, transparent 70%)`,
-                    }}
-                  >
-                    {item.image ? (
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        width={56}
-                        height={56}
-                        className="object-contain"
-                        style={{ filter: `drop-shadow(0 0 8px ${item.color}55)` }}
-                      />
-                    ) : (
-                      item.fallbackIcon
-                    )}
-                  </div>
+{catItems.map((item) => {
+  const isChest = !!item.chestId
+  const isSelected = isChest && selectedChestId === item.chestId
+  return (
+  <div
+  key={item.id}
+  onClick={isChest && item.quantity > 0 ? () => setSelectedChestId(item.chestId!) : undefined}
+  className="inv-card flex flex-col items-center gap-2.5 px-3 py-4 text-center"
+  style={
+  {
+  "--inv-color": item.color,
+  "--inv-glow": `${item.color}40`,
+  opacity: item.quantity > 0 ? 1 : 0.45,
+  cursor: isChest && item.quantity > 0 ? "pointer" : undefined,
+  borderColor: isSelected ? item.color : undefined,
+  boxShadow: isSelected ? `0 0 0 2px ${item.color}, 0 6px 24px rgba(0,0,0,0.5), 0 0 18px ${item.color}40` : undefined,
+  } as React.CSSProperties
+  }
+  >
+  {/* Imagem / ícone */}
+  <div
+  className="relative flex items-center justify-center rounded-xl"
+  style={{
+  width: 64,
+  height: 64,
+  background: `radial-gradient(circle at 50% 45%, ${item.color}22 0%, transparent 70%)`,
+  }}
+  >
+  {item.image ? (
+  <Image
+  src={item.image || "/placeholder.svg"}
+  alt={item.name}
+  width={56}
+  height={56}
+  className="object-contain"
+  style={{ filter: `drop-shadow(0 0 8px ${item.color}55)` }}
+  />
+  ) : (
+  item.fallbackIcon
+  )}
+  </div>
+  
+  <div className="flex flex-col gap-0.5 min-w-0 w-full">
+  <span
+  className="font-bold truncate"
+  style={{ fontSize: 13, color: "#fff", letterSpacing: "0.3px" }}
+  title={item.name}
+  >
+  {item.name}
+  </span>
+  <span style={{ fontSize: 10.5, color: "rgba(167,139,250,0.55)", lineHeight: 1.45 }}>
+  {item.description}
+  </span>
+  </div>
+  
+  {/* Quantidade */}
+  <div
+  className="mt-auto rounded-lg px-3 py-1 font-black tabular-nums"
+  style={{
+  fontSize: 14,
+  color: item.quantity > 0 ? item.color : "rgba(148,163,184,0.5)",
+  background: "rgba(5,2,18,0.75)",
+  border: `1px solid ${item.quantity > 0 ? `${item.color}55` : "rgba(100,116,139,0.25)"}`,
+  textShadow: item.quantity > 0 ? `0 0 10px ${item.color}66` : "none",
+  }}
+  >
+  ×{item.quantity.toLocaleString("pt-BR")}
+  </div>
 
-                  <div className="flex flex-col gap-0.5 min-w-0 w-full">
-                    <span
-                      className="font-bold truncate"
-                      style={{ fontSize: 13, color: "#fff", letterSpacing: "0.3px" }}
-                      title={item.name}
-                    >
-                      {item.name}
-                    </span>
-                    <span style={{ fontSize: 10.5, color: "rgba(167,139,250,0.55)", lineHeight: 1.45 }}>
-                      {item.description}
-                    </span>
-                  </div>
-
-                  {/* Quantidade */}
-                  <div
-                    className="mt-auto rounded-lg px-3 py-1 font-black tabular-nums"
-                    style={{
-                      fontSize: 14,
-                      color: item.quantity > 0 ? item.color : "rgba(148,163,184,0.5)",
-                      background: "rgba(5,2,18,0.75)",
-                      border: `1px solid ${item.quantity > 0 ? `${item.color}55` : "rgba(100,116,139,0.25)"}`,
-                      textShadow: item.quantity > 0 ? `0 0 10px ${item.color}66` : "none",
-                    }}
-                  >
-                    ×{item.quantity.toLocaleString("pt-BR")}
-                  </div>
-                </div>
-              ))}
+  {/* Botão Abrir — só para baús selecionados que o jogador possui */}
+  {isChest && item.quantity > 0 && (
+  <button
+  onClick={(e) => { e.stopPropagation(); handleOpenChest(item.chestId!) }}
+  className="w-full rounded-lg font-black uppercase transition-colors"
+  style={{
+  fontSize: 11,
+  letterSpacing: "1.5px",
+  padding: "7px 0",
+  color: isSelected ? "#050212" : item.color,
+  background: isSelected ? item.color : `${item.color}1a`,
+  border: `1px solid ${item.color}66`,
+  cursor: "pointer",
+  }}
+  >
+  Abrir
+  </button>
+  )}
+  </div>
+  )
+  })}
             </div>
           </section>
         ))}
       </main>
     </div>
+    {opening && (
+      <ChestOpeningOverlay
+        chestId={opening.chestId}
+        result={opening.result}
+        onClose={() => setOpening(null)}
+      />
+    )}
+    </>
   )
 }

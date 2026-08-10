@@ -4,6 +4,15 @@ import { createContext, useContext, useState, useRef, useCallback, type ReactNod
 import { createClient } from "@/lib/supabase/client"
 import { normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
 import { STAMINA_BOTTLE_MIN_MISSING, STAMINA_BOTTLE_REFILL_AMOUNT } from "@/lib/stamina-bottle"
+import {
+  CHESTS,
+  normalizeChestCounts,
+  rollChestDrop,
+  rollChestReward,
+  type ChestCounts,
+  type ChestId,
+  type ChestOpenResult,
+} from "@/lib/chests"
 
 export interface Card {
   id: string
@@ -329,9 +338,22 @@ interface GameContextType {
   addFP: (amount: number) => void
   gearCoins: number
   setGearCoins: React.Dispatch<React.SetStateAction<number>>
-  addDuelRewards: (kind: DuelRewardKind) => { gacha: number; gear: number; fragments: FragmentCounts }
+  addDuelRewards: (kind: DuelRewardKind) => {
+    gacha: number
+    gear: number
+    fragments: FragmentCounts
+    chest: ChestId | null
+  }
   /** Fragmentos (itens de evento) no inventário do jogador. */
   fragments: FragmentCounts
+  /** Baús no inventário do jogador (dropam com chance ao vencer duelos). */
+  chests: ChestCounts
+  /** Soma baús ao inventário. */
+  addChests: (gain: ChestCounts) => void
+  /** Quantidade de um baú específico. */
+  getChestCount: (id: ChestId) => number
+  /** Abre 1 baú: consome do inventário, entrega Gear/Gacha Coins e, com chance, 1 carta. Retorna null se não houver o baú. */
+  openChest: (id: ChestId) => (ChestOpenResult & { cardName?: string }) | null
   /** Soma fragmentos ao inventário e devolve o total atualizado. */
   addFragments: (gain: FragmentCounts) => void
   /** Quantidade de um fragmento específico. */
@@ -1941,6 +1963,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return raw ? normalizeFragmentCounts(JSON.parse(raw)) : {}
     } catch { return {} }
   })
+  // Baús — mesma estratégia dos fragmentos: leitura direta do localStorage
+  // no primeiro render pra não zerar o inventário durante o load.
+  const [chests, setChests] = useState<ChestCounts>(() => {
+    if (typeof window === "undefined") return {}
+    try {
+      const raw = localStorage.getItem("gear-perks-chests")
+      return raw ? normalizeChestCounts(JSON.parse(raw)) : {}
+    } catch { return {} }
+  })
   // Skip Tíquetes — mesma estratégia dos fragmentos: leitura direta do
   // localStorage no primeiro render pra não zerar o item durante o load.
   const [skipTickets, setSkipTickets] = useState<number>(() => {
@@ -2383,6 +2414,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const getFragmentCount = useCallback((id: FragmentId) => fragments[id] ?? 0, [fragments])
 
+  // ── Baús ──────────────────────────────────────────────────────────────────
+  const addChests = useCallback((gain: ChestCounts) => {
+    const clean = normalizeChestCounts(gain)
+    if (Object.keys(clean).length === 0) return
+    setChests((prev) => {
+      const next: ChestCounts = { ...prev }
+      for (const [id, amount] of Object.entries(clean) as [ChestId, number][]) {
+        next[id] = (next[id] ?? 0) + amount
+      }
+      return next
+    })
+  }, [])
+
+  const getChestCount = useCallback((id: ChestId) => chests[id] ?? 0, [chests])
+
   // ── Skip Tíquetes ───────────────────────────────────────────────────────────
   const addSkipTickets = useCallback((amount: number) => {
     const gain = Math.floor(amount)
@@ -2424,12 +2470,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGearCoins((prev) => prev + gear)
     const fragmentDrop = normalizeFragmentCounts(drop)
     addFragments(fragmentDrop)
-    return { gacha, gear, fragments: fragmentDrop }
-  }, [addFragments])
+    // Qualquer vitória (PvE ou PvP) tem uma pequena chance de dropar 1 baú.
+    const chestDrop = rollChestDrop()
+    if (chestDrop) addChests({ [chestDrop]: 1 })
+    return { gacha, gear, fragments: fragmentDrop, chest: chestDrop }
+  }, [addFragments, addChests])
 
   useEffect(() => {
     setLS("fragments", JSON.stringify(fragments))
   }, [fragments])
+
+  useEffect(() => {
+    localStorage.setItem("gear-perks-chests", JSON.stringify(chests))
+  }, [chests])
 
   useEffect(() => {
     setLS("skiptickets", skipTickets.toString())
@@ -2523,6 +2576,38 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const addToCollection = (cards: Card[]) => {
     setCollection((prev) => [...prev, ...cards])
   }
+
+  const openChest = useCallback((id: ChestId): (ChestOpenResult & { cardName?: string }) | null => {
+    if ((chests[id] ?? 0) <= 0) return null
+
+    const result = rollChestReward(id, (element) => {
+      const pool = ALL_CARDS.filter((c) => c.element === element)
+      if (pool.length === 0) return undefined
+      return pool[Math.floor(Math.random() * pool.length)].id
+    })
+
+    setChests((prev) => {
+      const next: ChestCounts = { ...prev }
+      next[id] = Math.max(0, (next[id] ?? 0) - 1)
+      if (next[id] === 0) delete next[id]
+      return next
+    })
+
+    setCoins((prev) => prev + result.gacha)
+    setGearCoins((prev) => prev + result.gear)
+
+    let cardName: string | undefined
+    if (result.cardId) {
+      const base = ALL_CARDS.find((c) => c.id === result.cardId)
+      if (base) {
+        const card = { ...base, id: `${base.id}-chest-${Date.now()}` }
+        addToCollection([card])
+        cardName = card.name
+      }
+    }
+
+    return { ...result, cardName }
+  }, [chests])
 
   const saveDeck = (deck: Deck) => {
     setDecks((prev) => {
@@ -3589,6 +3674,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         fragments,
         addFragments,
         getFragmentCount,
+        chests,
+        addChests,
+        getChestCount,
+        openChest,
     skipTickets,
     addSkipTickets,
     consumeSkipTicket,
