@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { ArrowLeft } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Check, Lock, ChevronRight, Swords, Trophy, Skull, Flag, Layers, Target, Star } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 import { PackOpeningOverlay } from "./pack-opening-overlay"
 import {
@@ -10,8 +10,7 @@ import {
   loadMastersFromStorage,
   saveMastersToStorage,
   xpRequiredForLevel,
-  rewardIcon,
-  calcMasterXP,
+  rewardIconPath,
 } from "@/lib/masters-data"
 
 interface MasterScreenProps {
@@ -21,8 +20,9 @@ interface MasterScreenProps {
 // ─── Reward type colors ───────────────────────────────────────────────────────
 function rewardColor(type: MasterReward["type"]): string {
   const map: Record<string, string> = {
-    coins:"#e8c96d", pack:"#60a5fa", gacha_coins:"#a78bfa",
-    title:"#f97316", card_skin:"#fb923c", passive:"#facc15",
+    gear_coins:"#e8c96d", pack:"#60a5fa", gacha_coins:"#a78bfa",
+    card_skin:"#fb923c", chest:"#cbd5e1", skip_ticket:"#34d399",
+    stamina_bottle:"#f472b6",
   }
   return map[type] ?? "#94a3b8"
 }
@@ -37,7 +37,6 @@ function elementStyle(el: string): { color: string; bg: string } {
     "Haos":    { color:"#fde68a", bg:"rgba(253,230,138,0.12)" },
     "Subterra":{ color:"#a16207", bg:"rgba(161,98,7,0.12)" },
     "Vazio":   { color:"#22d3ee", bg:"rgba(34,211,238,0.12)" },
-    // legacy names
     "Sombra":  { color:"#a855f7", bg:"rgba(168,85,247,0.12)" },
     "Vento":   { color:"#4ade80", bg:"rgba(74,222,128,0.12)" },
   }
@@ -46,30 +45,65 @@ function elementStyle(el: string): { color: string; bg: string } {
 
 // ─── Rarity label colors ──────────────────────────────────────────────────────
 function rarityStyle(r: string) {
-  if (r === "LR") return { color:"#f87171", bg:"rgba(248,113,113,0.15)" }
-  if (r === "UR") return { color:"#fbbf24", bg:"rgba(251,191,36,0.15)" }
-  if (r === "SR") return { color:"#a78bfa", bg:"rgba(167,139,250,0.15)" }
-  return { color:"#94a3b8", bg:"rgba(148,163,184,0.12)" }
+  if (r === "LR") return { color:"#f87171", bg:"rgba(248,113,113,0.14)", frame:"linear-gradient(135deg,#7f1d1d,#f87171,#fbbf24,#7f1d1d)" }
+  if (r === "UR") return { color:"#fbbf24", bg:"rgba(251,191,36,0.14)",  frame:"linear-gradient(135deg,#78350f,#fbbf24,#fde68a,#78350f)" }
+  if (r === "SR") return { color:"#a78bfa", bg:"rgba(167,139,250,0.14)", frame:"linear-gradient(135deg,#3b0764,#a78bfa,#c4b5fd,#3b0764)" }
+  return { color:"#94a3b8", bg:"rgba(148,163,184,0.12)", frame:"linear-gradient(135deg,#334155,#94a3b8,#334155)" }
 }
 
 // ─── XP progress bar ──────────────────────────────────────────────────────────
-function XPBar({ current, total, color }: { current: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.min(100, (current / total) * 100) : 0
+function XPBar({ current, total, color, height = 7 }: { current: number; total: number; color: string; height?: number }) {
+  const pct = total > 0 ? Math.min(100, (current / total) * 100) : 100
   return (
-    <div style={{ height:6, borderRadius:99, background:"rgba(255,255,255,0.06)", overflow:"hidden", position:"relative" }}>
+    <div style={{
+      height, borderRadius:99, background:"rgba(255,255,255,0.06)",
+      overflow:"hidden", position:"relative",
+      boxShadow:"inset 0 1px 3px rgba(0,0,0,0.5)",
+    }}>
+      {/* tick marks */}
+      {[25,50,75].map(t => (
+        <div key={t} style={{
+          position:"absolute", left:`${t}%`, top:0, bottom:0, width:1,
+          background:"rgba(0,0,0,0.45)", zIndex:2,
+        }}/>
+      ))}
       <div style={{
         height:"100%", borderRadius:99, width:`${pct}%`,
-        background:`linear-gradient(90deg, ${color}88, ${color})`,
-        boxShadow:`0 0 8px ${color}60`,
+        background:`linear-gradient(90deg, ${color}70, ${color})`,
+        boxShadow:`0 0 10px ${color}55`,
         transition:"width 0.8s cubic-bezier(0.4,0,0.2,1)",
         position:"relative",
       }}>
-        {/* shimmer */}
         <div style={{
           position:"absolute", top:0, left:"-100%", width:"100%", height:"100%",
-          background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)",
-          animation:"shimmer 2s ease-in-out infinite",
+          background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent)",
+          animation:"gpShimmer 2.4s ease-in-out infinite",
         }}/>
+      </div>
+    </div>
+  )
+}
+
+// ─── Level medallion ──────────────────────────────────────────────────────────
+function LevelMedallion({ level, color, size = 58 }: { level: number; color: string; size?: number }) {
+  return (
+    <div style={{
+      width:size, height:size, flexShrink:0, position:"relative",
+      display:"flex", alignItems:"center", justifyContent:"center",
+    }}>
+      <div style={{
+        position:"absolute", inset:0, transform:"rotate(45deg)",
+        background:`linear-gradient(135deg,${color}28,rgba(8,6,10,0.9))`,
+        border:`1.5px solid ${color}70`, borderRadius:10,
+        boxShadow:`0 0 18px ${color}35, inset 0 0 12px ${color}15`,
+      }}/>
+      <div style={{
+        position:"absolute", inset:5, transform:"rotate(45deg)",
+        border:`1px solid ${color}30`, borderRadius:7,
+      }}/>
+      <div style={{ position:"relative", textAlign:"center", zIndex:1 }}>
+        <div style={{ fontSize:size*0.13, fontWeight:800, color:`${color}cc`, letterSpacing:"0.14em", lineHeight:1 }}>NV</div>
+        <div style={{ fontSize:size*0.36, fontWeight:900, color:"#f1f0ee", lineHeight:1.05, textShadow:`0 0 12px ${color}80` }}>{level}</div>
       </div>
     </div>
   )
@@ -85,78 +119,78 @@ function MasterCard({ master, isSelected, onClick }: {
     ? Math.min(100, (master.currentXP / master.xpToNext) * 100) : 100
 
   return (
-    <button onClick={onClick} style={{
-      position:"relative", background:"rgba(255,255,255,0.03)",
-      border:`2px solid ${isSelected ? master.accentColor : "rgba(255,255,255,0.07)"}`,
-      borderRadius:18, padding:0, cursor:"pointer", overflow:"hidden",
-      boxShadow: isSelected ? `0 0 24px ${master.accentColor}50, inset 0 0 24px ${master.accentColor}08` : "none",
-      transition:"all 0.25s cubic-bezier(0.4,0,0.2,1)",
-      transform: isSelected ? "scale(1.03)" : "scale(1)",
+    <button onClick={onClick} className="gp-master-card" style={{
+      position:"relative", padding:1.5, cursor:"pointer",
+      background: isSelected ? rar.frame : "rgba(255,255,255,0.07)",
+      border:"none", borderRadius:20, overflow:"hidden", textAlign:"left",
+      boxShadow: isSelected
+        ? `0 12px 40px ${master.accentColor}30, 0 0 0 1px ${master.accentColor}30`
+        : "0 6px 24px rgba(0,0,0,0.45)",
+      transition:"transform 0.3s cubic-bezier(0.34,1.3,0.64,1), box-shadow 0.3s",
     }}>
-      {/* colored top strip */}
-      <div style={{
-        height:4, background:`linear-gradient(90deg,${master.accentColor}00,${master.accentColor},${master.accentColor}00)`,
-      }}/>
-
-      {/* art placeholder / image */}
-      <div style={{
-        height:200, display:"flex", alignItems:"center", justifyContent:"center",
-        background:`radial-gradient(ellipse at 50% 100%, ${master.bgColor} 0%, #080608 80%)`,
-        overflow:"hidden", position:"relative",
-      }}>
-        <img
-          src={master.artPath}
-          alt={master.name}
-          style={{ height:"100%", objectFit:"contain", objectPosition:"center top" }}
-          onError={e => {
-            // fallback: show initial letter
-            const t = e.target as HTMLImageElement
-            t.style.display = "none"
-          }}
-        />
-        {/* fallback silhouette */}
+      <div style={{ background:"#0a080e", borderRadius:19, overflow:"hidden" }}>
+        {/* art */}
         <div style={{
-          position:"absolute", inset:0, display:"flex", alignItems:"center",
-          justifyContent:"center", fontSize:72, opacity:0.08,
-          color: master.accentColor,
+          height:210, position:"relative", overflow:"hidden",
+          background:`radial-gradient(ellipse at 50% 115%, ${master.bgColor} 0%, #07060a 78%)`,
         }}>
-          {master.name[0]}
-        </div>
-        {/* Active badge */}
-        {master.isActive && (
+          {/* elemental haze */}
           <div style={{
-            position:"absolute", top:10, left:10,
-            background:"linear-gradient(135deg,#065f46,#059669)",
-            color:"#fff", fontSize:9, fontWeight:900,
-            padding:"3px 8px", borderRadius:6,
-            boxShadow:"0 2px 8px rgba(5,150,105,0.5)",
-          }}>✦ ATIVO</div>
-        )}
-        {/* Rarity */}
-        <div style={{
-          position:"absolute", top:10, right:10,
-          background: rar.bg, color: rar.color,
-          fontSize:9, fontWeight:900, padding:"3px 7px", borderRadius:5,
-          border:`1px solid ${rar.color}40`,
-        }}>{master.rarity}</div>
-      </div>
+            position:"absolute", inset:0,
+            background:`radial-gradient(ellipse 90% 55% at 50% 100%, ${master.accentColor}1c 0%, transparent 65%)`,
+          }}/>
+          <img
+            src={master.artPath}
+            alt={master.name}
+            className="gp-master-art"
+            style={{
+              position:"absolute", inset:0, width:"100%", height:"100%",
+              objectFit:"contain", objectPosition:"center top",
+              transition:"transform 0.45s cubic-bezier(0.22,1,0.36,1)",
+            }}
+            onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+          />
+          {/* bottom fade into info */}
+          <div style={{
+            position:"absolute", left:0, right:0, bottom:0, height:70,
+            background:"linear-gradient(transparent, #0a080e)",
+          }}/>
+          {/* Active ribbon */}
+          {master.isActive && (
+            <div style={{
+              position:"absolute", top:12, left:-34, transform:"rotate(-38deg)",
+              background:"linear-gradient(90deg,#065f46,#10b981,#065f46)",
+              color:"#eafff5", fontSize:9, fontWeight:900, letterSpacing:"0.18em",
+              padding:"4px 40px", boxShadow:"0 2px 10px rgba(16,185,129,0.45)",
+            }}>ATIVO</div>
+          )}
+          {/* Rarity */}
+          <div style={{
+            position:"absolute", top:10, right:10,
+            background:"rgba(6,5,9,0.75)", color: rar.color,
+            fontSize:10, fontWeight:900, letterSpacing:"0.12em",
+            padding:"4px 9px", borderRadius:6,
+            border:`1px solid ${rar.color}55`, backdropFilter:"blur(6px)",
+          }}>{master.rarity}</div>
+        </div>
 
-      {/* Info section */}
-      <div style={{ padding:"12px 14px 14px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-          <span style={{ fontWeight:900, fontSize:15, color:"#f1f0ee" }}>{master.name}</span>
-          <span style={{
-            fontSize:9, fontWeight:800, color: el.color, background: el.bg,
-            padding:"1px 6px", borderRadius:4,
-          }}>{master.element}</span>
+        {/* info */}
+        <div style={{ padding:"12px 15px 15px", position:"relative" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3 }}>
+            <span style={{ fontWeight:900, fontSize:16, color:"#f1f0ee", letterSpacing:"0.01em" }}>{master.name}</span>
+            <span style={{
+              fontSize:9, fontWeight:800, letterSpacing:"0.10em", color: el.color, background: el.bg,
+              padding:"2px 7px", borderRadius:4, textTransform:"uppercase",
+            }}>{master.element}</span>
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:7 }}>
+            <span style={{ fontSize:11, fontWeight:700, color: master.accentColor }}>Nível {master.currentLevel}</span>
+            <span style={{ fontSize:10, color:"#565d6b", fontVariantNumeric:"tabular-nums" }}>
+              {master.currentXP}/{master.xpToNext} XP
+            </span>
+          </div>
+          <XPBar current={master.currentXP} total={master.xpToNext} color={master.accentColor} height={5}/>
         </div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-          <span style={{ fontSize:11, color:"#6b7280" }}>Lv.{master.currentLevel} / {master.maxLevel}</span>
-          <span style={{ fontSize:10, color: master.accentColor, fontWeight:700 }}>
-            {master.currentXP} / {master.xpToNext} XP
-          </span>
-        </div>
-        <XPBar current={master.currentXP} total={master.xpToNext} color={master.accentColor}/>
       </div>
     </button>
   )
@@ -169,34 +203,25 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
   onClose:       () => void
   onClaimReward: (level: number) => void
 }) {
-  const el  = elementStyle(master.element)
-  const rar = rarityStyle(master.rarity)
-  const pct = master.xpToNext > 0
-    ? Math.min(100, (master.currentXP / master.xpToNext) * 100) : 100
-
-  // Claimable rewards
-  const claimable = master.rewards.filter(
-    r => r.level <= master.currentLevel && !r.claimed
-  )
+  const claimable = master.rewards.filter(r => r.level <= master.currentLevel && !r.claimed)
 
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:200,
-      background:"rgba(0,0,0,0.90)", backdropFilter:"blur(20px)",
-      display:"flex", overflow:"hidden",
+      background:"rgba(2,1,4,0.92)", backdropFilter:"blur(22px)",
+      display:"flex", overflow:"hidden", animation:"gpFadeIn 0.25s ease",
     }}>
       {/* Left panel — art + identity */}
       <div style={{
-        width:320, flexShrink:0,
-        background:`linear-gradient(160deg,${master.bgColor} 0%,#08060a 100%)`,
-        borderRight:"1px solid rgba(255,255,255,0.06)",
+        width:330, flexShrink:0,
+        background:`linear-gradient(165deg,${master.bgColor} 0%,#07050a 100%)`,
+        borderRight:`1px solid ${master.accentColor}20`,
         display:"flex", flexDirection:"column", overflow:"hidden",
         position:"relative",
       }}>
-        {/* Accent glow */}
         <div style={{
           position:"absolute", inset:0, pointerEvents:"none",
-          background:`radial-gradient(ellipse 80% 60% at 50% 70%,${master.accentColor}10 0%,transparent 70%)`,
+          background:`radial-gradient(ellipse 85% 55% at 50% 72%,${master.accentColor}14 0%,transparent 70%)`,
         }}/>
 
         {/* Art */}
@@ -204,68 +229,80 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
           <img
             src={master.artPath}
             alt={master.fullName}
-            style={{ maxHeight:"85%", objectFit:"contain", objectPosition:"center bottom", position:"relative", zIndex:1 }}
-            onError={() => {}}
+            style={{ maxHeight:"88%", objectFit:"contain", objectPosition:"center bottom", position:"relative", zIndex:1 }}
           />
-          {/* name watermark */}
           <div style={{
             position:"absolute", bottom:0, left:0, right:0,
-            background:"linear-gradient(transparent,rgba(8,6,10,0.95))",
-            padding:"40px 20px 20px", zIndex:2,
+            background:"linear-gradient(transparent,rgba(7,5,10,0.97) 82%)",
+            padding:"56px 22px 18px", zIndex:2,
           }}>
             <div style={{
-              fontSize:11, fontWeight:800, letterSpacing:"0.14em",
-              textTransform:"uppercase", color: master.accentColor, marginBottom:4,
-            }}>{master.element} · {master.rarity}</div>
+              display:"flex", alignItems:"center", gap:8, marginBottom:6,
+            }}>
+              <div style={{ height:1, width:22, background:`linear-gradient(90deg,transparent,${master.accentColor})` }}/>
+              <div style={{
+                fontSize:10, fontWeight:800, letterSpacing:"0.22em",
+                textTransform:"uppercase", color: master.accentColor,
+              }}>{master.element} · {master.rarity}</div>
+            </div>
             <div style={{
-              fontWeight:900, fontSize:26, lineHeight:1.1,
-              background:`linear-gradient(135deg,#f1f0ee,${master.accentColor})`,
-              WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
-              backgroundClip:"text",
+              fontWeight:900, fontSize:27, lineHeight:1.08, letterSpacing:"-0.01em",
+              color:"#f6f4f0", textShadow:`0 2px 24px ${master.accentColor}50`,
             }}>{master.fullName}</div>
-            <div style={{ color:"#4b5563", fontSize:12, fontStyle:"italic", marginTop:6, lineHeight:1.5 }}>
+            <div style={{ color:"#6d7482", fontSize:12, fontStyle:"italic", marginTop:7, lineHeight:1.55 }}>
               {master.quote}
             </div>
           </div>
         </div>
 
         {/* XP section */}
-        <div style={{ padding:"16px 20px", background:"rgba(0,0,0,0.3)", flexShrink:0 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-            <span style={{ fontWeight:900, fontSize:18, color:"#f1f0ee" }}>Lv.{master.currentLevel}</span>
-            <span style={{ fontSize:12, color: master.accentColor, fontWeight:700 }}>
-              {master.currentXP} / {master.xpToNext} XP
-            </span>
-          </div>
-          <XPBar current={master.currentXP} total={master.xpToNext} color={master.accentColor}/>
-          <div style={{ fontSize:10, color:"#4b5563", marginTop:6, textAlign:"center" }}>
-            {master.maxLevel - master.currentLevel} níveis até o máximo
+        <div style={{ padding:"16px 20px 18px", background:"rgba(0,0,0,0.38)", flexShrink:0, borderTop:`1px solid ${master.accentColor}15` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:10 }}>
+            <LevelMedallion level={master.currentLevel} color={master.accentColor} size={52}/>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.14em", color:"#565d6b", textTransform:"uppercase" }}>Experiência</span>
+                <span style={{ fontSize:11, color: master.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums" }}>
+                  {master.currentXP} / {master.xpToNext}
+                </span>
+              </div>
+              <XPBar current={master.currentXP} total={master.xpToNext} color={master.accentColor}/>
+              <div style={{ fontSize:10, color:"#4b5563", marginTop:5 }}>
+                {master.currentLevel >= master.maxLevel
+                  ? "Nível máximo alcançado"
+                  : `${master.maxLevel - master.currentLevel} níveis até o máximo`}
+              </div>
+            </div>
           </div>
 
-          {/* Passive */}
+          {/* Passive — traço do mestre, desbloqueia no Lv.25 */}
           {master.passive && master.currentLevel >= 25 && (
             <div style={{
-              marginTop:12, background:`${master.accentColor}10`,
-              border:`1px solid ${master.accentColor}25`, borderRadius:10,
-              padding:"10px 12px",
+              background:`linear-gradient(135deg,${master.accentColor}14,${master.accentColor}06)`,
+              border:`1px solid ${master.accentColor}30`, borderRadius:12,
+              padding:"11px 13px",
             }}>
-              <div style={{ fontWeight:800, fontSize:11, color: master.accentColor, marginBottom:3 }}>
-                {master.passive.icon} {master.passive.name}
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                <Star size={12} color={master.accentColor} fill={master.accentColor}/>
+                <span style={{ fontWeight:800, fontSize:11.5, color: master.accentColor, letterSpacing:"0.04em" }}>
+                  {master.passive.name}
+                </span>
               </div>
-              <div style={{ fontSize:10, color:"#6b7280", lineHeight:1.5 }}>
+              <div style={{ fontSize:10.5, color:"#7b8290", lineHeight:1.55 }}>
                 {master.passive.description}
               </div>
             </div>
           )}
           {master.passive && master.currentLevel < 25 && (
             <div style={{
-              marginTop:12, background:"rgba(255,255,255,0.02)",
-              border:"1px solid rgba(255,255,255,0.07)", borderRadius:10,
-              padding:"10px 12px", opacity:0.5,
+              background:"rgba(255,255,255,0.02)",
+              border:"1px dashed rgba(255,255,255,0.10)", borderRadius:12,
+              padding:"10px 13px", display:"flex", alignItems:"center", gap:8,
             }}>
-              <div style={{ fontSize:10, color:"#4b5563" }}>
-                🔒 Passiva desbloqueada no Lv.25
-              </div>
+              <Lock size={12} color="#4b5563"/>
+              <span style={{ fontSize:10.5, color:"#4b5563" }}>
+                Habilidade Passiva desbloqueia no Nível 25
+              </span>
             </div>
           )}
         </div>
@@ -274,170 +311,205 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
       {/* Right panel — info + rewards */}
       <div style={{
         flex:1, display:"flex", flexDirection:"column", overflow:"hidden",
-        background:"linear-gradient(160deg,#09070f 0%,#060408 100%)",
+        background:"linear-gradient(165deg,#0a0812 0%,#060409 100%)",
       }}>
         {/* Header */}
         <div style={{
           display:"flex", alignItems:"center", gap:12,
-          padding:"16px 20px", borderBottom:"1px solid rgba(255,255,255,0.06)",
-          flexShrink:0,
+          padding:"15px 22px", borderBottom:"1px solid rgba(255,255,255,0.06)",
+          flexShrink:0, background:"rgba(5,4,8,0.6)",
         }}>
-          <button onClick={onClose} style={{
-            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)",
-            borderRadius:8, width:36, height:36, cursor:"pointer", color:"#6b7280",
-            fontSize:16, display:"flex", alignItems:"center", justifyContent:"center",
-          }}>←</button>
+          <button onClick={onClose} className="gp-icon-btn" style={{
+            background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)",
+            borderRadius:10, width:38, height:38, cursor:"pointer", color:"#8b93a1",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}><ArrowLeft size={17}/></button>
           <div style={{ flex:1 }}>
-            <div style={{ fontWeight:900, fontSize:16, color:"#f1f0ee" }}>{master.fullName}</div>
-            <div style={{ fontSize:11, color:"#4b5563" }}>Trilha de Progressão</div>
+            <div style={{ fontWeight:900, fontSize:16, color:"#f1f0ee", letterSpacing:"0.01em" }}>{master.fullName}</div>
+            <div style={{ fontSize:10, color:"#565d6b", letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:700 }}>
+              Trilha de Progressão
+            </div>
           </div>
 
-          {/* Claimable badge */}
           {claimable.length > 0 && (
             <div style={{
-              background:"linear-gradient(135deg,#7a5c0f,#e8c96d)",
-              color:"#0c0a06", fontWeight:900, fontSize:11,
-              padding:"6px 12px", borderRadius:8,
-              boxShadow:"0 2px 12px rgba(232,201,109,0.40)",
-              animation:"badgePop 0.3s ease",
+              display:"flex", alignItems:"center", gap:7,
+              background:"linear-gradient(135deg,#6d5310,#e8c96d)",
+              color:"#0c0a06", fontWeight:900, fontSize:11.5,
+              padding:"7px 14px", borderRadius:9,
+              boxShadow:"0 3px 16px rgba(232,201,109,0.42)",
+              animation:"gpBadgePop 0.3s ease",
             }}>
-              🎁 {claimable.length} para receber
+              <span style={{
+                width:18, height:18, borderRadius:"50%", background:"rgba(12,10,6,0.22)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:10, fontWeight:900,
+              }}>{claimable.length}</span>
+              para receber
             </div>
           )}
 
-          {/* Activate button */}
-          {!master.isActive && (
-            <button onClick={onActivate} style={{
-              background:`linear-gradient(135deg,${master.accentColor}30,${master.accentColor}60)`,
-              border:`1px solid ${master.accentColor}50`, borderRadius:10,
-              padding:"8px 18px", cursor:"pointer", color: master.accentColor,
-              fontWeight:900, fontSize:13,
-              boxShadow:`0 2px 12px ${master.accentColor}30`,
+          {!master.isActive ? (
+            <button onClick={onActivate} className="gp-cta" style={{
+              background:`linear-gradient(135deg,${master.accentColor}28,${master.accentColor}55)`,
+              border:`1px solid ${master.accentColor}60`, borderRadius:11,
+              padding:"9px 18px", cursor:"pointer", color:"#fff",
+              fontWeight:900, fontSize:12.5, letterSpacing:"0.03em",
+              boxShadow:`0 3px 16px ${master.accentColor}35`,
+              textShadow:"0 1px 4px rgba(0,0,0,0.4)",
             }}>
-              ✦ Definir como Ativo
+              Definir como Ativo
             </button>
-          )}
-          {master.isActive && (
+          ) : (
             <div style={{
-              background:"rgba(5,150,105,0.12)", border:"1px solid rgba(5,150,105,0.30)",
-              borderRadius:10, padding:"8px 16px", color:"#34d399",
+              display:"flex", alignItems:"center", gap:6,
+              background:"rgba(16,185,129,0.10)", border:"1px solid rgba(16,185,129,0.32)",
+              borderRadius:11, padding:"9px 15px", color:"#34d399",
               fontWeight:800, fontSize:12,
-            }}>✦ Mestre Ativo</div>
+            }}>
+              <Check size={13}/> Mestre Ativo
+            </div>
           )}
         </div>
 
         {/* Description */}
-        <div style={{ padding:"16px 20px 0", flexShrink:0 }}>
-          <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.7, margin:0 }}>
+        <div style={{ padding:"15px 22px 0", flexShrink:0 }}>
+          <p style={{ fontSize:12.5, color:"#7b8290", lineHeight:1.7, margin:0 }}>
             {master.description}
           </p>
         </div>
 
         {/* Rewards trail */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px 20px 40px" }}>
-          <div style={{
-            fontSize:10, fontWeight:700, color:"#4b5563",
-            textTransform:"uppercase", letterSpacing:"0.10em", marginBottom:14,
-          }}>Recompensas por Nível</div>
+        <div style={{ flex:1, overflowY:"auto", padding:"18px 22px 46px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+            <span style={{
+              fontSize:10, fontWeight:800, color:"#6d7482",
+              textTransform:"uppercase", letterSpacing:"0.18em",
+            }}>Recompensas por Nível</span>
+            <div style={{ flex:1, height:1, background:"linear-gradient(90deg,rgba(255,255,255,0.10),transparent)" }}/>
+          </div>
 
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            {master.rewards.map((reward, idx) => {
-              const reached   = master.currentLevel >= reward.level
-              const claimable = reached && !reward.claimed
-              const rColor    = rewardColor(reward.type)
-              const isNext    = reward.level === master.currentLevel + 1
+          <div style={{ position:"relative" }}>
+            {/* timeline spine */}
+            <div style={{
+              position:"absolute", left:19, top:8, bottom:8, width:2, borderRadius:2,
+              background:`linear-gradient(180deg,${master.accentColor}45,rgba(255,255,255,0.05))`,
+            }}/>
 
-              return (
-                <div key={reward.level} style={{
-                  display:"flex", alignItems:"center", gap:12,
-                  background: claimable
-                    ? `linear-gradient(90deg,${rColor}08,rgba(255,255,255,0.04))`
-                    : reached && reward.claimed
-                    ? "rgba(255,255,255,0.015)"
-                    : "rgba(255,255,255,0.025)",
-                  border: `1px solid ${
-                    claimable ? `${rColor}30` :
-                    isNext ? "rgba(255,255,255,0.10)" :
-                    "rgba(255,255,255,0.04)"
-                  }`,
-                  borderRadius:10, padding:"9px 14px",
-                  opacity: !reached && !isNext ? 0.45 : 1,
-                  transition:"all 0.2s",
-                }}>
-                  {/* Level number */}
-                  <div style={{
-                    width:32, height:32, borderRadius:8, flexShrink:0,
-                    background: reached
-                      ? `linear-gradient(135deg,${master.accentColor}20,${master.accentColor}40)`
-                      : "rgba(255,255,255,0.04)",
-                    border:`1px solid ${reached ? master.accentColor + "40" : "rgba(255,255,255,0.06)"}`,
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    fontWeight:900, fontSize:11,
-                    color: reached ? master.accentColor : "#374151",
-                  }}>{reward.level}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+              {master.rewards.map(reward => {
+                const reached     = master.currentLevel >= reward.level
+                const canClaim    = reached && !reward.claimed
+                const rColor      = rewardColor(reward.type)
+                const isNext      = reward.level === master.currentLevel + 1
+                const isMilestone = reward.level % 10 === 0 || reward.level === 25
 
-                  {/* Icon — gacha_coins shows nothing here; amount shown in label */}
-                  {reward.type !== "gacha_coins" && (
-                    <span style={{ fontSize:18, flexShrink:0 }}>{rewardIcon(reward.type)}</span>
-                  )}
-
-                  {/* Label */}
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color: reached ? "#f1f0ee" : "#6b7280",
-                      display:"flex", alignItems:"center", gap:6 }}>
-                      {reward.type === "gacha_coins" ? (
-                        <>
-                          <img src="/images/icons/gacha-coin.png" alt="GC"
-                            style={{ width:16, height:16, objectFit:"contain" }}/>
-                          <span>{reward.amount}</span>
-                        </>
-                      ) : reward.label}
+                return (
+                  <div key={reward.level} style={{
+                    display:"flex", alignItems:"center", gap:13,
+                    background: canClaim
+                      ? `linear-gradient(90deg,${rColor}0d,rgba(255,255,255,0.035))`
+                      : isMilestone && !reached
+                      ? "rgba(255,255,255,0.028)"
+                      : "rgba(255,255,255,0.018)",
+                    border: `1px solid ${
+                      canClaim ? `${rColor}40` :
+                      isNext ? "rgba(255,255,255,0.13)" :
+                      isMilestone ? "rgba(255,255,255,0.07)" :
+                      "rgba(255,255,255,0.045)"
+                    }`,
+                    borderRadius:12,
+                    padding: isMilestone ? "12px 15px" : "9px 15px",
+                    opacity: !reached && !isNext ? 0.5 : 1,
+                    position:"relative",
+                    boxShadow: canClaim ? `0 4px 20px ${rColor}18` : "none",
+                    transition:"all 0.2s",
+                  }}>
+                    {/* Level node */}
+                    <div style={{
+                      width:38, height:38, borderRadius: isMilestone ? 12 : 10, flexShrink:0,
+                      background: reached
+                        ? `linear-gradient(135deg,${master.accentColor}25,${master.accentColor}45)`
+                        : "rgba(10,8,14,0.9)",
+                      border:`1.5px solid ${reached ? master.accentColor + "60" : "rgba(255,255,255,0.09)"}`,
+                      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                      fontWeight:900, fontSize:12, position:"relative", zIndex:1,
+                      color: reached ? "#f1f0ee" : "#3f4654",
+                      boxShadow: reached ? `0 0 12px ${master.accentColor}30` : "none",
+                    }}>
+                      {reward.level}
                     </div>
-                    {isNext && (
-                      <div style={{ fontSize:10, color: master.accentColor, marginTop:1 }}>
-                        Próxima recompensa
+
+                    {/* Reward icon */}
+                    <div style={{
+                      width: isMilestone ? 44 : 36, height: isMilestone ? 44 : 36, flexShrink:0,
+                      borderRadius:10, background:`radial-gradient(circle,${rColor}14,rgba(0,0,0,0.35))`,
+                      border:`1px solid ${rColor}28`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      overflow:"hidden",
+                    }}>
+                      <img
+                        src={rewardIconPath(reward.type, reward.packId) || "/placeholder.svg"}
+                        alt=""
+                        style={{ width:"78%", height:"78%", objectFit:"contain" }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                      />
+                    </div>
+
+                    {/* Label */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{
+                        fontWeight: isMilestone ? 800 : 700,
+                        fontSize: isMilestone ? 13.5 : 12.5,
+                        color: reached ? "#f1f0ee" : "#6d7482",
+                      }}>
+                        {reward.label}
                       </div>
+                      {isNext && (
+                        <div style={{ fontSize:10, color: master.accentColor, fontWeight:700, marginTop:1 }}>
+                          Próxima recompensa
+                        </div>
+                      )}
+                      {isMilestone && !isNext && (
+                        <div style={{ fontSize:9.5, color:"#4b5563", letterSpacing:"0.10em", textTransform:"uppercase", fontWeight:700, marginTop:1 }}>
+                          Marco de progressão
+                        </div>
+                      )}
+                    </div>
+
+                    {/* State */}
+                    {reward.claimed && (
+                      <span style={{
+                        display:"flex", alignItems:"center", gap:5,
+                        fontSize:11, color:"#3f4654", fontWeight:700,
+                      }}><Check size={13}/> Recebido</span>
+                    )}
+                    {canClaim && (
+                      <button
+                        onClick={() => onClaimReward(reward.level)}
+                        className="gp-cta"
+                        style={{
+                          background:`linear-gradient(135deg,${rColor}25,${rColor}50)`,
+                          border:`1px solid ${rColor}60`, borderRadius:9,
+                          padding:"7px 16px", cursor:"pointer", color:"#fff",
+                          fontWeight:900, fontSize:11.5, flexShrink:0,
+                          boxShadow:`0 3px 14px ${rColor}30`,
+                          textShadow:"0 1px 3px rgba(0,0,0,0.5)",
+                          letterSpacing:"0.02em",
+                        }}>
+                        Receber
+                      </button>
+                    )}
+                    {!reached && !canClaim && !isNext && (
+                      <Lock size={14} color="#272c36"/>
                     )}
                   </div>
-
-                  {/* State */}
-                  {reward.claimed && (
-                    <span style={{ fontSize:11, color:"#374151", fontWeight:600 }}>✓ Recebido</span>
-                  )}
-                  {claimable && (
-                    <button
-                      onClick={() => onClaimReward(reward.level)}
-                      style={{
-                        background:`linear-gradient(135deg,${rColor}20,${rColor}40)`,
-                        border:`1px solid ${rColor}50`, borderRadius:8,
-                        padding:"5px 12px", cursor:"pointer", color: rColor,
-                        fontWeight:800, fontSize:11, flexShrink:0,
-                        boxShadow:`0 2px 8px ${rColor}25`,
-                      }}>
-                      Receber
-                    </button>
-                  )}
-                  {!reached && !claimable && !isNext && (
-                    <span style={{ fontSize:14, color:"#1f2937" }}>🔒</span>
-                  )}
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes shimmer {
-          0%  { left:-100% }
-          100%{ left: 200% }
-        }
-        @keyframes badgePop {
-          0%  { transform:scale(0.8); opacity:0 }
-          70% { transform:scale(1.05) }
-          100%{ transform:scale(1);   opacity:1 }
-        }
-      `}</style>
     </div>
   )
 }
@@ -454,42 +526,39 @@ function LevelUpOverlay({ master, newLevel, onClose }: {
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:500,
-      background:"rgba(0,0,0,0.85)", backdropFilter:"blur(10px)",
+      background:"rgba(2,1,4,0.88)", backdropFilter:"blur(12px)",
       display:"flex", alignItems:"center", justifyContent:"center",
-      animation:"fadeIn 0.3s ease",
+      animation:"gpFadeIn 0.3s ease",
     }} onClick={onClose}>
-      <div style={{ textAlign:"center", pointerEvents:"none" }}>
+      <div style={{ textAlign:"center", pointerEvents:"none", position:"relative" }}>
+        {/* radiant rings */}
         <div style={{
-          fontSize:80, marginBottom:12,
-          filter:`drop-shadow(0 0 40px ${master.accentColor})`,
-          animation:"levelUpBounce 0.6s cubic-bezier(0.34,1.56,0.64,1)",
-        }}>⭐</div>
+          position:"absolute", left:"50%", top:"38%", transform:"translate(-50%,-50%)",
+          width:280, height:280, borderRadius:"50%",
+          border:`1px solid ${master.accentColor}35`,
+          animation:"gpRingPulse 2s ease-out infinite",
+        }}/>
         <div style={{
-          fontSize:14, fontWeight:700, color: master.accentColor,
-          letterSpacing:"0.20em", textTransform:"uppercase", marginBottom:8,
-        }}>Nível Alcançado!</div>
+          position:"absolute", left:"50%", top:"38%", transform:"translate(-50%,-50%)",
+          width:200, height:200, borderRadius:"50%",
+          background:`radial-gradient(circle,${master.accentColor}22 0%,transparent 70%)`,
+          filter:"blur(6px)",
+        }}/>
+        <div style={{ position:"relative", animation:"gpLevelBounce 0.6s cubic-bezier(0.34,1.56,0.64,1)", marginBottom:18 }}>
+          <LevelMedallion level={newLevel} color={master.accentColor} size={120}/>
+        </div>
         <div style={{
-          fontWeight:900, fontSize:56, lineHeight:1,
-          background:`linear-gradient(135deg,#f1f0ee,${master.accentColor})`,
-          WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
-          backgroundClip:"text", marginBottom:12,
-        }}>Lv.{newLevel}</div>
-        <div style={{ fontWeight:800, fontSize:18, color:"#f1f0ee" }}>{master.fullName}</div>
-        <div style={{ color:"#6b7280", fontSize:13, marginTop:6 }}>Toque para continuar</div>
+          fontSize:13, fontWeight:800, color: master.accentColor,
+          letterSpacing:"0.32em", textTransform:"uppercase", marginBottom:10,
+        }}>Nível Alcançado</div>
+        <div style={{ fontWeight:900, fontSize:24, color:"#f6f4f0", textShadow:`0 2px 24px ${master.accentColor}60` }}>
+          {master.fullName}
+        </div>
+        <div style={{ color:"#565d6b", fontSize:12, marginTop:10, letterSpacing:"0.08em" }}>toque para continuar</div>
       </div>
-      <style>{`
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes levelUpBounce {
-          0%  { transform:scale(0.3) rotate(-20deg); opacity:0 }
-          60% { transform:scale(1.2) rotate(5deg);  opacity:1 }
-          100%{ transform:scale(1)   rotate(0deg);  opacity:1 }
-        }
-      `}</style>
     </div>
   )
 }
-
-
 
 // ─── Mini master card for menu bar ───────────────────────────────────────────
 export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
@@ -514,18 +583,16 @@ export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
       cursor:"pointer", boxShadow:`0 4px 16px rgba(0,0,0,0.4)`,
       transition:"all 0.2s",
     }}>
-      {/* Avatar */}
       <div style={{
         width:40, height:40, borderRadius:"50%", overflow:"hidden",
         border:`2px solid ${active.accentColor}`,
         background:`radial-gradient(circle,${active.bgColor},#08060a)`,
         flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
       }}>
-        <img src={active.iconPath} alt={active.name}
+        <img src={active.iconPath || "/placeholder.svg"} alt={active.name}
           style={{ width:"100%", height:"100%", objectFit:"cover" }}
           onError={e => { (e.target as HTMLImageElement).style.display = "none" }}/>
       </div>
-      {/* Info */}
       <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
           <span style={{ fontWeight:800, fontSize:13, color:"#f1f0ee", lineHeight:1 }}>
@@ -535,7 +602,6 @@ export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
             Lv.{active.currentLevel}
           </span>
         </div>
-        {/* XP bar mini */}
         <div style={{ width:100, height:5, borderRadius:99, background:"rgba(255,255,255,0.08)", overflow:"hidden" }}>
           <div style={{
             height:"100%", borderRadius:99, width:`${pct}%`,
@@ -548,161 +614,27 @@ export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
   )
 }
 
-
-// ─── Mini Pack Opener (same animation as Gacha, stays inside Master screen) ──
-interface MiniPackOpenerProps {
-  packId:    string           // "common" | "sr_guaranteed" | "lr_guaranteed"
-  cards:     any[]            // cards drawn
-  onConfirm: () => void       // returns to master rewards after confirming
-}
-
-function MiniPackOpener({ packId, cards, onConfirm }: MiniPackOpenerProps) {
-  const [phase, setPhase] = useState<"floating" | "opening" | "revealing">("floating")
-  const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
-  const [revealIdx,   setRevealIdx]   = useState(-1)
-
-  const packImage = packId === "lr_guaranteed"
-    ? "/images/gacha/pack-fsg.png"
-    : packId === "sr_guaranteed"
-    ? "/images/gacha/pack-anl.png"
-    : "/images/gacha/pack-fsg.png"
-
-  // Auto-reveal cards one by one after opening
-  useEffect(() => {
-    if (phase !== "revealing") return
-    if (revealIdx < cards.length - 1) {
-      const t = setTimeout(() => setRevealIdx(i => i + 1), 180)
-      return () => clearTimeout(t)
-    }
-  }, [phase, revealIdx, cards.length])
-
-  const handleSwipe = (clientX: number) => {
-    if (phase !== "floating" || swipeStartX === null) return
-    if (Math.abs(clientX - swipeStartX) > 40) {
-      setPhase("opening")
-      setTimeout(() => { setPhase("revealing"); setRevealIdx(0) }, 900)
-    }
-  }
-
-  return (
-    <div style={{
-      position:"fixed", inset:0, zIndex:400,
-      background:"#000", display:"flex", flexDirection:"column",
-      alignItems:"center", justifyContent:"center",
-    }}>
-      <style>{`
-        @keyframes packFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-        @keyframes packOpenEpic {
-          0%   { transform:scale(1) rotate(0deg); opacity:1 }
-          40%  { transform:scale(1.3) rotate(-5deg); opacity:0.9 }
-          70%  { transform:scale(1.6) rotate(8deg); opacity:0.5 }
-          100% { transform:scale(2.2) rotate(-3deg); opacity:0 }
-        }
-        @keyframes cardReveal {
-          0%   { transform:translateY(30px) scale(0.8); opacity:0 }
-          100% { transform:translateY(0) scale(1); opacity:1 }
-        }
-      `}</style>
-
-      {phase !== "revealing" && (
-        <>
-          <div style={{ fontSize:28, fontWeight:900, color:"#fff", marginBottom:32, letterSpacing:"0.08em" }}>
-            Abra!
-          </div>
-          <div
-            onMouseDown={e => setSwipeStartX(e.clientX)}
-            onMouseMove={e => e.buttons === 1 && handleSwipe(e.clientX)}
-            onTouchStart={e => setSwipeStartX(e.touches[0].clientX)}
-            onTouchMove={e => handleSwipe(e.touches[0].clientX)}
-            style={{
-              position:"relative", width:200, height:280,
-              animation: phase === "opening"
-                ? "packOpenEpic 0.9s cubic-bezier(0.22,1,0.36,1) forwards"
-                : "packFloat 3s ease-in-out infinite",
-              cursor:"ew-resize",
-            }}>
-            {/* Glow */}
-            <div style={{
-              position:"absolute", inset:-30,
-              background:"radial-gradient(circle,rgba(99,102,241,0.35) 0%,transparent 70%)",
-              borderRadius:"50%", filter:"blur(20px)",
-            }}/>
-            {/* Scissor line */}
-            {phase === "floating" && (
-              <div style={{
-                position:"absolute", top:38, left:0, right:0,
-                display:"flex", alignItems:"center", gap:8,
-              }}>
-                <span style={{ fontSize:16, color:"rgba(255,255,255,0.5)" }}>✂</span>
-                <div style={{ flex:1, height:1, borderTop:"2px dashed rgba(255,255,255,0.25)" }}/>
-                <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>← rasgar</span>
-              </div>
-            )}
-            <img src={packImage} alt="Pack"
-              style={{ width:"100%", height:"100%", objectFit:"contain", position:"relative", zIndex:1 }}
-              onError={e => { (e.target as HTMLImageElement).style.opacity="0.3" }}/>
-          </div>
-          <p style={{ marginTop:28, fontSize:13, color:"rgba(255,255,255,0.35)", letterSpacing:"0.12em" }}>
-            arraste a linha para rasgar
-          </p>
-        </>
-      )}
-
-      {phase === "revealing" && (
-        <div style={{ textAlign:"center", padding:"0 24px" }}>
-          <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", marginBottom:4 }}>Cartas Obtidas!</h2>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", letterSpacing:"0.10em", marginBottom:32 }}>
-            {cards.length} CARTAS · TOQUE PARA AMPLIAR
-          </p>
-          <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginBottom:40 }}>
-            {cards.slice(0, revealIdx + 1).map((card, i) => (
-              <div key={i} style={{
-                width:100, display:"flex", flexDirection:"column", alignItems:"center", gap:6,
-                animation:"cardReveal 0.3s ease forwards",
-              }}>
-                <div style={{ width:100, height:140, borderRadius:10, overflow:"hidden",
-                  boxShadow:`0 0 20px rgba(99,102,241,0.4)`,
-                  border:"1px solid rgba(255,255,255,0.15)" }}>
-                  <img src={card.image || "/placeholder.svg"} alt={card.name}
-                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
-                    onError={e => { (e.target as HTMLImageElement).src = "/placeholder.svg" }}/>
-                </div>
-                <div style={{
-                  padding:"2px 8px", borderRadius:4, fontSize:10, fontWeight:800, color:"#fff",
-                  background: card.rarity==="LR" ? "linear-gradient(135deg,#dc2626,#f59e0b)"
-                    : card.rarity==="UR" ? "linear-gradient(135deg,#f59e0b,#eab308)"
-                    : card.rarity==="SR" ? "#7c3aed" : "#475569",
-                }}>{card.rarity}</div>
-              </div>
-            ))}
-          </div>
-          {revealIdx >= cards.length - 1 && (
-            <button onClick={onConfirm} style={{
-              padding:"14px 48px", borderRadius:14, border:"none",
-              background:"linear-gradient(135deg,#059669,#34d399)",
-              color:"#fff", fontWeight:900, fontSize:16, cursor:"pointer",
-              boxShadow:"0 4px 20px rgba(52,211,153,0.4)",
-            }}>CONFIRMAR</button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+// ─── XP sources data ──────────────────────────────────────────────────────────
+const XP_SOURCES = [
+  { Icon: Swords, name:"Duelo PvE",  xp:"+50–100 XP" },
+  { Icon: Trophy, name:"Duelo PvP",  xp:"+80–140 XP" },
+  { Icon: Skull,  name:"Chefão",     xp:"+120–180 XP" },
+  { Icon: Flag,   name:"Guerra",     xp:"+100–160 XP" },
+  { Icon: Layers, name:"Draft",      xp:"+70–120 XP" },
+  { Icon: Target, name:"Missões",    xp:"+30–80 XP" },
+]
 
 // ─── MAIN MasterScreen ────────────────────────────────────────────────────────
 export default function MasterScreen({ onBack }: MasterScreenProps) {
-  // Access game context for live coin/collection updates
-  const { coins, setCoins, addToCollection, allCards, updatePlayerProfile } = useGame()
+  const { coins, setCoins, setGearCoins, addChests, addSkipTickets, addStaminaBottles } = useGame()
 
   const [masters,      setMasters]      = useState<Master[]>([])
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [showDetail,   setShowDetail]   = useState(false)
   const [levelUpData,  setLevelUpData]  = useState<{ master: Master; newLevel: number } | null>(null)
   const [toast,        setToast]        = useState<string | null>(null)
-  const [packToOpen,   setPackToOpen]   = useState<string | null>(null)  // packId being animated
+  const [packToOpen,   setPackToOpen]   = useState<string | null>(null)
 
-  // Load on mount
   useEffect(() => {
     const loaded = loadMastersFromStorage()
     setMasters(loaded)
@@ -722,7 +654,6 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     setMasters(prev => {
       const next = prev.map(m => {
         if (m.id !== masterId) return m
-        // Stop gaining XP at max level
         if (m.currentLevel >= m.maxLevel) {
           return { ...m, currentXP: m.xpToNext, currentLevel: m.maxLevel }
         }
@@ -734,7 +665,6 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           if (xp >= needed) { xp -= needed; level++; leveled = true }
           else break
         }
-        // At max level, cap XP display
         if (level >= m.maxLevel) { level = m.maxLevel; xp = 0 }
         const updated: Master = { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + amount, xpToNext: xpRequiredForLevel(level) }
         if (leveled && level <= m.maxLevel) {
@@ -754,7 +684,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       saveMastersToStorage(next)
       return next
     })
-    showToast("✦ Mestre alterado com sucesso!")
+    showToast("Mestre alterado com sucesso!")
     setShowDetail(false)
   }
 
@@ -775,59 +705,37 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     })
 
     // ── Actually grant the reward ──────────────────────────────────────────
-    if (reward.type === "coins" && reward.amount) {
-      // Update React state directly — live update in UI
-      const newTotal = coins + reward.amount!
-      setCoins(newTotal)
-      // Also persist to localStorage with correct key
-      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
-      showToast(`🪙 +${reward.amount} Moedas adicionadas!`)
+    if (reward.type === "gear_coins" && reward.amount) {
+      setGearCoins(prev => prev + reward.amount!)
+      showToast(`+${reward.amount} Gear Coins adicionados!`)
 
     } else if (reward.type === "gacha_coins" && reward.amount) {
-      // Update React state directly — live update in UI
-      const newTotal = coins + reward.amount!
+      const newTotal = coins + reward.amount
       setCoins(newTotal)
       try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
-      showToast(`🎰 +${reward.amount} Gacha Coins adicionados!`)
+      showToast(`+${reward.amount} Gacha Coins adicionados!`)
 
     } else if (reward.type === "pack" && reward.packId) {
-      // Show full pack opening animation — overlay handles drawing & collection
+      // Full pack opening animation — overlay handles drawing & collection
       setPackToOpen(reward.packId!)
 
-    } else if (reward.type === "title") {
-      const titleName = "Lendário"
-      try {
-        // Add to unlocked titles list
-        const raw = localStorage.getItem("gpgame_titles") ?? "[]"
-        const titles: string[] = JSON.parse(raw)
-        if (!titles.includes(titleName)) {
-          titles.push(titleName)
-          localStorage.setItem("gpgame_titles", JSON.stringify(titles))
-        }
-        // Apply title to player profile immediately via updatePlayerProfile
-        if (typeof updatePlayerProfile === "function") {
-          updatePlayerProfile({ title: titleName })
-        }
-        // Also write to profile storage so profile screen picks it up
-        try {
-          const profRaw = localStorage.getItem("gearperks-profile")
-          if (profRaw) {
-            const prof = JSON.parse(profRaw)
-            prof.title = titleName
-            localStorage.setItem("gearperks-profile", JSON.stringify(prof))
-          }
-        } catch {}
-        // Dispatch so profile screen reloads its title list immediately
-        window.dispatchEvent(new CustomEvent("gpgame_title_unlocked", { detail: { title: titleName } }))
-      } catch {}
-      showToast(`🏷️ Título "${titleName}" desbloqueado! Veja no Perfil.`)
+    } else if (reward.type === "chest" && reward.amount) {
+      addChests({ void: reward.amount })
+      showToast(`+${reward.amount} Baús do Vazio no inventário!`)
+
+    } else if (reward.type === "skip_ticket" && reward.amount) {
+      addSkipTickets(reward.amount)
+      showToast(`+${reward.amount} Skip Tíquetes adicionados!`)
+
+    } else if (reward.type === "stamina_bottle" && reward.amount) {
+      addStaminaBottles(reward.amount)
+      showToast(`+${reward.amount} Garrafas de Stamina adicionadas!`)
 
     } else if (reward.type === "card_skin") {
       // Unlock card skin — use exact skinId that deck-builder expects
       try {
         const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
         const skins: string[] = JSON.parse(raw)
-        // Map masterId+level to exact skin ID used in CARD_SKINS in deck-builder
         const skinIdMap: Record<string, Record<number, string>> = {
           fehnon:  { 40: "fehnon_skin_lv50",  50: "fehnon_skin_lv50"  },
           morgana: { 40: "morgana_skin_lv50", 50: "morgana_skin_lv50" },
@@ -838,12 +746,10 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
         localStorage.setItem("gpgame_card_skins", JSON.stringify(skins))
         window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
       } catch {}
-      showToast(`🃏 ${reward.label} desbloqueada!`)
+      showToast(`${reward.label} desbloqueada!`)
 
-    } else if (reward.type === "passive") {
-      showToast(`⚡ Passiva "${master?.passive?.name}" ativada!`)
     } else {
-      showToast(`🎁 ${reward.label} recebido!`)
+      showToast(`${reward.label} recebido!`)
     }
   }
 
@@ -852,35 +758,44 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
 
   return (
     <div style={{
-      minHeight:"100vh", background:"linear-gradient(160deg,#090610 0%,#060408 60%,#080610 100%)",
+      minHeight:"100vh", background:"linear-gradient(165deg,#0a0712 0%,#060409 55%,#090612 100%)",
       color:"#f1f0ee", fontFamily:"'Segoe UI',system-ui,sans-serif",
       display:"flex", flexDirection:"column", position:"relative", overflow:"hidden",
     }}>
-      {/* Ambient glow */}
+      {/* Ambient atmosphere */}
       <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0 }}>
-        <div style={{ position:"absolute", width:600, height:600, borderRadius:"50%", top:-200, left:-100, background:"radial-gradient(circle,rgba(88,28,220,0.08) 0%,transparent 70%)", filter:"blur(40px)" }}/>
-        <div style={{ position:"absolute", width:500, height:500, borderRadius:"50%", bottom:-150, right:-100, background:"radial-gradient(circle,rgba(232,201,109,0.05) 0%,transparent 70%)", filter:"blur(40px)" }}/>
+        <div style={{ position:"absolute", width:640, height:640, borderRadius:"50%", top:-240, left:-140, background:"radial-gradient(circle,rgba(88,28,220,0.09) 0%,transparent 70%)", filter:"blur(44px)" }}/>
+        <div style={{ position:"absolute", width:520, height:520, borderRadius:"50%", bottom:-180, right:-120, background:"radial-gradient(circle,rgba(232,201,109,0.06) 0%,transparent 70%)", filter:"blur(44px)" }}/>
+        {/* fine grid texture */}
+        <div style={{
+          position:"absolute", inset:0, opacity:0.35,
+          backgroundImage:"linear-gradient(rgba(255,255,255,0.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.014) 1px,transparent 1px)",
+          backgroundSize:"56px 56px",
+          maskImage:"radial-gradient(ellipse 90% 70% at 50% 30%,black,transparent)",
+          WebkitMaskImage:"radial-gradient(ellipse 90% 70% at 50% 30%,black,transparent)",
+        }}/>
       </div>
 
       {/* Toast */}
       {toast && (
         <div style={{
           position:"fixed", top:70, left:"50%", transform:"translateX(-50%)", zIndex:9999,
+          display:"flex", alignItems:"center", gap:8,
           background:"rgba(12,10,6,0.96)", border:"1px solid rgba(232,201,109,0.35)",
-          borderRadius:10, padding:"9px 20px", color:"#e8c96d", fontWeight:700, fontSize:13,
-          backdropFilter:"blur(16px)", boxShadow:"0 4px 24px rgba(0,0,0,0.5)",
-          whiteSpace:"nowrap", animation:"toastIn 0.25s ease",
-        }}>{toast}</div>
+          borderRadius:11, padding:"10px 20px", color:"#e8c96d", fontWeight:700, fontSize:13,
+          backdropFilter:"blur(16px)", boxShadow:"0 6px 28px rgba(0,0,0,0.55)",
+          whiteSpace:"nowrap", animation:"gpToastIn 0.25s ease",
+        }}>
+          <Check size={14}/>
+          {toast}
+        </div>
       )}
 
-      {/* Level-up overlay */}
       {/* Pack opening animation */}
       {packToOpen && (
         <PackOpeningOverlay
           packId={packToOpen}
-          onClose={() => {
-            setPackToOpen(null)
-          }}
+          onClose={() => setPackToOpen(null)}
         />
       )}
 
@@ -904,134 +819,158 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
 
       {/* ── Header ── */}
       <div style={{
-        display:"flex", alignItems:"center", gap:12, padding:"14px 18px",
-        background:"rgba(8,6,10,0.92)", backdropFilter:"blur(16px)",
-        borderBottom:"1px solid rgba(255,255,255,0.06)", position:"sticky", top:0, zIndex:50,
+        display:"flex", alignItems:"center", gap:14, padding:"14px 20px",
+        background:"rgba(7,5,10,0.90)", backdropFilter:"blur(18px)",
+        borderBottom:"1px solid rgba(232,201,109,0.10)", position:"sticky", top:0, zIndex:50,
       }}>
-        <button onClick={onBack} style={{
-          background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
-          borderRadius:8, width:36, height:36, cursor:"pointer", color:"#9ca3af",
-          fontSize:16, display:"flex", alignItems:"center", justifyContent:"center",
+        <button onClick={onBack} className="gp-icon-btn" style={{
+          background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)",
+          borderRadius:10, width:38, height:38, cursor:"pointer", color:"#8b93a1",
+          display:"flex", alignItems:"center", justifyContent:"center",
         }}>
           <ArrowLeft size={18}/>
         </button>
-        <div>
-          <h1 style={{ fontWeight:900, fontSize:18, margin:0,
-            background:"linear-gradient(135deg,#f1f0ee,#e8c96d)",
-            WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>
-            Mestres
-          </h1>
-          <p style={{ color:"#4b5563", fontSize:11, margin:0 }}>Escolha seu parceiro de batalha</p>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <h1 style={{
+              fontWeight:900, fontSize:19, margin:0, letterSpacing:"0.06em",
+              background:"linear-gradient(135deg,#f6f4f0,#e8c96d 70%)",
+              WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text",
+              textTransform:"uppercase",
+            }}>Mestres</h1>
+            <div style={{ height:1, width:44, background:"linear-gradient(90deg,rgba(232,201,109,0.5),transparent)" }}/>
+          </div>
+          <p style={{ color:"#565d6b", fontSize:11, margin:0 }}>Escolha seu parceiro de batalha e evolua junto com ele</p>
         </div>
       </div>
 
       {/* ── Content ── */}
       <div style={{ flex:1, overflowY:"auto", position:"relative", zIndex:1 }}>
-        <div style={{ maxWidth:900, margin:"0 auto", padding:"20px 18px 80px" }}>
+        <div style={{ maxWidth:920, margin:"0 auto", padding:"22px 20px 80px" }}>
 
           {/* Active master hero */}
           {selectedMaster && (
             <div style={{
-              background:`linear-gradient(135deg,${selectedMaster.bgColor}cc,rgba(8,6,10,0.95))`,
-              border:`1px solid ${selectedMaster.accentColor}25`,
-              borderRadius:20, padding:"20px", marginBottom:24,
-              position:"relative", overflow:"hidden",
-              boxShadow:`0 8px 40px ${selectedMaster.accentColor}10`,
+              position:"relative", borderRadius:22, marginBottom:26,
+              padding:1.5, overflow:"hidden",
+              background:`linear-gradient(135deg,${selectedMaster.accentColor}55,rgba(255,255,255,0.06) 45%,${selectedMaster.accentColor}25)`,
+              boxShadow:`0 14px 52px ${selectedMaster.accentColor}18, 0 6px 24px rgba(0,0,0,0.5)`,
             }}>
-              {/* Glow */}
               <div style={{
-                position:"absolute", inset:0, pointerEvents:"none",
-                background:`radial-gradient(ellipse 60% 80% at 80% 50%,${selectedMaster.accentColor}08 0%,transparent 70%)`,
-              }}/>
-
-              <div style={{ display:"flex", alignItems:"center", gap:16, position:"relative" }}>
-                {/* Art thumbnail */}
+                background:`linear-gradient(120deg,${selectedMaster.bgColor}e8 0%,rgba(8,6,11,0.97) 62%)`,
+                borderRadius:21, position:"relative", overflow:"hidden",
+              }}>
+                {/* glow + art backdrop on the right */}
                 <div style={{
-                  width:90, height:90, borderRadius:16, overflow:"hidden",
-                  background:`radial-gradient(circle,${selectedMaster.bgColor},#08060a)`,
-                  border:`2px solid ${selectedMaster.accentColor}40`, flexShrink:0,
-                  display:"flex", alignItems:"flex-end", justifyContent:"center",
-                }}>
-                  <img src={selectedMaster.artPath} alt={selectedMaster.name}
-                    style={{ height:"100%", objectFit:"contain", objectPosition:"center bottom" }}
-                    onError={() => {}}/>
-                </div>
+                  position:"absolute", inset:0, pointerEvents:"none",
+                  background:`radial-gradient(ellipse 55% 90% at 88% 50%,${selectedMaster.accentColor}16 0%,transparent 65%)`,
+                }}/>
+                <img
+                  src={selectedMaster.artPath || "/placeholder.svg"}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    position:"absolute", right:-8, bottom:0, height:"118%",
+                    objectFit:"contain", objectPosition:"right bottom",
+                    opacity:0.9, pointerEvents:"none",
+                    maskImage:"linear-gradient(90deg,transparent,black 35%)",
+                    WebkitMaskImage:"linear-gradient(90deg,transparent,black 35%)",
+                    filter:`drop-shadow(0 0 32px ${selectedMaster.accentColor}30)`,
+                  }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                />
 
-                <div style={{ flex:1 }}>
+                <div style={{ position:"relative", padding:"22px 24px", paddingRight:180 }}>
                   {/* Badges */}
-                  <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+                  <div style={{ display:"flex", gap:7, marginBottom:10 }}>
                     <span style={{
-                      fontSize:9, fontWeight:800, color: el!.color, background: el!.bg,
-                      padding:"2px 7px", borderRadius:4,
+                      fontSize:9, fontWeight:800, letterSpacing:"0.12em", textTransform:"uppercase",
+                      color: el!.color, background: el!.bg,
+                      padding:"3px 9px", borderRadius:5, border:`1px solid ${el!.color}30`,
                     }}>{selectedMaster.element}</span>
                     <span style={{
-                      fontSize:9, fontWeight:800, color: rar!.color, background: rar!.bg,
-                      padding:"2px 7px", borderRadius:4,
+                      fontSize:9, fontWeight:800, letterSpacing:"0.12em",
+                      color: rar!.color, background: rar!.bg,
+                      padding:"3px 9px", borderRadius:5, border:`1px solid ${rar!.color}30`,
                     }}>{selectedMaster.rarity}</span>
                     {selectedMaster.isActive && (
                       <span style={{
-                        fontSize:9, fontWeight:800, color:"#34d399",
-                        background:"rgba(52,211,153,0.12)", padding:"2px 7px", borderRadius:4,
-                      }}>✦ ATIVO</span>
+                        display:"flex", alignItems:"center", gap:4,
+                        fontSize:9, fontWeight:800, letterSpacing:"0.12em", color:"#34d399",
+                        background:"rgba(52,211,153,0.10)", padding:"3px 9px", borderRadius:5,
+                        border:"1px solid rgba(52,211,153,0.28)",
+                      }}><Check size={9}/> ATIVO</span>
                     )}
                   </div>
 
-                  <h2 style={{ fontWeight:900, fontSize:20, margin:"0 0 4px",
-                    background:`linear-gradient(135deg,#f1f0ee,${selectedMaster.accentColor})`,
-                    WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>
+                  <h2 style={{
+                    fontWeight:900, fontSize:26, margin:"0 0 5px", letterSpacing:"-0.01em",
+                    color:"#f6f4f0", textShadow:`0 2px 28px ${selectedMaster.accentColor}55`,
+                  }}>
                     {selectedMaster.fullName}
                   </h2>
-                  <p style={{ fontSize:12, color:"#4b5563", fontStyle:"italic", margin:"0 0 10px" }}>
+                  <p style={{ fontSize:12, color:"#6d7482", fontStyle:"italic", margin:"0 0 16px", maxWidth:420 }}>
                     {selectedMaster.quote}
                   </p>
 
-                  {/* XP */}
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                    <span style={{ fontSize:11, color:"#6b7280" }}>
-                      Lv.{selectedMaster.currentLevel} · {selectedMaster.currentXP}/{selectedMaster.xpToNext} XP
-                    </span>
-                    <span style={{ fontSize:11, color: selectedMaster.accentColor, fontWeight:700 }}>
-                      {selectedMaster.maxLevel - selectedMaster.currentLevel} níveis restantes
-                    </span>
+                  {/* XP row */}
+                  <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                    <LevelMedallion level={selectedMaster.currentLevel} color={selectedMaster.accentColor} size={54}/>
+                    <div style={{ flex:1, maxWidth:380 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                        <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.14em", color:"#565d6b", textTransform:"uppercase" }}>
+                          Experiência
+                        </span>
+                        <span style={{ fontSize:11, color: selectedMaster.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums" }}>
+                          {selectedMaster.currentXP} / {selectedMaster.xpToNext} XP
+                        </span>
+                      </div>
+                      <XPBar current={selectedMaster.currentXP} total={selectedMaster.xpToNext} color={selectedMaster.accentColor}/>
+                      <div style={{ fontSize:10, color:"#4b5563", marginTop:5 }}>
+                        {selectedMaster.maxLevel - selectedMaster.currentLevel} níveis até o máximo
+                      </div>
+                    </div>
+
+                    <button onClick={() => setShowDetail(true)} className="gp-cta" style={{
+                      display:"flex", alignItems:"center", gap:6,
+                      background:`linear-gradient(135deg,${selectedMaster.accentColor}22,${selectedMaster.accentColor}45)`,
+                      border:`1px solid ${selectedMaster.accentColor}55`,
+                      borderRadius:12, padding:"11px 18px",
+                      cursor:"pointer", color:"#fff",
+                      fontWeight:900, fontSize:12.5, flexShrink:0, letterSpacing:"0.02em",
+                      boxShadow:`0 4px 18px ${selectedMaster.accentColor}30`,
+                      textShadow:"0 1px 4px rgba(0,0,0,0.4)",
+                    }}>
+                      Ver Progressão <ChevronRight size={14}/>
+                    </button>
                   </div>
-                  <XPBar current={selectedMaster.currentXP} total={selectedMaster.xpToNext} color={selectedMaster.accentColor}/>
                 </div>
 
-                {/* Detail button */}
-                <button onClick={() => setShowDetail(true)} style={{
-                  background:`${selectedMaster.accentColor}15`,
-                  border:`1px solid ${selectedMaster.accentColor}35`,
-                  borderRadius:12, padding:"10px 16px",
-                  cursor:"pointer", color: selectedMaster.accentColor,
-                  fontWeight:800, fontSize:13, flexShrink:0,
-                  boxShadow:`0 2px 12px ${selectedMaster.accentColor}20`,
-                  transition:"all 0.2s",
-                }}>
-                  Ver Progressão →
+                {/* Dev: add XP button (remove in production) */}
+                <button
+                  onClick={() => handleAddXP(selectedMaster.id, 2000)}
+                  style={{
+                    position:"absolute", bottom:12, right:14, zIndex:2,
+                    background:"rgba(0,0,0,0.35)", border:"1px solid rgba(255,255,255,0.08)",
+                    borderRadius:7, padding:"4px 10px", cursor:"pointer",
+                    color:"#3f4654", fontSize:10, fontWeight:600,
+                  }}>
+                  +XP (teste)
                 </button>
               </div>
-
-              {/* Dev: add XP button (remove in production) */}
-              <button
-                onClick={() => handleAddXP(selectedMaster.id, 2000)}
-                style={{
-                  position:"absolute", bottom:14, right:16,
-                  background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
-                  borderRadius:7, padding:"4px 10px", cursor:"pointer",
-                  color:"#374151", fontSize:10, fontWeight:600,
-                }}>
-                +200 XP (teste)
-              </button>
             </div>
           )}
 
           {/* Masters grid */}
-          <div style={{
-            fontSize:10, fontWeight:700, color:"#374151",
-            textTransform:"uppercase", letterSpacing:"0.10em", marginBottom:14,
-          }}>Todos os Mestres</div>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+            <span style={{
+              fontSize:10, fontWeight:800, color:"#6d7482",
+              textTransform:"uppercase", letterSpacing:"0.18em",
+            }}>Todos os Mestres</span>
+            <div style={{ flex:1, height:1, background:"linear-gradient(90deg,rgba(255,255,255,0.09),transparent)" }}/>
+          </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
             {masters.map(m => (
               <MasterCard
                 key={m.id}
@@ -1045,32 +984,44 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
             ))}
           </div>
 
-          {/* Info box */}
+          {/* XP guide */}
           <div style={{
-            marginTop:24, background:"rgba(232,201,109,0.04)",
-            border:"1px solid rgba(232,201,109,0.12)", borderRadius:14,
-            padding:"14px 16px",
+            marginTop:28, borderRadius:18, overflow:"hidden",
+            border:"1px solid rgba(232,201,109,0.14)",
+            background:"linear-gradient(135deg,rgba(232,201,109,0.05),rgba(232,201,109,0.015))",
           }}>
-            <div style={{ fontWeight:800, fontSize:12, color:"#e8c96d", marginBottom:8 }}>
-              💡 Como ganhar XP de Mestre?
+            <div style={{
+              display:"flex", alignItems:"center", gap:9,
+              padding:"13px 18px 0",
+            }}>
+              <div style={{
+                width:26, height:26, borderRadius:8, flexShrink:0,
+                background:"rgba(232,201,109,0.12)", border:"1px solid rgba(232,201,109,0.28)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}>
+                <Star size={13} color="#e8c96d"/>
+              </div>
+              <span style={{ fontWeight:800, fontSize:12, color:"#e8c96d", letterSpacing:"0.06em", textTransform:"uppercase" }}>
+                Como ganhar XP de Mestre
+              </span>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-              {[
-                ["⚔️", "Duelo PvE",   "+50–100 XP"],
-                ["🏆", "Duelo PvP",   "+80–140 XP"],
-                ["💀", "Chefão",       "+120–180 XP"],
-                ["⚔", "Guerra",        "+100–160 XP"],
-                ["🃏", "Draft",        "+70–120 XP"],
-                ["🎯", "Missões",      "+30–80 XP"],
-              ].map(([ic, name, xp]) => (
-                <div key={name as string} style={{
-                  display:"flex", alignItems:"center", gap:8,
-                  background:"rgba(255,255,255,0.02)", borderRadius:10, padding:"8px 10px",
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:9, padding:"13px 18px 17px" }}>
+              {XP_SOURCES.map(({ Icon, name, xp }) => (
+                <div key={name} style={{
+                  display:"flex", alignItems:"center", gap:10,
+                  background:"rgba(255,255,255,0.025)", borderRadius:11, padding:"10px 12px",
+                  border:"1px solid rgba(255,255,255,0.045)",
                 }}>
-                  <span style={{ fontSize:18 }}>{ic}</span>
+                  <div style={{
+                    width:30, height:30, borderRadius:8, flexShrink:0,
+                    background:"rgba(232,201,109,0.07)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                  }}>
+                    <Icon size={14} color="#c9ad5c"/>
+                  </div>
                   <div>
-                    <div style={{ fontSize:11, color:"#9ca3af", fontWeight:600 }}>{name}</div>
-                    <div style={{ fontSize:10, color:"#e8c96d" }}>{xp}</div>
+                    <div style={{ fontSize:11.5, color:"#aab2c0", fontWeight:700 }}>{name}</div>
+                    <div style={{ fontSize:10, color:"#e8c96d", fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{xp}</div>
                   </div>
                 </div>
               ))}
@@ -1080,14 +1031,36 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       </div>
 
       <style>{`
-        @keyframes toastIn {
+        @keyframes gpToastIn {
           from { opacity:0; transform:translateX(-50%) translateY(-8px) }
           to   { opacity:1; transform:translateX(-50%) translateY(0) }
         }
-        @keyframes shimmer {
+        @keyframes gpShimmer {
           0%  { left:-100% }
           100%{ left: 200% }
         }
+        @keyframes gpFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes gpBadgePop {
+          0%  { transform:scale(0.8); opacity:0 }
+          70% { transform:scale(1.05) }
+          100%{ transform:scale(1);   opacity:1 }
+        }
+        @keyframes gpLevelBounce {
+          0%  { transform:scale(0.3) rotate(-14deg); opacity:0 }
+          60% { transform:scale(1.15) rotate(4deg);  opacity:1 }
+          100%{ transform:scale(1)    rotate(0deg);  opacity:1 }
+        }
+        @keyframes gpRingPulse {
+          0%  { transform:translate(-50%,-50%) scale(0.7); opacity:0.9 }
+          100%{ transform:translate(-50%,-50%) scale(1.5); opacity:0 }
+        }
+        .gp-master-card:hover { transform:translateY(-5px) }
+        .gp-master-card:hover .gp-master-art { transform:scale(1.05) }
+        .gp-icon-btn { transition:background 0.2s, color 0.2s }
+        .gp-icon-btn:hover { background:rgba(255,255,255,0.09) !important; color:#f1f0ee !important }
+        .gp-cta { transition:filter 0.2s, transform 0.15s }
+        .gp-cta:hover { filter:brightness(1.2) }
+        .gp-cta:active { transform:scale(0.97) }
       `}</style>
     </div>
   )

@@ -5,7 +5,7 @@ export type MasterRarity  = "R" | "SR" | "UR" | "LR"
 
 export interface MasterReward {
   level:       number
-  type:        "coins" | "pack" | "gacha_coins" | "title" | "card_skin" | "passive"
+  type:        "gear_coins" | "pack" | "gacha_coins" | "card_skin" | "chest" | "skip_ticket" | "stamina_bottle"
   label:       string
   amount?:     number
   packId?:     string  // "common" | "sr_guaranteed" | "lr_guaranteed"
@@ -54,59 +54,60 @@ export function xpForNextLevel(level: number): number {
 }
 
 // ─── Reward table ─────────────────────────────────────────────────────────────
-// Gems → Gacha Coins | frame/emote/skin → card_skin (Lv40/50) | Moldura removida
+// Gear Coins (moeda comum) | Gacha Coins | Packs | Baús | Skip Tíquetes |
+// Garrafas de Stamina | Skins de Carta (Lv40/50)
 function buildRewards(): MasterReward[] {
   const table: Omit<MasterReward, "claimed">[] = [
-    { level:  1, type:"coins",       label:"50 Moedas",              amount:50 },
-    { level:  2, type:"pack",        label:"1 Pack Comum",           packId:"common" },
-    { level:  3, type:"gacha_coins", label:"10 Gacha Coins",         amount:10 },
-    { level:  4, type:"coins",       label:"80 Moedas",              amount:80 },
-    { level:  5, type:"pack",        label:"Pack SR Garantido",      packId:"sr_guaranteed" },
-    { level:  6, type:"gacha_coins", label:"20 Gacha Coins",         amount:20 },
-    { level:  7, type:"coins",       label:"120 Moedas",             amount:120 },
-    { level:  8, type:"pack",        label:"1 Pack Comum",           packId:"common" },
-    { level:  9, type:"gacha_coins", label:"30 Gacha Coins",         amount:30 },
-    { level: 10, type:"coins",       label:"200 Moedas",             amount:200 },
-    { level: 11, type:"coins",       label:"150 Moedas",             amount:150 },
-    { level: 12, type:"gacha_coins", label:"40 Gacha Coins",         amount:40 },
-    { level: 13, type:"coins",       label:"180 Moedas",             amount:180 },
-    { level: 14, type:"pack",        label:"Pack SR Garantido",      packId:"sr_guaranteed" },
-    { level: 15, type:"coins",       label:"250 Moedas",             amount:250 },
-    { level: 16, type:"gacha_coins", label:"60 Gacha Coins",         amount:60 },
-    { level: 17, type:"coins",       label:"220 Moedas",             amount:220 },
-    { level: 18, type:"pack",        label:"1 Pack Comum",           packId:"common" },
-    { level: 19, type:"gacha_coins", label:"80 Gacha Coins",         amount:80 },
-    { level: 20, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 21, type:"coins",       label:"300 Moedas",             amount:300 },
-    { level: 22, type:"gacha_coins", label:"100 Gacha Coins",        amount:100 },
-    { level: 23, type:"pack",        label:"Pack SR Garantido",      packId:"sr_guaranteed" },
-    { level: 24, type:"coins",       label:"350 Moedas",             amount:350 },
-    { level: 25, type:"passive",     label:"Habilidade Passiva"      },
-    { level: 26, type:"gacha_coins", label:"120 Gacha Coins",        amount:120 },
-    { level: 27, type:"coins",       label:"400 Moedas",             amount:400 },
-    { level: 28, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 29, type:"gacha_coins", label:"150 Gacha Coins",        amount:150 },
-    { level: 30, type:"title",       label:"Título Lendário"         },
-    { level: 31, type:"coins",       label:"500 Moedas",             amount:500 },
-    { level: 32, type:"gacha_coins", label:"180 Gacha Coins",        amount:180 },
-    { level: 33, type:"pack",        label:"Pack SR Garantido",      packId:"sr_guaranteed" },
-    { level: 34, type:"coins",       label:"600 Moedas",             amount:600 },
-    { level: 35, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 36, type:"gacha_coins", label:"200 Gacha Coins",        amount:200 },
-    { level: 37, type:"coins",       label:"700 Moedas",             amount:700 },
-    { level: 38, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 39, type:"gacha_coins", label:"250 Gacha Coins",        amount:250 },
-    { level: 40, type:"card_skin",   label:"Skin de Carta Exclusiva" },
-    { level: 41, type:"coins",       label:"800 Moedas",             amount:800 },
-    { level: 42, type:"gacha_coins", label:"300 Gacha Coins",        amount:300 },
-    { level: 43, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 44, type:"coins",       label:"900 Moedas",             amount:900 },
-    { level: 45, type:"gacha_coins", label:"500 Gacha Coins",        amount:500 },
-    { level: 46, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 47, type:"coins",       label:"1000 Moedas",            amount:1000 },
-    { level: 48, type:"gacha_coins", label:"600 Gacha Coins",        amount:600 },
-    { level: 49, type:"pack",        label:"Pack LR Garantido",      packId:"lr_guaranteed" },
-    { level: 50, type:"card_skin",   label:"Skin de Carta Lendária"  },
+    { level:  1, type:"gear_coins",     label:"50 Gear Coins",            amount:50 },
+    { level:  2, type:"pack",           label:"1 Pack Comum",             packId:"common" },
+    { level:  3, type:"gacha_coins",    label:"10 Gacha Coins",           amount:10 },
+    { level:  4, type:"gear_coins",     label:"80 Gear Coins",            amount:80 },
+    { level:  5, type:"pack",           label:"Pack SR Garantido",        packId:"sr_guaranteed" },
+    { level:  6, type:"gacha_coins",    label:"20 Gacha Coins",           amount:20 },
+    { level:  7, type:"gear_coins",     label:"120 Gear Coins",           amount:120 },
+    { level:  8, type:"pack",           label:"1 Pack Comum",             packId:"common" },
+    { level:  9, type:"gacha_coins",    label:"30 Gacha Coins",           amount:30 },
+    { level: 10, type:"gear_coins",     label:"200 Gear Coins",           amount:200 },
+    { level: 11, type:"gear_coins",     label:"150 Gear Coins",           amount:150 },
+    { level: 12, type:"gacha_coins",    label:"40 Gacha Coins",           amount:40 },
+    { level: 13, type:"gear_coins",     label:"180 Gear Coins",           amount:180 },
+    { level: 14, type:"pack",           label:"Pack SR Garantido",        packId:"sr_guaranteed" },
+    { level: 15, type:"gear_coins",     label:"250 Gear Coins",           amount:250 },
+    { level: 16, type:"gacha_coins",    label:"60 Gacha Coins",           amount:60 },
+    { level: 17, type:"gear_coins",     label:"220 Gear Coins",           amount:220 },
+    { level: 18, type:"pack",           label:"1 Pack Comum",             packId:"common" },
+    { level: 19, type:"gacha_coins",    label:"80 Gacha Coins",           amount:80 },
+    { level: 20, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
+    { level: 21, type:"gear_coins",     label:"300 Gear Coins",           amount:300 },
+    { level: 22, type:"gacha_coins",    label:"100 Gacha Coins",          amount:100 },
+    { level: 23, type:"pack",           label:"Pack SR Garantido",        packId:"sr_guaranteed" },
+    { level: 24, type:"gear_coins",     label:"350 Gear Coins",           amount:350 },
+    { level: 25, type:"stamina_bottle", label:"3 Garrafas de Stamina",    amount:3 },
+    { level: 26, type:"gacha_coins",    label:"120 Gacha Coins",          amount:120 },
+    { level: 27, type:"gear_coins",     label:"400 Gear Coins",           amount:400 },
+    { level: 28, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
+    { level: 29, type:"gacha_coins",    label:"150 Gacha Coins",          amount:150 },
+    { level: 30, type:"skip_ticket",    label:"3 Skip Tíquetes",          amount:3 },
+    { level: 31, type:"gear_coins",     label:"500 Gear Coins",           amount:500 },
+    { level: 32, type:"gacha_coins",    label:"180 Gacha Coins",          amount:180 },
+    { level: 33, type:"pack",           label:"Pack SR Garantido",        packId:"sr_guaranteed" },
+    { level: 34, type:"gear_coins",     label:"600 Gear Coins",           amount:600 },
+    { level: 35, type:"chest",          label:"2 Baús do Vazio",          amount:2 },
+    { level: 36, type:"gacha_coins",    label:"200 Gacha Coins",          amount:200 },
+    { level: 37, type:"gear_coins",     label:"700 Gear Coins",           amount:700 },
+    { level: 38, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
+    { level: 39, type:"gacha_coins",    label:"250 Gacha Coins",          amount:250 },
+    { level: 40, type:"card_skin",      label:"Skin de Carta Exclusiva" },
+    { level: 41, type:"gear_coins",     label:"800 Gear Coins",           amount:800 },
+    { level: 42, type:"gacha_coins",    label:"300 Gacha Coins",          amount:300 },
+    { level: 43, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
+    { level: 44, type:"gear_coins",     label:"900 Gear Coins",           amount:900 },
+    { level: 45, type:"gacha_coins",    label:"500 Gacha Coins",          amount:500 },
+    { level: 46, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
+    { level: 47, type:"gear_coins",     label:"1000 Gear Coins",          amount:1000 },
+    { level: 48, type:"gacha_coins",    label:"600 Gacha Coins",          amount:600 },
+    { level: 49, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
+    { level: 50, type:"card_skin",      label:"Skin de Carta Lendária"  },
   ]
   return table.map(r => ({ ...r, claimed: false }))
 }
@@ -215,11 +216,25 @@ export function calcAccountXP(durationMinutes: number, won: boolean): number {
   return Math.round(30 + durationMinutes * 5 + (won ? 20 : 0))
 }
 
-/** Icon for reward type */
+/** Image icon path for each reward type (used by the Master screen UI). */
+export function rewardIconPath(type: MasterReward["type"], packId?: string): string {
+  switch (type) {
+    case "gear_coins":     return "/images/gear-coin.png"
+    case "gacha_coins":    return "/images/icons/gacha-coin.png"
+    case "pack":           return packId === "sr_guaranteed" ? "/images/gacha/pack-anl.png" : "/images/gacha/pack-fsg.png"
+    case "chest":          return "/images/chests/bau-void.png"
+    case "skip_ticket":    return "/images/skip-ticket.png"
+    case "stamina_bottle": return "/images/stamina-bottle.png"
+    case "card_skin":      return "/images/gacha/Parte_de_trás_da_Carta.png"
+    default:               return "/images/gear-coin.png"
+  }
+}
+
+/** Legacy emoji icon (kept for compatibility with older call sites). */
 export function rewardIcon(type: MasterReward["type"]): string {
   const map: Record<string,string> = {
-    coins:"🪙", pack:"📦", gacha_coins:"🎰", title:"🏷️",
-    card_skin:"🃏", passive:"⚡",
+    gear_coins:"🪙", pack:"📦", gacha_coins:"🎰",
+    card_skin:"🃏", chest:"🎁", skip_ticket:"🎟️", stamina_bottle:"🧪",
   }
   return map[type] ?? "🎁"
 }
