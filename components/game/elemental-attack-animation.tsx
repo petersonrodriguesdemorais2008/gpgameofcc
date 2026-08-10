@@ -251,8 +251,10 @@ export function ElementalAttackAnimation({
     const isFehnon = !!attackerName && attackerName.toLowerCase().includes("fehnon")
     // ── MORGANA PENDRAGON — animação exclusiva de rasgo elétrico roxo com notas musicais ──
     const isMorgana = !isFehnon && !!attackerName && attackerName.toLowerCase().includes("morgana")
-    const E = isFehnon ? "aquos" : isMorgana ? "darkness" : normalizeElement(el)
-    const P = isFehnon ? pal("aquos") : isMorgana ? pal("darkus") : pal(el)
+    // ── CALEM HIDENORI — animação exclusiva de esfera do vazio cinza prateada ──
+    const isCalem = !isFehnon && !isMorgana && !!attackerName && attackerName.toLowerCase().includes("calem")
+    const E = isFehnon ? "aquos" : isMorgana ? "darkness" : isCalem ? "void" : normalizeElement(el)
+    const P = isFehnon ? pal("aquos") : isMorgana ? pal("darkus") : isCalem ? pal("void") : pal(el)
     const [br, bg, bb] = hex2rgb(P.b)
     const [cr, cg, cb] = hex2rgb(P.c)
     const [ar, ag, ab] = hex2rgb(P.a)
@@ -410,6 +412,62 @@ export function ElementalAttackAnimation({
           const sp = 30 + rnd() * 70
           return {
             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 55, ay: -16,
+            size: 2 + rnd() * 2.5, life: 1000 + rnd() * 300,
+            r: 255, g: 255, b: 255, drag: 0.995, kind: "glitter",
+          }
+        })
+        return
+      }
+      if (isCalem) {
+        // Estilhaços prateados radiais violentos
+        spawn(66, () => {
+          const a = rnd() * TAU
+          const sp = 200 + rnd() * 640
+          const white = rnd() < 0.45
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            size: 2.5 + rnd() * 5.5, life: 360 + rnd() * 480,
+            r: white ? 255 : 203, g: white ? 255 : 213, b: white ? 255 : 225,
+            drag: 0.955, kind: "glow",
+          }
+        })
+        // Cacos metálicos da esfera girando
+        spawn(22, () => {
+          const a = rnd() * TAU
+          const sp = 240 + rnd() * 420
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            size: 4 + rnd() * 6, life: 460 + rnd() * 420,
+            r: 226, g: 232, b: 240, drag: 0.96, kind: "shard", spin: (rnd() - 0.5) * 16,
+          }
+        })
+        // Fumaça do vazio — névoa escura se expandindo
+        spawn(16, () => {
+          const a = rnd() * TAU
+          const sp = 60 + rnd() * 170
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -24,
+            size: 12 + rnd() * 15, life: 780 + rnd() * 540,
+            r: 30, g: 41, b: 59, drag: 0.96, kind: "wisp",
+          }
+        })
+        // Poeira que é sugada de volta ao centro (sucção residual do vazio)
+        spawn(18, () => {
+          const a = rnd() * TAU
+          const sp = 320 + rnd() * 260
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            ax: -Math.cos(a) * 900, ay: -Math.sin(a) * 900,
+            size: 2 + rnd() * 3, life: 520 + rnd() * 300,
+            r: 148, g: 163, b: 184, drag: 0.97, kind: "glitter",
+          }
+        })
+        // Cintilar branco duradouro
+        spawn(10, (i) => {
+          const a = (i / 10) * TAU
+          const sp = 30 + rnd() * 70
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 50, ay: -14,
             size: 2 + rnd() * 2.5, life: 1000 + rnd() * 300,
             r: 255, g: 255, b: 255, drag: 0.995, kind: "glitter",
           }
@@ -1155,7 +1213,14 @@ export function ElementalAttackAnimation({
         const ik = (t - C2) / T.IMPACT
         const flash = ik < 0.12 ? 0.85 : Math.max(0, 0.85 * (1 - (ik - 0.12) / 0.45))
         if (flash > 0.01) {
-          ctx.fillStyle = E === "darkness" ? `rgba(20,4,36,${flash})` : `rgba(255,255,255,${flash * 0.75})`
+          // Calem: flash branco-prata instantâneo, depois a tela é engolida pelo escuro do vazio
+          ctx.fillStyle = E === "darkness"
+            ? `rgba(20,4,36,${flash})`
+            : isCalem
+              ? ik < 0.16
+                ? `rgba(255,255,255,${flash * 0.9})`
+                : `rgba(4,6,10,${flash})`
+              : `rgba(255,255,255,${flash * 0.75})`
           ctx.fillRect(0, 0, w, hgt)
         }
         const tint = 0.22 * (1 - ik)
@@ -1770,6 +1835,340 @@ export function ElementalAttackAnimation({
       ctx.globalCompositeOperation = "source-over"
     }
 
+    // ═══════ CALEM HIDENORI — ESFERA DO VAZIO CINZA PRATEADA ═══════
+    /** Desenha a esfera do vazio: núcleo negro absoluto com aro prateado e reflexo especular */
+    const voidSphere = (x: number, y: number, R: number, glow: number) => {
+      // halo de distorção prateado
+      blit(ctx, spB, x, y, R * 3, 0.75 * glow)
+      blit(ctx, spC, x, y, R * 1.8, 0.8 * glow)
+      // núcleo negro (horizonte de eventos)
+      ctx.globalCompositeOperation = "source-over"
+      const core = ctx.createRadialGradient(x, y, 0, x, y, R)
+      core.addColorStop(0, "#000000")
+      core.addColorStop(0.75, "#05070c")
+      core.addColorStop(1, "#0f172a")
+      ctx.fillStyle = core
+      ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill()
+      ctx.globalCompositeOperation = "lighter"
+      // aro prateado brilhante
+      ring(ctx, x, y, R + 1.5, 2.6, `rgba(226,232,240,${0.95 * glow})`)
+      ring(ctx, x, y, R + 5, 1, `rgba(148,163,184,${0.55 * glow})`)
+      // reflexo especular — a "prata" da esfera
+      blit(ctx, spW, x - R * 0.4, y - R * 0.45, R * 0.32, 0.95 * glow)
+    }
+
+    const drawCalemCharge = (k: number, now: number) => {
+      const t = now * 0.001
+      const grow = eoCubic(k)
+      // escuridão ambiente — o vazio drena a luz ao redor
+      ctx.globalCompositeOperation = "source-over"
+      const dark = ctx.createRadialGradient(sx, sy, 0, sx, sy, 320)
+      dark.addColorStop(0, `rgba(2,4,8,${0.5 * k})`)
+      dark.addColorStop(1, "rgba(0,0,0,0)")
+      ctx.fillStyle = dark
+      ctx.fillRect(sx - 320, sy - 320, 640, 640)
+
+      ctx.globalCompositeOperation = "lighter"
+      // poeira prateada sendo sugada em espiral
+      for (let i = 0; i < 16; i++) {
+        const frac = 1 - ((t * 2 + i * 0.618) % 1)
+        const a = i * (TAU / 16) + t * 2.4 + (1 - frac) * 2.6
+        const r = frac * 128
+        blit(ctx, i % 2 ? spC : spW, sx + Math.cos(a) * r, sy + Math.sin(a) * r, 3.5 + (1 - frac) * 7, (1 - frac) * 0.9 * k)
+      }
+      // anéis de distorção colapsando (lente gravitacional)
+      for (let i = 0; i < 4; i++) {
+        const fr = 1 - ((t * 1.6 + i / 4) % 1)
+        ring(ctx, sx, sy, fr * 132, 2 + (1 - fr) * 1.5, `rgba(203,213,225,${(1 - fr) * 0.7 * k})`)
+      }
+      // ── A ESFERA DO VAZIO se materializando ──
+      const R = (10 + 26 * grow) * (1 + Math.sin(t * 18) * 0.06)
+      voidSphere(sx, sy, R, grow)
+      // arcos orbitais prateados inclinados girando ao redor
+      for (let i = 0; i < 3; i++) {
+        ctx.save()
+        ctx.translate(sx, sy)
+        ctx.rotate(t * (1.4 + i * 0.5) * (i % 2 ? -1 : 1) + i * 2.1)
+        ctx.scale(1, 0.32 + i * 0.1)
+        ring(ctx, 0, 0, R + 10 + i * 8, 1.4, `rgba(${i % 2 ? "203,213,225" : "148,163,184"},${(0.75 - i * 0.15) * grow})`)
+        ctx.restore()
+      }
+      // fiapos de realidade rasgada crepitando ao redor
+      const fseed = Math.floor(now / 55)
+      const frnd = mulberry(fseed)
+      for (let i = 0; i < 5; i++) {
+        if (frnd() < 0.4) continue
+        const a = frnd() * TAU
+        const r1 = R + 8 + frnd() * 46 * grow
+        bolt(
+          ctx, sx + Math.cos(a) * r1, sy + Math.sin(a) * r1,
+          sx + Math.cos(a + 0.7) * (r1 + 12), sy + Math.sin(a + 0.7) * (r1 + 12),
+          4, 7, fseed * 9 + i * 37, 1.2, `rgba(226,232,240,${0.7 * k})`,
+        )
+      }
+      ctx.globalCompositeOperation = "source-over"
+      // imagem residual do atacante
+      if (atkImg && atkImg.complete && atkImg.naturalWidth > 0) {
+        ctx.globalAlpha = 0.4 * (1 - k)
+        ctx.drawImage(atkImg, sx - 42, sy - 58, 84, 116)
+        ctx.globalAlpha = 1
+      }
+    }
+
+    const drawCalemStrike = (k: number, now: number) => {
+      const t = now * 0.001
+      const p = eiCubic(k) * 0.35 + k * 0.65
+      const pos = { x: sx + cosA * dist * p, y: sy + sinA * dist * p }
+      trail.push({ x: pos.x, y: pos.y })
+      if (trail.length > 26) trail.shift()
+
+      ctx.globalCompositeOperation = "lighter"
+      // linhas de velocidade prateadas
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(ang)
+      for (let i = 0; i < 12; i++) {
+        const off = (i - 5.5) * 26
+        const len = 140 + ((i * 53) % 160)
+        const xw = p * (dist + 520) - len - ((i * 97) % 240)
+        ctx.strokeStyle = `rgba(148,163,184,${0.2 - Math.abs(i - 5.5) * 0.02})`
+        ctx.lineWidth = Math.abs(i - 5.5) < 1.5 ? 3 : 1.5
+        ctx.beginPath(); ctx.moveTo(xw, off); ctx.lineTo(xw + len, off); ctx.stroke()
+      }
+      ctx.restore()
+
+      // rastro: espaço "descosturado" — afterimages escuras onde a esfera passou
+      ctx.globalCompositeOperation = "source-over"
+      for (let i = 0; i < trail.length; i++) {
+        const f = i / trail.length
+        const rr = 3 + f * 15
+        const g2 = ctx.createRadialGradient(trail[i].x, trail[i].y, 0, trail[i].x, trail[i].y, rr)
+        g2.addColorStop(0, `rgba(2,4,8,${f * 0.75})`)
+        g2.addColorStop(1, "rgba(2,4,8,0)")
+        ctx.fillStyle = g2
+        ctx.beginPath(); ctx.arc(trail[i].x, trail[i].y, rr, 0, TAU); ctx.fill()
+      }
+      ctx.globalCompositeOperation = "lighter"
+      for (let i = 0; i < trail.length; i++) {
+        const f = i / trail.length
+        blit(ctx, spC, trail[i].x, trail[i].y, 4 + f * 18, f * 0.4)
+      }
+
+      // ── A ESFERA DO VAZIO em voo ──
+      const R = 20 + p * 8
+      voidSphere(pos.x, pos.y, R, 1)
+      // anel de acreção girando com o voo
+      ctx.save()
+      ctx.translate(pos.x, pos.y)
+      ctx.rotate(ang + Math.sin(t * 10) * 0.3)
+      ctx.scale(1, 0.34)
+      ring(ctx, 0, 0, R + 11, 1.6, "rgba(203,213,225,.85)")
+      ctx.restore()
+      // fragmentos prateados orbitando
+      for (let i = 0; i < 4; i++) {
+        const a = t * 15 + i * (TAU / 4)
+        blit(ctx, spC, pos.x + Math.cos(a) * (R + 9), pos.y + Math.sin(a) * (R + 9) * 0.5, 4, 0.85)
+      }
+      // crepitar do vazio na cabeça
+      const fseed = Math.floor(now / 45)
+      const frnd = mulberry(fseed)
+      for (let i = 0; i < 3; i++) {
+        if (frnd() < 0.35) continue
+        const a = frnd() * TAU
+        const L2 = R + 16 + frnd() * 18
+        bolt(
+          ctx, pos.x + Math.cos(a) * R, pos.y + Math.sin(a) * R,
+          pos.x + Math.cos(a) * L2, pos.y + Math.sin(a) * L2,
+          4, 6, fseed * 11 + i * 23, 1.2, "rgba(226,232,240,.85)",
+        )
+      }
+
+      // partículas sugadas para dentro da esfera (o vazio se alimenta)
+      if (!reduced && rnd() < 0.95) {
+        const a = rnd() * TAU
+        const rr = 40 + rnd() * 30
+        pts.push({
+          x: pos.x + Math.cos(a) * rr, y: pos.y + Math.sin(a) * rr,
+          vx: -Math.cos(a) * 220 - cosA * 120, vy: -Math.sin(a) * 220 - sinA * 120,
+          ax: 0, ay: 0, drag: 0.94,
+          age: 0, life: 200 + rnd() * 160, size: 2 + rnd() * 3,
+          r: 203, g: 213, b: 225, kind: "glow", seed: rnd(), rot: 0, spin: 0,
+        })
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
+    const drawCalemImpact = (tk: number) => {
+      const inHitstop = tk < T.HITSTOP
+      const k = clamp01((tk - T.HITSTOP) / (T.IMPACT - T.HITSTOP))
+      ctx.globalCompositeOperation = "lighter"
+
+      if (inHitstop) {
+        // ── IMPLOSÃO — tudo é sugado para um ponto antes da explosão ──
+        const ik = tk / T.HITSTOP
+        const R = 26 * (1 - ik * 0.7)
+        // linhas de sucção convergindo
+        for (let i = 0; i < 14; i++) {
+          const a = i * (TAU / 14) + 0.3
+          const L = 150 * (1 - ik)
+          ctx.strokeStyle = `rgba(203,213,225,${0.85 * (1 - ik * 0.4)})`
+          ctx.lineWidth = i % 3 === 0 ? 2.5 : 1.2
+          ctx.beginPath()
+          ctx.moveTo(tx + Math.cos(a) * (R + L), ty + Math.sin(a) * (R + L))
+          ctx.lineTo(tx + Math.cos(a) * (R + 4), ty + Math.sin(a) * (R + 4))
+          ctx.stroke()
+        }
+        // esfera comprimindo, brilhando ao máximo
+        blit(ctx, spW, tx, ty, R * 2.4, 1)
+        ctx.globalCompositeOperation = "source-over"
+        ctx.beginPath(); ctx.arc(tx, ty, R, 0, TAU)
+        ctx.fillStyle = "#000"; ctx.fill()
+        ctx.globalCompositeOperation = "lighter"
+        ring(ctx, tx, ty, R + 2, 3, "rgba(255,255,255,1)")
+        ctx.globalCompositeOperation = "source-over"
+        return
+      }
+
+      // ── EXPLOSÃO DO VAZIO ──
+      const coreA = (1 - k) * 0.95
+      blit(ctx, spW, tx, ty, 100 + eoExpo(k) * 150, coreA)
+      blit(ctx, spB, tx, ty, 170 + eoExpo(k) * 260, coreA * 0.8)
+
+      // DOMO DO VAZIO — esfera negra se expandindo que "come" a cena
+      ctx.globalCompositeOperation = "source-over"
+      const VR = eoExpo(k) * 190
+      const va = k < 0.55 ? 0.92 : 0.92 * (1 - (k - 0.55) / 0.45)
+      if (VR > 2 && va > 0.01) {
+        const vg = ctx.createRadialGradient(tx, ty, 0, tx, ty, VR)
+        vg.addColorStop(0, `rgba(0,0,0,${va})`)
+        vg.addColorStop(0.72, `rgba(3,6,12,${va * 0.9})`)
+        vg.addColorStop(1, "rgba(15,23,42,0)")
+        ctx.fillStyle = vg
+        ctx.beginPath(); ctx.arc(tx, ty, VR, 0, TAU); ctx.fill()
+        // borda prateada do domo
+        ctx.globalCompositeOperation = "lighter"
+        ring(ctx, tx, ty, VR, 4, `rgba(226,232,240,${va})`)
+        ring(ctx, tx, ty, VR * 0.9, 1.4, `rgba(148,163,184,${va * 0.6})`)
+      }
+      ctx.globalCompositeOperation = "lighter"
+
+      // ondas de choque prateadas
+      for (let i = 0; i < 5; i++) {
+        const kk = clamp01(k * 1.35 - i * 0.09)
+        if (kk <= 0) continue
+        const r = eoExpo(kk) * (200 + i * 70)
+        const alpha = (1 - kk) * (0.95 - i * 0.14)
+        ring(ctx, tx, ty, r, Math.max(1, 11 - i * 2 - kk * 8), i < 2 ? `rgba(255,255,255,${alpha})` : `rgba(148,163,184,${alpha})`)
+      }
+      // aberração cromática
+      const rC = eoExpo(k) * 240
+      ring(ctx, tx - 5, ty, rC, 2, `rgba(255,60,60,${(1 - k) * 0.45})`)
+      ring(ctx, tx + 5, ty, rC, 2, `rgba(60,60,255,${(1 - k) * 0.45})`)
+      // lanças de luz prateada radiais
+      for (let i = 0; i < 16; i++) {
+        const a = i * (TAU / 16) + 0.2
+        const L = eoExpo(k) * (170 + ((i * 41) % 110))
+        ctx.strokeStyle = `rgba(255,255,255,${(1 - k) * (i % 4 === 0 ? 0.95 : 0.5)})`
+        ctx.lineWidth = i % 4 === 0 ? 4 : 1.8
+        ctx.beginPath()
+        ctx.moveTo(tx + Math.cos(a) * L * 0.3, ty + Math.sin(a) * L * 0.3)
+        ctx.lineTo(tx + Math.cos(a) * L, ty + Math.sin(a) * L)
+        ctx.stroke()
+      }
+      // rachaduras de realidade — fendas serrilhadas prateadas
+      const seedBase = Math.floor(tk / 44)
+      const crnd = mulberry(seedBase * 21)
+      for (let i = 0; i < 7; i++) {
+        if (crnd() < 0.22) continue
+        const a = i * (TAU / 7) + crnd() * 0.6
+        const L = eoExpo(k) * (120 + crnd() * 130)
+        bolt(
+          ctx, tx + Math.cos(a) * L * 0.12, ty + Math.sin(a) * L * 0.12,
+          tx + Math.cos(a) * L, ty + Math.sin(a) * L,
+          6, 14, seedBase * 37 + i * 13, i % 2 === 0 ? 2.4 : 1.3,
+          `rgba(${i % 2 ? "226,232,240" : "255,255,255"},${(1 - k) * 0.9})`,
+        )
+      }
+      // anel de acreção — halo achatado girando se expandindo
+      const sg = clamp01(k * 1.5)
+      const sgA = sg < 0.7 ? 1 : 1 - (sg - 0.7) / 0.3
+      const AR = eoBack(clamp01(sg * 1.3)) * 150
+      if (AR > 6) {
+        ctx.save()
+        ctx.translate(tx, ty)
+        ctx.rotate(k * 1.6)
+        ctx.scale(1, 0.38)
+        ring(ctx, 0, 0, AR, 3, `rgba(226,232,240,${0.85 * sgA})`)
+        ctx.setLineDash([4, 10])
+        ring(ctx, 0, 0, AR * 0.82, 1.5, `rgba(148,163,184,${0.7 * sgA})`)
+        ctx.setLineDash([])
+        for (let i = 0; i < 10; i++) {
+          const a = k * 3 + i * (TAU / 10)
+          blit(ctx, spW, Math.cos(a) * AR, Math.sin(a) * AR, 4 * sgA, 0.9 * sgA)
+        }
+        ctx.restore()
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
+    const drawCalemAftermath = (k: number, now: number) => {
+      const t = now * 0.001
+      // resíduo do vazio — mini-singularidade colapsando
+      const R = 24 * (1 - eoCubic(k))
+      ctx.globalCompositeOperation = "source-over"
+      if (R > 1) {
+        const vg = ctx.createRadialGradient(tx, ty, 0, tx, ty, R * 2.4)
+        vg.addColorStop(0, `rgba(0,0,0,${(1 - k) * 0.9})`)
+        vg.addColorStop(1, "rgba(0,0,0,0)")
+        ctx.fillStyle = vg
+        ctx.beginPath(); ctx.arc(tx, ty, R * 2.4, 0, TAU); ctx.fill()
+      }
+      ctx.globalCompositeOperation = "lighter"
+      if (R > 1) {
+        ring(ctx, tx, ty, R + 2, 2, `rgba(226,232,240,${(1 - k) * (0.7 + 0.3 * Math.sin(t * 26))})`)
+        blit(ctx, spW, tx - R * 0.4, ty - R * 0.4, R * 0.3, 1 - k)
+      }
+      blit(ctx, spB, tx, ty, 70 * (1 - k), (1 - k) * 0.45)
+      // poeira prateada sendo sugada de volta para a singularidade
+      if (k < 0.85) {
+        for (let i = 0; i < 10; i++) {
+          const fr = (t * 1.1 + i / 10) % 1
+          const a = i * (TAU / 10) + t * 1.6
+          const rr = (1 - fr) * 110 * (1 - k * 0.5)
+          blit(ctx, i % 2 ? spC : spW, tx + Math.cos(a) * rr, ty + Math.sin(a) * rr, 3 + (1 - fr) * 3, (1 - fr) * (1 - k) * 0.85)
+        }
+      }
+      // fendas residuais crepitando e sumindo
+      if (k < 0.55) {
+        const seedBase = Math.floor(now / 70)
+        const srnd = mulberry(seedBase * 17)
+        for (let i = 0; i < 3; i++) {
+          if (srnd() < 0.45) continue
+          const a = srnd() * TAU
+          const L = 30 + srnd() * 60
+          bolt(
+            ctx, tx + Math.cos(a) * 12, ty + Math.sin(a) * 12,
+            tx + Math.cos(a) * L, ty + Math.sin(a) * L,
+            4, 9, seedBase * 23 + i * 11, 1.2, `rgba(203,213,225,${(1 - k / 0.55) * 0.8})`,
+          )
+        }
+      }
+      // anel de acreção se dissipando
+      ctx.save()
+      ctx.translate(tx, ty)
+      ctx.rotate(t * 0.9)
+      ctx.scale(1, 0.38)
+      ring(ctx, 0, 0, 90 + k * 60, 1.6, `rgba(148,163,184,${(1 - k) * 0.5})`)
+      ctx.restore()
+      // anéis finais dissipando
+      for (let i = 0; i < 2; i++) {
+        const rk = clamp01(k * 1.2 - i * 0.15)
+        if (rk <= 0) continue
+        ring(ctx, tx, ty, eoExpo(rk) * (140 + i * 70), 1.6, `rgba(203,213,225,${(1 - rk) * (0.5 - i * 0.18)})`)
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
     // ═════════════════════════ LOOP PRINCIPAL ════════════════════════════════
     const frame = (now: number) => {
       if (done) return
@@ -1786,7 +2185,7 @@ export function ElementalAttackAnimation({
       let shX = 0, shY = 0
       if (!reduced && t >= C2 + T.HITSTOP && t < C3) {
         const sk = 1 - (t - C2 - T.HITSTOP) / (T.IMPACT - T.HITSTOP)
-        const amp = (isFehnon || isMorgana ? 19 : 13) * sk * sk
+        const amp = (isCalem ? 22 : isFehnon || isMorgana ? 19 : 13) * sk * sk
         shX = Math.sin(t * 0.09) * amp
         shY = Math.cos(t * 0.117) * amp
       }
@@ -1795,12 +2194,14 @@ export function ElementalAttackAnimation({
       if (t < C0) {
         if (isFehnon) drawFehnonCharge(clamp01(t / C0), now)
         else if (isMorgana) drawMorganaCharge(clamp01(t / C0), now)
+        else if (isCalem) drawCalemCharge(clamp01(t / C0), now)
         else drawCharge(clamp01(t / C0), now)
       } else if (t < C1) {
         drawRelease(clamp01((t - C0) / T.RELEASE))
       } else if (t < C2) {
         if (isFehnon) drawFehnonStrike(clamp01((t - C1) / T.STRIKE), now)
         else if (isMorgana) drawMorganaStrike(clamp01((t - C1) / T.STRIKE), now)
+        else if (isCalem) drawCalemStrike(clamp01((t - C1) / T.STRIKE), now)
         else drawStrike(clamp01((t - C1) / T.STRIKE), now)
       } else if (t < C3) {
         if (!impactFired) {
@@ -1810,10 +2211,12 @@ export function ElementalAttackAnimation({
         }
         if (isFehnon) drawFehnonImpact(t - C2)
         else if (isMorgana) drawMorganaImpact(t - C2)
+        else if (isCalem) drawCalemImpact(t - C2)
         else drawImpact(t - C2)
       } else if (t < T.TOTAL) {
         if (isFehnon) drawFehnonAftermath(clamp01((t - C3) / T.AFTERMATH), now)
         else if (isMorgana) drawMorganaAftermath(clamp01((t - C3) / T.AFTERMATH), now)
+        else if (isCalem) drawCalemAftermath(clamp01((t - C3) / T.AFTERMATH), now)
         else drawAftermath(clamp01((t - C3) / T.AFTERMATH), now)
       }
 
