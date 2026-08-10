@@ -2801,6 +2801,23 @@ function StarfieldCanvas() {
 
 // ─── GameResultScreen ─────────────────────────────────────────────────────────
 
+/** Contador animado com easing (ease-out cúbico) para números de recompensa. */
+function CountUpNumber({ value, duration = 900, delay = 0 }: { value: number; duration?: number; delay?: number }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    let raf = 0
+    const start = performance.now() + delay
+    const tick = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - start) / duration))
+      setDisplay(Math.round(value * (1 - Math.pow(1 - t, 3))))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value, duration, delay])
+  return <>{display}</>
+}
+
 interface GameResultScreenProps {
   result: "won" | "lost"
   onBack: () => void
@@ -3009,6 +3026,15 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
         @keyframes gr-ring {0%{transform:scale(0);opacity:.85}100%{transform:scale(4);opacity:0}}
         @keyframes gr-line {from{width:0;opacity:0}to{width:220px;opacity:1}}
         @keyframes gr-pulse{0%,100%{opacity:.6}50%{opacity:1}}
+        @keyframes gr-letter{0%{opacity:0;transform:translateY(-52px) scale(1.55);filter:blur(14px)}
+                             60%{opacity:1;transform:translateY(5px) scale(.97);filter:blur(0)}
+                             100%{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes gr-rays {from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+        @keyframes gr-card {0%{opacity:0;transform:scale(.6) translateY(20px)}
+                            60%{opacity:1;transform:scale(1.05) translateY(-3px)}
+                            100%{opacity:1;transform:scale(1) translateY(0)}}
+        @keyframes gr-chest-bob{0%,100%{transform:translateY(0) rotate(-2.5deg)}50%{transform:translateY(-4px) rotate(2.5deg)}}
+        @keyframes gr-shine-loop{0%{left:-120%}55%{left:220%}100%{left:220%}}
       `}</style>
 
       {/* Dark bg */}
@@ -3028,6 +3054,17 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
         pointerEvents:"none", animation:"gr-pulse 2.5s ease-in-out 1s infinite",
       }}/>
 
+      {/* God rays girando atrás do conteúdo */}
+      <div style={{
+        position:"absolute", top:"38%", left:"50%",
+        width:960, height:960, pointerEvents:"none",
+        background:`repeating-conic-gradient(from 0deg, ${col}1c 0deg 7deg, transparent 7deg 26deg)`,
+        WebkitMaskImage:"radial-gradient(circle, black 0%, transparent 62%)",
+        maskImage:"radial-gradient(circle, black 0%, transparent 62%)",
+        animation:"gr-rays 28s linear infinite",
+        opacity:.85,
+      }}/>
+
       {/* Particle canvas */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1}}/>
 
@@ -3041,6 +3078,12 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
           pointerEvents:"none", zIndex:1,
         }}/>
       ))}
+
+      {/* Vinheta para foco central */}
+      <div style={{
+        position:"absolute", inset:0, pointerEvents:"none", zIndex:3,
+        background:"radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.55) 100%)",
+      }}/>
 
       {/* Main content */}
       <div style={{
@@ -3059,21 +3102,26 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
           {isWon ? "🏆" : "💀"}
         </div>
 
-        {/* Title */}
+        {/* Title — letras entram em cascata */}
         <h1 style={{
           fontSize:"clamp(56px,13vw,104px)",
           fontWeight:900, letterSpacing:"0.1em",
           textTransform:"uppercase", color:col, margin:0,
           fontFamily:"monospace", position:"relative", overflow:"hidden",
-          animation:`gr-pop 650ms cubic-bezier(.34,1.56,.64,1) 180ms both, ${isWon?"gr-glw-w":"gr-glw-l"} 2.2s ease-in-out 900ms infinite`,
+          animation:`${isWon?"gr-glw-w":"gr-glw-l"} 2.2s ease-in-out 1100ms infinite`,
         }}>
-          {isWon ? "VITÓRIA" : "DERROTA"}
-          {/* Shine sweep */}
+          {(isWon ? "VITÓRIA" : "DERROTA").split("").map((ch, i) => (
+            <span key={i} style={{
+              display:"inline-block",
+              animation:`gr-letter 640ms cubic-bezier(.22,1.4,.36,1) ${220 + i*62}ms both`,
+            }}>{ch}</span>
+          ))}
+          {/* Shine sweep periódico */}
           <span style={{
             position:"absolute", top:0, left:"-120%",
             width:"55%", height:"100%",
             background:"linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent)",
-            animation:"gr-shine 1.3s ease-in-out 550ms both",
+            animation:"gr-shine-loop 3.6s ease-in-out 800ms infinite",
             pointerEvents:"none",
           }}/>
         </h1>
@@ -3100,15 +3148,15 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
             display:"flex", alignItems:"center", gap:14,
             background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
             border:"1px solid rgba(250,204,21,0.30)", borderRadius:14,
-            padding:"10px 22px", animation:"gr-up 500ms ease-out 850ms both",
+            padding:"10px 22px", animation:"gr-card 600ms cubic-bezier(.34,1.56,.64,1) 850ms both",
           }}>
             <div style={{ display:"flex", alignItems:"center", gap:7 }}>
               <img src="/images/Gacha_Coin.png" alt="Gacha Coin"
                 style={{ width:34, height:34, objectFit:"contain",
                   filter:"drop-shadow(0 0 8px rgba(252,211,77,0.7))" }} />
               <span style={{ fontWeight:900, fontSize:17, color:"#FCD34D",
-                textShadow:"0 0 10px rgba(252,211,77,0.5)" }}>
-                +{duelRewards.gacha}
+                textShadow:"0 0 10px rgba(252,211,77,0.5)", fontVariantNumeric:"tabular-nums" }}>
+                +<CountUpNumber value={duelRewards.gacha} delay={1050} />
               </span>
             </div>
             <div style={{ width:1, height:22, background:"rgba(250,204,21,0.25)" }} />
@@ -3117,8 +3165,8 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
                 style={{ width:32, height:32, objectFit:"contain",
                   filter:"drop-shadow(0 0 8px rgba(253,224,71,0.7))" }} />
               <span style={{ fontWeight:900, fontSize:17, color:"#FDE047",
-                textShadow:"0 0 10px rgba(253,224,71,0.5)" }}>
-                +{duelRewards.gear}
+                textShadow:"0 0 10px rgba(253,224,71,0.5)", fontVariantNumeric:"tabular-nums" }}>
+                +<CountUpNumber value={duelRewards.gear} delay={1150} />
               </span>
             </div>
           </div>
@@ -3153,14 +3201,22 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
         {/* Baú dropado — garantido em todo duelo (vitória ou derrota) */}
         {droppedChest && CHESTS[droppedChest] && (
           <div style={{
+            position:"relative", overflow:"hidden",
             display:"flex", alignItems:"center", gap:12,
             background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
             border:`1px solid ${CHESTS[droppedChest].color}55`, borderRadius:14,
-            padding:"10px 22px", animation:"gr-up 500ms ease-out 900ms both",
+            padding:"10px 22px", animation:"gr-card 620ms cubic-bezier(.34,1.56,.64,1) 1000ms both",
+            boxShadow:`0 0 22px ${CHESTS[droppedChest].color}26`,
           }}>
+            <span style={{
+              position:"absolute", top:0, left:"-120%", width:"45%", height:"100%",
+              background:"linear-gradient(105deg,transparent,rgba(255,255,255,.14),transparent)",
+              animation:"gr-shine-loop 3.2s ease-in-out 1500ms infinite", pointerEvents:"none",
+            }}/>
             <img src={CHESTS[droppedChest].image || "/placeholder.svg"} alt={CHESTS[droppedChest].name}
               style={{ width:38, height:38, objectFit:"contain",
-                filter:`drop-shadow(0 0 10px ${CHESTS[droppedChest].color}99)` }} />
+                filter:`drop-shadow(0 0 10px ${CHESTS[droppedChest].color}99)`,
+                animation:"gr-chest-bob 2.4s ease-in-out 1.8s infinite" }} />
             <div style={{ display:"flex", flexDirection:"column", lineHeight:1.2 }}>
               <span style={{ fontWeight:900, fontSize:13, color:CHESTS[droppedChest].color,
                 textShadow:`0 0 10px ${CHESTS[droppedChest].color}80`, textTransform:"uppercase", letterSpacing:"0.5px" }}>
@@ -9767,7 +9823,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }))
         break
 
-      // ── Opponent used a function/item card ────────────────────────────────
+      // ── Opponent used a function/item card ��───────────────────────────────
       case "use_function_card":
         setEnemyField(prev => ({
           ...prev,
