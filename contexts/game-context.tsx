@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useCallback, type ReactNode, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
+import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
 import { STAMINA_BOTTLE_MIN_MISSING, STAMINA_BOTTLE_REFILL_AMOUNT } from "@/lib/stamina-bottle"
 import {
   CHESTS,
@@ -2430,7 +2430,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const getChestCount = useCallback((id: ChestId) => chests[id] ?? 0, [chests])
 
-  // ── Skip Tíquetes ───────────────────────────────────────────────────────────
+  // ── Skip Tíquetes ──────────────────────────────────────────────────────────���
   const addSkipTickets = useCallback((amount: number) => {
     const gain = Math.floor(amount)
     if (!Number.isFinite(gain) || gain <= 0) return
@@ -3518,6 +3518,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
 
       return { success: true, message: `Todas as ${ALL_CARD_SKIN_IDS.length} skins de carta foram desbloqueadas!` }
+    }
+
+    // FRAG - Grants 10,000 fragments of every type
+    if (normalizedCode === "FRAG") {
+      const allFragmentIds = Object.keys(FRAGMENTS) as FragmentId[]
+      const gain: FragmentCounts = {}
+      allFragmentIds.forEach((id) => {
+        gain[id] = 10_000
+      })
+      addFragments(gain)
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: `10.000 fragmentos de todos os ${allFragmentIds.length} tipos foram adicionados à sua conta!` }
     }
 
     // Invalid code
