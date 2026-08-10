@@ -20,6 +20,7 @@ interface MasterScreenProps {
 }
 
 const SERIF = "var(--font-serif), Georgia, serif"
+const SANS  = "var(--font-sans), 'Inter', system-ui, sans-serif"
 
 // ─── Reward type colors ───────────────────────────────────────────────────────
 function rewardColor(type: MasterReward["type"]): string {
