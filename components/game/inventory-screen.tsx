@@ -50,6 +50,8 @@ interface InventoryItem {
   useDisabledReason?: string
   /** Baús selecionáveis mostram um botão "Abrir" que dispara a animação de abertura. */
   chestId?: ChestId
+  /** Prévia do drop do baú: fragmento entregue + faixa de quantidade. */
+  drop?: { image: string; name: string; color: string; range: string }
 }
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
@@ -60,6 +62,11 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
 }
 
 const CATEGORY_ORDER: ItemCategory[] = ["moedas", "itens", "fragmentos", "pontos"]
+
+/** Nome do baú que entrega cada fragmento (pareamento por cor). */
+const CHEST_BY_FRAGMENT: Partial<Record<FragmentId, string>> = Object.fromEntries(
+  ALL_CHEST_IDS.map((id) => [CHESTS[id].fragment, CHESTS[id].name]),
+) as Partial<Record<FragmentId, string>>
 
 const FILTERS: { id: "todos" | ItemCategory; label: string }[] = [
   { id: "todos", label: "Todos" },
@@ -125,7 +132,7 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"todos" | ItemCategory>("todos")
   const [selectedChestId, setSelectedChestId] = useState<ChestId | null>(null)
-  const [opening, setOpening] = useState<{ chestId: ChestId; result: ChestOpenResult & { cardName?: string } } | null>(null)
+  const [opening, setOpening] = useState<{ chestId: ChestId; result: ChestOpenResult } | null>(null)
 
   const handleOpenChest = (chestId: ChestId) => {
     const result = openChest(chestId)
@@ -174,9 +181,11 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
     ]
 
     // Baús — dropam com chance ao vencer qualquer duelo. Selecionáveis e
-    // abríveis diretamente aqui (botão "Abrir").
+    // abríveis diretamente aqui (botão "Abrir"). Cada baú entrega SOMENTE
+    // fragmentos, do tipo pareado com a cor do baú.
     for (const id of ALL_CHEST_IDS) {
       const def = CHESTS[id]
+      const fragDef = FRAGMENTS[def.fragment]
       list.push({
         id: `chest-${id}`,
         name: def.name,
@@ -186,6 +195,12 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
         image: def.image,
         color: def.color,
         chestId: id,
+        drop: {
+          image: fragDef.image,
+          name: fragDef.name,
+          color: fragDef.color,
+          range: `${def.amount.min}–${def.amount.max}`,
+        },
       })
     }
 
@@ -198,8 +213,8 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
         name: def.name,
         description:
           id === "galio"
-            ? "Material comum dropado em todos os Treinamentos Especiais."
-            : "Fragmento elemental dropado nos duelos de Eventos.",
+            ? "Material comum dos Treinamentos Especiais e do Baú do Vazio."
+            : `Dropado nos duelos de Eventos e no ${CHEST_BY_FRAGMENT[id] ?? "baú da mesma cor"}.`,
         category: "fragmentos",
         quantity: fragments[id] ?? 0,
         image: def.image,
@@ -413,6 +428,33 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
   {item.description}
   </span>
   </div>
+
+  {/* Prévia do drop — baús entregam SOMENTE fragmentos da mesma cor */}
+  {item.drop && (
+  <div
+  className="flex items-center justify-center gap-1.5 w-full rounded-lg px-2 py-1.5"
+  style={{
+  background: `linear-gradient(135deg, ${item.drop.color}1f, rgba(5,2,18,0.6))`,
+  border: `1px solid ${item.drop.color}44`,
+  }}
+  title={`Dropa ${item.drop.range} ${item.drop.name}`}
+  >
+  <Image
+  src={item.drop.image || "/placeholder.svg"}
+  alt={item.drop.name}
+  width={20}
+  height={20}
+  className="object-contain shrink-0"
+  style={{ filter: `drop-shadow(0 0 5px ${item.drop.color}88)` }}
+  />
+  <span
+  className="font-black tabular-nums"
+  style={{ fontSize: 10.5, color: item.drop.color, letterSpacing: "0.4px" }}
+  >
+  {item.drop.range}
+  </span>
+  </div>
+  )}
   
   {/* Quantidade */}
   <div

@@ -4,9 +4,18 @@
  * Onde são obtidos: pequena chance ao vencer qualquer duelo do jogo.
  * Onde são abertos: tela de Itens (Inventário) → selecionar o baú → "Abrir".
  *
- * Cada baú é temático de um elemento e entrega Gear Coins + Gacha Coins,
- * com uma chance de também entregar uma carta daquele elemento.
+ * DROP: cada baú entrega SOMENTE fragmentos — nada de moedas ou cartas.
+ * O fragmento é definido pela COR do baú, num pareamento 1:1:
+ *
+ *   Baú de Ventus    (verde)   → Fragmento de Nitrogênio (verde)
+ *   Baú das Trevas   (roxo)    → Fragmento de Irídio     (roxo)
+ *   Baú de Fogo      (vermelho)→ Fragmento de Rubídio    (vermelho)
+ *   Baú de Aquos     (azul)    → Fragmento de Mercúrio   (azul)
+ *   Baú da Luz       (amarelo) → Fragmento de Hélio      (amarelo)
+ *   Baú do Vazio     (prata)   → Fragmento de Gálio      (prata)
  */
+
+import { FRAGMENTS, type FragmentId } from "./fragments"
 
 export type ChestId = "darkness" | "aquos" | "void" | "fire" | "lightness" | "ventus"
 
@@ -14,17 +23,15 @@ export interface ChestDef {
   id: ChestId
   name: string
   image: string
-  /** Cor de destaque (brilho, borda, texto). */
+  /** Cor de destaque (brilho, borda, texto). Casa com a cor do fragmento. */
   color: string
-  /** Elemento de cartas que esse baú pode entregar. */
+  /** Elemento temático do baú (usado apenas para exibição). */
   element: string
   description: string
-  /** Faixa de Gear Coins entregues ao abrir. */
-  gear: { min: number; max: number }
-  /** Faixa de Gacha Coins entregues ao abrir. */
-  gacha: { min: number; max: number }
-  /** Chance (0–1) de o baú também entregar uma carta do elemento dele. */
-  cardChance: number
+  /** Único fragmento que este baú entrega, pareado pela cor. */
+  fragment: FragmentId
+  /** Faixa de fragmentos entregues ao abrir. */
+  amount: { min: number; max: number }
 }
 
 export const CHESTS: Record<ChestId, ChestDef> = {
@@ -34,10 +41,9 @@ export const CHESTS: Record<ChestId, ChestDef> = {
     image: "/images/chests/bau-darkness.png",
     color: "#a855f7",
     element: "Darkus",
-    description: "Um baú sombrio guardado por caveiras de ametista. Contém tesouros das trevas.",
-    gear: { min: 40, max: 90 },
-    gacha: { min: 8, max: 18 },
-    cardChance: 0.18,
+    description: "Um baú sombrio guardado por caveiras de ametista. Contém Fragmentos de Irídio.",
+    fragment: "iridio",
+    amount: { min: 6, max: 14 },
   },
   aquos: {
     id: "aquos",
@@ -45,10 +51,9 @@ export const CHESTS: Record<ChestId, ChestDef> = {
     image: "/images/chests/bau-aquos.png",
     color: "#3b82f6",
     element: "Aquos",
-    description: "Forjado nas profundezas geladas, guarda os tesouros das marés de Aquos.",
-    gear: { min: 40, max: 90 },
-    gacha: { min: 8, max: 18 },
-    cardChance: 0.18,
+    description: "Forjado nas profundezas geladas, guarda Fragmentos de Mercúrio das marés de Aquos.",
+    fragment: "mercurio",
+    amount: { min: 6, max: 14 },
   },
   void: {
     id: "void",
@@ -56,10 +61,9 @@ export const CHESTS: Record<ChestId, ChestDef> = {
     image: "/images/chests/bau-void.png",
     color: "#cbd5e1",
     element: "Void",
-    description: "Um baú pálido e silencioso, vindo direto do espaço entre os mundos.",
-    gear: { min: 45, max: 100 },
-    gacha: { min: 10, max: 20 },
-    cardChance: 0.20,
+    description: "Um baú pálido e silencioso, vindo do espaço entre os mundos. Contém Fragmentos de Gálio.",
+    fragment: "galio",
+    amount: { min: 8, max: 18 },
   },
   fire: {
     id: "fire",
@@ -67,10 +71,9 @@ export const CHESTS: Record<ChestId, ChestDef> = {
     image: "/images/chests/bau-fire.png",
     color: "#ef4444",
     element: "Fire",
-    description: "Quente ao toque, guarda brasas e tesouros forjados em chamas vivas.",
-    gear: { min: 40, max: 90 },
-    gacha: { min: 8, max: 18 },
-    cardChance: 0.18,
+    description: "Quente ao toque, guarda Fragmentos de Rubídio forjados em chamas vivas.",
+    fragment: "rubidio",
+    amount: { min: 6, max: 14 },
   },
   lightness: {
     id: "lightness",
@@ -78,10 +81,9 @@ export const CHESTS: Record<ChestId, ChestDef> = {
     image: "/images/chests/bau-lightness.png",
     color: "#facc15",
     element: "Haos",
-    description: "Reluzente e dourado, abriga tesouros abençoados pela luz de Haos.",
-    gear: { min: 40, max: 90 },
-    gacha: { min: 8, max: 18 },
-    cardChance: 0.18,
+    description: "Reluzente e dourado, abriga Fragmentos de Hélio abençoados pela luz de Haos.",
+    fragment: "helio",
+    amount: { min: 6, max: 14 },
   },
   ventus: {
     id: "ventus",
@@ -89,14 +91,28 @@ export const CHESTS: Record<ChestId, ChestDef> = {
     image: "/images/chests/bau-ventus.png",
     color: "#22c55e",
     element: "Ventus",
-    description: "Leve como o vento, esconde tesouros trazidos pelas tempestades de Ventus.",
-    gear: { min: 40, max: 90 },
-    gacha: { min: 8, max: 18 },
-    cardChance: 0.18,
+    description: "Leve como o vento, esconde Fragmentos de Nitrogênio trazidos pelas tempestades de Ventus.",
+    fragment: "nitrogenio",
+    amount: { min: 6, max: 14 },
   },
 }
 
 export const ALL_CHEST_IDS = Object.keys(CHESTS) as ChestId[]
+
+/** Fragmento entregue por cada baú (atalho para leitura na UI). */
+export const CHEST_FRAGMENT: Record<ChestId, FragmentId> = {
+  darkness: "iridio",
+  aquos: "mercurio",
+  void: "galio",
+  fire: "rubidio",
+  lightness: "helio",
+  ventus: "nitrogenio",
+}
+
+/** Definição completa do fragmento que um baú entrega. */
+export function getChestFragment(chestId: ChestId) {
+  return FRAGMENTS[CHESTS[chestId].fragment]
+}
 
 /** Contagem de baús no inventário do jogador. */
 export type ChestCounts = Partial<Record<ChestId, number>>
@@ -131,10 +147,10 @@ export function rollChestDrop(): ChestId | null {
 
 export interface ChestOpenResult {
   chestId: ChestId
-  gear: number
-  gacha: number
-  /** Presente apenas quando o sorteio de carta deu sucesso. */
-  cardId?: string
+  /** Fragmento entregue (sempre o da cor do baú). */
+  fragmentId: FragmentId
+  /** Quantidade de fragmentos entregues. */
+  amount: number
 }
 
 function randomInt(min: number, max: number): number {
@@ -142,19 +158,14 @@ function randomInt(min: number, max: number): number {
 }
 
 /**
- * Sorteia a recompensa de abrir um baú. O parâmetro `pickCardId` recebe o
- * elemento do baú e deve devolver o id de uma carta desse elemento (ou
- * undefined se nenhuma estiver disponível) — a escolha real das cartas fica
- * a cargo de quem chama, pois só o contexto do jogo tem `allCards`.
+ * Sorteia a recompensa de abrir um baú: SEMPRE apenas fragmentos, do tipo
+ * pareado com a cor do baú, numa quantidade dentro da faixa definida.
  */
-export function rollChestReward(
-  chestId: ChestId,
-  pickCardId: (element: string) => string | undefined,
-): ChestOpenResult {
+export function rollChestReward(chestId: ChestId): ChestOpenResult {
   const def = CHESTS[chestId]
-  const gear = randomInt(def.gear.min, def.gear.max)
-  const gacha = randomInt(def.gacha.min, def.gacha.max)
-  const wonCard = Math.random() < def.cardChance
-  const cardId = wonCard ? pickCardId(def.element) : undefined
-  return { chestId, gear, gacha, cardId }
+  return {
+    chestId,
+    fragmentId: def.fragment,
+    amount: randomInt(def.amount.min, def.amount.max),
+  }
 }

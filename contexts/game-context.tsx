@@ -352,8 +352,8 @@ interface GameContextType {
   addChests: (gain: ChestCounts) => void
   /** Quantidade de um baú específico. */
   getChestCount: (id: ChestId) => number
-  /** Abre 1 baú: consome do inventário, entrega Gear/Gacha Coins e, com chance, 1 carta. Retorna null se não houver o baú. */
-  openChest: (id: ChestId) => (ChestOpenResult & { cardName?: string }) | null
+  /** Abre 1 baú: consome do inventário e entrega SOMENTE fragmentos da cor do baú. Retorna null se não houver o baú. */
+  openChest: (id: ChestId) => ChestOpenResult | null
   /** Soma fragmentos ao inventário e devolve o total atualizado. */
   addFragments: (gain: FragmentCounts) => void
   /** Quantidade de um fragmento específico. */
@@ -2577,14 +2577,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setCollection((prev) => [...prev, ...cards])
   }
 
-  const openChest = useCallback((id: ChestId): (ChestOpenResult & { cardName?: string }) | null => {
+  /**
+   * Abre um baú: consome 1 unidade e credita SOMENTE fragmentos, do tipo
+   * pareado com a cor do baú (ver lib/chests.ts). Nunca entrega moedas
+   * ou cartas.
+   */
+  const openChest = useCallback((id: ChestId): ChestOpenResult | null => {
     if ((chests[id] ?? 0) <= 0) return null
 
-    const result = rollChestReward(id, (element) => {
-      const pool = ALL_CARDS.filter((c) => c.element === element)
-      if (pool.length === 0) return undefined
-      return pool[Math.floor(Math.random() * pool.length)].id
-    })
+    const result = rollChestReward(id)
 
     setChests((prev) => {
       const next: ChestCounts = { ...prev }
@@ -2593,21 +2594,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return next
     })
 
-    setCoins((prev) => prev + result.gacha)
-    setGearCoins((prev) => prev + result.gear)
+    addFragments({ [result.fragmentId]: result.amount })
 
-    let cardName: string | undefined
-    if (result.cardId) {
-      const base = ALL_CARDS.find((c) => c.id === result.cardId)
-      if (base) {
-        const card = { ...base, id: `${base.id}-chest-${Date.now()}` }
-        addToCollection([card])
-        cardName = card.name
-      }
-    }
-
-    return { ...result, cardName }
-  }, [chests])
+    return result
+  }, [chests, addFragments])
 
   const saveDeck = (deck: Deck) => {
     setDecks((prev) => {

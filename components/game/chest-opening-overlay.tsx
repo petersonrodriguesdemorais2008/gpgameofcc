@@ -4,18 +4,19 @@
  * CHEST OPENING OVERLAY — animação de abertura de Baú.
  *
  * Fluxo: baú flutuando → toque para abrir → explosão de partículas na cor
- * do elemento → revela Gear Coins + Gacha Coins e, com chance, 1 carta nova.
- * As recompensas já foram creditadas pelo GameContext (openChest) antes desta
- * tela aparecer; aqui só exibimos o resultado.
+ * do elemento → revela os FRAGMENTOS obtidos (único drop dos baús, sempre do
+ * tipo pareado com a cor do baú). As recompensas já foram creditadas pelo
+ * GameContext (openChest) antes desta tela aparecer; aqui só exibimos.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import Image from "next/image"
 import { CHESTS, type ChestId, type ChestOpenResult } from "@/lib/chests"
+import { FRAGMENTS } from "@/lib/fragments"
 
 interface ChestOpeningOverlayProps {
   chestId: ChestId
-  result: ChestOpenResult & { cardName?: string }
+  result: ChestOpenResult
   onClose: () => void
 }
 
@@ -23,6 +24,7 @@ type Phase = "idle" | "shaking" | "burst" | "revealed"
 
 export function ChestOpeningOverlay({ chestId, result, onClose }: ChestOpeningOverlayProps) {
   const def = CHESTS[chestId]
+  const frag = FRAGMENTS[result.fragmentId]
   const [phase, setPhase] = useState<Phase>("idle")
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
@@ -199,35 +201,34 @@ export function ChestOpeningOverlay({ chestId, result, onClose }: ChestOpeningOv
           </p>
 
           <div style={{
-            display: "flex", alignItems: "center", gap: 16,
-            background: "rgba(0,0,0,0.55)", border: `1px solid ${def.color}44`,
-            borderRadius: 16, padding: "14px 26px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
+            background: `linear-gradient(160deg, ${frag.color}1f, rgba(0,0,0,0.6))`,
+            border: `1px solid ${frag.color}55`,
+            borderRadius: 20, padding: "22px 34px",
             animation: "chest-pop-in 500ms cubic-bezier(.34,1.56,.64,1) 100ms both",
+            boxShadow: `0 0 34px ${frag.color}33`,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <img src="/images/gear-coin.png" alt="Gear Coin" style={{ width: 34, height: 34, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(253,224,71,0.7))" }} />
-              <span style={{ fontWeight: 900, fontSize: 18, color: "#FDE047", textShadow: "0 0 10px rgba(253,224,71,0.5)" }}>+{result.gear}</span>
-            </div>
-            <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.2)" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <img src="/images/Gacha_Coin.png" alt="Gacha Coin" style={{ width: 34, height: 34, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(252,211,77,0.7))" }} />
-              <span style={{ fontWeight: 900, fontSize: 18, color: "#FCD34D", textShadow: "0 0 10px rgba(252,211,77,0.5)" }}>+{result.gacha}</span>
-            </div>
-          </div>
-
-          {result.cardName && (
             <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              background: `linear-gradient(135deg, ${def.color}26, ${def.color}0d)`,
-              border: `1px solid ${def.color}55`, borderRadius: 14, padding: "10px 20px",
-              animation: "chest-pop-in 500ms cubic-bezier(.34,1.56,.64,1) 260ms both",
+              position: "relative", width: 96, height: 96,
+              filter: `drop-shadow(0 0 16px ${frag.color}aa)`,
+              animation: "chest-float 2.6s ease-in-out infinite",
             }}>
-              <span style={{ fontSize: 18 }}>✦</span>
-              <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>
-                Nova carta: <span style={{ color: def.color }}>{result.cardName}</span>
-              </span>
+              <Image src={frag.image || "/placeholder.svg"} alt={frag.name} fill sizes="96px" className="object-contain" />
             </div>
-          )}
+
+            <span style={{
+              fontWeight: 900, fontSize: 26, color: frag.color,
+              textShadow: `0 0 14px ${frag.color}88`, lineHeight: 1,
+            }}>
+              +{result.amount}
+            </span>
+
+            <span style={{
+              color: "#fff", fontWeight: 800, fontSize: 14, letterSpacing: "0.5px",
+            }}>
+              {frag.name}
+            </span>
+          </div>
 
           <button
             onClick={onClose}
