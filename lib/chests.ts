@@ -1,7 +1,7 @@
 /**
  * BAÚS — itens que podem cair após vencer QUALQUER duelo (PvE ou PvP).
  *
- * Onde são obtidos: pequena chance ao vencer qualquer duelo do jogo.
+ * Onde são obtidos: 1 baú garantido em todo duelo do jogo.
  * Onde são abertos: tela de Itens (Inventário) → selecionar o baú → "Abrir".
  *
  * DROP: cada baú entrega SOMENTE fragmentos — nada de moedas ou cartas.
@@ -134,14 +134,11 @@ export function normalizeChestCounts(raw: unknown): ChestCounts {
 }
 
 /**
- * Chance de dropar um baú ao vencer QUALQUER duelo (PvE ou PvP).
- * Cerca de 1 em cada 6 vitórias, com o elemento sorteado uniformemente.
+ * Todo duelo do jogo (História, Treinamento, Eventos e PvP) dropa SEMPRE
+ * pelo menos 1 baú — o elemento é sorteado uniformemente entre todos os baús.
+ * Nunca retorna null: o drop é garantido.
  */
-const CHEST_DROP_CHANCE = 0.16
-
-/** Sorteia se um baú deve dropar após uma vitória e, se sim, qual. */
-export function rollChestDrop(): ChestId | null {
-  if (Math.random() >= CHEST_DROP_CHANCE) return null
+export function rollChestDrop(): ChestId {
   return ALL_CHEST_IDS[Math.floor(Math.random() * ALL_CHEST_IDS.length)]
 }
 

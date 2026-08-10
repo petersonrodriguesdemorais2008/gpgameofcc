@@ -342,11 +342,12 @@ interface GameContextType {
     gacha: number
     gear: number
     fragments: FragmentCounts
-    chest: ChestId | null
+    /** Baú dropado — garantido em todo duelo. */
+    chest: ChestId
   }
   /** Fragmentos (itens de evento) no inventário do jogador. */
   fragments: FragmentCounts
-  /** Baús no inventário do jogador (dropam com chance ao vencer duelos). */
+  /** Baús no inventário do jogador (1 garantido por duelo concluído). */
   chests: ChestCounts
   /** Soma baús ao inventário. */
   addChests: (gain: ChestCounts) => void
@@ -2470,9 +2471,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGearCoins((prev) => prev + gear)
     const fragmentDrop = normalizeFragmentCounts(drop)
     addFragments(fragmentDrop)
-    // Qualquer vitória (PvE ou PvP) tem uma pequena chance de dropar 1 baú.
+    // Todo duelo (História, Treinamento, Eventos ou PvP) dropa 1 baú garantido.
     const chestDrop = rollChestDrop()
-    if (chestDrop) addChests({ [chestDrop]: 1 })
+    addChests({ [chestDrop]: 1 })
     return { gacha, gear, fragments: fragmentDrop, chest: chestDrop }
   }, [addFragments, addChests])
 
