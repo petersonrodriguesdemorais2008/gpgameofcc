@@ -122,6 +122,81 @@ function ring(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, w:
   ctx.strokeStyle = color
   ctx.stroke()
 }
+/** Nota musical (colcheia) desenhada em canvas — usada na animação exclusiva da Morgana */
+function musicNote(
+  ctx: CanvasRenderingContext2D, x: number, y: number, size: number, rot: number,
+  alpha: number, color: string, double = false,
+) {
+  if (alpha <= 0 || size <= 0) return
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(rot)
+  ctx.globalAlpha = alpha
+  ctx.fillStyle = color
+  ctx.strokeStyle = color
+  ctx.lineCap = "round"
+  const s = size
+  if (double) {
+    // duas cabeças + barra de ligação (semicolcheias unidas)
+    ctx.lineWidth = s * 0.16
+    for (const hx of [0, s * 0.85]) {
+      ctx.beginPath()
+      ctx.ellipse(hx, 0, s * 0.32, s * 0.22, -0.45, 0, TAU)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(hx + s * 0.28, -s * 0.05)
+      ctx.lineTo(hx + s * 0.28, -s * 1.1)
+      ctx.stroke()
+    }
+    ctx.lineWidth = s * 0.26
+    ctx.beginPath()
+    ctx.moveTo(s * 0.28, -s * 1.1)
+    ctx.lineTo(s * 1.13, -s * 1.1)
+    ctx.stroke()
+  } else {
+    ctx.lineWidth = s * 0.16
+    ctx.beginPath()
+    ctx.ellipse(0, 0, s * 0.34, s * 0.24, -0.45, 0, TAU)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(s * 0.3, -s * 0.05)
+    ctx.lineTo(s * 0.3, -s * 1.2)
+    ctx.stroke()
+    // bandeirola
+    ctx.beginPath()
+    ctx.moveTo(s * 0.3, -s * 1.2)
+    ctx.quadraticCurveTo(s * 0.95, -s * 0.92, s * 0.58, -s * 0.45)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  ctx.restore()
+}
+
+/** Raio elétrico serrilhado entre dois pontos, com jitter determinístico por seed */
+function bolt(
+  ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number,
+  segs: number, jag: number, seed: number, width: number, color: string,
+) {
+  const r = mulberry(seed)
+  const dx = x2 - x1, dy = y2 - y1
+  const len = Math.hypot(dx, dy)
+  if (len < 2) return
+  const nx = -dy / len, ny = dx / len
+  ctx.beginPath()
+  ctx.moveTo(x1, y1)
+  for (let i = 1; i < segs; i++) {
+    const p = i / segs
+    const off = (r() - 0.5) * 2 * jag * Math.sin(p * Math.PI)
+    ctx.lineTo(x1 + dx * p + nx * off, y1 + dy * p + ny * off)
+  }
+  ctx.lineTo(x2, y2)
+  ctx.lineWidth = width
+  ctx.strokeStyle = color
+  ctx.lineCap = "round"
+  ctx.lineJoin = "round"
+  ctx.stroke()
+}
+
 function star(ctx: CanvasRenderingContext2D, x: number, y: number, rot: number, n: number, R: number, r: number) {
   ctx.beginPath()
   for (let i = 0; i < n * 2; i++) {
@@ -136,7 +211,7 @@ function star(ctx: CanvasRenderingContext2D, x: number, y: number, rot: number, 
 }
 
 // ── Partículas ────────────────────────────────────────────────────────────────
-type Kind = "glow" | "flame" | "shard" | "glitter" | "swirl" | "wisp"
+type Kind = "glow" | "flame" | "shard" | "glitter" | "swirl" | "wisp" | "note"
 interface Pt {
   x: number; y: number; vx: number; vy: number
   ax: number; ay: number; drag: number
@@ -174,8 +249,10 @@ export function ElementalAttackAnimation({
     const el = (element || "neutral").toLowerCase().trim()
     // ── FEHNON HOSKIE — animação exclusiva de corte de espada com água ──────
     const isFehnon = !!attackerName && attackerName.toLowerCase().includes("fehnon")
-    const E = isFehnon ? "aquos" : normalizeElement(el)
-    const P = isFehnon ? pal("aquos") : pal(el)
+    // ── MORGANA PENDRAGON — animação exclusiva de rasgo elétrico roxo com notas musicais ──
+    const isMorgana = !isFehnon && !!attackerName && attackerName.toLowerCase().includes("morgana")
+    const E = isFehnon ? "aquos" : isMorgana ? "darkness" : normalizeElement(el)
+    const P = isFehnon ? pal("aquos") : isMorgana ? pal("darkus") : pal(el)
     const [br, bg, bb] = hex2rgb(P.b)
     const [cr, cg, cb] = hex2rgb(P.c)
     const [ar, ag, ab] = hex2rgb(P.a)
@@ -276,6 +353,64 @@ export function ElementalAttackAnimation({
           return {
             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, ay: -14,
             size: 2 + rnd() * 2.5, life: 1000 + rnd() * 280,
+            r: 255, g: 255, b: 255, drag: 0.995, kind: "glitter",
+          }
+        })
+        return
+      }
+      if (isMorgana) {
+        // Faíscas elétricas radiais violentas
+        spawn(60, () => {
+          const a = rnd() * TAU
+          const sp = 180 + rnd() * 620
+          const white = rnd() < 0.4
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            size: 2.5 + rnd() * 5.5, life: 340 + rnd() * 460,
+            r: white ? 255 : 196, g: white ? 255 : 181, b: white ? 255 : 253,
+            drag: 0.955, kind: "glow",
+          }
+        })
+        // NOTAS MUSICAIS ROXAS explodindo do impacto (assinatura da Morgana)
+        spawn(13, (i) => {
+          const a = (i / 13) * TAU + rnd() * 0.5
+          const sp = 130 + rnd() * 300
+          const bright = rnd() < 0.45
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 140, ay: 200,
+            size: 11 + rnd() * 10, life: 800 + rnd() * 500,
+            r: bright ? 216 : 168, g: bright ? 180 : 85, b: 255,
+            drag: 0.97, kind: "note",
+            rot: (rnd() - 0.5) * 0.9, spin: (rnd() - 0.5) * 4,
+          }
+        })
+        // Fragmentos elétricos serrilhados (estilhaços de energia)
+        spawn(20, () => {
+          const a = rnd() * TAU
+          const sp = 220 + rnd() * 380
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            size: 2 + rnd() * 3.5, life: 500 + rnd() * 420,
+            r: 233, g: 213, b: 255, drag: 0.98, kind: "glitter",
+          }
+        })
+        // Fumaça sombria roxa se expandindo
+        spawn(14, () => {
+          const a = rnd() * TAU
+          const sp = 60 + rnd() * 160
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, ay: -30,
+            size: 11 + rnd() * 14, life: 760 + rnd() * 520,
+            r: 88, g: 28, b: 135, drag: 0.96, kind: "wisp",
+          }
+        })
+        // Cintilar branco/lavanda duradouro
+        spawn(10, (i) => {
+          const a = (i / 10) * TAU
+          const sp = 30 + rnd() * 70
+          return {
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 55, ay: -16,
+            size: 2 + rnd() * 2.5, life: 1000 + rnd() * 300,
             r: 255, g: 255, b: 255, drag: 0.995, kind: "glitter",
           }
         })
@@ -979,6 +1114,17 @@ export function ElementalAttackAnimation({
             blit(ctx, spW, p.x, p.y, p.size * (1 - k * 0.4), fade * tw)
             break
           }
+          case "note": {
+            // nota musical roxa flutuante com brilho — assinatura da Morgana
+            const tw = 0.72 + 0.28 * Math.sin(p.age * 0.02 + p.seed * 20)
+            const wobble = Math.sin(p.age * 0.004 + p.seed * 10) * 0.3
+            blit(ctx, spB, p.x, p.y, p.size * 1.5 * (1 - k * 0.3), fade * 0.55)
+            musicNote(
+              ctx, p.x, p.y, p.size * (1 - k * 0.25), p.rot + wobble,
+              fade * tw, `rgb(${p.r},${p.g},${p.b})`, p.seed > 0.62,
+            )
+            break
+          }
           case "wisp": {
             ctx.globalCompositeOperation = "source-over"
             const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * (1 + k))
@@ -1308,6 +1454,322 @@ export function ElementalAttackAnimation({
       ctx.globalCompositeOperation = "source-over"
     }
 
+    // ═══════ MORGANA PENDRAGON — RASGO ELÉTRICO ROXO COM NOTAS MUSICAIS ══════
+    const morganaSlashAng = ang - Math.PI / 6
+
+    const drawMorganaCharge = (k: number, now: number) => {
+      const t = now * 0.001
+      const grow = eoCubic(k)
+      // aura ambiente roxa profunda
+      const amb = ctx.createRadialGradient(sx, sy, 0, sx, sy, 340)
+      amb.addColorStop(0, `rgba(124,58,237,${0.32 * k})`)
+      amb.addColorStop(1, "rgba(0,0,0,0)")
+      ctx.fillStyle = amb
+      ctx.fillRect(sx - 340, sy - 340, 680, 680)
+
+      ctx.globalCompositeOperation = "lighter"
+      // arcos elétricos crepitando ao redor (flicker por frame)
+      const fseed = Math.floor(now / 46)
+      const frnd = mulberry(fseed)
+      for (let i = 0; i < 6; i++) {
+        if (frnd() < 0.35) continue
+        const a1 = frnd() * TAU
+        const a2 = a1 + 0.6 + frnd() * 1.4
+        const r1 = (26 + frnd() * 66) * grow
+        const r2 = (26 + frnd() * 66) * grow
+        bolt(
+          ctx, sx + Math.cos(a1) * r1, sy + Math.sin(a1) * r1,
+          sx + Math.cos(a2) * r2, sy + Math.sin(a2) * r2,
+          5, 9, fseed * 7 + i * 131, 1.6, `rgba(216,180,254,${0.85 * k})`,
+        )
+      }
+      // faíscas convergindo em espiral (sucção de energia)
+      for (let i = 0; i < 13; i++) {
+        const frac = 1 - ((t * 1.9 + i * 0.618) % 1)
+        const a = i * (TAU / 13) + t * 2.8 + frac * 2
+        const r = frac * 118
+        blit(ctx, i % 2 ? spC : spW, sx + Math.cos(a) * r, sy + Math.sin(a) * r, 4 + (1 - frac) * 7, (1 - frac) * 0.9 * k)
+      }
+      // anéis colapsando
+      for (let i = 0; i < 3; i++) {
+        const fr = 1 - ((t * 1.5 + i / 3) % 1)
+        ring(ctx, sx, sy, fr * 125, 2.5, `rgba(167,139,250,${(1 - fr) * 0.8 * k})`)
+      }
+      // NOTAS MUSICAIS orbitando e subindo ao redor da carga
+      for (let i = 0; i < 6; i++) {
+        const fr = (t * 0.65 + i / 6) % 1
+        const a = t * 2.4 + i * (TAU / 6)
+        const orbR = (46 + Math.sin(t * 3 + i) * 10) * grow
+        const nx = sx + Math.cos(a) * orbR
+        const ny = sy + Math.sin(a) * orbR * 0.7 - fr * 58
+        musicNote(ctx, nx, ny, (9 + (i % 3) * 3) * grow, Math.sin(t * 2 + i) * 0.4, (1 - fr) * 0.9 * k, i % 2 ? "rgba(216,180,254,1)" : "rgba(168,85,247,1)", i % 3 === 0)
+      }
+      // núcleo sombrio com anel violeta pulsante
+      ctx.globalCompositeOperation = "source-over"
+      const cr2 = 15 * grow * (1 + Math.sin(t * 20) * 0.1)
+      ctx.beginPath(); ctx.arc(sx, sy, cr2, 0, TAU)
+      ctx.fillStyle = "#0b0016"; ctx.fill()
+      ctx.globalCompositeOperation = "lighter"
+      ring(ctx, sx, sy, cr2 + 4, 3, "rgba(168,85,247,.95)")
+      const pulse = 1 + Math.sin(t * 24) * 0.14
+      blit(ctx, spB, sx, sy, (24 + 30 * grow) * pulse, 0.9)
+      blit(ctx, spW, sx, sy, (10 + 13 * grow) * pulse, 1)
+      ctx.globalCompositeOperation = "source-over"
+      // imagem residual do atacante
+      if (atkImg && atkImg.complete && atkImg.naturalWidth > 0) {
+        ctx.globalAlpha = 0.4 * (1 - k)
+        ctx.drawImage(atkImg, sx - 42, sy - 58, 84, 116)
+        ctx.globalAlpha = 1
+      }
+    }
+
+    const drawMorganaStrike = (k: number, now: number) => {
+      const t = now * 0.001
+      const p = eiCubic(k) * 0.35 + k * 0.65
+      const pos = { x: sx + cosA * dist * p, y: sy + sinA * dist * p }
+      trail.push({ x: pos.x, y: pos.y })
+      if (trail.length > 26) trail.shift()
+
+      ctx.globalCompositeOperation = "lighter"
+      // linhas de velocidade roxas
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(ang)
+      for (let i = 0; i < 12; i++) {
+        const off = (i - 5.5) * 26
+        const len = 140 + ((i * 53) % 160)
+        const xw = p * (dist + 520) - len - ((i * 97) % 240)
+        ctx.strokeStyle = `rgba(124,58,237,${0.2 - Math.abs(i - 5.5) * 0.02})`
+        ctx.lineWidth = Math.abs(i - 5.5) < 1.5 ? 3 : 1.5
+        ctx.beginPath(); ctx.moveTo(xw, off); ctx.lineTo(xw + len, off); ctx.stroke()
+      }
+      ctx.restore()
+
+      // ── RELÂMPAGO CONTÍNUO da origem até a cabeça — o rasgo em trânsito ──
+      const fseed = Math.floor(now / 40)
+      bolt(ctx, sx, sy, pos.x, pos.y, 14, 30, fseed * 13 + 1, 7, "rgba(124,58,237,.5)")
+      bolt(ctx, sx, sy, pos.x, pos.y, 14, 26, fseed * 13 + 2, 3.5, "rgba(168,85,247,.85)")
+      bolt(ctx, sx, sy, pos.x, pos.y, 14, 22, fseed * 13 + 3, 1.6, "rgba(255,255,255,.95)")
+      // arcos secundários que se ramificam do relâmpago principal
+      const brnd = mulberry(fseed * 29)
+      for (let i = 0; i < 4; i++) {
+        if (brnd() < 0.3) continue
+        const q = 0.25 + brnd() * 0.6
+        const bx = sx + cosA * dist * p * q
+        const by = sy + sinA * dist * p * q
+        const ba = ang + (brnd() - 0.5) * 2.4
+        const bL = 30 + brnd() * 70
+        bolt(ctx, bx, by, bx + Math.cos(ba) * bL, by + Math.sin(ba) * bL, 5, 12, fseed * 31 + i * 17, 1.4, "rgba(216,180,254,.8)")
+      }
+
+      // rastro (afterimages)
+      for (let i = 0; i < trail.length; i++) {
+        const f = i / trail.length
+        blit(ctx, spB, trail[i].x, trail[i].y, 5 + f * 19, f * 0.55)
+      }
+
+      // ── CABEÇA: fenda elétrica crescente cortando o ar ──
+      const R = 40 + p * 34
+      ctx.save()
+      ctx.translate(pos.x, pos.y)
+      ctx.rotate(ang)
+      const grad = ctx.createLinearGradient(-R, 0, R * 0.9, 0)
+      grad.addColorStop(0, "rgba(46,16,101,.15)")
+      grad.addColorStop(0.55, "rgba(168,85,247,.95)")
+      grad.addColorStop(1, "rgba(255,255,255,1)")
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.moveTo(-R * 0.2, -R)
+      ctx.quadraticCurveTo(R * 0.95, 0, -R * 0.2, R)
+      ctx.quadraticCurveTo(R * 0.25, 0, -R * 0.2, -R)
+      ctx.closePath()
+      ctx.fill()
+      // fio branco serrilhado no gume
+      ctx.strokeStyle = "rgba(255,255,255,.95)"
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.moveTo(-R * 0.2, -R)
+      ctx.quadraticCurveTo(R * 0.95, 0, -R * 0.2, R)
+      ctx.stroke()
+      ctx.restore()
+      blit(ctx, spB, pos.x, pos.y, R, 0.8)
+      blit(ctx, spW, pos.x + 10 * cosA, pos.y + 10 * sinA, 13, 1)
+
+      // NOTAS MUSICAIS voando no vácuo do rasgo
+      for (let i = 0; i < 5; i++) {
+        const q = p - 0.08 - i * 0.09
+        if (q <= 0.02) continue
+        const wob = Math.sin(q * TAU * 2.4 + t * 7 + i * 2) * 30
+        const nx = sx + cosA * dist * q - sinA * wob
+        const ny = sy + sinA * dist * q + cosA * wob
+        musicNote(ctx, nx, ny, 10 + (i % 3) * 3, Math.sin(t * 4 + i) * 0.5, 0.9 - i * 0.14, i % 2 ? "rgba(216,180,254,1)" : "rgba(168,85,247,1)", i % 3 === 0)
+      }
+
+      // partículas de rastro (faíscas roxas)
+      if (!reduced && rnd() < 0.95) {
+        const off = (rnd() - 0.5) * 24
+        pts.push({
+          x: pos.x - sinA * off, y: pos.y + cosA * off,
+          vx: -cosA * 70 + (rnd() - 0.5) * 70, vy: -sinA * 70 + (rnd() - 0.5) * 70,
+          ax: 0, ay: 0, drag: 0.96,
+          age: 0, life: 280 + rnd() * 220, size: 2.5 + rnd() * 4,
+          r: 196, g: 181, b: 253, kind: "glow", seed: rnd(), rot: 0, spin: 0,
+        })
+      }
+      // nota ocasional deixada para trás flutuando
+      if (!reduced && rnd() < 0.22) {
+        pts.push({
+          x: pos.x + (rnd() - 0.5) * 30, y: pos.y + (rnd() - 0.5) * 30,
+          vx: (rnd() - 0.5) * 60, vy: -40 - rnd() * 60,
+          ax: 0, ay: -20, drag: 0.985,
+          age: 0, life: 500 + rnd() * 350, size: 8 + rnd() * 5,
+          r: 216, g: 180, b: 254, kind: "note", seed: rnd(), rot: (rnd() - 0.5) * 0.8, spin: (rnd() - 0.5) * 3,
+        })
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
+    const drawMorganaImpact = (tk: number) => {
+      const inHitstop = tk < T.HITSTOP
+      const k = clamp01((tk - T.HITSTOP) / (T.IMPACT - T.HITSTOP))
+      ctx.globalCompositeOperation = "lighter"
+
+      // clarão central
+      const coreA = inHitstop ? 1 : (1 - k) * 0.9
+      blit(ctx, spW, tx, ty, inHitstop ? 95 : 95 + eoExpo(k) * 130, coreA)
+      blit(ctx, spB, tx, ty, inHitstop ? 155 : 155 + eoExpo(k) * 240, coreA * 0.8)
+
+      // ── O GRANDE RASGO — fenda elétrica serrilhada rasgando a tela ──
+      const seedBase = Math.floor(tk / 42)
+      const cutL = inHitstop ? 250 : 250 + eoExpo(k) * 190
+      const fadeCut = inHitstop ? 1 : 1 - k * 0.8
+      ctx.save()
+      ctx.translate(tx, ty)
+      ctx.rotate(morganaSlashAng)
+      // abertura do rasgo (losango fino escuro — o "vácuo" do corte)
+      ctx.globalCompositeOperation = "source-over"
+      const gapH = (inHitstop ? 16 : 16 * (1 - k * 0.7)) * fadeCut
+      if (gapH > 0.5) {
+        ctx.fillStyle = `rgba(11,0,22,${0.9 * fadeCut})`
+        ctx.beginPath()
+        ctx.moveTo(-cutL, 0)
+        ctx.quadraticCurveTo(0, -gapH, cutL, 0)
+        ctx.quadraticCurveTo(0, gapH, -cutL, 0)
+        ctx.fill()
+      }
+      ctx.globalCompositeOperation = "lighter"
+      // bordas do rasgo: relâmpagos serrilhados espelhados
+      bolt(ctx, -cutL, 0, cutL, 0, 18, 16, seedBase * 11 + 1, 6, `rgba(124,58,237,${0.6 * fadeCut})`)
+      bolt(ctx, -cutL, 0, cutL, 0, 18, 13, seedBase * 11 + 2, 3, `rgba(168,85,247,${0.9 * fadeCut})`)
+      bolt(ctx, -cutL, 0, cutL, 0, 18, 10, seedBase * 11 + 3, 1.6, `rgba(255,255,255,${0.98 * fadeCut})`)
+      ctx.restore()
+
+      // segundo rasgo cruzado — chega um instante depois
+      if (!inHitstop && k > 0.1) {
+        const k2 = clamp01((k - 0.1) / 0.9)
+        const cut2 = eoExpo(k2) * 340
+        ctx.save()
+        ctx.translate(tx, ty)
+        ctx.rotate(morganaSlashAng + Math.PI / 2.3)
+        bolt(ctx, -cut2, 0, cut2, 0, 16, 11, seedBase * 17 + 5, 2.4, `rgba(216,180,254,${0.85 * (1 - k2)})`)
+        bolt(ctx, -cut2, 0, cut2, 0, 16, 8, seedBase * 17 + 6, 1.2, `rgba(255,255,255,${0.9 * (1 - k2)})`)
+        ctx.restore()
+      }
+
+      if (!inHitstop) {
+        // ondas de choque roxas
+        for (let i = 0; i < 5; i++) {
+          const kk = clamp01(k * 1.35 - i * 0.09)
+          if (kk <= 0) continue
+          const r = eoExpo(kk) * (185 + i * 64)
+          const alpha = (1 - kk) * (0.95 - i * 0.14)
+          ring(ctx, tx, ty, r, Math.max(1, 11 - i * 2 - kk * 8), i < 2 ? `rgba(255,255,255,${alpha})` : `rgba(124,58,237,${alpha})`)
+        }
+        // aberração cromática
+        const rC = eoExpo(k) * 225
+        ring(ctx, tx - 4, ty, rC, 2, `rgba(255,60,60,${(1 - k) * 0.4})`)
+        ring(ctx, tx + 4, ty, rC, 2, `rgba(60,60,255,${(1 - k) * 0.4})`)
+        // RELÂMPAGOS RADIAIS estourando do centro
+        const rrnd = mulberry(seedBase * 23)
+        for (let i = 0; i < 8; i++) {
+          if (rrnd() < 0.2) continue
+          const a = i * (TAU / 8) + rrnd() * 0.5
+          const L = eoExpo(k) * (110 + rrnd() * 110)
+          bolt(
+            ctx, tx + Math.cos(a) * L * 0.15, ty + Math.sin(a) * L * 0.15,
+            tx + Math.cos(a) * L, ty + Math.sin(a) * L,
+            6, 13, seedBase * 41 + i * 19, i % 3 === 0 ? 2.6 : 1.4,
+            `rgba(${i % 2 ? "216,180,254" : "255,255,255"},${(1 - k) * 0.9})`,
+          )
+        }
+        // ── CÍRCULO DE NOTAS — partitura mágica se expandindo ──
+        const sg = clamp01(k * 1.5)
+        const sgA = sg < 0.7 ? 1 : 1 - (sg - 0.7) / 0.3
+        const NR = eoBack(clamp01(sg * 1.3)) * 140
+        if (NR > 6) {
+          ring(ctx, tx, ty, NR, 2, `rgba(168,85,247,${0.7 * sgA})`)
+          ring(ctx, tx, ty, NR * 0.8, 1, `rgba(255,255,255,${0.45 * sgA})`)
+          // pauta circular tracejada
+          ctx.setLineDash([3, 9])
+          ring(ctx, tx, ty, NR * 0.9, 1.2, `rgba(216,180,254,${0.6 * sgA})`)
+          ctx.setLineDash([])
+          const rot = k * 1.8
+          for (let i = 0; i < 8; i++) {
+            const a = rot + i * (TAU / 8)
+            musicNote(ctx, tx + Math.cos(a) * NR, ty + Math.sin(a) * NR, 13, a + Math.PI / 2, 0.95 * sgA, i % 2 ? "rgba(216,180,254,1)" : "rgba(255,255,255,1)", i % 4 === 0)
+          }
+        }
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
+    const drawMorganaAftermath = (k: number, now: number) => {
+      const t = now * 0.001
+      ctx.globalCompositeOperation = "lighter"
+      blit(ctx, spB, tx, ty, 76 * (1 - k), (1 - k) * 0.5)
+      // rasgo residual crepitando e encolhendo
+      if (k < 0.65) {
+        const rk = k / 0.65
+        const L = 260 * (1 - rk * 0.4)
+        const seedBase = Math.floor(now / 60)
+        ctx.save()
+        ctx.translate(tx, ty)
+        ctx.rotate(morganaSlashAng)
+        const flick = 0.55 + 0.45 * Math.sin(t * 34)
+        bolt(ctx, -L, 0, L, 0, 16, 9 * (1 - rk), seedBase * 7 + 2, 2, `rgba(168,85,247,${(1 - rk) * 0.85 * flick})`)
+        bolt(ctx, -L, 0, L, 0, 16, 6 * (1 - rk), seedBase * 7 + 3, 1, `rgba(255,255,255,${(1 - rk) * 0.7 * flick})`)
+        ctx.restore()
+        // fagulhas elétricas estalando do rasgo
+        const srnd = mulberry(seedBase * 13)
+        for (let i = 0; i < 3; i++) {
+          if (srnd() < 0.5) continue
+          const q = (srnd() - 0.5) * 2
+          const bx = tx + Math.cos(morganaSlashAng) * q * L
+          const by = ty + Math.sin(morganaSlashAng) * q * L
+          const ba = srnd() * TAU
+          const bL2 = 16 + srnd() * 34
+          bolt(ctx, bx, by, bx + Math.cos(ba) * bL2, by + Math.sin(ba) * bL2, 4, 8, seedBase * 19 + i * 7, 1.2, `rgba(216,180,254,${(1 - rk) * 0.8})`)
+        }
+      }
+      // notas musicais subindo em cascata (a melodia final)
+      if (k < 0.92) {
+        for (let i = 0; i < 7; i++) {
+          const fr = (t * 0.55 + i / 7) % 1
+          const mx = tx + ((i % 4) - 1.5) * 46 + Math.sin(t * 2.2 + i * 1.7) * 16
+          const my = ty - 10 - fr * 130
+          const al = (1 - fr) * (1 - k) * 0.9
+          musicNote(ctx, mx, my, 9 + (i % 3) * 3.5, Math.sin(t * 3 + i) * 0.45, al, i % 2 ? "rgba(216,180,254,1)" : "rgba(168,85,247,1)", i % 3 === 0)
+        }
+      }
+      // anéis finais dissipando
+      for (let i = 0; i < 2; i++) {
+        const rk = clamp01(k * 1.2 - i * 0.15)
+        if (rk <= 0) continue
+        ring(ctx, tx, ty, eoExpo(rk) * (130 + i * 70), 1.6, `rgba(167,139,250,${(1 - rk) * (0.55 - i * 0.2)})`)
+      }
+      ctx.globalCompositeOperation = "source-over"
+    }
+
     // ═════════════════════════ LOOP PRINCIPAL ════════════════════════════════
     const frame = (now: number) => {
       if (done) return
@@ -1324,7 +1786,7 @@ export function ElementalAttackAnimation({
       let shX = 0, shY = 0
       if (!reduced && t >= C2 + T.HITSTOP && t < C3) {
         const sk = 1 - (t - C2 - T.HITSTOP) / (T.IMPACT - T.HITSTOP)
-        const amp = (isFehnon ? 19 : 13) * sk * sk
+        const amp = (isFehnon || isMorgana ? 19 : 13) * sk * sk
         shX = Math.sin(t * 0.09) * amp
         shY = Math.cos(t * 0.117) * amp
       }
@@ -1332,11 +1794,13 @@ export function ElementalAttackAnimation({
 
       if (t < C0) {
         if (isFehnon) drawFehnonCharge(clamp01(t / C0), now)
+        else if (isMorgana) drawMorganaCharge(clamp01(t / C0), now)
         else drawCharge(clamp01(t / C0), now)
       } else if (t < C1) {
         drawRelease(clamp01((t - C0) / T.RELEASE))
       } else if (t < C2) {
         if (isFehnon) drawFehnonStrike(clamp01((t - C1) / T.STRIKE), now)
+        else if (isMorgana) drawMorganaStrike(clamp01((t - C1) / T.STRIKE), now)
         else drawStrike(clamp01((t - C1) / T.STRIKE), now)
       } else if (t < C3) {
         if (!impactFired) {
@@ -1345,9 +1809,11 @@ export function ElementalAttackAnimation({
           cbRef.current.onImpact?.(id, tx, ty, el)
         }
         if (isFehnon) drawFehnonImpact(t - C2)
+        else if (isMorgana) drawMorganaImpact(t - C2)
         else drawImpact(t - C2)
       } else if (t < T.TOTAL) {
         if (isFehnon) drawFehnonAftermath(clamp01((t - C3) / T.AFTERMATH), now)
+        else if (isMorgana) drawMorganaAftermath(clamp01((t - C3) / T.AFTERMATH), now)
         else drawAftermath(clamp01((t - C3) / T.AFTERMATH), now)
       }
 
