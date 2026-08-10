@@ -15,6 +15,7 @@ import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
+import { CHESTS, type ChestId } from "@/lib/chests"
 
 // ─── Multiplayer types ────────────────────────────────────────────────────────
 interface DuelAction {
@@ -2402,7 +2403,7 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
   // ── Duel rewards: PVP online → +20 gacha coins, +50 gear coins ──
   const { addDuelRewards } = useGame()
   const rewardsGrantedRef = useRef(false)
-  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number } | null>(null)
+  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number; chest: ChestId | null } | null>(null)
 
   useEffect(() => {
     if (!isWon || rewardsGrantedRef.current) return
@@ -2680,6 +2681,29 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
               <span style={{ fontWeight:900, fontSize:17, color:"#FDE047",
                 textShadow:"0 0 10px rgba(253,224,71,0.5)" }}>
                 +{duelRewards.gear}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Baú dropado ao vencer */}
+        {isWon && duelRewards && duelRewards.chest && CHESTS[duelRewards.chest] && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:12,
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:`1px solid ${CHESTS[duelRewards.chest].color}55`, borderRadius:14,
+            padding:"10px 22px", animation:"gr-up 500ms ease-out 880ms both",
+          }}>
+            <img src={CHESTS[duelRewards.chest].image || "/placeholder.svg"} alt={CHESTS[duelRewards.chest].name}
+              style={{ width:38, height:38, objectFit:"contain",
+                filter:`drop-shadow(0 0 10px ${CHESTS[duelRewards.chest].color}99)` }} />
+            <div style={{ display:"flex", flexDirection:"column", lineHeight:1.2 }}>
+              <span style={{ fontWeight:900, fontSize:13, color:CHESTS[duelRewards.chest].color,
+                textShadow:`0 0 10px ${CHESTS[duelRewards.chest].color}80`, textTransform:"uppercase", letterSpacing:"0.5px" }}>
+                Baú Encontrado!
+              </span>
+              <span style={{ fontWeight:700, fontSize:14, color:"#f1f0ee" }}>
+                {CHESTS[duelRewards.chest].name}
               </span>
             </div>
           </div>

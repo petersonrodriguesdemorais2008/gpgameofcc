@@ -45,8 +45,9 @@ export function ChestOpeningOverlay({ chestId, result, onClose }: ChestOpeningOv
 
   // Particle burst on the "burst" phase
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const canvasEl = canvasRef.current
+    if (!canvasEl) return
+    const canvas: HTMLCanvasElement = canvasEl
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
     resize()
     window.addEventListener("resize", resize)

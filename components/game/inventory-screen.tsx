@@ -235,6 +235,7 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
   )
 
   return (
+    <>
     <div
       className="min-h-screen w-full"
       style={{ background: "linear-gradient(160deg, #050212 0%, #0a0520 55%, #050212 100%)" }}
@@ -453,5 +454,13 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
         ))}
       </main>
     </div>
+    {opening && (
+      <ChestOpeningOverlay
+        chestId={opening.chestId}
+        result={opening.result}
+        onClose={() => setOpening(null)}
+      />
+    )}
+    </>
   )
 }
