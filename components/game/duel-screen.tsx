@@ -2813,16 +2813,25 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
   const isWon     = result === "won"
 
   // ── Duel rewards: gacha + gear coins on victory (granted once) ──
-  const { addDuelRewards } = useGame()
+  const { addDuelRewards, grantDuelChest } = useGame()
   const rewardsGrantedRef = useRef(false)
   const [duelRewards, setDuelRewards] = useState<{
     gacha: number; gear: number; fragments: FragmentCounts; chest: ChestId | null
   } | null>(null)
+  // Baú dropado — garantido em TODO duelo, mesmo em derrota.
+  const [droppedChest, setDroppedChest] = useState<ChestId | null>(null)
 
   useEffect(() => {
-    if (!isWon || !rewardKind || rewardsGrantedRef.current) return
+    if (rewardsGrantedRef.current) return
     rewardsGrantedRef.current = true
-    setDuelRewards(addDuelRewards(rewardKind))
+    if (isWon && rewardKind) {
+      const rewards = addDuelRewards(rewardKind)
+      setDuelRewards(rewards)
+      setDroppedChest(rewards.chest)
+    } else {
+      // Derrota (ou duelo sem recompensas de moedas): ainda dropa 1 baú garantido.
+      setDroppedChest(grantDuelChest())
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWon, rewardKind])
 
@@ -3141,24 +3150,24 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
           </div>
         )}
 
-        {/* Baú dropado ao vencer */}
-        {isWon && duelRewards && duelRewards.chest && CHESTS[duelRewards.chest] && (
+        {/* Baú dropado — garantido em todo duelo (vitória ou derrota) */}
+        {droppedChest && CHESTS[droppedChest] && (
           <div style={{
             display:"flex", alignItems:"center", gap:12,
             background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
-            border:`1px solid ${CHESTS[duelRewards.chest].color}55`, borderRadius:14,
+            border:`1px solid ${CHESTS[droppedChest].color}55`, borderRadius:14,
             padding:"10px 22px", animation:"gr-up 500ms ease-out 900ms both",
           }}>
-            <img src={CHESTS[duelRewards.chest].image || "/placeholder.svg"} alt={CHESTS[duelRewards.chest].name}
+            <img src={CHESTS[droppedChest].image || "/placeholder.svg"} alt={CHESTS[droppedChest].name}
               style={{ width:38, height:38, objectFit:"contain",
-                filter:`drop-shadow(0 0 10px ${CHESTS[duelRewards.chest].color}99)` }} />
+                filter:`drop-shadow(0 0 10px ${CHESTS[droppedChest].color}99)` }} />
             <div style={{ display:"flex", flexDirection:"column", lineHeight:1.2 }}>
-              <span style={{ fontWeight:900, fontSize:13, color:CHESTS[duelRewards.chest].color,
-                textShadow:`0 0 10px ${CHESTS[duelRewards.chest].color}80`, textTransform:"uppercase", letterSpacing:"0.5px" }}>
+              <span style={{ fontWeight:900, fontSize:13, color:CHESTS[droppedChest].color,
+                textShadow:`0 0 10px ${CHESTS[droppedChest].color}80`, textTransform:"uppercase", letterSpacing:"0.5px" }}>
                 Baú Encontrado!
               </span>
               <span style={{ fontWeight:700, fontSize:14, color:"#f1f0ee" }}>
-                {CHESTS[duelRewards.chest].name}
+                {CHESTS[droppedChest].name}
               </span>
             </div>
           </div>
@@ -7795,7 +7804,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 }, 500)
               }
 
-              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ──
+              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ���─
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 2) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 3) }))

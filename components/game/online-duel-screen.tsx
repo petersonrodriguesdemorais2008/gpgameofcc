@@ -2401,14 +2401,22 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
   const isWon     = result === "won"
 
   // ── Duel rewards: PVP online → +20 gacha coins, +50 gear coins ──
-  const { addDuelRewards } = useGame()
+  const { addDuelRewards, grantDuelChest } = useGame()
   const rewardsGrantedRef = useRef(false)
   const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number; chest: ChestId | null } | null>(null)
+  // Baú dropado — garantido em TODO duelo, mesmo em derrota.
+  const [droppedChest, setDroppedChest] = useState<ChestId | null>(null)
 
   useEffect(() => {
-    if (!isWon || rewardsGrantedRef.current) return
+    if (rewardsGrantedRef.current) return
     rewardsGrantedRef.current = true
-    setDuelRewards(addDuelRewards("pvp"))
+    if (isWon) {
+      const rewards = addDuelRewards("pvp")
+      setDuelRewards(rewards)
+      setDroppedChest(rewards.chest)
+    } else {
+      setDroppedChest(grantDuelChest())
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWon])
 
@@ -2686,24 +2694,24 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
           </div>
         )}
 
-        {/* Baú dropado ao vencer */}
-        {isWon && duelRewards && duelRewards.chest && CHESTS[duelRewards.chest] && (
+        {/* Baú dropado — garantido em todo duelo (vitória ou derrota) */}
+        {droppedChest && CHESTS[droppedChest] && (
           <div style={{
             display:"flex", alignItems:"center", gap:12,
             background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
-            border:`1px solid ${CHESTS[duelRewards.chest].color}55`, borderRadius:14,
+            border:`1px solid ${CHESTS[droppedChest].color}55`, borderRadius:14,
             padding:"10px 22px", animation:"gr-up 500ms ease-out 880ms both",
           }}>
-            <img src={CHESTS[duelRewards.chest].image || "/placeholder.svg"} alt={CHESTS[duelRewards.chest].name}
+            <img src={CHESTS[droppedChest].image || "/placeholder.svg"} alt={CHESTS[droppedChest].name}
               style={{ width:38, height:38, objectFit:"contain",
-                filter:`drop-shadow(0 0 10px ${CHESTS[duelRewards.chest].color}99)` }} />
+                filter:`drop-shadow(0 0 10px ${CHESTS[droppedChest].color}99)` }} />
             <div style={{ display:"flex", flexDirection:"column", lineHeight:1.2 }}>
-              <span style={{ fontWeight:900, fontSize:13, color:CHESTS[duelRewards.chest].color,
-                textShadow:`0 0 10px ${CHESTS[duelRewards.chest].color}80`, textTransform:"uppercase", letterSpacing:"0.5px" }}>
+              <span style={{ fontWeight:900, fontSize:13, color:CHESTS[droppedChest].color,
+                textShadow:`0 0 10px ${CHESTS[droppedChest].color}80`, textTransform:"uppercase", letterSpacing:"0.5px" }}>
                 Baú Encontrado!
               </span>
               <span style={{ fontWeight:700, fontSize:14, color:"#f1f0ee" }}>
-                {CHESTS[duelRewards.chest].name}
+                {CHESTS[droppedChest].name}
               </span>
             </div>
           </div>
@@ -2783,7 +2791,7 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
     </div>
   )
 }
-// ──────────────────────────────────────────────────────────────────────────────
+// ───────────────────────��──────────────────────────────────────────────────────
 
 export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const { t } = useLanguage()

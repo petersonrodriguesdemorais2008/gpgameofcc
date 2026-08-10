@@ -353,6 +353,8 @@ interface GameContextType {
   addChests: (gain: ChestCounts) => void
   /** Quantidade de um baú específico. */
   getChestCount: (id: ChestId) => number
+  /** Dropa 1 baú garantido pelo duelo concluído (vitória ou derrota) e devolve qual foi. */
+  grantDuelChest: () => ChestId
   /** Abre 1 baú: consome do inventário e entrega SOMENTE fragmentos da cor do baú. Retorna null se não houver o baú. */
   openChest: (id: ChestId) => ChestOpenResult | null
   /** Soma fragmentos ao inventário e devolve o total atualizado. */
@@ -2430,6 +2432,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const getChestCount = useCallback((id: ChestId) => chests[id] ?? 0, [chests])
 
+  /**
+   * Dropa 1 baú garantido pelo simples fato de o duelo ter acontecido
+   * (vitória OU derrota, em qualquer modo: História, Treinamento, Eventos, PvP).
+   */
+  const grantDuelChest = useCallback(() => {
+    const chestDrop = rollChestDrop()
+    addChests({ [chestDrop]: 1 })
+    return chestDrop
+  }, [addChests])
+
   // ── Skip Tíquetes ───────────────────────────────────────────────────────────
   const addSkipTickets = useCallback((amount: number) => {
     const gain = Math.floor(amount)
@@ -3668,6 +3680,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         chests,
         addChests,
         getChestCount,
+        grantDuelChest,
         openChest,
     skipTickets,
     addSkipTickets,
