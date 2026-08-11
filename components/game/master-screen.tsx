@@ -259,6 +259,7 @@ function MasterTile({ master, isSelected, onClick }: {
           : "transparent",
         boxShadow: isSelected ? `0 0 10px ${master.accentColor}80` : "none",
         transition:"all 0.3s",
+        animation: isSelected ? "gpTileGlow 2.6s ease-in-out infinite" : undefined,
       }}/>
     </button>
   )
@@ -298,6 +299,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
         borderRight:`1px solid ${master.accentColor}22`,
         display:"flex", flexDirection:"column", overflow:"hidden",
         position:"relative",
+        animation:"gpSlideRight 0.45s cubic-bezier(0.22,1,0.36,1) both",
       }}>
         {/* light shaft */}
         <div style={{
@@ -435,7 +437,14 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
               boxShadow:"0 3px 16px rgba(232,201,109,0.42)",
               animation:"gpBadgePop 0.3s ease",
               letterSpacing:"0.04em", textTransform:"uppercase",
+              position:"relative", overflow:"hidden",
             }}>
+              <span aria-hidden="true" style={{
+                position:"absolute", top:0, left:"-80%", width:"55%", height:"100%",
+                background:"linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent)",
+                animation:"gpBtnSheen 2.8s ease-in-out infinite",
+                pointerEvents:"none",
+              }}/>
               <Gift size={13}/>
               Receber Tudo ({claimable.length})
             </button>
@@ -488,7 +497,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
             }}/>
 
             <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-              {master.rewards.map(reward => {
+              {master.rewards.map((reward, idx) => {
                 const reached     = master.currentLevel >= reward.level
                 const canClaim    = reached && !reward.claimed
                 const chestId     = elementToChestId(master.element)
@@ -501,7 +510,9 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
                   <div
                     key={reward.level}
                     ref={isNext ? nextRef : undefined}
+                    className="gp-trail-row"
                     style={{
+                      animation:`gpRowIn 0.4s cubic-bezier(0.22,1,0.36,1) ${Math.min(idx * 0.028, 0.6)}s backwards`,
                       display:"flex", alignItems:"center", gap:13,
                       background: canClaim
                         ? `linear-gradient(90deg,${rColor}10,rgba(255,255,255,0.035))`
@@ -534,8 +545,9 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
                       display:"flex", alignItems:"center", justifyContent:"center",
                       fontWeight:900, fontSize:12.5, fontFamily:SERIF,
                       position:"relative", zIndex:1,
-                      color: reached ? "#f5f2ec" : "#3f4654",
+                      color: reached ? "#f5f2ec" : isNext ? "#9aa1ad" : "#3f4654",
                       boxShadow: reached ? `0 0 14px ${master.accentColor}32` : "none",
+                      animation: isNext ? "gpNextNodePulse 2s ease-in-out infinite" : undefined,
                     }}>
                       {reward.level}
                     </div>
@@ -598,7 +610,15 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
                           boxShadow:`0 3px 14px ${rColor}32`,
                           textShadow:"0 1px 3px rgba(0,0,0,0.5)",
                           letterSpacing:"0.04em",
+                          position:"relative", overflow:"hidden",
+                          animation:"gpClaimGlow 2.4s ease-in-out infinite",
                         }}>
+                        <span aria-hidden="true" style={{
+                          position:"absolute", top:0, left:"-80%", width:"60%", height:"100%",
+                          background:"linear-gradient(105deg,transparent,rgba(255,255,255,0.35),transparent)",
+                          animation:"gpBtnSheen 2.4s ease-in-out infinite",
+                          pointerEvents:"none",
+                        }}/>
                         Receber
                       </button>
                     )}
@@ -641,10 +661,42 @@ function LevelUpOverlay({ master, newLevel, onClose }: {
         }}/>
         <div style={{
           position:"absolute", left:"50%", top:"38%", transform:"translate(-50%,-50%)",
+          width:290, height:290, borderRadius:"50%",
+          border:`1px solid ${master.accentColor}28`,
+          animation:"gpRingPulse 2s ease-out 0.7s infinite",
+        }}/>
+        <div style={{
+          position:"absolute", left:"50%", top:"38%", transform:"translate(-50%,-50%)",
           width:200, height:200, borderRadius:"50%",
           background:`radial-gradient(circle,${master.accentColor}26 0%,transparent 70%)`,
           filter:"blur(6px)",
         }}/>
+        {/* raios de luz rotativos */}
+        <div aria-hidden="true" style={{
+          position:"absolute", left:"50%", top:"38%", transform:"translate(-50%,-50%)",
+          width:440, height:440, borderRadius:"50%",
+          background:`conic-gradient(from 0deg, transparent 0deg, ${master.accentColor}14 12deg, transparent 24deg, transparent 90deg, ${master.accentColor}10 102deg, transparent 114deg, transparent 180deg, ${master.accentColor}14 192deg, transparent 204deg, transparent 270deg, ${master.accentColor}10 282deg, transparent 294deg)`,
+          animation:"gpRaysSpin 14s linear infinite",
+          maskImage:"radial-gradient(circle, black 20%, transparent 72%)",
+          WebkitMaskImage:"radial-gradient(circle, black 20%, transparent 72%)",
+        }}/>
+        {/* explosão de partículas */}
+        {Array.from({ length: 14 }).map((_, i) => {
+          const angle = (i / 14) * 360
+          const dist  = 120 + (i % 3) * 44
+          return (
+            <div key={i} aria-hidden="true" style={{
+              position:"absolute", left:"50%", top:"38%",
+              width: i % 3 === 0 ? 5 : 3, height: i % 3 === 0 ? 5 : 3, borderRadius:"50%",
+              background: i % 2 === 0 ? master.accentColor : "#e8c96d",
+              boxShadow:`0 0 8px ${i % 2 === 0 ? master.accentColor : "#e8c96d"}`,
+              transform:"translate(-50%,-50%)",
+              ["--gp-tx" as string]:`${Math.cos(angle * Math.PI / 180) * dist}px`,
+              ["--gp-ty" as string]:`${Math.sin(angle * Math.PI / 180) * dist}px`,
+              animation:`gpBurst 1.1s cubic-bezier(0.16,1,0.3,1) ${0.12 + (i % 5) * 0.05}s both`,
+            }}/>
+          )
+        })}
         <div style={{ position:"relative", animation:"gpLevelBounce 0.6s cubic-bezier(0.34,1.56,0.64,1)", marginBottom:20 }}>
           <LevelMedallion level={newLevel} color={master.accentColor} size={124}/>
         </div>
@@ -1084,21 +1136,72 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
                 position:"absolute", top:-2, left:"50%", width:4, height:4, borderRadius:"50%",
                 background: selectedMaster.accentColor, boxShadow:`0 0 10px ${selectedMaster.accentColor}`,
               }}/>
+              <div style={{
+                position:"absolute", bottom:"12%", right:"4%", width:3, height:3, borderRadius:"50%",
+                background:`${selectedMaster.accentColor}cc`, boxShadow:`0 0 8px ${selectedMaster.accentColor}`,
+              }}/>
+            </div>
+            {/* anel contra-rotativo externo, tracejado */}
+            <div aria-hidden="true" style={{
+              position:"absolute", right:"6.5%", top:"50%", transform:"translateY(-46%)",
+              width:"min(44vw, 420px)", aspectRatio:"1", zIndex:1, pointerEvents:"none",
+              borderRadius:"50%", border:`1px dashed ${selectedMaster.accentColor}16`,
+              maskImage:"linear-gradient(180deg, black 32%, transparent 72%)",
+              WebkitMaskImage:"linear-gradient(180deg, black 32%, transparent 72%)",
+              animation:"gpAuraSpinReverse 40s linear infinite",
+            }}>
+              <div style={{
+                position:"absolute", top:"8%", right:"12%", width:3, height:3, borderRadius:"50%",
+                background:`${selectedMaster.accentColor}aa`, boxShadow:`0 0 8px ${selectedMaster.accentColor}99`,
+              }}/>
             </div>
 
-            {/* Master art — right side */}
-            <img
-              src={selectedMaster.artPath || "/placeholder.svg"}
-              alt={selectedMaster.fullName}
-              style={{
-                position:"absolute", right:"4%", bottom:0, height:"96%",
-                maxWidth:"52%", objectFit:"contain", objectPosition:"right bottom",
-                zIndex:2, pointerEvents:"none",
-                filter:`drop-shadow(0 0 50px ${selectedMaster.accentColor}45) drop-shadow(0 18px 30px rgba(0,0,0,0.6))`,
-                animation:"gpHeroIn 0.65s cubic-bezier(0.22,1,0.36,1) both",
-              }}
-              onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
-            />
+            {/* Master art — right side (entrada + flutuação idle) */}
+            <div style={{
+              position:"absolute", right:"4%", bottom:0, height:"96%",
+              maxWidth:"52%", width:"52%", zIndex:2, pointerEvents:"none",
+              display:"flex", alignItems:"flex-end", justifyContent:"flex-end",
+              animation:"gpHeroIn 0.7s cubic-bezier(0.22,1,0.36,1) both",
+            }}>
+              <img
+                src={selectedMaster.artPath || "/placeholder.svg"}
+                alt={selectedMaster.fullName}
+                style={{
+                  height:"100%", maxWidth:"100%", objectFit:"contain", objectPosition:"right bottom",
+                  filter:`drop-shadow(0 0 50px ${selectedMaster.accentColor}45) drop-shadow(0 18px 30px rgba(0,0,0,0.6))`,
+                  animation:"gpHeroFloat 6.5s ease-in-out 0.9s infinite",
+                }}
+                onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+              />
+            </div>
+
+            {/* Varredura de luz cinematográfica na troca de Mestre */}
+            <div aria-hidden="true" key={`sweep-${heroKey}`} style={{
+              position:"absolute", inset:0, zIndex:4, pointerEvents:"none",
+              background:`linear-gradient(105deg, transparent 30%, ${selectedMaster.accentColor}14 46%, rgba(255,255,255,0.10) 50%, ${selectedMaster.accentColor}14 54%, transparent 70%)`,
+              transform:"translateX(-120%)",
+              animation:"gpLightSweep 1.1s cubic-bezier(0.6,0,0.3,1) 0.1s forwards",
+            }}/>
+
+            {/* Molduras de canto — HUD */}
+            {[
+              { top:14, left:16,  bt:true,  bl:true  },
+              { top:14, right:16, bt:true,  br:true  },
+              { bottom:14, left:16,  bb:true, bl:true },
+              { bottom:14, right:16, bb:true, br:true },
+            ].map((c, i) => (
+              <div key={i} aria-hidden="true" style={{
+                position:"absolute", zIndex:3, pointerEvents:"none",
+                width:26, height:26,
+                top: c.top, bottom: c.bottom, left: c.left, right: c.right,
+                borderTop:    c.bt ? `1px solid ${selectedMaster.accentColor}45` : "none",
+                borderBottom: c.bb ? `1px solid ${selectedMaster.accentColor}45` : "none",
+                borderLeft:   c.bl ? `1px solid ${selectedMaster.accentColor}45` : "none",
+                borderRight:  c.br ? `1px solid ${selectedMaster.accentColor}45` : "none",
+                transition:"border-color 0.8s ease",
+                animation:`gpFadeIn 0.8s ease ${0.2 + i * 0.08}s both`,
+              }}/>
+            ))}
             {/* stage floor glow beneath the master */}
             <div style={{
               position:"absolute", right:"2%", bottom:-14, width:"46%", height:70, zIndex:1,
@@ -1332,7 +1435,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
                 gap:8, alignContent:"start",
               }}>
                 {XP_SOURCES.map(({ Icon, name, xp }) => (
-                  <div key={name} style={{
+                  <div key={name} className="gp-xp-card" style={{
                     display:"flex", alignItems:"center", gap:9,
                     background:"rgba(255,255,255,0.025)",
                     border:"1px solid rgba(255,255,255,0.05)",
@@ -1414,6 +1517,49 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           0%,100% { opacity:0.65; transform:translateY(-46%) scale(1) }
           50%     { opacity:1;    transform:translateY(-46%) scale(1.07) }
         }
+        @keyframes gpAuraSpinReverse {
+          from { transform:translateY(-46%) rotate(360deg) }
+          to   { transform:translateY(-46%) rotate(0deg) }
+        }
+        @keyframes gpHeroFloat {
+          0%,100% { transform:translateY(0) }
+          50%     { transform:translateY(-10px) }
+        }
+        @keyframes gpLightSweep {
+          from { transform:translateX(-120%) }
+          to   { transform:translateX(120%) }
+        }
+        @keyframes gpSlideRight {
+          from { opacity:0; transform:translateX(-36px) }
+          to   { opacity:1; transform:translateX(0) }
+        }
+        @keyframes gpRowIn {
+          from { opacity:0; transform:translateY(12px) }
+        }
+        @keyframes gpClaimGlow {
+          0%,100% { filter:brightness(1) }
+          50%     { filter:brightness(1.22) }
+        }
+        @keyframes gpBtnSheen {
+          0%      { left:-80% }
+          55%,100%{ left:130% }
+        }
+        @keyframes gpNextNodePulse {
+          0%,100% { box-shadow:0 0 0 0 rgba(255,255,255,0.14) }
+          50%     { box-shadow:0 0 0 5px rgba(255,255,255,0.03) }
+        }
+        @keyframes gpRaysSpin {
+          from { transform:translate(-50%,-50%) rotate(0deg) }
+          to   { transform:translate(-50%,-50%) rotate(360deg) }
+        }
+        @keyframes gpBurst {
+          from { opacity:1; transform:translate(-50%,-50%) }
+          to   { opacity:0; transform:translate(calc(-50% + var(--gp-tx)), calc(-50% + var(--gp-ty))) scale(0.4) }
+        }
+        @keyframes gpTileGlow {
+          0%,100% { opacity:0.55 }
+          50%     { opacity:1 }
+        }
         .gp-tile { transition:transform 0.3s cubic-bezier(0.34,1.3,0.64,1) }
         .gp-tile:hover { transform:translateY(-4px) }
         .gp-tile:hover .gp-tile-art { transform:scale(1.06) }
@@ -1422,6 +1568,13 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
         .gp-cta { transition:filter 0.2s, transform 0.15s }
         .gp-cta:hover { filter:brightness(1.2) }
         .gp-cta:active { transform:scale(0.97) }
+        .gp-trail-row { transition:transform 0.2s ease, border-color 0.2s ease }
+        .gp-trail-row:hover { transform:translateX(3px) }
+        .gp-xp-card { transition:transform 0.25s cubic-bezier(0.34,1.3,0.64,1), background 0.25s, border-color 0.25s }
+        .gp-xp-card:hover { transform:translateY(-2px); background:rgba(232,201,109,0.05) !important; border-color:rgba(232,201,109,0.22) !important }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important }
+        }
         @media (max-width: 720px) {
           .gp-detail-left { width: 260px !important }
           .gp-hero-desc { display: none }
