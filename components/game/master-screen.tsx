@@ -11,7 +11,6 @@ import {
   type MasterReward,
   loadMastersFromStorage,
   saveMastersToStorage,
-  xpRequiredForLevel,
   rewardIconPath,
   rewardDisplayLabel,
   elementToChestId,
@@ -266,11 +265,12 @@ function MasterTile({ master, isSelected, onClick }: {
 }
 
 // ─── Detail / progression view ────────────────────────────────────────────────
-function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
+function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }: {
   master:        Master
   onActivate:    () => void
   onClose:       () => void
   onClaimReward: (level: number) => void
+  onClaimAll:    () => void
 }) {
   const claimable = master.rewards.filter(r => r.level <= master.currentLevel && !r.claimed)
   const nextRef = useRef<HTMLDivElement | null>(null)
@@ -425,18 +425,20 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
           </div>
 
           {claimable.length > 0 && (
-            <div style={{
+            <button onClick={onClaimAll} className="gp-cta" style={{
               display:"flex", alignItems:"center", gap:7,
               background:"linear-gradient(135deg,#6d5310,#e8c96d)",
+              border:"none", cursor:"pointer",
               color:"#0c0a06", fontWeight:900, fontSize:11.5,
-              padding:"7px 14px",
+              padding:"9px 16px",
               clipPath:"polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)",
               boxShadow:"0 3px 16px rgba(232,201,109,0.42)",
               animation:"gpBadgePop 0.3s ease",
+              letterSpacing:"0.04em", textTransform:"uppercase",
             }}>
               <Gift size={13}/>
-              {claimable.length} para receber
-            </div>
+              Receber Tudo ({claimable.length})
+            </button>
           )}
 
           {!master.isActive ? (
@@ -763,33 +765,20 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     setHeroKey(k => k + 1)
   }
 
-  // Simulate XP gain (dev helper — remove in production)
-  const handleAddXP = (masterId: string, amount: number) => {
-    setMasters(prev => {
-      const next = prev.map(m => {
-        if (m.id !== masterId) return m
-        if (m.currentLevel >= m.maxLevel) {
-          return { ...m, currentXP: m.xpToNext, currentLevel: m.maxLevel }
-        }
-        let xp    = m.currentXP + amount
-        let level = m.currentLevel
-        let leveled = false
-        while (level < m.maxLevel) {
-          const needed = xpRequiredForLevel(level)
-          if (xp >= needed) { xp -= needed; level++; leveled = true }
-          else break
-        }
-        if (level >= m.maxLevel) { level = m.maxLevel; xp = 0 }
-        const updated: Master = { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + amount, xpToNext: xpRequiredForLevel(level) }
-        if (leveled && level <= m.maxLevel) {
-          setLevelUpData({ master: updated, newLevel: level })
-        }
-        return updated
-      })
-      saveMastersToStorage(next)
-      return next
-    })
-  }
+  // Sincroniza com XP ganho em duelos (evento disparado por grantMasterDuelXP)
+  useEffect(() => {
+    const onXP = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { leveledUp?: boolean; newLevel?: number } | undefined
+      const reloaded = loadMastersFromStorage()
+      setMasters(reloaded)
+      if (detail?.leveledUp) {
+        const active = reloaded.find(m => m.isActive)
+        if (active) setLevelUpData({ master: active, newLevel: detail.newLevel ?? active.currentLevel })
+      }
+    }
+    window.addEventListener("gpgame_master_xp", onXP)
+    return () => window.removeEventListener("gpgame_master_xp", onXP)
+  }, [])
 
   // Activate a master
   const handleActivate = (masterId: string) => {
@@ -849,25 +838,84 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       showToast(`+${reward.amount} Garrafas de Stamina adicionadas!`)
 
     } else if (reward.type === "card_skin") {
-      // Unlock card skin — use exact skinId that deck-builder expects
-      try {
-        const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
-        const skins: string[] = JSON.parse(raw)
-        const skinIdMap: Record<string, Record<number, string>> = {
-          fehnon:  { 40: "fehnon_skin_lv50",  50: "fehnon_skin_lv50"  },
-          morgana: { 40: "morgana_skin_lv50", 50: "morgana_skin_lv50" },
-          calem:   { 40: "calem_skin_lv50",   50: "calem_skin_lv50"   },
-        }
-        const skinId = skinIdMap[masterId]?.[level] ?? `master_${masterId}_lv${level}`
-        if (!skins.includes(skinId)) skins.push(skinId)
-        localStorage.setItem("gpgame_card_skins", JSON.stringify(skins))
-        window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
-      } catch {}
+      unlockCardSkin(masterId, level)
       showToast(`${reward.label} desbloqueada!`)
 
     } else {
       showToast(`${reward.label} recebido!`)
     }
+  }
+
+  // Unlock card skin — use exact skinId that deck-builder expects
+  const unlockCardSkin = (masterId: string, level: number) => {
+    try {
+      const raw = localStorage.getItem("gpgame_card_skins") ?? "[]"
+      const skins: string[] = JSON.parse(raw)
+      const skinIdMap: Record<string, Record<number, string>> = {
+        fehnon:  { 40: "fehnon_skin_lv50",  50: "fehnon_skin_lv50"  },
+        morgana: { 40: "morgana_skin_lv50", 50: "morgana_skin_lv50" },
+        calem:   { 40: "calem_skin_lv50",   50: "calem_skin_lv50"   },
+      }
+      const skinId = skinIdMap[masterId]?.[level] ?? `master_${masterId}_lv${level}`
+      if (!skins.includes(skinId)) skins.push(skinId)
+      localStorage.setItem("gpgame_card_skins", JSON.stringify(skins))
+      window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
+    } catch {}
+  }
+
+  // Resgata todas as recompensas disponíveis de uma vez.
+  // Packs têm animação de abertura própria — o primeiro é aberto agora,
+  // os demais permanecem na trilha para serem abertos individualmente.
+  const handleClaimAll = (masterId: string) => {
+    const master = masters.find(m => m.id === masterId)
+    if (!master) return
+    const claimable = master.rewards.filter(r => r.level <= master.currentLevel && !r.claimed)
+    if (claimable.length === 0) return
+
+    const nonPack   = claimable.filter(r => r.type !== "pack")
+    const firstPack = claimable.find(r => r.type === "pack")
+
+    let gear = 0, gacha = 0, chestCount = 0, skips = 0, bottles = 0
+    const claimedLevels: number[] = []
+
+    nonPack.forEach(r => {
+      claimedLevels.push(r.level)
+      if      (r.type === "gear_coins"     && r.amount) gear       += r.amount
+      else if (r.type === "gacha_coins"    && r.amount) gacha      += r.amount
+      else if (r.type === "chest"          && r.amount) chestCount += r.amount
+      else if (r.type === "skip_ticket"    && r.amount) skips      += r.amount
+      else if (r.type === "stamina_bottle" && r.amount) bottles    += r.amount
+      else if (r.type === "card_skin") unlockCardSkin(masterId, r.level)
+    })
+
+    if (gear)       setGearCoins(prev => prev + gear)
+    if (gacha) {
+      const newTotal = coins + gacha
+      setCoins(newTotal)
+      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
+    }
+    if (chestCount) addChests({ [elementToChestId(master.element)]: chestCount })
+    if (skips)      addSkipTickets(skips)
+    if (bottles)    addStaminaBottles(bottles)
+
+    if (firstPack?.packId) {
+      claimedLevels.push(firstPack.level)
+      setPackToOpen(firstPack.packId)
+    }
+
+    setMasters(prev => {
+      const next = prev.map(m => {
+        if (m.id !== masterId) return m
+        return { ...m, rewards: m.rewards.map(r => claimedLevels.includes(r.level) ? { ...r, claimed: true } : r) }
+      })
+      saveMastersToStorage(next)
+      return next
+    })
+
+    const remainingPacks = claimable.filter(r => r.type === "pack").length - (firstPack ? 1 : 0)
+    showToast(remainingPacks > 0
+      ? `${claimedLevels.length} recompensas recebidas! ${remainingPacks} pack${remainingPacks > 1 ? "s" : ""} aguardando abertura.`
+      : `${claimedLevels.length} recompensa${claimedLevels.length > 1 ? "s" : ""} recebida${claimedLevels.length > 1 ? "s" : ""}!`)
   }
 
   const el  = selectedMaster ? elementStyle(selectedMaster.element) : null
@@ -906,17 +954,27 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           maskImage:"radial-gradient(ellipse 90% 70% at 50% 30%,black,transparent)",
           WebkitMaskImage:"radial-gradient(ellipse 90% 70% at 50% 30%,black,transparent)",
         }}/>
-        {/* floating embers */}
+        {/* floating embers — tinted by the selected master's element */}
         {[
           { l:"12%", d:"0s",   s:3 }, { l:"28%", d:"3.5s", s:2 }, { l:"46%", d:"1.8s", s:2.5 },
           { l:"64%", d:"5s",   s:2 }, { l:"81%", d:"2.6s", s:3 }, { l:"92%", d:"4.2s", s:2 },
-        ].map((p, i) => (
-          <div key={i} style={{
-            position:"absolute", left:p.l, bottom:-8, width:p.s, height:p.s, borderRadius:"50%",
-            background:"rgba(232,201,109,0.55)", boxShadow:"0 0 6px rgba(232,201,109,0.8)",
-            animation:`gpEmber ${9 + i * 1.6}s linear ${p.d} infinite`,
-          }}/>
-        ))}
+          { l:"37%", d:"6.4s", s:2 }, { l:"73%", d:"7.8s", s:2.5 },
+        ].map((p, i) => {
+          const tint = i % 2 === 0 && selectedMaster ? selectedMaster.accentColor : "#e8c96d"
+          return (
+            <div key={i} style={{
+              position:"absolute", left:p.l, bottom:-8, width:p.s, height:p.s, borderRadius:"50%",
+              background:`${tint}90`, boxShadow:`0 0 6px ${tint}cc`,
+              animation:`gpEmber ${9 + i * 1.6}s linear ${p.d} infinite`,
+              transition:"background 0.8s, box-shadow 0.8s",
+            }}/>
+          )
+        })}
+        {/* cinematic vignette */}
+        <div style={{
+          position:"absolute", inset:0,
+          background:"radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(2,1,4,0.55) 100%)",
+        }}/>
       </div>
 
       {/* Toast */}
@@ -957,6 +1015,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           onActivate={() => handleActivate(selectedMaster.id)}
           onClose={() => setShowDetail(false)}
           onClaimReward={level => handleClaimReward(selectedMaster.id, level)}
+          onClaimAll={() => handleClaimAll(selectedMaster.id)}
         />
       )}
 
@@ -1004,6 +1063,27 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
               animation:"gpGhostIn 0.9s ease both",
             }}>
               {selectedMaster.name.toUpperCase()}
+            </div>
+
+            {/* Slow-breathing aura behind the master */}
+            <div aria-hidden="true" style={{
+              position:"absolute", right:"8%", top:"50%", transform:"translateY(-46%)",
+              width:"min(44vw, 420px)", aspectRatio:"1", zIndex:1, pointerEvents:"none",
+              background:`radial-gradient(circle, ${selectedMaster.accentColor}1c 0%, transparent 62%)`,
+              animation:"gpAuraBreathe 5s ease-in-out infinite",
+            }}/>
+            <div aria-hidden="true" style={{
+              position:"absolute", right:"10%", top:"50%", transform:"translateY(-46%)",
+              width:"min(38vw, 360px)", aspectRatio:"1", zIndex:1, pointerEvents:"none",
+              borderRadius:"50%", border:`1px solid ${selectedMaster.accentColor}1e`,
+              maskImage:"linear-gradient(180deg, black 40%, transparent 78%)",
+              WebkitMaskImage:"linear-gradient(180deg, black 40%, transparent 78%)",
+              animation:"gpAuraSpin 26s linear infinite",
+            }}>
+              <div style={{
+                position:"absolute", top:-2, left:"50%", width:4, height:4, borderRadius:"50%",
+                background: selectedMaster.accentColor, boxShadow:`0 0 10px ${selectedMaster.accentColor}`,
+              }}/>
             </div>
 
             {/* Master art — right side */}
@@ -1073,6 +1153,46 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
               }}>
                 {selectedMaster.quote}
               </p>
+
+              {/* Description */}
+              <p className="gp-hero-desc" style={{
+                fontSize:11.5, color:"#5b6270", margin:"10px 0 0",
+                maxWidth:400, lineHeight:1.65, animation:"gpRiseIn 0.5s ease 0.19s both",
+              }}>
+                {selectedMaster.description}
+              </p>
+
+              {/* Stats strip */}
+              <div style={{
+                display:"flex", gap:0, marginTop:18, maxWidth:420,
+                border:"1px solid rgba(255,255,255,0.07)",
+                background:"rgba(0,0,0,0.32)", backdropFilter:"blur(8px)",
+                clipPath:"polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)",
+                animation:"gpRiseIn 0.5s ease 0.21s both",
+              }}>
+                {[
+                  { label:"XP Total", value: selectedMaster.totalXP.toLocaleString("pt-BR") },
+                  { label:"Recompensas", value: `${selectedMaster.rewards.filter(r => r.claimed).length}/${selectedMaster.rewards.length}` },
+                  { label:"Próx. Marco", value: selectedMaster.currentLevel >= selectedMaster.maxLevel
+                      ? "MAX"
+                      : `NV ${Math.min(Math.ceil((selectedMaster.currentLevel + 1) / 5) * 5, selectedMaster.maxLevel)}` },
+                ].map((s, i) => (
+                  <div key={s.label} style={{
+                    flex:1, padding:"9px 12px", textAlign:"center",
+                    borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  }}>
+                    <div style={{
+                      fontSize:13.5, fontWeight:900, fontFamily:SERIF, color:"#e9e6df",
+                      fontVariantNumeric:"tabular-nums", lineHeight:1.2,
+                      textShadow:`0 0 12px ${selectedMaster.accentColor}30`,
+                    }}>{s.value}</div>
+                    <div style={{
+                      fontSize:8.5, fontWeight:800, color:"#565d6b",
+                      letterSpacing:"0.16em", textTransform:"uppercase", marginTop:2,
+                    }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
 
               {/* XP block */}
               <div style={{
@@ -1164,17 +1284,6 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
               )}
             </div>
 
-            {/* Dev: add XP button (remove in production) */}
-            <button
-              onClick={() => handleAddXP(selectedMaster.id, 2000)}
-              style={{
-                position:"absolute", top:12, right:14, zIndex:4,
-                background:"rgba(0,0,0,0.35)", border:"1px solid rgba(255,255,255,0.08)",
-                borderRadius:7, padding:"4px 10px", cursor:"pointer",
-                color:"#3f4654", fontSize:10, fontWeight:600,
-              }}>
-              +XP (teste)
-            </button>
           </div>
         )}
 
@@ -1297,6 +1406,14 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           85%  { opacity:0.4 }
           100% { transform:translateY(-105vh);   opacity:0 }
         }
+        @keyframes gpAuraSpin {
+          from { transform:translateY(-46%) rotate(0deg) }
+          to   { transform:translateY(-46%) rotate(360deg) }
+        }
+        @keyframes gpAuraBreathe {
+          0%,100% { opacity:0.65; transform:translateY(-46%) scale(1) }
+          50%     { opacity:1;    transform:translateY(-46%) scale(1.07) }
+        }
         .gp-tile { transition:transform 0.3s cubic-bezier(0.34,1.3,0.64,1) }
         .gp-tile:hover { transform:translateY(-4px) }
         .gp-tile:hover .gp-tile-art { transform:scale(1.06) }
@@ -1307,6 +1424,10 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
         .gp-cta:active { transform:scale(0.97) }
         @media (max-width: 720px) {
           .gp-detail-left { width: 260px !important }
+          .gp-hero-desc { display: none }
+        }
+        @media (max-height: 620px) {
+          .gp-hero-desc { display: none }
         }
       `}</style>
     </div>
