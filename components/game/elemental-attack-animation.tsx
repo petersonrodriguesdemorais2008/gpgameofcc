@@ -489,11 +489,25 @@ export function ElementalAttackAnimation({
       })
       switch (E) {
         case "fire":
-          spawn(18, () => {
+          // labaredas subindo em leque
+          spawn(24, () => {
             const a = -Math.PI / 2 + (rnd() - 0.5) * 2.4
-            const sp = 120 + rnd() * 260
-            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -140, size: 8 + rnd() * 10, life: 500 + rnd() * 420, r: 251, g: 146, b: 60, drag: 0.97, kind: "flame" }
+            const sp = 130 + rnd() * 300
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -170, size: 8 + rnd() * 12, life: 520 + rnd() * 480, r: 251, g: 146, b: 60, drag: 0.97, kind: "flame" }
           })
+          // brasas incandescentes caindo em arco (com gravidade)
+          spawn(24, () => {
+            const a = rnd() * TAU
+            const sp = 140 + rnd() * 380
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, ay: 420, size: 2.5 + rnd() * 3.5, life: 700 + rnd() * 600, r: 253, g: 186, b: 116, drag: 0.985, kind: "glitter" }
+          })
+          // fumaça quente avermelhada subindo
+          spawn(12, () => {
+            const a = rnd() * TAU
+            const sp = 50 + rnd() * 140
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 70, ay: -60, size: 12 + rnd() * 14, life: 800 + rnd() * 500, r: 154, g: 52, b: 18, drag: 0.965, kind: "wisp" }
+          })
+          // faíscas douradas
           spawn(14, () => {
             const a = rnd() * TAU
             const sp = 60 + rnd() * 200
@@ -501,10 +515,26 @@ export function ElementalAttackAnimation({
           })
           break
         case "aquos":
-          spawn(30, () => {
+          // gotas d'água voando em arco com gravidade
+          spawn(38, () => {
             const a = rnd() * TAU
-            const sp = 130 + rnd() * 330
-            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90, ay: 560, size: 3 + rnd() * 5, life: 520 + rnd() * 380, r: 125, g: 211, b: 252, drag: 0.985, kind: "glow" }
+            const sp = 130 + rnd() * 380
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 110, ay: 560, size: 3 + rnd() * 5, life: 520 + rnd() * 420, r: 125, g: 211, b: 252, drag: 0.985, kind: "glow" }
+          })
+          // splash lateral — leque de gotículas rasantes
+          spawn(20, () => {
+            const side = rnd() < 0.5 ? -1 : 1
+            return {
+              vx: side * (180 + rnd() * 340), vy: -(60 + rnd() * 160), ay: 620,
+              size: 2.2 + rnd() * 3.5, life: 480 + rnd() * 400,
+              r: 186, g: 230, b: 253, drag: 0.985, kind: "glitter",
+            }
+          })
+          // névoa/vapor azul subindo do impacto
+          spawn(12, () => {
+            const a = rnd() * TAU
+            const sp = 40 + rnd() * 120
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 50, ay: -30, size: 11 + rnd() * 14, life: 780 + rnd() * 520, r: 56, g: 189, b: 248, drag: 0.97, kind: "wisp" }
           })
           break
         case "darkness":
@@ -527,10 +557,23 @@ export function ElementalAttackAnimation({
           })
           break
         case "ventus":
-          spawn(30, () => {
+          // redemoinho de vento — partículas em espiral
+          spawn(34, () => {
             const a = rnd() * TAU
-            const sp = 140 + rnd() * 280
-            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -90, size: 3 + rnd() * 5, life: 520 + rnd() * 420, r: 110, g: 231, b: 183, drag: 0.975, kind: "swirl", spin: 2.6 + rnd() * 2 }
+            const sp = 150 + rnd() * 320
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -110, size: 3 + rnd() * 5, life: 540 + rnd() * 460, r: 110, g: 231, b: 183, drag: 0.975, kind: "swirl", spin: 3 + rnd() * 2.6 }
+          })
+          // folhas/lâminas de vento girando lançadas para fora
+          spawn(16, () => {
+            const a = rnd() * TAU
+            const sp = 180 + rnd() * 300
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, ay: -40, size: 4 + rnd() * 5, life: 620 + rnd() * 480, r: 52, g: 211, b: 153, drag: 0.972, kind: "shard", spin: (rnd() - 0.5) * 18 }
+          })
+          // corrente ascendente — brilhos sugados para cima em espiral
+          spawn(14, () => {
+            const a = rnd() * TAU
+            const sp = 60 + rnd() * 120
+            return { vx: Math.cos(a) * sp, vy: -120 - rnd() * 200, ay: -80, size: 2.5 + rnd() * 3, life: 700 + rnd() * 450, r: 236, g: 253, b: 245, drag: 0.985, kind: "swirl", spin: 2 + rnd() * 2 }
           })
           break
         default:
@@ -780,27 +823,64 @@ export function ElementalAttackAnimation({
       const hx = pos.x, hy = pos.y
       switch (E) {
         case "fire": {
-          blit(ctx, spB, hx, hy, 44, 0.9)
-          const wob = Math.sin(t * 40)
-          blit(ctx, spC, hx + wob * 4, hy - wob * 3, 26, 1)
-          blit(ctx, spW, hx + 8 * cosA, hy + 8 * sinA, 15, 1)
-          // pedaços de meteoro girando
-          for (let i = 0; i < 3; i++) {
-            const a = t * 14 + i * (TAU / 3)
-            blit(ctx, spC, hx + Math.cos(a) * 20, hy + Math.sin(a) * 20, 6, 0.85)
+          // cauda de cometa flamejante ondulando atrás da cabeça
+          for (let i = 0; i < 6; i++) {
+            const q = (i + 1) / 6
+            const fx = hx - cosA * q * 64
+            const fy = hy - sinA * q * 64 + Math.sin(t * 30 + i * 2) * 5 * q
+            ctx.save()
+            ctx.translate(fx, fy)
+            ctx.rotate(ang)
+            ctx.scale(1.7, 1)
+            blit(ctx, spC, 0, 0, 18 - i * 2.4, 0.8 - q * 0.5)
+            ctx.restore()
           }
+          blit(ctx, spB, hx, hy, 46, 0.92)
+          const wob = Math.sin(t * 40)
+          blit(ctx, spC, hx + wob * 4, hy - wob * 3, 27, 1)
+          blit(ctx, spW, hx + 9 * cosA, hy + 9 * sinA, 16, 1)
+          // pedaços de meteoro girando
+          for (let i = 0; i < 4; i++) {
+            const a = t * 15 + i * (TAU / 4)
+            blit(ctx, spC, hx + Math.cos(a) * 22, hy + Math.sin(a) * 22, 6, 0.85)
+          }
+          // anel de calor pulsante
+          ring(ctx, hx, hy, 30 + Math.sin(t * 24) * 5, 1.8, "rgba(251,146,60,.55)")
           break
         }
         case "aquos": {
-          blit(ctx, spB, hx, hy, 38, 0.9)
-          blit(ctx, spW, hx + 6 * cosA, hy + 6 * sinA, 13, 1)
-          // saca-rolhas: elipses girando ao redor do eixo
+          // fitas d'água em hélice dupla serpenteando atrás da cabeça
+          for (let s = -1; s <= 1; s += 2) {
+            ctx.beginPath()
+            for (let i = 0; i <= 14; i++) {
+              const q = i / 14
+              const bx = hx - cosA * q * 90
+              const by = hy - sinA * q * 90
+              const off = Math.sin(q * TAU * 1.6 + t * 18) * 14 * s * (1 - q * 0.3)
+              const px = bx - sinA * off
+              const py = by + cosA * off
+              if (i === 0) ctx.moveTo(px, py)
+              else ctx.lineTo(px, py)
+            }
+            ctx.strokeStyle = "rgba(125,211,252,.7)"
+            ctx.lineWidth = 2.6
+            ctx.lineCap = "round"
+            ctx.stroke()
+          }
+          blit(ctx, spB, hx, hy, 40, 0.92)
+          blit(ctx, spW, hx + 7 * cosA, hy + 7 * sinA, 14, 1)
+          // saca-rolhas: gotas girando ao redor do eixo
+          for (let i = 0; i < 4; i++) {
+            const ph = t * 24 + i * 1.8
+            const off = Math.sin(ph) * 18
+            const bx = hx - cosA * (14 + i * 14) - sinA * off
+            const by = hy - sinA * (14 + i * 14) + cosA * off
+            blit(ctx, spC, bx, by, 7.5 - i, 0.95 - i * 0.18)
+          }
+          // spray de gotículas espirrando na ponta
           for (let i = 0; i < 3; i++) {
-            const ph = t * 22 + i * 2.1
-            const off = Math.sin(ph) * 17
-            const bx = hx - cosA * (16 + i * 15) - sinA * off
-            const by = hy - sinA * (16 + i * 15) + cosA * off
-            blit(ctx, spC, bx, by, 7 - i, 0.9 - i * 0.2)
+            const a = ang + Math.sin(t * 20 + i * 2.5) * 0.8
+            blit(ctx, spW, hx + Math.cos(a) * 22, hy + Math.sin(a) * 22, 3.5, 0.8)
           }
           break
         }
@@ -833,7 +913,36 @@ export function ElementalAttackAnimation({
           break
         }
         case "ventus": {
-          blit(ctx, spB, hx, hy, 34, 0.85)
+          blit(ctx, spB, hx, hy, 36, 0.85)
+          // rastro de vácuo — arcos de vento que ficam para trás
+          for (let i = 1; i <= 3; i++) {
+            const bx = hx - cosA * i * 26
+            const by = hy - sinA * i * 26
+            ctx.save()
+            ctx.translate(bx, by)
+            ctx.rotate(ang + Math.PI / 2)
+            ctx.beginPath()
+            ctx.arc(0, 0, 14 + i * 3, -1.1, 1.1)
+            ctx.lineWidth = 2
+            ctx.strokeStyle = `rgba(52,211,153,${0.7 - i * 0.18})`
+            ctx.lineCap = "round"
+            ctx.stroke()
+            ctx.restore()
+          }
+          // lâminas crescentes de vento girando ao redor da cabeça
+          for (let i = 0; i < 3; i++) {
+            const a = t * 13 + i * (TAU / 3)
+            ctx.save()
+            ctx.translate(hx, hy)
+            ctx.rotate(a)
+            ctx.beginPath()
+            ctx.arc(0, 0, 26, -0.5, 0.9)
+            ctx.lineWidth = 3
+            ctx.strokeStyle = "rgba(110,231,183,.9)"
+            ctx.lineCap = "round"
+            ctx.stroke()
+            ctx.restore()
+          }
           for (let i = 0; i < 4; i++) {
             ctx.save()
             ctx.translate(hx, hy - 12 + i * 8)
@@ -844,7 +953,7 @@ export function ElementalAttackAnimation({
             ctx.setLineDash([])
             ctx.restore()
           }
-          blit(ctx, spW, hx, hy, 11, 1)
+          blit(ctx, spW, hx, hy, 12, 1)
           break
         }
         default: {
@@ -908,6 +1017,85 @@ export function ElementalAttackAnimation({
           ctx.moveTo(tx + Math.cos(a) * L * 0.25, ty + Math.sin(a) * L * 0.25)
           ctx.lineTo(tx + Math.cos(a) * L, ty + Math.sin(a) * L)
           ctx.stroke()
+        }
+
+        // ── Floreio elemental aprimorado (Fire / Aquos / Ventus) ──
+        if (E === "fire") {
+          // pilar de fogo ascendente
+          const fk = clamp01(k * 1.15)
+          const fh = eoCubic(fk) * 190
+          const fw = 30 * (1 - fk * 0.35)
+          const fg = ctx.createLinearGradient(tx, ty, tx, ty - fh)
+          fg.addColorStop(0, `rgba(255,247,237,${(1 - fk) * 0.95})`)
+          fg.addColorStop(0.4, `rgba(249,115,22,${(1 - fk) * 0.8})`)
+          fg.addColorStop(1, "rgba(251,191,36,0)")
+          ctx.fillStyle = fg
+          ctx.fillRect(tx - fw / 2, ty - fh, fw, fh)
+          // anel de fogo rasante achatado com chamas girando
+          ctx.save()
+          ctx.translate(tx, ty)
+          ctx.scale(1, 0.38)
+          const frR = eoExpo(k) * 150
+          ring(ctx, 0, 0, frR, 4, `rgba(249,115,22,${(1 - k) * 0.9})`)
+          for (let i = 0; i < 10; i++) {
+            const a = i * (TAU / 10) + k * 2
+            blit(ctx, spC, Math.cos(a) * frR, Math.sin(a) * frR, 8 * (1 - k * 0.5), (1 - k) * 0.9)
+          }
+          ctx.restore()
+        } else if (E === "aquos") {
+          // gêiser — coluna d'água explodindo para cima
+          const gk = clamp01(k * 1.25)
+          const gh = eoCubic(gk) * 180
+          const gw = 24 * (1 - gk * 0.35)
+          const wg = ctx.createLinearGradient(tx, ty, tx, ty - gh)
+          wg.addColorStop(0, `rgba(255,255,255,${(1 - gk) * 0.9})`)
+          wg.addColorStop(0.4, `rgba(56,189,248,${(1 - gk) * 0.75})`)
+          wg.addColorStop(1, "rgba(125,211,252,0)")
+          ctx.fillStyle = wg
+          ctx.fillRect(tx - gw / 2, ty - gh, gw, gh)
+          // coroa de splash achatada com gotas dançando
+          ctx.save()
+          ctx.translate(tx, ty)
+          ctx.scale(1, 0.4)
+          const crownR = eoExpo(k) * 140
+          ring(ctx, 0, 0, crownR, 3.5, `rgba(125,211,252,${(1 - k) * 0.85})`)
+          for (let i = 0; i < 12; i++) {
+            const a = i * (TAU / 12)
+            const dR = crownR + Math.sin(k * 18 + i * 3) * 7
+            blit(ctx, spC, Math.cos(a) * dR, Math.sin(a) * dR, 6.5 * (1 - k * 0.5), (1 - k) * 0.85)
+          }
+          ctx.restore()
+        } else if (E === "ventus") {
+          // ciclone instantâneo — anéis achatados empilhados subindo
+          for (let i = 0; i < 5; i++) {
+            const rr = eoExpo(clamp01(k * 1.3 - i * 0.05)) * (60 + i * 26)
+            if (rr <= 0) continue
+            ctx.save()
+            ctx.translate(tx, ty - i * 20 - eoCubic(k) * 30)
+            ctx.scale(1, 0.32)
+            ctx.setLineDash([12, 9])
+            ctx.lineDashOffset = k * 300 * (i % 2 ? -1 : 1)
+            ring(ctx, 0, 0, rr, 3 - i * 0.4, `rgba(${i % 2 ? "52,211,153" : "110,231,183"},${(1 - k) * (0.95 - i * 0.12)})`)
+            ctx.setLineDash([])
+            ctx.restore()
+          }
+          // lâminas de vento arqueadas cortando para fora
+          for (let i = 0; i < 6; i++) {
+            const sk = clamp01(k * 1.4 - i * 0.06)
+            if (sk <= 0) continue
+            const a = i * (TAU / 6) + k * 1.6
+            const L = eoExpo(sk) * 130
+            ctx.save()
+            ctx.translate(tx + Math.cos(a) * L, ty + Math.sin(a) * L)
+            ctx.rotate(a + Math.PI / 2)
+            ctx.beginPath()
+            ctx.arc(0, 0, 20, -1, 1)
+            ctx.lineWidth = 2.6
+            ctx.strokeStyle = `rgba(110,231,183,${(1 - sk) * 0.9})`
+            ctx.lineCap = "round"
+            ctx.stroke()
+            ctx.restore()
+          }
         }
 
         // ── SIGILO ELEMENTAL — círculo mágico de "ativação" ──
