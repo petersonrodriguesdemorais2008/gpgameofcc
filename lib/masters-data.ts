@@ -1,7 +1,28 @@
 // ─── masters-data.ts ──────────────────────────────────────────────────────────
 
+import { CHESTS, type ChestId } from "./chests"
+
 export type MasterElement = "Aquos" | "Darkus" | "Ventus" | "Pyrus" | "Haos" | "Subterra" | "Vazio"
 export type MasterRarity  = "R" | "SR" | "UR" | "LR"
+
+/**
+ * Casa o elemento do Mestre com o Baú temático correspondente.
+ * Toda recompensa do tipo "chest" na trilha de um Mestre entrega o baú
+ * do PRÓPRIO elemento dele — ex.: Fehnon (Aquos) → Baú de Aquos,
+ * Calem (Vazio) → Baú do Vazio, Morgana (Darkus) → Baú das Trevas.
+ */
+export function elementToChestId(element: MasterElement): ChestId {
+  switch (element) {
+    case "Aquos":    return "aquos"
+    case "Darkus":   return "darkness"
+    case "Ventus":   return "ventus"
+    case "Pyrus":    return "fire"
+    case "Haos":     return "lightness"
+    case "Vazio":    return "void"
+    case "Subterra": return "void" // sem baú dedicado ainda — fallback neutro
+    default:         return "void"
+  }
+}
 
 export interface MasterReward {
   level:       number
@@ -92,7 +113,7 @@ function buildRewards(): MasterReward[] {
     { level: 32, type:"gacha_coins",    label:"180 Gacha Coins",          amount:180 },
     { level: 33, type:"pack",           label:"Pack SR Garantido",        packId:"sr_guaranteed" },
     { level: 34, type:"gear_coins",     label:"600 Gear Coins",           amount:600 },
-    { level: 35, type:"chest",          label:"2 Baús do Vazio",          amount:2 },
+    { level: 35, type:"chest",          label:"2 Baús Elementais",        amount:2 },
     { level: 36, type:"gacha_coins",    label:"200 Gacha Coins",          amount:200 },
     { level: 37, type:"gear_coins",     label:"700 Gear Coins",           amount:700 },
     { level: 38, type:"pack",           label:"Pack LR Garantido",        packId:"lr_guaranteed" },
@@ -158,17 +179,17 @@ export const MASTERS_DATA: Master[] = [
     },
   },
 
-  // ── Calem Hidenori — Ventus ───────────────────────────────────────────────
+  // ── Calem Hidenori — Vazio ────────────────────────────────────────────────
   {
     id:          "calem",
     name:        "Calem",
     fullName:    "Calem Hidenori",
-    element:     "Ventus",
+    element:     "Vazio",
     rarity:      "UR",
     iconPath:    "/images/masters/calem-icon.png",
     artPath:     "/images/masters/calem-art.png",
-    bgColor:     "#0f1410",
-    accentColor: "#4ade80",
+    bgColor:     "#0f1013",
+    accentColor: "#94a3b8",
     description: "Um garoto aparentemente inofensivo, mas na verdade ele esconde um grande poder que ele mesmo o descobre através das batalhas, e sempre buscando a vitória!",
     quote:       '"Não preciso parecer forte. Só preciso vencer."',
     maxLevel:    50, currentLevel:1, currentXP:0, xpToNext:xpRequiredForLevel(1), totalXP:0,
@@ -216,18 +237,37 @@ export function calcAccountXP(durationMinutes: number, won: boolean): number {
   return Math.round(30 + durationMinutes * 5 + (won ? 20 : 0))
 }
 
-/** Image icon path for each reward type (used by the Master screen UI). */
-export function rewardIconPath(type: MasterReward["type"], packId?: string): string {
+/**
+ * Image icon path for each reward type (used by the Master screen UI).
+ * Para recompensas do tipo "chest", passe o `chestId` do elemento do Mestre
+ * (via `elementToChestId`) para exibir o baú temático correto — ex.: o baú
+ * de Fehnon (Aquos) é diferente do baú de Calem (Vazio).
+ */
+export function rewardIconPath(type: MasterReward["type"], packId?: string, chestId?: ChestId): string {
   switch (type) {
     case "gear_coins":     return "/images/gear-coin.png"
     case "gacha_coins":    return "/images/icons/gacha-coin.png"
     case "pack":           return packId === "sr_guaranteed" ? "/images/gacha/pack-anl.png" : "/images/gacha/pack-fsg.png"
-    case "chest":          return "/images/chests/bau-void.png"
+    case "chest":          return CHESTS[chestId ?? "void"].image
     case "skip_ticket":    return "/images/skip-ticket.png"
     case "stamina_bottle": return "/images/stamina-bottle.png"
     case "card_skin":      return "/images/gacha/Parte_de_trás_da_Carta.png"
     default:               return "/images/gear-coin.png"
   }
+}
+
+/**
+ * Rótulo de exibição de uma recompensa, resolvendo o nome do Baú temático
+ * de acordo com o elemento do Mestre quando `reward.type === "chest"`.
+ */
+export function rewardDisplayLabel(reward: MasterReward, masterElement: MasterElement): string {
+  if (reward.type === "chest" && reward.amount) {
+    const chest = CHESTS[elementToChestId(masterElement)]
+    // "Baú de Aquos" → "Baús de Aquos" (pluraliza só a palavra "Baú" inicial)
+    const name = reward.amount > 1 ? chest.name.replace(/^Baú/, "Baús") : chest.name
+    return `${reward.amount} ${name}`
+  }
+  return reward.label
 }
 
 /** Legacy emoji icon (kept for compatibility with older call sites). */

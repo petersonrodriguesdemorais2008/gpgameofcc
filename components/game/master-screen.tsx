@@ -13,7 +13,10 @@ import {
   saveMastersToStorage,
   xpRequiredForLevel,
   rewardIconPath,
+  rewardDisplayLabel,
+  elementToChestId,
 } from "@/lib/masters-data"
+import { CHESTS } from "@/lib/chests"
 
 interface MasterScreenProps {
   onBack: () => void
@@ -23,10 +26,13 @@ const SERIF = "var(--font-serif), Georgia, serif"
 const SANS  = "var(--font-sans), 'Inter', system-ui, sans-serif"
 
 // ─── Reward type colors ───────────────────────────────────────────────────────
-function rewardColor(type: MasterReward["type"]): string {
+// Baús usam a cor do PRÓPRIO baú temático (pareado ao elemento do Mestre via
+// `chestColor`), pois cada elemento tem uma identidade visual diferente.
+function rewardColor(type: MasterReward["type"], chestColor?: string): string {
+  if (type === "chest") return chestColor ?? "#cbd5e1"
   const map: Record<string, string> = {
     gear_coins:"#e8c96d", pack:"#60a5fa", gacha_coins:"#a78bfa",
-    card_skin:"#fb923c", chest:"#cbd5e1", skip_ticket:"#34d399",
+    card_skin:"#fb923c", skip_ticket:"#34d399",
     stamina_bottle:"#f472b6",
   }
   return map[type] ?? "#94a3b8"
@@ -483,7 +489,9 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
               {master.rewards.map(reward => {
                 const reached     = master.currentLevel >= reward.level
                 const canClaim    = reached && !reward.claimed
-                const rColor      = rewardColor(reward.type)
+                const chestId     = elementToChestId(master.element)
+                const rColor      = rewardColor(reward.type, CHESTS[chestId].color)
+                const label       = rewardDisplayLabel(reward, master.element)
                 const isNext      = reward.level === master.currentLevel + 1
                 const isMilestone = reward.level % 10 === 0 || reward.level === 25
 
@@ -540,7 +548,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
                       overflow:"hidden",
                     }}>
                       <img
-                        src={rewardIconPath(reward.type, reward.packId) || "/placeholder.svg"}
+                        src={rewardIconPath(reward.type, reward.packId, chestId) || "/placeholder.svg"}
                         alt=""
                         style={{ width:"76%", height:"76%", objectFit:"contain" }}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
@@ -554,7 +562,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
                         fontSize: isMilestone ? 13.5 : 12.5,
                         color: reached ? "#f1f0ee" : "#6d7482",
                       }}>
-                        {reward.label}
+                        {label}
                       </div>
                       {isNext && (
                         <div style={{ fontSize:10, color: master.accentColor, fontWeight:700, marginTop:1 }}>
@@ -825,9 +833,12 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       // Full pack opening animation — overlay handles drawing & collection
       setPackToOpen(reward.packId!)
 
-    } else if (reward.type === "chest" && reward.amount) {
-      addChests({ void: reward.amount })
-      showToast(`+${reward.amount} Baús do Vazio no inventário!`)
+    } else if (reward.type === "chest" && reward.amount && master) {
+      // O baú concedido casa com o elemento do próprio Mestre —
+      // Fehnon (Aquos) dá Baú de Aquos, Calem (Vazio) dá Baú do Vazio, etc.
+      const chestId = elementToChestId(master.element)
+      addChests({ [chestId]: reward.amount })
+      showToast(`+${reward.amount} ${CHESTS[chestId].name}${reward.amount > 1 ? "s" : ""} no inventário!`)
 
     } else if (reward.type === "skip_ticket" && reward.amount) {
       addSkipTickets(reward.amount)
