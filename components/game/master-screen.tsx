@@ -548,7 +548,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
                       overflow:"hidden",
                     }}>
                       <img
-                        src={rewardIconPath(reward.type, reward.packId) || "/placeholder.svg"}
+                        src={rewardIconPath(reward.type, reward.packId, chestId) || "/placeholder.svg"}
                         alt=""
                         style={{ width:"76%", height:"76%", objectFit:"contain" }}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
@@ -562,7 +562,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
                         fontSize: isMilestone ? 13.5 : 12.5,
                         color: reached ? "#f1f0ee" : "#6d7482",
                       }}>
-                        {reward.label}
+                        {label}
                       </div>
                       {isNext && (
                         <div style={{ fontSize:10, color: master.accentColor, fontWeight:700, marginTop:1 }}>
@@ -833,9 +833,12 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       // Full pack opening animation — overlay handles drawing & collection
       setPackToOpen(reward.packId!)
 
-    } else if (reward.type === "chest" && reward.amount) {
-      addChests({ void: reward.amount })
-      showToast(`+${reward.amount} Baús do Vazio no inventário!`)
+    } else if (reward.type === "chest" && reward.amount && master) {
+      // O baú concedido casa com o elemento do próprio Mestre —
+      // Fehnon (Aquos) dá Baú de Aquos, Calem (Vazio) dá Baú do Vazio, etc.
+      const chestId = elementToChestId(master.element)
+      addChests({ [chestId]: reward.amount })
+      showToast(`+${reward.amount} ${CHESTS[chestId].name}${reward.amount > 1 ? "s" : ""} no inventário!`)
 
     } else if (reward.type === "skip_ticket" && reward.amount) {
       addSkipTickets(reward.amount)
