@@ -13,7 +13,10 @@ import {
   saveMastersToStorage,
   xpRequiredForLevel,
   rewardIconPath,
+  rewardDisplayLabel,
+  elementToChestId,
 } from "@/lib/masters-data"
+import { CHESTS } from "@/lib/chests"
 
 interface MasterScreenProps {
   onBack: () => void
@@ -23,10 +26,13 @@ const SERIF = "var(--font-serif), Georgia, serif"
 const SANS  = "var(--font-sans), 'Inter', system-ui, sans-serif"
 
 // ─── Reward type colors ───────────────────────────────────────────────────────
-function rewardColor(type: MasterReward["type"]): string {
+// Baús usam a cor do PRÓPRIO baú temático (pareado ao elemento do Mestre via
+// `chestColor`), pois cada elemento tem uma identidade visual diferente.
+function rewardColor(type: MasterReward["type"], chestColor?: string): string {
+  if (type === "chest") return chestColor ?? "#cbd5e1"
   const map: Record<string, string> = {
     gear_coins:"#e8c96d", pack:"#60a5fa", gacha_coins:"#a78bfa",
-    card_skin:"#fb923c", chest:"#cbd5e1", skip_ticket:"#34d399",
+    card_skin:"#fb923c", skip_ticket:"#34d399",
     stamina_bottle:"#f472b6",
   }
   return map[type] ?? "#94a3b8"
@@ -483,7 +489,9 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward }: {
               {master.rewards.map(reward => {
                 const reached     = master.currentLevel >= reward.level
                 const canClaim    = reached && !reward.claimed
-                const rColor      = rewardColor(reward.type)
+                const chestId     = elementToChestId(master.element)
+                const rColor      = rewardColor(reward.type, CHESTS[chestId].color)
+                const label       = rewardDisplayLabel(reward, master.element)
                 const isNext      = reward.level === master.currentLevel + 1
                 const isMilestone = reward.level % 10 === 0 || reward.level === 25
 
