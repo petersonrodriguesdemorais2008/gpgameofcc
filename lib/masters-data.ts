@@ -53,11 +53,6 @@ export interface Master {
   rewards:      MasterReward[]
   isActive:     boolean
   isUnlocked:   boolean
-  passive?: {
-    name:        string
-    description: string
-    icon:        string
-  }
 }
 
 // ─── XP Table ─────────────────────────────────────────────────────────────────
@@ -150,11 +145,6 @@ export const MASTERS_DATA: Master[] = [
     quote:       '"A espada não mente. Ela revela quem você realmente é."',
     maxLevel:    50, currentLevel:1, currentXP:0, xpToNext:xpRequiredForLevel(1), totalXP:0,
     rewards:     buildRewards(), isActive:true, isUnlocked:true,
-    passive: {
-      name:        "Lâmina Protonix",
-      description: "+15% de dano base em duelos PvE. Bônus de XP +10% ao vencer com menos de 50% de LP.",
-      icon:        "⚔️",
-    },
   },
 
   // ── Morgana Pendragon — Darkus ────────────────────────────────────────────
@@ -172,11 +162,6 @@ export const MASTERS_DATA: Master[] = [
     quote:       '"Cada duelo é uma música. Eu escolho o final."',
     maxLevel:    50, currentLevel:1, currentXP:0, xpToNext:xpRequiredForLevel(1), totalXP:0,
     rewards:     buildRewards(), isActive:false, isUnlocked:true,
-    passive: {
-      name:        "Acorde do Caos",
-      description: "+20% de XP de Mestre em duelos PvP. 15% de chance de negar armadilhas do oponente.",
-      icon:        "🎸",
-    },
   },
 
   // ── Calem Hidenori — Vazio ────────────────────────────────────────────────
@@ -194,11 +179,6 @@ export const MASTERS_DATA: Master[] = [
     quote:       '"Não preciso parecer forte. Só preciso vencer."',
     maxLevel:    50, currentLevel:1, currentXP:0, xpToNext:xpRequiredForLevel(1), totalXP:0,
     rewards:     buildRewards(), isActive:false, isUnlocked:true,
-    passive: {
-      name:        "Mente Adaptável",
-      description: "+25% de XP de Conta em todos os duelos. Reduz custo de Stamina em 1 ao vencer 3 duelos seguidos.",
-      icon:        "🌀",
-    },
   },
 ]
 

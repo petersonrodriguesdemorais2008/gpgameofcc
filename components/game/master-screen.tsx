@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import {
-  ArrowLeft, Check, Lock, ChevronRight, Swords, Trophy, Skull, Flag, Layers, Target, Star, Gift, Sparkles,
+  ArrowLeft, Check, Lock, ChevronRight, Swords, Trophy, Skull, Flag, Layers, Target, Gift, Sparkles,
 } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 import { PackOpeningOverlay } from "./pack-opening-overlay"
@@ -16,6 +16,7 @@ import {
   elementToChestId,
 } from "@/lib/masters-data"
 import { CHESTS } from "@/lib/chests"
+import { getSfxVolume, getMenuMusicMuted } from "./main-menu"
 
 interface MasterScreenProps {
   onBack: () => void
@@ -365,38 +366,6 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
               </div>
             </div>
           </div>
-
-          {/* Passive — desbloqueia no Nv.25 */}
-          {master.passive && master.currentLevel >= 25 && (
-            <div style={{
-              background:`linear-gradient(135deg,${master.accentColor}16,${master.accentColor}06)`,
-              border:`1px solid ${master.accentColor}32`,
-              clipPath:"polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)",
-              padding:"11px 13px",
-            }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                <Star size={12} color={master.accentColor} fill={master.accentColor}/>
-                <span style={{ fontWeight:800, fontSize:11.5, color: master.accentColor, letterSpacing:"0.04em" }}>
-                  {master.passive.name}
-                </span>
-              </div>
-              <div style={{ fontSize:10.5, color:"#7b8290", lineHeight:1.55 }}>
-                {master.passive.description}
-              </div>
-            </div>
-          )}
-          {master.passive && master.currentLevel < 25 && (
-            <div style={{
-              background:"rgba(255,255,255,0.02)",
-              border:"1px dashed rgba(255,255,255,0.10)",
-              padding:"10px 13px", display:"flex", alignItems:"center", gap:8,
-            }}>
-              <Lock size={12} color="#4b5563"/>
-              <span style={{ fontSize:10.5, color:"#4b5563" }}>
-                Habilidade Passiva desbloqueia no Nível 25
-              </span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -504,7 +473,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
                 const rColor      = rewardColor(reward.type, CHESTS[chestId].color)
                 const label       = rewardDisplayLabel(reward, master.element)
                 const isNext      = reward.level === master.currentLevel + 1
-                const isMilestone = reward.level % 10 === 0 || reward.level === 25
+                const isMilestone = reward.level % 10 === 0
 
                 return (
                   <div
@@ -636,7 +605,7 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
   )
 }
 
-// ─── Level-up overlay ─────────────────────────────────────────────────────────
+// ─── Level-up overlay ──────���──────────────────────────────────────────────────
 function LevelUpOverlay({ master, newLevel, onClose }: {
   master: Master; newLevel: number; onClose: () => void
 }) {
@@ -721,6 +690,297 @@ function LevelUpOverlay({ master, newLevel, onClose }: {
   )
 }
 
+// ─── Activation ceremony ──────────────────────────────────────────────────────
+// Falas de cada voz por Mestre. O texto aparece com typewriter cuja duração é
+// derivada da duração REAL do áudio (metadata), então a legenda termina junto
+// com a fala em vez de usar um tempo fixo.
+const ACTIVATION_LINES: Record<string, { winduel: string; introduel: string }> = {
+  fehnon: {
+    winduel:   "Ah moleque! Essa foi uma vitória e tanto!",
+    introduel: "Eu tô louco pra entrar nessa festa!",
+  },
+  calem: {
+    winduel:   "Incrível! Nós conseguimos!",
+    introduel: "Com meu poder, eu não tenho o que temer!",
+  },
+  morgana: {
+    winduel:   "Radical! É isso que eu chamo de sinfonia épica!",
+    introduel: "Vamos sentir a melodia de batalha!",
+  },
+}
+
+/** 75% de chance de `_voice_4_winduel`, 25% de `_voice_2_introduel`. */
+function pickActivationVoice(masterId: string): { src: string; text: string } {
+  const key = Math.random() < 0.75 ? "winduel" : "introduel"
+  const suffix = key === "winduel" ? "_voice_4_winduel" : "_voice_2_introduel"
+  const lines = ACTIVATION_LINES[masterId]
+  return {
+    src:  `/audio/masters/${masterId}${suffix}.mp3`,
+    text: lines ? lines[key] : "",
+  }
+}
+
+// Timeline (ms) — sigilo se forma, o Mestre entra, a fala dispara no impacto
+const ACT_T_SEAL   = 620   // selo/onda de choque
+const ACT_T_HERO   = 260   // Mestre surge
+const ACT_T_VOICE  = 300   // instante do impacto → voz + legenda começam juntas
+const ACT_T_TAIL   = 900   // respiro depois da fala antes de fechar
+
+function ActivationOverlay({ master, onDone }: { master: Master; onDone: () => void }) {
+  const [phase, setPhase] = useState<"seal" | "reveal" | "out">("seal")
+  const [typed, setTyped] = useState("")
+
+  const voiceRef  = useRef<HTMLAudioElement | null>(null)
+  const timersRef = useRef<number[]>([])
+  const rafRef    = useRef<number | null>(null)
+  const doneRef   = useRef(false)
+  // A voz é sorteada UMA vez por montagem — re-renders não trocam a fala
+  const voice     = useRef(pickActivationVoice(master.id)).current
+
+  const finish = () => {
+    if (doneRef.current) return
+    doneRef.current = true
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    const a = voiceRef.current
+    if (a) {
+      try { a.pause(); a.currentTime = 0 } catch { /* ignore */ }
+      voiceRef.current = null
+    }
+    onDone()
+  }
+
+  const closeOut = () => {
+    if (doneRef.current) return
+    setPhase("out")
+    timersRef.current.push(window.setTimeout(finish, 340))
+  }
+
+  useEffect(() => {
+    timersRef.current.push(window.setTimeout(() => setPhase("reveal"), ACT_T_SEAL))
+
+    const audio = new Audio(voice.src)
+    audio.volume = getSfxVolume()
+    audio.muted  = getMenuMusicMuted()
+    audio.preload = "auto"
+    voiceRef.current = audio
+
+    // Legenda escrita em sincronia com o tempo REAL do áudio: a cada frame o
+    // progresso da fala (currentTime / duration) define quantos caracteres
+    // estão visíveis, então voz e texto nunca desencontram.
+    const startTyping = () => {
+      const full = voice.text
+      if (!full) return
+      const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 2.6
+      // A fala ocupa ~88% do áudio; o resto costuma ser cauda/silêncio
+      const speech = dur * 0.88
+      const t0 = performance.now()
+      const tick = () => {
+        const elapsed = audio.currentTime > 0
+          ? audio.currentTime
+          : (performance.now() - t0) / 1000
+        const ratio = Math.min(1, elapsed / speech)
+        setTyped(full.slice(0, Math.ceil(full.length * ratio)))
+        if (ratio < 1 && !doneRef.current) rafRef.current = requestAnimationFrame(tick)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    // Voz e legenda começam no MESMO instante do impacto visual
+    timersRef.current.push(window.setTimeout(() => {
+      audio.play().then(startTyping).catch(() => {
+        // autoplay bloqueado — a legenda ainda roda no tempo estimado
+        startTyping()
+      })
+    }, ACT_T_SEAL + ACT_T_VOICE))
+
+    // Fecha quando a fala termina (ou num fallback, se o áudio não carregar)
+    const onEnded = () => timersRef.current.push(window.setTimeout(closeOut, ACT_T_TAIL))
+    audio.addEventListener("ended", onEnded)
+
+    const fallback = window.setTimeout(closeOut, 6200)
+    timersRef.current.push(fallback)
+
+    return () => {
+      doneRef.current = true
+      audio.removeEventListener("ended", onEnded)
+      timersRef.current.forEach(clearTimeout)
+      timersRef.current = []
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+      try { audio.pause() } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [master.id])
+
+  const revealed = phase !== "seal"
+
+  return (
+    <div
+      role="presentation"
+      onClick={closeOut}
+      style={{
+        position:"fixed", inset:0, zIndex:600, overflow:"hidden", cursor:"pointer",
+        background:"radial-gradient(ellipse 90% 80% at 50% 55%, rgba(4,2,8,0.93), rgba(1,0,3,0.985))",
+        backdropFilter:"blur(18px)",
+        animation: phase === "out" ? "gpActFadeOut 0.34s ease forwards" : "gpFadeIn 0.22s ease",
+      }}>
+
+      {/* Onda de choque do selo */}
+      {[0, 0.16, 0.32].map((d, i) => (
+        <div key={i} aria-hidden="true" style={{
+          position:"absolute", left:"50%", top:"50%", width:300, height:300,
+          marginLeft:-150, marginTop:-150, borderRadius:"50%",
+          border:`1.5px solid ${master.accentColor}${i === 0 ? "70" : "38"}`,
+          animation:`gpActShock 1.5s cubic-bezier(0.16,1,0.3,1) ${d}s both`,
+        }}/>
+      ))}
+
+      {/* Selo hexagonal girando */}
+      <div aria-hidden="true" style={{
+        position:"absolute", left:"50%", top:"50%", width:420, height:420,
+        marginLeft:-210, marginTop:-210,
+        animation:"gpActSealIn 0.7s cubic-bezier(0.16,1,0.3,1) both",
+      }}>
+        <div style={{
+          position:"absolute", inset:0, borderRadius:"50%",
+          border:`1px dashed ${master.accentColor}2e`,
+          animation:"gpAuraSpin 18s linear infinite",
+        }}/>
+        <div style={{
+          position:"absolute", inset:44, borderRadius:"50%",
+          border:`1px solid ${master.accentColor}22`,
+          animation:"gpAuraSpinReverse 24s linear infinite",
+        }}/>
+        <div style={{
+          position:"absolute", inset:0,
+          background:`conic-gradient(from 0deg, transparent 0deg, ${master.accentColor}1a 14deg, transparent 30deg, transparent 120deg, ${master.accentColor}14 134deg, transparent 150deg, transparent 240deg, ${master.accentColor}1a 254deg, transparent 270deg)`,
+          maskImage:"radial-gradient(circle, transparent 30%, black 52%, transparent 76%)",
+          WebkitMaskImage:"radial-gradient(circle, transparent 30%, black 52%, transparent 76%)",
+          animation:"gpRaysSpin 11s linear infinite",
+        }}/>
+      </div>
+
+      {/* Explosão de partículas no impacto */}
+      {revealed && Array.from({ length: 20 }).map((_, i) => {
+        const angle = (i / 20) * 360
+        const dist  = 150 + (i % 4) * 52
+        const c     = i % 3 === 0 ? "#e8c96d" : master.accentColor
+        return (
+          <div key={i} aria-hidden="true" style={{
+            position:"absolute", left:"50%", top:"50%",
+            width: i % 4 === 0 ? 5 : 3, height: i % 4 === 0 ? 5 : 3, borderRadius:"50%",
+            background: c, boxShadow:`0 0 9px ${c}`,
+            transform:"translate(-50%,-50%)",
+            ["--gp-tx" as string]:`${Math.cos(angle * Math.PI / 180) * dist}px`,
+            ["--gp-ty" as string]:`${Math.sin(angle * Math.PI / 180) * dist}px`,
+            animation:`gpBurst 1.2s cubic-bezier(0.16,1,0.3,1) ${(i % 6) * 0.045}s both`,
+          }}/>
+        )
+      })}
+
+      {/* Varredura de luz */}
+      {revealed && (
+        <div aria-hidden="true" style={{
+          position:"absolute", inset:0, pointerEvents:"none",
+          background:`linear-gradient(105deg, transparent 34%, ${master.accentColor}1f 50%, transparent 66%)`,
+          animation:"gpActSweep 1.1s cubic-bezier(0.22,1,0.36,1) both",
+        }}/>
+      )}
+
+      {/* Conteúdo */}
+      <div style={{
+        position:"relative", zIndex:2, height:"100%",
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+        gap:0, padding:"24px", textAlign:"center", pointerEvents:"none",
+      }}>
+        {/* Arte do Mestre */}
+        <div style={{
+          position:"relative", height:"min(46vh, 330px)",
+          display:"flex", alignItems:"flex-end", justifyContent:"center",
+          opacity: revealed ? 1 : 0,
+          animation: revealed ? `gpActHeroIn 0.66s cubic-bezier(0.16,1,0.3,1) ${ACT_T_HERO / 1000}s both` : undefined,
+        }}>
+          <div style={{
+            position:"absolute", left:"50%", bottom:"6%", transform:"translateX(-50%)",
+            width:"min(62vw, 380px)", aspectRatio:"1", borderRadius:"50%",
+            background:`radial-gradient(circle, ${master.accentColor}2a 0%, transparent 66%)`,
+            filter:"blur(4px)",
+          }}/>
+          <img
+            src={master.artPath || "/placeholder.svg"}
+            alt={master.fullName}
+            style={{
+              maxHeight:"100%", objectFit:"contain", objectPosition:"center bottom",
+              position:"relative", zIndex:1,
+              filter:`drop-shadow(0 12px 46px ${master.accentColor}55)`,
+            }}
+            onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+          />
+        </div>
+
+        {/* Faixa de título */}
+        <div style={{
+          marginTop:22,
+          opacity: revealed ? 1 : 0,
+          animation: revealed ? "gpRiseIn 0.5s ease 0.4s both" : undefined,
+        }}>
+          <div style={{
+            fontSize:10.5, fontWeight:800, letterSpacing:"0.42em", textTransform:"uppercase",
+            color: master.accentColor, marginBottom:10,
+            textShadow:`0 0 20px ${master.accentColor}80`,
+          }}>Novo Mestre Ativo</div>
+          <div style={{
+            fontFamily:SERIF, fontWeight:800, fontSize:"clamp(30px, 5.4vw, 52px)",
+            lineHeight:1.06, letterSpacing:"0.01em", color:"#f7f4ee",
+            textShadow:`0 2px 40px ${master.accentColor}70`,
+            animation: revealed ? "gpActNameSlam 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.38s both" : undefined,
+          }}>{master.fullName}</div>
+          <div style={{ margin:"14px auto 0", display:"flex", justifyContent:"center" }}>
+            <Ornament color={master.accentColor} width={190}/>
+          </div>
+          <div style={{
+            marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+          }}>
+            <span style={{
+              fontSize:9.5, fontWeight:800, letterSpacing:"0.16em", textTransform:"uppercase",
+              color: elementStyle(master.element).color,
+              background: elementStyle(master.element).bg,
+              padding:"4px 11px", border:`1px solid ${elementStyle(master.element).color}35`,
+              clipPath:"polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)",
+            }}>{master.element}</span>
+            <span style={{
+              fontSize:9.5, fontWeight:800, letterSpacing:"0.16em", textTransform:"uppercase",
+              color:"#34d399", background:"rgba(52,211,153,0.10)",
+              padding:"4px 11px", border:"1px solid rgba(52,211,153,0.32)",
+              clipPath:"polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)",
+              display:"inline-flex", alignItems:"center", gap:4,
+            }}><Check size={10}/> Ativo</span>
+          </div>
+        </div>
+
+        {/* Legenda da fala — sincronizada ao áudio */}
+        <div style={{ minHeight:52, marginTop:20, display:"flex", alignItems:"center" }}>
+          {typed && (
+            <div style={{
+              maxWidth:560,
+              background:"rgba(4,3,8,0.7)",
+              border:`1px solid ${master.accentColor}30`,
+              clipPath:"polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)",
+              padding:"12px 20px",
+              fontSize:14, lineHeight:1.55, color:"#e9e6df", fontStyle:"italic",
+              textShadow:`0 0 18px ${master.accentColor}30`,
+              animation:"gpFadeIn 0.2s ease",
+            }}>
+              {typed}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Mini master card for menu bar ───────────────────────────────────────────
 export function MasterMenuCard({ onOpen }: { onOpen: () => void }) {
   const [masters, setMasters] = useState<Master[]>([])
@@ -796,6 +1056,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
   const [toast,        setToast]        = useState<string | null>(null)
   const [packToOpen,   setPackToOpen]   = useState<string | null>(null)
   const [heroKey,      setHeroKey]      = useState(0)
+  const [activating,   setActivating]   = useState<Master | null>(null)
 
   useEffect(() => {
     const loaded = loadMastersFromStorage()
@@ -832,15 +1093,20 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     return () => window.removeEventListener("gpgame_master_xp", onXP)
   }, [])
 
-  // Activate a master
+  // Activate a master — troca o ativo e dispara a cerimônia (animação + voz)
   const handleActivate = (masterId: string) => {
+    const target = masters.find(m => m.id === masterId)
+    if (!target || target.isActive) return
+
     setMasters(prev => {
       const next = prev.map(m => ({ ...m, isActive: m.id === masterId }))
       saveMastersToStorage(next)
       return next
     })
-    showToast("Mestre alterado com sucesso!")
     setShowDetail(false)
+    setSelectedId(masterId)
+    // A cerimônia sobe no MESMO instante da troca — a voz começa com ela
+    setActivating({ ...target, isActive: true })
   }
 
   // Claim a reward — grants actual items to the player
@@ -1057,6 +1323,19 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           master={levelUpData.master}
           newLevel={levelUpData.newLevel}
           onClose={() => setLevelUpData(null)}
+        />
+      )}
+
+      {/* Cerimônia de troca de Mestre */}
+      {activating && (
+        <ActivationOverlay
+          key={activating.id}
+          master={activating}
+          onDone={() => {
+            setActivating(null)
+            setHeroKey(k => k + 1)
+            showToast("Mestre alterado com sucesso!")
+          }}
         />
       )}
 
@@ -1361,30 +1640,6 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
                 )}
               </div>
 
-              {/* Passive teaser */}
-              {selectedMaster.passive && (
-                <div style={{
-                  display:"flex", alignItems:"center", gap:8, marginTop:16,
-                  animation:"gpRiseIn 0.5s ease 0.34s both",
-                }}>
-                  {selectedMaster.currentLevel >= 25 ? (
-                    <>
-                      <Star size={11} color={selectedMaster.accentColor} fill={selectedMaster.accentColor}/>
-                      <span style={{ fontSize:11, color: selectedMaster.accentColor, fontWeight:800 }}>
-                        {selectedMaster.passive.name}
-                      </span>
-                      <span style={{ fontSize:10.5, color:"#565d6b" }}>— passiva ativa</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={11} color="#4b5563"/>
-                      <span style={{ fontSize:10.5, color:"#4b5563" }}>
-                        Passiva {'"'}{selectedMaster.passive.name}{'"'} desbloqueia no Nível 25
-                      </span>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
 
           </div>
@@ -1464,6 +1719,37 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       </div>
 
       <style>{`
+        /* ── Cerimônia de ativação de Mestre ── */
+        @keyframes gpActFadeOut { from{opacity:1} to{opacity:0} }
+        @keyframes gpActShock {
+          0%   { transform:scale(0.18); opacity:0 }
+          22%  { opacity:1 }
+          100% { transform:scale(2.5);  opacity:0 }
+        }
+        @keyframes gpActSealIn {
+          from { transform:scale(0.55) rotate(-14deg); opacity:0 }
+          to   { transform:scale(1)    rotate(0deg);   opacity:1 }
+        }
+        @keyframes gpActSweep {
+          from { transform:translateX(-110%) }
+          to   { transform:translateX(110%) }
+        }
+        @keyframes gpActHeroIn {
+          0%   { transform:translateY(46px) scale(0.9); opacity:0; filter:brightness(2.4) }
+          55%  { filter:brightness(1.25) }
+          100% { transform:translateY(0)    scale(1);   opacity:1; filter:brightness(1) }
+        }
+        @keyframes gpActNameSlam {
+          0%   { transform:scale(1.5);  opacity:0; letter-spacing:0.3em }
+          60%  { opacity:1 }
+          100% { transform:scale(1);    opacity:1; letter-spacing:0.01em }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes gpActShock    { from{opacity:0} to{opacity:0} }
+          @keyframes gpActSweep    { from{opacity:0} to{opacity:0} }
+          @keyframes gpActHeroIn   { from{opacity:0} to{opacity:1} }
+          @keyframes gpActNameSlam { from{opacity:0} to{opacity:1} }
+        }
         @keyframes gpToastIn {
           from { opacity:0; transform:translateX(-50%) translateY(-8px) }
           to   { opacity:1; transform:translateX(-50%) translateY(0) }
