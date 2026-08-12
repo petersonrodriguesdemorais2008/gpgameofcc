@@ -28,6 +28,13 @@ const BRANCH_ICON: Record<RuneBranchId, typeof Coins> = {
   dominio: Crown,
 }
 
+/** Cor de identidade de cada ramo — dá personalidade própria sem fugir da paleta. */
+const BRANCH_TINT: Record<RuneBranchId, string> = {
+  fortuna: "#e8c96d",
+  guerra:  "#f0705a",
+  dominio: "#a78bfa",
+}
+
 interface RunesPanelProps {
   master:  Master
   onClose: () => void
@@ -43,18 +50,29 @@ function RuneSeal({ tier, color, active, done, size = 46 }: {
       width: size, height: size, flexShrink: 0, position: "relative",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
+      {/* Anel externo pulsante — só na runa disponível */}
+      {active && (
+        <div aria-hidden="true" style={{
+          position: "absolute", inset: -5, transform: "rotate(45deg)",
+          border: `1px solid ${color}55`,
+          animation: "gpRunePulse 2s ease-in-out infinite",
+        }}/>
+      )}
       <div style={{
         position: "absolute", inset: 0,
         transform: "rotate(45deg)",
         background: done
           ? `linear-gradient(135deg,${color}44,${color}18)`
-          : "rgba(255,255,255,0.03)",
-        border: `1px solid ${tint}${done ? "aa" : active ? "66" : "33"}`,
-        boxShadow: done ? `0 0 18px ${color}44` : active ? `0 0 12px ${color}22` : "none",
+          : active
+            ? `linear-gradient(135deg,${color}22,rgba(255,255,255,0.02))`
+            : "rgba(255,255,255,0.03)",
+        border: `1px solid ${tint}${done ? "aa" : active ? "88" : "33"}`,
+        boxShadow: done ? `0 0 18px ${color}44` : active ? `0 0 16px ${color}44` : "none",
+        transition: "box-shadow 0.3s, background 0.3s",
       }}/>
       <span style={{
         position: "relative", fontFamily: SERIF, fontWeight: 800, fontSize: 15,
-        color: done ? "#f7f4ee" : active ? tint : "#5b6270",
+        color: done ? "#f7f4ee" : active ? "#f7f4ee" : "#5b6270",
       }}>
         {done ? <Check size={16} strokeWidth={3}/> : tier}
       </span>
@@ -269,6 +287,21 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
       display: "flex", flexDirection: "column", overflow: "hidden",
       animation: "gpFadeIn 0.25s ease",
     }}>
+      <style>{`
+        @keyframes gpRunePulse {
+          0%, 100% { opacity: 0.35; transform: rotate(45deg) scale(1); }
+          50%      { opacity: 1;    transform: rotate(45deg) scale(1.12); }
+        }
+        @keyframes gpRuneShimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes gpRunePulse   { from { opacity: 0.6 } to { opacity: 0.6 } }
+          @keyframes gpRuneShimmer { from { background-position: 0 0 } to { background-position: 0 0 } }
+        }
+      `}</style>
+
       {/* Atmosfera */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
         <div style={{
@@ -371,15 +404,45 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           precisa ser desbloqueado em ordem, e cada runa entrega sua recompensa uma única vez.
         </p>
 
-        {/* Barra de progresso da rota */}
-        <div style={{ maxWidth: 760, margin: "14px 0 22px" }}>
-          <div style={{ height: 6, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
-            <div style={{
-              height: "100%", width: `${progress.pct}%`, borderRadius: 99,
-              background: `linear-gradient(90deg,${master.accentColor}70,${master.accentColor})`,
-              boxShadow: `0 0 14px ${master.accentColor}66`,
-              transition: "width 0.45s cubic-bezier(0.22,1,0.36,1)",
-            }}/>
+        {/* Barra de progresso da rota — segmentada por runa */}
+        <div style={{ maxWidth: 760, margin: "16px 0 24px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 7 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase",
+              color: progress.pct >= 100 ? "#34d399" : "#7b8290",
+            }}>
+              {progress.pct >= 100 ? "Rota completa" : "Progresso da rota"}
+            </span>
+            <span style={{
+              fontSize: 11.5, fontWeight: 800, color: master.accentColor,
+              fontVariantNumeric: "tabular-nums",
+            }}>{Math.round(progress.pct)}%</span>
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {Array.from({ length: progress.total }, (_, i) => {
+              const filled = i < progress.done
+              const isNext = i === progress.done && progress.done < progress.total
+              return (
+                <div key={i} style={{
+                  flex: 1, height: 7, borderRadius: 2, position: "relative", overflow: "hidden",
+                  background: filled
+                    ? `linear-gradient(90deg,${master.accentColor}88,${master.accentColor})`
+                    : "rgba(255,255,255,0.07)",
+                  boxShadow: filled ? `0 0 10px ${master.accentColor}55` : "none",
+                  border: isNext ? `1px solid ${master.accentColor}55` : "1px solid transparent",
+                  transition: "background 0.45s, box-shadow 0.45s",
+                }}>
+                  {filled && (
+                    <div aria-hidden="true" style={{
+                      position: "absolute", inset: 0,
+                      background: "linear-gradient(105deg,transparent 30%,rgba(255,255,255,0.35) 50%,transparent 70%)",
+                      backgroundSize: "200% 100%",
+                      animation: "gpRuneShimmer 3.2s ease-in-out infinite",
+                    }}/>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -388,24 +451,37 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           alignItems: "start",
         }}>
-          {branches.map(branch => {
-            const BranchIcon = BRANCH_ICON[branch.id]
-            const branchDone = branch.runes.filter(r => unlocked.includes(r.id)).length
+          {branches.map((branch, bIdx) => {
+            const BranchIcon      = BRANCH_ICON[branch.id]
+            const tint            = BRANCH_TINT[branch.id]
+            const branchDone      = branch.runes.filter(r => unlocked.includes(r.id)).length
+            const branchComplete  = branchDone === branch.runes.length
             return (
               <section key={branch.id} style={{
-                background: "rgba(255,255,255,0.022)",
-                border: `1px solid ${master.accentColor}1f`,
+                background: branchComplete
+                  ? `linear-gradient(165deg,${tint}0e,rgba(255,255,255,0.018))`
+                  : "rgba(255,255,255,0.022)",
+                border: `1px solid ${branchComplete ? `${tint}40` : `${tint}22`}`,
                 clipPath: "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)",
                 padding: "16px 16px 18px",
+                position: "relative", overflow: "hidden",
+                animation: `gpRiseIn 0.4s ease ${bIdx * 0.08}s both`,
               }}>
+                {/* Filete de identidade do ramo */}
+                <div aria-hidden="true" style={{
+                  position: "absolute", top: 0, left: 12, right: 0, height: 2,
+                  background: `linear-gradient(90deg,${tint}88,transparent 75%)`,
+                }}/>
+
                 <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   <div style={{
                     width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: `${master.accentColor}16`, border: `1px solid ${master.accentColor}3a`,
+                    background: `${tint}16`, border: `1px solid ${tint}3a`,
                     clipPath: "polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px)",
                     flexShrink: 0,
+                    boxShadow: branchComplete ? `0 0 14px ${tint}44` : "none",
                   }}>
-                    <BranchIcon size={16} color={master.accentColor}/>
+                    <BranchIcon size={16} color={tint}/>
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{
@@ -416,9 +492,19 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     </div>
                   </div>
                   <div style={{ flex: 1 }}/>
-                  <span style={{
-                    fontSize: 11, fontWeight: 800, color: master.accentColor, fontVariantNumeric: "tabular-nums",
-                  }}>{branchDone}/{branch.runes.length}</span>
+                  {branchComplete ? (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      fontSize: 9.5, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: tint, background: `${tint}16`, border: `1px solid ${tint}44`,
+                      padding: "3px 9px",
+                      clipPath: "polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)",
+                    }}><Check size={11} strokeWidth={3}/> Completo</span>
+                  ) : (
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, color: tint, fontVariantNumeric: "tabular-nums",
+                    }}>{branchDone}/{branch.runes.length}</span>
+                  )}
                 </header>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -437,7 +523,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                           <div aria-hidden="true" style={{
                             position: "absolute", left: 22, top: -10, width: 2, height: 10,
                             background: isDone || isAvailable
-                              ? `linear-gradient(180deg,${master.accentColor}88,${master.accentColor}44)`
+                              ? `linear-gradient(180deg,${tint}88,${tint}44)`
                               : "rgba(255,255,255,0.08)",
                           }}/>
                         )}
@@ -445,21 +531,31 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         <article style={{
                           display: "flex", gap: 12,
                           background: isDone
-                            ? `linear-gradient(120deg,${master.accentColor}12,rgba(255,255,255,0.02))`
-                            : "rgba(255,255,255,0.026)",
-                          border: `1px solid ${isDone ? `${master.accentColor}4a` : isAvailable ? `${master.accentColor}30` : "rgba(255,255,255,0.06)"}`,
+                            ? `linear-gradient(120deg,${tint}10,rgba(255,255,255,0.02))`
+                            : isAvailable
+                              ? `linear-gradient(120deg,${tint}0c,rgba(255,255,255,0.028))`
+                              : "rgba(255,255,255,0.026)",
+                          border: `1px solid ${isDone ? `${tint}4a` : isAvailable ? `${tint}55` : "rgba(255,255,255,0.06)"}`,
                           clipPath: "polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px)",
                           padding: "12px 13px",
-                          opacity: dim ? 0.62 : 1,
-                          transition: "opacity 0.25s, border-color 0.25s",
+                          opacity: dim ? 0.58 : 1,
+                          boxShadow: isAvailable ? `0 0 22px ${tint}1e` : "none",
+                          transition: "opacity 0.25s, border-color 0.25s, box-shadow 0.25s",
                         }}>
-                          <RuneSeal tier={rune.tier} color={master.accentColor} active={isAvailable} done={isDone}/>
+                          <RuneSeal tier={rune.tier} color={tint} active={isAvailable} done={isDone}/>
 
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
                               <span style={{
-                                fontWeight: 800, fontSize: 13, color: isDone ? "#f6f3ed" : "#dcd9d3", lineHeight: 1.25,
+                                fontWeight: 800, fontSize: 13, color: isDone ? "#f6f3ed" : isAvailable ? "#f6f3ed" : "#dcd9d3", lineHeight: 1.25,
                               }}>{rune.name}</span>
+                              {isAvailable && (
+                                <span style={{
+                                  fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
+                                  color: "#08060a", background: tint, padding: "2px 7px",
+                                  clipPath: "polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)",
+                                }}>Próxima</span>
+                              )}
                               <span style={{
                                 fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
                                 color: master.currentLevel >= rune.requiredLevel ? "#34d399" : "#8b93a1",
@@ -535,12 +631,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                                   className="gp-cta"
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 6,
-                                    background: `linear-gradient(135deg,${master.accentColor}44,${master.accentColor}80)`,
-                                    border: `1px solid ${master.accentColor}88`,
+                                    background: `linear-gradient(135deg,${tint}55,${tint}90)`,
+                                    border: `1px solid ${tint}99`,
                                     clipPath: "polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)",
                                     padding: "8px 15px", cursor: "pointer", color: "#fff",
                                     fontWeight: 900, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase",
-                                    boxShadow: `0 3px 16px ${master.accentColor}44`,
+                                    boxShadow: `0 3px 16px ${tint}44`,
                                   }}>
                                   <Sparkles size={12}/> Desbloquear
                                 </button>
