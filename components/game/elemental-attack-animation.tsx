@@ -742,12 +742,34 @@ export function ElementalAttackAnimation({
           }
           break
         case "darkness": {
+          // tentáculos de sombra sendo sugados de fora para o núcleo
+          for (let i = 0; i < 7; i++) {
+            const a = i * (TAU / 7) + t * 0.9
+            const frac = 1 - ((t * 1.3 + i * 0.43) % 1)
+            const R0 = 40 + frac * 95
+            ctx.beginPath()
+            for (let s = 0; s <= 8; s++) {
+              const q = s / 8
+              const rr = R0 * (1 - q * 0.85)
+              const wob = Math.sin(q * TAU * 1.2 + t * 10 + i) * 10 * q
+              const px = sx + Math.cos(a + wob * 0.02) * rr - Math.sin(a) * wob
+              const py = sy + Math.sin(a + wob * 0.02) * rr + Math.cos(a) * wob
+              if (s === 0) ctx.moveTo(px, py)
+              else ctx.lineTo(px, py)
+            }
+            ctx.strokeStyle = `rgba(124,58,237,${(1 - frac) * 0.6 * k})`
+            ctx.lineWidth = 2.6
+            ctx.lineCap = "round"
+            ctx.stroke()
+          }
           ctx.globalCompositeOperation = "source-over"
           const cr2 = 16 * grow * (1 + Math.sin(t * 18) * 0.1)
           ctx.beginPath(); ctx.arc(sx, sy, cr2, 0, TAU)
           ctx.fillStyle = "#09000f"; ctx.fill()
           ctx.globalCompositeOperation = "lighter"
           ring(ctx, sx, sy, cr2 + 4, 3, `rgba(124,58,237,.95)`)
+          // segundo anel de lente gravitacional pulsando fora de fase
+          ring(ctx, sx, sy, cr2 + 12 + Math.sin(t * 9) * 4, 1.5, `rgba(167,139,250,${0.5 * k})`)
           for (let i = 0; i < 12; i++) {
             const a = i * (TAU / 12) + t * 3
             const L = (30 + Math.sin(t * 16 + i * 3) * 20) * grow
@@ -758,9 +780,26 @@ export function ElementalAttackAnimation({
             ctx.strokeStyle = `rgba(167,139,250,${0.35 + Math.sin(t * 16 + i * 3) * 0.3})`
             ctx.stroke()
           }
+          // orbes sombrios em órbita elíptica
+          for (let i = 0; i < 4; i++) {
+            const a = t * 5 + i * (TAU / 4)
+            blit(ctx, spB, sx + Math.cos(a) * 46 * grow, sy + Math.sin(a) * 20 * grow, 6, 0.8 * k)
+          }
           break
         }
         case "haos": {
+          // penas de luz caindo dos céus em direção ao núcleo
+          for (let i = 0; i < 6; i++) {
+            const frac = (t * 1.1 + i * 0.37) % 1
+            const fx = sx + Math.sin(i * 5.1) * 70 * (1 - frac * 0.6)
+            const fy = sy - 130 + frac * 130
+            ctx.save()
+            ctx.translate(fx, fy)
+            ctx.rotate(Math.sin(t * 4 + i) * 0.5)
+            ctx.scale(1, 2.4)
+            blit(ctx, spC, 0, 0, 4.5, (1 - frac) * 0.85 * k)
+            ctx.restore()
+          }
           // pilar de luz ascendente
           const ph = 96 * grow
           const gr = ctx.createLinearGradient(sx, sy, sx, sy - ph)
@@ -776,6 +815,17 @@ export function ElementalAttackAnimation({
           ring(ctx, 0, 0, 62 * grow, 4, `rgba(253,224,71,${0.85})`)
           ring(ctx, 0, 0, (46 + Math.sin(t * 6) * 6) * grow, 2, "rgba(255,255,255,.7)")
           ctx.restore()
+          // sparkle em cruz girando lentamente sobre o núcleo
+          for (let i = 0; i < 4; i++) {
+            const a = t * 1.8 + i * (Math.PI / 2)
+            const L = (30 + Math.sin(t * 14 + i) * 10) * grow
+            ctx.strokeStyle = `rgba(255,255,255,${0.8 * k})`
+            ctx.lineWidth = 1.6
+            ctx.beginPath()
+            ctx.moveTo(sx + Math.cos(a) * 8, sy + Math.sin(a) * 8)
+            ctx.lineTo(sx + Math.cos(a) * L, sy + Math.sin(a) * L)
+            ctx.stroke()
+          }
           for (let i = 0; i < 10; i++) {
             const a = i * (TAU / 10) + t * 1.5
             const L = (i % 2 ? 26 : 44) * grow * (1 + Math.sin(t * 18 + i) * 0.3)
@@ -810,6 +860,18 @@ export function ElementalAttackAnimation({
           break
         default: {
           // void/neutral — realidade glitch
+          // horizonte de eventos — núcleo negro absoluto crescendo
+          ctx.globalCompositeOperation = "source-over"
+          const vr = 14 * grow * (1 + Math.sin(t * 22) * 0.08)
+          ctx.beginPath(); ctx.arc(sx, sy, vr, 0, TAU)
+          ctx.fillStyle = "#04060a"; ctx.fill()
+          ctx.globalCompositeOperation = "lighter"
+          ring(ctx, sx, sy, vr + 3, 2.4, "rgba(226,232,240,.95)")
+          // anéis de sucção implodindo em direção ao núcleo
+          for (let i = 0; i < 4; i++) {
+            const fr = 1 - ((t * 1.6 + i / 4) % 1)
+            ring(ctx, sx, sy, vr + 6 + fr * 90, 1.6, `rgba(148,163,184,${(1 - fr) * 0.7 * k})`)
+          }
           ctx.save()
           ctx.translate(sx, sy)
           ctx.rotate(t * 3.2)
@@ -819,6 +881,19 @@ export function ElementalAttackAnimation({
           ctx.rotate(-t * 5.6)
           ctx.strokeStyle = "rgba(203,213,225,.5)"
           ctx.strokeRect(-24 * grow, -24 * grow, 48 * grow, 48 * grow)
+          // terceira moldura triangular girando devagar
+          ctx.rotate(t * 1.8)
+          ctx.strokeStyle = "rgba(226,232,240,.4)"
+          ctx.beginPath()
+          for (let i = 0; i < 3; i++) {
+            const a = i * (TAU / 3) - Math.PI / 2
+            const px = Math.cos(a) * 44 * grow
+            const py = Math.sin(a) * 44 * grow
+            if (i === 0) ctx.moveTo(px, py)
+            else ctx.lineTo(px, py)
+          }
+          ctx.closePath()
+          ctx.stroke()
           ctx.restore()
           for (let i = 0; i < 8; i++) {
             const on = Math.sin(t * 30 + i * 7) > 0
@@ -827,6 +902,13 @@ export function ElementalAttackAnimation({
             const gy = (Math.floor(i / 3) - 1) * 28 * grow
             ctx.fillStyle = "rgba(148,163,184,.85)"
             ctx.fillRect(sx + gx - 3, sy + gy - 3, 6, 6)
+          }
+          // barras glitch horizontais piscando ao redor do núcleo
+          for (let i = 0; i < 3; i++) {
+            if (Math.sin(t * 26 + i * 9) < 0.3) continue
+            const gy = sy - 30 + i * 30 + Math.sin(t * 40 + i) * 6
+            ctx.fillStyle = `rgba(203,213,225,${0.35 * k})`
+            ctx.fillRect(sx - 55 * grow, gy, 110 * grow, 2.5)
           }
         }
       }
@@ -877,23 +959,75 @@ export function ElementalAttackAnimation({
 
       // feixe Haos: laser contínuo da origem
       if (E === "haos") {
+        const pw = 9 + Math.sin(t * 30) * 2.5
         const gr = ctx.createLinearGradient(sx, sy, pos.x, pos.y)
         gr.addColorStop(0, "rgba(253,224,71,0)")
         gr.addColorStop(0.5, "rgba(253,224,71,.5)")
         gr.addColorStop(1, "rgba(255,255,255,.95)")
         ctx.strokeStyle = gr
-        ctx.lineWidth = 9
+        ctx.lineWidth = pw
         ctx.lineCap = "round"
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pos.x, pos.y); ctx.stroke()
         ctx.lineWidth = 3
         ctx.strokeStyle = "rgba(255,255,255,.95)"
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pos.x, pos.y); ctx.stroke()
+        // cintilar ao longo do feixe
+        for (let i = 0; i < 5; i++) {
+          const q = ((t * 1.6 + i / 5) % 1) * p
+          blit(ctx, spC, sx + (pos.x - sx) * (q / Math.max(p, 0.01)), sy + (pos.y - sy) * (q / Math.max(p, 0.01)), 4, 0.8)
+        }
+      }
+
+      // feixe Darkness: corrente de sombra ondulante da origem
+      if (E === "darkness") {
+        for (let s = -1; s <= 1; s += 2) {
+          ctx.beginPath()
+          for (let i = 0; i <= 16; i++) {
+            const q = i / 16
+            const bx = sx + (pos.x - sx) * q
+            const by = sy + (pos.y - sy) * q
+            const off = Math.sin(q * TAU * 2.2 - t * 20) * 10 * s * Math.sin(q * Math.PI)
+            ctx[i === 0 ? "moveTo" : "lineTo"](bx - sinA * off, by + cosA * off)
+          }
+          ctx.strokeStyle = "rgba(124,58,237,.5)"
+          ctx.lineWidth = 3
+          ctx.lineCap = "round"
+          ctx.stroke()
+        }
+      }
+
+      // feixe Void: linha glitch tracejada e segmentada da origem
+      if (E === "void") {
+        ctx.setLineDash([16, 12])
+        ctx.lineDashOffset = -t * 400
+        ctx.strokeStyle = "rgba(148,163,184,.55)"
+        ctx.lineWidth = 2.5
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pos.x, pos.y); ctx.stroke()
+        ctx.setLineDash([])
+        // fragmentos quadrados residuais ao longo do caminho
+        for (let i = 0; i < 6; i++) {
+          if (Math.sin(t * 28 + i * 5) < 0) continue
+          const q = ((i + 1) / 7) * p
+          const bx = sx + (pos.x - sx) * (q / Math.max(p, 0.01))
+          const by = sy + (pos.y - sy) * (q / Math.max(p, 0.01))
+          const jx = Math.sin(t * 44 + i * 9) * 10
+          ctx.fillStyle = "rgba(203,213,225,.6)"
+          ctx.fillRect(bx + jx - 2.5, by - 2.5, 5, 5)
+        }
       }
 
       // rastro (afterimages)
       for (let i = 0; i < trail.length; i++) {
         const f = i / trail.length
         blit(ctx, spB, trail[i].x, trail[i].y, 4 + f * 17, f * 0.5)
+        // brilho extra colorido no rastro para os 3 elementos aprimorados
+        if (E === "darkness") blit(ctx, spC, trail[i].x, trail[i].y, 2 + f * 8, f * 0.35)
+        else if (E === "haos") blit(ctx, spW, trail[i].x, trail[i].y, 2 + f * 7, f * 0.4)
+        else if (E === "void" && i % 3 === 0) {
+          ctx.fillStyle = `rgba(203,213,225,${f * 0.45})`
+          const s = 3 + f * 4
+          ctx.fillRect(trail[i].x - s / 2, trail[i].y - s / 2, s, s)
+        }
       }
 
       // cabeça do projétil por elemento
