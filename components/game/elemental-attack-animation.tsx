@@ -300,7 +300,7 @@ export function ElementalAttackAnimation({
         case "fire": return Math.sin(p * Math.PI) * -36
         case "aquos": return Math.sin(p * Math.PI * 3) * 15 * (1 - p * 0.35)
         case "ventus": return Math.sin(p * Math.PI * 6) * 12
-        case "darkness": return Math.sin(p * Math.PI * 9) * 5
+        case "darkness": return Math.sin(p * Math.PI * 5) * 14 * (1 - p * 0.4)
         case "haos": return 0
         default: return Math.sin(p * 61) * 7 + Math.sin(p * 23) * 4
       }
@@ -538,24 +538,101 @@ export function ElementalAttackAnimation({
           })
           break
         case "darkness":
-          spawn(26, () => {
+          // névoa sombria densa expandindo em onda
+          spawn(30, () => {
             const a = rnd() * TAU
-            const sp = 160 + rnd() * 300
-            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 5 + rnd() * 8, life: 420 + rnd() * 380, r: 88, g: 28, b: 135, drag: 0.94, kind: "wisp" }
+            const sp = 160 + rnd() * 340
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 6 + rnd() * 9, life: 460 + rnd() * 420, r: 88, g: 28, b: 135, drag: 0.94, kind: "wisp" }
           })
+          // garras de sombra — estilhaços roxos escuros girando
+          spawn(18, () => {
+            const a = rnd() * TAU
+            const sp = 200 + rnd() * 380
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 4 + rnd() * 6, life: 440 + rnd() * 400, r: 76, g: 29, b: 149, drag: 0.96, kind: "shard", spin: (rnd() - 0.5) * 16 }
+          })
+          // faíscas violetas rasgando radialmente
+          spawn(24, () => {
+            const a = rnd() * TAU
+            const sp = 220 + rnd() * 420
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 2.5 + rnd() * 4, life: 420 + rnd() * 380, r: 167, g: 139, b: 250, drag: 0.965, kind: "glow" }
+          })
+          // implosão sombria — partículas sugadas de volta ao centro
+          spawn(14, () => {
+            const a = rnd() * TAU
+            const sp = 280 + rnd() * 240
+            return {
+              vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+              ax: -Math.cos(a) * 820, ay: -Math.sin(a) * 820,
+              size: 2 + rnd() * 3, life: 500 + rnd() * 300,
+              r: 196, g: 181, b: 253, drag: 0.97, kind: "glitter",
+            }
+          })
+          // cintilar lavanda flutuando
           spawn(16, () => {
             const a = rnd() * TAU
             const sp = 80 + rnd() * 180
-            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 2.5 + rnd() * 3.5, life: 600 + rnd() * 400, r: 196, g: 181, b: 253, drag: 0.975, kind: "glitter" }
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, ay: -22, size: 2.5 + rnd() * 3.5, life: 650 + rnd() * 450, r: 196, g: 181, b: 253, drag: 0.975, kind: "glitter" }
           })
           break
         case "haos":
+          // raios de luz dourada explodindo radialmente
+          spawn(30, () => {
+            const a = rnd() * TAU
+            const sp = 220 + rnd() * 460
+            const white = rnd() < 0.5
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 2.5 + rnd() * 5, life: 380 + rnd() * 420, r: 255, g: white ? 255 : 224, b: white ? 255 : 71, drag: 0.965, kind: "glow" }
+          })
+          // penas de luz subindo em leque (chamas brancas-douradas alongadas)
+          spawn(18, () => {
+            const a = -Math.PI / 2 + (rnd() - 0.5) * 2.2
+            const sp = 120 + rnd() * 280
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -140, size: 7 + rnd() * 10, life: 560 + rnd() * 480, r: 254, g: 249, b: 195, drag: 0.972, kind: "flame" }
+          })
+          // chuva de cintilar dourado
           spawn(30, () => {
             const a = rnd() * TAU
             const sp = 60 + rnd() * 260
             return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, ay: 30, size: 2.5 + rnd() * 4, life: 750 + rnd() * 550, r: 254, g: 240, b: 138, drag: 0.988, kind: "glitter" }
           })
+          // motes de luz ascendendo lentamente (bênção residual)
+          spawn(12, () => {
+            const a = rnd() * TAU
+            const sp = 30 + rnd() * 90
+            return { vx: Math.cos(a) * sp, vy: -60 - rnd() * 120, ay: -40, size: 2 + rnd() * 3, life: 900 + rnd() * 500, r: 255, g: 255, b: 255, drag: 0.99, kind: "glitter" }
+          })
           break
+        case "void": {
+          // estilhaços de realidade prateados girando
+          spawn(20, () => {
+            const a = rnd() * TAU
+            const sp = 200 + rnd() * 400
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 4 + rnd() * 5.5, life: 440 + rnd() * 400, r: 203, g: 213, b: 225, drag: 0.96, kind: "shard", spin: (rnd() - 0.5) * 16 }
+          })
+          // névoa escura do vazio se expandindo
+          spawn(14, () => {
+            const a = rnd() * TAU
+            const sp = 60 + rnd() * 160
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: -22, size: 11 + rnd() * 14, life: 740 + rnd() * 500, r: 30, g: 41, b: 59, drag: 0.96, kind: "wisp" }
+          })
+          // colapso gravitacional — poeira sugada de volta ao centro
+          spawn(16, () => {
+            const a = rnd() * TAU
+            const sp = 300 + rnd() * 240
+            return {
+              vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+              ax: -Math.cos(a) * 860, ay: -Math.sin(a) * 860,
+              size: 2 + rnd() * 3, life: 500 + rnd() * 300,
+              r: 148, g: 163, b: 184, drag: 0.97, kind: "glitter",
+            }
+          })
+          // faíscas prateadas radiais
+          spawn(22, () => {
+            const a = rnd() * TAU
+            const sp = 180 + rnd() * 380
+            return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: 2.5 + rnd() * 4, life: 400 + rnd() * 380, r: 226, g: 232, b: 240, drag: 0.96, kind: "glow" }
+          })
+          break
+        }
         case "ventus":
           // redemoinho de vento — partículas em espiral
           spawn(34, () => {
@@ -665,12 +742,34 @@ export function ElementalAttackAnimation({
           }
           break
         case "darkness": {
+          // tentáculos de sombra sendo sugados de fora para o núcleo
+          for (let i = 0; i < 7; i++) {
+            const a = i * (TAU / 7) + t * 0.9
+            const frac = 1 - ((t * 1.3 + i * 0.43) % 1)
+            const R0 = 40 + frac * 95
+            ctx.beginPath()
+            for (let s = 0; s <= 8; s++) {
+              const q = s / 8
+              const rr = R0 * (1 - q * 0.85)
+              const wob = Math.sin(q * TAU * 1.2 + t * 10 + i) * 10 * q
+              const px = sx + Math.cos(a + wob * 0.02) * rr - Math.sin(a) * wob
+              const py = sy + Math.sin(a + wob * 0.02) * rr + Math.cos(a) * wob
+              if (s === 0) ctx.moveTo(px, py)
+              else ctx.lineTo(px, py)
+            }
+            ctx.strokeStyle = `rgba(124,58,237,${(1 - frac) * 0.6 * k})`
+            ctx.lineWidth = 2.6
+            ctx.lineCap = "round"
+            ctx.stroke()
+          }
           ctx.globalCompositeOperation = "source-over"
           const cr2 = 16 * grow * (1 + Math.sin(t * 18) * 0.1)
           ctx.beginPath(); ctx.arc(sx, sy, cr2, 0, TAU)
           ctx.fillStyle = "#09000f"; ctx.fill()
           ctx.globalCompositeOperation = "lighter"
           ring(ctx, sx, sy, cr2 + 4, 3, `rgba(124,58,237,.95)`)
+          // segundo anel de lente gravitacional pulsando fora de fase
+          ring(ctx, sx, sy, cr2 + 12 + Math.sin(t * 9) * 4, 1.5, `rgba(167,139,250,${0.5 * k})`)
           for (let i = 0; i < 12; i++) {
             const a = i * (TAU / 12) + t * 3
             const L = (30 + Math.sin(t * 16 + i * 3) * 20) * grow
@@ -681,9 +780,26 @@ export function ElementalAttackAnimation({
             ctx.strokeStyle = `rgba(167,139,250,${0.35 + Math.sin(t * 16 + i * 3) * 0.3})`
             ctx.stroke()
           }
+          // orbes sombrios em órbita elíptica
+          for (let i = 0; i < 4; i++) {
+            const a = t * 5 + i * (TAU / 4)
+            blit(ctx, spB, sx + Math.cos(a) * 46 * grow, sy + Math.sin(a) * 20 * grow, 6, 0.8 * k)
+          }
           break
         }
         case "haos": {
+          // penas de luz caindo dos céus em direção ao núcleo
+          for (let i = 0; i < 6; i++) {
+            const frac = (t * 1.1 + i * 0.37) % 1
+            const fx = sx + Math.sin(i * 5.1) * 70 * (1 - frac * 0.6)
+            const fy = sy - 130 + frac * 130
+            ctx.save()
+            ctx.translate(fx, fy)
+            ctx.rotate(Math.sin(t * 4 + i) * 0.5)
+            ctx.scale(1, 2.4)
+            blit(ctx, spC, 0, 0, 4.5, (1 - frac) * 0.85 * k)
+            ctx.restore()
+          }
           // pilar de luz ascendente
           const ph = 96 * grow
           const gr = ctx.createLinearGradient(sx, sy, sx, sy - ph)
@@ -699,6 +815,17 @@ export function ElementalAttackAnimation({
           ring(ctx, 0, 0, 62 * grow, 4, `rgba(253,224,71,${0.85})`)
           ring(ctx, 0, 0, (46 + Math.sin(t * 6) * 6) * grow, 2, "rgba(255,255,255,.7)")
           ctx.restore()
+          // sparkle em cruz girando lentamente sobre o núcleo
+          for (let i = 0; i < 4; i++) {
+            const a = t * 1.8 + i * (Math.PI / 2)
+            const L = (30 + Math.sin(t * 14 + i) * 10) * grow
+            ctx.strokeStyle = `rgba(255,255,255,${0.8 * k})`
+            ctx.lineWidth = 1.6
+            ctx.beginPath()
+            ctx.moveTo(sx + Math.cos(a) * 8, sy + Math.sin(a) * 8)
+            ctx.lineTo(sx + Math.cos(a) * L, sy + Math.sin(a) * L)
+            ctx.stroke()
+          }
           for (let i = 0; i < 10; i++) {
             const a = i * (TAU / 10) + t * 1.5
             const L = (i % 2 ? 26 : 44) * grow * (1 + Math.sin(t * 18 + i) * 0.3)
@@ -733,6 +860,18 @@ export function ElementalAttackAnimation({
           break
         default: {
           // void/neutral — realidade glitch
+          // horizonte de eventos — núcleo negro absoluto crescendo
+          ctx.globalCompositeOperation = "source-over"
+          const vr = 14 * grow * (1 + Math.sin(t * 22) * 0.08)
+          ctx.beginPath(); ctx.arc(sx, sy, vr, 0, TAU)
+          ctx.fillStyle = "#04060a"; ctx.fill()
+          ctx.globalCompositeOperation = "lighter"
+          ring(ctx, sx, sy, vr + 3, 2.4, "rgba(226,232,240,.95)")
+          // anéis de sucção implodindo em direção ao núcleo
+          for (let i = 0; i < 4; i++) {
+            const fr = 1 - ((t * 1.6 + i / 4) % 1)
+            ring(ctx, sx, sy, vr + 6 + fr * 90, 1.6, `rgba(148,163,184,${(1 - fr) * 0.7 * k})`)
+          }
           ctx.save()
           ctx.translate(sx, sy)
           ctx.rotate(t * 3.2)
@@ -742,6 +881,19 @@ export function ElementalAttackAnimation({
           ctx.rotate(-t * 5.6)
           ctx.strokeStyle = "rgba(203,213,225,.5)"
           ctx.strokeRect(-24 * grow, -24 * grow, 48 * grow, 48 * grow)
+          // terceira moldura triangular girando devagar
+          ctx.rotate(t * 1.8)
+          ctx.strokeStyle = "rgba(226,232,240,.4)"
+          ctx.beginPath()
+          for (let i = 0; i < 3; i++) {
+            const a = i * (TAU / 3) - Math.PI / 2
+            const px = Math.cos(a) * 44 * grow
+            const py = Math.sin(a) * 44 * grow
+            if (i === 0) ctx.moveTo(px, py)
+            else ctx.lineTo(px, py)
+          }
+          ctx.closePath()
+          ctx.stroke()
           ctx.restore()
           for (let i = 0; i < 8; i++) {
             const on = Math.sin(t * 30 + i * 7) > 0
@@ -750,6 +902,13 @@ export function ElementalAttackAnimation({
             const gy = (Math.floor(i / 3) - 1) * 28 * grow
             ctx.fillStyle = "rgba(148,163,184,.85)"
             ctx.fillRect(sx + gx - 3, sy + gy - 3, 6, 6)
+          }
+          // barras glitch horizontais piscando ao redor do núcleo
+          for (let i = 0; i < 3; i++) {
+            if (Math.sin(t * 26 + i * 9) < 0.3) continue
+            const gy = sy - 30 + i * 30 + Math.sin(t * 40 + i) * 6
+            ctx.fillStyle = `rgba(203,213,225,${0.35 * k})`
+            ctx.fillRect(sx - 55 * grow, gy, 110 * grow, 2.5)
           }
         }
       }
@@ -800,23 +959,75 @@ export function ElementalAttackAnimation({
 
       // feixe Haos: laser contínuo da origem
       if (E === "haos") {
+        const pw = 9 + Math.sin(t * 30) * 2.5
         const gr = ctx.createLinearGradient(sx, sy, pos.x, pos.y)
         gr.addColorStop(0, "rgba(253,224,71,0)")
         gr.addColorStop(0.5, "rgba(253,224,71,.5)")
         gr.addColorStop(1, "rgba(255,255,255,.95)")
         ctx.strokeStyle = gr
-        ctx.lineWidth = 9
+        ctx.lineWidth = pw
         ctx.lineCap = "round"
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pos.x, pos.y); ctx.stroke()
         ctx.lineWidth = 3
         ctx.strokeStyle = "rgba(255,255,255,.95)"
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pos.x, pos.y); ctx.stroke()
+        // cintilar ao longo do feixe
+        for (let i = 0; i < 5; i++) {
+          const q = ((t * 1.6 + i / 5) % 1) * p
+          blit(ctx, spC, sx + (pos.x - sx) * (q / Math.max(p, 0.01)), sy + (pos.y - sy) * (q / Math.max(p, 0.01)), 4, 0.8)
+        }
+      }
+
+      // feixe Darkness: corrente de sombra ondulante da origem
+      if (E === "darkness") {
+        for (let s = -1; s <= 1; s += 2) {
+          ctx.beginPath()
+          for (let i = 0; i <= 16; i++) {
+            const q = i / 16
+            const bx = sx + (pos.x - sx) * q
+            const by = sy + (pos.y - sy) * q
+            const off = Math.sin(q * TAU * 2.2 - t * 20) * 10 * s * Math.sin(q * Math.PI)
+            ctx[i === 0 ? "moveTo" : "lineTo"](bx - sinA * off, by + cosA * off)
+          }
+          ctx.strokeStyle = "rgba(124,58,237,.5)"
+          ctx.lineWidth = 3
+          ctx.lineCap = "round"
+          ctx.stroke()
+        }
+      }
+
+      // feixe Void: linha glitch tracejada e segmentada da origem
+      if (E === "void") {
+        ctx.setLineDash([16, 12])
+        ctx.lineDashOffset = -t * 400
+        ctx.strokeStyle = "rgba(148,163,184,.55)"
+        ctx.lineWidth = 2.5
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(pos.x, pos.y); ctx.stroke()
+        ctx.setLineDash([])
+        // fragmentos quadrados residuais ao longo do caminho
+        for (let i = 0; i < 6; i++) {
+          if (Math.sin(t * 28 + i * 5) < 0) continue
+          const q = ((i + 1) / 7) * p
+          const bx = sx + (pos.x - sx) * (q / Math.max(p, 0.01))
+          const by = sy + (pos.y - sy) * (q / Math.max(p, 0.01))
+          const jx = Math.sin(t * 44 + i * 9) * 10
+          ctx.fillStyle = "rgba(203,213,225,.6)"
+          ctx.fillRect(bx + jx - 2.5, by - 2.5, 5, 5)
+        }
       }
 
       // rastro (afterimages)
       for (let i = 0; i < trail.length; i++) {
         const f = i / trail.length
         blit(ctx, spB, trail[i].x, trail[i].y, 4 + f * 17, f * 0.5)
+        // brilho extra colorido no rastro para os 3 elementos aprimorados
+        if (E === "darkness") blit(ctx, spC, trail[i].x, trail[i].y, 2 + f * 8, f * 0.35)
+        else if (E === "haos") blit(ctx, spW, trail[i].x, trail[i].y, 2 + f * 7, f * 0.4)
+        else if (E === "void" && i % 3 === 0) {
+          ctx.fillStyle = `rgba(203,213,225,${f * 0.45})`
+          const s = 3 + f * 4
+          ctx.fillRect(trail[i].x - s / 2, trail[i].y - s / 2, s, s)
+        }
       }
 
       // cabeça do projétil por elemento
@@ -885,6 +1096,39 @@ export function ElementalAttackAnimation({
           break
         }
         case "darkness": {
+          // fitas de sombra serpenteando atrás da lâmina
+          for (let s = -1; s <= 1; s += 2) {
+            ctx.beginPath()
+            for (let i = 0; i <= 12; i++) {
+              const q = i / 12
+              const bx = hx - cosA * q * 84
+              const by = hy - sinA * q * 84
+              const off = Math.sin(q * TAU * 1.4 + t * 16) * 12 * s * (1 - q * 0.3)
+              const px = bx - sinA * off
+              const py = by + cosA * off
+              if (i === 0) ctx.moveTo(px, py)
+              else ctx.lineTo(px, py)
+            }
+            ctx.strokeStyle = "rgba(167,139,250,.6)"
+            ctx.lineWidth = 2.4
+            ctx.lineCap = "round"
+            ctx.stroke()
+          }
+          // lâminas crescentes fantasma (afterimages do corte)
+          for (let i = 1; i <= 2; i++) {
+            const bx = hx - cosA * i * 30
+            const by = hy - sinA * i * 30
+            ctx.save()
+            ctx.translate(bx, by)
+            ctx.rotate(ang)
+            ctx.beginPath()
+            ctx.moveTo(-22, 0)
+            ctx.quadraticCurveTo(0, -13, 18, 0)
+            ctx.quadraticCurveTo(0, 13, -22, 0)
+            ctx.fillStyle = `rgba(124,58,237,${0.38 - i * 0.14})`
+            ctx.fill()
+            ctx.restore()
+          }
           // lâmina crescente
           ctx.save()
           ctx.translate(hx, hy)
@@ -900,16 +1144,106 @@ export function ElementalAttackAnimation({
           ctx.quadraticCurveTo(0, 19, -30, 0)
           ctx.fill()
           ctx.restore()
+          // núcleo de eclipse — centro negro com borda violeta
+          ctx.globalCompositeOperation = "source-over"
+          ctx.beginPath(); ctx.arc(hx, hy, 8 + Math.sin(t * 22) * 1.5, 0, TAU)
+          ctx.fillStyle = "#09000f"; ctx.fill()
+          ctx.globalCompositeOperation = "lighter"
+          ring(ctx, hx, hy, 10 + Math.sin(t * 22) * 1.5, 2, "rgba(167,139,250,.9)")
+          // orbes sombrios orbitando a cabeça
+          for (let i = 0; i < 3; i++) {
+            const a = t * 14 + i * (TAU / 3)
+            blit(ctx, spB, hx + Math.cos(a) * 24, hy + Math.sin(a) * 24, 5.5, 0.85)
+          }
+          // raios violetas crepitando da lâmina
+          bolt(ctx, hx, hy, hx - cosA * 46 - sinA * 20, hy - sinA * 46 + cosA * 20, 5, 9, (Math.floor(t * 24) * 31) | 0, 1.6, "rgba(196,181,253,.75)")
+          bolt(ctx, hx, hy, hx - cosA * 40 + sinA * 24, hy - sinA * 40 - cosA * 24, 5, 9, (Math.floor(t * 24) * 57 + 13) | 0, 1.6, "rgba(167,139,250,.7)")
           blit(ctx, spB, hx, hy, 34, 0.8)
           blit(ctx, spW, hx + 10 * cosA, hy + 10 * sinA, 9, 0.95)
           break
         }
         case "haos": {
+          // cauda de luz — rastro cônico dourado atrás da estrela
+          const tg = ctx.createLinearGradient(hx - cosA * 100, hy - sinA * 100, hx, hy)
+          tg.addColorStop(0, "rgba(253,224,71,0)")
+          tg.addColorStop(0.7, "rgba(254,240,138,.45)")
+          tg.addColorStop(1, "rgba(255,255,255,.9)")
+          ctx.save()
+          ctx.translate(hx, hy)
+          ctx.rotate(ang)
+          ctx.fillStyle = tg
+          ctx.beginPath()
+          ctx.moveTo(-100, 0)
+          ctx.lineTo(-8, -14)
+          ctx.lineTo(-8, 14)
+          ctx.closePath()
+          ctx.fill()
+          ctx.restore()
+          // halo anelar girando ao redor da estrela (elipse inclinada)
+          ctx.save()
+          ctx.translate(hx, hy)
+          ctx.rotate(ang)
+          ctx.scale(0.42, 1)
+          ring(ctx, 0, 0, 32, 2.6, `rgba(253,224,71,${0.75 + Math.sin(t * 12) * 0.2})`)
+          ctx.restore()
+          // sparkle em cruz (4 raios finos girando devagar)
+          for (let i = 0; i < 4; i++) {
+            const a = t * 2.5 + i * (Math.PI / 2)
+            const L = 34 + Math.sin(t * 16 + i) * 8
+            ctx.strokeStyle = "rgba(255,255,255,.85)"
+            ctx.lineWidth = 1.8
+            ctx.beginPath()
+            ctx.moveTo(hx + Math.cos(a) * 10, hy + Math.sin(a) * 10)
+            ctx.lineTo(hx + Math.cos(a) * L, hy + Math.sin(a) * L)
+            ctx.stroke()
+          }
+          // motes de luz orbitando
+          for (let i = 0; i < 4; i++) {
+            const a = -t * 10 + i * (TAU / 4)
+            blit(ctx, spC, hx + Math.cos(a) * 22, hy + Math.sin(a) * 22, 4.5, 0.9)
+          }
           ctx.fillStyle = "rgba(255,255,255,.98)"
           star(ctx, hx, hy, t * 6, 4, 26, 9)
           ctx.fill()
           blit(ctx, spC, hx, hy, 40, 0.95)
           blit(ctx, spW, hx, hy, 18, 1)
+          break
+        }
+        case "void": {
+          // distorção — anéis de sucção convergindo para a cabeça
+          for (let i = 0; i < 3; i++) {
+            const fr = 1 - ((t * 2.2 + i / 3) % 1)
+            ring(ctx, hx, hy, fr * 44 + 8, 1.6, `rgba(148,163,184,${(1 - fr) * 0.7})`)
+          }
+          // molduras quadradas girando (fragmentos de realidade)
+          ctx.save()
+          ctx.translate(hx, hy)
+          ctx.rotate(t * 4.4)
+          ctx.strokeStyle = "rgba(203,213,225,.8)"
+          ctx.lineWidth = 1.8
+          ctx.strokeRect(-20, -20, 40, 40)
+          ctx.rotate(-t * 7.8)
+          ctx.strokeStyle = "rgba(148,163,184,.55)"
+          ctx.strokeRect(-14, -14, 28, 28)
+          ctx.restore()
+          // núcleo de vazio — centro negro absoluto com borda prateada
+          ctx.globalCompositeOperation = "source-over"
+          ctx.beginPath(); ctx.arc(hx, hy, 9 + Math.sin(t * 26) * 1.5, 0, TAU)
+          ctx.fillStyle = "#04060a"; ctx.fill()
+          ctx.globalCompositeOperation = "lighter"
+          ring(ctx, hx, hy, 11 + Math.sin(t * 26) * 1.5, 2, "rgba(226,232,240,.9)")
+          // cubos glitch saltitando ao redor
+          for (let i = 0; i < 5; i++) {
+            const on = Math.sin(t * 34 + i * 7) > 0
+            if (!on) continue
+            const jx = Math.sin(t * 50 + i * 9) * 16
+            const jy = Math.cos(t * 44 + i * 7) * 16
+            ctx.fillStyle = i % 2 ? "rgba(226,232,240,.9)" : "rgba(148,163,184,.75)"
+            const s = 4 + (i % 3) * 2
+            ctx.fillRect(hx + jx - s / 2, hy + jy - s / 2, s, s)
+          }
+          blit(ctx, spB, hx, hy, 32, 0.75)
+          blit(ctx, spW, hx, hy, 10, 0.9)
           break
         }
         case "ventus": {
@@ -1095,6 +1429,112 @@ export function ElementalAttackAnimation({
             ctx.lineCap = "round"
             ctx.stroke()
             ctx.restore()
+          }
+        } else if (E === "darkness") {
+          // domo de eclipse — escuridão engolindo o ponto de impacto
+          const dk = clamp01(k * 1.3)
+          ctx.globalCompositeOperation = "source-over"
+          const domeR = (1 - eoCubic(dk)) * 64 + 10
+          const dg = ctx.createRadialGradient(tx, ty, 0, tx, ty, domeR)
+          dg.addColorStop(0, `rgba(9,0,15,${(1 - dk) * 0.95})`)
+          dg.addColorStop(0.7, `rgba(46,16,101,${(1 - dk) * 0.6})`)
+          dg.addColorStop(1, "rgba(46,16,101,0)")
+          ctx.fillStyle = dg
+          ctx.beginPath(); ctx.arc(tx, ty, domeR, 0, TAU); ctx.fill()
+          ctx.globalCompositeOperation = "lighter"
+          ring(ctx, tx, ty, domeR + 4, 2.5, `rgba(167,139,250,${(1 - dk) * 0.95})`)
+          // relâmpagos violetas rasgando radialmente
+          const seedBase = Math.floor(k * 9)
+          for (let i = 0; i < 6; i++) {
+            const bk = clamp01(k * 1.5 - i * 0.05)
+            if (bk <= 0) continue
+            const a = i * (TAU / 6) + 0.45
+            const L = eoExpo(bk) * 160
+            bolt(ctx, tx, ty, tx + Math.cos(a) * L, ty + Math.sin(a) * L, 6, 13, seedBase * 97 + i * 31, 2.2, `rgba(196,181,253,${(1 - bk) * 0.9})`)
+          }
+          // anel de sombra rasante achatado com wisps girando
+          ctx.save()
+          ctx.translate(tx, ty)
+          ctx.scale(1, 0.38)
+          const drR = eoExpo(k) * 145
+          ring(ctx, 0, 0, drR, 3.5, `rgba(124,58,237,${(1 - k) * 0.85})`)
+          for (let i = 0; i < 9; i++) {
+            const a = i * (TAU / 9) - k * 2.4
+            blit(ctx, spB, Math.cos(a) * drR, Math.sin(a) * drR, 8 * (1 - k * 0.5), (1 - k) * 0.85)
+          }
+          ctx.restore()
+        } else if (E === "haos") {
+          // pilar divino — coluna de luz descendo dos céus
+          const hk = clamp01(k * 1.15)
+          const ph2 = eoCubic(hk) * 230
+          const pw = 34 * (1 - hk * 0.35)
+          const pg = ctx.createLinearGradient(tx, ty, tx, ty - ph2)
+          pg.addColorStop(0, `rgba(255,255,255,${(1 - hk) * 0.95})`)
+          pg.addColorStop(0.45, `rgba(254,240,138,${(1 - hk) * 0.7})`)
+          pg.addColorStop(1, "rgba(253,224,71,0)")
+          ctx.fillStyle = pg
+          ctx.fillRect(tx - pw / 2, ty - ph2, pw, ph2)
+          // flash em cruz sagrado
+          const xk = clamp01(k * 1.6)
+          if (xk < 1) {
+            const XL = eoExpo(xk) * 190
+            ctx.strokeStyle = `rgba(255,255,255,${(1 - xk) * 0.9})`
+            ctx.lineWidth = 5 * (1 - xk) + 1
+            for (const a of [0, Math.PI / 2]) {
+              ctx.beginPath()
+              ctx.moveTo(tx - Math.cos(a) * XL, ty - Math.sin(a) * XL)
+              ctx.lineTo(tx + Math.cos(a) * XL, ty + Math.sin(a) * XL)
+              ctx.stroke()
+            }
+          }
+          // coroa de halos achatados com motes de luz dançando
+          ctx.save()
+          ctx.translate(tx, ty)
+          ctx.scale(1, 0.36)
+          const hR = eoExpo(k) * 150
+          ring(ctx, 0, 0, hR, 4, `rgba(253,224,71,${(1 - k) * 0.9})`)
+          ring(ctx, 0, 0, hR * 0.7, 2, `rgba(255,255,255,${(1 - k) * 0.7})`)
+          for (let i = 0; i < 10; i++) {
+            const a = i * (TAU / 10) + k * 1.8
+            blit(ctx, spC, Math.cos(a) * hR, Math.sin(a) * hR, 7 * (1 - k * 0.5), (1 - k) * 0.9)
+          }
+          ctx.restore()
+        } else if (E === "void") {
+          // colapso gravitacional — anel implodindo em direção ao centro
+          const vk = clamp01(k * 1.3)
+          const impR = (1 - eoCubic(vk)) * 190
+          if (impR > 4) {
+            ring(ctx, tx, ty, impR, 3 + vk * 4, `rgba(203,213,225,${vk * 0.85})`)
+            ring(ctx, tx, ty, impR * 1.25, 1.5, `rgba(148,163,184,${vk * 0.5})`)
+          }
+          // buraco negro momentâneo no epicentro
+          ctx.globalCompositeOperation = "source-over"
+          const bhR = (1 - vk) * 26 + 5
+          ctx.beginPath(); ctx.arc(tx, ty, bhR, 0, TAU)
+          ctx.fillStyle = "#04060a"; ctx.fill()
+          ctx.globalCompositeOperation = "lighter"
+          ring(ctx, tx, ty, bhR + 3, 2, `rgba(226,232,240,${(1 - k) * 0.95})`)
+          // disco de acreção achatado girando
+          ctx.save()
+          ctx.translate(tx, ty)
+          ctx.scale(1, 0.34)
+          const aR = eoExpo(k) * 140
+          ctx.setLineDash([14, 10])
+          ctx.lineDashOffset = k * 320
+          ring(ctx, 0, 0, aR, 3, `rgba(148,163,184,${(1 - k) * 0.85})`)
+          ctx.setLineDash([])
+          for (let i = 0; i < 8; i++) {
+            const a = i * (TAU / 8) + k * 3
+            blit(ctx, spB, Math.cos(a) * aR, Math.sin(a) * aR, 6.5 * (1 - k * 0.5), (1 - k) * 0.8)
+          }
+          ctx.restore()
+          // barras glitch horizontais cortando a área do impacto
+          for (let i = 0; i < 5; i++) {
+            const on = Math.sin(k * 46 + i * 5) > -0.1
+            if (!on) continue
+            const gx = Math.sin(k * 70 + i * 13) * 16
+            ctx.fillStyle = `rgba(226,232,240,${(1 - k) * 0.5})`
+            ctx.fillRect(tx - 100 + gx, ty - 34 + i * 17, 200, 3)
           }
         }
 
