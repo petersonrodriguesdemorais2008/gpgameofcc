@@ -359,6 +359,8 @@ interface GameContextType {
   addFragments: (gain: FragmentCounts) => void
   /** Quantidade de um fragmento específico. */
   getFragmentCount: (id: FragmentId) => number
+  /** Consome fragmentos (ex.: desbloqueio de Runas). Retorna false se faltar algum. */
+  spendFragments: (cost: FragmentCounts) => boolean
   /** Skip Tíquetes: itens que pulam um duelo de Evento. */
   skipTickets: number
   /** Soma tíquetes ao inventário (bônus das missões diárias). */
@@ -2415,6 +2417,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const getFragmentCount = useCallback((id: FragmentId) => fragments[id] ?? 0, [fragments])
 
+  /**
+   * Consome fragmentos do inventário de forma atômica: se faltar QUALQUER item
+   * do custo, nada é debitado e a função retorna false.
+   */
+  const spendFragments = useCallback((cost: FragmentCounts) => {
+    const clean = normalizeFragmentCounts(cost)
+    const entries = Object.entries(clean) as [FragmentId, number][]
+    if (entries.length === 0) return true
+    for (const [id, amount] of entries) {
+      if ((fragments[id] ?? 0) < amount) return false
+    }
+    setFragments((prev) => {
+      const next: FragmentCounts = { ...prev }
+      for (const [id, amount] of entries) {
+        next[id] = Math.max(0, (next[id] ?? 0) - amount)
+      }
+      return next
+    })
+    return true
+  }, [fragments])
+
   // ── Baús ──────────────────────────────────────────────────────────────────
   const addChests = useCallback((gain: ChestCounts) => {
     const clean = normalizeChestCounts(gain)
@@ -3681,6 +3704,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         fragments,
         addFragments,
         getFragmentCount,
+        spendFragments,
         chests,
         addChests,
         getChestCount,
