@@ -16,6 +16,8 @@ import {
   elementToChestId,
 } from "@/lib/masters-data"
 import { CHESTS } from "@/lib/chests"
+import { getRuneProgress, loadUnlockedRunes } from "@/lib/runes"
+import { RunesPanel } from "./runes-panel"
 import { getSfxVolume, getMenuMusicMuted } from "./main-menu"
 
 interface MasterScreenProps {
@@ -267,13 +269,23 @@ function MasterTile({ master, isSelected, onClick }: {
 }
 
 // ─── Detail / progression view ────────────────────────────────────────────────
-function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }: {
+function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll, onOpenRunes }: {
   master:        Master
   onActivate:    () => void
   onClose:       () => void
   onClaimReward: (level: number) => void
   onClaimAll:    () => void
+  onOpenRunes:   () => void
 }) {
+  // Progresso da Rota de Runas — lido do armazenamento a cada abertura do painel
+  const [unlockedRunes, setUnlockedRunes] = useState<string[]>([])
+  useEffect(() => {
+    const sync = () => setUnlockedRunes(loadUnlockedRunes()[master.id] ?? [])
+    sync()
+    window.addEventListener("gpgame_runes_changed", sync)
+    return () => window.removeEventListener("gpgame_runes_changed", sync)
+  }, [master.id])
+  const runeProgress = getRuneProgress(master, unlockedRunes)
   const claimable = master.rewards.filter(r => r.level <= master.currentLevel && !r.claimed)
   const nextRef = useRef<HTMLDivElement | null>(null)
 
@@ -394,6 +406,25 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll }
               {claimedCount}/{master.rewards.length} recompensas recebidas
             </div>
           </div>
+
+          {/* Runas — mecânica paralela: gasta Gear Coins + fragmentos do elemento */}
+          <button onClick={onOpenRunes} className="gp-cta" style={{
+            display:"flex", alignItems:"center", gap:7,
+            background:`linear-gradient(135deg,${master.accentColor}22,${master.accentColor}44)`,
+            border:`1px solid ${master.accentColor}55`,
+            clipPath:"polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)",
+            padding:"9px 15px", cursor:"pointer", color:"#f4f1ea",
+            fontWeight:900, fontSize:11.5, letterSpacing:"0.05em", textTransform:"uppercase",
+            boxShadow:`0 3px 14px ${master.accentColor}2e`, flexShrink:0,
+          }}>
+            <Sparkles size={13}/>
+            Runas
+            <span style={{
+              fontSize:10, fontWeight:800, color: master.accentColor,
+              background:"rgba(0,0,0,0.32)", padding:"2px 6px",
+              fontVariantNumeric:"tabular-nums",
+            }}>{runeProgress.done}/{runeProgress.total}</span>
+          </button>
 
           {claimable.length > 0 && (
             <button onClick={onClaimAll} className="gp-cta" style={{
@@ -1052,6 +1083,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
   const [masters,      setMasters]      = useState<Master[]>([])
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [showDetail,   setShowDetail]   = useState(false)
+  const [runesMaster,  setRunesMaster]  = useState<Master | null>(null)
   const [levelUpData,  setLevelUpData]  = useState<{ master: Master; newLevel: number } | null>(null)
   const [toast,        setToast]        = useState<string | null>(null)
   const [packToOpen,   setPackToOpen]   = useState<string | null>(null)
@@ -1347,6 +1379,15 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           onClose={() => setShowDetail(false)}
           onClaimReward={level => handleClaimReward(selectedMaster.id, level)}
           onClaimAll={() => handleClaimAll(selectedMaster.id)}
+          onOpenRunes={() => setRunesMaster(selectedMaster)}
+        />
+      )}
+
+      {/* Rota de Runas do Mestre */}
+      {runesMaster && (
+        <RunesPanel
+          master={runesMaster}
+          onClose={() => setRunesMaster(null)}
         />
       )}
 
@@ -1625,9 +1666,19 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
                       animation:"gpPulseSoft 2s ease-in-out infinite",
                     }}>{claimableCount}</span>
                   )}
-                </button>
-                {!selectedMaster.isActive && (
-                  <button onClick={() => handleActivate(selectedMaster.id)} className="gp-cta" style={{
+          </button>
+          <button onClick={() => setRunesMaster(selectedMaster)} className="gp-cta" style={{
+            display:"flex", alignItems:"center", gap:8,
+            background:"rgba(255,255,255,0.04)",
+            border:`1px solid ${selectedMaster.accentColor}44`,
+            clipPath:"polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%)",
+            padding:"12px 22px", cursor:"pointer", color:"#e7e4dd",
+            fontWeight:900, fontSize:12.5, letterSpacing:"0.06em", textTransform:"uppercase",
+          }}>
+            <Sparkles size={14} color={selectedMaster.accentColor}/> Rota de Runas
+          </button>
+          {!selectedMaster.isActive && (
+            <button onClick={() => handleActivate(selectedMaster.id)} className="gp-cta" style={{
                     display:"flex", alignItems:"center", gap:7,
                     background:"rgba(255,255,255,0.04)",
                     border:"1px solid rgba(255,255,255,0.14)",
