@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Inter, Cinzel } from "next/font/google"
+import { Inter, Cinzel, Silkscreen } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
@@ -15,6 +15,13 @@ const cinzel = Cinzel({
   display: "swap",
   variable: "--font-serif",
   weight: ["500", "600", "700", "800"],
+})
+
+const silkscreen = Silkscreen({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-pixel",
+  weight: ["400", "700"],
 })
 
 export const metadata: Metadata = {
@@ -54,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${cinzel.variable} bg-background`}>
+    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${cinzel.variable} ${silkscreen.variable} bg-background`}>
       <body className="font-sans antialiased bg-background text-foreground" suppressHydrationWarning>
         {children}
         <Analytics />
