@@ -32,9 +32,9 @@ const BRANCH_ICON: Record<RuneBranchId, typeof Coins> = {
 
 /** Cor de identidade de cada ramo — dá personalidade própria sem fugir da paleta. */
 const BRANCH_TINT: Record<RuneBranchId, string> = {
-  fortuna: "#f2a936",
-  guerra:  "#f0705a",
-  dominio: "#a78bfa",
+  fortuna: "#ffc531",
+  guerra:  "#ff6a4d",
+  dominio: "#b78bff",
 }
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"] as const
@@ -71,8 +71,9 @@ function ResourceChip({ icon, label, value, color }: {
   return (
     <div title={label} style={{
       display: "flex", alignItems: "center", gap: 7,
-      background: "#101016", border: "2px solid #2c2c36",
-      borderBottomColor: "#0a0a0e", borderRightColor: "#0a0a0e",
+      background: "rgba(6,22,58,0.85)", border: "2px solid #2f5da8",
+      borderRadius: 5,
+      boxShadow: "inset 0 0 8px rgba(90,170,255,0.18)",
       padding: "4px 10px 4px 6px",
     }}>
       <img
@@ -101,24 +102,26 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 620, cursor: "pointer",
-        background: "rgba(4,4,8,0.92)",
+        background: "radial-gradient(ellipse at 50% 40%, rgba(10,42,107,0.94) 0%, rgba(3,10,32,0.96) 70%)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
         animation: "gpFadeIn 0.22s ease",
       }}>
       <div style={{
         position: "relative", textAlign: "center", maxWidth: 440, width: "100%",
-        background: "#0d0d13",
-        border: "2px solid #3c3c48",
-        boxShadow: "4px 4px 0 rgba(0,0,0,0.55), inset 0 0 0 1px #17171f",
-        borderRadius: 6,
+        background: "linear-gradient(180deg, #0a2a6b 0%, #071e4e 100%)",
+        border: "2px solid #4d92e8",
+        boxShadow: "0 12px 36px rgba(2,8,28,0.7), inset 0 1px 0 rgba(150,210,255,0.4), 0 0 40px rgba(70,150,255,0.3)",
+        borderRadius: 12,
         padding: "26px 22px 20px",
         animation: "gpLevelBounce 0.5s cubic-bezier(0.34,1.56,0.64,1)",
       }}>
         {/* Badge no topo */}
         <div style={{
           position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)",
-          background: "#c0512c", color: "#ffe9d6",
-          border: "2px solid #06060a",
+          background: "linear-gradient(180deg, #2a9df0, #0b78d0)", color: "#ffffff",
+          border: "2px solid #ffffff",
+          borderRadius: 6,
+          boxShadow: "0 0 14px rgba(70,170,255,0.7)",
           fontFamily: PIXEL, fontSize: 10, letterSpacing: "0.08em",
           padding: "3px 12px", whiteSpace: "nowrap",
         }}>RUNA DESBLOQUEADA</div>
@@ -126,9 +129,9 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
         <div style={{
           margin: "8px auto 16px", width: 84, height: 84,
           borderRadius: "50%",
-          background: `radial-gradient(circle at 36% 30%, #fff4cf 0%, #fff4cf 15%, ${master.accentColor} 15%, ${master.accentColor} 48%, rgba(0,0,0,0.6) 48%, rgba(0,0,0,0.6) 100%)`,
-          border: "2px solid #06060a",
-          boxShadow: `0 0 0 2px ${master.accentColor}55, 0 0 22px ${master.accentColor}66`,
+          background: `radial-gradient(circle at 34% 28%, #ffffff 0%, ${master.accentColor} 40%, ${master.accentColor} 58%, rgba(6,20,56,0.85) 100%)`,
+          border: "2px solid #ffffff",
+          boxShadow: `0 0 0 3px ${master.accentColor}66, 0 0 30px ${master.accentColor}aa`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <img
@@ -140,9 +143,10 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
         </div>
 
         <div style={{
-          fontFamily: PIXEL, fontSize: 17, color: "#f4f2ea", lineHeight: 1.3,
+          fontFamily: PIXEL, fontSize: 17, color: "#ffffff", lineHeight: 1.3,
+          textShadow: "0 0 14px rgba(90,180,255,0.7)",
         }}>{rune.name}</div>
-        <p style={{ fontFamily: MONO, color: "#8b93a1", fontSize: 12, margin: "10px 0 18px", lineHeight: 1.6 }}>
+        <p style={{ fontFamily: MONO, color: "#9fc6f5", fontSize: 12, margin: "10px 0 18px", lineHeight: 1.6 }}>
           {rune.description}
         </p>
 
@@ -152,7 +156,8 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
             return (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: 11,
-                background: "#14141b", border: "2px solid #26262f",
+                background: "rgba(5,18,50,0.85)", border: "2px solid #2f5da8",
+                borderRadius: 7,
                 padding: "9px 13px",
                 animation: `gpRiseIn 0.35s ease ${0.08 + i * 0.08}s both`,
               }}>
@@ -169,7 +174,7 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
         </div>
 
         <div style={{
-          fontFamily: PIXEL, color: "#565d6b", fontSize: 9.5, marginTop: 18,
+          fontFamily: PIXEL, color: "#6f9fd8", fontSize: 9.5, marginTop: 18,
           animation: "gpRuneBlink 1.2s steps(2, jump-none) infinite",
         }}>
           ▶ TOQUE PARA CONTINUAR
@@ -303,19 +308,18 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const slot   = trackW > 0 ? trackW / RUNES_N : 0
   // Altura de cada seção de ramo: (altura total − gaps) / 3
   const perBranchH = tracksSize.h > 0 ? (tracksSize.h - 2 * 10) / 3 : 0
-  const sizeFromW  = slot > 0 ? slot - 10 : 48
-  // trilha ocupa: zig(0.22s) + orbe(s) + pedestal(0.42s) + selo/tier(16)
-  const sizeFromH  = perBranchH > 0 ? (perBranchH - 20) / 1.68 : 48
+  const sizeFromW  = slot > 0 ? slot - 12 : 48
+  // trilha ocupa: zig(0.22s) + orbe(s) + selo/tier(18)
+  const sizeFromH  = perBranchH > 0 ? (perBranchH - 26) / 1.26 : 48
   const NODE = Math.max(30, Math.min(62, Math.floor(Math.min(sizeFromW, sizeFromH))))
-  const PED  = Math.round(NODE * 0.42)
   const ZIG  = Math.round(NODE * 0.22)
-  const trackH = ZIG + NODE + PED + 18
+  const trackH = ZIG + NODE + 18
   const ready  = tracksSize.w > 0 && tracksSize.h > 0
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 300,
-      background: "#0e0e13",
+      background: "#06122e",
       display: "flex", flexDirection: "column", overflow: "hidden",
       animation: "gpFadeIn 0.25s ease",
     }}>
@@ -330,77 +334,97 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         }
         @keyframes gpRunePathFlow {
           0%   { background-position: 0 0; }
-          100% { background-position: 24px 0; }
+          100% { background-position: 28px 0; }
         }
         @keyframes gpRuneFloat {
           0%, 100% { transform: translateY(0); }
           50%      { transform: translateY(-5px); }
         }
-        @keyframes gpGlyphDrift {
-          0%   { transform: translateY(12px) rotate(-4deg); opacity: 0; }
-          12%  { opacity: var(--glyph-op, 0.2); }
-          88%  { opacity: var(--glyph-op, 0.2); }
-          100% { transform: translateY(-46px) rotate(5deg); opacity: 0; }
+        @keyframes gpRuneFlarePulse {
+          0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.94); }
+          50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.05); }
+        }
+        @keyframes gpRuneSelRing {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%      { opacity: 0.55; transform: scale(1.08); }
+        }
+        @keyframes gpRuneSelSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes gpSparkleTwinkle {
+          0%, 100% { opacity: 0.1; transform: scale(0.7); }
+          50%      { opacity: var(--spark-op, 0.8); transform: scale(1.15); }
         }
         @keyframes gpAuraBreathe {
           0%, 100% { opacity: 0.5; transform: scale(1); }
           50%      { opacity: 1; transform: scale(1.06); }
         }
-        .gp-rune-node:hover { filter: brightness(1.12); }
-        .gp-rune-node:focus-visible { outline: 2px solid #f7f4ee; outline-offset: 6px; }
+        .gp-rune-node:hover { filter: brightness(1.15); }
+        .gp-rune-node:focus-visible { outline: 2px solid #ffffff; outline-offset: 6px; border-radius: 50%; }
         .gp-rune-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b3f2d !important; }
         @media (prefers-reduced-motion: reduce) {
-          @keyframes gpRuneGlowPulse { from { opacity: 0.8 } to { opacity: 0.8 } }
-          @keyframes gpRuneBlink     { from { opacity: 1 }   to { opacity: 1 } }
-          @keyframes gpRunePathFlow  { from { background-position: 0 0 } to { background-position: 0 0 } }
-          @keyframes gpRuneFloat     { from { transform: none } to { transform: none } }
-          @keyframes gpGlyphDrift    { from { opacity: 0.15; transform: none } to { opacity: 0.15; transform: none } }
-          @keyframes gpAuraBreathe   { from { opacity: 0.7; transform: none } to { opacity: 0.7; transform: none } }
+          @keyframes gpRuneGlowPulse   { from { opacity: 0.8 } to { opacity: 0.8 } }
+          @keyframes gpRuneBlink       { from { opacity: 1 }   to { opacity: 1 } }
+          @keyframes gpRunePathFlow    { from { background-position: 0 0 } to { background-position: 0 0 } }
+          @keyframes gpRuneFloat       { from { transform: none } to { transform: none } }
+          @keyframes gpRuneFlarePulse  { from { opacity: 0.85; transform: translate(-50%, -50%) } to { opacity: 0.85; transform: translate(-50%, -50%) } }
+          @keyframes gpRuneSelRing     { from { opacity: 1; transform: none } to { opacity: 1; transform: none } }
+          @keyframes gpRuneSelSpin     { from { transform: none } to { transform: none } }
+          @keyframes gpSparkleTwinkle  { from { opacity: 0.4; transform: none } to { opacity: 0.4; transform: none } }
+          @keyframes gpAuraBreathe     { from { opacity: 0.7; transform: none } to { opacity: 0.7; transform: none } }
         }
       `}</style>
 
-      {/* Fundo: tabuleiro isométrico + aura do mestre + glifos rúnicos flutuando */}
+      {/* Fundo: cosmos azul com bola de energia + aura do mestre + fagulhas de luz */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-        <div style={{
-          position: "absolute", left: "-60%", top: "-60%", width: "220%", height: "220%",
-          transform: "rotate(45deg)",
-          background: "repeating-conic-gradient(#1b1b23 0% 25%, #111118 0% 50%) 0 0 / 72px 72px",
-          opacity: 0.95,
-        }}/>
+        <img
+          src="/images/runes-board-bg.png"
+          alt=""
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%",
+            objectFit: "cover",
+          }}
+        />
         {/* Névoa colorida do mestre subindo do horizonte */}
         <div style={{
           position: "absolute", inset: 0,
-          background: `radial-gradient(ellipse 90% 55% at 50% 0%, ${master.accentColor}22 0%, transparent 60%)`,
+          background: `radial-gradient(ellipse 90% 55% at 50% 0%, ${master.accentColor}30 0%, transparent 60%)`,
+          mixBlendMode: "screen",
         }}/>
-        {/* Aura viva no coração do salão */}
+        {/* Aura viva no coração do tabuleiro */}
         <div style={{
           position: "absolute", left: "50%", top: "46%",
           width: "72%", height: "58%",
           transform: "translate(-50%, -50%)",
-          background: `radial-gradient(ellipse, ${master.accentColor}18 0%, transparent 65%)`,
+          background: `radial-gradient(ellipse, ${master.accentColor}22 0%, transparent 65%)`,
           animation: "gpAuraBreathe 5.5s ease-in-out infinite",
+          mixBlendMode: "screen",
         }}/>
-        {/* Escurece as bordas para o tabuleiro não competir com a UI */}
+        {/* Vinheta azul profunda para a UI respirar nas bordas */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 85% 75% at 50% 42%, transparent 25%, rgba(5,5,9,0.88) 100%)",
+          background: "radial-gradient(ellipse 85% 75% at 50% 42%, transparent 30%, rgba(3,10,32,0.82) 100%)",
         }}/>
-        {/* Glifos rúnicos flutuando como brasas */}
-        {GLYPHS.map((g, i) => (
-          <span key={i} style={{
-            position: "absolute",
-            left: `${6 + (i * 12.3) % 90}%`,
-            top: `${14 + (i * 23) % 68}%`,
-            fontFamily: MONO,
-            fontSize: 15 + (i % 3) * 7,
-            color: i % 2 === 0 ? master.accentColor : BRANCH_TINT[(["fortuna","guerra","dominio"] as const)[i % 3]],
-            opacity: 0,
-            // @ts-expect-error — custom property
-            "--glyph-op": 0.12 + (i % 3) * 0.05,
-            animation: `gpGlyphDrift ${7 + (i % 4) * 2.4}s linear ${i * 1.15}s infinite`,
-            textShadow: `0 0 12px ${master.accentColor}66`,
-          }}>{g}</span>
-        ))}
+        {/* Fagulhas de luz cintilando (estrelas de energia) */}
+        {GLYPHS.map((_, i) => {
+          const s = 3 + (i % 3) * 2
+          return (
+            <span key={i} style={{
+              position: "absolute",
+              left: `${6 + (i * 12.3) % 90}%`,
+              top: `${10 + (i * 23) % 74}%`,
+              width: s, height: s,
+              background: "#ffffff",
+              borderRadius: "50%",
+              boxShadow: `0 0 ${6 + s}px ${i % 2 === 0 ? "#9fd8ff" : "#ffffff"}`,
+              opacity: 0,
+              // @ts-expect-error — custom property
+              "--spark-op": 0.5 + (i % 3) * 0.2,
+              animation: `gpSparkleTwinkle ${2.2 + (i % 4) * 1.1}s ease-in-out ${i * 0.6}s infinite`,
+            }}/>
+          )
+        })}
       </div>
 
       {toast && (
@@ -427,23 +451,24 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
       {/* ── Cabeçalho ── */}
       <header style={{
         display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-        padding: "8px 16px", borderBottom: `2px solid ${master.accentColor}33`,
-        background: `linear-gradient(180deg, #0b0b10 0%, #0b0b10 70%, ${master.accentColor}0a 100%)`,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.45)",
+        padding: "8px 16px", borderBottom: "2px solid #3a76d8",
+        background: "linear-gradient(180deg, #0a2a6b 0%, #082252 60%, #061a42 100%)",
+        boxShadow: "0 4px 18px rgba(2,8,28,0.6), inset 0 -1px 0 rgba(120,190,255,0.35)",
         position: "relative", zIndex: 5, flexShrink: 0,
       }}>
         <button onClick={onClose} aria-label="Voltar" style={{
-          background: "#16161d", border: "2px solid #2e2e38",
-          borderBottomColor: "#0a0a0e", borderRightColor: "#0a0a0e",
-          width: 34, height: 34, cursor: "pointer", color: "#9aa1ad",
+          background: "rgba(8,26,64,0.9)", border: "2px solid #2f5da8",
+          borderRadius: 5,
+          width: 34, height: 34, cursor: "pointer", color: "#bfe0ff",
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
         }}><ArrowLeft size={16}/></button>
 
         <div style={{
           width: 36, height: 36, overflow: "hidden", flexShrink: 0,
           border: `2px solid ${master.accentColor}`,
-          background: "#101016",
-          boxShadow: `0 0 12px ${master.accentColor}55`,
+          borderRadius: 5,
+          background: "#081a40",
+          boxShadow: `0 0 14px ${master.accentColor}77`,
         }}>
           <img src={master.iconPath || "/placeholder.svg"} alt={master.name}
             style={{ width: "100%", height: "100%", objectFit: "cover", imageRendering: "pixelated" }}
@@ -452,12 +477,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
 
         <div style={{ minWidth: 0 }}>
           <h1 style={{
-            fontFamily: PIXEL, fontSize: 12.5, color: "#f5f2ec",
+            fontFamily: PIXEL, fontSize: 12.5, color: "#ffffff",
             margin: 0, whiteSpace: "nowrap", letterSpacing: "0.02em",
-            textShadow: `0 0 14px ${master.accentColor}66`,
+            textShadow: "0 0 14px #64baffcc, 0 2px 0 rgba(2,10,30,0.8)",
           }}>ROTA DE RUNAS · {master.name.toUpperCase()}</h1>
           <div style={{
-            fontFamily: MONO, fontSize: 10, color: "#6d7482", marginTop: 2,
+            fontFamily: MONO, fontSize: 10, color: "#8fc3ff", marginTop: 2,
           }}>
             {progress.done}/{progress.total} runas — Mestre nível {master.currentLevel}
           </div>
@@ -469,25 +494,26 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 130 }}>
           <div style={{
             display: "flex", gap: 2, padding: 2, flex: 1, minWidth: 90,
-            background: "#08080d", border: "2px solid #2c2c36",
-            borderBottomColor: "#3a3a46", borderRightColor: "#3a3a46",
-            boxShadow: progress.done > 0 ? `0 0 10px ${master.accentColor}22` : "none",
+            background: "rgba(4,16,44,0.9)", border: "2px solid #2f5da8",
+            borderRadius: 4,
+            boxShadow: progress.done > 0 ? "0 0 12px rgba(90,190,255,0.35)" : "none",
           }}>
             {Array.from({ length: 10 }, (_, i) => {
               const filled = progress.pct >= (i + 1) * 10 - 0.01
               return (
                 <div key={i} style={{
-                  flex: 1, height: 8,
+                  flex: 1, height: 8, borderRadius: 2,
                   background: filled
-                    ? `linear-gradient(180deg, #ffe9b0 0%, #ffe9b0 30%, ${master.accentColor} 30%, ${master.accentColor} 100%)`
-                    : "linear-gradient(180deg, #16161d 0%, #1e1e26 100%)",
-                  boxShadow: filled ? `0 0 5px ${master.accentColor}66` : "none",
+                    ? "linear-gradient(180deg, #dff4ff 0%, #dff4ff 30%, #38b6ff 30%, #38b6ff 100%)"
+                    : "linear-gradient(180deg, #0a1f4c 0%, #10295e 100%)",
+                  boxShadow: filled ? "0 0 6px rgba(90,190,255,0.8)" : "none",
                 }}/>
               )
             })}
           </div>
           <span style={{
-            fontFamily: PIXEL, fontSize: 10, color: master.accentColor,
+            fontFamily: PIXEL, fontSize: 10, color: "#5fc4ff",
+            textShadow: "0 0 8px rgba(90,190,255,0.6)",
             fontVariantNumeric: "tabular-nums", flexShrink: 0,
           }}>{Math.round(progress.pct)}%</span>
         </div>
@@ -543,34 +569,37 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 width: labelW, flexShrink: 0,
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", gap: 4,
-                background: `linear-gradient(135deg, ${tint}14 0%, rgba(12,12,18,0.72) 65%)`,
-                border: "2px solid #23232c",
-                borderLeft: `3px solid ${tint}aa`,
-                borderRadius: 6,
+                background: `linear-gradient(135deg, ${tint}1e 0%, rgba(5,20,56,0.82) 65%)`,
+                border: "2px solid #2f5da8",
+                borderLeft: `3px solid ${tint}`,
+                borderRadius: 8,
                 padding: "6px 4px",
-                boxShadow: `inset 0 0 22px ${tint}0e, 0 4px 12px rgba(0,0,0,0.35)`,
+                boxShadow: `inset 0 0 24px ${tint}18, 0 4px 14px rgba(2,8,28,0.5), inset 0 1px 0 rgba(150,210,255,0.25)`,
+                backdropFilter: "blur(2px)",
               }}>
                 <div style={{
                   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: `linear-gradient(180deg, ${tint}22, #14141b)`,
-                  border: `2px solid ${tint}88`,
-                  boxShadow: `0 0 10px ${tint}44`,
+                  background: `radial-gradient(circle at 35% 30%, #ffffff33, ${tint}33 60%, rgba(5,18,50,0.9))`,
+                  border: `2px solid ${tint}`,
+                  borderRadius: "50%",
+                  boxShadow: `0 0 12px ${tint}88`,
                 }}>
-                  <BranchIcon size={13} color={tint}/>
+                  <BranchIcon size={13} color="#ffffff"/>
                 </div>
                 <div style={{
-                  fontFamily: PIXEL, fontSize: 10, color: "#f3f0ea",
-                  textShadow: `0 0 12px ${tint}66`, textAlign: "center", lineHeight: 1.25,
+                  fontFamily: PIXEL, fontSize: 10, color: "#ffffff",
+                  textShadow: `0 0 12px ${tint}, 0 2px 0 rgba(2,10,30,0.8)`, textAlign: "center", lineHeight: 1.25,
                 }}>{branch.name.toUpperCase()}</div>
                 <div style={{
-                  fontFamily: MONO, fontSize: 8.5, color: "#7b8290",
+                  fontFamily: MONO, fontSize: 8.5, color: "#9fc6f5",
                   textAlign: "center", lineHeight: 1.3, display: labelW > 100 ? "block" : "none",
                 }}>{branch.subtitle}</div>
                 <span style={{
-                  fontFamily: PIXEL, fontSize: 9, color: branchComplete ? "#4ecf9d" : tint,
+                  fontFamily: PIXEL, fontSize: 9, color: branchComplete ? "#5dff9c" : "#ffffff",
                   fontVariantNumeric: "tabular-nums",
                   display: "inline-flex", alignItems: "center", gap: 4,
-                  background: "#0d0d13", border: `2px solid ${branchComplete ? "#1d7d5c" : `${tint}44`}`,
+                  background: "rgba(4,16,44,0.9)", border: `2px solid ${branchComplete ? "#2ea86c" : `${tint}77`}`,
+                  borderRadius: 4,
                   padding: "1px 6px",
                 }}>
                   {branchComplete && <Check size={10} strokeWidth={3}/>}
@@ -604,16 +633,22 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                           left: x1,
                           top: y1,
                           width: len,
-                          height: 7,
-                          marginTop: -3.5,
+                          height: lit ? 6 : 4,
+                          marginTop: lit ? -3 : -2,
                           transform: `rotate(${ang}deg)`,
                           transformOrigin: "0 50%",
+                          borderRadius: 3,
                           background: lit
-                            ? `repeating-linear-gradient(90deg, ${tint} 0 9px, transparent 9px 16px)`
-                            : "repeating-linear-gradient(90deg, #3b3b46 0 9px, transparent 9px 16px)",
-                          animation: lit && next ? "gpRunePathFlow 1.4s linear infinite" : "none",
-                          filter: lit ? `drop-shadow(0 0 6px ${tint}66)` : "none",
-                          opacity: lit ? 1 : 0.65,
+                            ? "linear-gradient(180deg, #fffef0 0%, #fff6c8 45%, #ffe98a 100%)"
+                            : "linear-gradient(180deg, rgba(120,165,230,0.5), rgba(70,110,180,0.4))",
+                          backgroundImage: lit && next
+                            ? "repeating-linear-gradient(90deg, #fffef0 0 14px, #ffe98a 14px 28px)"
+                            : undefined,
+                          animation: lit && next ? "gpRunePathFlow 1.1s linear infinite" : "none",
+                          boxShadow: lit
+                            ? "0 0 10px rgba(255,240,170,0.85), 0 0 22px rgba(255,235,150,0.4)"
+                            : "0 0 6px rgba(90,150,230,0.35)",
+                          opacity: lit ? 1 : 0.8,
                         }}
                       />
                     )
@@ -641,7 +676,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       >
                         <RuneNode
                           size={NODE}
-                          tint={isDone ? "#4ecf9d" : tint}
+                          tint={isDone ? "#3fe08e" : tint}
                           tintStrength={isLocked ? 0.4 : 1}
                           selected={isSelected}
                           dim={isLocked}
@@ -655,7 +690,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                             style={{
                               width: iconSize, height: iconSize, objectFit: "contain",
                               imageRendering: "pixelated",
-                              filter: isLocked ? "grayscale(1) brightness(0.8)" : "drop-shadow(0 2px 0 rgba(0,0,0,0.5))",
+                              filter: isLocked ? "grayscale(1) brightness(0.75)" : "drop-shadow(0 2px 2px rgba(0,0,0,0.5))",
                             }}
                             onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                           />
@@ -665,23 +700,26 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         {(isDone || isLocked) && (
                           <div aria-hidden="true" style={{
                             position: "absolute", right: -3, top: NODE - sealSize,
-                            width: sealSize, height: sealSize,
+                            width: sealSize, height: sealSize, borderRadius: "50%",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            background: isDone ? "#166b50" : "#16161d",
-                            border: "2px solid #06060a",
+                            background: isDone ? "#12915f" : "#0a1c44",
+                            border: isDone ? "2px solid #baffdd" : "2px solid #3a5d9e",
+                            boxShadow: isDone ? "0 0 8px rgba(93,255,156,0.7)" : "0 2px 4px rgba(0,0,0,0.5)",
                           }}>
                             {isDone
-                              ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#d8fff0"/>
-                              : <Lock size={Math.round(sealSize * 0.5)} color="#6d7482"/>}
+                              ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#eafff4"/>
+                              : <Lock size={Math.round(sealSize * 0.5)} color="#8fb2e5"/>}
                           </div>
                         )}
 
-                        {/* Tier em algarismo romano sob o pedestal */}
+                        {/* Tier em algarismo romano sob o orbe */}
                         <div style={{
-                          position: "absolute", top: NODE + PED + 2, left: "50%", transform: "translateX(-50%)",
+                          position: "absolute", top: NODE + 4, left: "50%", transform: "translateX(-50%)",
                           fontFamily: PIXEL, fontSize: Math.max(7.5, NODE * 0.16),
-                          color: isSelected ? tint : isLocked ? "#5b6270" : "#9aa1ad",
-                          textShadow: isSelected ? `0 0 8px ${tint}88` : "0 2px 0 rgba(0,0,0,0.7)",
+                          color: isSelected ? "#ffffff" : isLocked ? "#6d8ec2" : "#d8ecff",
+                          textShadow: isSelected
+                            ? `0 0 10px ${tint}, 0 2px 0 rgba(2,10,30,0.85)`
+                            : "0 2px 0 rgba(2,10,30,0.85), 0 0 6px rgba(60,120,220,0.5)",
                           whiteSpace: "nowrap",
                         }}>
                           {ROMAN[rune.tier - 1] ?? rune.tier}
@@ -701,10 +739,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         const tint  = BRANCH_TINT[selected.branchId]
         const done  = selectedInfo.status === "unlocked"
         const avail = selectedInfo.status === "available"
-        const stateColor = done ? "#4ecf9d" : avail ? tint : "#7b8290"
+        const stateColor = done ? "#18b573" : avail ? tint : "#7d9cc9"
         const stateLabel = done ? "GRAVADA" : avail ? "DISPONÍVEL" : "BLOQUEADA"
-        const badgeBg    = done ? "#1d7d5c" : avail ? "#c0512c" : "#33333d"
-        const badgeFg    = done ? "#d8fff0" : avail ? "#ffe9d6" : "#9aa1ad"
+        const badgeBg    = done ? "#12915f" : avail ? "#0b78d0" : "#41598a"
+        const badgeFg    = "#ffffff"
         const selBranch  = branches.find(b => b.id === selected.branchId)
         const branchName = selBranch?.name ?? ""
         const branchSize = selBranch?.runes.length ?? 10
@@ -713,15 +751,15 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           <div style={{
             position: "relative", zIndex: 6, flexShrink: 0,
             padding: "12px 14px 12px",
-            background: "linear-gradient(0deg, rgba(8,8,13,0.97) 70%, rgba(8,8,13,0))",
+            background: "linear-gradient(0deg, rgba(3,12,36,0.9) 70%, rgba(3,12,36,0))",
           }}>
             <div style={{
               position: "relative", maxWidth: 980, margin: "0 auto",
-              background: "rgba(11,11,17,0.97)",
-              border: `2px solid ${done || avail ? `${tint}55` : "#34343f"}`,
-              borderLeft: `4px solid ${stateColor}`,
-              boxShadow: `4px 4px 0 rgba(0,0,0,0.5), inset 0 0 0 1px #17171f${avail ? `, 0 0 24px ${tint}22` : ""}`,
-              borderRadius: 6,
+              background: "linear-gradient(180deg, #f4fcff 0%, #e6f5fd 100%)",
+              border: "2px solid #9fdcf2",
+              borderLeft: `5px solid ${stateColor}`,
+              boxShadow: `0 8px 24px rgba(2,10,32,0.55), inset 0 1px 0 #ffffff${avail ? `, 0 0 26px ${tint}44` : ""}`,
+              borderRadius: 10,
               padding: "14px 14px 12px",
             }}>
               {/* Badge de estado sobre a borda */}
@@ -729,7 +767,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 position: "absolute", top: -12, left: 12,
                 display: "inline-flex", alignItems: "center", gap: 6,
                 background: badgeBg, color: badgeFg,
-                border: "2px solid #06060a",
+                border: "2px solid #ffffff",
+                borderRadius: 5,
+                boxShadow: "0 2px 6px rgba(2,10,32,0.4)",
                 padding: "2px 10px",
                 fontFamily: PIXEL, fontSize: 10, letterSpacing: "0.06em",
               }}>
@@ -744,10 +784,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     width: 52, height: 52, borderRadius: "50%", position: "relative",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: done || avail
-                      ? `radial-gradient(circle at 36% 30%, #fff4cf 0%, #fff4cf 16%, ${tint} 16%, ${tint} 50%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.55) 100%)`
-                      : "radial-gradient(circle at 36% 30%, #8f9099 0%, #8f9099 16%, #585a64 16%, #585a64 50%, #232429 50%, #232429 100%)",
-                    border: "2px solid #06060a",
-                    boxShadow: done || avail ? `0 0 0 2px ${tint}55, 0 0 14px ${tint}55` : "none",
+                      ? `radial-gradient(circle at 34% 28%, #ffffff 0%, ${tint} 40%, ${tint} 60%, rgba(10,40,90,0.75) 100%)`
+                      : "radial-gradient(circle at 34% 28%, #c9d6e8 0%, #8fa3c0 45%, #5a7195 100%)",
+                    border: "2px solid #ffffff",
+                    boxShadow: done || avail
+                      ? `0 0 0 2px ${tint}66, 0 0 16px ${tint}88`
+                      : "0 0 0 2px rgba(120,150,190,0.4), 0 2px 6px rgba(2,10,32,0.25)",
                   }}>
                     <img
                       src={runeRewardIconPath(selected.rewards[0], chestId) || "/placeholder.svg"}
@@ -757,7 +799,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     />
                   </div>
                   <div style={{
-                    marginTop: 5, fontFamily: PIXEL, fontSize: 9, color: "#cfcbc3",
+                    marginTop: 5, fontFamily: PIXEL, fontSize: 9, color: "#2a5893",
                   }}>Nv. {selected.tier}/{branchSize}</div>
                 </div>
 
@@ -765,23 +807,24 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                   {/* Título + ramo */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{
-                      fontFamily: PIXEL, fontSize: 13, color: "#f6f3ed", lineHeight: 1.3,
+                      fontFamily: PIXEL, fontSize: 13, color: "#0b2e5e", lineHeight: 1.3,
                     }}>{selected.name}</span>
                     <div style={{ flex: 1, minWidth: 8 }}/>
                     <span style={{
-                      fontFamily: PIXEL, fontSize: 9, color: tint,
+                      fontFamily: PIXEL, fontSize: 9, color: "#0b78d0",
                     }}>{branchName.toUpperCase()}</span>
                     <span style={{
                       fontFamily: PIXEL, fontSize: 9,
-                      color: master.currentLevel >= selected.requiredLevel ? "#4ecf9d" : "#f0a97a",
-                      border: `2px solid ${master.currentLevel >= selected.requiredLevel ? "#1d7d5c" : "#8a5a34"}`,
-                      background: "#101016",
+                      color: master.currentLevel >= selected.requiredLevel ? "#0f8a56" : "#c05a1e",
+                      border: `2px solid ${master.currentLevel >= selected.requiredLevel ? "#2ea86c" : "#e09a5c"}`,
+                      borderRadius: 4,
+                      background: "#ffffff",
                       padding: "1px 6px",
                     }}>Lv.{selected.requiredLevel}</span>
                   </div>
 
                   <p style={{
-                    margin: "6px 0 0", fontFamily: MONO, fontSize: 11, color: "#8b93a1",
+                    margin: "6px 0 0", fontFamily: MONO, fontSize: 11, color: "#3a5a85",
                     lineHeight: 1.5,
                   }}>{selected.description}</p>
 
@@ -795,8 +838,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       return (
                         <div key={i} style={{
                           display: "flex", alignItems: "center", gap: 6,
-                          background: "#14141b", border: "2px solid #26262f",
-                          borderBottomColor: "#0c0c11", borderRightColor: "#0c0c11",
+                          background: "#0a2a6b", border: "2px solid #3a76d8",
+                          borderRadius: 5,
                           padding: "3px 8px 3px 5px",
                         }}>
                           <img
@@ -813,7 +856,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     {!done && (
                       <>
                         <span aria-hidden="true" style={{
-                          width: 2, height: 18, background: "#26262f", margin: "0 2px", flexShrink: 0,
+                          width: 2, height: 18, background: "#b7dcee", margin: "0 2px", flexShrink: 0,
                         }}/>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <img src="/images/gear-coin.png" alt="" width={15} height={15}
@@ -821,7 +864,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                             onError={e => { (e.target as HTMLImageElement).style.display = "none" }}/>
                           <span style={{
                             fontFamily: PIXEL, fontSize: 10.5, fontVariantNumeric: "tabular-nums",
-                            color: gearCoins >= selected.cost.gearCoins ? "#f2c14e" : "#f87171",
+                            color: gearCoins >= selected.cost.gearCoins ? "#a4700a" : "#d13c3c",
                           }}>{selected.cost.gearCoins.toLocaleString("pt-BR")}</span>
                         </div>
                         {(Object.entries(selected.cost.fragments) as [FragmentId, number][]).map(([fid, amount]) => {
@@ -833,7 +876,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                                 onError={e => { (e.target as HTMLImageElement).style.display = "none" }}/>
                               <span style={{
                                 fontFamily: PIXEL, fontSize: 10.5, fontVariantNumeric: "tabular-nums",
-                                color: have >= amount ? FRAGMENTS[fid].color : "#f87171",
+                                color: have >= amount ? "#1b6ab0" : "#d13c3c",
                               }}>{amount}</span>
                             </div>
                           )
@@ -849,12 +892,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         className="gp-rune-cta"
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 6,
-                          background: "#46c295",
+                          background: "linear-gradient(180deg, #4fe3a5 0%, #23c07f 100%)",
                           border: "2px solid #0b3f2d",
-                          borderRadius: 3,
-                          padding: "7px 14px", cursor: "pointer", color: "#06281c",
+                          borderRadius: 6,
+                          padding: "7px 14px", cursor: "pointer", color: "#043321",
                           fontFamily: PIXEL, fontSize: 10.5,
-                          boxShadow: "0 3px 0 #0b3f2d",
+                          boxShadow: "0 3px 0 #0b3f2d, 0 0 14px rgba(60,220,150,0.5)",
                           transition: "transform 0.06s, box-shadow 0.06s",
                         }}>
                         GRAVAR RUNA
@@ -862,7 +905,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     ) : (
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
-                        color: "#8b93a1", fontFamily: MONO, fontSize: 10.5,
+                        color: "#5a7aa5", fontFamily: MONO, fontSize: 10.5,
                       }}><Lock size={11}/> {selectedInfo.reason}</span>
                     ))}
                   </div>
