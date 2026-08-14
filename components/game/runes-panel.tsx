@@ -42,6 +42,19 @@ const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"] as c
 /** Glifos rúnicos decorativos que flutuam ao fundo do salão. */
 const GLYPHS = ["ᚠ", "ᚱ", "ᚹ", "ᛉ", "ᛟ", "ᚨ", "ᛞ", "ᛗ"] as const
 
+/** Pseudo-aleatório determinístico 0–1 — mesmo layout em todo render. */
+function frand(n: number): number {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453
+  return s - Math.floor(s)
+}
+
+/** Fase da onda de cada ramo — cada rota serpenteia de um jeito próprio. */
+const BRANCH_PHASE: Record<RuneBranchId, number> = {
+  fortuna: 0.6,
+  guerra:  2.5,
+  dominio: 4.3,
+}
+
 interface RunesPanelProps {
   master:  Master
   onClose: () => void
@@ -294,23 +307,21 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
     }
   }
 
-  // ── Geometria responsiva: TODAS as runas visíveis, sem rolagem ──────────────
-  // Cada ramo é uma trilha HORIZONTAL de 10 runas. O tamanho do orbe é derivado
-  // do espaço real disponível (largura ÷ 10 slots; altura ÷ 3 trilhas).
+  // ── Geometria responsiva: mapa de rotas — TODAS as runas visíveis ───────────
+  // Cada ramo é uma ROTA que serpenteia horizontalmente pela sua banda do mapa,
+  // com posições orgânicas (onda + jitter determinístico) como num skill map.
   const RUNES_N = branches[0]?.runes.length ?? 10
-  const labelW = Math.min(150, Math.max(86, tracksSize.w * 0.16))
-  const trackW = Math.max(0, tracksSize.w - labelW - 18)
-  const slot   = trackW > 0 ? trackW / RUNES_N : 0
-  // Altura de cada seção de ramo: (altura total − gaps) / 3
-  const perBranchH = tracksSize.h > 0 ? (tracksSize.h - 2 * 10) / 3 : 0
-  const sizeFromW  = slot > 0 ? slot - 10 : 48
-  // trilha ocupa: zig(0.22s) + orbe(s) + pedestal(0.42s) + selo/tier(16)
-  const sizeFromH  = perBranchH > 0 ? (perBranchH - 20) / 1.68 : 48
-  const NODE = Math.max(30, Math.min(62, Math.floor(Math.min(sizeFromW, sizeFromH))))
+  const PAD_X = Math.max(18, Math.round(tracksSize.w * 0.025))
+  const mapW  = Math.max(0, tracksSize.w - PAD_X * 2)
+  const slot  = mapW > 0 ? mapW / RUNES_N : 0
+  const bandH = tracksSize.h > 0 ? tracksSize.h / 3 : 0
+  const sizeFromW = slot > 0 ? slot - 14 : 48
+  const sizeFromH = bandH > 0 ? bandH * 0.42 : 48
+  const NODE = Math.max(30, Math.min(58, Math.floor(Math.min(sizeFromW, sizeFromH))))
   const PED  = Math.round(NODE * 0.42)
-  const ZIG  = Math.round(NODE * 0.22)
-  const trackH = ZIG + NODE + PED + 18
-  const ready  = tracksSize.w > 0 && tracksSize.h > 0
+  // Amplitude do serpentear vertical dentro da banda
+  const AMP  = Math.max(8, Math.round(bandH * 0.17))
+  const ready = tracksSize.w > 0 && tracksSize.h > 0
 
   return (
     <div style={{
@@ -346,6 +357,18 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           0%, 100% { opacity: 0.5; transform: scale(1); }
           50%      { opacity: 1; transform: scale(1.06); }
         }
+        @keyframes gpRingSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes gpRingSpinRev {
+          from { transform: rotate(360deg); }
+          to   { transform: rotate(0deg); }
+        }
+        @keyframes gpStarTwinkle {
+          0%, 100% { opacity: var(--star-op, 0.5); }
+          50%      { opacity: 0.08; }
+        }
         .gp-rune-node:hover { filter: brightness(1.12); }
         .gp-rune-node:focus-visible { outline: 2px solid #f7f4ee; outline-offset: 6px; }
         .gp-rune-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b3f2d !important; }
@@ -356,34 +379,101 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           @keyframes gpRuneFloat     { from { transform: none } to { transform: none } }
           @keyframes gpGlyphDrift    { from { opacity: 0.15; transform: none } to { opacity: 0.15; transform: none } }
           @keyframes gpAuraBreathe   { from { opacity: 0.7; transform: none } to { opacity: 0.7; transform: none } }
+          @keyframes gpRingSpin      { from { transform: none } to { transform: none } }
+          @keyframes gpRingSpinRev   { from { transform: none } to { transform: none } }
+          @keyframes gpStarTwinkle   { from { opacity: 0.4 } to { opacity: 0.4 } }
         }
       `}</style>
 
-      {/* Fundo: tabuleiro isométrico + aura do mestre + glifos rúnicos flutuando */}
+      {/* Fundo: céu arcano profundo + círculo de invocação + estrelas + glifos */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+        {/* Céu profundo com nebulosas na cor do mestre */}
         <div style={{
-          position: "absolute", left: "-60%", top: "-60%", width: "220%", height: "220%",
-          transform: "rotate(45deg)",
-          background: "repeating-conic-gradient(#1b1b23 0% 25%, #111118 0% 50%) 0 0 / 72px 72px",
-          opacity: 0.95,
+          position: "absolute", inset: 0,
+          background: [
+            `radial-gradient(ellipse 110% 80% at 50% 118%, ${master.accentColor}1c 0%, transparent 55%)`,
+            `radial-gradient(ellipse 75% 60% at 8% -12%, #1d1d38 0%, transparent 58%)`,
+            `radial-gradient(ellipse 65% 55% at 94% 4%, ${master.accentColor}12 0%, transparent 60%)`,
+            "linear-gradient(180deg, #0c0c18 0%, #08080f 52%, #0a0a14 100%)",
+          ].join(", "),
         }}/>
+
+        {/* Estrelas cintilando */}
+        {Array.from({ length: 34 }, (_, i) => {
+          const sz = 1 + Math.round(frand(i * 3.7) * 2)
+          return (
+            <span key={`star-${i}`} style={{
+              position: "absolute",
+              left: `${frand(i * 1.3 + 5) * 98}%`,
+              top: `${frand(i * 2.9 + 11) * 96}%`,
+              width: sz, height: sz, borderRadius: "50%",
+              background: i % 5 === 0 ? master.accentColor : "#cdd3e6",
+              boxShadow: i % 5 === 0 ? `0 0 6px ${master.accentColor}` : "0 0 4px rgba(205,211,230,0.7)",
+              // @ts-expect-error — custom property
+              "--star-op": 0.25 + frand(i * 7.1) * 0.55,
+              animation: `gpStarTwinkle ${2.4 + frand(i * 4.3) * 3.6}s ease-in-out ${frand(i * 9.7) * 4}s infinite`,
+            }}/>
+          )
+        })}
+
+        {/* Círculo de invocação gigante no coração do mapa */}
+        <div style={{
+          position: "absolute", left: "50%", top: "52%",
+          width: "min(88vh, 62vw)", aspectRatio: "1",
+          transform: "translate(-50%, -50%)",
+        }}>
+          {/* Anel externo tracejado girando */}
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            border: `2px dashed ${master.accentColor}30`,
+            animation: "gpRingSpin 90s linear infinite",
+          }}/>
+          {/* Anel fino intermediário */}
+          <div style={{
+            position: "absolute", inset: "8%", borderRadius: "50%",
+            border: `1px solid ${master.accentColor}20`,
+            boxShadow: `inset 0 0 60px ${master.accentColor}0d`,
+          }}/>
+          {/* Anel pontilhado interno girando ao contrário */}
+          <div style={{
+            position: "absolute", inset: "21%", borderRadius: "50%",
+            border: `2px dotted ${master.accentColor}28`,
+            animation: "gpRingSpinRev 130s linear infinite",
+          }}/>
+          {/* Núcleo de energia respirando */}
+          <div style={{
+            position: "absolute", inset: "34%", borderRadius: "50%",
+            background: `radial-gradient(circle, ${master.accentColor}26 0%, ${master.accentColor}0c 45%, transparent 70%)`,
+            animation: "gpAuraBreathe 6s ease-in-out infinite",
+          }}/>
+          {/* Glifos orbitando o círculo */}
+          <div style={{ position: "absolute", inset: "10%", animation: "gpRingSpin 160s linear infinite" }}>
+            {GLYPHS.map((g, i) => {
+              const a = (i / GLYPHS.length) * Math.PI * 2
+              return (
+                <span key={`orbit-${i}`} style={{
+                  position: "absolute",
+                  left: `${50 + 48 * Math.cos(a)}%`,
+                  top: `${50 + 48 * Math.sin(a)}%`,
+                  transform: "translate(-50%, -50%)",
+                  fontFamily: MONO, fontSize: 18,
+                  color: `${master.accentColor}66`,
+                  textShadow: `0 0 12px ${master.accentColor}55`,
+                }}>{g}</span>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Névoa colorida do mestre subindo do horizonte */}
         <div style={{
           position: "absolute", inset: 0,
-          background: `radial-gradient(ellipse 90% 55% at 50% 0%, ${master.accentColor}22 0%, transparent 60%)`,
+          background: `radial-gradient(ellipse 90% 55% at 50% 0%, ${master.accentColor}1a 0%, transparent 60%)`,
         }}/>
-        {/* Aura viva no coração do salão */}
-        <div style={{
-          position: "absolute", left: "50%", top: "46%",
-          width: "72%", height: "58%",
-          transform: "translate(-50%, -50%)",
-          background: `radial-gradient(ellipse, ${master.accentColor}18 0%, transparent 65%)`,
-          animation: "gpAuraBreathe 5.5s ease-in-out infinite",
-        }}/>
-        {/* Escurece as bordas para o tabuleiro não competir com a UI */}
+        {/* Vinheta: escurece as bordas para o mapa não competir com a UI */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 85% 75% at 50% 42%, transparent 25%, rgba(5,5,9,0.88) 100%)",
+          background: "radial-gradient(ellipse 88% 78% at 50% 44%, transparent 30%, rgba(4,4,9,0.9) 100%)",
         }}/>
         {/* Glifos rúnicos flutuando como brasas */}
         {GLYPHS.map((g, i) => (
@@ -511,14 +601,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         </div>
       </header>
 
-      {/* ── Trilhas: 3 ramos horizontais, todas as 30 runas visíveis ── */}
+      {/* ── Mapa de rotas: 3 rotas serpenteando pelo mapa, todas as 30 runas ── */}
       <div
         ref={tracksRef}
-        style={{
-          flex: 1, minHeight: 0, position: "relative", zIndex: 4,
-          display: "flex", flexDirection: "column", justifyContent: "space-evenly",
-          gap: 10, padding: "10px 14px 6px",
-        }}
+        style={{ flex: 1, minHeight: 0, position: "relative", zIndex: 4 }}
       >
         {ready && branches.map((branch, bIdx) => {
           const BranchIcon     = BRANCH_ICON[branch.id]
@@ -532,166 +618,177 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               : ("locked_prev" as const),
           ]))
 
+          // Posições orgânicas da rota: onda senoidal + jitter determinístico,
+          // com o centro do orbe sempre dentro da banda do ramo.
+          const phase   = BRANCH_PHASE[branch.id]
+          const bandTop = bandH * bIdx
+          const minY    = bandTop + NODE / 2 + 14
+          const maxY    = bandTop + bandH - PED - NODE / 2 - 16
+          const pts = branch.runes.map((_, i) => {
+            const wob = Math.sin(i * 1.12 + phase) * AMP
+              + (frand(i * 3.1 + bIdx * 17 + 1) - 0.5) * AMP * 0.9
+            const x = PAD_X + slot * i + slot / 2
+              + (frand(i * 7.3 + bIdx * 29 + 2) - 0.5) * slot * 0.26
+            const y = Math.max(minY, Math.min(maxY, bandTop + bandH * 0.47 + wob))
+            return { x, y }
+          })
+
           return (
-            <section key={branch.id} style={{
-              display: "flex", alignItems: "stretch", gap: 10,
+            <div key={branch.id} style={{
+              position: "absolute", inset: 0,
               animation: `gpRiseIn 0.4s ease ${bIdx * 0.08}s both`,
-              minHeight: 0,
             }}>
-              {/* Estandarte do ramo */}
+              {/* Estandarte flutuante do ramo, ancorado no início da rota */}
               <div style={{
-                width: labelW, flexShrink: 0,
-                display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center", gap: 4,
-                background: `linear-gradient(135deg, ${tint}14 0%, rgba(12,12,18,0.72) 65%)`,
+                position: "absolute", left: 10, top: bandTop + 6,
+                display: "inline-flex", alignItems: "center", gap: 7,
+                background: `linear-gradient(135deg, ${tint}1c 0%, rgba(10,10,16,0.85) 70%)`,
                 border: "2px solid #23232c",
                 borderLeft: `3px solid ${tint}aa`,
-                borderRadius: 6,
-                padding: "6px 4px",
-                boxShadow: `inset 0 0 22px ${tint}0e, 0 4px 12px rgba(0,0,0,0.35)`,
+                borderRadius: 5,
+                padding: "4px 9px 4px 6px",
+                boxShadow: `inset 0 0 16px ${tint}0e, 0 4px 12px rgba(0,0,0,0.4)`,
+                zIndex: 2,
               }}>
                 <div style={{
-                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
                   background: `linear-gradient(180deg, ${tint}22, #14141b)`,
                   border: `2px solid ${tint}88`,
-                  boxShadow: `0 0 10px ${tint}44`,
+                  boxShadow: `0 0 8px ${tint}44`, flexShrink: 0,
                 }}>
-                  <BranchIcon size={13} color={tint}/>
+                  <BranchIcon size={11} color={tint}/>
                 </div>
-                <div style={{
-                  fontFamily: PIXEL, fontSize: 10, color: "#f3f0ea",
-                  textShadow: `0 0 12px ${tint}66`, textAlign: "center", lineHeight: 1.25,
-                }}>{branch.name.toUpperCase()}</div>
-                <div style={{
-                  fontFamily: MONO, fontSize: 8.5, color: "#7b8290",
-                  textAlign: "center", lineHeight: 1.3, display: labelW > 100 ? "block" : "none",
-                }}>{branch.subtitle}</div>
                 <span style={{
-                  fontFamily: PIXEL, fontSize: 9, color: branchComplete ? "#4ecf9d" : tint,
+                  fontFamily: PIXEL, fontSize: 9.5, color: "#f3f0ea",
+                  textShadow: `0 0 10px ${tint}66`, whiteSpace: "nowrap",
+                }}>{branch.name.toUpperCase()}</span>
+                <span style={{
+                  fontFamily: PIXEL, fontSize: 8.5,
+                  color: branchComplete ? "#4ecf9d" : tint,
                   fontVariantNumeric: "tabular-nums",
-                  display: "inline-flex", alignItems: "center", gap: 4,
+                  display: "inline-flex", alignItems: "center", gap: 3,
                   background: "#0d0d13", border: `2px solid ${branchComplete ? "#1d7d5c" : `${tint}44`}`,
-                  padding: "1px 6px",
+                  padding: "0px 5px",
                 }}>
-                  {branchComplete && <Check size={10} strokeWidth={3}/>}
+                  {branchComplete && <Check size={9} strokeWidth={3}/>}
                   {branchDone}/{branch.runes.length}
                 </span>
               </div>
 
-              {/* Trilha horizontal em leve zigue-zague */}
-              <div style={{
-                flex: 1, minWidth: 0, position: "relative",
-                display: "flex", alignItems: "center",
-              }}>
-                <div style={{ position: "relative", width: "100%", height: trackH }}>
-                  {/* Caminhos entre os nós */}
-                  {branch.runes.slice(0, -1).map((rune, i) => {
-                    const y1 = (i % 2 === 0 ? ZIG : 0) + NODE / 2
-                    const y2 = ((i + 1) % 2 === 0 ? ZIG : 0) + NODE / 2
-                    const x1 = slot * i + slot / 2 + NODE * 0.44
-                    const dx = slot - NODE * 0.88
-                    const dy = y2 - y1
-                    const len = Math.max(4, Math.sqrt(dx * dx + dy * dy))
-                    const ang = (Math.atan2(dy, dx) * 180) / Math.PI
-                    const lit  = statusById.get(rune.id) === "unlocked"
-                    const next = statusById.get(branch.runes[i + 1].id) === "available"
-                    return (
-                      <div
-                        key={`path-${rune.id}`}
-                        aria-hidden="true"
+              {/* Linhas de energia conectando os orbes */}
+              {branch.runes.slice(0, -1).map((rune, i) => {
+                const a = pts[i]
+                const b = pts[i + 1]
+                const dx  = b.x - a.x
+                const dy  = b.y - a.y
+                const len = Math.max(4, Math.sqrt(dx * dx + dy * dy))
+                const ang = (Math.atan2(dy, dx) * 180) / Math.PI
+                const lit  = statusById.get(rune.id) === "unlocked"
+                const next = statusById.get(branch.runes[i + 1].id) === "available"
+                return (
+                  <div
+                    key={`path-${rune.id}`}
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      left: a.x, top: a.y,
+                      width: len, height: 5, marginTop: -2.5,
+                      transform: `rotate(${ang}deg)`,
+                      transformOrigin: "0 50%",
+                      borderRadius: 3,
+                      background: lit
+                        ? `linear-gradient(90deg, ${tint}00 0%, ${tint} 16%, #fff6d8 50%, ${tint} 84%, ${tint}00 100%)`
+                        : "linear-gradient(90deg, transparent 0%, #33343f 16%, #454654 50%, #33343f 84%, transparent 100%)",
+                      boxShadow: lit ? `0 0 10px ${tint}88` : "none",
+                      opacity: lit ? 0.95 : 0.55,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Pulso de energia correndo até a próxima runa disponível */}
+                    {lit && next && (
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.85) 0 7px, transparent 7px 18px)",
+                        animation: "gpRunePathFlow 1.1s linear infinite",
+                        mixBlendMode: "screen",
+                      }}/>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Nós da rota */}
+              {branch.runes.map((rune, i) => {
+                const status      = statusById.get(rune.id) ?? "locked_prev"
+                const isDone      = status === "unlocked"
+                const isAvailable = status === "available"
+                const isLocked    = !isDone && !isAvailable
+                const isSelected  = selectedId === rune.id
+                const iconSize    = Math.round(NODE * 0.44)
+                const sealSize    = Math.max(13, Math.round(NODE * 0.26))
+
+                return (
+                  <div
+                    key={rune.id}
+                    style={{
+                      position: "absolute",
+                      left: pts[i].x,
+                      top: pts[i].y - NODE / 2,
+                      transform: "translateX(-50%)",
+                      zIndex: isSelected ? 3 : 1,
+                    }}
+                  >
+                    <RuneNode
+                      size={NODE}
+                      tint={isDone ? "#4ecf9d" : tint}
+                      tintStrength={isLocked ? 0.4 : 1}
+                      selected={isSelected}
+                      dim={isLocked}
+                      float={isAvailable}
+                      label={`${rune.name} — ${isDone ? "gravada" : isAvailable ? "disponível" : "bloqueada"}`}
+                      onClick={() => setSelectedId(rune.id)}
+                    >
+                      <img
+                        src={runeRewardIconPath(rune.rewards[0], chestId) || "/placeholder.svg"}
+                        alt="" width={iconSize} height={iconSize}
                         style={{
-                          position: "absolute",
-                          left: x1,
-                          top: y1,
-                          width: len,
-                          height: 7,
-                          marginTop: -3.5,
-                          transform: `rotate(${ang}deg)`,
-                          transformOrigin: "0 50%",
-                          background: lit
-                            ? `repeating-linear-gradient(90deg, ${tint} 0 9px, transparent 9px 16px)`
-                            : "repeating-linear-gradient(90deg, #3b3b46 0 9px, transparent 9px 16px)",
-                          animation: lit && next ? "gpRunePathFlow 1.4s linear infinite" : "none",
-                          filter: lit ? `drop-shadow(0 0 6px ${tint}66)` : "none",
-                          opacity: lit ? 1 : 0.65,
+                          width: iconSize, height: iconSize, objectFit: "contain",
+                          imageRendering: "pixelated",
+                          filter: isLocked ? "grayscale(1) brightness(0.8)" : "drop-shadow(0 2px 0 rgba(0,0,0,0.5))",
                         }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                       />
-                    )
-                  })}
+                    </RuneNode>
 
-                  {/* Nós */}
-                  {branch.runes.map((rune, i) => {
-                    const status      = statusById.get(rune.id) ?? "locked_prev"
-                    const isDone      = status === "unlocked"
-                    const isAvailable = status === "available"
-                    const isLocked    = !isDone && !isAvailable
-                    const isSelected  = selectedId === rune.id
-                    const iconSize    = Math.round(NODE * 0.44)
-                    const sealSize    = Math.max(13, Math.round(NODE * 0.26))
-
-                    return (
-                      <div
-                        key={rune.id}
-                        style={{
-                          position: "absolute",
-                          left: slot * i + slot / 2,
-                          top: i % 2 === 0 ? ZIG : 0,
-                          transform: "translateX(-50%)",
-                        }}
-                      >
-                        <RuneNode
-                          size={NODE}
-                          tint={isDone ? "#4ecf9d" : tint}
-                          tintStrength={isLocked ? 0.4 : 1}
-                          selected={isSelected}
-                          dim={isLocked}
-                          float={isAvailable}
-                          label={`${rune.name} — ${isDone ? "gravada" : isAvailable ? "disponível" : "bloqueada"}`}
-                          onClick={() => setSelectedId(rune.id)}
-                        >
-                          <img
-                            src={runeRewardIconPath(rune.rewards[0], chestId) || "/placeholder.svg"}
-                            alt="" width={iconSize} height={iconSize}
-                            style={{
-                              width: iconSize, height: iconSize, objectFit: "contain",
-                              imageRendering: "pixelated",
-                              filter: isLocked ? "grayscale(1) brightness(0.8)" : "drop-shadow(0 2px 0 rgba(0,0,0,0.5))",
-                            }}
-                            onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
-                          />
-                        </RuneNode>
-
-                        {/* Selo de estado no canto do orbe */}
-                        {(isDone || isLocked) && (
-                          <div aria-hidden="true" style={{
-                            position: "absolute", right: -3, top: NODE - sealSize,
-                            width: sealSize, height: sealSize,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            background: isDone ? "#166b50" : "#16161d",
-                            border: "2px solid #06060a",
-                          }}>
-                            {isDone
-                              ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#d8fff0"/>
-                              : <Lock size={Math.round(sealSize * 0.5)} color="#6d7482"/>}
-                          </div>
-                        )}
-
-                        {/* Tier em algarismo romano sob o pedestal */}
-                        <div style={{
-                          position: "absolute", top: NODE + PED + 2, left: "50%", transform: "translateX(-50%)",
-                          fontFamily: PIXEL, fontSize: Math.max(7.5, NODE * 0.16),
-                          color: isSelected ? tint : isLocked ? "#5b6270" : "#9aa1ad",
-                          textShadow: isSelected ? `0 0 8px ${tint}88` : "0 2px 0 rgba(0,0,0,0.7)",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {ROMAN[rune.tier - 1] ?? rune.tier}
-                        </div>
+                    {/* Selo de estado no canto do orbe */}
+                    {(isDone || isLocked) && (
+                      <div aria-hidden="true" style={{
+                        position: "absolute", right: -3, top: NODE - sealSize,
+                        width: sealSize, height: sealSize,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: isDone ? "#166b50" : "#16161d",
+                        border: "2px solid #06060a",
+                      }}>
+                        {isDone
+                          ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#d8fff0"/>
+                          : <Lock size={Math.round(sealSize * 0.5)} color="#6d7482"/>}
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </section>
+                    )}
+
+                    {/* Tier em algarismo romano sob o pedestal */}
+                    <div style={{
+                      position: "absolute", top: NODE + PED + 2, left: "50%", transform: "translateX(-50%)",
+                      fontFamily: PIXEL, fontSize: Math.max(7.5, NODE * 0.16),
+                      color: isSelected ? tint : isLocked ? "#5b6270" : "#9aa1ad",
+                      textShadow: isSelected ? `0 0 8px ${tint}88` : "0 2px 0 rgba(0,0,0,0.7)",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {ROMAN[rune.tier - 1] ?? rune.tier}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )
         })}
       </div>
