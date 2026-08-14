@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Check, Lock, Coins, Swords, Crown } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 import { PackOpeningOverlay } from "./pack-opening-overlay"
@@ -464,22 +464,21 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   /** Amplitude do serpenteio horizontal de cada pista. */
   const laneAmp = Math.min(NODE * 0.62, W * 0.05)
 
-  // Ao abrir, centraliza a rolagem na runa mais relevante (a selecionada)
+  // Ao abrir, começa no TOPO — a leitura da rota é sempre de cima para baixo:
+  // núcleo → tier I → ... → tier X.
   useEffect(() => {
-    if (!ready || !hydrated || didAutoScroll.current || !selectedId) return
+    if (!ready || !hydrated || didAutoScroll.current) return
     const el = scrollRef.current
     if (!el) return
     didAutoScroll.current = true
-    const sel = allRunes.find(r => r.id === selectedId)
-    const targetY = sel ? yOf(sel.tier - 1) : rootY
-    el.scrollTop = Math.max(0, Math.min(contentH - el.clientHeight, targetY - el.clientHeight * 0.55))
+    el.scrollTop = 0
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, hydrated, selectedId])
+  }, [ready, hydrated])
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 300,
-      background: "#0e0e13",
+      background: "#050b1c",
       display: "flex", flexDirection: "column", overflow: "hidden",
       animation: "gpFadeIn 0.25s ease",
     }}>
@@ -517,6 +516,16 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         @keyframes gpRingSpinRev {
           from { transform: rotate(360deg); }
           to   { transform: rotate(0deg); }
+        }
+        @keyframes gpAuroraDrift {
+          0%, 100% { transform: translateX(-7%) skewY(-1.5deg); opacity: 0.55; }
+          50%      { transform: translateX(7%) skewY(1.5deg); opacity: 1; }
+        }
+        @keyframes gpChevronFall {
+          0%   { transform: translate(-50%, -10px); opacity: 0; }
+          30%  { opacity: 1; }
+          70%  { opacity: 1; }
+          100% { transform: translate(-50%, 10px); opacity: 0; }
         }
         @keyframes gpStarTwinkle {
           0%, 100% { opacity: var(--star-op, 0.5); }
@@ -587,6 +596,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           @keyframes gpRingSpin      { from { transform: none } to { transform: none } }
           @keyframes gpRingSpinRev   { from { transform: none } to { transform: none } }
           @keyframes gpStarTwinkle   { from { opacity: 0.4 } to { opacity: 0.4 } }
+          @keyframes gpAuroraDrift   { from { transform: none; opacity: 0.6 } to { transform: none; opacity: 0.6 } }
+          @keyframes gpChevronFall   { from { transform: translate(-50%, 0); opacity: 0.7 } to { transform: translate(-50%, 0); opacity: 0.7 } }
           @keyframes gpUnlockFlash   { from { opacity: 0 } to { opacity: 0 } }
           @keyframes gpShockwave     { from { opacity: 0 } to { opacity: 0 } }
           @keyframes gpParticleFly   { from { opacity: 0 } to { opacity: 0 } }
@@ -601,17 +612,44 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         }
       `}</style>
 
-      {/* Fundo: céu arcano profundo + círculo de invocação + estrelas + glifos */}
+      {/* Fundo: abismo azul profissional + auroras + círculo de invocação + estrelas */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Céu profundo com nebulosas na cor do mestre — a luz emana do topo */}
+        {/* Abismo azul profundo — a luz do santuário emana do topo */}
         <div style={{
           position: "absolute", inset: 0,
           background: [
-            `radial-gradient(ellipse 110% 80% at 50% -18%, ${master.accentColor}22 0%, transparent 55%)`,
-            `radial-gradient(ellipse 75% 60% at 8% 112%, #1d1d38 0%, transparent 58%)`,
-            `radial-gradient(ellipse 65% 55% at 94% 96%, ${master.accentColor}12 0%, transparent 60%)`,
-            "linear-gradient(180deg, #0c0c18 0%, #08080f 52%, #0a0a14 100%)",
+            `radial-gradient(ellipse 120% 78% at 50% -20%, #2a63c455 0%, #16336e33 34%, transparent 58%)`,
+            `radial-gradient(ellipse 80% 62% at 10% 112%, #0e2350cc 0%, transparent 60%)`,
+            `radial-gradient(ellipse 70% 56% at 92% 100%, #123268aa 0%, transparent 62%)`,
+            `radial-gradient(ellipse 55% 42% at 78% 22%, ${master.accentColor}14 0%, transparent 60%)`,
+            "linear-gradient(180deg, #071228 0%, #050b1c 46%, #060e22 100%)",
           ].join(", "),
+        }}/>
+
+        {/* Auroras azuis varrendo o céu lentamente — o efeito de assinatura */}
+        <div style={{
+          position: "absolute", inset: "-12% -25%",
+          background: "linear-gradient(112deg, transparent 24%, #2f7dff1f 38%, #6fb4ff2e 50%, #2f7dff1f 62%, transparent 76%)",
+          filter: "blur(26px)",
+          animation: "gpAuroraDrift 17s ease-in-out infinite",
+        }}/>
+        <div style={{
+          position: "absolute", inset: "-12% -25%",
+          background: "linear-gradient(248deg, transparent 30%, #1c56c41c 44%, #4d95ff26 54%, #1c56c41c 64%, transparent 78%)",
+          filter: "blur(34px)",
+          animation: "gpAuroraDrift 23s ease-in-out 4s infinite reverse",
+        }}/>
+
+        {/* Malha arcana sutil — dá textura técnica ao abismo sem competir com o mapa */}
+        <div style={{
+          position: "absolute", inset: 0, opacity: 0.5,
+          backgroundImage: [
+            "linear-gradient(0deg, transparent calc(100% - 1px), #6fa8ff0e 100%)",
+            "linear-gradient(90deg, transparent calc(100% - 1px), #6fa8ff0e 100%)",
+          ].join(", "),
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(ellipse 80% 70% at 50% 34%, black 0%, transparent 78%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 34%, black 0%, transparent 78%)",
         }}/>
 
         {/* Estrelas cintilando */}
@@ -623,8 +661,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               left: `${frand(i * 1.3 + 5) * 98}%`,
               top: `${frand(i * 2.9 + 11) * 96}%`,
               width: sz, height: sz, borderRadius: "50%",
-              background: i % 5 === 0 ? master.accentColor : "#cdd3e6",
-              boxShadow: i % 5 === 0 ? `0 0 6px ${master.accentColor}` : "0 0 4px rgba(205,211,230,0.7)",
+              background: i % 5 === 0 ? "#6fb4ff" : i % 3 === 0 ? "#a9ccff" : "#dbe6f8",
+              boxShadow: i % 5 === 0 ? "0 0 8px #5f9dff" : "0 0 4px rgba(169,204,255,0.7)",
               // @ts-expect-error — custom property
               "--star-op": 0.25 + frand(i * 7.1) * 0.55,
               animation: `gpStarTwinkle ${2.4 + frand(i * 4.3) * 3.6}s ease-in-out ${frand(i * 9.7) * 4}s infinite`,
@@ -681,17 +719,17 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           </div>
         </div>
 
-        {/* Névoa colorida do mestre subindo do horizonte inferior */}
+        {/* Névoa azul subindo do horizonte inferior */}
         <div style={{
           position: "absolute", inset: 0,
-          background: `radial-gradient(ellipse 90% 55% at 50% 100%, ${master.accentColor}14 0%, transparent 60%)`,
+          background: "radial-gradient(ellipse 90% 55% at 50% 100%, #2b6ce028 0%, transparent 60%)",
         }}/>
-        {/* Feixes de luz divinos descendo do topo — a bênção do núcleo */}
+        {/* Feixes de luz azulados descendo do topo — a bênção do núcleo */}
         <div style={{
           position: "absolute", left: "50%", top: "-30vmax",
           width: "170vmax", height: "170vmax",
           transform: "translateX(-50%)",
-          background: `repeating-conic-gradient(from 150deg at 50% 0%, ${master.accentColor}0e 0deg 7deg, transparent 7deg 22deg)`,
+          background: "repeating-conic-gradient(from 150deg at 50% 0%, #5f9dff14 0deg 7deg, transparent 7deg 22deg)",
           maskImage: "radial-gradient(ellipse 60% 46% at 50% 0%, black 0%, transparent 72%)",
           WebkitMaskImage: "radial-gradient(ellipse 60% 46% at 50% 0%, black 0%, transparent 72%)",
         }}/>
@@ -973,9 +1011,11 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 const ang = (Math.atan2(dy, dx) * 180) / Math.PI
                 const lit  = statusById.get(rune.id) === "unlocked"
                 const next = statusById.get(branch.runes[i + 1].id) === "available"
+                const midX = (a.x + b.x) / 2
+                const midY = (a.y + b.y) / 2
                 return (
+                  <Fragment key={`path-${rune.id}`}>
                   <div
-                    key={`path-${rune.id}`}
                     aria-hidden="true"
                     style={{
                       position: "absolute",
@@ -1002,6 +1042,17 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       }}/>
                     )}
                   </div>
+                  {/* Chevron descendo no meio do caminho — reforça a direção topo → base */}
+                  <span aria-hidden="true" style={{
+                    position: "absolute",
+                    left: midX, top: midY - 7,
+                    transform: "translateX(-50%)",
+                    fontFamily: PIXEL, fontSize: 11, lineHeight: 1,
+                    color: lit ? tint : "#4a5064",
+                    textShadow: lit ? `0 0 8px ${tint}` : "none",
+                    animation: `gpChevronFall 1.6s ease-in-out ${i * 0.12}s infinite`,
+                  }}>▼</span>
+                  </Fragment>
                 )
               })}
 
