@@ -56,8 +56,8 @@ const BRANCH_PHASE: Record<RuneBranchId, number> = {
 }
 
 /**
- * Pista vertical de cada ramo (fração da largura do mapa). A árvore sobe do
- * núcleo na base em 3 colunas claras — Fortuna à esquerda, Guerra ao centro e
+ * Pista vertical de cada ramo (fração da largura do mapa). A árvore desce do
+ * núcleo no topo em 3 colunas claras — Fortuna à esquerda, Guerra ao centro e
  * Domínio à direita — sem cruzamentos e com espaçamento constante entre tiers.
  */
 const BRANCH_LANE: Record<RuneBranchId, number> = {
@@ -438,9 +438,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   }
 
   // ── Geometria: ÁRVORE DE HABILIDADES — 3 pistas verticais com rolagem ───────
-  // O mapa rola verticalmente: o núcleo fica na base e cada ramo sobe em sua
+  // O mapa rola verticalmente: o NÚCLEO fica no TOPO e cada ramo desce em sua
   // própria coluna com espaçamento constante e serpenteio suave — a direção
-  // de progressão (base → topo) fica sempre clara e as runas nunca se amontoam.
+  // de progressão (topo → base) fica sempre clara e as runas nunca se amontoam.
   const RUNES_N = branches[0]?.runes.length ?? 10
   const W = tracksSize.w
   const H = tracksSize.h
@@ -451,16 +451,16 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const STEP = Math.max(96, Math.round(NODE * 2.05))
   /** Espaço no topo do mapa (abaixo dos estandartes fixos). */
   const topPad = 86
-  /** Núcleo da árvore, na base central do mapa rolável. */
+  /** Núcleo da árvore, no topo central do mapa rolável. */
   const rootSize = Math.round(NODE * 1.45)
   /** Distância do centro do núcleo até o centro da 1ª runa. */
   const gap0 = Math.round(rootSize * 0.8 + NODE * 0.95)
-  const rootY = topPad + NODE + (RUNES_N - 1) * STEP + gap0
-  /** Altura total do conteúdo rolável. */
-  const contentH = rootY + rootSize + PED + 28
+  const rootY = topPad + Math.round(rootSize / 2) + 16
   const root = { x: W / 2, y: rootY }
-  /** Centro vertical da runa de índice i (0 = tier I, embaixo). */
-  const yOf = (i: number) => rootY - gap0 - i * STEP
+  /** Centro vertical da runa de índice i (0 = tier I, logo abaixo do núcleo). */
+  const yOf = (i: number) => rootY + gap0 + i * STEP
+  /** Altura total do conteúdo rolável. */
+  const contentH = yOf(RUNES_N - 1) + NODE + PED + 52
   /** Amplitude do serpenteio horizontal de cada pista. */
   const laneAmp = Math.min(NODE * 0.62, W * 0.05)
 
@@ -603,13 +603,13 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
 
       {/* Fundo: céu arcano profundo + círculo de invocação + estrelas + glifos */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Céu profundo com nebulosas na cor do mestre */}
+        {/* Céu profundo com nebulosas na cor do mestre — a luz emana do topo */}
         <div style={{
           position: "absolute", inset: 0,
           background: [
-            `radial-gradient(ellipse 110% 80% at 50% 118%, ${master.accentColor}1c 0%, transparent 55%)`,
-            `radial-gradient(ellipse 75% 60% at 8% -12%, #1d1d38 0%, transparent 58%)`,
-            `radial-gradient(ellipse 65% 55% at 94% 4%, ${master.accentColor}12 0%, transparent 60%)`,
+            `radial-gradient(ellipse 110% 80% at 50% -18%, ${master.accentColor}22 0%, transparent 55%)`,
+            `radial-gradient(ellipse 75% 60% at 8% 112%, #1d1d38 0%, transparent 58%)`,
+            `radial-gradient(ellipse 65% 55% at 94% 96%, ${master.accentColor}12 0%, transparent 60%)`,
             "linear-gradient(180deg, #0c0c18 0%, #08080f 52%, #0a0a14 100%)",
           ].join(", "),
         }}/>
@@ -632,9 +632,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           )
         })}
 
-        {/* Círculo de invocação gigante emanando do núcleo da árvore */}
+        {/* Círculo de invocação gigante emanando do núcleo da árvore (topo) */}
         <div style={{
-          position: "absolute", left: "50%", top: "68%",
+          position: "absolute", left: "50%", top: "26%",
           width: "min(96vh, 70vw)", aspectRatio: "1",
           transform: "translate(-50%, -50%)",
         }}>
@@ -681,10 +681,19 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           </div>
         </div>
 
-        {/* Névoa colorida do mestre subindo do horizonte */}
+        {/* Névoa colorida do mestre subindo do horizonte inferior */}
         <div style={{
           position: "absolute", inset: 0,
-          background: `radial-gradient(ellipse 90% 55% at 50% 0%, ${master.accentColor}1a 0%, transparent 60%)`,
+          background: `radial-gradient(ellipse 90% 55% at 50% 100%, ${master.accentColor}14 0%, transparent 60%)`,
+        }}/>
+        {/* Feixes de luz divinos descendo do topo — a bênção do núcleo */}
+        <div style={{
+          position: "absolute", left: "50%", top: "-30vmax",
+          width: "170vmax", height: "170vmax",
+          transform: "translateX(-50%)",
+          background: `repeating-conic-gradient(from 150deg at 50% 0%, ${master.accentColor}0e 0deg 7deg, transparent 7deg 22deg)`,
+          maskImage: "radial-gradient(ellipse 60% 46% at 50% 0%, black 0%, transparent 72%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 46% at 50% 0%, black 0%, transparent 72%)",
         }}/>
         {/* Vinheta: escurece as bordas para o mapa não competir com a UI */}
         <div style={{
@@ -892,8 +901,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               : ("locked_prev" as const),
           ]))
 
-          // Posições em pista: cada runa sobe em coluna com serpenteio suave e
-          // espaçamento constante — a direção (base → topo) fica sempre clara.
+          // Posições em pista: cada runa desce em coluna com serpenteio suave e
+          // espaçamento constante — a direção (topo → base) fica sempre clara.
           const phase = BRANCH_PHASE[branch.id]
           const laneX = clamp(W * BRANCH_LANE[branch.id], NODE / 2 + 16, W - NODE / 2 - 16)
           const pts = branch.runes.map((_, i) => ({
@@ -942,14 +951,14 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                   </div>
                 )
               })()}
-              {/* Feixe de energia da pista: coluna de luz sutil atrás do ramo */}
+              {/* Feixe de energia da pista: coluna de luz descendo do núcleo ao ápice */}
               <div aria-hidden="true" style={{
                 position: "absolute",
                 left: laneX - NODE * 1.15,
-                top: pts[RUNES_N - 1].y - NODE * 1.1,
+                top: root.y - NODE * 0.5,
                 width: NODE * 2.3,
-                height: root.y - pts[RUNES_N - 1].y + NODE * 1.6,
-                background: `linear-gradient(180deg, ${tint}16 0%, ${tint}09 55%, transparent 100%)`,
+                height: pts[RUNES_N - 1].y - root.y + NODE * 1.6,
+                background: `linear-gradient(180deg, ${tint}1c 0%, ${tint}09 55%, ${tint}14 100%)`,
                 maskImage: "linear-gradient(90deg, transparent 0%, black 32%, black 68%, transparent 100%)",
                 WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 32%, black 68%, transparent 100%)",
               }}/>
@@ -1137,6 +1146,17 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
             width: 0, height: 0,
             pointerEvents: "none", zIndex: 3,
           }}>
+            {/* Coroa de raios divinos girando atrás do núcleo */}
+            <div style={{
+              position: "absolute",
+              left: -rootSize * 1.5, top: -rootSize * 1.5,
+              width: rootSize * 3, height: rootSize * 3,
+              borderRadius: "50%",
+              background: `repeating-conic-gradient(from 0deg, ${master.accentColor}2e 0deg 10deg, transparent 10deg 26deg)`,
+              maskImage: "radial-gradient(circle, black 0%, transparent 66%)",
+              WebkitMaskImage: "radial-gradient(circle, black 0%, transparent 66%)",
+              animation: "gpRingSpin 34s linear infinite",
+            }}/>
             {/* Aura respirando */}
             <div style={{
               position: "absolute",
@@ -1187,10 +1207,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 background: `radial-gradient(circle at 36% 28%, transparent 35%, ${master.accentColor}33 100%)`,
               }}/>
             </div>
-            {/* Rótulo do núcleo */}
+            {/* Rótulo do núcleo — acima do orbe, pois os ramos agora descem */}
             <div style={{
               position: "absolute",
-              left: "50%", top: rootSize / 2 + 6,
+              left: "50%", top: -(rootSize / 2) - Math.max(14, NODE * 0.34),
               transform: "translateX(-50%)",
               fontFamily: PIXEL, fontSize: Math.max(7.5, NODE * 0.2),
               color: master.accentColor,
