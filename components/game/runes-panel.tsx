@@ -48,7 +48,7 @@ function frand(n: number): number {
   return s - Math.floor(s)
 }
 
-/** Fase da onda de cada ramo — cada rota serpenteia de um jeito próprio. */
+/** Fase da onda de cada ramo — cada pista serpenteia de um jeito próprio. */
 const BRANCH_PHASE: Record<RuneBranchId, number> = {
   fortuna: 0.6,
   guerra:  2.5,
@@ -56,14 +56,14 @@ const BRANCH_PHASE: Record<RuneBranchId, number> = {
 }
 
 /**
- * Leque da árvore de habilidades: ângulo inicial → final (em graus) de cada
- * ramo, partindo do núcleo central na base do mapa. Fortuna curva à esquerda,
- * Guerra sobe pelo centro e Domínio curva à direita.
+ * Pista vertical de cada ramo (fração da largura do mapa). A árvore sobe do
+ * núcleo na base em 3 colunas claras — Fortuna à esquerda, Guerra ao centro e
+ * Domínio à direita — sem cruzamentos e com espaçamento constante entre tiers.
  */
-const BRANCH_ARC: Record<RuneBranchId, { from: number; to: number }> = {
-  fortuna: { from: 117, to: 162 },
-  guerra:  { from: 90,  to: 90 },
-  dominio: { from: 63,  to: 18 },
+const BRANCH_LANE: Record<RuneBranchId, number> = {
+  fortuna: 0.17,
+  guerra:  0.5,
+  dominio: 0.83,
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -339,6 +339,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const progress    = getRuneProgress(master, unlocked)
 
   const [tracksRef, tracksSize] = useElementSize<HTMLDivElement>()
+  const scrollRef     = useRef<HTMLDivElement | null>(null)
+  const didAutoScroll = useRef(false)
 
   useEffect(() => {
     setUnlocked(loadUnlockedRunes()[master.id] ?? [])
@@ -435,24 +437,44 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
     }
   }
 
-  // ── Geometria: ÁRVORE DE HABILIDADES — 3 ramos partindo de um núcleo ────────
-  // Todas as 30 runas visíveis: um núcleo central na base do mapa irradia os
-  // 3 ramos em leque (esquerda · centro · direita), como numa skill tree épica.
+  // ── Geometria: ÁRVORE DE HABILIDADES — 3 pistas verticais com rolagem ───────
+  // O mapa rola verticalmente: o núcleo fica na base e cada ramo sobe em sua
+  // própria coluna com espaçamento constante e serpenteio suave — a direção
+  // de progressão (base → topo) fica sempre clara e as runas nunca se amontoam.
   const RUNES_N = branches[0]?.runes.length ?? 10
   const W = tracksSize.w
   const H = tracksSize.h
   const ready = W > 0 && H > 0
-  const NODE = ready ? Math.max(24, Math.min(46, Math.floor(Math.min(H / 13.5, W / 16)))) : 40
+  const NODE = ready ? Math.max(34, Math.min(54, Math.floor(W / 11))) : 44
   const PED  = Math.round(NODE * 0.42)
-  /** Espaço no topo para os estandartes dos ramos. */
-  const topY = NODE / 2 + 46
-  /** Núcleo da árvore, na base central do mapa. */
-  const rootSize = Math.round(NODE * 1.35)
-  const root = { x: W / 2, y: H - PED - Math.round(NODE * 0.85) }
-  /** Raio máximo do leque (do núcleo até o topo do mapa). */
-  const rMax = Math.max(60, root.y - topY - NODE * 0.4)
-  /** Escala horizontal: estica o leque para preencher a largura disponível. */
-  const sx = clamp((W / 2 - NODE / 2 - 20) / rMax, 0.6, 1.7)
+  /** Distância vertical entre tiers — folga generosa para respirar. */
+  const STEP = Math.max(96, Math.round(NODE * 2.05))
+  /** Espaço no topo do mapa (abaixo dos estandartes fixos). */
+  const topPad = 86
+  /** Núcleo da árvore, na base central do mapa rolável. */
+  const rootSize = Math.round(NODE * 1.45)
+  /** Distância do centro do núcleo até o centro da 1ª runa. */
+  const gap0 = Math.round(rootSize * 0.8 + NODE * 0.95)
+  const rootY = topPad + NODE + (RUNES_N - 1) * STEP + gap0
+  /** Altura total do conteúdo rolável. */
+  const contentH = rootY + rootSize + PED + 28
+  const root = { x: W / 2, y: rootY }
+  /** Centro vertical da runa de índice i (0 = tier I, embaixo). */
+  const yOf = (i: number) => rootY - gap0 - i * STEP
+  /** Amplitude do serpenteio horizontal de cada pista. */
+  const laneAmp = Math.min(NODE * 0.62, W * 0.05)
+
+  // Ao abrir, centraliza a rolagem na runa mais relevante (a selecionada)
+  useEffect(() => {
+    if (!ready || !hydrated || didAutoScroll.current || !selectedId) return
+    const el = scrollRef.current
+    if (!el) return
+    didAutoScroll.current = true
+    const sel = allRunes.find(r => r.id === selectedId)
+    const targetY = sel ? yOf(sel.tier - 1) : rootY
+    el.scrollTop = Math.max(0, Math.min(contentH - el.clientHeight, targetY - el.clientHeight * 0.55))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, hydrated, selectedId])
 
   return (
     <div style={{
@@ -795,16 +817,74 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         </div>
       </header>
 
-      {/* ── Mapa de rotas: 3 rotas serpenteando pelo mapa, todas as 30 runas ── */}
+      {/* ── Mapa de rotas: árvore vertical rolável, 3 pistas + núcleo na base ── */}
       <div
         ref={tracksRef}
         style={{ flex: 1, minHeight: 0, position: "relative", zIndex: 4 }}
       >
+        {/* Estandartes dos ramos — fixos no topo do mapa, fora da rolagem */}
+        {ready && (
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, zIndex: 6,
+            pointerEvents: "none",
+            display: "flex", alignItems: "flex-start", gap: 8,
+            padding: "8px 10px 20px",
+            background: "linear-gradient(180deg, rgba(8,8,13,0.94) 0%, rgba(8,8,13,0.6) 55%, transparent 100%)",
+          }}>
+            {branches.map(branch => {
+              const BranchIcon     = BRANCH_ICON[branch.id]
+              const tint           = BRANCH_TINT[branch.id]
+              const branchDone     = branch.runes.filter(r => unlocked.includes(r.id)).length
+              const branchComplete = branchDone === branch.runes.length
+              return (
+                <div key={`banner-${branch.id}`} style={{
+                  flex: 1, display: "flex",
+                  justifyContent: branch.id === "fortuna" ? "flex-start"
+                    : branch.id === "dominio" ? "flex-end" : "center",
+                }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: 7,
+                    background: `linear-gradient(135deg, ${tint}1c 0%, rgba(10,10,16,0.9) 70%)`,
+                    border: "2px solid #23232c",
+                    borderLeft: `3px solid ${tint}aa`,
+                    borderRadius: 5,
+                    padding: "4px 9px 4px 6px",
+                    boxShadow: `inset 0 0 16px ${tint}0e, 0 4px 12px rgba(0,0,0,0.4)`,
+                  }}>
+                    <div style={{
+                      width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: `linear-gradient(180deg, ${tint}22, #14141b)`,
+                      border: `2px solid ${tint}88`,
+                      boxShadow: `0 0 8px ${tint}44`, flexShrink: 0,
+                    }}>
+                      <BranchIcon size={11} color={tint}/>
+                    </div>
+                    <span style={{
+                      fontFamily: PIXEL, fontSize: 9.5, color: "#f3f0ea",
+                      textShadow: `0 0 10px ${tint}66`, whiteSpace: "nowrap",
+                    }}>{branch.name.toUpperCase()}</span>
+                    <span style={{
+                      fontFamily: PIXEL, fontSize: 8.5,
+                      color: branchComplete ? "#4ecf9d" : tint,
+                      fontVariantNumeric: "tabular-nums",
+                      display: "inline-flex", alignItems: "center", gap: 3,
+                      background: "#0d0d13", border: `2px solid ${branchComplete ? "#1d7d5c" : `${tint}44`}`,
+                      padding: "0px 5px",
+                    }}>
+                      {branchComplete && <Check size={9} strokeWidth={3}/>}
+                      {branchDone}/{branch.runes.length}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden" }}>
+        <div style={{ position: "relative", width: "100%", height: ready ? contentH : "100%" }}>
         {ready && branches.map((branch, bIdx) => {
-          const BranchIcon     = BRANCH_ICON[branch.id]
-          const tint           = BRANCH_TINT[branch.id]
-          const branchDone     = branch.runes.filter(r => unlocked.includes(r.id)).length
-          const branchComplete = branchDone === branch.runes.length
+          const tint = BRANCH_TINT[branch.id]
           const statusById = new Map(branch.runes.map(r => [
             r.id,
             hydrated
@@ -812,23 +892,14 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               : ("locked_prev" as const),
           ]))
 
-          // Posições em leque: cada runa sobe pelo ramo com ângulo interpolado
-          // (curvando para fora) + serpenteio angular + jitter determinístico.
+          // Posições em pista: cada runa sobe em coluna com serpenteio suave e
+          // espaçamento constante — a direção (base → topo) fica sempre clara.
           const phase = BRANCH_PHASE[branch.id]
-          const arc   = BRANCH_ARC[branch.id]
-          const pts = branch.runes.map((_, i) => {
-            const e = RUNES_N > 1 ? i / (RUNES_N - 1) : 0
-            const wiggle = branch.id === "guerra"
-              ? Math.sin(i * 1.35 + phase) * 7
-              : Math.sin(i * 1.7 + phase) * 4
-            const aDeg = arc.from + (arc.to - arc.from) * e + wiggle
-            const a = (aDeg * Math.PI) / 180
-            const r = rMax * (0.18 + 0.82 * e)
-              + (frand(i * 3.1 + bIdx * 17 + 1) - 0.5) * NODE * 0.5
-            const x = clamp(root.x + Math.cos(a) * r * sx, NODE / 2 + 8, W - NODE / 2 - 8)
-            const y = clamp(root.y - Math.sin(a) * r, topY, root.y - NODE * 1.05)
-            return { x, y }
-          })
+          const laneX = clamp(W * BRANCH_LANE[branch.id], NODE / 2 + 16, W - NODE / 2 - 16)
+          const pts = branch.runes.map((_, i) => ({
+            x: clamp(laneX + Math.sin(i * 0.9 + phase) * laneAmp, NODE / 2 + 10, W - NODE / 2 - 10),
+            y: yOf(i),
+          }))
 
           const firstStatus = statusById.get(branch.runes[0].id)
 
@@ -871,45 +942,17 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                   </div>
                 )
               })()}
-              {/* Estandarte flutuante do ramo, coroando o topo do seu leque */}
-              <div style={{
-                position: "absolute", top: 8,
-                ...(branch.id === "fortuna" ? { left: 10 }
-                  : branch.id === "dominio" ? { right: 10 }
-                  : { left: "50%", transform: "translateX(-50%)" }),
-                display: "inline-flex", alignItems: "center", gap: 7,
-                background: `linear-gradient(135deg, ${tint}1c 0%, rgba(10,10,16,0.85) 70%)`,
-                border: "2px solid #23232c",
-                borderLeft: `3px solid ${tint}aa`,
-                borderRadius: 5,
-                padding: "4px 9px 4px 6px",
-                boxShadow: `inset 0 0 16px ${tint}0e, 0 4px 12px rgba(0,0,0,0.4)`,
-                zIndex: 2,
-              }}>
-                <div style={{
-                  width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: `linear-gradient(180deg, ${tint}22, #14141b)`,
-                  border: `2px solid ${tint}88`,
-                  boxShadow: `0 0 8px ${tint}44`, flexShrink: 0,
-                }}>
-                  <BranchIcon size={11} color={tint}/>
-                </div>
-                <span style={{
-                  fontFamily: PIXEL, fontSize: 9.5, color: "#f3f0ea",
-                  textShadow: `0 0 10px ${tint}66`, whiteSpace: "nowrap",
-                }}>{branch.name.toUpperCase()}</span>
-                <span style={{
-                  fontFamily: PIXEL, fontSize: 8.5,
-                  color: branchComplete ? "#4ecf9d" : tint,
-                  fontVariantNumeric: "tabular-nums",
-                  display: "inline-flex", alignItems: "center", gap: 3,
-                  background: "#0d0d13", border: `2px solid ${branchComplete ? "#1d7d5c" : `${tint}44`}`,
-                  padding: "0px 5px",
-                }}>
-                  {branchComplete && <Check size={9} strokeWidth={3}/>}
-                  {branchDone}/{branch.runes.length}
-                </span>
-              </div>
+              {/* Feixe de energia da pista: coluna de luz sutil atrás do ramo */}
+              <div aria-hidden="true" style={{
+                position: "absolute",
+                left: laneX - NODE * 1.15,
+                top: pts[RUNES_N - 1].y - NODE * 1.1,
+                width: NODE * 2.3,
+                height: root.y - pts[RUNES_N - 1].y + NODE * 1.6,
+                background: `linear-gradient(180deg, ${tint}16 0%, ${tint}09 55%, transparent 100%)`,
+                maskImage: "linear-gradient(90deg, transparent 0%, black 32%, black 68%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 32%, black 68%, transparent 100%)",
+              }}/>
 
               {/* Linhas de energia conectando os orbes */}
               {branch.runes.slice(0, -1).map((rune, i) => {
@@ -961,8 +1004,11 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 const isLocked    = !isDone && !isAvailable
                 const isSelected  = selectedId === rune.id
                 const isBursting  = burstId === rune.id
-                const iconSize    = Math.round(NODE * 0.44)
-                const sealSize    = Math.max(13, Math.round(NODE * 0.26))
+                /** A runa final do ramo é maior — o ápice épico da pista. */
+                const isApex      = rune.tier === RUNES_N
+                const nSize       = isApex ? Math.round(NODE * 1.24) : NODE
+                const iconSize    = Math.round(nSize * 0.44)
+                const sealSize    = Math.max(13, Math.round(nSize * 0.26))
 
                 return (
                   <div
@@ -970,7 +1016,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     style={{
                       position: "absolute",
                       left: pts[i].x,
-                      top: pts[i].y - NODE / 2,
+                      top: pts[i].y - nSize / 2,
                       transform: "translateX(-50%)",
                       // Reativa os cliques: o container do ramo usa pointerEvents "none"
                       // para uma camada não bloquear os nós das outras rotas.
@@ -982,7 +1028,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     {/* Explosão de energia no momento do desbloqueio */}
                     {isBursting && (
                       <div aria-hidden="true" style={{
-                        position: "absolute", left: "50%", top: NODE / 2,
+                        position: "absolute", left: "50%", top: nSize / 2,
                         width: 0, height: 0, pointerEvents: "none", zIndex: 5,
                       }}>
                         {[0, 0.14, 0.3].map((delay, w) => (
@@ -1014,8 +1060,23 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         })}
                       </div>
                     )}
+                    {/* Coroa de raios atrás da runa final do ramo */}
+                    {isApex && !isLocked && (
+                      <div aria-hidden="true" style={{
+                        position: "absolute",
+                        left: "50%", top: nSize / 2,
+                        width: nSize * 2.4, height: nSize * 2.4,
+                        transform: "translate(-50%, -50%)",
+                        pointerEvents: "none",
+                        background: `repeating-conic-gradient(from 0deg, ${tint}22 0deg 12deg, transparent 12deg 30deg)`,
+                        maskImage: "radial-gradient(circle, black 0%, transparent 68%)",
+                        WebkitMaskImage: "radial-gradient(circle, black 0%, transparent 68%)",
+                        borderRadius: "50%",
+                        animation: "gpRingSpin 26s linear infinite",
+                      }}/>
+                    )}
                     <RuneNode
-                      size={NODE}
+                      size={nSize}
                       tint={isDone ? "#4ecf9d" : tint}
                       tintStrength={isLocked ? 0.4 : 1}
                       selected={isSelected}
@@ -1039,7 +1100,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     {/* Selo de estado no canto do orbe */}
                     {(isDone || isLocked) && (
                       <div aria-hidden="true" style={{
-                        position: "absolute", right: -3, top: NODE - sealSize,
+                        position: "absolute", right: -3, top: nSize - sealSize,
                         width: sealSize, height: sealSize,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         background: isDone ? "#166b50" : "#16161d",
@@ -1053,8 +1114,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
 
                     {/* Tier em algarismo romano sob o pedestal */}
                     <div style={{
-                      position: "absolute", top: NODE + PED + 2, left: "50%", transform: "translateX(-50%)",
-                      fontFamily: PIXEL, fontSize: Math.max(7.5, NODE * 0.16),
+                      position: "absolute", top: nSize + Math.round(nSize * 0.42) + 2, left: "50%", transform: "translateX(-50%)",
+                      fontFamily: PIXEL, fontSize: Math.max(7.5, nSize * 0.16),
                       color: isSelected ? tint : isLocked ? "#5b6270" : "#9aa1ad",
                       textShadow: isSelected ? `0 0 8px ${tint}88` : "0 2px 0 rgba(0,0,0,0.7)",
                       whiteSpace: "nowrap",
@@ -1138,6 +1199,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
             }}>NÚCLEO</div>
           </div>
         )}
+        </div>
+        </div>
       </div>
 
       {/* ── Painel de detalhe da runa selecionada — fixo na base ── */}
