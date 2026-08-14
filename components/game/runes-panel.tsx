@@ -425,7 +425,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           const stateLabel = done ? "GRAVADA" : avail ? "DISPONÍVEL" : "BLOQUEADA"
           const badgeBg    = done ? "#1d7d5c" : avail ? "#c0512c" : "#33333d"
           const badgeFg    = done ? "#d8fff0" : avail ? "#ffe9d6" : "#9aa1ad"
-          const branchName = branches.find(b => b.id === selected.branchId)?.name ?? ""
+          const selBranch  = branches.find(b => b.id === selected.branchId)
+          const branchName = selBranch?.name ?? ""
+          const branchSize = selBranch?.runes.length ?? 10
 
           return (
             <div style={{
@@ -476,7 +478,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     </div>
                     <div style={{
                       marginTop: 7, fontFamily: PIXEL, fontSize: 10, color: "#cfcbc3",
-                    }}>Nv. {selected.tier}/4</div>
+                    }}>Nv. {selected.tier}/{branchSize}</div>
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
