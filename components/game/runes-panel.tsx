@@ -55,6 +55,21 @@ const BRANCH_PHASE: Record<RuneBranchId, number> = {
   dominio: 4.3,
 }
 
+/**
+ * Leque da árvore de habilidades: ângulo inicial → final (em graus) de cada
+ * ramo, partindo do núcleo central na base do mapa. Fortuna curva à esquerda,
+ * Guerra sobe pelo centro e Domínio curva à direita.
+ */
+const BRANCH_ARC: Record<RuneBranchId, { from: number; to: number }> = {
+  fortuna: { from: 117, to: 162 },
+  guerra:  { from: 90,  to: 90 },
+  dominio: { from: 63,  to: 18 },
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v))
+}
+
 interface RunesPanelProps {
   master:  Master
   onClose: () => void
@@ -420,21 +435,24 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
     }
   }
 
-  // ── Geometria responsiva: mapa de rotas — TODAS as runas visíveis ───────────
-  // Cada ramo é uma ROTA que serpenteia horizontalmente pela sua banda do mapa,
-  // com posições orgânicas (onda + jitter determinístico) como num skill map.
+  // ── Geometria: ÁRVORE DE HABILIDADES — 3 ramos partindo de um núcleo ────────
+  // Todas as 30 runas visíveis: um núcleo central na base do mapa irradia os
+  // 3 ramos em leque (esquerda · centro · direita), como numa skill tree épica.
   const RUNES_N = branches[0]?.runes.length ?? 10
-  const PAD_X = Math.max(18, Math.round(tracksSize.w * 0.025))
-  const mapW  = Math.max(0, tracksSize.w - PAD_X * 2)
-  const slot  = mapW > 0 ? mapW / RUNES_N : 0
-  const bandH = tracksSize.h > 0 ? tracksSize.h / 3 : 0
-  const sizeFromW = slot > 0 ? slot - 14 : 48
-  const sizeFromH = bandH > 0 ? bandH * 0.42 : 48
-  const NODE = Math.max(30, Math.min(58, Math.floor(Math.min(sizeFromW, sizeFromH))))
+  const W = tracksSize.w
+  const H = tracksSize.h
+  const ready = W > 0 && H > 0
+  const NODE = ready ? Math.max(24, Math.min(46, Math.floor(Math.min(H / 13.5, W / 16)))) : 40
   const PED  = Math.round(NODE * 0.42)
-  // Amplitude do serpentear vertical dentro da banda
-  const AMP  = Math.max(8, Math.round(bandH * 0.17))
-  const ready = tracksSize.w > 0 && tracksSize.h > 0
+  /** Espaço no topo para os estandartes dos ramos. */
+  const topY = NODE / 2 + 46
+  /** Núcleo da árvore, na base central do mapa. */
+  const rootSize = Math.round(NODE * 1.35)
+  const root = { x: W / 2, y: H - PED - Math.round(NODE * 0.85) }
+  /** Raio máximo do leque (do núcleo até o topo do mapa). */
+  const rMax = Math.max(60, root.y - topY - NODE * 0.4)
+  /** Escala horizontal: estica o leque para preencher a largura disponível. */
+  const sx = clamp((W / 2 - NODE / 2 - 20) / rMax, 0.6, 1.7)
 
   return (
     <div style={{
@@ -592,10 +610,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           )
         })}
 
-        {/* Círculo de invocação gigante no coração do mapa */}
+        {/* Círculo de invocação gigante emanando do núcleo da árvore */}
         <div style={{
-          position: "absolute", left: "50%", top: "52%",
-          width: "min(88vh, 62vw)", aspectRatio: "1",
+          position: "absolute", left: "50%", top: "68%",
+          width: "min(96vh, 70vw)", aspectRatio: "1",
           transform: "translate(-50%, -50%)",
         }}>
           {/* Anel externo tracejado girando */}
@@ -794,29 +812,71 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               : ("locked_prev" as const),
           ]))
 
-          // Posições orgânicas da rota: onda senoidal + jitter determinístico,
-          // com o centro do orbe sempre dentro da banda do ramo.
-          const phase   = BRANCH_PHASE[branch.id]
-          const bandTop = bandH * bIdx
-          const minY    = bandTop + NODE / 2 + 14
-          const maxY    = bandTop + bandH - PED - NODE / 2 - 16
+          // Posições em leque: cada runa sobe pelo ramo com ângulo interpolado
+          // (curvando para fora) + serpenteio angular + jitter determinístico.
+          const phase = BRANCH_PHASE[branch.id]
+          const arc   = BRANCH_ARC[branch.id]
           const pts = branch.runes.map((_, i) => {
-            const wob = Math.sin(i * 1.12 + phase) * AMP
-              + (frand(i * 3.1 + bIdx * 17 + 1) - 0.5) * AMP * 0.9
-            const x = PAD_X + slot * i + slot / 2
-              + (frand(i * 7.3 + bIdx * 29 + 2) - 0.5) * slot * 0.26
-            const y = Math.max(minY, Math.min(maxY, bandTop + bandH * 0.47 + wob))
+            const e = RUNES_N > 1 ? i / (RUNES_N - 1) : 0
+            const wiggle = branch.id === "guerra"
+              ? Math.sin(i * 1.35 + phase) * 7
+              : Math.sin(i * 1.7 + phase) * 4
+            const aDeg = arc.from + (arc.to - arc.from) * e + wiggle
+            const a = (aDeg * Math.PI) / 180
+            const r = rMax * (0.18 + 0.82 * e)
+              + (frand(i * 3.1 + bIdx * 17 + 1) - 0.5) * NODE * 0.5
+            const x = clamp(root.x + Math.cos(a) * r * sx, NODE / 2 + 8, W - NODE / 2 - 8)
+            const y = clamp(root.y - Math.sin(a) * r, topY, root.y - NODE * 1.05)
             return { x, y }
           })
+
+          const firstStatus = statusById.get(branch.runes[0].id)
 
           return (
             <div key={branch.id} style={{
               position: "absolute", inset: 0,
+              pointerEvents: "none",
               animation: `gpRiseIn 0.4s ease ${bIdx * 0.08}s both`,
             }}>
-              {/* Estandarte flutuante do ramo, ancorado no início da rota */}
+              {/* Raiz de energia: conecta o núcleo central à 1ª runa do ramo */}
+              {(() => {
+                const dx  = pts[0].x - root.x
+                const dy  = pts[0].y - root.y
+                const len = Math.max(4, Math.sqrt(dx * dx + dy * dy))
+                const ang = (Math.atan2(dy, dx) * 180) / Math.PI
+                const lit = firstStatus === "unlocked"
+                const nxt = firstStatus === "available"
+                return (
+                  <div aria-hidden="true" style={{
+                    position: "absolute", left: root.x, top: root.y,
+                    width: len, height: 5, marginTop: -2.5,
+                    transform: `rotate(${ang}deg)`,
+                    transformOrigin: "0 50%",
+                    borderRadius: 3,
+                    background: lit
+                      ? `linear-gradient(90deg, ${master.accentColor} 0%, #fff6d8 50%, ${tint} 100%)`
+                      : `linear-gradient(90deg, ${master.accentColor}55 0%, #454654 55%, #33343f 100%)`,
+                    boxShadow: lit ? `0 0 10px ${tint}88` : "none",
+                    opacity: lit ? 0.95 : 0.6,
+                    overflow: "hidden",
+                  }}>
+                    {nxt && (
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.85) 0 7px, transparent 7px 18px)",
+                        animation: "gpRunePathFlow 1.1s linear infinite",
+                        mixBlendMode: "screen",
+                      }}/>
+                    )}
+                  </div>
+                )
+              })()}
+              {/* Estandarte flutuante do ramo, coroando o topo do seu leque */}
               <div style={{
-                position: "absolute", left: 10, top: bandTop + 6,
+                position: "absolute", top: 8,
+                ...(branch.id === "fortuna" ? { left: 10 }
+                  : branch.id === "dominio" ? { right: 10 }
+                  : { left: "50%", transform: "translateX(-50%)" }),
                 display: "inline-flex", alignItems: "center", gap: 7,
                 background: `linear-gradient(135deg, ${tint}1c 0%, rgba(10,10,16,0.85) 70%)`,
                 border: "2px solid #23232c",
@@ -912,6 +972,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       left: pts[i].x,
                       top: pts[i].y - NODE / 2,
                       transform: "translateX(-50%)",
+                      // Reativa os cliques: o container do ramo usa pointerEvents "none"
+                      // para uma camada não bloquear os nós das outras rotas.
+                      pointerEvents: "auto",
                       zIndex: isBursting ? 4 : isSelected ? 3 : 1,
                       animation: isBursting ? "gpNodeBurstPop 0.7s cubic-bezier(0.16,1,0.3,1)" : "none",
                     }}
@@ -1004,6 +1067,77 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
             </div>
           )
         })}
+
+        {/* ── Núcleo da árvore: emblema do Mestre irradiando os 3 ramos ── */}
+        {ready && (
+          <div aria-hidden="true" style={{
+            position: "absolute",
+            left: root.x, top: root.y,
+            width: 0, height: 0,
+            pointerEvents: "none", zIndex: 3,
+          }}>
+            {/* Aura respirando */}
+            <div style={{
+              position: "absolute",
+              left: -rootSize * 1.1, top: -rootSize * 1.1,
+              width: rootSize * 2.2, height: rootSize * 2.2,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${master.accentColor}55 0%, ${master.accentColor}1a 45%, transparent 70%)`,
+              animation: "gpAuraBreathe 3.6s ease-in-out infinite",
+            }}/>
+            {/* Anéis girando ao redor do núcleo */}
+            <div style={{
+              position: "absolute",
+              left: -rootSize * 0.78, top: -rootSize * 0.78,
+              width: rootSize * 1.56, height: rootSize * 1.56,
+              borderRadius: "50%",
+              border: `2px dashed ${master.accentColor}77`,
+              animation: "gpRingSpin 18s linear infinite",
+            }}/>
+            <div style={{
+              position: "absolute",
+              left: -rootSize * 0.62, top: -rootSize * 0.62,
+              width: rootSize * 1.24, height: rootSize * 1.24,
+              borderRadius: "50%",
+              border: `1px dotted ${master.accentColor}55`,
+              animation: "gpRingSpinRev 26s linear infinite",
+            }}/>
+            {/* Orbe do núcleo com o retrato do Mestre */}
+            <div style={{
+              position: "absolute",
+              left: -rootSize / 2, top: -rootSize / 2,
+              width: rootSize, height: rootSize,
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: "2px solid #06060a",
+              boxShadow: `0 0 0 2px ${master.accentColor}88, 0 0 26px ${master.accentColor}77`,
+              background: "#101016",
+              animation: "gpRuneFloat 3.4s ease-in-out infinite",
+            }}>
+              <img
+                src={master.iconPath || "/placeholder.svg"}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover", imageRendering: "pixelated" }}
+                onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+              />
+              {/* Verniz de cor do mestre sobre o retrato */}
+              <div style={{
+                position: "absolute", inset: 0,
+                background: `radial-gradient(circle at 36% 28%, transparent 35%, ${master.accentColor}33 100%)`,
+              }}/>
+            </div>
+            {/* Rótulo do núcleo */}
+            <div style={{
+              position: "absolute",
+              left: "50%", top: rootSize / 2 + 6,
+              transform: "translateX(-50%)",
+              fontFamily: PIXEL, fontSize: Math.max(7.5, NODE * 0.2),
+              color: master.accentColor,
+              textShadow: `0 0 10px ${master.accentColor}88, 0 2px 0 rgba(0,0,0,0.7)`,
+              whiteSpace: "nowrap", letterSpacing: "0.08em",
+            }}>NÚCLEO</div>
+          </div>
+        )}
       </div>
 
       {/* ── Painel de detalhe da runa selecionada — fixo na base ── */}
