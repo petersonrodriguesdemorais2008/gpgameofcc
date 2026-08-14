@@ -99,15 +99,17 @@ function ResourceChip({ icon, label, value, color }: {
   return (
     <div title={label} style={{
       display: "flex", alignItems: "center", gap: 7,
-      background: "#101016", border: "2px solid #2c2c36",
-      borderBottomColor: "#0a0a0e", borderRightColor: "#0a0a0e",
-      padding: "4px 10px 4px 6px",
+      background: `linear-gradient(135deg, ${color}14 0%, #101016 55%)`,
+      border: `1px solid ${color}3a`,
+      borderRadius: 7,
+      padding: "4px 11px 4px 7px",
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.35)`,
     }}>
       <img
         src={icon || "/placeholder.svg"}
         alt=""
         width={18} height={18}
-        style={{ width: 18, height: 18, objectFit: "contain", imageRendering: "pixelated" }}
+        style={{ width: 18, height: 18, objectFit: "contain", filter: `drop-shadow(0 0 5px ${color}55)` }}
         onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
       />
       <span style={{
@@ -264,7 +266,7 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
             <img
               src={runeRewardIconPath(rune.rewards[0], chestId) || "/placeholder.svg"}
               alt="" width={40} height={40}
-              style={{ width: 40, height: 40, objectFit: "contain", imageRendering: "pixelated" }}
+              style={{ width: 40, height: 40, objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))" }}
               onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
             />
           </div>
@@ -288,15 +290,18 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
             return (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: 11,
-                background: "#14141b", border: "2px solid #26262f",
+                background: `linear-gradient(90deg, ${color}12 0%, #14141b 60%)`,
+                border: `1px solid ${color}33`,
                 borderLeft: `3px solid ${color}`,
+                borderRadius: 7,
                 padding: "9px 13px",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
                 animation: `gpRiseIn 0.35s ease ${0.55 + i * 0.14}s both`,
               }}>
                 <img
                   src={runeRewardIconPath(rw, chestId) || "/placeholder.svg"}
                   alt="" width={26} height={26}
-                  style={{ width: 26, height: 26, objectFit: "contain", imageRendering: "pixelated" }}
+                  style={{ width: 26, height: 26, objectFit: "contain", filter: `drop-shadow(0 0 6px ${color}44)` }}
                   onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                 />
                 <span style={{ fontFamily: PIXEL, fontSize: 11.5, color }}>{rw.label}</span>
@@ -786,8 +791,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         position: "relative", zIndex: 5, flexShrink: 0,
       }}>
         <button onClick={onClose} aria-label="Voltar" style={{
-          background: "#16161d", border: "2px solid #2e2e38",
-          borderBottomColor: "#0a0a0e", borderRightColor: "#0a0a0e",
+          background: "#16161d", border: "1px solid #2e2e38",
+          borderRadius: 9,
           width: 34, height: 34, cursor: "pointer", color: "#9aa1ad",
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
         }}><ArrowLeft size={16}/></button>
@@ -795,6 +800,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         <div style={{
           width: 36, height: 36, overflow: "hidden", flexShrink: 0,
           border: `2px solid ${master.accentColor}`,
+          borderRadius: 9,
           background: "#101016",
           boxShadow: `0 0 12px ${master.accentColor}55`,
         }}>
@@ -1150,8 +1156,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         alt="" width={iconSize} height={iconSize}
                         style={{
                           width: iconSize, height: iconSize, objectFit: "contain",
-                          imageRendering: "pixelated",
-                          filter: isLocked ? "grayscale(1) brightness(0.8)" : "drop-shadow(0 2px 0 rgba(0,0,0,0.5))",
+                          filter: isLocked ? "grayscale(1) brightness(0.8)" : "drop-shadow(0 2px 3px rgba(0,0,0,0.55))",
                         }}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                       />
@@ -1295,21 +1300,23 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           }}>
             <div style={{
               position: "relative", maxWidth: 980, margin: "0 auto",
-              background: "rgba(11,11,17,0.97)",
-              border: `2px solid ${done || avail ? `${tint}55` : "#34343f"}`,
+              background: `linear-gradient(160deg, ${done || avail ? `${tint}0d` : "rgba(255,255,255,0.02)"} 0%, rgba(11,11,17,0.97) 45%)`,
+              border: `1px solid ${done || avail ? `${tint}4d` : "#2c2c38"}`,
               borderLeft: `4px solid ${stateColor}`,
-              boxShadow: `4px 4px 0 rgba(0,0,0,0.5), inset 0 0 0 1px #17171f${avail ? `, 0 0 24px ${tint}22` : ""}`,
-              borderRadius: 6,
-              padding: "14px 14px 12px",
+              boxShadow: `0 10px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)${avail ? `, 0 0 28px ${tint}26` : ""}`,
+              borderRadius: 12,
+              padding: "14px 16px 12px",
             }}>
               {/* Badge de estado sobre a borda */}
               <div style={{
-                position: "absolute", top: -12, left: 12,
+                position: "absolute", top: -12, left: 14,
                 display: "inline-flex", alignItems: "center", gap: 6,
                 background: badgeBg, color: badgeFg,
-                border: "2px solid #06060a",
-                padding: "2px 10px",
+                border: "1px solid rgba(0,0,0,0.6)",
+                borderRadius: 6,
+                padding: "3px 11px",
                 fontFamily: PIXEL, fontSize: 10, letterSpacing: "0.06em",
+                boxShadow: `0 4px 12px rgba(0,0,0,0.45)${avail ? `, 0 0 14px ${tint}44` : ""}`,
               }}>
                 {done ? <Check size={10} strokeWidth={3}/> : !avail ? <Lock size={9}/> : null}
                 {stateLabel}
@@ -1330,7 +1337,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     <img
                       src={runeRewardIconPath(selected.rewards[0], chestId) || "/placeholder.svg"}
                       alt="" width={26} height={26}
-                      style={{ width: 26, height: 26, objectFit: "contain", imageRendering: "pixelated" }}
+                      style={{ width: 26, height: 26, objectFit: "contain", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
                       onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                     />
                   </div>
@@ -1373,14 +1380,15 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       return (
                         <div key={i} style={{
                           display: "flex", alignItems: "center", gap: 6,
-                          background: "#14141b", border: "2px solid #26262f",
-                          borderBottomColor: "#0c0c11", borderRightColor: "#0c0c11",
-                          padding: "3px 8px 3px 5px",
+                          background: `linear-gradient(135deg, ${c}10 0%, #14141b 60%)`,
+                          border: `1px solid ${c}33`,
+                          borderRadius: 6,
+                          padding: "3px 9px 3px 6px",
                         }}>
                           <img
                             src={runeRewardIconPath(rw, chestId) || "/placeholder.svg"}
                             alt="" width={16} height={16}
-                            style={{ width: 16, height: 16, objectFit: "contain", imageRendering: "pixelated" }}
+                            style={{ width: 16, height: 16, objectFit: "contain", filter: `drop-shadow(0 0 4px ${c}44)` }}
                             onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                           />
                           <span style={{ fontFamily: PIXEL, fontSize: 9.5, color: c }}>{rw.label}</span>
@@ -1395,7 +1403,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         }}/>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <img src="/images/gear-coin.png" alt="" width={15} height={15}
-                            style={{ width: 15, height: 15, objectFit: "contain", imageRendering: "pixelated" }}
+                            style={{ width: 15, height: 15, objectFit: "contain" }}
                             onError={e => { (e.target as HTMLImageElement).style.display = "none" }}/>
                           <span style={{
                             fontFamily: PIXEL, fontSize: 10.5, fontVariantNumeric: "tabular-nums",
@@ -1407,7 +1415,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                           return (
                             <div key={fid} title={FRAGMENTS[fid].name} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                               <img src={FRAGMENTS[fid].image || "/placeholder.svg"} alt="" width={15} height={15}
-                                style={{ width: 15, height: 15, objectFit: "contain", imageRendering: "pixelated" }}
+                                style={{ width: 15, height: 15, objectFit: "contain" }}
                                 onError={e => { (e.target as HTMLImageElement).style.display = "none" }}/>
                               <span style={{
                                 fontFamily: PIXEL, fontSize: 10.5, fontVariantNumeric: "tabular-nums",
@@ -1427,12 +1435,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         className="gp-rune-cta"
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 6,
-                          background: "#46c295",
-                          border: "2px solid #0b3f2d",
-                          borderRadius: 3,
-                          padding: "7px 14px", cursor: "pointer", color: "#06281c",
+                          background: "linear-gradient(180deg, #5adfae 0%, #38b586 100%)",
+                          border: "1px solid #0b3f2d",
+                          borderRadius: 8,
+                          padding: "8px 18px", cursor: "pointer", color: "#06281c",
                           fontFamily: PIXEL, fontSize: 10.5,
-                          boxShadow: "0 3px 0 #0b3f2d",
+                          boxShadow: "0 3px 0 #0b3f2d, 0 0 18px rgba(70,194,149,0.35), inset 0 1px 0 rgba(255,255,255,0.35)",
                           transition: "transform 0.06s, box-shadow 0.06s",
                         }}>
                         GRAVAR RUNA
