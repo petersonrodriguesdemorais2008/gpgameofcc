@@ -108,54 +108,162 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
   rune: RuneDef; master: Master; onClose: () => void
 }) {
   const chestId = elementToChestId(master.element)
+  const tint    = BRANCH_TINT[rune.branchId]
+
   return (
     <div
       role="presentation"
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 620, cursor: "pointer",
-        background: "rgba(4,4,8,0.92)",
+        background: "rgba(3,3,7,0.94)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+        overflow: "hidden",
         animation: "gpFadeIn 0.22s ease",
       }}>
+
+      {/* Flash inicial de energia varrendo a tela */}
+      <div aria-hidden="true" style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: `radial-gradient(circle at 50% 46%, ${tint}88 0%, ${master.accentColor}44 30%, transparent 62%)`,
+        animation: "gpUnlockFlash 1.1s ease-out both",
+      }}/>
+
+      {/* Raios de luz divinos girando lentamente atrás do painel */}
+      <div aria-hidden="true" style={{
+        position: "absolute", left: "50%", top: "46%",
+        width: "160vmax", height: "160vmax", pointerEvents: "none",
+        background: `repeating-conic-gradient(from 0deg, ${tint}17 0deg 9deg, transparent 9deg 24deg)`,
+        maskImage: "radial-gradient(circle, black 0%, transparent 58%)",
+        WebkitMaskImage: "radial-gradient(circle, black 0%, transparent 58%)",
+        animation: "gpRaysSpin 70s linear infinite",
+      }}/>
+
+      {/* Ondas de choque expandindo do centro */}
+      {[0, 0.18, 0.4].map((delay, i) => (
+        <div key={`wave-${i}`} aria-hidden="true" style={{
+          position: "absolute", left: "50%", top: "46%",
+          width: "min(120vmin, 900px)", aspectRatio: "1",
+          borderRadius: "50%", pointerEvents: "none",
+          border: `${3 - i}px solid ${i === 1 ? "#fff6d8" : tint}`,
+          boxShadow: `0 0 30px ${tint}88, inset 0 0 30px ${tint}44`,
+          animation: `gpShockwave ${0.9 + i * 0.25}s cubic-bezier(0.16,1,0.3,1) ${delay}s both`,
+        }}/>
+      ))}
+
+      {/* Chuva de partículas explodindo do centro */}
+      {Array.from({ length: 26 }, (_, i) => {
+        const a    = (i / 26) * Math.PI * 2 + frand(i * 1.7) * 0.5
+        const dist = 130 + frand(i * 3.3) * 240
+        const sz   = 3 + Math.round(frand(i * 5.9) * 5)
+        const gold = i % 3 === 0
+        return (
+          <span key={`p-${i}`} aria-hidden="true" style={{
+            position: "absolute", left: "50%", top: "46%",
+            width: sz, height: sz, pointerEvents: "none",
+            background: gold ? "#ffe9b0" : tint,
+            boxShadow: `0 0 8px ${gold ? "#ffe9b0" : tint}`,
+            // @ts-expect-error — custom property
+            "--dx": `${Math.cos(a) * dist}px`,
+            "--dy": `${Math.sin(a) * dist}px`,
+            animation: `gpParticleFly ${0.7 + frand(i * 7.7) * 0.8}s cubic-bezier(0.16,1,0.3,1) ${frand(i * 2.1) * 0.22}s both`,
+          }}/>
+        )
+      })}
+
+      {/* Glifos rúnicos ascendendo ao redor do painel */}
+      {GLYPHS.map((g, i) => (
+        <span key={`gl-${i}`} aria-hidden="true" style={{
+          position: "absolute",
+          left: `${18 + (i * 9.5) % 66}%`,
+          top: `${58 + frand(i * 4.1) * 26}%`,
+          fontFamily: MONO, fontSize: 16 + (i % 3) * 8,
+          color: i % 2 === 0 ? tint : "#ffe9b0",
+          textShadow: `0 0 14px ${tint}`,
+          pointerEvents: "none", opacity: 0,
+          // @ts-expect-error — custom property
+          "--glyph-op": 0.35 + frand(i * 6.3) * 0.4,
+          animation: `gpGlyphAscend ${2.6 + frand(i * 3.9) * 2}s ease-out ${0.3 + i * 0.35}s infinite`,
+        }}>{g}</span>
+      ))}
+
       <div style={{
         position: "relative", textAlign: "center", maxWidth: 440, width: "100%",
         background: "#0d0d13",
-        border: "2px solid #3c3c48",
-        boxShadow: "4px 4px 0 rgba(0,0,0,0.55), inset 0 0 0 1px #17171f",
+        border: `2px solid ${tint}66`,
+        boxShadow: `4px 4px 0 rgba(0,0,0,0.55), inset 0 0 0 1px #17171f, 0 0 46px ${tint}33`,
         borderRadius: 6,
         padding: "26px 22px 20px",
         animation: "gpLevelBounce 0.5s cubic-bezier(0.34,1.56,0.64,1)",
       }}>
-        {/* Badge no topo */}
+        {/* Badge no topo, carimbado com impacto */}
         <div style={{
-          position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)",
+          position: "absolute", top: -12, left: "50%",
           background: "#c0512c", color: "#ffe9d6",
           border: "2px solid #06060a",
           fontFamily: PIXEL, fontSize: 10, letterSpacing: "0.08em",
           padding: "3px 12px", whiteSpace: "nowrap",
-        }}>RUNA DESBLOQUEADA</div>
+          boxShadow: `0 0 18px ${tint}66`,
+          animation: "gpStampIn 0.45s cubic-bezier(0.16,1,0.3,1) 0.12s both",
+        }}>✦ RUNA DESBLOQUEADA ✦</div>
 
-        <div style={{
-          margin: "8px auto 16px", width: 84, height: 84,
-          borderRadius: "50%",
-          background: `radial-gradient(circle at 36% 30%, #fff4cf 0%, #fff4cf 15%, ${master.accentColor} 15%, ${master.accentColor} 48%, rgba(0,0,0,0.6) 48%, rgba(0,0,0,0.6) 100%)`,
-          border: "2px solid #06060a",
-          boxShadow: `0 0 0 2px ${master.accentColor}55, 0 0 22px ${master.accentColor}66`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <img
-            src={runeRewardIconPath(rune.rewards[0], chestId) || "/placeholder.svg"}
-            alt="" width={38} height={38}
-            style={{ width: 38, height: 38, objectFit: "contain", imageRendering: "pixelated" }}
-            onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
-          />
+        {/* Orbe da runa: aura em flor + anéis girando + ascensão dramática */}
+        <div style={{ position: "relative", width: 118, height: 118, margin: "10px auto 14px" }}>
+          {/* Aura florescendo atrás do orbe */}
+          <div aria-hidden="true" style={{
+            position: "absolute", inset: -26, borderRadius: "50%",
+            background: `radial-gradient(circle, ${tint}5c 0%, ${tint}1e 45%, transparent 70%)`,
+            animation: "gpHaloBloom 0.9s ease-out both, gpAuraBreathe 3.2s ease-in-out 0.9s infinite",
+          }}/>
+          {/* Anel tracejado girando ao redor do orbe */}
+          <div aria-hidden="true" style={{
+            position: "absolute", inset: -8, borderRadius: "50%",
+            border: `2px dashed ${tint}88`,
+            animation: "gpRingSpin 14s linear infinite",
+          }}/>
+          <div aria-hidden="true" style={{
+            position: "absolute", inset: 2, borderRadius: "50%",
+            border: `1px dotted ${tint}55`,
+            animation: "gpRingSpinRev 20s linear infinite",
+          }}/>
+          {/* Sparkles cintilando nos cantos do orbe */}
+          {[[-4, 14], [104, 4], [110, 92], [-10, 78]].map(([x, y], i) => (
+            <span key={`sp-${i}`} aria-hidden="true" style={{
+              position: "absolute", left: x, top: y,
+              width: 10, height: 10, pointerEvents: "none",
+              background: "#fff6d8",
+              clipPath: "polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%)",
+              filter: `drop-shadow(0 0 6px ${tint})`,
+              animation: `gpSparkleBlink ${1.4 + i * 0.35}s ease-in-out ${0.5 + i * 0.3}s infinite`,
+            }}/>
+          ))}
+          {/* O orbe em si */}
+          <div style={{
+            position: "absolute", inset: 14, borderRadius: "50%",
+            background: `radial-gradient(circle at 36% 30%, #fff4cf 0%, #fff4cf 15%, ${tint} 15%, ${tint} 48%, rgba(0,0,0,0.6) 48%, rgba(0,0,0,0.6) 100%)`,
+            border: "2px solid #06060a",
+            boxShadow: `0 0 0 2px ${tint}55, 0 0 26px ${tint}88`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            animation: "gpOrbAscend 0.85s cubic-bezier(0.16,1,0.3,1) 0.05s both, gpRuneFloat 3s ease-in-out 0.95s infinite",
+          }}>
+            <img
+              src={runeRewardIconPath(rune.rewards[0], chestId) || "/placeholder.svg"}
+              alt="" width={40} height={40}
+              style={{ width: 40, height: 40, objectFit: "contain", imageRendering: "pixelated" }}
+              onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+            />
+          </div>
         </div>
 
         <div style={{
           fontFamily: PIXEL, fontSize: 17, color: "#f4f2ea", lineHeight: 1.3,
+          textShadow: `0 0 18px ${tint}88`,
+          animation: "gpTitleGlow 0.6s ease-out 0.3s both",
         }}>{rune.name}</div>
-        <p style={{ fontFamily: MONO, color: "#8b93a1", fontSize: 12, margin: "10px 0 18px", lineHeight: 1.6 }}>
+        <p style={{
+          fontFamily: MONO, color: "#8b93a1", fontSize: 12, margin: "10px 0 18px", lineHeight: 1.6,
+          animation: "gpRiseIn 0.4s ease 0.45s both",
+        }}>
           {rune.description}
         </p>
 
@@ -166,8 +274,9 @@ function RuneUnlockOverlay({ rune, master, onClose }: {
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: 11,
                 background: "#14141b", border: "2px solid #26262f",
+                borderLeft: `3px solid ${color}`,
                 padding: "9px 13px",
-                animation: `gpRiseIn 0.35s ease ${0.08 + i * 0.08}s both`,
+                animation: `gpRiseIn 0.35s ease ${0.55 + i * 0.14}s both`,
               }}>
                 <img
                   src={runeRewardIconPath(rw, chestId) || "/placeholder.svg"}
@@ -207,6 +316,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const [pendingPack, setPendingPack] = useState<string | null>(null)
   const [packToOpen,  setPackToOpen]  = useState<string | null>(null)
   const [selectedId,  setSelectedId]  = useState<string | null>(null)
+  const [burstId,     setBurstId]     = useState<string | null>(null)
 
   const branches    = useMemo(() => getRuneBranches(master), [master])
   const chestId     = elementToChestId(master.element)
@@ -296,6 +406,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
     window.dispatchEvent(new CustomEvent("gpgame_runes_changed", { detail: { masterId: master.id } }))
 
     setPendingPack(packId)
+    // Explosão no orbe do mapa + overlay de celebração
+    setBurstId(rune.id)
+    window.setTimeout(() => setBurstId(prev => (prev === rune.id ? null : prev)), 1800)
     setCelebration(rune)
   }
 
@@ -369,6 +482,58 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           0%, 100% { opacity: var(--star-op, 0.5); }
           50%      { opacity: 0.08; }
         }
+        @keyframes gpUnlockFlash {
+          0%   { opacity: 0; }
+          8%   { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        @keyframes gpShockwave {
+          0%   { transform: translate(-50%, -50%) scale(0.15); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+        @keyframes gpParticleFly {
+          0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+          70%  { opacity: 1; }
+          100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+        }
+        @keyframes gpRaysSpin {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to   { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes gpOrbAscend {
+          0%   { transform: scale(0.2) rotate(-14deg); opacity: 0; filter: brightness(3); }
+          55%  { transform: scale(1.22) rotate(4deg); opacity: 1; filter: brightness(1.7); }
+          75%  { transform: scale(0.94) rotate(-1deg); filter: brightness(1.15); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+        }
+        @keyframes gpStampIn {
+          0%   { transform: translateX(-50%) scale(2.6) rotate(-8deg); opacity: 0; }
+          60%  { transform: translateX(-50%) scale(0.9) rotate(2deg); opacity: 1; }
+          100% { transform: translateX(-50%) scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes gpHaloBloom {
+          0%   { opacity: 0; transform: scale(0.4); }
+          40%  { opacity: 1; }
+          100% { opacity: 0.65; transform: scale(1); }
+        }
+        @keyframes gpGlyphAscend {
+          0%   { transform: translateY(26px) scale(0.7); opacity: 0; }
+          25%  { opacity: var(--glyph-op, 0.5); }
+          100% { transform: translateY(-90px) scale(1.15); opacity: 0; }
+        }
+        @keyframes gpTitleGlow {
+          0%   { opacity: 0; transform: translateY(10px); letter-spacing: 0.3em; filter: blur(3px); }
+          100% { opacity: 1; transform: translateY(0); letter-spacing: 0.02em; filter: blur(0); }
+        }
+        @keyframes gpNodeBurstPop {
+          0%   { transform: scale(1); filter: brightness(1); }
+          30%  { transform: scale(1.35); filter: brightness(2.2); }
+          100% { transform: scale(1); filter: brightness(1); }
+        }
+        @keyframes gpSparkleBlink {
+          0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+          50%      { opacity: 1; transform: scale(1) rotate(90deg); }
+        }
         .gp-rune-node:hover { filter: brightness(1.12); }
         .gp-rune-node:focus-visible { outline: 2px solid #f7f4ee; outline-offset: 6px; }
         .gp-rune-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b3f2d !important; }
@@ -382,6 +547,17 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           @keyframes gpRingSpin      { from { transform: none } to { transform: none } }
           @keyframes gpRingSpinRev   { from { transform: none } to { transform: none } }
           @keyframes gpStarTwinkle   { from { opacity: 0.4 } to { opacity: 0.4 } }
+          @keyframes gpUnlockFlash   { from { opacity: 0 } to { opacity: 0 } }
+          @keyframes gpShockwave     { from { opacity: 0 } to { opacity: 0 } }
+          @keyframes gpParticleFly   { from { opacity: 0 } to { opacity: 0 } }
+          @keyframes gpRaysSpin      { from { transform: translate(-50%, -50%) } to { transform: translate(-50%, -50%) } }
+          @keyframes gpOrbAscend     { from { transform: none; opacity: 1 } to { transform: none; opacity: 1 } }
+          @keyframes gpStampIn       { from { transform: translateX(-50%); opacity: 1 } to { transform: translateX(-50%); opacity: 1 } }
+          @keyframes gpHaloBloom     { from { opacity: 0.5; transform: none } to { opacity: 0.5; transform: none } }
+          @keyframes gpGlyphAscend   { from { opacity: 0 } to { opacity: 0 } }
+          @keyframes gpTitleGlow     { from { opacity: 1; transform: none; filter: none } to { opacity: 1; transform: none; filter: none } }
+          @keyframes gpNodeBurstPop  { from { transform: none } to { transform: none } }
+          @keyframes gpSparkleBlink  { from { opacity: 0.6; transform: none } to { opacity: 0.6; transform: none } }
         }
       `}</style>
 
@@ -724,6 +900,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 const isAvailable = status === "available"
                 const isLocked    = !isDone && !isAvailable
                 const isSelected  = selectedId === rune.id
+                const isBursting  = burstId === rune.id
                 const iconSize    = Math.round(NODE * 0.44)
                 const sealSize    = Math.max(13, Math.round(NODE * 0.26))
 
@@ -735,9 +912,45 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       left: pts[i].x,
                       top: pts[i].y - NODE / 2,
                       transform: "translateX(-50%)",
-                      zIndex: isSelected ? 3 : 1,
+                      zIndex: isBursting ? 4 : isSelected ? 3 : 1,
+                      animation: isBursting ? "gpNodeBurstPop 0.7s cubic-bezier(0.16,1,0.3,1)" : "none",
                     }}
                   >
+                    {/* Explosão de energia no momento do desbloqueio */}
+                    {isBursting && (
+                      <div aria-hidden="true" style={{
+                        position: "absolute", left: "50%", top: NODE / 2,
+                        width: 0, height: 0, pointerEvents: "none", zIndex: 5,
+                      }}>
+                        {[0, 0.14, 0.3].map((delay, w) => (
+                          <div key={`bw-${w}`} style={{
+                            position: "absolute", left: 0, top: 0,
+                            width: NODE * 3.2, aspectRatio: "1", borderRadius: "50%",
+                            border: `${3 - w}px solid ${w === 1 ? "#fff6d8" : "#4ecf9d"}`,
+                            boxShadow: "0 0 16px #4ecf9d88",
+                            animation: `gpShockwave ${0.65 + w * 0.2}s cubic-bezier(0.16,1,0.3,1) ${delay}s both`,
+                          }}/>
+                        ))}
+                        {Array.from({ length: 14 }, (_, p) => {
+                          const a    = (p / 14) * Math.PI * 2 + frand(p * 2.3) * 0.6
+                          const dist = NODE * (0.9 + frand(p * 4.1) * 1.3)
+                          const gold = p % 3 === 0
+                          return (
+                            <span key={`bp-${p}`} style={{
+                              position: "absolute", left: -2, top: -2,
+                              width: 4 + Math.round(frand(p * 6.7) * 3),
+                              height: 4 + Math.round(frand(p * 6.7) * 3),
+                              background: gold ? "#ffe9b0" : "#4ecf9d",
+                              boxShadow: `0 0 6px ${gold ? "#ffe9b0" : "#4ecf9d"}`,
+                              // @ts-expect-error — custom property
+                              "--dx": `${Math.cos(a) * dist}px`,
+                              "--dy": `${Math.sin(a) * dist}px`,
+                              animation: `gpParticleFly ${0.55 + frand(p * 8.9) * 0.5}s cubic-bezier(0.16,1,0.3,1) ${frand(p * 3.7) * 0.15}s both`,
+                            }}/>
+                          )
+                        })}
+                      </div>
+                    )}
                     <RuneNode
                       size={NODE}
                       tint={isDone ? "#4ecf9d" : tint}
