@@ -2,7 +2,8 @@
  * RUNAS DOS MESTRES — mecânica de progressão paralela à Trilha de XP.
  *
  * Cada Mestre possui uma ROTA DE RUNAS ÚNICA, dividida em 3 ramos temáticos
- * (Fortuna · Guerra · Domínio) com 4 runas cada. Uma runa só pode ser
+ * (Fortuna · Guerra · Domínio) com 10 runas cada — 30 runas por Mestre.
+ * Uma runa só pode ser
  * desbloqueada quando:
  *   1. a runa anterior do MESMO ramo já foi desbloqueada;
  *   2. o Mestre atingiu o nível mínimo exigido;
@@ -49,7 +50,7 @@ export interface RuneDef {
   id:            string
   masterId:      string
   branchId:      RuneBranchId
-  /** 1 a 4 — posição dentro do ramo. */
+  /** 1 a 10 — posição dentro do ramo. */
   tier:          number
   name:          string
   description:   string
@@ -87,17 +88,26 @@ export function elementToFragmentId(element: MasterElement): FragmentId {
 // ─── Tabelas de balanceamento ─────────────────────────────────────────────────
 /** Custo base por tier: Gear Coins, fragmento elemental e fragmento comum. */
 const TIER_COST = [
-  { gear:  250, elemental: 15, common:  0 },
-  { gear:  550, elemental: 30, common: 12 },
-  { gear: 1100, elemental: 55, common: 25 },
-  { gear: 1900, elemental: 90, common: 45 },
+  { gear:   250, elemental:  15, common:   0 },
+  { gear:   550, elemental:  30, common:  12 },
+  { gear:  1100, elemental:  55, common:  25 },
+  { gear:  1900, elemental:  90, common:  45 },
+  { gear:  2800, elemental: 130, common:  70 },
+  { gear:  3900, elemental: 175, common: 100 },
+  { gear:  5200, elemental: 225, common: 135 },
+  { gear:  6700, elemental: 280, common: 175 },
+  { gear:  8400, elemental: 340, common: 220 },
+  { gear: 10500, elemental: 410, common: 270 },
 ] as const
 
+/** Quantidade de runas por ramo. */
+export const RUNES_PER_BRANCH = TIER_COST.length
+
 /** Nível mínimo do Mestre por ramo/tier — escalonado, sem travar o começo. */
-const BRANCH_LEVELS: Record<RuneBranchId, [number, number, number, number]> = {
-  fortuna: [2, 7, 14, 22],
-  guerra:  [4, 10, 17, 26],
-  dominio: [3, 9, 16, 24],
+const BRANCH_LEVELS: Record<RuneBranchId, number[]> = {
+  fortuna: [2, 7, 14, 22, 26, 30, 34, 38, 42, 46],
+  guerra:  [4, 10, 17, 26, 29, 33, 37, 41, 45, 48],
+  dominio: [3, 9, 16, 24, 28, 32, 36, 40, 44, 47],
 }
 
 const BRANCH_META: Record<RuneBranchId, { name: string; subtitle: string }> = {
@@ -107,47 +117,103 @@ const BRANCH_META: Record<RuneBranchId, { name: string; subtitle: string }> = {
 }
 
 /** Nomes das runas — rota exclusiva de cada Mestre, com o tema do elemento. */
-const RUNE_NAMES: Record<string, Record<RuneBranchId, [string, string, string, string]>> = {
+const RUNE_NAMES: Record<string, Record<RuneBranchId, string[]>> = {
   fehnon: {
-    fortuna: ["Runa da Maré Serena", "Runa do Coral Dourado", "Runa da Correnteza Pródiga", "Runa do Abismo Tesouro"],
-    guerra:  ["Runa da Lâmina d'Água", "Runa do Golpe Protonix", "Runa da Tempestade Salgada", "Runa do Juízo Oceânico"],
-    dominio: ["Runa do Fluxo Constante", "Runa do Sopro Marinho", "Runa da Âncora Eterna", "Runa do Soberano das Marés"],
+    fortuna: [
+      "Runa da Maré Serena", "Runa do Coral Dourado", "Runa da Correnteza Pródiga", "Runa do Abismo Tesouro",
+      "Runa da Pérola Ancestral", "Runa do Recife Opulento", "Runa da Fortuna das Profundezas",
+      "Runa do Galeão Afundado", "Runa do Leviatã Avarento", "Runa do Oceano de Ouro",
+    ],
+    guerra: [
+      "Runa da Lâmina d'Água", "Runa do Golpe Protonix", "Runa da Tempestade Salgada", "Runa do Juízo Oceânico",
+      "Runa da Fúria das Ondas", "Runa do Tridente Partido", "Runa do Maremoto Vingador",
+      "Runa da Pressão Abissal", "Runa do Cerco das Correntes", "Runa da Ira do Mar Sem Fim",
+    ],
+    dominio: [
+      "Runa do Fluxo Constante", "Runa do Sopro Marinho", "Runa da Âncora Eterna", "Runa do Soberano das Marés",
+      "Runa do Horizonte Líquido", "Runa da Calmaria Imposta", "Runa do Farol Submerso",
+      "Runa das Águas Obedientes", "Runa do Trono de Coral", "Runa do Imperador dos Oceanos",
+    ],
   },
   morgana: {
-    fortuna: ["Runa do Acorde Sombrio", "Runa da Ametista Cantante", "Runa do Réquiem Dourado", "Runa da Sinfonia Proibida"],
-    guerra:  ["Runa do Compasso Cruel", "Runa do Grito Púrpura", "Runa da Melodia Impactante", "Runa do Crescendo Final"],
-    dominio: ["Runa do Silêncio Breve", "Runa do Eco Noturno", "Runa da Pausa Infinita", "Runa da Regente das Trevas"],
+    fortuna: [
+      "Runa do Acorde Sombrio", "Runa da Ametista Cantante", "Runa do Réquiem Dourado", "Runa da Sinfonia Proibida",
+      "Runa da Nota Lucrativa", "Runa do Coro das Sombras", "Runa da Ópera Encantada",
+      "Runa do Tesouro em Compasso", "Runa da Balada Milionária", "Runa da Grande Sinfonia Negra",
+    ],
+    guerra: [
+      "Runa do Compasso Cruel", "Runa do Grito Púrpura", "Runa da Melodia Impactante", "Runa do Crescendo Final",
+      "Runa do Estrondo Dissonante", "Runa da Batuta Implacável", "Runa do Solo Devastador",
+      "Runa da Fúria em Fá Menor", "Runa do Últimato Sonoro", "Runa da Sinfonia do Fim",
+    ],
+    dominio: [
+      "Runa do Silêncio Breve", "Runa do Eco Noturno", "Runa da Pausa Infinita", "Runa da Regente das Trevas",
+      "Runa do Compasso Perfeito", "Runa da Harmonia Imposta", "Runa do Palco Eterno",
+      "Runa da Plateia Hipnotizada", "Runa da Maestrina Absoluta", "Runa da Rainha da Noite",
+    ],
   },
   calem: {
-    fortuna: ["Runa do Vácuo Fértil", "Runa da Prata Silente", "Runa do Espólio Nulo", "Runa do Tesouro Sem Nome"],
-    guerra:  ["Runa do Corte Invisível", "Runa do Poder Oculto", "Runa da Ruptura Cinzenta", "Runa do Colapso Absoluto"],
-    dominio: ["Runa do Passo Leve", "Runa da Brecha Entre Mundos", "Runa do Tempo Suspenso", "Runa do Senhor do Vazio"],
+    fortuna: [
+      "Runa do Vácuo Fértil", "Runa da Prata Silente", "Runa do Espólio Nulo", "Runa do Tesouro Sem Nome",
+      "Runa da Riqueza Etérea", "Runa do Cofre Entre Dimensões", "Runa do Ouro Esquecido",
+      "Runa da Herança do Nada", "Runa do Vazio Pródigo", "Runa da Fortuna Absoluta",
+    ],
+    guerra: [
+      "Runa do Corte Invisível", "Runa do Poder Oculto", "Runa da Ruptura Cinzenta", "Runa do Colapso Absoluto",
+      "Runa da Fenda Devoradora", "Runa do Impacto Silencioso", "Runa da Aniquilação Parcial",
+      "Runa do Horizonte Rasgado", "Runa da Extinção Iminente", "Runa do Fim de Todas as Coisas",
+    ],
+    dominio: [
+      "Runa do Passo Leve", "Runa da Brecha Entre Mundos", "Runa do Tempo Suspenso", "Runa do Senhor do Vazio",
+      "Runa da Fronteira Apagada", "Runa do Caminho Sem Retorno", "Runa da Realidade Dobrada",
+      "Runa do Limiar Infinito", "Runa do Guardião do Nada", "Runa do Deus do Vazio",
+    ],
   },
 }
 
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"] as const
+
 /** Fallback quando um Mestre novo ainda não tem nomes autorais. */
-function fallbackNames(branch: RuneBranchId): [string, string, string, string] {
+function fallbackNames(branch: RuneBranchId): string[] {
   const base = BRANCH_META[branch].name
-  return [`Runa de ${base} I`, `Runa de ${base} II`, `Runa de ${base} III`, `Runa de ${base} IV`]
+  return ROMAN.slice(0, RUNES_PER_BRANCH).map(n => `Runa de ${base} ${n}`)
 }
 
-const RUNE_DESCRIPTIONS: Record<RuneBranchId, [string, string, string, string]> = {
+const RUNE_DESCRIPTIONS: Record<RuneBranchId, string[]> = {
   fortuna: [
     "Um primeiro sopro de sorte gravado na pedra do Mestre.",
     "O brilho das riquezas antigas começa a responder ao seu chamado.",
     "A veia mais profunda de fortuna se abre para quem persistiu.",
+    "A avareza sagrada revela seus primeiros segredos.",
+    "Cofres esquecidos rangem e se abrem à sua passagem.",
+    "A sorte deixa de ser acaso e vira lei gravada em pedra.",
+    "Rios de ouro correm na direção de quem dominou a rota.",
+    "As riquezas dos antigos Mestres reconhecem um herdeiro.",
+    "Um passo do ápice: a fortuna inteira prende a respiração.",
     "O ápice da avareza sagrada: tudo o que foi guardado, enfim entregue.",
   ],
   guerra: [
     "O eco do primeiro duelo, selado em runa.",
     "A técnica amadurece e novas cartas respondem ao combate.",
     "Guerra virou disciplina — e a disciplina virou arsenal.",
+    "O campo de batalha começa a se curvar à sua vontade.",
+    "Cada golpe agora carrega o peso de mil duelos.",
+    "O arsenal cresce: cartas raras atendem ao chamado da guerra.",
+    "Veteranos reconhecem a runa e abrem caminho.",
+    "A estratégia vira instinto; o instinto vira vitória.",
+    "O penúltimo selo se rompe — o poder lendário está próximo.",
     "O golpe definitivo do Mestre, imortalizado em poder lendário.",
   ],
   dominio: [
     "O caminho encurta para quem entende o ritmo da jornada.",
     "Reservas se acumulam nas mãos de quem sabe esperar.",
     "O tempo e o corpo passam a obedecer à vontade do Mestre.",
+    "Provisões surgem onde antes havia apenas estrada.",
+    "A jornada dobra-se sobre si mesma para servir ao Mestre.",
+    "Nem fadiga nem distância detêm quem gravou esta runa.",
+    "O mundo inteiro parece caber num único passo.",
+    "Utilidades raras fluem para as mãos do dominador.",
+    "Resta um selo — e o domínio será total.",
     "Domínio absoluto: nada mais interrompe a marcha.",
   ],
 }
@@ -161,18 +227,36 @@ const BRANCH_REWARDS: Record<RuneBranchId, RawReward[][]> = {
     [{ type: "gear_coins", amount: 300 }, { type: "pack", packId: "common" }],
     [{ type: "gacha_coins", amount: 220 }, { type: "chest", amount: 2 }],
     [{ type: "gear_coins", amount: 800 }, { type: "gacha_coins", amount: 400 }],
+    [{ type: "gacha_coins", amount: 500 }, { type: "chest", amount: 2 }],
+    [{ type: "gear_coins", amount: 1500 }, { type: "pack", packId: "sr_guaranteed" }],
+    [{ type: "gacha_coins", amount: 700 }, { type: "chest", amount: 3 }],
+    [{ type: "gear_coins", amount: 2500 }, { type: "gacha_coins", amount: 600 }],
+    [{ type: "gacha_coins", amount: 900 }, { type: "pack", packId: "sr_guaranteed" }],
+    [{ type: "gear_coins", amount: 5000 }, { type: "gacha_coins", amount: 1200 }],
   ],
   guerra: [
     [{ type: "pack", packId: "common" }, { type: "gacha_coins", amount: 40 }],
     [{ type: "pack", packId: "sr_guaranteed" }],
     [{ type: "pack", packId: "sr_guaranteed" }, { type: "chest", amount: 3 }],
     [{ type: "pack", packId: "lr_guaranteed" }, { type: "gacha_coins", amount: 300 }],
+    [{ type: "pack", packId: "sr_guaranteed" }, { type: "gear_coins", amount: 600 }],
+    [{ type: "pack", packId: "sr_guaranteed" }, { type: "chest", amount: 3 }],
+    [{ type: "pack", packId: "lr_guaranteed" }, { type: "gacha_coins", amount: 400 }],
+    [{ type: "pack", packId: "sr_guaranteed" }, { type: "pack", packId: "common" }],
+    [{ type: "pack", packId: "lr_guaranteed" }, { type: "chest", amount: 4 }],
+    [{ type: "pack", packId: "lr_guaranteed" }, { type: "gacha_coins", amount: 800 }],
   ],
   dominio: [
     [{ type: "skip_ticket", amount: 2 }],
     [{ type: "chest", amount: 3 }, { type: "gear_coins", amount: 200 }],
     [{ type: "stamina_bottle", amount: 3 }, { type: "skip_ticket", amount: 3 }],
     [{ type: "skip_ticket", amount: 5 }, { type: "pack", packId: "sr_guaranteed" }],
+    [{ type: "stamina_bottle", amount: 4 }, { type: "chest", amount: 3 }],
+    [{ type: "skip_ticket", amount: 6 }, { type: "gear_coins", amount: 800 }],
+    [{ type: "stamina_bottle", amount: 5 }, { type: "skip_ticket", amount: 5 }],
+    [{ type: "chest", amount: 4 }, { type: "gacha_coins", amount: 500 }],
+    [{ type: "skip_ticket", amount: 8 }, { type: "stamina_bottle", amount: 6 }],
+    [{ type: "skip_ticket", amount: 10 }, { type: "pack", packId: "lr_guaranteed" }],
   ],
 }
 
@@ -241,7 +325,7 @@ function buildCost(tier: number, elemental: FragmentId): RuneCost {
   return { gearCoins: t.gear, fragments }
 }
 
-/** Rota completa de Runas de um Mestre (3 ramos × 4 runas). */
+/** Rota completa de Runas de um Mestre (3 ramos × 10 runas = 30 runas). */
 export function getRuneBranches(master: Pick<Master, "id" | "element">): RuneBranch[] {
   const elemental = elementToFragmentId(master.element)
   const chestId   = elementToChestId(master.element)
