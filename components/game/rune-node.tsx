@@ -67,7 +67,6 @@ export function RuneNode({
         cursor: onClick ? "pointer" : "default",
         opacity: dim ? 0.85 : 1,
         transition: "opacity 0.2s",
-        imageRendering: "pixelated",
       }}
     >
       {/* Pedestal isométrico: topo + corpo + base */}
