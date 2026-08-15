@@ -1352,7 +1352,7 @@ const XP_SOURCES = [
 
 // ─── MAIN MasterScreen ────────────────────────────────────────────────────────
 export default function MasterScreen({ onBack }: MasterScreenProps) {
-  const { coins, setCoins, setGearCoins, addChests, addSkipTickets, addStaminaBottles } = useGame()
+  const { coins, setCoins, setGearCoins, addChests, addSkipTickets, addStaminaBottles, xpBooks } = useGame()
 
   const [masters,      setMasters]      = useState<Master[]>([])
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
@@ -1913,13 +1913,28 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
               }}>
                 <LevelMedallion level={selectedMaster.currentLevel} color={selectedMaster.accentColor} size={58}/>
                 <div style={{ flex:1, maxWidth:340 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                    <span style={{ fontSize:9.5, fontWeight:800, letterSpacing:"0.18em", color:"#565d6b", textTransform:"uppercase" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, gap:8 }}>
+                    <span style={{ fontSize:9.5, fontWeight:800, letterSpacing:"0.18em", color:"#565d6b", textTransform:"uppercase", flexShrink:0 }}>
                       Experiência
                     </span>
-                    <span style={{ fontSize:11, color: selectedMaster.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums" }}>
-                      {selectedMaster.currentXP} / {selectedMaster.xpToNext} XP
-                    </span>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <span style={{ fontSize:11, color: selectedMaster.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" }}>
+                        {selectedMaster.currentXP} / {selectedMaster.xpToNext} XP
+                      </span>
+                      {ALL_XP_BOOK_IDS.some(id => (xpBooks[id] ?? 0) > 0) && selectedMaster.currentLevel < selectedMaster.maxLevel && (
+                        <button onClick={() => setXpBooksMaster(selectedMaster)} className="gp-cta" style={{
+                          display:"flex", alignItems:"center", gap:5, flexShrink:0,
+                          background:"linear-gradient(135deg,rgba(74,222,128,0.18),rgba(74,222,128,0.34))",
+                          border:"1px solid rgba(74,222,128,0.5)",
+                          clipPath:"polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%)",
+                          padding:"5px 11px", cursor:"pointer", color:"#eafff1",
+                          fontWeight:900, fontSize:10.5, letterSpacing:"0.04em", textTransform:"uppercase",
+                          boxShadow:"0 2px 10px rgba(74,222,128,0.22)",
+                        }}>
+                          <BookOpen size={11}/> Upar XP
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <XPBar current={selectedMaster.currentXP} total={selectedMaster.xpToNext} color={selectedMaster.accentColor}/>
                   <div style={{ fontSize:10, color:"#4b5563", marginTop:5 }}>
