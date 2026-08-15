@@ -2,6 +2,16 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import Image from "next/image"
+import { ChevronsUpDown, Globe, UserCog, Wrench } from "lucide-react"
+import { useLanguage } from "@/contexts/language-context"
+import {
+  GAME_VERSION,
+  TitleMenuPanel,
+  getServerLabel,
+  pingColor,
+  useSelectedServer,
+  type TitlePanel,
+} from "./title-menu-panels"
 
 interface TitleScreenProps {
   onEnter: () => void
@@ -12,6 +22,9 @@ const PARTICLE_COLORS = ["#38bdf8", "#a855f7", "#fbbf24", "#22d3ee", "#f472b6"]
 const PARTICLE_COUNT = 18
 
 export default function TitleScreen({ onEnter }: TitleScreenProps) {
+  const { t } = useLanguage()
+  const { server, selectServer } = useSelectedServer()
+  const [panel, setPanel] = useState<TitlePanel | null>(null)
   const bgMusicRef = useRef<HTMLAudioElement | null>(null)
   const narratorRef = useRef<HTMLAudioElement | null>(null)
   const [visible, setVisible] = useState(false)
@@ -185,7 +198,8 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   }, [audioPlaying, attemptPlay])
 
   const handleEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (leaving) return
+    // Um painel aberto (conta, reparo, idioma, servidor) captura o toque
+    if (leaving || panel) return
 
     // Touch ripple at click position
     setRipple({ x: e.clientX, y: e.clientY, key: Date.now() })
@@ -443,8 +457,50 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             willChange: "opacity",
           }}
         >
-          Toque para Comecar
+          {t("tapToStart")}
         </p>
+
+        {/* Seleção de servidor - logo abaixo do "toque para começar" */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setPanel("server")
+          }}
+          aria-label={`${t("titleServer")}: ${getServerLabel(server)}`}
+          className="group mt-7 flex items-center gap-2.5 rounded-full px-4 py-2 transition-all duration-300 hover:scale-[1.03]"
+          style={{
+            background: "rgba(8,14,30,0.55)",
+            border: "1px solid rgba(56,189,248,0.28)",
+            boxShadow: "0 0 24px rgba(56,189,248,0.12), inset 0 1px 0 rgba(255,255,255,0.06)",
+            backdropFilter: "blur(6px)",
+            animation: visible ? "textEntrance 1s ease-out 1.45s both" : undefined,
+            opacity: panel ? 0.4 : undefined,
+          }}
+        >
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{
+              background: pingColor(server.ping),
+              boxShadow: `0 0 8px ${pingColor(server.ping)}`,
+              animation: "dotPulse 2.4s ease-in-out infinite",
+            }}
+            aria-hidden="true"
+          />
+          <span
+            className="text-[11px] font-medium uppercase tracking-[0.2em] text-sky-100/90"
+            style={{ fontFamily: "'Segoe UI', sans-serif" }}
+          >
+            {getServerLabel(server)}
+          </span>
+          <span className="font-mono text-[10px]" style={{ color: pingColor(server.ping) }}>
+            {server.ping}ms
+          </span>
+          <ChevronsUpDown
+            className="h-3.5 w-3.5 text-sky-300/60 transition-colors group-hover:text-sky-200"
+            aria-hidden="true"
+          />
+        </button>
       </div>
 
       {/* Touch ripple on click */}
@@ -511,6 +567,63 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         }}
       />
 
+      {/* Barra de utilitários - conta, reparo de cliente e idioma */}
+      <div
+        className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6"
+        style={{
+          zIndex: 60,
+          opacity: leaving ? 0 : 1,
+          transition: "opacity 0.4s ease-out",
+          pointerEvents: leaving ? "none" : "auto",
+          animation: visible ? "textEntrance 0.9s ease-out 1.6s both" : undefined,
+        }}
+      >
+        {[
+          { key: "account" as const, Icon: UserCog, label: t("titleAccount") },
+          { key: "repair" as const, Icon: Wrench, label: t("titleRepair") },
+          { key: "language" as const, Icon: Globe, label: t("titleLanguage") },
+        ].map(({ key, Icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            title={label}
+            aria-label={label}
+            onClick={(e) => {
+              e.stopPropagation()
+              setPanel(key)
+            }}
+            className="group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105"
+            style={{
+              background: "rgba(8,14,30,0.55)",
+              border: "1px solid rgba(56,189,248,0.25)",
+              boxShadow: "0 0 20px rgba(56,189,248,0.1), inset 0 1px 0 rgba(255,255,255,0.06)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <Icon
+              className="h-5 w-5 text-sky-200/75 transition-colors duration-300 group-hover:text-sky-100"
+              aria-hidden="true"
+            />
+            <span className="sr-only">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Versão do jogo - canto inferior esquerdo, para relatos de bug */}
+      <div className="absolute bottom-4 left-4 sm:left-6" style={{ zIndex: 50 }}>
+        <p
+          className="font-mono"
+          style={{
+            fontSize: "11px",
+            letterSpacing: "0.08em",
+            color: "rgba(255,255,255,0.32)",
+            animation: visible ? "textEntrance 1s ease-out 1.7s both" : undefined,
+          }}
+        >
+          {GAME_VERSION}
+        </p>
+      </div>
+
       <div className="absolute bottom-4 left-0 right-0 text-center">
         <p
           style={{
@@ -524,6 +637,21 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           Gear Perks Card Game
         </p>
       </div>
+
+      {/* Painéis do menu - o stopPropagation evita que o clique inicie o jogo */}
+      {panel ? (
+        <div onClick={(e) => e.stopPropagation()} className="contents">
+          <TitleMenuPanel
+            panel={panel}
+            onClose={() => setPanel(null)}
+            currentServerId={server.id}
+            onSelectServer={(id) => {
+              selectServer(id)
+              setPanel(null)
+            }}
+          />
+        </div>
+      ) : null}
 
       <style>{`
         @keyframes kenBurns {
