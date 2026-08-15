@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/client"
 import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
 import { STAMINA_BOTTLE_MIN_MISSING, STAMINA_BOTTLE_REFILL_AMOUNT } from "@/lib/stamina-bottle"
 import {
+  loadMastersFromStorage,
+  saveMastersToStorage,
+  xpRequiredForLevel,
+  cumulativeXPForLevel,
+} from "@/lib/masters-data"
+import {
   CHESTS,
   normalizeChestCounts,
   rollChestDrop,
@@ -3507,6 +3513,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
 
       return { success: true, message: `Nível máximo do Gear Pass (nível ${GEAR_PASS_MAX_LEVEL}) alcançado!` }
+    }
+
+    // EXP - Leva todos os Mestres que o jogador possui ao nível máximo
+    if (normalizedCode === "EXP") {
+      const masters = loadMastersFromStorage()
+      const maxedMasters = masters.map((m) => {
+        if (!m.isUnlocked) return m
+        return {
+          ...m,
+          currentLevel: m.maxLevel,
+          currentXP: 0,
+          xpToNext: xpRequiredForLevel(m.maxLevel),
+          totalXP: Math.max(m.totalXP, cumulativeXPForLevel(m.maxLevel)),
+        }
+      })
+      saveMastersToStorage(maxedMasters)
+      // Reaproveita o evento usado por grantMasterDuelXP para que a tela de
+      // Mestres recarregue os dados sem disparar a celebração de level up.
+      window.dispatchEvent(new CustomEvent("gpgame_master_xp", { detail: { leveledUp: false } }))
+
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      setLS(redeemedCodesLSKey(accountAuth.isLoggedIn ? accountAuth.uniqueCode : null), JSON.stringify(newRedeemedCodes))
+
+      return { success: true, message: "Todos os seus Mestres alcançaram o nível máximo!" }
     }
 
     // GOLD - Grants 1,000,000 gear coins to the player's account
