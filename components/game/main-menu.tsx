@@ -181,26 +181,26 @@ const GP_CSS = `
 /* Pre-mount: keep invisible so zero flicker before animation */
 .gp-pre-mount { opacity: 0 !important; }
 
-/* Smooth zoom-out from 1.14 with elastic overshoot */
-@keyframes gp-enter-scene {
-  0%   { opacity: 0; transform: scale(1.14); }
-  60%  { opacity: 1; transform: scale(1.003); }
-  80%  { transform: scale(0.999); }
-  100% { opacity: 1; transform: scale(1); }
-}
+  /* Smooth zoom-out from 1.14 - continues the title screen's exit scale for seamless handoff */
+  @keyframes gp-enter-scene {
+  0%   { opacity: 0; transform: scale(1.14) translateZ(0); }
+  45%  { opacity: 1; }
+  70%  { transform: scale(1.004) translateZ(0); }
+  100% { opacity: 1; transform: scale(1) translateZ(0); }
+  }
 /* Clean fade-in for UI elements */
 @keyframes gp-enter-ui {
   0%   { opacity: 0; }
   100% { opacity: 1; }
 }
 
-.gp-anim-bg      { animation: gp-enter-scene 0.68s cubic-bezier(0.16,1,0.3,1) both; }
-.gp-anim-hud     { animation: gp-enter-ui    0.50s ease both; }
-.gp-anim-sidebar { animation: gp-enter-ui    0.50s ease 0.05s both; }
-.gp-anim-nav     { animation: gp-enter-ui    0.50s ease 0.05s both; }
-.gp-anim-music   { animation: gp-enter-ui    0.50s ease 0.08s both; }
-.gp-anim-master  { animation: gp-enter-ui    0.55s ease 0.06s both; }
-.gp-anim-ui-btns { animation: gp-enter-ui    0.50s ease 0.10s both; }
+  .gp-anim-bg      { animation: gp-enter-scene 0.9s cubic-bezier(0.16,1,0.3,1) both; will-change: transform, opacity; }
+  .gp-anim-hud     { animation: gp-enter-ui    0.55s ease 0.15s both; }
+  .gp-anim-sidebar { animation: gp-enter-ui    0.55s ease 0.20s both; }
+  .gp-anim-nav     { animation: gp-enter-ui    0.55s ease 0.20s both; }
+  .gp-anim-music   { animation: gp-enter-ui    0.55s ease 0.26s both; }
+  .gp-anim-master  { animation: gp-enter-ui    0.60s ease 0.22s both; }
+  .gp-anim-ui-btns { animation: gp-enter-ui    0.55s ease 0.30s both; }
 
 /* ══ ACHIEVEMENT POP-UP ══ */
 @keyframes gp-achieve-in {

@@ -330,6 +330,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
               "radial-gradient(ellipse 60% 90% at 50% 0%, rgba(56, 189, 248, 0.5) 0%, rgba(56, 189, 248, 0.15) 45%, transparent 75%)",
             transform: "skewX(-15deg) translateZ(0)",
             animation: "lightSway 9s ease-in-out infinite",
+            animationPlayState: leaving ? "paused" : "running",
             willChange: "transform, opacity",
           }}
         />
@@ -340,6 +341,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
               "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(168, 85, 247, 0.5) 0%, rgba(168, 85, 247, 0.12) 40%, transparent 70%)",
             transform: "skewX(10deg) translateZ(0)",
             animation: "lightSway 12s ease-in-out infinite reverse",
+            animationPlayState: leaving ? "paused" : "running",
             willChange: "transform, opacity",
           }}
         />
@@ -360,6 +362,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
               opacity: particle.opacity,
               boxShadow: `0 0 ${particle.size * 4}px ${particle.color}`,
               animation: `floatParticle ${particle.animationDuration}s ease-in-out ${particle.animationDelay}s infinite`,
+              animationPlayState: leaving ? "paused" : "running",
               willChange: "transform, opacity",
             }}
           />
@@ -383,6 +386,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           className="relative"
           style={{
             animation: visible ? "logoEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) both, logoFloat 5s ease-in-out 1.4s infinite" : undefined,
+            animationPlayState: leaving ? "paused" : "running",
             willChange: "transform",
           }}
         >
@@ -431,11 +435,12 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             fontWeight: 500,
             color: "#f0f9ff",
             textTransform: "uppercase",
-            textShadow:
-              "0 0 30px rgba(56,189,248,0.9), 0 0 60px rgba(168,85,247,0.5), 0 2px 10px rgba(0,0,0,0.9)",
+            textShadow: "0 0 30px rgba(56,189,248,0.9), 0 2px 10px rgba(0,0,0,0.9)",
             animation: visible
               ? "textEntrance 1s ease-out 1.1s both, softBlink 2.4s ease-in-out 2.1s infinite"
               : undefined,
+            animationPlayState: leaving ? "paused" : "running",
+            willChange: "opacity",
           }}
         >
           Toque para Comecar
@@ -527,9 +532,9 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           100% { transform: scale(1.08) translate(6px, -8px); }
         }
         @keyframes logoEntrance {
-          0%   { opacity: 0; transform: translateY(-40px) scale(1.15); filter: blur(12px); }
-          60%  { opacity: 1; filter: blur(0px); }
-          100% { opacity: 1; transform: translateY(0px) scale(1); filter: blur(0px); }
+          0%   { opacity: 0; transform: translateY(-40px) scale(1.15); }
+          60%  { opacity: 1; }
+          100% { opacity: 1; transform: translateY(0px) scale(1); }
         }
         @keyframes dividerExpand {
           0%   { opacity: 0; transform: scaleX(0); }
