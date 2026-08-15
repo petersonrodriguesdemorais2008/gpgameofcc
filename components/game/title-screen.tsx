@@ -332,18 +332,18 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           <Image
             src="/images/GP_CG_logo.png"
             alt="Gear Perks Card Game"
-            width={520}
-            height={520}
+            width={400}
+            height={400}
             className="object-contain relative z-10"
             priority
             style={{ 
-              maxWidth: "min(520px, 90vw)",
+              maxWidth: "min(400px, 78vw)",
               filter: "drop-shadow(0 0 50px rgba(56,189,248,0.5)) drop-shadow(0 0 100px rgba(168,85,247,0.3)) drop-shadow(0 0 150px rgba(251,191,36,0.15))",
             }}
           />
         </div>
 
-        <div className="mt-6 mb-8 flex items-center gap-3" style={{ width: "min(320px, 70vw)" }}>
+        <div className="-mt-2 mb-8 flex items-center gap-3" style={{ width: "min(320px, 70vw)" }}>
           <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }} />
           <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
           <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }} />
