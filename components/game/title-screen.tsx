@@ -22,6 +22,26 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   const [mounted, setMounted] = useState(false)
   const [ripple, setRipple] = useState<{ x: number; y: number; key: number } | null>(null)
   const hasAttemptedAutoplay = useRef(false)
+  const [parallax, setParallax] = useState({ x: 0, y: 0 })
+  const parallaxRaf = useRef<number | null>(null)
+
+  // Pointer parallax - background and logo subtly follow the pointer
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (parallaxRaf.current !== null) return
+    const { clientX, clientY } = e
+    parallaxRaf.current = requestAnimationFrame(() => {
+      const nx = (clientX / window.innerWidth - 0.5) * 2
+      const ny = (clientY / window.innerHeight - 0.5) * 2
+      setParallax({ x: nx, y: ny })
+      parallaxRaf.current = null
+    })
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (parallaxRaf.current !== null) cancelAnimationFrame(parallaxRaf.current)
+    }
+  }, [])
 
   // Mark as mounted on client
   useEffect(() => {
@@ -203,6 +223,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   return (
     <div
       onClick={handleEnter}
+      onPointerMove={handlePointerMove}
       suppressHydrationWarning={true}
       className="fixed inset-0 cursor-pointer select-none overflow-hidden bg-black"
       style={{
@@ -229,12 +250,23 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         onLoadedData={() => setNarratorReady(true)}
       />
 
-      {/* Background with Ken Burns drift + exit zoom */}
+      {/* Parallax wrapper - shifts opposite to pointer for depth */}
       <div
         className="absolute inset-0"
         style={{
-          transform: leaving ? "scale(1.12)" : undefined,
-          transition: leaving ? "transform 1s cubic-bezier(0.55, 0, 1, 0.45)" : undefined,
+          transform: leaving
+            ? "scale(1.14)"
+            : `scale(1.04) translate(${parallax.x * -10}px, ${parallax.y * -7}px)`,
+          transition: leaving
+            ? "transform 1s cubic-bezier(0.55, 0, 1, 0.45)"
+            : "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
+          willChange: "transform",
+        }}
+      >
+      {/* Background with Ken Burns drift */}
+      <div
+        className="absolute inset-0"
+        style={{
           animation: leaving ? undefined : "kenBurns 28s ease-in-out infinite alternate",
           willChange: "transform",
         }}
@@ -257,6 +289,28 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }}
         />
       </div>
+      </div>
+
+      {/* Shooting stars - occasional comets crossing the sky */}
+      {mounted && !leaving && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="absolute h-px"
+              style={{
+                width: "140px",
+                top: `${8 + i * 14}%`,
+                left: "-140px",
+                background: "linear-gradient(90deg, transparent, rgba(224,242,254,0.9), rgba(56,189,248,0.6))",
+                boxShadow: "0 0 6px rgba(56,189,248,0.8)",
+                animation: `shootingStar ${9 + i * 4}s linear ${3 + i * 5.5}s infinite`,
+                opacity: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Cinematic light rays */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -313,8 +367,12 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         className="absolute inset-0 flex flex-col items-center justify-center"
         style={{
           paddingTop: "80px",
-          transform: leaving ? "translateY(-30px) scale(1.06)" : undefined,
-          transition: leaving ? "transform 0.95s cubic-bezier(0.55, 0, 1, 0.45)" : undefined,
+          transform: leaving
+            ? "translateY(-30px) scale(1.06)"
+            : `translate(${parallax.x * 6}px, ${parallax.y * 4}px)`,
+          transition: leaving
+            ? "transform 0.95s cubic-bezier(0.55, 0, 1, 0.45)"
+            : "transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <div
@@ -426,6 +484,28 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         />
       )}
 
+      {/* Cinematic letterbox bars slide in on exit */}
+      <div
+        className="absolute top-0 left-0 right-0 pointer-events-none"
+        style={{
+          height: "12vh",
+          background: "#000",
+          transform: leaving ? "translateY(0)" : "translateY(-100%)",
+          transition: "transform 0.7s cubic-bezier(0.7, 0, 0.3, 1)",
+          zIndex: 45,
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 right-0 pointer-events-none"
+        style={{
+          height: "12vh",
+          background: "#000",
+          transform: leaving ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 0.7s cubic-bezier(0.7, 0, 0.3, 1)",
+          zIndex: 45,
+        }}
+      />
+
       {/* White flash on exit for cinematic transition */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -444,6 +524,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             fontSize: "11px",
             letterSpacing: "0.1em",
             color: "rgba(255,255,255,0.35)",
+            animation: visible ? "textEntrance 1s ease-out 1.5s both" : undefined,
           }}
         >
           Gear Perks Card Game
@@ -504,6 +585,12 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         @keyframes pulseGlow {
           0%, 100% { transform: scale(1); opacity: 0.4; }
           50% { transform: scale(1.1); opacity: 0.7; }
+        }
+        @keyframes shootingStar {
+          0%   { transform: translateX(0) translateY(0) rotate(12deg); opacity: 0; }
+          2%   { opacity: 1; }
+          10%  { transform: translateX(120vw) translateY(18vh) rotate(12deg); opacity: 0; }
+          100% { transform: translateX(120vw) translateY(18vh) rotate(12deg); opacity: 0; }
         }
         @keyframes lightSway {
           0%, 100% { transform: skewX(-15deg) translateX(-20px); opacity: 0.04; }
