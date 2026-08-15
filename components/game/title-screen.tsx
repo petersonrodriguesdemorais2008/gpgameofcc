@@ -381,21 +381,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             animation: visible ? "logoEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) both, logoFloat 5s ease-in-out 1.4s infinite" : undefined,
           }}
         >
-          {/* Logo glow layers */}
-          <div
-            className="absolute inset-0 blur-3xl opacity-60"
-            style={{
-              background: "radial-gradient(circle, rgba(56,189,248,0.4) 0%, transparent 70%)",
-              animation: "pulseGlow 3s ease-in-out infinite",
-            }}
-          />
-          <div
-            className="absolute inset-0 blur-2xl opacity-40"
-            style={{
-              background: "radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 60%)",
-              animation: "pulseGlow 4s ease-in-out infinite reverse",
-            }}
-          />
           <Image
             src="/images/GP_CG_logo.png"
             alt="Gear Perks Card Game"
