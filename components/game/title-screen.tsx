@@ -9,7 +9,7 @@ interface TitleScreenProps {
 
 // Pre-computed particle data to avoid hydration mismatches
 const PARTICLE_COLORS = ["#38bdf8", "#a855f7", "#fbbf24", "#22d3ee", "#f472b6"]
-const PARTICLE_COUNT = 35
+const PARTICLE_COUNT = 18
 
 export default function TitleScreen({ onEnter }: TitleScreenProps) {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null)
@@ -22,18 +22,26 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   const [mounted, setMounted] = useState(false)
   const [ripple, setRipple] = useState<{ x: number; y: number; key: number } | null>(null)
   const hasAttemptedAutoplay = useRef(false)
-  const [parallax, setParallax] = useState({ x: 0, y: 0 })
   const parallaxRaf = useRef<number | null>(null)
+  const bgLayerRef = useRef<HTMLDivElement | null>(null)
+  const contentLayerRef = useRef<HTMLDivElement | null>(null)
+  const leavingRef = useRef(false)
 
-  // Pointer parallax - background and logo subtly follow the pointer
+  // Pointer parallax - writes transforms directly to the DOM (no React re-render per frame)
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (parallaxRaf.current !== null) return
+    if (leavingRef.current || parallaxRaf.current !== null) return
     const { clientX, clientY } = e
     parallaxRaf.current = requestAnimationFrame(() => {
+      parallaxRaf.current = null
+      if (leavingRef.current) return
       const nx = (clientX / window.innerWidth - 0.5) * 2
       const ny = (clientY / window.innerHeight - 0.5) * 2
-      setParallax({ x: nx, y: ny })
-      parallaxRaf.current = null
+      if (bgLayerRef.current) {
+        bgLayerRef.current.style.transform = `scale(1.04) translate3d(${nx * -10}px, ${ny * -7}px, 0)`
+      }
+      if (contentLayerRef.current) {
+        contentLayerRef.current.style.transform = `translate3d(${nx * 6}px, ${ny * 4}px, 0)`
+      }
     })
   }, [])
 
@@ -53,8 +61,8 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
     return Array.from({ length: PARTICLE_COUNT }).map((_, i) => ({
       color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
       size: 2 + (i % 5),
-      left: (i * 2.9) % 100,
-      top: (i * 5.7) % 100,
+      left: (i * 5.9 + 3) % 100,
+      top: (i * 11.3 + 5) % 100,
       opacity: 0.3 + (i % 4) * 0.15,
       animationDuration: 6 + (i % 8),
       animationDelay: (i * 0.4) % 5,
@@ -187,6 +195,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       attemptPlay()
     }
 
+    leavingRef.current = true
     setLeaving(true)
 
     // Fade out both audios
@@ -217,7 +226,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       }, 60)
     }
 
-    setTimeout(() => onEnter(), 950)
+    setTimeout(() => onEnter(), 1000)
   }
 
   return (
@@ -228,7 +237,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       className="fixed inset-0 cursor-pointer select-none overflow-hidden bg-black"
       style={{
         opacity: leaving ? 0 : visible ? 1 : 0,
-        transition: leaving ? "opacity 0.95s cubic-bezier(0.7, 0, 0.84, 0)" : "opacity 1.2s ease-out",
+        transition: leaving ? "opacity 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.4s" : "opacity 1.2s ease-out",
         zIndex: 9999,
       }}
     >
@@ -252,15 +261,15 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
 
       {/* Parallax wrapper - shifts opposite to pointer for depth */}
       <div
+        ref={bgLayerRef}
         className="absolute inset-0"
         style={{
-          transform: leaving
-            ? "scale(1.14)"
-            : `scale(1.04) translate(${parallax.x * -10}px, ${parallax.y * -7}px)`,
+          transform: leaving ? "scale(1.14) translate3d(0, 0, 0)" : "scale(1.04) translate3d(0, 0, 0)",
           transition: leaving
-            ? "transform 1s cubic-bezier(0.55, 0, 1, 0.45)"
+            ? "transform 1s cubic-bezier(0.33, 0, 0.2, 1)"
             : "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
           willChange: "transform",
+          backfaceVisibility: "hidden",
         }}
       >
       {/* Background with Ken Burns drift */}
@@ -312,33 +321,26 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         </div>
       )}
 
-      {/* Cinematic light rays */}
+      {/* Cinematic light rays - soft gradients, no blur filter (GPU friendly) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute top-0 left-1/4 w-[500px] h-full opacity-[0.06]"
+          className="absolute top-0 left-1/4 w-[500px] h-full opacity-[0.07]"
           style={{
-            background: "linear-gradient(180deg, rgba(56, 189, 248, 0.4) 0%, transparent 70%)",
-            filter: "blur(80px)",
-            transform: "skewX(-15deg)",
-            animation: "lightSway 8s ease-in-out infinite",
+            background:
+              "radial-gradient(ellipse 60% 90% at 50% 0%, rgba(56, 189, 248, 0.5) 0%, rgba(56, 189, 248, 0.15) 45%, transparent 75%)",
+            transform: "skewX(-15deg) translateZ(0)",
+            animation: "lightSway 9s ease-in-out infinite",
+            willChange: "transform, opacity",
           }}
         />
         <div
-          className="absolute top-0 right-1/3 w-[400px] h-full opacity-[0.05]"
+          className="absolute top-0 right-1/3 w-[400px] h-full opacity-[0.06]"
           style={{
-            background: "linear-gradient(180deg, rgba(168, 85, 247, 0.4) 0%, transparent 60%)",
-            filter: "blur(60px)",
-            transform: "skewX(10deg)",
-            animation: "lightSway 10s ease-in-out infinite reverse",
-          }}
-        />
-        <div
-          className="absolute top-0 right-1/4 w-[300px] h-full opacity-[0.04]"
-          style={{
-            background: "linear-gradient(180deg, rgba(251, 191, 36, 0.3) 0%, transparent 50%)",
-            filter: "blur(50px)",
-            transform: "skewX(-8deg)",
-            animation: "lightSway 12s ease-in-out infinite",
+            background:
+              "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(168, 85, 247, 0.5) 0%, rgba(168, 85, 247, 0.12) 40%, transparent 70%)",
+            transform: "skewX(10deg) translateZ(0)",
+            animation: "lightSway 12s ease-in-out infinite reverse",
+            willChange: "transform, opacity",
           }}
         />
       </div>
@@ -356,29 +358,32 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
               top: `${particle.top}%`,
               background: particle.color,
               opacity: particle.opacity,
-              boxShadow: `0 0 ${particle.size * 4}px ${particle.color}, 0 0 ${particle.size * 8}px ${particle.color}80, 0 0 ${particle.size * 12}px ${particle.color}40`,
+              boxShadow: `0 0 ${particle.size * 4}px ${particle.color}`,
               animation: `floatParticle ${particle.animationDuration}s ease-in-out ${particle.animationDelay}s infinite`,
+              willChange: "transform, opacity",
             }}
           />
         ))}
 
       {/* Central content with staggered entrance + exit lift */}
       <div
+        ref={contentLayerRef}
         className="absolute inset-0 flex flex-col items-center justify-center"
         style={{
           paddingTop: "80px",
-          transform: leaving
-            ? "translateY(-30px) scale(1.06)"
-            : `translate(${parallax.x * 6}px, ${parallax.y * 4}px)`,
+          transform: leaving ? "translate3d(0, -30px, 0) scale(1.06)" : "translate3d(0, 0, 0)",
+          opacity: leaving ? 0 : 1,
           transition: leaving
-            ? "transform 0.95s cubic-bezier(0.55, 0, 1, 0.45)"
+            ? "transform 0.9s cubic-bezier(0.33, 0, 0.2, 1), opacity 0.55s ease-in 0.15s"
             : "transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
+          willChange: "transform",
         }}
       >
         <div
           className="relative"
           style={{
             animation: visible ? "logoEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) both, logoFloat 5s ease-in-out 1.4s infinite" : undefined,
+            willChange: "transform",
           }}
         >
           <Image
@@ -391,7 +396,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             style={{
               maxWidth: "min(400px, 78vw)",
               filter:
-                "drop-shadow(0 0 50px rgba(56,189,248,0.5)) drop-shadow(0 0 100px rgba(168,85,247,0.3)) drop-shadow(0 0 150px rgba(251,191,36,0.15))",
+                "drop-shadow(0 0 50px rgba(56,189,248,0.55)) drop-shadow(0 0 110px rgba(168,85,247,0.3))",
             }}
           />
         </div>
@@ -478,14 +483,26 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         }}
       />
 
-      {/* White flash on exit for cinematic transition */}
+      {/* Light bloom on exit - peaks mid-transition then settles into dark */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(circle at center, rgba(224,242,254,0.95) 0%, rgba(56,189,248,0.5) 45%, transparent 80%)",
-          opacity: leaving ? 1 : 0,
-          transition: leaving ? "opacity 0.55s ease-in 0.25s" : "none",
+          background:
+            "radial-gradient(circle at center, rgba(224,242,254,0.85) 0%, rgba(56,189,248,0.45) 45%, transparent 80%)",
+          opacity: 0,
+          animation: leaving ? "exitBloom 1s cubic-bezier(0.4, 0, 0.2, 1) forwards" : "none",
+          willChange: "opacity",
           zIndex: 40,
+        }}
+      />
+
+      {/* Dark veil - fades in at the end so the menu enters from a dark frame */}
+      <div
+        className="absolute inset-0 pointer-events-none bg-black"
+        style={{
+          opacity: leaving ? 1 : 0,
+          transition: leaving ? "opacity 0.5s cubic-bezier(0.65, 0, 0.35, 1) 0.5s" : "none",
+          zIndex: 46,
         }}
       />
 
@@ -565,8 +582,13 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           100% { transform: translateX(120vw) translateY(18vh) rotate(12deg); opacity: 0; }
         }
         @keyframes lightSway {
-          0%, 100% { transform: skewX(-15deg) translateX(-20px); opacity: 0.04; }
-          50% { transform: skewX(-15deg) translateX(20px); opacity: 0.08; }
+          0%, 100% { transform: skewX(-15deg) translateX(-20px) translateZ(0); opacity: 0.04; }
+          50% { transform: skewX(-15deg) translateX(20px) translateZ(0); opacity: 0.08; }
+        }
+        @keyframes exitBloom {
+          0%   { opacity: 0; }
+          45%  { opacity: 1; }
+          100% { opacity: 0; }
         }
         @media (prefers-reduced-motion: reduce) {
           * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
