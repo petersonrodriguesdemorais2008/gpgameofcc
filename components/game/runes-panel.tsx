@@ -30,11 +30,14 @@ const BRANCH_ICON: Record<RuneBranchId, typeof Coins> = {
   dominio: Crown,
 }
 
-/** Cor de identidade de cada ramo — dá personalidade própria sem fugir da paleta. */
+/**
+ * Cor de identidade de cada ramo — paleta restrita e harmônica sobre o azul
+ * espacial: âmbar neon (Fortuna), ciano neon (Guerra) e violeta gélido (Domínio).
+ */
 const BRANCH_TINT: Record<RuneBranchId, string> = {
-  fortuna: "#f2a936",
-  guerra:  "#f0705a",
-  dominio: "#a78bfa",
+  fortuna: "#f5b03e",
+  guerra:  "#3fd6f2",
+  dominio: "#8f7ff5",
 }
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"] as const
@@ -46,13 +49,6 @@ const GLYPHS = ["ᚠ", "ᚱ", "ᚹ", "ᛉ", "ᛟ", "ᚨ", "ᛞ", "ᛗ"] as const
 function frand(n: number): number {
   const s = Math.sin(n * 127.1 + 311.7) * 43758.5453
   return s - Math.floor(s)
-}
-
-/** Fase da onda de cada ramo — cada pista serpenteia de um jeito próprio. */
-const BRANCH_PHASE: Record<RuneBranchId, number> = {
-  fortuna: 0.6,
-  guerra:  2.5,
-  dominio: 4.3,
 }
 
 /**
@@ -538,8 +534,6 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const yOf = (i: number) => rootY + gap0 + i * STEP
   /** Altura total do conteúdo rolável. */
   const contentH = yOf(RUNES_N - 1) + NODE + PED + 52
-  /** Amplitude do serpenteio horizontal de cada pista. */
-  const laneAmp = Math.min(NODE * 0.62, W * 0.05)
 
   // Ao abrir, começa no TOPO — a leitura da rota é sempre de cima para baixo:
   // núcleo → tier I → ... → tier X.
@@ -674,7 +668,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           50%      { opacity: 1;   transform: scale(1.05); }
         }
         .gp-rune-node:focus-visible { outline: 2px solid #f7f4ee; outline-offset: 6px; }
-        .gp-rune-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b3f2d !important; }
+        .gp-rune-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #6b4a12 !important; }
         @media (prefers-reduced-motion: reduce) {
           @keyframes gpRuneGlowPulse { from { opacity: 0.8 } to { opacity: 0.8 } }
           @keyframes gpRuneBlink     { from { opacity: 1 }   to { opacity: 1 } }
@@ -709,9 +703,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         <div style={{
           position: "absolute", inset: 0,
           background: [
-            `radial-gradient(ellipse 110% 70% at 50% -14%, ${master.accentColor}30 0%, #3b2a7a2e 30%, transparent 58%)`,
+            `radial-gradient(ellipse 110% 70% at 50% -14%, ${master.accentColor}30 0%, #1e3f8a2e 30%, transparent 58%)`,
             `radial-gradient(ellipse 76% 60% at 8% 108%, #1a2f6ecc 0%, #14235200 60%)`,
-            `radial-gradient(ellipse 66% 52% at 94% 96%, #3a1d6899 0%, transparent 62%)`,
+            `radial-gradient(ellipse 66% 52% at 94% 96%, #0e3a6e99 0%, transparent 62%)`,
             "linear-gradient(180deg, #0a0a24 0%, #070818 46%, #0a0c26 100%)",
           ].join(", "),
         }}/>
@@ -719,7 +713,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         {/* Nuvens de nebulosa derivando — massas de gás colorido com movimento implícito */}
         <div style={{
           position: "absolute", left: "-10%", top: "-6%", width: "70%", height: "56%",
-          background: `radial-gradient(ellipse at 46% 44%, ${master.accentColor}2e 0%, #6d4dd426 38%, transparent 68%)`,
+          background: `radial-gradient(ellipse at 46% 44%, ${master.accentColor}2e 0%, #2f6dd426 38%, transparent 68%)`,
           filter: "blur(46px)",
           animation: "gpNebulaDrift 26s ease-in-out infinite",
         }}/>
@@ -731,7 +725,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         }}/>
         <div style={{
           position: "absolute", left: "8%", bottom: "-12%", width: "72%", height: "48%",
-          background: "radial-gradient(ellipse at 50% 56%, #b04dd422 0%, #4d5dd41e 42%, transparent 70%)",
+          background: "radial-gradient(ellipse at 50% 56%, #2aa4c422 0%, #3d5dd41e 42%, transparent 70%)",
           filter: "blur(56px)",
           animation: "gpNebulaDrift 30s ease-in-out 12s infinite",
         }}/>
@@ -739,7 +733,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         {/* Auroras etéreas varrendo a nebulosa */}
         <div style={{
           position: "absolute", inset: "-12% -25%",
-          background: "linear-gradient(112deg, transparent 24%, #6d5aff21 38%, #8fb4ff2e 50%, #6d5aff21 62%, transparent 76%)",
+          background: "linear-gradient(112deg, transparent 24%, #3a7dff21 38%, #8fb4ff2e 50%, #3a7dff21 62%, transparent 76%)",
           filter: "blur(28px)",
           animation: "gpAuroraDrift 17s ease-in-out infinite",
         }}/>
@@ -759,7 +753,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               left: `${frand(i * 1.3 + 5) * 98}%`,
               top: `${frand(i * 2.9 + 11) * 96}%`,
               width: sz, height: sz, borderRadius: "50%",
-              background: i % 5 === 0 ? "#9db4ff" : i % 3 === 0 ? "#c9b8ff" : "#e8eeff",
+              background: i % 5 === 0 ? "#9db4ff" : i % 3 === 0 ? "#aee2ff" : "#e8eeff",
               boxShadow: i % 5 === 0 ? "0 0 8px #7d9dff" : "0 0 4px rgba(200,214,255,0.7)",
               // @ts-expect-error — custom property
               "--star-op": 0.25 + frand(i * 7.1) * 0.55,
@@ -1048,11 +1042,11 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     }}>{branch.name.toUpperCase()}</span>
                     <span style={{
                       fontFamily: PIXEL, fontSize: 8.5,
-                      color: branchComplete ? "#4ecf9d" : tint,
+                      color: branchComplete ? "#ffc95a" : tint,
                       fontVariantNumeric: "tabular-nums",
                       display: "inline-flex", alignItems: "center", gap: 3,
                       background: "rgba(6,8,18,0.6)",
-                      border: `1px solid ${branchComplete ? "#1d7d5c" : `${tint}55`}`,
+                      border: `1px solid ${branchComplete ? "#9a6b1f" : `${tint}55`}`,
                       borderRadius: 999,
                       padding: "0px 7px",
                     }}>
@@ -1077,12 +1071,11 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               : ("locked_prev" as const),
           ]))
 
-          // Posições em pista: cada runa desce em coluna com serpenteio suave e
-          // espaçamento constante — a direção (topo → base) fica sempre clara.
-          const phase = BRANCH_PHASE[branch.id]
+          // Posições em pista: grid rigoroso — cada runa desce em coluna reta
+          // com espaçamento constante; a progressão (topo → base) fica cristalina.
           const laneX = clamp(W * BRANCH_LANE[branch.id], NODE / 2 + 16, W - NODE / 2 - 16)
           const pts = branch.runes.map((_, i) => ({
-            x: clamp(laneX + Math.sin(i * 0.9 + phase) * laneAmp, NODE / 2 + 10, W - NODE / 2 - 10),
+            x: laneX,
             y: yOf(i),
           }))
 
@@ -1197,8 +1190,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                           <div key={`bw-${w}`} style={{
                             position: "absolute", left: 0, top: 0,
                             width: NODE * 3.2, aspectRatio: "1", borderRadius: "50%",
-                            border: `${3 - w}px solid ${w === 1 ? "#fff6d8" : "#4ecf9d"}`,
-                            boxShadow: "0 0 16px #4ecf9d88",
+                            border: `${3 - w}px solid ${w === 1 ? "#fff6d8" : "#ffc95a"}`,
+                            boxShadow: "0 0 16px #ffc95a88",
                             animation: `gpShockwave ${0.65 + w * 0.2}s cubic-bezier(0.16,1,0.3,1) ${delay}s both`,
                           }}/>
                         ))}
@@ -1211,8 +1204,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                               position: "absolute", left: -2, top: -2,
                               width: 4 + Math.round(frand(p * 6.7) * 3),
                               height: 4 + Math.round(frand(p * 6.7) * 3),
-                              background: gold ? "#ffe9b0" : "#4ecf9d",
-                              boxShadow: `0 0 6px ${gold ? "#ffe9b0" : "#4ecf9d"}`,
+                              background: gold ? "#ffe9b0" : "#ffc95a",
+                              boxShadow: `0 0 6px ${gold ? "#ffe9b0" : "#ffc95a"}`,
                               // @ts-expect-error — custom property
                               "--dx": `${Math.cos(a) * dist}px`,
                               "--dy": `${Math.sin(a) * dist}px`,
@@ -1239,7 +1232,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     )}
                     <RuneNode
                       size={nSize}
-                      tint={isDone ? "#4ecf9d" : tint}
+                      tint={isDone ? "#ffc95a" : tint}
                       tintStrength={isLocked ? 0.4 : 1}
                       selected={isSelected}
                       dim={isLocked}
@@ -1267,13 +1260,13 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         borderRadius: "50%",
                         background: isDone
-                          ? "radial-gradient(circle at 34% 28%, #35e0a8 0%, #14805e 70%)"
+                          ? "radial-gradient(circle at 34% 28%, #ffd77a 0%, #a06f1a 70%)"
                           : "rgba(16,18,32,0.85)",
-                        border: isDone ? "1px solid #7dffd4" : "1px solid rgba(130,145,180,0.4)",
-                        boxShadow: isDone ? "0 0 10px #4ecf9d88" : "0 2px 6px rgba(0,0,0,0.5)",
+                        border: isDone ? "1px solid #ffe6ad" : "1px solid rgba(130,145,180,0.4)",
+                        boxShadow: isDone ? "0 0 10px #ffc95a88" : "0 2px 6px rgba(0,0,0,0.5)",
                       }}>
                         {isDone
-                          ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#d8fff0"/>
+                          ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#2e2106"/>
                           : <Lock size={Math.round(sealSize * 0.5)} color="#6d7482"/>}
                       </div>
                     )}
@@ -1420,10 +1413,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         const tint  = BRANCH_TINT[selected.branchId]
         const done  = selectedInfo.status === "unlocked"
         const avail = selectedInfo.status === "available"
-        const stateColor = done ? "#4ecf9d" : avail ? tint : "#7b8290"
+        const stateColor = done ? "#ffc95a" : avail ? tint : "#7b8290"
         const stateLabel = done ? "GRAVADA" : avail ? "DISPONÍVEL" : "BLOQUEADA"
-        const badgeBg    = done ? "rgba(29,125,92,0.8)" : avail ? `${tint}cc` : "rgba(40,44,64,0.75)"
-        const badgeFg    = done ? "#d8fff0" : avail ? "#0a0c1c" : "#9aa1ad"
+        const badgeBg    = done ? "rgba(198,144,44,0.85)" : avail ? `${tint}cc` : "rgba(40,44,64,0.75)"
+        const badgeFg    = done ? "#2e2106" : avail ? "#0a0c1c" : "#9aa1ad"
         const selBranch  = branches.find(b => b.id === selected.branchId)
         const branchName = selBranch?.name ?? ""
         const branchSize = selBranch?.runes.length ?? 10
@@ -1508,8 +1501,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     }}>{branchName.toUpperCase()}</span>
                     <span style={{
                       fontFamily: PIXEL, fontSize: 9,
-                      color: master.currentLevel >= selected.requiredLevel ? "#4ecf9d" : "#f0a97a",
-                      border: `2px solid ${master.currentLevel >= selected.requiredLevel ? "#1d7d5c" : "#8a5a34"}`,
+                      color: master.currentLevel >= selected.requiredLevel ? "#ffc95a" : "#f0a97a",
+                      border: `2px solid ${master.currentLevel >= selected.requiredLevel ? "#9a6b1f" : "#8a5a34"}`,
                       background: "#101016",
                       padding: "1px 6px",
                     }}>Lv.{selected.requiredLevel}</span>
@@ -1613,12 +1606,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         className="gp-rune-cta"
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 6,
-                          background: "linear-gradient(180deg, #5adfae 0%, #38b586 100%)",
-                          border: "1px solid #0b3f2d",
+                          background: "linear-gradient(180deg, #ffd775 0%, #eba23a 100%)",
+                          border: "1px solid #6b4a12",
                           borderRadius: 8,
-                          padding: "8px 18px", cursor: "pointer", color: "#06281c",
+                          padding: "8px 18px", cursor: "pointer", color: "#2b1d05",
                           fontFamily: PIXEL, fontSize: 10.5,
-                          boxShadow: "0 3px 0 #0b3f2d, 0 0 18px rgba(70,194,149,0.35), inset 0 1px 0 rgba(255,255,255,0.35)",
+                          boxShadow: "0 3px 0 #6b4a12, 0 0 18px rgba(240,180,80,0.4), inset 0 1px 0 rgba(255,255,255,0.4)",
                           transition: "transform 0.06s, box-shadow 0.06s",
                         }}>
                         GRAVAR RUNA
