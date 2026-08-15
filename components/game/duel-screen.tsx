@@ -27,6 +27,7 @@ import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
  import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
  import { CHESTS, type ChestId } from "@/lib/chests"
+ import type { XPBookId } from "@/lib/xp-books"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
 const DUEL_CARD_SKINS: Record<string, { id: string; image: string }[]> = {
@@ -2806,13 +2807,15 @@ interface GameResultScreenProps {
   result: "won" | "lost"
   onBack: () => void
   rewardKind?: DuelRewardKind
+  /** Duelo do Modo Campanha (História) — só aqui rola o drop de Livro de XP. */
+  isCampaign?: boolean
 }
 
-export function GameResultScreen({ result, onBack, rewardKind }: GameResultScreenProps) {
+export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: GameResultScreenProps) {
   const isWon = result === "won"
 
   // ── Duel rewards: gacha + gear coins on victory (granted once) ──
-  const { addDuelRewards } = useGame()
+  const { addDuelRewards, rollCampaignXPBook } = useGame()
   const rewardsGrantedRef = useRef(false)
   const [duelRewards, setDuelRewards] = useState<{
     gacha: number; gear: number; fragments: FragmentCounts; chest: ChestId | null
@@ -2824,6 +2827,17 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
     setDuelRewards(addDuelRewards(rewardKind))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWon, rewardKind])
+
+  // ── Livro de XP: dropa com chance apenas em Duelos do Modo Campanha ──
+  const xpBookGrantedRef = useRef(false)
+  const [xpBookDrop, setXpBookDrop] = useState<{ id: XPBookId; amount: number } | null>(null)
+
+  useEffect(() => {
+    if (!isWon || !isCampaign || xpBookGrantedRef.current) return
+    xpBookGrantedRef.current = true
+    setXpBookDrop(rollCampaignXPBook())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWon, isCampaign])
 
   // Master XP notification state
   const [masterXPData, setMasterXPData] = useState<{
@@ -2846,10 +2860,11 @@ export function GameResultScreen({ result, onBack, rewardKind }: GameResultScree
       onBack={onBack}
       rewards={duelRewards}
       masterXP={masterXPData}
+      xpBookDrop={xpBookDrop}
     />
   )
 }
-// ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────���───────────────────────────
 
 
 // ─── Error Boundary for OnlineDuelScreen crashes ─────────────────────────────
@@ -5281,7 +5296,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           (cardToPlace.name.toLowerCase().includes("bandagem") || cardToPlace.name.toLowerCase().includes("cristal recuperador") ||
            cardToPlace.name.toLowerCase().includes("kit médico") || cardToPlace.name.toLowerCase().includes("soro recuperador"))
         if (_arthurSrOnField && _isHealingCard) {
-          showEffectFeedback("SOBERANIA DAS SOMBRAS: Rei Arthur impede a ativação de cartas de Cura!", "error")
+          showEffectFeedback("SOBERANIA DAS SOMBRAS: Rei Arthur impede a ativa��ão de cartas de Cura!", "error")
           return
         }
 
@@ -10271,7 +10286,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
         : mode === "player" ? "pvp" : "normal"
 
-    return <GameResultScreen result={gameResult} rewardKind={rewardKind} onBack={() => {
+    return <GameResultScreen result={gameResult} rewardKind={rewardKind} isCampaign={!!storyBattle && !eventBattle} onBack={() => {
       if (mode === "player") {
         setOnlinePhase("lobby")
         setGameResult(null)

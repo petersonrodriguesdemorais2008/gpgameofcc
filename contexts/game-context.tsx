@@ -19,6 +19,12 @@ import {
   type ChestId,
   type ChestOpenResult,
 } from "@/lib/chests"
+import {
+  normalizeXPBookCounts,
+  rollCampaignXPBookDrop,
+  type XPBookCounts,
+  type XPBookId,
+} from "@/lib/xp-books"
 
 export interface Card {
   id: string
@@ -379,6 +385,16 @@ interface GameContextType {
   addStaminaBottles: (amount: number) => void
   /** Consome 1 garrafa e recupera stamina. Só funciona faltando 10+ de stamina; retorna false caso contrário. */
   useStaminaBottle: () => boolean
+  /** Livros de XP: itens que concedem XP a um Mestre escolhido (dropam em Duelos do Modo Campanha). */
+  xpBooks: XPBookCounts
+  /** Soma livros ao inventário. */
+  addXPBooks: (gain: XPBookCounts) => void
+  /** Quantidade de um livro específico. */
+  getXPBookCount: (id: XPBookId) => number
+  /** Consome livros do inventário. Retorna false se faltar algum (nada é debitado nesse caso). */
+  spendXPBooks: (cost: XPBookCounts) => boolean
+  /** Rola o drop de Livro de XP ao vencer um duelo do Modo Campanha; soma ao inventário se dropar. */
+  rollCampaignXPBook: () => { id: XPBookId; amount: number } | null
   collection: Card[]
   addToCollection: (cards: Card[]) => void
   decks: Deck[]
@@ -2002,6 +2018,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return Number.isFinite(n) && n > 0 ? n : 0
     } catch { return 0 }
   })
+  // Livros de XP — mesma estratégia dos fragmentos/baús: leitura direta do
+  // localStorage no primeiro render pra não zerar o inventário durante o load.
+  const [xpBooks, setXpBooks] = useState<XPBookCounts>(() => {
+    if (typeof window === "undefined") return {}
+    try {
+      const raw = localStorage.getItem("gear-perks-xpbooks")
+      return raw ? normalizeXPBookCounts(JSON.parse(raw)) : {}
+    } catch { return {} }
+  })
   const [collection, setCollection] = useState<Card[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([])
@@ -2472,7 +2497,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true
   }, [skipTickets])
 
-  // ── Garrafas de Energia ──────────────────────────────────────────────────────
+  // ── Garrafas de Energia ────────────────────────────────────────���─────────────
   const addStaminaBottles = useCallback((amount: number) => {
     const gain = Math.floor(amount)
     if (!Number.isFinite(gain) || gain <= 0) return
@@ -2488,6 +2513,49 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setStamina((prev) => Math.min(max, prev + STAMINA_BOTTLE_REFILL_AMOUNT))
     return true
   }, [staminaBottles, stamina, playerProfile.level])
+
+  // ── Livros de XP ─────────────────────────────────────────────────────────────
+  const addXPBooks = useCallback((gain: XPBookCounts) => {
+    const clean = normalizeXPBookCounts(gain)
+    if (Object.keys(clean).length === 0) return
+    setXpBooks((prev) => {
+      const next: XPBookCounts = { ...prev }
+      for (const [id, amount] of Object.entries(clean) as [XPBookId, number][]) {
+        next[id] = (next[id] ?? 0) + amount
+      }
+      return next
+    })
+  }, [])
+
+  const getXPBookCount = useCallback((id: XPBookId) => xpBooks[id] ?? 0, [xpBooks])
+
+  /**
+   * Consome livros do inventário de forma atômica: se faltar QUALQUER item
+   * do custo, nada é debitado e a função retorna false.
+   */
+  const spendXPBooks = useCallback((cost: XPBookCounts) => {
+    const clean = normalizeXPBookCounts(cost)
+    const entries = Object.entries(clean) as [XPBookId, number][]
+    if (entries.length === 0) return true
+    for (const [id, amount] of entries) {
+      if ((xpBooks[id] ?? 0) < amount) return false
+    }
+    setXpBooks((prev) => {
+      const next: XPBookCounts = { ...prev }
+      for (const [id, amount] of entries) {
+        next[id] = Math.max(0, (next[id] ?? 0) - amount)
+      }
+      return next
+    })
+    return true
+  }, [xpBooks])
+
+  /** Rola o drop de Livro de XP ao vencer um duelo do Modo Campanha (História). */
+  const rollCampaignXPBook = useCallback(() => {
+    const drop = rollCampaignXPBookDrop()
+    if (drop) addXPBooks({ [drop.id]: drop.amount })
+    return drop
+  }, [addXPBooks])
 
   const addDuelRewards = useCallback((kind: DuelRewardKind) => {
     const { gacha, gear, fragments: drop } =
@@ -2521,6 +2589,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLS("staminabottles", staminaBottles.toString())
   }, [staminaBottles])
+
+  useEffect(() => {
+    localStorage.setItem("gear-perks-xpbooks", JSON.stringify(xpBooks))
+  }, [xpBooks])
 
   useEffect(() => {
     setLS("collection", JSON.stringify(collection))
@@ -3746,6 +3818,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     staminaBottles,
     addStaminaBottles,
     useStaminaBottle,
+    xpBooks,
+    addXPBooks,
+    getXPBookCount,
+    spendXPBooks,
+    rollCampaignXPBook,
         collection,
         addToCollection,
         decks,

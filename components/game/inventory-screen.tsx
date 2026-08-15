@@ -27,6 +27,7 @@ import {
   STAMINA_BOTTLE_NAME,
   STAMINA_BOTTLE_REFILL_AMOUNT,
 } from "@/lib/stamina-bottle"
+import { ALL_XP_BOOK_IDS, XP_BOOKS } from "@/lib/xp-books"
 import { ArrowLeft, Search, X, Backpack, HeartHandshake, PackageOpen } from "lucide-react"
 import Image from "next/image"
 import { ChestOpeningOverlay } from "./chest-opening-overlay"
@@ -128,7 +129,7 @@ const INV_CSS = `
 `
 
 export default function InventoryScreen({ onBack }: { onBack: () => void }) {
-  const { coins, gearCoins, friendPoints, fragments, skipTickets, chests, openChest } = useGame()
+  const { coins, gearCoins, friendPoints, fragments, skipTickets, chests, openChest, xpBooks } = useGame()
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"todos" | ItemCategory>("todos")
   const [selectedChestId, setSelectedChestId] = useState<ChestId | null>(null)
@@ -169,6 +170,18 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
         image: SKIP_TICKET_IMAGE,
         color: SKIP_TICKET_COLOR,
       },
+      ...ALL_XP_BOOK_IDS.map((id) => {
+        const book = XP_BOOKS[id]
+        return {
+          id: `xp-book-${id}`,
+          name: book.name,
+          description: book.description,
+          category: "itens" as ItemCategory,
+          quantity: xpBooks[id] ?? 0,
+          image: book.image,
+          color: book.color,
+        }
+      }),
       {
         id: "friend-points",
         name: "Pontos de Amizade",
@@ -223,7 +236,7 @@ export default function InventoryScreen({ onBack }: { onBack: () => void }) {
     }
 
     return list
-  }, [coins, gearCoins, friendPoints, fragments, skipTickets, chests])
+  }, [coins, gearCoins, friendPoints, fragments, skipTickets, chests, xpBooks])
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()

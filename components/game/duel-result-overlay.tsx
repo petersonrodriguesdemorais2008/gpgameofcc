@@ -17,6 +17,7 @@
 import { useEffect, useRef, useState } from "react"
 import { CHESTS, type ChestId } from "@/lib/chests"
 import { FRAGMENTS, type FragmentCounts, type FragmentId } from "@/lib/fragments"
+import { XP_BOOKS, type XPBookId } from "@/lib/xp-books"
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ interface DuelResultOverlayProps {
   onBack: () => void
   rewards?: DuelResultRewards | null
   masterXP?: DuelResultMasterXP | null
+  /** Livro de XP dropado — só em vitórias de Duelos do Modo Campanha. */
+  xpBookDrop?: { id: XPBookId; amount: number } | null
 }
 
 // ─── Contador animado (count-up) ─────────────────────────────────────────────
@@ -353,7 +356,7 @@ function useResultParticles(canvasRef: React.RefObject<HTMLCanvasElement | null>
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
-export function DuelResultOverlay({ result, onBack, rewards, masterXP }: DuelResultOverlayProps) {
+export function DuelResultOverlay({ result, onBack, rewards, masterXP, xpBookDrop }: DuelResultOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isWon = result === "won"
   useResultParticles(canvasRef, isWon)
@@ -656,6 +659,38 @@ export function DuelResultOverlay({ result, onBack, rewards, masterXP }: DuelRes
               </span>
               <span style={{ fontWeight: 700, fontSize: 14, color: "#f1f0ee" }}>
                 {CHESTS[rewards.chest].name}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Livro de XP encontrado — só em Duelos do Modo Campanha */}
+        {isWon && xpBookDrop && XP_BOOKS[xpBookDrop.id] && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14,
+            background: `linear-gradient(160deg, ${XP_BOOKS[xpBookDrop.id].color}1a, rgba(0,0,0,.65))`,
+            backdropFilter: "blur(12px)",
+            border: `1px solid ${XP_BOOKS[xpBookDrop.id].color}66`, borderRadius: 16,
+            padding: "12px 26px", position: "relative", overflow: "hidden",
+            boxShadow: `0 8px 32px rgba(0,0,0,.5), 0 0 24px ${XP_BOOKS[xpBookDrop.id].color}22`,
+            animation: `grx-card 620ms cubic-bezier(.22,1.2,.36,1) ${nextDelay()}ms both`,
+          }}>
+            <span style={{
+              position: "absolute", top: 0, left: "-80%", width: "45%", height: "100%",
+              background: "linear-gradient(105deg,transparent,rgba(255,255,255,.16),transparent)",
+              animation: "grx-card-shine 1.4s ease-in-out 2.2s both", pointerEvents: "none",
+            }} />
+            <img src={XP_BOOKS[xpBookDrop.id].image || "/placeholder.svg"} alt={XP_BOOKS[xpBookDrop.id].name}
+              style={{ width: 44, height: 44, objectFit: "contain",
+                filter: `drop-shadow(0 0 12px ${XP_BOOKS[xpBookDrop.id].color}aa)` }} />
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3, textAlign: "left" }}>
+              <span style={{ fontWeight: 900, fontSize: 13, color: XP_BOOKS[xpBookDrop.id].color,
+                textShadow: `0 0 10px ${XP_BOOKS[xpBookDrop.id].color}80`,
+                textTransform: "uppercase", letterSpacing: "1px" }}>
+                Livro de XP encontrado!
+              </span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: "#f1f0ee" }}>
+                {xpBookDrop.amount > 1 ? `${xpBookDrop.amount}x ` : ""}{XP_BOOKS[xpBookDrop.id].name}
               </span>
             </div>
           </div>

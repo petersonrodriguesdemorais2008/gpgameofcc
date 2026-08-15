@@ -336,6 +336,7 @@ export function grantMasterDuelXP(opts: {
     const leveledUp = !!(active && prevActive && active.currentLevel > prevActive.currentLevel)
     window.dispatchEvent(new CustomEvent("gpgame_master_xp", {
       detail: {
+        masterId: active?.id ?? "",
         masterName: active?.name ?? "",
         xpGain,
         newLevel: active?.currentLevel ?? 1,
@@ -343,4 +344,51 @@ export function grantMasterDuelXP(opts: {
       },
     }))
   } catch { /* ignore */ }
+}
+
+/**
+ * Concede XP manualmente a um Mestre ESPECÍFICO (não precisa ser o Mestre
+ * ativo) — usado pelos Livros de XP na tela de Mestre. Salva no localStorage
+ * e dispara o mesmo evento "gpgame_master_xp" usado pelo XP de duelo, para a
+ * tela de Mestres atualizar a barra/nível imediatamente.
+ */
+export function grantMasterXPManual(
+  masterId: string,
+  xpAmount: number,
+): { newLevel: number; leveledUp: boolean } | null {
+  try {
+    if (!Number.isFinite(xpAmount) || xpAmount <= 0) return null
+    const masters = loadMastersFromStorage()
+    const target = masters.find(m => m.id === masterId)
+    if (!target) return null
+    const prevLevel = target.currentLevel
+
+    const updated = masters.map(m => {
+      if (m.id !== masterId) return m
+      if (m.currentLevel >= m.maxLevel) return m
+      let xp = m.currentXP + xpAmount
+      let level = m.currentLevel
+      while (level < m.maxLevel) {
+        const needed = xpRequiredForLevel(level)
+        if (xp >= needed) { xp -= needed; level++ }
+        else break
+      }
+      if (level >= m.maxLevel) { level = m.maxLevel; xp = 0 }
+      return { ...m, currentXP: xp, currentLevel: level, totalXP: m.totalXP + xpAmount, xpToNext: xpRequiredForLevel(level) }
+    })
+    saveMastersToStorage(updated)
+
+    const result = updated.find(m => m.id === masterId)!
+    const leveledUp = result.currentLevel > prevLevel
+    window.dispatchEvent(new CustomEvent("gpgame_master_xp", {
+      detail: {
+        masterId: result.id,
+        masterName: result.name,
+        xpGain: xpAmount,
+        newLevel: result.currentLevel,
+        leveledUp,
+      },
+    }))
+    return { newLevel: result.currentLevel, leveledUp }
+  } catch { return null }
 }
