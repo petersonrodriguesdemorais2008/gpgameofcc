@@ -13,10 +13,10 @@ function shade(hex: string, f: number): string {
 }
 
 /**
- * Nó de uma Rota de Runas: ORBE DE PODER — uma estrela cristalizada flutuando
- * na constelação. Ativa: esfera de energia viva com núcleo incandescente,
- * lens flare em cruz e anel de luz orbitando. Trancada: estrela adormecida,
- * uma esfera de vidro escuro com um brilho mínimo aguardando ser despertada.
+ * Nó de uma Rota de Runas: SELO RÚNICO — um losango de metal forjado com um
+ * núcleo de energia cristalizada. Ativo: moldura metálica dourada pelo tinte
+ * do ramo, núcleo incandescente pulsante e lens flare em cruz. Trancado:
+ * losango de aço adormecido, vidro escuro aguardando ser despertado.
  */
 export function RuneNode({
   size = 70,
@@ -31,15 +31,15 @@ export function RuneNode({
   children,
 }: {
   size?: number
-  /** Cor de identidade do ramo (ou do estado) usada no orbe e no brilho. */
+  /** Cor de identidade do ramo (ou do estado) usada na runa e no brilho. */
   tint: string
-  /** 0–1: quão vivo o orbe fica (runas bloqueadas usam um valor baixo). */
+  /** 0–1: quão viva a runa fica (runas bloqueadas usam um valor baixo). */
   tintStrength?: number
   selected?: boolean
   dim?: boolean
-  /** Runa pronta para ser gravada — o orbe respira e flutua. */
+  /** Runa pronta para ser gravada — o selo respira e flutua. */
   float?: boolean
-  /** Runa de ápice já gravada — recebe halo dourado permanente. */
+  /** Runa de ápice já gravada — recebe moldura dourada permanente. */
   maxed?: boolean
   label: string
   onClick?: () => void
@@ -47,6 +47,12 @@ export function RuneNode({
 }) {
   const active = tintStrength >= 0.9
   const deep   = shade(tint, 0.25)
+  const mid    = shade(tint, 0.55)
+
+  /** Moldura metálica: liga viva tingida pelo ramo, ou aço adormecido. */
+  const metal = active
+    ? `conic-gradient(from 210deg, #f8eecb 0deg, ${tint} 50deg, ${mid} 115deg, #efe3b4 175deg, ${mid} 245deg, #f8eecb 315deg, #f8eecb 360deg)`
+    : "conic-gradient(from 210deg, #7b869e 0deg, #2b3247 65deg, #4a5470 140deg, #1f2537 215deg, #5b6683 295deg, #7b869e 360deg)"
 
   return (
     <button
@@ -69,123 +75,135 @@ export function RuneNode({
         animation: float ? "gpRuneFloat 2.8s ease-in-out infinite" : "none",
       }}
     >
-      {/* ── Aura difusa: a luz da estrela vazando para a constelação ── */}
+      {/* ── Aura difusa: a energia do selo vazando para a constelação ── */}
       {active && (
         <div aria-hidden="true" style={{
           position: "absolute",
-          inset: `-${Math.round(size * 0.42)}px`,
+          inset: `-${Math.round(size * 0.4)}px`,
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${tint}66 0%, ${tint}22 42%, transparent 70%)`,
+          background: `radial-gradient(circle, ${tint}5e 0%, ${tint}20 42%, transparent 70%)`,
           animation: "gpRuneGlowPulse 2.6s ease-in-out infinite",
           pointerEvents: "none",
         }}/>
       )}
 
-      {/* ── Lens flare em cruz — o clarão característico de estrela acesa ── */}
+      {/* ── Lens flare em cruz alinhado aos vértices do losango ── */}
       {active && (
         <div aria-hidden="true" style={{
           position: "absolute", inset: 0, pointerEvents: "none", zIndex: 3,
           animation: "gpAuraBreathe 3.2s ease-in-out infinite",
         }}>
-          {/* Feixe horizontal */}
           <div style={{
-            position: "absolute", left: `-${Math.round(size * 0.36)}px`, right: `-${Math.round(size * 0.36)}px`,
+            position: "absolute", left: `-${Math.round(size * 0.34)}px`, right: `-${Math.round(size * 0.34)}px`,
             top: "50%", height: 2, transform: "translateY(-50%)",
             background: `linear-gradient(90deg, transparent 0%, ${tint}aa 30%, #ffffff 50%, ${tint}aa 70%, transparent 100%)`,
             filter: "blur(0.4px)",
-            opacity: 0.85,
+            opacity: 0.8,
           }}/>
-          {/* Feixe vertical */}
           <div style={{
-            position: "absolute", top: `-${Math.round(size * 0.3)}px`, bottom: `-${Math.round(size * 0.3)}px`,
+            position: "absolute", top: `-${Math.round(size * 0.28)}px`, bottom: `-${Math.round(size * 0.28)}px`,
             left: "50%", width: 2, transform: "translateX(-50%)",
             background: `linear-gradient(180deg, transparent 0%, ${tint}88 32%, #ffffff 50%, ${tint}88 68%, transparent 100%)`,
             filter: "blur(0.4px)",
-            opacity: 0.6,
+            opacity: 0.55,
           }}/>
         </div>
       )}
 
-      {/* ── Anel de luz orbitando o orbe ativo ── */}
-      {active && (
-        <div aria-hidden="true" style={{
-          position: "absolute", inset: `-${Math.max(4, Math.round(size * 0.1))}px`,
-          borderRadius: "50%", pointerEvents: "none",
-          background: `conic-gradient(from 0deg, transparent 0deg, ${tint} 40deg, #ffffffcc 60deg, ${tint} 80deg, transparent 130deg, transparent 360deg)`,
-          maskImage: "radial-gradient(circle, transparent 0%, transparent 78%, black 82%, black 92%, transparent 96%)",
-          WebkitMaskImage: "radial-gradient(circle, transparent 0%, transparent 78%, black 82%, black 92%, transparent 96%)",
-          animation: "gpRingSpin 5s linear infinite",
-          filter: `drop-shadow(0 0 4px ${tint})`,
-        }}/>
-      )}
-
-      {/* Halo dourado permanente de runa de ápice gravada */}
+      {/* ── Moldura dourada girante de runa de ápice gravada ── */}
       {maxed && (
         <div aria-hidden="true" style={{
-          position: "absolute", inset: `-${Math.round(size * 0.22)}px`,
-          borderRadius: "50%", pointerEvents: "none",
-          background: "conic-gradient(from 0deg, transparent 0deg, #ffe9b088 50deg, transparent 120deg, #ffe9b088 230deg, transparent 310deg)",
-          maskImage: "radial-gradient(circle, transparent 0%, transparent 70%, black 76%, black 88%, transparent 94%)",
-          WebkitMaskImage: "radial-gradient(circle, transparent 0%, transparent 70%, black 76%, black 88%, transparent 94%)",
-          animation: "gpRingSpinRev 10s linear infinite",
-          filter: "drop-shadow(0 0 6px #ffe9b0)",
+          position: "absolute", inset: "2%",
+          transform: "rotate(45deg)",
+          border: "2px dashed #ffe6ad",
+          pointerEvents: "none",
+          filter: "drop-shadow(0 0 7px #ffe6ad)",
+          animation: "gpRingSpin 12s linear infinite",
         }}/>
       )}
 
-      {/* ── O orbe em si: esfera de energia cristalizada ── */}
-      <div style={{
-        position: "absolute", inset: 0,
-        borderRadius: "50%",
-        background: active
-          ? [
-              // Reflexo especular no topo
-              `radial-gradient(circle at 32% 24%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.28) 12%, transparent 30%)`,
-              // Núcleo incandescente
-              `radial-gradient(circle at 50% 52%, #ffffff 0%, ${tint} 34%, ${deep} 72%, rgba(4,6,18,0.95) 100%)`,
-            ].join(", ")
-          : [
-              `radial-gradient(circle at 32% 24%, rgba(255,255,255,0.14) 0%, transparent 26%)`,
-              `radial-gradient(circle at 50% 52%, rgba(90,105,140,0.4) 0%, rgba(28,34,52,0.9) 46%, rgba(8,10,20,0.98) 100%)`,
-            ].join(", "),
-        border: active ? `1px solid ${tint}cc` : "1px solid rgba(120,140,180,0.28)",
+      {/* ── Moldura metálica do losango ── */}
+      <div aria-hidden="true" style={{
+        position: "absolute", inset: "15%",
+        transform: "rotate(45deg)",
+        background: metal,
+        border: active ? `1px solid ${tint}cc` : "1px solid rgba(120,140,180,0.35)",
         boxShadow: active
-          ? `0 0 ${Math.round(size * 0.32)}px ${tint}aa, 0 0 ${Math.round(size * 0.7)}px ${tint}44, inset 0 0 ${Math.round(size * 0.2)}px ${tint}88`
-          : "inset 0 2px 8px rgba(0,0,0,0.7), 0 0 10px rgba(80,100,150,0.12)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        overflow: "hidden",
+          ? `0 0 ${Math.round(size * 0.26)}px ${tint}99, 0 0 ${Math.round(size * 0.6)}px ${tint}3a, inset 0 0 6px rgba(255,255,255,0.35)`
+          : "0 4px 12px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.12)",
         transition: "box-shadow 0.25s",
+        zIndex: 1,
+      }}/>
+
+      {/* ── Placa interna: vidro escuro com núcleo de energia ── */}
+      <div aria-hidden="true" style={{
+        position: "absolute", inset: "21%",
+        transform: "rotate(45deg)",
+        background: active
+          ? `radial-gradient(circle at 50% 44%, #ffffff 0%, ${tint} 32%, ${deep} 74%, rgba(4,6,18,0.96) 100%)`
+          : "radial-gradient(circle at 50% 44%, rgba(96,112,150,0.42) 0%, rgba(26,32,50,0.92) 48%, rgba(7,9,20,0.98) 100%)",
+        border: active ? `1px solid ${tint}66` : "1px solid rgba(90,105,140,0.3)",
+        boxShadow: active
+          ? `inset 0 0 ${Math.round(size * 0.18)}px ${tint}88`
+          : "inset 0 2px 8px rgba(0,0,0,0.7)",
+        overflow: "hidden",
         zIndex: 1,
       }}>
         {/* Brasa respirando dentro do núcleo (só quando viva) */}
         {active && (
-          <div aria-hidden="true" style={{
-            position: "absolute", inset: "16%",
-            borderRadius: "50%",
-            background: `radial-gradient(circle, rgba(255,255,255,0.7) 0%, ${tint}66 44%, transparent 70%)`,
+          <div style={{
+            position: "absolute", inset: "12%",
+            background: `radial-gradient(circle, rgba(255,255,255,0.7) 0%, ${tint}66 44%, transparent 72%)`,
             animation: "gpAuraBreathe 3.4s ease-in-out infinite",
-            pointerEvents: "none",
             mixBlendMode: "screen",
           }}/>
         )}
-        {/* Poeira estelar adormecida dentro da esfera trancada */}
+        {/* Poeira estelar adormecida dentro do selo trancado */}
         {!active && (
-          <div aria-hidden="true" style={{
-            position: "absolute", inset: "26%",
-            borderRadius: "50%",
+          <div style={{
+            position: "absolute", inset: "24%",
             background: `radial-gradient(circle, ${tint}2e 0%, transparent 66%)`,
-            pointerEvents: "none",
           }}/>
         )}
-        <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {children}
-        </div>
       </div>
 
-      {/* Cursor de seleção: anel de energia pulsando ao redor do orbe */}
+      {/* ── Rebites metálicos nos 4 vértices do losango ── */}
+      {[
+        { left: "50%", top: "8%" },
+        { left: "92%", top: "50%" },
+        { left: "50%", top: "92%" },
+        { left: "8%",  top: "50%" },
+      ].map((pos, i) => (
+        <span key={i} aria-hidden="true" style={{
+          position: "absolute", ...pos,
+          width: Math.max(4, Math.round(size * 0.09)),
+          height: Math.max(4, Math.round(size * 0.09)),
+          transform: "translate(-50%, -50%)",
+          borderRadius: "50%",
+          background: active
+            ? `radial-gradient(circle at 34% 28%, #fff6d8 0%, ${tint} 55%, ${deep} 100%)`
+            : "radial-gradient(circle at 34% 28%, #8a94ac 0%, #39415a 60%, #171c2c 100%)",
+          border: "1px solid rgba(6,8,16,0.85)",
+          boxShadow: active ? `0 0 6px ${tint}aa` : "0 1px 3px rgba(0,0,0,0.6)",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}/>
+      ))}
+
+      {/* ── Ícone da recompensa, sempre alinhado ao eixo vertical ── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 2,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        pointerEvents: "none",
+      }}>
+        {children}
+      </div>
+
+      {/* Cursor de seleção: losango de energia pulsando ao redor do selo */}
       {selected && (
         <div aria-hidden="true" style={{
-          position: "absolute", inset: -8,
-          borderRadius: "50%",
+          position: "absolute", inset: "6%",
+          transform: "rotate(45deg)",
           border: `2px solid ${tint}`,
           boxShadow: `0 0 14px ${tint}aa, inset 0 0 10px ${tint}44`,
           animation: "gpRuneBlink 1.1s steps(2, jump-none) infinite",
