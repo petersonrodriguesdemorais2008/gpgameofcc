@@ -456,8 +456,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const STEP = Math.max(96, Math.round(NODE * 2.05))
   /** Espaço no topo do mapa (abaixo dos estandartes fixos). */
   const topPad = 86
-  /** Núcleo da árvore, no topo central do mapa rolável. */
-  const rootSize = Math.round(NODE * 1.45)
+  /** Núcleo da árvore, no topo central do mapa rolável — maior e mais imponente. */
+  const rootSize = Math.round(NODE * 1.66)
   /** Distância do centro do núcleo até o centro da 1ª runa. */
   const gap0 = Math.round(rootSize * 0.8 + NODE * 0.95)
   const rootY = topPad + Math.round(rootSize / 2) + 16
@@ -532,6 +532,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           70%  { opacity: 1; }
           100% { transform: translate(-50%, 10px); opacity: 0; }
         }
+        @keyframes gpDustDrift {
+          0%   { transform: translate(0, 0); opacity: 0; }
+          15%  { opacity: var(--dust-op, 0.22); }
+          85%  { opacity: var(--dust-op, 0.22); }
+          100% { transform: translate(26px, -150px); opacity: 0; }
+        }
         @keyframes gpStarTwinkle {
           0%, 100% { opacity: var(--star-op, 0.5); }
           50%      { opacity: 0.08; }
@@ -588,7 +594,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
           50%      { opacity: 1; transform: scale(1) rotate(90deg); }
         }
-        .gp-rune-node:hover { filter: brightness(1.12); }
+        .gp-rune-node { transition: filter 0.18s ease; }
+        .gp-rune-node:hover { filter: brightness(1.2) drop-shadow(0 0 9px rgba(255,236,190,0.5)); }
         .gp-rune-node:focus-visible { outline: 2px solid #f7f4ee; outline-offset: 6px; }
         .gp-rune-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b3f2d !important; }
         @media (prefers-reduced-motion: reduce) {
@@ -601,6 +608,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           @keyframes gpRingSpin      { from { transform: none } to { transform: none } }
           @keyframes gpRingSpinRev   { from { transform: none } to { transform: none } }
           @keyframes gpStarTwinkle   { from { opacity: 0.4 } to { opacity: 0.4 } }
+          @keyframes gpDustDrift     { from { opacity: 0.15; transform: none } to { opacity: 0.15; transform: none } }
           @keyframes gpAuroraDrift   { from { transform: none; opacity: 0.6 } to { transform: none; opacity: 0.6 } }
           @keyframes gpChevronFall   { from { transform: translate(-50%, 0); opacity: 0.7 } to { transform: translate(-50%, 0); opacity: 0.7 } }
           @keyframes gpUnlockFlash   { from { opacity: 0 } to { opacity: 0 } }
@@ -671,6 +679,25 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               // @ts-expect-error — custom property
               "--star-op": 0.25 + frand(i * 7.1) * 0.55,
               animation: `gpStarTwinkle ${2.4 + frand(i * 4.3) * 3.6}s ease-in-out ${frand(i * 9.7) * 4}s infinite`,
+            }}/>
+          )
+        })}
+
+        {/* Poeira estelar à deriva — profundidade sutil entre as estrelas e o mapa */}
+        {Array.from({ length: 18 }, (_, i) => {
+          const sz = 2 + Math.round(frand(i * 2.2 + 1) * 3)
+          return (
+            <span key={`dust-${i}`} style={{
+              position: "absolute",
+              left: `${frand(i * 5.1 + 3) * 100}%`,
+              top: `${10 + frand(i * 8.3 + 7) * 88}%`,
+              width: sz, height: sz, borderRadius: "50%",
+              background: i % 4 === 0 ? "#9fc3ff" : "#dbe6f8",
+              filter: "blur(1px)",
+              opacity: 0,
+              // @ts-expect-error — custom property
+              "--dust-op": 0.1 + frand(i * 4.7) * 0.2,
+              animation: `gpDustDrift ${16 + frand(i * 3.3) * 16}s linear ${frand(i * 6.6) * 12}s infinite`,
             }}/>
           )
         })}
@@ -979,12 +1006,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     borderRadius: 3,
                     background: lit
                       ? `linear-gradient(90deg, ${master.accentColor} 0%, #fff6d8 50%, ${tint} 100%)`
-                      : `linear-gradient(90deg, ${master.accentColor}55 0%, #454654 55%, #33343f 100%)`,
-                    boxShadow: lit ? `0 0 10px ${tint}88` : "none",
-                    opacity: lit ? 0.95 : 0.6,
+                      : "repeating-linear-gradient(90deg, #2c2e3a 0 8px, #14151d 8px 13px)",
+                    boxShadow: lit ? `0 0 10px ${tint}88` : "inset 0 1px 2px rgba(0,0,0,0.6)",
+                    opacity: lit ? 0.95 : 0.55,
                     overflow: "hidden",
                   }}>
-                    {nxt && (
+                    {(lit || nxt) && (
                       <div style={{
                         position: "absolute", inset: 0,
                         background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.85) 0 7px, transparent 7px 18px)",
@@ -1032,18 +1059,19 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       borderRadius: 3,
                       background: lit
                         ? `linear-gradient(90deg, ${tint}00 0%, ${tint} 16%, #fff6d8 50%, ${tint} 84%, ${tint}00 100%)`
-                        : "linear-gradient(90deg, transparent 0%, #33343f 16%, #454654 50%, #33343f 84%, transparent 100%)",
-                      boxShadow: lit ? `0 0 10px ${tint}88` : "none",
-                      opacity: lit ? 0.95 : 0.55,
+                        // Corrente inativa: elos escuros alternados num sulco apagado
+                        : "repeating-linear-gradient(90deg, #2c2e3a 0 8px, #14151d 8px 13px)",
+                      boxShadow: lit ? `0 0 10px ${tint}88` : "inset 0 1px 2px rgba(0,0,0,0.6)",
+                      opacity: lit ? 0.95 : 0.5,
                       overflow: "hidden",
                     }}
                   >
-                    {/* Pulso de energia correndo até a próxima runa disponível */}
-                    {lit && next && (
+                    {/* Conduíte de energia: plasma fluindo em TODO trecho gravado, do Núcleo à última runa */}
+                    {lit && (
                       <div style={{
                         position: "absolute", inset: 0,
                         background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.85) 0 7px, transparent 7px 18px)",
-                        animation: "gpRunePathFlow 1.1s linear infinite",
+                        animation: `gpRunePathFlow ${next ? 0.9 : 1.6}s linear infinite`,
                         mixBlendMode: "screen",
                       }}/>
                     )}
@@ -1148,6 +1176,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       selected={isSelected}
                       dim={isLocked}
                       float={isAvailable}
+                      maxed={isApex && isDone}
                       label={`${rune.name} — ${isDone ? "gravada" : isAvailable ? "disponível" : "bloqueada"}`}
                       onClick={() => setSelectedId(rune.id)}
                     >
@@ -1239,6 +1268,41 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
               border: `1px dotted ${master.accentColor}55`,
               animation: "gpRingSpinRev 26s linear infinite",
             }}/>
+            {/* Glifos rúnicos orbitando o Núcleo lentamente */}
+            <div style={{
+              position: "absolute",
+              left: -rootSize * 0.98, top: -rootSize * 0.98,
+              width: rootSize * 1.96, height: rootSize * 1.96,
+              animation: "gpRingSpin 42s linear infinite",
+            }}>
+              {GLYPHS.map((g, i) => {
+                const a = (i / GLYPHS.length) * Math.PI * 2
+                return (
+                  <span key={`core-glyph-${i}`} style={{
+                    position: "absolute",
+                    left: `${50 + 47 * Math.cos(a)}%`,
+                    top: `${50 + 47 * Math.sin(a)}%`,
+                    transform: "translate(-50%, -50%)",
+                    fontFamily: MONO,
+                    fontSize: Math.max(10, Math.round(rootSize * 0.15)),
+                    color: `${master.accentColor}cc`,
+                    textShadow: `0 0 10px ${master.accentColor}aa`,
+                  }}>{g}</span>
+                )
+              })}
+            </div>
+            {/* Moldura de ouro rúnico entalhado girando ao redor do orbe */}
+            <div style={{
+              position: "absolute",
+              left: -rootSize / 2 - 7, top: -rootSize / 2 - 7,
+              width: rootSize + 14, height: rootSize + 14,
+              borderRadius: "50%",
+              background: "repeating-conic-gradient(from 8deg, #efd28a 0deg 5deg, #7a5c24 5deg 13deg, #c19a4e 13deg 22deg, #58421a 22deg 30deg)",
+              maskImage: "radial-gradient(circle, transparent 80%, black 84%)",
+              WebkitMaskImage: "radial-gradient(circle, transparent 80%, black 84%)",
+              filter: `drop-shadow(0 0 8px ${master.accentColor}55)`,
+              animation: "gpRingSpinRev 48s linear infinite",
+            }}/>
             {/* Orbe do núcleo com o retrato do Mestre */}
             <div style={{
               position: "absolute",
@@ -1300,7 +1364,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           }}>
             <div style={{
               position: "relative", maxWidth: 980, margin: "0 auto",
-              background: `linear-gradient(160deg, ${done || avail ? `${tint}0d` : "rgba(255,255,255,0.02)"} 0%, rgba(11,11,17,0.97) 45%)`,
+              background: [
+                // Metal escovado: estrias finas horizontais varrendo a placa
+                "repeating-linear-gradient(90deg, rgba(255,255,255,0.024) 0 1px, transparent 1px 3px)",
+                "repeating-linear-gradient(0deg, rgba(0,0,0,0.14) 0 1px, transparent 1px 4px)",
+                `linear-gradient(160deg, ${done || avail ? `${tint}0d` : "rgba(255,255,255,0.02)"} 0%, rgba(11,11,17,0.97) 45%)`,
+              ].join(", "),
               border: `1px solid ${done || avail ? `${tint}4d` : "#2c2c38"}`,
               borderLeft: `4px solid ${stateColor}`,
               boxShadow: `0 10px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)${avail ? `, 0 0 28px ${tint}26` : ""}`,
@@ -1391,7 +1460,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                             style={{ width: 16, height: 16, objectFit: "contain", filter: `drop-shadow(0 0 4px ${c}44)` }}
                             onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
                           />
-                          <span style={{ fontFamily: PIXEL, fontSize: 9.5, color: c }}>{rw.label}</span>
+                          <span style={{
+                            fontFamily: PIXEL, fontSize: 10, color: c,
+                            textShadow: `0 0 8px ${c}44`, letterSpacing: "0.02em",
+                          }}>{rw.label}</span>
                         </div>
                       )
                     })}
@@ -1406,8 +1478,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                             style={{ width: 15, height: 15, objectFit: "contain" }}
                             onError={e => { (e.target as HTMLImageElement).style.display = "none" }}/>
                           <span style={{
-                            fontFamily: PIXEL, fontSize: 10.5, fontVariantNumeric: "tabular-nums",
+                            fontFamily: PIXEL, fontSize: 11, fontVariantNumeric: "tabular-nums",
                             color: gearCoins >= selected.cost.gearCoins ? "#f2c14e" : "#f87171",
+                            textShadow: gearCoins >= selected.cost.gearCoins ? "0 0 9px #f2c14e55" : "none",
                           }}>{selected.cost.gearCoins.toLocaleString("pt-BR")}</span>
                         </div>
                         {(Object.entries(selected.cost.fragments) as [FragmentId, number][]).map(([fid, amount]) => {

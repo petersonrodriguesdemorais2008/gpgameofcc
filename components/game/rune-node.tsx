@@ -23,6 +23,7 @@ export function RuneNode({
   selected = false,
   dim = false,
   float = false,
+  maxed = false,
   label,
   onClick,
   children,
@@ -36,6 +37,8 @@ export function RuneNode({
   dim?: boolean
   /** Runa pronta para ser gravada — o orbe flutua suavemente. */
   float?: boolean
+  /** Runa de tier máximo já gravada — brilho de ápice permanente. */
+  maxed?: boolean
   label: string
   onClick?: () => void
   children?: ReactNode
@@ -110,6 +113,50 @@ export function RuneNode({
         }}/>
       </div>
 
+      {/* Brilho de ápice: runa de tier máximo gravada irradia permanentemente */}
+      {maxed && (
+        <div aria-hidden="true" style={{
+          position: "absolute",
+          inset: -Math.round(size * 0.34),
+          bottom: ped,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${tint}7a 0%, ${tint}2e 42%, transparent 66%)`,
+          filter: "blur(3px)",
+          animation: "gpAuraBreathe 2.1s ease-in-out infinite",
+          pointerEvents: "none",
+        }}/>
+      )}
+
+      {/* Moldura de metal rúnico entalhado: ouro envelhecido quando ativa, ferro apagado quando trancada */}
+      <div aria-hidden="true" style={{
+        position: "absolute",
+        left: -5, right: -5, top: -5,
+        height: size + 10,
+        borderRadius: "50%",
+        background: active
+          ? "repeating-conic-gradient(from 8deg, #efd28a 0deg 5deg, #7a5c24 5deg 13deg, #c19a4e 13deg 22deg, #58421a 22deg 30deg)"
+          : "repeating-conic-gradient(from 8deg, #41434f 0deg 5deg, #17181f 5deg 13deg, #2c2d37 13deg 22deg, #101117 22deg 30deg)",
+        maskImage: "radial-gradient(circle, transparent 82%, black 85%)",
+        WebkitMaskImage: "radial-gradient(circle, transparent 82%, black 85%)",
+        filter: active ? `drop-shadow(0 0 6px ${tint}44)` : "none",
+        pointerEvents: "none",
+      }}/>
+      {/* Cravos da moldura nos pontos cardeais */}
+      {([[50, -3], [103, 50], [50, 103], [-3, 50]] as const).map(([x, y], i) => (
+        <span key={`rivet-${i}`} aria-hidden="true" style={{
+          position: "absolute",
+          left: `${x}%`, top: `${(y * size) / (size + ped)}%`,
+          width: Math.max(4, Math.round(size * 0.09)),
+          height: Math.max(4, Math.round(size * 0.09)),
+          transform: "translate(-50%, -50%)",
+          background: active
+            ? "linear-gradient(135deg, #f4e0a6 0%, #f4e0a6 45%, #8a6a2c 45%, #8a6a2c 100%)"
+            : "linear-gradient(135deg, #4a4c58 0%, #4a4c58 45%, #1b1c23 45%, #1b1c23 100%)",
+          border: "1px solid rgba(6,5,3,0.9)",
+          pointerEvents: "none",
+        }}/>
+      ))}
+
       {/* Brilho quente atrás do orbe */}
       {active && (
         <div aria-hidden="true" style={{
@@ -152,6 +199,17 @@ export function RuneNode({
           width: "9%", height: "7%",
           background: active ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.1)",
           borderRadius: 2,
+        }}/>
+        {/* Textura de pedra esculpida: sulcos cruzados sutis sobre o vidro do orbe */}
+        <div aria-hidden="true" style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: [
+            "repeating-linear-gradient(52deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 6px)",
+            "repeating-linear-gradient(-38deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 7px)",
+          ].join(", "),
+          opacity: active ? 0.55 : 0.4,
+          mixBlendMode: "overlay",
+          pointerEvents: "none",
         }}/>
         <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {children}
