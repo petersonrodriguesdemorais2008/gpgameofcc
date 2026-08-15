@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   ArrowLeft, Check, Lock, ChevronRight, Swords, Trophy, Skull, Flag, Layers, Target, Gift, Sparkles,
+  BookOpen, X, Minus, Plus,
 } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 import { PackOpeningOverlay } from "./pack-opening-overlay"
@@ -14,8 +15,11 @@ import {
   rewardIconPath,
   rewardDisplayLabel,
   elementToChestId,
+  grantMasterXPManual,
+  xpRequiredForLevel,
 } from "@/lib/masters-data"
 import { CHESTS } from "@/lib/chests"
+import { ALL_XP_BOOK_IDS, XP_BOOKS, type XPBookId } from "@/lib/xp-books"
 import { getRuneProgress, loadUnlockedRunes } from "@/lib/runes"
 import { RunesPanel } from "./runes-panel"
 import { getSfxVolume, getMenuMusicMuted } from "./main-menu"
@@ -269,14 +273,19 @@ function MasterTile({ master, isSelected, onClick }: {
 }
 
 // ─── Detail / progression view ────────────────────────────────────────────────
-function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll, onOpenRunes }: {
+function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll, onOpenRunes, onOpenXPBooks }: {
   master:        Master
   onActivate:    () => void
   onClose:       () => void
   onClaimReward: (level: number) => void
   onClaimAll:    () => void
   onOpenRunes:   () => void
+  onOpenXPBooks: () => void
 }) {
+  // Livros de XP no inventário — só mostra o botão "Upar XP" se o jogador tiver ao menos 1
+  const { xpBooks } = useGame()
+  const hasXPBooks = ALL_XP_BOOK_IDS.some(id => (xpBooks[id] ?? 0) > 0)
+
   // Progresso da Rota de Runas — lido do armazenamento a cada abertura do painel
   const [unlockedRunes, setUnlockedRunes] = useState<string[]>([])
   useEffect(() => {
@@ -364,11 +373,26 @@ function MasterDetail({ master, onActivate, onClose, onClaimReward, onClaimAll, 
           <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:12 }}>
             <LevelMedallion level={master.currentLevel} color={master.accentColor} size={52}/>
             <div style={{ flex:1 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, gap:8 }}>
                 <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.16em", color:"#565d6b", textTransform:"uppercase" }}>Experiência</span>
-                <span style={{ fontSize:11, color: master.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums" }}>
-                  {master.currentXP} / {master.xpToNext}
-                </span>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ fontSize:11, color: master.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" }}>
+                    {master.currentXP} / {master.xpToNext}
+                  </span>
+                  {hasXPBooks && master.currentLevel < master.maxLevel && (
+                    <button onClick={onOpenXPBooks} className="gp-cta" style={{
+                      display:"flex", alignItems:"center", gap:5, flexShrink:0,
+                      background:"linear-gradient(135deg,rgba(74,222,128,0.18),rgba(74,222,128,0.34))",
+                      border:"1px solid rgba(74,222,128,0.5)",
+                      clipPath:"polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%)",
+                      padding:"5px 11px", cursor:"pointer", color:"#eafff1",
+                      fontWeight:900, fontSize:10.5, letterSpacing:"0.04em", textTransform:"uppercase",
+                      boxShadow:"0 2px 10px rgba(74,222,128,0.22)",
+                    }}>
+                      <BookOpen size={11}/> Upar XP
+                    </button>
+                  )}
+                </div>
               </div>
               <XPBar current={master.currentXP} total={master.xpToNext} color={master.accentColor}/>
               <div style={{ fontSize:10, color:"#4b5563", marginTop:5 }}>
@@ -715,6 +739,256 @@ function LevelUpOverlay({ master, newLevel, onClose }: {
         </div>
         <div style={{ color:"#565d6b", fontSize:11, marginTop:14, letterSpacing:"0.14em", textTransform:"uppercase" }}>
           toque para continuar
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Upar XP — slider de quantidade "arraste para aumentar" ───────────────────
+function XPBookQuantitySlider({ max, quantity, setQuantity, color }: {
+  max: number; quantity: number; setQuantity: (n: number) => void; color: string
+}) {
+  const pct = max > 0 ? (quantity / max) * 100 : 0
+  return (
+    <div style={{ position:"relative", height:22, display:"flex", alignItems:"center" }}>
+      <div style={{
+        position:"absolute", left:0, right:0, top:"50%", transform:"translateY(-50%)", height:8,
+        background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.09)",
+        borderRadius:6, overflow:"hidden",
+      }}>
+        <div style={{
+          height:"100%", width:`${pct}%`,
+          background:`linear-gradient(90deg,${color}55,${color})`,
+          boxShadow:`0 0 10px ${color}66`,
+          transition:"width 0.12s ease",
+        }}/>
+      </div>
+      <input
+        type="range" min={0} max={Math.max(max, 0)} step={1} value={quantity}
+        onChange={e => setQuantity(Number.parseInt(e.target.value, 10) || 0)}
+        disabled={max <= 0}
+        aria-label="Quantidade de Livros de XP a usar"
+        style={{
+          position:"absolute", inset:0, width:"100%", height:"100%",
+          opacity:0, margin:0, cursor: max > 0 ? "pointer" : "default",
+        }}
+      />
+      <div style={{
+        position:"absolute", top:"50%", width:16, height:16, borderRadius:"50%",
+        background:"#fff", border:`2px solid ${color}`, boxShadow:`0 0 8px ${color}aa`,
+        left:`calc(${pct}% - 8px)`, transform:"translateY(-50%)", pointerEvents:"none",
+        transition:"left 0.12s ease",
+      }}/>
+    </div>
+  )
+}
+
+// ─── Upar XP — mini painel para usar Livros de XP no Mestre selecionado ───────
+function XPBookModal({ master, onClose }: { master: Master; onClose: () => void }) {
+  const { xpBooks, spendXPBooks } = useGame()
+  const ownedBookIds = ALL_XP_BOOK_IDS.filter(id => (xpBooks[id] ?? 0) > 0)
+  const [selectedBookId, setSelectedBookId] = useState<XPBookId>(ownedBookIds[0] ?? ALL_XP_BOOK_IDS[0])
+  const [quantity, setQuantity] = useState(0)
+
+  const max = xpBooks[selectedBookId] ?? 0
+  const book = XP_BOOKS[selectedBookId]
+
+  // Reajusta a quantidade se o jogador trocar de livro (não pode passar do que possui)
+  useEffect(() => { setQuantity(q => Math.min(q, max)) }, [selectedBookId, max])
+
+  if (ownedBookIds.length === 0) return null // guarda — o botão só aparece com livros no inventário
+
+  const totalXp = quantity * book.xpAmount
+
+  // Simulação de progressão — mesma regra de grantMasterXPManual, só para prévia
+  let simLevel = master.currentLevel
+  let simXP = master.currentXP + totalXp
+  while (simLevel < master.maxLevel) {
+    const needed = xpRequiredForLevel(simLevel)
+    if (simXP >= needed) { simXP -= needed; simLevel++ }
+    else break
+  }
+  if (simLevel >= master.maxLevel) { simLevel = master.maxLevel; if (totalXp > 0) simXP = 0 }
+  const simXpToNext = xpRequiredForLevel(simLevel)
+  const willLevelUp = simLevel > master.currentLevel
+
+  const handleConfirm = () => {
+    if (quantity <= 0) return
+    const ok = spendXPBooks({ [selectedBookId]: quantity })
+    if (!ok) return
+    grantMasterXPManual(master.id, totalXp)
+    onClose()
+  }
+
+  return (
+    <div
+      style={{
+        position:"fixed", inset:0, zIndex:600,
+        background:"rgba(2,1,4,0.85)", backdropFilter:"blur(14px)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        animation:"gpFadeIn 0.2s ease", padding:16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width:"100%", maxWidth:420,
+          background:"linear-gradient(170deg,#100c18 0%,#08060c 100%)",
+          border:`1px solid ${master.accentColor}30`,
+          borderRadius:18, padding:"22px 22px 24px",
+          boxShadow:`0 20px 60px rgba(0,0,0,0.6), 0 0 40px ${master.accentColor}14`,
+          animation:"gpSlideRight 0.3s cubic-bezier(0.22,1,0.36,1) both",
+          position:"relative",
+        }}
+      >
+        <button onClick={onClose} aria-label="Fechar" style={{
+          position:"absolute", top:14, right:14, width:30, height:30,
+          background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
+          borderRadius:8, color:"#8b93a1", cursor:"pointer",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}><X size={15}/></button>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+          <BookOpen size={18} color="#4ade80"/>
+          <h2 style={{ fontFamily:SERIF, fontWeight:800, fontSize:18, color:"#f5f2ec", margin:0 }}>
+            Upar XP
+          </h2>
+        </div>
+        <p style={{ fontSize:11.5, color:"#7b8290", margin:"0 0 18px", lineHeight:1.5 }}>
+          Use Livros de XP para acelerar a progressão de{" "}
+          <strong style={{ color: master.accentColor }}>{master.name}</strong>.
+        </p>
+
+        {/* Seleção de livro — só aparece se o jogador tiver os dois tipos */}
+        {ownedBookIds.length > 1 && (
+          <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+            {ownedBookIds.map(id => {
+              const b = XP_BOOKS[id]
+              const isSel = id === selectedBookId
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedBookId(id)}
+                  style={{
+                    flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:5,
+                    padding:"10px 8px", borderRadius:10, cursor:"pointer",
+                    background: isSel ? `${b.color}22` : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${isSel ? `${b.color}70` : "rgba(255,255,255,0.08)"}`,
+                  }}
+                >
+                  <img src={b.image || "/placeholder.svg"} alt={b.name} style={{ width:34, height:34, objectFit:"contain" }}/>
+                  <span style={{ fontSize:10.5, fontWeight:800, color: isSel ? b.color : "#8b93a1" }}>{b.name}</span>
+                  <span style={{ fontSize:9.5, color:"#565d6b" }}>×{xpBooks[id] ?? 0}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Item selecionado */}
+        <div style={{
+          display:"flex", alignItems:"center", gap:12, marginBottom:16,
+          background:`${book.color}12`, border:`1px solid ${book.color}30`,
+          borderRadius:12, padding:"10px 14px",
+        }}>
+          <img
+            src={book.image || "/placeholder.svg"}
+            alt={book.name}
+            style={{ width:42, height:42, objectFit:"contain", filter:`drop-shadow(0 0 8px ${book.color}70)` }}
+          />
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:800, fontSize:13, color:"#f1f0ee" }}>{book.name}</div>
+            <div style={{ fontSize:10.5, color:"#7b8290" }}>+{book.xpAmount} XP cada · possui {max}</div>
+          </div>
+        </div>
+
+        {/* Quantidade — arraste o slider sobre a barra para aumentar */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6 }}>
+          <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.14em", color:"#565d6b", textTransform:"uppercase" }}>
+            Quantidade
+          </span>
+          <span style={{ fontSize:13, fontWeight:900, color: book.color, fontVariantNumeric:"tabular-nums" }}>
+            {quantity} / {max}
+          </span>
+        </div>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+          <button
+            onClick={() => setQuantity(q => Math.max(0, q - 1))}
+            disabled={quantity <= 0}
+            style={{
+              width:28, height:28, borderRadius:8, flexShrink:0,
+              background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
+              color: quantity <= 0 ? "#3f4654" : "#f1f0ee", cursor: quantity <= 0 ? "default" : "pointer",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}
+          ><Minus size={13}/></button>
+
+          <div style={{ flex:1 }}>
+            <XPBookQuantitySlider max={max} quantity={quantity} setQuantity={setQuantity} color={book.color}/>
+          </div>
+
+          <button
+            onClick={() => setQuantity(q => Math.min(max, q + 1))}
+            disabled={quantity >= max}
+            style={{
+              width:28, height:28, borderRadius:8, flexShrink:0,
+              background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
+              color: quantity >= max ? "#3f4654" : "#f1f0ee", cursor: quantity >= max ? "default" : "pointer",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}
+          ><Plus size={13}/></button>
+        </div>
+
+        {/* Prévia de XP / nível resultante */}
+        <div style={{
+          background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)",
+          borderRadius:12, padding:"12px 14px", marginTop:14, marginBottom:18,
+        }}>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+            <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.14em", color:"#565d6b", textTransform:"uppercase" }}>
+              Prévia
+            </span>
+            <span style={{ fontSize:11, fontWeight:800, color:"#4ade80" }}>+{totalXp} XP</span>
+          </div>
+          <XPBar current={simXP} total={simXpToNext} color={master.accentColor}/>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
+            <span style={{ fontSize:10.5, color:"#7b8290" }}>Nível {master.currentLevel}</span>
+            {willLevelUp && (
+              <span style={{ fontSize:10.5, fontWeight:800, color:"#e8c96d" }}>→ Nível {simLevel}!</span>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10 }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex:1, padding:"11px 0", borderRadius:10, cursor:"pointer",
+              background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)",
+              color:"#8b93a1", fontWeight:800, fontSize:12, letterSpacing:"0.04em", textTransform:"uppercase",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={quantity <= 0}
+            style={{
+              flex:2, padding:"11px 0", borderRadius:10, cursor: quantity <= 0 ? "default" : "pointer",
+              background: quantity <= 0
+                ? "rgba(255,255,255,0.05)"
+                : "linear-gradient(135deg,rgba(74,222,128,0.35),rgba(74,222,128,0.55))",
+              border: `1px solid ${quantity <= 0 ? "rgba(255,255,255,0.08)" : "rgba(74,222,128,0.65)"}`,
+              color: quantity <= 0 ? "#3f4654" : "#eafff1",
+              fontWeight:900, fontSize:12.5, letterSpacing:"0.04em", textTransform:"uppercase",
+              boxShadow: quantity <= 0 ? "none" : "0 4px 18px rgba(74,222,128,0.3)",
+            }}
+          >
+            Confirmar
+          </button>
         </div>
       </div>
     </div>
@@ -1084,6 +1358,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
   const [selectedId,   setSelectedId]   = useState<string | null>(null)
   const [showDetail,   setShowDetail]   = useState(false)
   const [runesMaster,  setRunesMaster]  = useState<Master | null>(null)
+  const [xpBooksMaster, setXpBooksMaster] = useState<Master | null>(null)
   const [levelUpData,  setLevelUpData]  = useState<{ master: Master; newLevel: number } | null>(null)
   const [toast,        setToast]        = useState<string | null>(null)
   const [packToOpen,   setPackToOpen]   = useState<string | null>(null)
@@ -1110,15 +1385,20 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     setHeroKey(k => k + 1)
   }
 
-  // Sincroniza com XP ganho em duelos (evento disparado por grantMasterDuelXP)
+  // Sincroniza com XP ganho em duelos (grantMasterDuelXP) OU com Livros de XP
+  // usados manualmente (grantMasterXPManual) — este último pode alvejar um
+  // Mestre que não é o ativo, por isso preferimos o masterId do evento.
   useEffect(() => {
     const onXP = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { leveledUp?: boolean; newLevel?: number } | undefined
+      const detail = (e as CustomEvent).detail as
+        { masterId?: string; leveledUp?: boolean; newLevel?: number } | undefined
       const reloaded = loadMastersFromStorage()
       setMasters(reloaded)
       if (detail?.leveledUp) {
-        const active = reloaded.find(m => m.isActive)
-        if (active) setLevelUpData({ master: active, newLevel: detail.newLevel ?? active.currentLevel })
+        const target = detail.masterId
+          ? reloaded.find(m => m.id === detail.masterId)
+          : reloaded.find(m => m.isActive)
+        if (target) setLevelUpData({ master: target, newLevel: detail.newLevel ?? target.currentLevel })
       }
     }
     window.addEventListener("gpgame_master_xp", onXP)
@@ -1380,6 +1660,7 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           onClaimReward={level => handleClaimReward(selectedMaster.id, level)}
           onClaimAll={() => handleClaimAll(selectedMaster.id)}
           onOpenRunes={() => setRunesMaster(selectedMaster)}
+          onOpenXPBooks={() => setXpBooksMaster(selectedMaster)}
         />
       )}
 
@@ -1388,6 +1669,14 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
         <RunesPanel
           master={runesMaster}
           onClose={() => setRunesMaster(null)}
+        />
+      )}
+
+      {/* Upar XP — mini painel para usar Livros de XP no Mestre selecionado */}
+      {xpBooksMaster && (
+        <XPBookModal
+          master={xpBooksMaster}
+          onClose={() => setXpBooksMaster(null)}
         />
       )}
 
