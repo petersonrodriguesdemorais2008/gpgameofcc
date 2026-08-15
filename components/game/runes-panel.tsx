@@ -517,15 +517,15 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const W = tracksSize.w
   const H = tracksSize.h
   const ready = W > 0 && H > 0
-  const NODE = ready ? Math.max(34, Math.min(54, Math.floor(W / 11))) : 44
+  const NODE = ready ? Math.max(46, Math.min(72, Math.floor(W / 8.5))) : 56
   /** Folga sob o orbe para o rótulo do tier respirar. */
-  const PED  = 18
+  const PED  = 20
   /** Distância vertical entre tiers — folga generosa para respirar. */
-  const STEP = Math.max(96, Math.round(NODE * 2.05))
+  const STEP = Math.max(116, Math.round(NODE * 2.05))
   /** Espaço no topo do mapa (abaixo dos estandartes fixos). */
   const topPad = 86
   /** Núcleo da árvore, no topo central do mapa rolável. */
-  const rootSize = Math.round(NODE * 1.45)
+  const rootSize = Math.round(NODE * 1.5)
   /** Distância do centro do núcleo até o centro da 1ª runa. */
   const gap0 = Math.round(rootSize * 0.8 + NODE * 0.95)
   const rootY = topPad + Math.round(rootSize / 2) + 16
@@ -697,176 +697,110 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         }
       `}</style>
 
-      {/* Fundo: nebulosa mágica — constelação viva com profundidade e cor */}
+      {/* Fundo: céu profundo pintado à mão — silencioso, com grão e luz precisa */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Espaço profundo: violeta e azul-petróleo se fundindo em camadas */}
+        {/* Base: gradiente de meia-noite — azul-tinta descendo para quase preto */}
         <div style={{
           position: "absolute", inset: 0,
           background: [
-            `radial-gradient(ellipse 110% 70% at 50% -14%, ${master.accentColor}30 0%, #1e3f8a2e 30%, transparent 58%)`,
-            `radial-gradient(ellipse 76% 60% at 8% 108%, #1a2f6ecc 0%, #14235200 60%)`,
-            `radial-gradient(ellipse 66% 52% at 94% 96%, #0e3a6e99 0%, transparent 62%)`,
-            "linear-gradient(180deg, #0a0a24 0%, #070818 46%, #0a0c26 100%)",
+            `radial-gradient(ellipse 120% 62% at 50% -18%, ${master.accentColor}26 0%, rgba(28,48,110,0.22) 34%, transparent 62%)`,
+            "radial-gradient(ellipse 80% 50% at 50% 112%, rgba(24,44,104,0.5) 0%, transparent 64%)",
+            "linear-gradient(180deg, #0b0d24 0%, #070818 44%, #05060f 100%)",
           ].join(", "),
         }}/>
 
-        {/* Nuvens de nebulosa derivando — massas de gás colorido com movimento implícito */}
+        {/* Duas massas de nebulosa apenas — grandes, calmas e assimétricas */}
         <div style={{
-          position: "absolute", left: "-10%", top: "-6%", width: "70%", height: "56%",
-          background: `radial-gradient(ellipse at 46% 44%, ${master.accentColor}2e 0%, #2f6dd426 38%, transparent 68%)`,
-          filter: "blur(46px)",
-          animation: "gpNebulaDrift 26s ease-in-out infinite",
+          position: "absolute", left: "-16%", top: "-10%", width: "68%", height: "58%",
+          background: `radial-gradient(ellipse at 44% 42%, ${master.accentColor}20 0%, rgba(56,96,205,0.12) 44%, transparent 70%)`,
+          filter: "blur(58px)",
+          animation: "gpNebulaDrift 42s ease-in-out infinite",
         }}/>
         <div style={{
-          position: "absolute", right: "-14%", top: "22%", width: "64%", height: "58%",
-          background: "radial-gradient(ellipse at 52% 50%, #2f7dff2a 0%, #1c9ec422 40%, transparent 70%)",
-          filter: "blur(52px)",
-          animation: "gpNebulaDrift 34s ease-in-out 6s infinite reverse",
-        }}/>
-        <div style={{
-          position: "absolute", left: "8%", bottom: "-12%", width: "72%", height: "48%",
-          background: "radial-gradient(ellipse at 50% 56%, #2aa4c422 0%, #3d5dd41e 42%, transparent 70%)",
-          filter: "blur(56px)",
-          animation: "gpNebulaDrift 30s ease-in-out 12s infinite",
+          position: "absolute", right: "-18%", bottom: "-14%", width: "64%", height: "54%",
+          background: "radial-gradient(ellipse at 56% 54%, rgba(44,110,190,0.14) 0%, rgba(60,86,212,0.08) 46%, transparent 72%)",
+          filter: "blur(64px)",
+          animation: "gpNebulaDrift 54s ease-in-out 8s infinite reverse",
         }}/>
 
-        {/* Auroras etéreas varrendo a nebulosa */}
+        {/* Via Láctea: faixa diagonal fina de poeira luminosa cruzando o céu */}
         <div style={{
-          position: "absolute", inset: "-12% -25%",
-          background: "linear-gradient(112deg, transparent 24%, #3a7dff21 38%, #8fb4ff2e 50%, #3a7dff21 62%, transparent 76%)",
-          filter: "blur(28px)",
-          animation: "gpAuroraDrift 17s ease-in-out infinite",
-        }}/>
-        <div style={{
-          position: "absolute", inset: "-12% -25%",
-          background: "linear-gradient(248deg, transparent 30%, #3c56d41c 44%, #7d95ff26 54%, #3c56d41c 64%, transparent 78%)",
-          filter: "blur(36px)",
-          animation: "gpAuroraDrift 23s ease-in-out 4s infinite reverse",
+          position: "absolute", inset: "-20% -30%",
+          background: "linear-gradient(118deg, transparent 34%, rgba(122,152,235,0.07) 46%, rgba(178,198,255,0.11) 51%, rgba(122,152,235,0.07) 56%, transparent 68%)",
+          filter: "blur(18px)",
         }}/>
 
-        {/* Campo de estrelas denso — camada distante (pontos finos) */}
-        {Array.from({ length: 46 }, (_, i) => {
-          const sz = 1 + Math.round(frand(i * 3.7) * 1.4)
+        {/* Campo de estrelas: pontos nítidos e minúsculos, densidade variada */}
+        {Array.from({ length: 70 }, (_, i) => {
+          const big = frand(i * 5.1) > 0.86
+          const sz = big ? 2 : 1
           return (
             <span key={`star-${i}`} style={{
               position: "absolute",
-              left: `${frand(i * 1.3 + 5) * 98}%`,
-              top: `${frand(i * 2.9 + 11) * 96}%`,
+              left: `${frand(i * 1.3 + 5) * 99}%`,
+              top: `${frand(i * 2.9 + 11) * 97}%`,
               width: sz, height: sz, borderRadius: "50%",
-              background: i % 5 === 0 ? "#9db4ff" : i % 3 === 0 ? "#aee2ff" : "#e8eeff",
-              boxShadow: i % 5 === 0 ? "0 0 8px #7d9dff" : "0 0 4px rgba(200,214,255,0.7)",
+              background: i % 7 === 0 ? "#b8c8ff" : i % 4 === 0 ? "#cfe6ff" : "#eef2ff",
+              boxShadow: big ? "0 0 5px rgba(205,220,255,0.9)" : "none",
               // @ts-expect-error — custom property
-              "--star-op": 0.25 + frand(i * 7.1) * 0.55,
-              animation: `gpStarTwinkle ${2.4 + frand(i * 4.3) * 3.6}s ease-in-out ${frand(i * 9.7) * 4}s infinite`,
+              "--star-op": 0.2 + frand(i * 7.1) * 0.6,
+              animation: `gpStarTwinkle ${2.8 + frand(i * 4.3) * 4.4}s ease-in-out ${frand(i * 9.7) * 5}s infinite`,
             }}/>
           )
         })}
 
-        {/* Estrelas maiores com clarão em cruz — os faróis da constelação */}
-        {Array.from({ length: 7 }, (_, i) => {
-          const x = frand(i * 5.9 + 3) * 92 + 3
-          const y = frand(i * 8.3 + 17) * 88 + 4
-          const s = 10 + Math.round(frand(i * 2.7) * 12)
-          return (
-            <span key={`flare-${i}`} style={{
-              position: "absolute",
-              left: `${x}%`, top: `${y}%`,
-              width: s, height: s,
-              transform: "translate(-50%, -50%)",
-              background: "#ffffff",
-              clipPath: "polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%)",
-              filter: `drop-shadow(0 0 ${Math.round(s * 0.7)}px ${i % 2 === 0 ? master.accentColor : "#8fb4ff"})`,
-              // @ts-expect-error — custom property
-              "--star-op": 0.5 + frand(i * 6.1) * 0.4,
-              animation: `gpStarTwinkle ${3 + frand(i * 5.3) * 3}s ease-in-out ${frand(i * 7.9) * 3}s infinite`,
-            }}/>
-          )
-        })}
+        {/* Quatro estrelas-farol discretas com clarão em cruz */}
+        {[
+          { x: 12, y: 22, s: 9 }, { x: 88, y: 14, s: 11 },
+          { x: 78, y: 66, s: 8 }, { x: 18, y: 78, s: 10 },
+        ].map(({ x, y, s }, i) => (
+          <span key={`flare-${i}`} style={{
+            position: "absolute",
+            left: `${x}%`, top: `${y}%`,
+            width: s, height: s,
+            transform: "translate(-50%, -50%)",
+            background: "#f4f7ff",
+            clipPath: "polygon(50% 0, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0 50%, 43% 43%)",
+            filter: `drop-shadow(0 0 ${Math.round(s * 0.6)}px rgba(160,186,255,0.85))`,
+            // @ts-expect-error — custom property
+            "--star-op": 0.55 + frand(i * 6.1) * 0.3,
+            animation: `gpStarTwinkle ${3.4 + frand(i * 5.3) * 2.6}s ease-in-out ${frand(i * 7.9) * 3}s infinite`,
+          }}/>
+        ))}
 
-        {/* Círculo de invocação gigante emanando do núcleo da árvore (topo) */}
+        {/* Halo do núcleo: uma única auréola de luz nascendo atrás da árvore */}
         <div style={{
-          position: "absolute", left: "50%", top: "26%",
-          width: "min(96vh, 70vw)", aspectRatio: "1",
+          position: "absolute", left: "50%", top: "17%",
+          width: "min(78vh, 62vw)", aspectRatio: "1",
           transform: "translate(-50%, -50%)",
         }}>
-          {/* Anel externo tracejado girando */}
           <div style={{
             position: "absolute", inset: 0, borderRadius: "50%",
-            border: `2px dashed ${master.accentColor}30`,
-            animation: "gpRingSpin 90s linear infinite",
+            background: `radial-gradient(circle, ${master.accentColor}20 0%, ${master.accentColor}0a 42%, transparent 68%)`,
+            animation: "gpAuraBreathe 8s ease-in-out infinite",
           }}/>
-          {/* Anel fino intermediário */}
           <div style={{
-            position: "absolute", inset: "8%", borderRadius: "50%",
-            border: `1px solid ${master.accentColor}20`,
-            boxShadow: `inset 0 0 60px ${master.accentColor}0d`,
+            position: "absolute", inset: "14%", borderRadius: "50%",
+            border: `1px solid ${master.accentColor}1e`,
+            boxShadow: `inset 0 0 80px ${master.accentColor}0a`,
+            animation: "gpRingSpin 140s linear infinite",
           }}/>
-          {/* Anel pontilhado interno girando ao contrário */}
-          <div style={{
-            position: "absolute", inset: "21%", borderRadius: "50%",
-            border: `2px dotted ${master.accentColor}28`,
-            animation: "gpRingSpinRev 130s linear infinite",
-          }}/>
-          {/* Núcleo de energia respirando */}
-          <div style={{
-            position: "absolute", inset: "34%", borderRadius: "50%",
-            background: `radial-gradient(circle, ${master.accentColor}26 0%, ${master.accentColor}0c 45%, transparent 70%)`,
-            animation: "gpAuraBreathe 6s ease-in-out infinite",
-          }}/>
-          {/* Glifos orbitando o círculo */}
-          <div style={{ position: "absolute", inset: "10%", animation: "gpRingSpin 160s linear infinite" }}>
-            {GLYPHS.map((g, i) => {
-              const a = (i / GLYPHS.length) * Math.PI * 2
-              return (
-                <span key={`orbit-${i}`} style={{
-                  position: "absolute",
-                  left: `${50 + 48 * Math.cos(a)}%`,
-                  top: `${50 + 48 * Math.sin(a)}%`,
-                  transform: "translate(-50%, -50%)",
-                  fontFamily: MONO, fontSize: 18,
-                  color: `${master.accentColor}66`,
-                  textShadow: `0 0 12px ${master.accentColor}55`,
-                }}>{g}</span>
-              )
-            })}
-          </div>
         </div>
 
-        {/* Névoa azul subindo do horizonte inferior */}
+        {/* Grão fotográfico: mata o liso de gradiente e dá textura de matéria */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 90% 55% at 50% 100%, #2b6ce028 0%, transparent 60%)",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")`,
+          backgroundSize: "160px 160px",
+          opacity: 0.07,
+          mixBlendMode: "overlay",
         }}/>
-        {/* Feixes de luz azulados descendo do topo — a bênção do núcleo */}
-        <div style={{
-          position: "absolute", left: "50%", top: "-30vmax",
-          width: "170vmax", height: "170vmax",
-          transform: "translateX(-50%)",
-          background: "repeating-conic-gradient(from 150deg at 50% 0%, #5f9dff14 0deg 7deg, transparent 7deg 22deg)",
-          maskImage: "radial-gradient(ellipse 60% 46% at 50% 0%, black 0%, transparent 72%)",
-          WebkitMaskImage: "radial-gradient(ellipse 60% 46% at 50% 0%, black 0%, transparent 72%)",
-        }}/>
+
         {/* Vinheta: escurece as bordas para o mapa não competir com a UI */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 88% 78% at 50% 44%, transparent 30%, rgba(4,4,9,0.9) 100%)",
+          background: "radial-gradient(ellipse 92% 82% at 50% 42%, transparent 34%, rgba(3,4,10,0.88) 100%)",
         }}/>
-        {/* Glifos rúnicos flutuando como brasas */}
-        {GLYPHS.map((g, i) => (
-          <span key={i} style={{
-            position: "absolute",
-            left: `${6 + (i * 12.3) % 90}%`,
-            top: `${14 + (i * 23) % 68}%`,
-            fontFamily: MONO,
-            fontSize: 15 + (i % 3) * 7,
-            color: i % 2 === 0 ? master.accentColor : BRANCH_TINT[(["fortuna","guerra","dominio"] as const)[i % 3]],
-            opacity: 0,
-            // @ts-expect-error — custom property
-            "--glyph-op": 0.12 + (i % 3) * 0.05,
-            animation: `gpGlyphDrift ${7 + (i % 4) * 2.4}s linear ${i * 1.15}s infinite`,
-            textShadow: `0 0 12px ${master.accentColor}66`,
-          }}>{g}</span>
-        ))}
       </div>
 
       {toast && (
