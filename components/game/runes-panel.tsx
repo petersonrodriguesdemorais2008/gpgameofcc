@@ -99,11 +99,13 @@ function ResourceChip({ icon, label, value, color }: {
   return (
     <div title={label} style={{
       display: "flex", alignItems: "center", gap: 7,
-      background: `linear-gradient(135deg, ${color}14 0%, #101016 55%)`,
-      border: `1px solid ${color}3a`,
-      borderRadius: 7,
-      padding: "4px 11px 4px 7px",
-      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.35)`,
+      background: `linear-gradient(135deg, ${color}1a 0%, rgba(14,16,34,0.5) 60%)`,
+      border: `1px solid ${color}44`,
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      borderRadius: 999,
+      padding: "4px 12px 4px 8px",
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.09), 0 2px 12px rgba(0,0,0,0.35), 0 0 14px ${color}1e`,
     }}>
       <img
         src={icon || "/placeholder.svg"}
@@ -120,11 +122,12 @@ function ResourceChip({ icon, label, value, color }: {
   )
 }
 
-// ─── Conduíte entre runas ─────────────────────────────────────────────────────
+// ─── Feixe de energia entre runas ─────────────────────────────────────────────
 /**
- * Ligação entre dois nós da árvore. Trancado: calha de metal escura com elos de
- * corrente inertes gravados. Desbloqueado: conduíte com plasma quente correndo
- * por dentro, tubo de vidro por fora e brilho difuso ao redor.
+ * Ligação entre dois nós da constelação. Trancado: trilha fantasma de poeira
+ * estelar pontilhada, apenas sugerindo o caminho. Desbloqueado: feixe de neon
+ * mágico pulsante — núcleo branco incandescente, corona colorida e partículas
+ * de luz correndo pelo traçado.
  */
 function Conduit({ x, y, len, ang, tint, lit, flowing, accent }: {
   x: number; y: number; len: number; ang: number
@@ -136,56 +139,52 @@ function Conduit({ x, y, len, ang, tint, lit, flowing, accent }: {
   return (
     <div aria-hidden="true" style={{
       position: "absolute", left: x, top: y,
-      width: len, height: 7, marginTop: -3.5, zIndex: 0,
+      width: len, height: 12, marginTop: -6, zIndex: 0,
       transform: `rotate(${ang}deg)`,
       transformOrigin: "0 50%",
     }}>
-      {/* Calha externa de metal — o canal esculpido onde a energia corre */}
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: 4,
-        background: lit
-          ? "linear-gradient(180deg, #6a5330 0%, #2a2115 48%, #120e08 100%)"
-          : "linear-gradient(180deg, #3b414d 0%, #1c2027 50%, #0c0e12 100%)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.6)",
-        opacity: lit ? 1 : 0.9,
-      }}/>
-
-      {/* Trancado: elos de corrente inertes dentro do sulco apagado */}
+      {/* Trancado: trilha fantasma de poeira estelar */}
       {!lit && (
         <div style={{
-          position: "absolute", left: 0, right: 0, top: 2, height: 3, borderRadius: 2,
-          background: [
-            "repeating-linear-gradient(90deg, rgba(150,160,180,0.24) 0 3px, transparent 3px 5px, rgba(150,160,180,0.14) 5px 8px, transparent 8px 11px)",
-            "linear-gradient(180deg, #22262e 0%, #12141a 100%)",
-          ].join(", "),
-          opacity: 0.85,
+          position: "absolute", left: 0, right: 0, top: 5, height: 2, borderRadius: 1,
+          background: "repeating-linear-gradient(90deg, rgba(150,170,215,0.4) 0 4px, transparent 4px 13px)",
+          opacity: 0.45,
+          filter: "blur(0.3px)",
         }}/>
       )}
 
-      {/* Desbloqueado: núcleo de plasma incandescente + tubo de vidro */}
+      {/* Desbloqueado: feixe de neon pulsante */}
       {lit && (
         <>
+          {/* Corona difusa: a luz vazando do feixe para o espaço */}
           <div style={{
-            position: "absolute", left: 0, right: 0, top: 2, height: 3, borderRadius: 2,
-            background: `linear-gradient(90deg, ${from} 0%, #fff6d8 42%, ${tint} 100%)`,
-            boxShadow: `0 0 8px ${tint}bb, 0 0 16px ${tint}55`,
+            position: "absolute", inset: -5, borderRadius: 10,
+            background: `linear-gradient(90deg, ${from}55 0%, ${tint}44 50%, ${tint}55 100%)`,
+            filter: "blur(7px)",
+            animation: "gpBeamPulse 2.4s ease-in-out infinite",
+          }}/>
+          {/* Halo médio colorido */}
+          <div style={{
+            position: "absolute", left: 0, right: 0, top: 3, height: 6, borderRadius: 3,
+            background: `linear-gradient(90deg, ${from}88 0%, ${tint}99 55%, ${tint}88 100%)`,
+            filter: "blur(2px)",
+          }}/>
+          {/* Núcleo branco incandescente do feixe */}
+          <div style={{
+            position: "absolute", left: 0, right: 0, top: 5, height: 2.5, borderRadius: 2,
+            background: `linear-gradient(90deg, ${from} 0%, #ffffff 42%, ${tint} 100%)`,
+            boxShadow: `0 0 10px ${tint}, 0 0 22px ${tint}77`,
             overflow: "hidden",
           }}>
-            {/* Plasma correndo sempre que o trecho está vivo */}
+            {/* Partículas de luz correndo pelo feixe */}
             <div style={{
               position: "absolute", inset: 0,
-              background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.9) 0 6px, transparent 6px 20px)",
-              animation: `gpRunePathFlow ${flowing ? "0.9s" : "2.4s"} linear infinite`,
+              background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.95) 0 7px, transparent 7px 24px)",
+              animation: `gpRunePathFlow ${flowing ? "0.8s" : "2.2s"} linear infinite`,
               mixBlendMode: "screen",
-              opacity: flowing ? 1 : 0.5,
+              opacity: flowing ? 1 : 0.55,
             }}/>
           </div>
-          {/* Brilho difuso escapando da calha */}
-          <div style={{
-            position: "absolute", inset: -3, borderRadius: 6,
-            background: `linear-gradient(90deg, ${tint}1c 0%, ${tint}0e 100%)`,
-            filter: "blur(3px)",
-          }}/>
         </>
       )}
     </div>
@@ -523,7 +522,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   const H = tracksSize.h
   const ready = W > 0 && H > 0
   const NODE = ready ? Math.max(34, Math.min(54, Math.floor(W / 11))) : 44
-  const PED  = Math.round(NODE * 0.42)
+  /** Folga sob o orbe para o rótulo do tier respirar. */
+  const PED  = 18
   /** Distância vertical entre tiers — folga generosa para respirar. */
   const STEP = Math.max(96, Math.round(NODE * 2.05))
   /** Espaço no topo do mapa (abaixo dos estandartes fixos). */
@@ -555,7 +555,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 300,
-      background: "#050b1c",
+      background: "#070818",
       display: "flex", flexDirection: "column", overflow: "hidden",
       animation: "gpFadeIn 0.25s ease",
     }}>
@@ -571,6 +571,14 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         @keyframes gpRunePathFlow {
           0%   { background-position: 0 0; }
           100% { background-position: 24px 0; }
+        }
+        @keyframes gpBeamPulse {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 1; }
+        }
+        @keyframes gpNebulaDrift {
+          0%, 100% { transform: translate(-4%, -2%) scale(1); opacity: 0.7; }
+          50%      { transform: translate(4%, 2%) scale(1.08); opacity: 1; }
         }
         @keyframes gpRuneFloat {
           0%, 100% { transform: translateY(0); }
@@ -671,6 +679,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           @keyframes gpRuneGlowPulse { from { opacity: 0.8 } to { opacity: 0.8 } }
           @keyframes gpRuneBlink     { from { opacity: 1 }   to { opacity: 1 } }
           @keyframes gpRunePathFlow  { from { background-position: 0 0 } to { background-position: 0 0 } }
+          @keyframes gpBeamPulse     { from { opacity: 0.8 } to { opacity: 0.8 } }
+          @keyframes gpNebulaDrift   { from { transform: none; opacity: 0.8 } to { transform: none; opacity: 0.8 } }
           @keyframes gpRuneFloat     { from { transform: none } to { transform: none } }
           @keyframes gpGlyphDrift    { from { opacity: 0.15; transform: none } to { opacity: 0.15; transform: none } }
           @keyframes gpAuraBreathe   { from { opacity: 0.7; transform: none } to { opacity: 0.7; transform: none } }
@@ -693,60 +703,88 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         }
       `}</style>
 
-      {/* Fundo: abismo azul profissional + auroras + círculo de invocação + estrelas */}
+      {/* Fundo: nebulosa mágica — constelação viva com profundidade e cor */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Abismo azul profundo — a luz do santuário emana do topo */}
+        {/* Espaço profundo: violeta e azul-petróleo se fundindo em camadas */}
         <div style={{
           position: "absolute", inset: 0,
           background: [
-            `radial-gradient(ellipse 120% 78% at 50% -20%, #2a63c455 0%, #16336e33 34%, transparent 58%)`,
-            `radial-gradient(ellipse 80% 62% at 10% 112%, #0e2350cc 0%, transparent 60%)`,
-            `radial-gradient(ellipse 70% 56% at 92% 100%, #123268aa 0%, transparent 62%)`,
-            `radial-gradient(ellipse 55% 42% at 78% 22%, ${master.accentColor}14 0%, transparent 60%)`,
-            "linear-gradient(180deg, #071228 0%, #050b1c 46%, #060e22 100%)",
+            `radial-gradient(ellipse 110% 70% at 50% -14%, ${master.accentColor}30 0%, #3b2a7a2e 30%, transparent 58%)`,
+            `radial-gradient(ellipse 76% 60% at 8% 108%, #1a2f6ecc 0%, #14235200 60%)`,
+            `radial-gradient(ellipse 66% 52% at 94% 96%, #3a1d6899 0%, transparent 62%)`,
+            "linear-gradient(180deg, #0a0a24 0%, #070818 46%, #0a0c26 100%)",
           ].join(", "),
         }}/>
 
-        {/* Auroras azuis varrendo o céu lentamente — o efeito de assinatura */}
+        {/* Nuvens de nebulosa derivando — massas de gás colorido com movimento implícito */}
+        <div style={{
+          position: "absolute", left: "-10%", top: "-6%", width: "70%", height: "56%",
+          background: `radial-gradient(ellipse at 46% 44%, ${master.accentColor}2e 0%, #6d4dd426 38%, transparent 68%)`,
+          filter: "blur(46px)",
+          animation: "gpNebulaDrift 26s ease-in-out infinite",
+        }}/>
+        <div style={{
+          position: "absolute", right: "-14%", top: "22%", width: "64%", height: "58%",
+          background: "radial-gradient(ellipse at 52% 50%, #2f7dff2a 0%, #1c9ec422 40%, transparent 70%)",
+          filter: "blur(52px)",
+          animation: "gpNebulaDrift 34s ease-in-out 6s infinite reverse",
+        }}/>
+        <div style={{
+          position: "absolute", left: "8%", bottom: "-12%", width: "72%", height: "48%",
+          background: "radial-gradient(ellipse at 50% 56%, #b04dd422 0%, #4d5dd41e 42%, transparent 70%)",
+          filter: "blur(56px)",
+          animation: "gpNebulaDrift 30s ease-in-out 12s infinite",
+        }}/>
+
+        {/* Auroras etéreas varrendo a nebulosa */}
         <div style={{
           position: "absolute", inset: "-12% -25%",
-          background: "linear-gradient(112deg, transparent 24%, #2f7dff1f 38%, #6fb4ff2e 50%, #2f7dff1f 62%, transparent 76%)",
-          filter: "blur(26px)",
+          background: "linear-gradient(112deg, transparent 24%, #6d5aff21 38%, #8fb4ff2e 50%, #6d5aff21 62%, transparent 76%)",
+          filter: "blur(28px)",
           animation: "gpAuroraDrift 17s ease-in-out infinite",
         }}/>
         <div style={{
           position: "absolute", inset: "-12% -25%",
-          background: "linear-gradient(248deg, transparent 30%, #1c56c41c 44%, #4d95ff26 54%, #1c56c41c 64%, transparent 78%)",
-          filter: "blur(34px)",
+          background: "linear-gradient(248deg, transparent 30%, #3c56d41c 44%, #7d95ff26 54%, #3c56d41c 64%, transparent 78%)",
+          filter: "blur(36px)",
           animation: "gpAuroraDrift 23s ease-in-out 4s infinite reverse",
         }}/>
 
-        {/* Malha arcana sutil — dá textura técnica ao abismo sem competir com o mapa */}
-        <div style={{
-          position: "absolute", inset: 0, opacity: 0.5,
-          backgroundImage: [
-            "linear-gradient(0deg, transparent calc(100% - 1px), #6fa8ff0e 100%)",
-            "linear-gradient(90deg, transparent calc(100% - 1px), #6fa8ff0e 100%)",
-          ].join(", "),
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse 80% 70% at 50% 34%, black 0%, transparent 78%)",
-          WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 34%, black 0%, transparent 78%)",
-        }}/>
-
-        {/* Estrelas cintilando */}
-        {Array.from({ length: 34 }, (_, i) => {
-          const sz = 1 + Math.round(frand(i * 3.7) * 2)
+        {/* Campo de estrelas denso — camada distante (pontos finos) */}
+        {Array.from({ length: 46 }, (_, i) => {
+          const sz = 1 + Math.round(frand(i * 3.7) * 1.4)
           return (
             <span key={`star-${i}`} style={{
               position: "absolute",
               left: `${frand(i * 1.3 + 5) * 98}%`,
               top: `${frand(i * 2.9 + 11) * 96}%`,
               width: sz, height: sz, borderRadius: "50%",
-              background: i % 5 === 0 ? "#6fb4ff" : i % 3 === 0 ? "#a9ccff" : "#dbe6f8",
-              boxShadow: i % 5 === 0 ? "0 0 8px #5f9dff" : "0 0 4px rgba(169,204,255,0.7)",
+              background: i % 5 === 0 ? "#9db4ff" : i % 3 === 0 ? "#c9b8ff" : "#e8eeff",
+              boxShadow: i % 5 === 0 ? "0 0 8px #7d9dff" : "0 0 4px rgba(200,214,255,0.7)",
               // @ts-expect-error — custom property
               "--star-op": 0.25 + frand(i * 7.1) * 0.55,
               animation: `gpStarTwinkle ${2.4 + frand(i * 4.3) * 3.6}s ease-in-out ${frand(i * 9.7) * 4}s infinite`,
+            }}/>
+          )
+        })}
+
+        {/* Estrelas maiores com clarão em cruz — os faróis da constelação */}
+        {Array.from({ length: 7 }, (_, i) => {
+          const x = frand(i * 5.9 + 3) * 92 + 3
+          const y = frand(i * 8.3 + 17) * 88 + 4
+          const s = 10 + Math.round(frand(i * 2.7) * 12)
+          return (
+            <span key={`flare-${i}`} style={{
+              position: "absolute",
+              left: `${x}%`, top: `${y}%`,
+              width: s, height: s,
+              transform: "translate(-50%, -50%)",
+              background: "#ffffff",
+              clipPath: "polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%)",
+              filter: `drop-shadow(0 0 ${Math.round(s * 0.7)}px ${i % 2 === 0 ? master.accentColor : "#8fb4ff"})`,
+              // @ts-expect-error — custom property
+              "--star-op": 0.5 + frand(i * 6.1) * 0.4,
+              animation: `gpStarTwinkle ${3 + frand(i * 5.3) * 3}s ease-in-out ${frand(i * 7.9) * 3}s infinite`,
             }}/>
           )
         })}
@@ -840,8 +878,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
       {toast && (
         <div role="status" style={{
           position: "fixed", top: 70, left: "50%", transform: "translateX(-50%)", zIndex: 700,
-          background: "#101016", border: "2px solid #3c3c48",
-          boxShadow: "3px 3px 0 rgba(0,0,0,0.5)",
+          background: "rgba(14,16,34,0.8)",
+          border: "1px solid rgba(255,255,255,0.18)",
+          borderRadius: 12,
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
           padding: "9px 18px", color: "#f0ede6",
           fontFamily: PIXEL, fontSize: 11,
           maxWidth: "90vw", textAlign: "center", animation: "gpToastIn 0.25s ease",
@@ -861,16 +903,23 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
       {/* ── Cabeçalho ── */}
       <header style={{
         display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-        padding: "8px 16px", borderBottom: `2px solid ${master.accentColor}33`,
-        background: `linear-gradient(180deg, #0b0b10 0%, #0b0b10 70%, ${master.accentColor}0a 100%)`,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.45)",
+        padding: "8px 16px",
+        borderBottom: `1px solid ${master.accentColor}40`,
+        background: `linear-gradient(180deg, rgba(12,14,32,0.72) 0%, rgba(10,12,28,0.5) 100%)`,
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        boxShadow: `0 4px 24px rgba(0,0,0,0.4), inset 0 -1px 0 ${master.accentColor}22`,
         position: "relative", zIndex: 5, flexShrink: 0,
       }}>
         <button onClick={onClose} aria-label="Voltar" style={{
-          background: "#16161d", border: "1px solid #2e2e38",
-          borderRadius: 9,
-          width: 34, height: 34, cursor: "pointer", color: "#9aa1ad",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.14)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          borderRadius: 10,
+          width: 34, height: 34, cursor: "pointer", color: "#c3cadb",
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
         }}><ArrowLeft size={16}/></button>
 
         <div style={{
@@ -903,20 +952,23 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         {/* Progresso da rota compacto, no próprio cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 130 }}>
           <div style={{
-            display: "flex", gap: 2, padding: 2, flex: 1, minWidth: 90,
-            background: "#08080d", border: "2px solid #2c2c36",
-            borderBottomColor: "#3a3a46", borderRightColor: "#3a3a46",
-            boxShadow: progress.done > 0 ? `0 0 10px ${master.accentColor}22` : "none",
+            display: "flex", gap: 2, padding: 3, flex: 1, minWidth: 90,
+            background: "rgba(8,10,24,0.6)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 999,
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: progress.done > 0 ? `0 0 12px ${master.accentColor}33, inset 0 1px 0 rgba(255,255,255,0.06)` : "inset 0 1px 0 rgba(255,255,255,0.06)",
           }}>
             {Array.from({ length: 10 }, (_, i) => {
               const filled = progress.pct >= (i + 1) * 10 - 0.01
               return (
                 <div key={i} style={{
-                  flex: 1, height: 8,
+                  flex: 1, height: 7, borderRadius: 999,
                   background: filled
-                    ? `linear-gradient(180deg, #ffe9b0 0%, #ffe9b0 30%, ${master.accentColor} 30%, ${master.accentColor} 100%)`
-                    : "linear-gradient(180deg, #16161d 0%, #1e1e26 100%)",
-                  boxShadow: filled ? `0 0 5px ${master.accentColor}66` : "none",
+                    ? `linear-gradient(180deg, #ffffff 0%, ${master.accentColor} 60%)`
+                    : "rgba(255,255,255,0.06)",
+                  boxShadow: filled ? `0 0 7px ${master.accentColor}aa` : "none",
                 }}/>
               )
             })}
@@ -958,7 +1010,7 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
             pointerEvents: "none",
             display: "flex", alignItems: "flex-start", gap: 8,
             padding: "8px 10px 20px",
-            background: "linear-gradient(180deg, rgba(8,8,13,0.94) 0%, rgba(8,8,13,0.6) 55%, transparent 100%)",
+            background: "linear-gradient(180deg, rgba(7,8,24,0.9) 0%, rgba(7,8,24,0.5) 55%, transparent 100%)",
           }}>
             {branches.map(branch => {
               const BranchIcon     = BRANCH_ICON[branch.id]
@@ -973,32 +1025,36 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                 }}>
                   <div style={{
                     display: "inline-flex", alignItems: "center", gap: 7,
-                    background: `linear-gradient(135deg, ${tint}1c 0%, rgba(10,10,16,0.9) 70%)`,
-                    border: "2px solid #23232c",
-                    borderLeft: `3px solid ${tint}aa`,
-                    borderRadius: 5,
-                    padding: "4px 9px 4px 6px",
-                    boxShadow: `inset 0 0 16px ${tint}0e, 0 4px 12px rgba(0,0,0,0.4)`,
+                    background: `linear-gradient(135deg, ${tint}20 0%, rgba(12,14,32,0.5) 65%)`,
+                    border: `1px solid ${tint}55`,
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                    borderRadius: 999,
+                    padding: "4px 11px 4px 5px",
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 16px rgba(0,0,0,0.4), 0 0 18px ${tint}22`,
                   }}>
                     <div style={{
                       width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
-                      background: `linear-gradient(180deg, ${tint}22, #14141b)`,
-                      border: `2px solid ${tint}88`,
-                      boxShadow: `0 0 8px ${tint}44`, flexShrink: 0,
+                      background: `radial-gradient(circle at 34% 28%, ${tint}55 0%, rgba(10,12,26,0.8) 70%)`,
+                      border: `1px solid ${tint}aa`,
+                      borderRadius: "50%",
+                      boxShadow: `0 0 10px ${tint}66`, flexShrink: 0,
                     }}>
                       <BranchIcon size={11} color={tint}/>
                     </div>
                     <span style={{
                       fontFamily: PIXEL, fontSize: 9.5, color: "#f3f0ea",
-                      textShadow: `0 0 10px ${tint}66`, whiteSpace: "nowrap",
+                      textShadow: `0 0 10px ${tint}88`, whiteSpace: "nowrap",
                     }}>{branch.name.toUpperCase()}</span>
                     <span style={{
                       fontFamily: PIXEL, fontSize: 8.5,
                       color: branchComplete ? "#4ecf9d" : tint,
                       fontVariantNumeric: "tabular-nums",
                       display: "inline-flex", alignItems: "center", gap: 3,
-                      background: "#0d0d13", border: `2px solid ${branchComplete ? "#1d7d5c" : `${tint}44`}`,
-                      padding: "0px 5px",
+                      background: "rgba(6,8,18,0.6)",
+                      border: `1px solid ${branchComplete ? "#1d7d5c" : `${tint}55`}`,
+                      borderRadius: 999,
+                      padding: "0px 7px",
                     }}>
                       {branchComplete && <Check size={9} strokeWidth={3}/>}
                       {branchDone}/{branch.runes.length}
@@ -1084,18 +1140,18 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                     x={a.x} y={a.y} len={len} ang={ang}
                     tint={tint} lit={lit} flowing={lit && next}
                   />
-                  {/* Seta de metal descendo no meio do trecho — direção topo → base */}
+                  {/* Faísca de luz descendo no meio do trecho — direção topo → base */}
                   <span aria-hidden="true" style={{
                     position: "absolute",
                     left: midX, top: midY - 8, zIndex: 2,
                     transform: "translateX(-50%)",
-                    width: 11, height: 13,
-                    clipPath: "polygon(50% 100%, 0 34%, 30% 34%, 30% 0, 70% 0, 70% 34%, 100% 34%)",
+                    width: 10, height: 12,
+                    clipPath: "polygon(50% 100%, 0 30%, 50% 46%, 100% 30%)",
                     background: lit
-                      ? `linear-gradient(180deg, #fff6d8 0%, ${tint} 62%, ${tint} 100%)`
-                      : "linear-gradient(180deg, #4a5064 0%, #2b303a 100%)",
-                    filter: lit ? `drop-shadow(0 0 7px ${tint})` : "none",
-                    opacity: lit ? 1 : 0.55,
+                      ? `linear-gradient(180deg, #ffffff 0%, ${tint} 100%)`
+                      : "linear-gradient(180deg, rgba(150,170,215,0.5) 0%, rgba(110,130,180,0.3) 100%)",
+                    filter: lit ? `drop-shadow(0 0 8px ${tint})` : "none",
+                    opacity: lit ? 1 : 0.45,
                     animation: `gpChevronFall 1.6s ease-in-out ${i * 0.12}s infinite`,
                   }}/>
                   </Fragment>
@@ -1209,8 +1265,12 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         position: "absolute", right: -3, top: nSize - sealSize,
                         width: sealSize, height: sealSize,
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        background: isDone ? "#166b50" : "#16161d",
-                        border: "2px solid #06060a",
+                        borderRadius: "50%",
+                        background: isDone
+                          ? "radial-gradient(circle at 34% 28%, #35e0a8 0%, #14805e 70%)"
+                          : "rgba(16,18,32,0.85)",
+                        border: isDone ? "1px solid #7dffd4" : "1px solid rgba(130,145,180,0.4)",
+                        boxShadow: isDone ? "0 0 10px #4ecf9d88" : "0 2px 6px rgba(0,0,0,0.5)",
                       }}>
                         {isDone
                           ? <Check size={Math.round(sealSize * 0.55)} strokeWidth={3} color="#d8fff0"/>
@@ -1218,9 +1278,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       </div>
                     )}
 
-                    {/* Tier em algarismo romano sob o pedestal */}
+                    {/* Tier em algarismo romano sob o orbe */}
                     <div style={{
-                      position: "absolute", top: nSize + Math.round(nSize * 0.42) + 2, left: "50%", transform: "translateX(-50%)",
+                      position: "absolute", top: nSize + 5, left: "50%", transform: "translateX(-50%)",
                       fontFamily: PIXEL, fontSize: Math.max(7.5, nSize * 0.16),
                       color: isSelected ? tint : isLocked ? "#5b6270" : "#9aa1ad",
                       textShadow: isSelected ? `0 0 8px ${tint}88` : "0 2px 0 rgba(0,0,0,0.7)",
@@ -1362,8 +1422,8 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
         const avail = selectedInfo.status === "available"
         const stateColor = done ? "#4ecf9d" : avail ? tint : "#7b8290"
         const stateLabel = done ? "GRAVADA" : avail ? "DISPONÍVEL" : "BLOQUEADA"
-        const badgeBg    = done ? "#1d7d5c" : avail ? "#c0512c" : "#33333d"
-        const badgeFg    = done ? "#d8fff0" : avail ? "#ffe9d6" : "#9aa1ad"
+        const badgeBg    = done ? "rgba(29,125,92,0.8)" : avail ? `${tint}cc` : "rgba(40,44,64,0.75)"
+        const badgeFg    = done ? "#d8fff0" : avail ? "#0a0c1c" : "#9aa1ad"
         const selBranch  = branches.find(b => b.id === selected.branchId)
         const branchName = selBranch?.name ?? ""
         const branchSize = selBranch?.runes.length ?? 10
@@ -1372,47 +1432,41 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
           <div style={{
             position: "relative", zIndex: 6, flexShrink: 0,
             padding: "12px 14px 12px",
-            background: "linear-gradient(0deg, rgba(8,8,13,0.97) 70%, rgba(8,8,13,0))",
+            background: "linear-gradient(0deg, rgba(7,8,24,0.92) 62%, rgba(7,8,24,0))",
           }}>
             <div style={{
               position: "relative", maxWidth: 980, margin: "0 auto",
-              // Placa de metal escovado: veio horizontal fino + bisel de luz no topo
-              background: [
-                "repeating-linear-gradient(90deg, rgba(255,255,255,0.024) 0 1px, transparent 1px 3px)",
-                "repeating-linear-gradient(0deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 5px)",
-                `linear-gradient(168deg, ${done || avail ? `${tint}14` : "rgba(255,255,255,0.03)"} 0%, #14161c 38%, #0b0d12 100%)`,
-              ].join(", "),
-              border: "1px solid #05060a",
-              borderTop: `1px solid ${done || avail ? `${tint}55` : "#3a3f4b"}`,
-              borderLeft: `4px solid ${stateColor}`,
+              // Painel de vidro fosco: translúcido, com a nebulosa vazando por trás
+              background: `linear-gradient(160deg, ${done || avail ? `${tint}1e` : "rgba(255,255,255,0.05)"} 0%, rgba(14,16,36,0.55) 42%, rgba(8,10,26,0.6) 100%)`,
+              backdropFilter: "blur(18px)",
+              WebkitBackdropFilter: "blur(18px)",
+              border: `1px solid ${done || avail ? `${tint}55` : "rgba(140,155,195,0.28)"}`,
               boxShadow: [
-                "0 12px 34px rgba(0,0,0,0.62)",
-                "inset 0 1px 0 rgba(255,255,255,0.13)",
-                "inset 0 -1px 0 rgba(0,0,0,0.6)",
-                avail ? `0 0 30px ${tint}2e` : "",
+                "0 12px 40px rgba(0,0,0,0.55)",
+                "inset 0 1px 0 rgba(255,255,255,0.14)",
+                avail ? `0 0 34px ${tint}30, inset 0 0 24px ${tint}12` : "",
               ].filter(Boolean).join(", "),
-              borderRadius: 10,
+              borderRadius: 16,
               padding: "14px 16px 12px",
             }}>
-              {/* Cravos de metal fixando a placa nos cantos */}
-              {([["10px", "9px"], ["calc(100% - 10px)", "9px"], ["10px", "calc(100% - 9px)"], ["calc(100% - 10px)", "calc(100% - 9px)"]] as const).map(([l, t], i) => (
-                <span key={`plate-rivet-${i}`} aria-hidden="true" style={{
-                  position: "absolute", left: l, top: t, width: 5, height: 5,
-                  transform: "translate(-50%,-50%)", borderRadius: "50%",
-                  background: "radial-gradient(circle at 32% 30%, #cdd3dd 0%, #6b7280 55%, #14161b 100%)",
-                  boxShadow: "0 1px 1px rgba(0,0,0,0.8)",
-                }}/>
-              ))}
+              {/* Fio de luz correndo pela borda superior do vidro */}
+              <div aria-hidden="true" style={{
+                position: "absolute", top: 0, left: "8%", right: "8%", height: 1,
+                background: `linear-gradient(90deg, transparent 0%, ${done || avail ? tint : "#8fa4d4"} 50%, transparent 100%)`,
+                opacity: 0.8,
+              }}/>
               {/* Badge de estado sobre a borda */}
               <div style={{
                 position: "absolute", top: -12, left: 14,
                 display: "inline-flex", alignItems: "center", gap: 6,
                 background: badgeBg, color: badgeFg,
-                border: "1px solid rgba(0,0,0,0.6)",
-                borderRadius: 6,
-                padding: "3px 11px",
+                border: "1px solid rgba(255,255,255,0.18)",
+                borderRadius: 999,
+                padding: "3px 12px",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
                 fontFamily: PIXEL, fontSize: 10, letterSpacing: "0.06em",
-                boxShadow: `0 4px 12px rgba(0,0,0,0.45)${avail ? `, 0 0 14px ${tint}44` : ""}`,
+                boxShadow: `0 4px 12px rgba(0,0,0,0.45)${avail ? `, 0 0 16px ${tint}66` : ""}`,
               }}>
                 {done ? <Check size={10} strokeWidth={3}/> : !avail ? <Lock size={9}/> : null}
                 {stateLabel}
@@ -1476,12 +1530,11 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                       return (
                         <div key={i} style={{
                           display: "flex", alignItems: "center", gap: 6,
-                          background: `linear-gradient(135deg, ${c}1f 0%, #14161c 62%)`,
-                          border: `1px solid ${c}44`,
-                          borderLeft: `3px solid ${c}`,
-                          borderRadius: 5,
-                          padding: "4px 10px 4px 7px",
-                          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.07), 0 0 12px ${c}1f`,
+                          background: `linear-gradient(135deg, ${c}22 0%, rgba(14,16,34,0.55) 62%)`,
+                          border: `1px solid ${c}55`,
+                          borderRadius: 999,
+                          padding: "4px 11px 4px 8px",
+                          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.09), 0 0 14px ${c}22`,
                         }}>
                           <img
                             src={runeRewardIconPath(rw, chestId) || "/placeholder.svg"}
@@ -1500,10 +1553,10 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
 
                     {!done && (
                       <>
-                        {/* Sulco vertical gravado separando ganho de custo */}
+                        {/* Fio de luz vertical separando ganho de custo */}
                         <span aria-hidden="true" style={{
-                          width: 2, height: 20, flexShrink: 0, margin: "0 3px", borderRadius: 1,
-                          background: "linear-gradient(180deg, #05060a 0%, #3a3f4b 50%, #05060a 100%)",
+                          width: 1, height: 20, flexShrink: 0, margin: "0 4px",
+                          background: "linear-gradient(180deg, transparent 0%, rgba(150,170,215,0.5) 50%, transparent 100%)",
                         }}/>
                         <span style={{
                           fontFamily: PIXEL, fontSize: 8.5, color: "#6d7482",
@@ -1511,10 +1564,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                         }}>CUSTO</span>
                         <div title="Gear Coins" style={{
                           display: "flex", alignItems: "center", gap: 6,
-                          background: "linear-gradient(180deg, #1c1a13 0%, #101015 100%)",
-                          border: "1px solid #05060a",
-                          borderTop: "1px solid #4a422a",
-                          borderRadius: 5, padding: "4px 9px 4px 7px",
+                          background: "linear-gradient(135deg, rgba(242,193,78,0.12) 0%, rgba(14,16,34,0.55) 60%)",
+                          border: "1px solid rgba(242,193,78,0.35)",
+                          borderRadius: 999, padding: "4px 10px 4px 8px",
                           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
                         }}>
                           <img src="/images/gear-coin.png" alt="" width={16} height={16}
@@ -1534,10 +1586,9 @@ export function RunesPanel({ master, onClose }: RunesPanelProps) {
                           return (
                             <div key={fid} title={FRAGMENTS[fid].name} style={{
                               display: "flex", alignItems: "center", gap: 6,
-                              background: "linear-gradient(180deg, #16181f 0%, #0f1015 100%)",
-                              border: "1px solid #05060a",
-                              borderTop: `1px solid ${ok ? `${FRAGMENTS[fid].color}55` : "#6b3838"}`,
-                              borderRadius: 5, padding: "4px 9px 4px 7px",
+                              background: `linear-gradient(135deg, ${ok ? `${FRAGMENTS[fid].color}14` : "rgba(248,113,113,0.1)"} 0%, rgba(14,16,34,0.55) 60%)`,
+                              border: `1px solid ${ok ? `${FRAGMENTS[fid].color}44` : "rgba(248,113,113,0.4)"}`,
+                              borderRadius: 999, padding: "4px 10px 4px 8px",
                               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07)",
                             }}>
                               <img src={FRAGMENTS[fid].image || "/placeholder.svg"} alt="" width={16} height={16}
