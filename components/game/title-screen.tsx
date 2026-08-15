@@ -15,19 +15,19 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null)
   const narratorRef = useRef<HTMLAudioElement | null>(null)
   const [visible, setVisible] = useState(false)
-  const [blink, setBlink] = useState(true)
   const [leaving, setLeaving] = useState(false)
   const [audioPlaying, setAudioPlaying] = useState(false)
   const [bgMusicReady, setBgMusicReady] = useState(false)
   const [narratorReady, setNarratorReady] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [ripple, setRipple] = useState<{ x: number; y: number; key: number } | null>(null)
   const hasAttemptedAutoplay = useRef(false)
-  
+
   // Mark as mounted on client
   useEffect(() => {
     setMounted(true)
   }, [])
-  
+
   // Pre-compute particle positions to be deterministic
   const particles = useMemo(() => {
     return Array.from({ length: PARTICLE_COUNT }).map((_, i) => ({
@@ -47,28 +47,25 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
   // Attempt to play all audio synchronized - returns true if successful
   const attemptPlay = useCallback(async () => {
     if (audioPlaying) return false
-    
+
     const bgMusic = bgMusicRef.current
     const narrator = narratorRef.current
-    
+
     if (!bgMusic || !narrator) return false
-    
+
     try {
       // Set volumes - start muted then unmute for better autoplay compatibility
       bgMusic.volume = 0
       bgMusic.loop = true
       narrator.volume = 0
       narrator.loop = false
-      
+
       // Try to play both simultaneously
-      const results = await Promise.allSettled([
-        bgMusic.play(),
-        narrator.play()
-      ])
-      
+      const results = await Promise.allSettled([bgMusic.play(), narrator.play()])
+
       // Check if at least one succeeded
-      const anySuccess = results.some(r => r.status === 'fulfilled')
-      
+      const anySuccess = results.some((r) => r.status === "fulfilled")
+
       if (anySuccess) {
         // Fade in volumes smoothly for synchronized experience
         let vol = 0
@@ -83,11 +80,11 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             narrator.volume = Math.min(0.8, vol * 0.8)
           }
         }, 50)
-        
+
         setAudioPlaying(true)
         return true
       }
-      
+
       return false
     } catch {
       // Autoplay blocked by browser - needs user interaction
@@ -101,43 +98,37 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
     return () => clearTimeout(t)
   }, [])
 
-  // Blink effect for "Toque para Comecar"
-  useEffect(() => {
-    const interval = setInterval(() => setBlink((b) => !b), 800)
-    return () => clearInterval(interval)
-  }, [])
-
   // Try autoplay when all audio is ready and screen is visible
   useEffect(() => {
     if (allAudioReady && visible && !hasAttemptedAutoplay.current) {
       hasAttemptedAutoplay.current = true
-      
+
       // Strategy 1: Immediate attempt after audio is ready
       attemptPlay()
-      
+
       // Strategy 2: Retry after a short delay (some browsers need this)
       const timer1 = setTimeout(() => {
         if (!audioPlaying) attemptPlay()
       }, 500)
-      
+
       // Strategy 3: Try on visibility change (when tab becomes active)
       const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible' && !audioPlaying) {
+        if (document.visibilityState === "visible" && !audioPlaying) {
           attemptPlay()
         }
       }
-      document.addEventListener('visibilitychange', handleVisibilityChange)
-      
+      document.addEventListener("visibilitychange", handleVisibilityChange)
+
       // Strategy 4: Try on window focus
       const handleFocus = () => {
         if (!audioPlaying) attemptPlay()
       }
-      window.addEventListener('focus', handleFocus, { once: true })
-      
+      window.addEventListener("focus", handleFocus, { once: true })
+
       return () => {
         clearTimeout(timer1)
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-        window.removeEventListener('focus', handleFocus)
+        document.removeEventListener("visibilitychange", handleVisibilityChange)
+        window.removeEventListener("focus", handleFocus)
       }
     }
   }, [allAudioReady, visible, attemptPlay, audioPlaying])
@@ -152,90 +143,102 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
 
     // These events count as user interaction for autoplay policy
     // Using multiple event types increases chances of catching first interaction
-    const events = ['click', 'touchstart', 'touchend', 'keydown', 'mousedown', 'pointerdown', 'scroll']
-    
-    events.forEach(event => {
+    const events = ["click", "touchstart", "touchend", "keydown", "mousedown", "pointerdown", "scroll"]
+
+    events.forEach((event) => {
       window.addEventListener(event, startOnInteraction, { once: true, passive: true })
     })
 
     return () => {
-      events.forEach(event => {
+      events.forEach((event) => {
         window.removeEventListener(event, startOnInteraction)
       })
     }
   }, [audioPlaying, attemptPlay])
 
-  const handleEnter = () => {
+  const handleEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     if (leaving) return
-    
+
+    // Touch ripple at click position
+    setRipple({ x: e.clientX, y: e.clientY, key: Date.now() })
+
     // Try to start audio if not already playing
     if (!audioPlaying) {
       attemptPlay()
     }
-    
+
     setLeaving(true)
-    
+
     // Fade out both audios
     const bgMusic = bgMusicRef.current
     const narrator = narratorRef.current
-    
+
     if (audioPlaying) {
       const fadeOut = setInterval(() => {
         let stillFading = false
-        
+
         if (bgMusic && bgMusic.volume > 0.05) {
           bgMusic.volume = Math.max(0, bgMusic.volume - 0.05)
           stillFading = true
         } else if (bgMusic) {
           bgMusic.pause()
         }
-        
+
         if (narrator && narrator.volume > 0.05) {
           narrator.volume = Math.max(0, narrator.volume - 0.05)
           stillFading = true
         } else if (narrator) {
           narrator.pause()
         }
-        
+
         if (!stillFading) {
           clearInterval(fadeOut)
         }
       }, 60)
     }
-    
-    setTimeout(() => onEnter(), 700)
+
+    setTimeout(() => onEnter(), 950)
   }
 
   return (
     <div
       onClick={handleEnter}
       suppressHydrationWarning={true}
-      className="fixed inset-0 cursor-pointer select-none overflow-hidden"
+      className="fixed inset-0 cursor-pointer select-none overflow-hidden bg-black"
       style={{
         opacity: leaving ? 0 : visible ? 1 : 0,
-        transition: leaving ? "opacity 0.7s ease-in" : "opacity 1s ease-out",
+        transition: leaving ? "opacity 0.95s cubic-bezier(0.7, 0, 0.84, 0)" : "opacity 1.2s ease-out",
         zIndex: 9999,
       }}
     >
       {/* Background Music */}
-      <audio 
-        ref={bgMusicRef} 
-        src="/audio/title-game-ost-remix.mp3" 
+      <audio
+        ref={bgMusicRef}
+        src="/audio/title-game-ost-remix.mp3"
         preload="auto"
         onCanPlayThrough={() => setBgMusicReady(true)}
         onLoadedData={() => setBgMusicReady(true)}
       />
-      
+
       {/* Narrator Voice */}
-      <audio 
-        ref={narratorRef} 
-        src="/audio/narrator-intro.mp3" 
+      <audio
+        ref={narratorRef}
+        src="/audio/narrator-intro.mp3"
         preload="auto"
         onCanPlayThrough={() => setNarratorReady(true)}
         onLoadedData={() => setNarratorReady(true)}
       />
 
-      <div className="absolute inset-0">
+      {/* Background with Ken Burns drift + exit zoom */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: leaving ? "scale(1.12)" : undefined,
+          transition: leaving ? "transform 1s cubic-bezier(0.55, 0, 1, 0.45)" : undefined,
+          animation: leaving ? undefined : "kenBurns 28s ease-in-out infinite alternate",
+          willChange: "transform",
+        }}
+      >
         <Image
           src="/images/title-menu-wallpaper.png"
           alt="Personagens principais de Gear Perks Card Game contra um ceu luminoso"
@@ -257,7 +260,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
 
       {/* Cinematic light rays */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div 
+        <div
           className="absolute top-0 left-1/4 w-[500px] h-full opacity-[0.06]"
           style={{
             background: "linear-gradient(180deg, rgba(56, 189, 248, 0.4) 0%, transparent 70%)",
@@ -266,7 +269,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             animation: "lightSway 8s ease-in-out infinite",
           }}
         />
-        <div 
+        <div
           className="absolute top-0 right-1/3 w-[400px] h-full opacity-[0.05]"
           style={{
             background: "linear-gradient(180deg, rgba(168, 85, 247, 0.4) 0%, transparent 60%)",
@@ -275,7 +278,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             animation: "lightSway 10s ease-in-out infinite reverse",
           }}
         />
-        <div 
+        <div
           className="absolute top-0 right-1/4 w-[300px] h-full opacity-[0.04]"
           style={{
             background: "linear-gradient(180deg, rgba(251, 191, 36, 0.3) 0%, transparent 50%)",
@@ -287,42 +290,48 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       </div>
 
       {/* Ultra premium floating particles - only render on client to avoid hydration issues */}
-      {mounted && particles.map((particle, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            width: `${particle.size}px`,
-            height: `${particle.size}px`,
-            left: `${particle.left}%`,
-            top: `${particle.top}%`,
-            background: particle.color,
-            opacity: particle.opacity,
-            boxShadow: `0 0 ${particle.size * 4}px ${particle.color}, 0 0 ${particle.size * 8}px ${particle.color}80, 0 0 ${particle.size * 12}px ${particle.color}40`,
-            animation: `floatParticle ${particle.animationDuration}s ease-in-out ${particle.animationDelay}s infinite`,
-          }}
-        />
-      ))}
+      {mounted &&
+        particles.map((particle, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              background: particle.color,
+              opacity: particle.opacity,
+              boxShadow: `0 0 ${particle.size * 4}px ${particle.color}, 0 0 ${particle.size * 8}px ${particle.color}80, 0 0 ${particle.size * 12}px ${particle.color}40`,
+              animation: `floatParticle ${particle.animationDuration}s ease-in-out ${particle.animationDelay}s infinite`,
+            }}
+          />
+        ))}
 
+      {/* Central content with staggered entrance + exit lift */}
       <div
         className="absolute inset-0 flex flex-col items-center justify-center"
-        style={{ paddingTop: "80px" }}
+        style={{
+          paddingTop: "80px",
+          transform: leaving ? "translateY(-30px) scale(1.06)" : undefined,
+          transition: leaving ? "transform 0.95s cubic-bezier(0.55, 0, 1, 0.45)" : undefined,
+        }}
       >
         <div
           className="relative"
           style={{
-            animation: "logoFloat 5s ease-in-out infinite",
+            animation: visible ? "logoEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) both, logoFloat 5s ease-in-out 1.4s infinite" : undefined,
           }}
         >
           {/* Logo glow layers */}
-          <div 
+          <div
             className="absolute inset-0 blur-3xl opacity-60"
             style={{
               background: "radial-gradient(circle, rgba(56,189,248,0.4) 0%, transparent 70%)",
               animation: "pulseGlow 3s ease-in-out infinite",
             }}
           />
-          <div 
+          <div
             className="absolute inset-0 blur-2xl opacity-40"
             style={{
               background: "radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 60%)",
@@ -336,17 +345,47 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             height={400}
             className="object-contain relative z-10"
             priority
-            style={{ 
+            style={{
               maxWidth: "min(400px, 78vw)",
-              filter: "drop-shadow(0 0 50px rgba(56,189,248,0.5)) drop-shadow(0 0 100px rgba(168,85,247,0.3)) drop-shadow(0 0 150px rgba(251,191,36,0.15))",
+              filter:
+                "drop-shadow(0 0 50px rgba(56,189,248,0.5)) drop-shadow(0 0 100px rgba(168,85,247,0.3)) drop-shadow(0 0 150px rgba(251,191,36,0.15))",
             }}
           />
+          {/* Shine sweep across the logo */}
+          <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
+            <div
+              className="absolute top-0 bottom-0 w-1/3"
+              style={{
+                background:
+                  "linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.28) 45%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0.28) 55%, transparent 100%)",
+                filter: "blur(4px)",
+                mixBlendMode: "overlay",
+                animation: "shineSweep 6s ease-in-out 2s infinite",
+              }}
+            />
+          </div>
         </div>
 
-        <div className="-mt-10 mb-6 flex items-center gap-3" style={{ width: "min(320px, 70vw)" }}>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }} />
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }} />
+        {/* Divider line - expands on entrance */}
+        <div
+          className="-mt-10 mb-6 flex items-center gap-3"
+          style={{
+            width: "min(320px, 70vw)",
+            animation: visible ? "dividerExpand 1s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both" : undefined,
+          }}
+        >
+          <div
+            className="flex-1 h-px"
+            style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }}
+          />
+          <div
+            className="w-1.5 h-1.5 rounded-full bg-blue-400"
+            style={{ boxShadow: "0 0 8px #60a5fa, 0 0 16px #60a5fa80", animation: "dotPulse 2.4s ease-in-out infinite" }}
+          />
+          <div
+            className="flex-1 h-px"
+            style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }}
+          />
         </div>
 
         <p
@@ -357,22 +396,97 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             fontWeight: 500,
             color: "#f0f9ff",
             textTransform: "uppercase",
-            textShadow: "0 0 30px rgba(56,189,248,0.9), 0 0 60px rgba(168,85,247,0.5), 0 2px 10px rgba(0,0,0,0.9)",
-            opacity: blink ? 1 : 0.25,
-            transition: "opacity 0.5s ease",
+            textShadow:
+              "0 0 30px rgba(56,189,248,0.9), 0 0 60px rgba(168,85,247,0.5), 0 2px 10px rgba(0,0,0,0.9)",
+            animation: visible
+              ? "textEntrance 1s ease-out 1.1s both, softBlink 2.4s ease-in-out 2.1s infinite"
+              : undefined,
           }}
         >
           Toque para Comecar
         </p>
       </div>
 
+      {/* Touch ripple on click */}
+      {ripple && (
+        <div
+          key={ripple.key}
+          className="absolute pointer-events-none rounded-full"
+          style={{
+            left: ripple.x,
+            top: ripple.y,
+            width: "10px",
+            height: "10px",
+            transform: "translate(-50%, -50%)",
+            border: "2px solid rgba(147, 197, 253, 0.9)",
+            boxShadow: "0 0 24px rgba(56,189,248,0.8), inset 0 0 12px rgba(56,189,248,0.4)",
+            animation: "rippleExpand 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+            zIndex: 50,
+          }}
+        />
+      )}
+
+      {/* White flash on exit for cinematic transition */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle at center, rgba(224,242,254,0.95) 0%, rgba(56,189,248,0.5) 45%, transparent 80%)",
+          opacity: leaving ? 1 : 0,
+          transition: leaving ? "opacity 0.55s ease-in 0.25s" : "none",
+          zIndex: 40,
+        }}
+      />
+
       <div className="absolute bottom-4 left-0 right-0 text-center">
-        <p style={{ fontFamily: "'Segoe UI', sans-serif", fontSize: "11px", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)" }}>
+        <p
+          style={{
+            fontFamily: "'Segoe UI', sans-serif",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            color: "rgba(255,255,255,0.35)",
+          }}
+        >
           Gear Perks Card Game
         </p>
       </div>
 
       <style>{`
+        @keyframes kenBurns {
+          0%   { transform: scale(1) translate(0px, 0px); }
+          50%  { transform: scale(1.05) translate(-8px, -5px); }
+          100% { transform: scale(1.08) translate(6px, -8px); }
+        }
+        @keyframes logoEntrance {
+          0%   { opacity: 0; transform: translateY(-40px) scale(1.15); filter: blur(12px); }
+          60%  { opacity: 1; filter: blur(0px); }
+          100% { opacity: 1; transform: translateY(0px) scale(1); filter: blur(0px); }
+        }
+        @keyframes dividerExpand {
+          0%   { opacity: 0; transform: scaleX(0); }
+          100% { opacity: 1; transform: scaleX(1); }
+        }
+        @keyframes textEntrance {
+          0%   { opacity: 0; transform: translateY(14px); }
+          100% { opacity: 1; transform: translateY(0px); }
+        }
+        @keyframes softBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes dotPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.6); opacity: 0.6; }
+        }
+        @keyframes shineSweep {
+          0%   { left: -40%; opacity: 0; }
+          8%   { opacity: 1; }
+          30%  { left: 110%; opacity: 0; }
+          100% { left: 110%; opacity: 0; }
+        }
+        @keyframes rippleExpand {
+          0%   { width: 10px; height: 10px; opacity: 1; }
+          100% { width: 340px; height: 340px; opacity: 0; }
+        }
         @keyframes logoFloat {
           0%   { transform: translateY(0px) rotate(-0.2deg) scale(1); }
           25%  { transform: translateY(-12px) rotate(0.1deg) scale(1.01); }
@@ -394,6 +508,9 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         @keyframes lightSway {
           0%, 100% { transform: skewX(-15deg) translateX(-20px); opacity: 0.04; }
           50% { transform: skewX(-15deg) translateX(20px); opacity: 0.08; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
         }
       `}</style>
     </div>
