@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 type Language = "pt" | "en" | "ja"
 
@@ -137,6 +137,60 @@ const translations: Translations = {
   returnToMenu: { pt: "Voltar ao Menu", en: "Return to Menu", ja: "メニューに戻る" },
   noDeckSelected: { pt: "Nenhum deck selecionado", en: "No deck selected", ja: "デッキが選択されていません" },
   selectDeckFirst: { pt: "Selecione um deck primeiro", en: "Select a deck first", ja: "まずデッキを選択してください" },
+
+  // Title screen
+  tapToStart: { pt: "Toque para Começar", en: "Tap to Start", ja: "タップしてスタート" },
+  titleAccount: { pt: "Conta", en: "Account", ja: "アカウント" },
+  titleRepair: { pt: "Reparar Cliente", en: "Repair Client", ja: "クライアント修復" },
+  titleLanguage: { pt: "Idioma", en: "Language", ja: "言語" },
+  titleServer: { pt: "Servidor", en: "Server", ja: "サーバー" },
+  close: { pt: "Fechar", en: "Close", ja: "閉じる" },
+  comingSoon: { pt: "Em breve", en: "Coming soon", ja: "近日公開" },
+
+  // Account panel
+  accountManagement: { pt: "Gerenciamento de Conta", en: "Account Management", ja: "アカウント管理" },
+  signedInAs: { pt: "Conectado como", en: "Signed in as", ja: "ログイン中" },
+  playingAsGuest: { pt: "Jogando como Convidado", en: "Playing as Guest", ja: "ゲストとしてプレイ中" },
+  guestWarning: {
+    pt: "Seu progresso está salvo apenas neste dispositivo. Vincule uma conta para não perder nada.",
+    en: "Your progress is saved only on this device. Link an account so you don't lose anything.",
+    ja: "進行状況はこの端末にのみ保存されます。アカウントを連携して失わないようにしましょう。",
+  },
+  playerCode: { pt: "Código do Jogador", en: "Player Code", ja: "プレイヤーコード" },
+  lastSync: { pt: "Última sincronização", en: "Last sync", ja: "最終同期" },
+  linkAccount: { pt: "Vincular Conta", en: "Link Account", ja: "アカウント連携" },
+  signOut: { pt: "Sair da Conta", en: "Sign Out", ja: "ログアウト" },
+  switchUser: { pt: "Trocar de Usuário", en: "Switch User", ja: "ユーザー切替" },
+  accountFullOptions: {
+    pt: "Entre no jogo e abra Configurações › Conta para login, registro e sincronização completa.",
+    en: "Enter the game and open Settings › Account for login, sign up and full sync.",
+    ja: "ゲームに入り、設定 › アカウントでログイン・登録・完全同期を行えます。",
+  },
+
+  // Repair panel
+  repairTitle: { pt: "Limpar Cache / Reparar Cliente", en: "Clear Cache / Repair Client", ja: "キャッシュ削除 / クライアント修復" },
+  repairDescription: {
+    pt: "Corrige arquivos corrompidos durante atualizações sem reinstalar o jogo.",
+    en: "Fixes files corrupted during updates without reinstalling the game.",
+    ja: "更新中に破損したファイルを、再インストールせずに修復します。",
+  },
+  repairSafeNotice: {
+    pt: "Seu progresso, cartas e conta NÃO serão apagados.",
+    en: "Your progress, cards and account will NOT be deleted.",
+    ja: "進行状況・カード・アカウントは削除されません。",
+  },
+  repairStepCache: { pt: "Limpando cache de arquivos", en: "Clearing file cache", ja: "ファイルキャッシュを削除中" },
+  repairStepAssets: { pt: "Revalidando assets do jogo", en: "Revalidating game assets", ja: "ゲームアセットを再検証中" },
+  repairStepTemp: { pt: "Removendo dados temporários", en: "Removing temporary data", ja: "一時データを削除中" },
+  repairStepRestart: { pt: "Reiniciando o cliente", en: "Restarting the client", ja: "クライアントを再起動中" },
+  repairStart: { pt: "Iniciar Reparo", en: "Start Repair", ja: "修復を開始" },
+  repairRunning: { pt: "Reparando...", en: "Repairing...", ja: "修復中..." },
+  repairDone: { pt: "Reparo concluído! Reiniciando...", en: "Repair complete! Restarting...", ja: "修復完了！再起動します..." },
+
+  // Server panel
+  selectServerTitle: { pt: "Seleção de Servidor", en: "Server Selection", ja: "サーバー選択" },
+  serverPing: { pt: "ping", en: "ping", ja: "ping" },
+  serverCurrent: { pt: "Atual", en: "Current", ja: "現在" },
 }
 
 interface LanguageContextType {
@@ -147,8 +201,29 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
+const LANGUAGE_STORAGE_KEY = "gpgame_language"
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>("pt")
+  const [language, setLanguageState] = useState<Language>("pt")
+
+  // Restore the saved language after mount (keeps SSR output deterministic)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
+      if (saved === "pt" || saved === "en" || saved === "ja") setLanguageState(saved)
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [])
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang)
+    try {
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
 
   const t = (key: string): string => {
     return translations[key]?.[language] || key
