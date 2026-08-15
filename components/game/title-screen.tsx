@@ -306,7 +306,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
 
       <div
         className="absolute inset-0 flex flex-col items-center justify-center"
-        style={{ paddingBottom: "80px" }}
+        style={{ paddingTop: "80px" }}
       >
         <div
           className="relative"
@@ -343,7 +343,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           />
         </div>
 
-        <div className="-mt-2 mb-8 flex items-center gap-3" style={{ width: "min(320px, 70vw)" }}>
+        <div className="-mt-10 mb-6 flex items-center gap-3" style={{ width: "min(320px, 70vw)" }}>
           <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }} />
           <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
           <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, transparent, #60a5fa, transparent)" }} />
