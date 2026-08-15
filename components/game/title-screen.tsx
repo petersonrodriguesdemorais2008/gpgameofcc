@@ -220,7 +220,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       {/* Background Music */}
       <audio 
         ref={bgMusicRef} 
-        src="/audio/menu-ost.mp3" 
+        src="/audio/title-game-ost-remix.mp3" 
         preload="auto"
         onCanPlayThrough={() => setBgMusicReady(true)}
         onLoadedData={() => setBgMusicReady(true)}
@@ -237,8 +237,8 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
 
       <div className="absolute inset-0">
         <Image
-          src="/images/the great order wallpaper.png"
-          alt="The Great Order Background"
+          src="/images/title-menu-wallpaper.png"
+          alt="Personagens principais de Gear Perks Card Game contra um ceu luminoso"
           fill
           sizes="100vw"
           className="object-cover object-center"
