@@ -394,19 +394,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
                 "drop-shadow(0 0 50px rgba(56,189,248,0.5)) drop-shadow(0 0 100px rgba(168,85,247,0.3)) drop-shadow(0 0 150px rgba(251,191,36,0.15))",
             }}
           />
-          {/* Shine sweep across the logo */}
-          <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
-            <div
-              className="absolute top-0 bottom-0 w-1/3"
-              style={{
-                background:
-                  "linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.28) 45%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0.28) 55%, transparent 100%)",
-                filter: "blur(4px)",
-                mixBlendMode: "overlay",
-                animation: "shineSweep 6s ease-in-out 2s infinite",
-              }}
-            />
-          </div>
         </div>
 
         {/* Divider line - expands on entrance */}
