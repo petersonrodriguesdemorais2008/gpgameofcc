@@ -5443,7 +5443,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             return
           }
 
-          // ── CHAMADA DA TÁVOLA: search deck for a Troop Unit and let player pick ──
+          // ���─ CHAMADA DA TÁVOLA: search deck for a Troop Unit and let player pick ──
           if (result.message === "CHAMADA_TAVOLA_SEARCH") {
             const isTroop = (c: GameCard) =>
               c.type === "troops" ||
@@ -8554,7 +8554,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
 
-            // ── TRAP CHECK: ESCUDO DE MANA ──────���─���───────────���───────────────
+            // ── TRAP CHECK: ESCUDO DE MANA ──────���─����───────────���───────────────
             // Ativa quando o bot usa Magic Function ou Item Function de dano.
             // Efeito: anula o efeito da carta e a destrói (manda para o cemitério
             // do bot sem aplicar o efeito).
@@ -10260,7 +10260,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (storyBattle) {
       // Update the result in localStorage so story mode can read it
       localStorage.setItem("gpgame_story_battle_pending",
-        JSON.stringify({ ...storyBattle, won: gameResult === "won" }))
+        JSON.stringify({ ...storyBattle, won: gameResult === "won", lpLeft: playerField.life }))
     }
 
     // ── Event Mode: recompensas próprias por dificuldade da fase ──────────────

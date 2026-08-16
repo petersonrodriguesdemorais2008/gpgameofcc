@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Coins, Gem, Gift, X, Play, Check } from "lucide-react"
+import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Coins, Gem, Gift, X, Play, Check, Scroll, Zap, FastForward, Map as MapIcon } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -223,6 +223,32 @@ const CHAPTER_CHESTS: ChapterChest[] = [
 ]
 
 const GALIO_IMG = "/images/fragments/fragmento-galio.png"
+const BOSS_IMG  = "/images/mefisto-foles.png"
+
+/** Custo de stamina da Varredura (Sweep) por tipo de fase. */
+const SWEEP_COST: Record<"battle" | "boss", number> = { battle: 5, boss: 10 }
+
+/** Calcula a avaliação (1–3 estrelas) de uma batalha com base no LP restante. */
+function computeBattleRating(lpLeft: number | undefined, lpMax: number): number {
+  if (lpLeft == null || !Number.isFinite(lpLeft)) return 3
+  if (lpLeft >= lpMax * 0.7)  return 3
+  if (lpLeft >= lpMax * 0.35) return 2
+  return 1
+}
+
+/** Fileira de 3 estrelas de desempenho (batalhas). */
+function RatingStars({ rating, size = 12 }: { rating: number; size?: number }) {
+  return (
+    <div style={{ display:"flex", gap:2, justifyContent:"center" }} aria-label={`${rating} de 3 estrelas`}>
+      {[1,2,3].map(i => (
+        <Star key={i} size={size}
+          color={i <= rating ? "#facc15" : "rgba(255,255,255,0.30)"}
+          fill={i <= rating ? "#facc15" : "transparent"}
+          style={i <= rating ? { filter:"drop-shadow(0 0 3px rgba(250,204,21,0.7))" } : undefined}/>
+      ))}
+    </div>
+  )
+}
 
 // ─── Preloader ────────────────────────────────────────────────────────────────
 
@@ -427,11 +453,17 @@ function DropRow({ kind, amount, obtained }: { kind: "gear" | "gacha" | "galio" 
 // ─── Stage Info Pop-up (drops da fase) ────────────────────────────────────────
 
 function StageInfoModal({
-  stage, completed, onPlay, onClose,
-}: { stage: Stage; completed: boolean; onPlay: () => void; onClose: () => void }) {
+  stage, completed, battleRating, stamina, onPlay, onSweep, onClose,
+}: {
+  stage: Stage; completed: boolean; battleRating: number; stamina: number
+  onPlay: () => void; onSweep: () => void; onClose: () => void
+}) {
   const drops = STAGE_DROPS[stage.type]
   const stars = STAGE_STARS[stage.type]
   const isBattle = stage.type === "battle" || stage.type === "boss"
+  const sweepCost   = isBattle ? SWEEP_COST[stage.type as "battle" | "boss"] : 0
+  const sweepReady  = isBattle && completed && battleRating >= 3
+  const sweepCanPay = stamina >= sweepCost
   const typeMeta = {
     scene:  { label: "Cena de História", color: "#c4b5fd", bg: "rgba(124,58,237,0.14)" },
     battle: { label: stage.preDialogue ? "Batalha com Diálogo" : "Batalha", color: "#93c5fd", bg: "rgba(37,99,235,0.14)" },
@@ -462,10 +494,23 @@ function StageInfoModal({
         </div>
 
         <h3 style={{ color:"#f1f5f9", fontWeight:900, fontSize:18, margin:"0 0 2px" }}>{stage.title}</h3>
-        <p style={{ color:"#64748b", fontSize:11, margin:"0 0 14px" }}>
+        <p style={{ color:"#64748b", fontSize:11, margin:"0 0 10px" }}>
           {stage.subtitle}{isBattle && stage.opponent ? ` — vs ${stage.opponent}` : ""}
           {completed ? "  ·  Concluída" : ""}
         </p>
+
+        {isBattle && (
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12,
+            background:"rgba(250,204,21,0.06)", border:"1px solid rgba(250,204,21,0.18)",
+            borderRadius:10, padding:"7px 12px" }}>
+            <RatingStars rating={completed ? battleRating : 0} size={16}/>
+            <span style={{ color:"#94a3b8", fontSize:11, fontWeight:600 }}>
+              {completed
+                ? (battleRating >= 3 ? "Desempenho perfeito!" : `Desempenho: ${battleRating}/3 — vença com mais LP para melhorar`)
+                : "Vença mantendo seu LP alto para ganhar até 3 estrelas"}
+            </span>
+          </div>
+        )}
 
         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
           <Gift size={13} color="#a78bfa"/>
@@ -502,6 +547,31 @@ function StageInfoModal({
             ? (isBattle ? "Batalhar novamente" : "Reassistir cena")
             : (isBattle ? "Iniciar" : "Assistir cena")}
         </button>
+
+        {sweepReady && (
+          <>
+            <button onClick={onSweep} disabled={!sweepCanPay}
+              style={{ width:"100%", padding:"11px 0", borderRadius:12, marginTop:8,
+                border:`1px solid ${sweepCanPay ? "rgba(250,204,21,0.45)" : "rgba(255,255,255,0.08)"}`,
+                cursor: sweepCanPay ? "pointer" : "default",
+                background: sweepCanPay ? "rgba(250,204,21,0.10)" : "rgba(255,255,255,0.04)",
+                color: sweepCanPay ? "#fde047" : "#475569",
+                fontWeight:900, fontSize:13,
+                display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              <FastForward size={14}/>
+              Varrer (coleta instantânea)
+              <span style={{ display:"flex", alignItems:"center", gap:3, fontSize:11,
+                color: sweepCanPay ? "#a3e635" : "#dc2626", fontWeight:800 }}>
+                <Zap size={11}/> -{sweepCost}
+              </span>
+            </button>
+            <p style={{ color:"#57534e", fontSize:9, margin:"6px 0 0", textAlign:"center", fontStyle:"italic" }}>
+              {sweepCanPay
+                ? "Liberado por ter 3 estrelas: receba os drops sem jogar a batalha."
+                : "Stamina insuficiente para varrer esta fase."}
+            </p>
+          </>
+        )}
       </div>
     </div>
   )
@@ -849,11 +919,12 @@ const MAP_NODES: MapNodeDef[] = [
 // ─── Board Map View (static — no zoom/pan) ───────────────────────────────────
 
 function StoryMapView({
-  stages, completedIds, onPress, onBack, stamina, maxStamina, staminaNextTickSeconds,
+  stages, completedIds, battleStars, onPress, onBack, stamina, maxStamina, staminaNextTickSeconds,
   earnedStars, claimedChests, onChestPress,
 }: {
   stages: Stage[]
   completedIds: Set<string>
+  battleStars: Record<string, number>
   onPress: (stage: Stage) => void
   onBack: () => void
   stamina: number
@@ -953,29 +1024,42 @@ function StoryMapView({
         const isNext      = nodeDef.stageId === nextStageId
         const isPlayer    = isStart ? playerNodeId === null : nodeDef.stageId === playerNodeId
 
+        const isBoss   = nodeDef.type === "boss"
+        const isScene  = nodeDef.type === "scene"
+        const isBattle = nodeDef.type === "battle"
+        // Boss é maior para dar impacto; cenas são menores (apenas história)
+        const size = isBoss ? 88 : isScene ? 50 : 64
+
+        const rating   = !isStart && nodeDef.stageId ? (battleStars[nodeDef.stageId] ?? 0) : 0
+        const canSweep = (isBattle || isBoss) && isCompleted && rating >= 3
+
         const palette = {
           start:  { bg:"#1e293b",                                 border:"#475569" },
           scene:  { bg:"linear-gradient(145deg,#3b0764,#5b21b6)", border:"#7c3aed" },
           battle: { bg:"linear-gradient(145deg,#172554,#1d4ed8)", border:"#2563eb" },
-          boss:   { bg:"linear-gradient(145deg,#450a0a,#991b1b)", border:"#dc2626" },
+          boss:   { bg:"linear-gradient(145deg,#450a0a,#991b1b)", border:"#f59e0b" },
         }[nodeDef.type]
 
-        const nodeBg = isCompleted
-          ? "linear-gradient(145deg,#14532d,#166534)"
-          : (!accessible && !isStart) ? "rgba(12,16,28,0.92)" : palette.bg
-        const nodeBd = isPlayer ? "#38bdf8" : isNext ? "#22c55e" : isCompleted ? "#22c55e"
-          : (!accessible && !isStart) ? "#1e293b" : palette.border
+        const nodeBg = (!accessible && !isStart) ? "rgba(12,16,28,0.92)"
+          : isCompleted && isScene ? "linear-gradient(145deg,#14532d,#166534)"
+          : palette.bg
+        const nodeBd = isPlayer ? "#38bdf8" : isNext ? "#22c55e"
+          : (!accessible && !isStart) ? "#1e293b"
+          : isCompleted && !isBoss ? "#22c55e"
+          : palette.border
         const nodeGlow = isPlayer
           ? "0 0 24px rgba(56,189,248,0.7),0 6px 16px rgba(0,0,0,0.6)"
           : isNext
           ? "0 0 24px rgba(34,197,94,0.7),0 6px 16px rgba(0,0,0,0.6)"
+          : isBoss && accessible
+          ? "0 0 26px rgba(220,38,38,0.55),0 6px 16px rgba(0,0,0,0.6)"
           : "0 4px 14px rgba(0,0,0,0.55)"
         const subColor = { boss:"#fca5a5", battle:"#93c5fd", scene:"#c4b5fd", start:"#94a3b8" }[nodeDef.type]
 
         return (
           <div key={nodeDef.stageId ?? "start"} style={{
             position:"absolute", left:`${nodeDef.x}%`, top:`${nodeDef.y}%`,
-            transform:"translate(-50%,-50%)", zIndex:10,
+            transform:"translate(-50%,-50%)", zIndex: isBoss ? 12 : 10,
             display:"flex", flexDirection:"column", alignItems:"center", gap:5,
           }}>
             {isNext && (
@@ -988,7 +1072,7 @@ function StoryMapView({
             {isPlayer && (
               <div style={{ position:"absolute", top:"50%", left:"50%",
                 transform:"translate(-50%,-50%)",
-                width:84, height:84, borderRadius:"50%",
+                width:size + 20, height:size + 20, borderRadius:"50%",
                 border:"2px solid #38bdf8",
                 animation:"storyPulseRing 1.8s ease-out infinite",
                 pointerEvents:"none" }}/>
@@ -996,37 +1080,86 @@ function StoryMapView({
             <button
               onClick={() => accessible && !isStart && stage ? onPress(stage) : undefined}
               disabled={!accessible || isStart}
+              aria-label={`${nodeDef.label}${isCompleted ? " — concluída" : !accessible && !isStart ? " — bloqueada" : ""}`}
               style={{
-                width:64, height:64, borderRadius:"50%",
-                background:nodeBg, border:`3px solid ${nodeBd}`,
+                width:size, height:size,
+                borderRadius: isScene ? 14 : "50%",
+                background:nodeBg, border:`${isBoss ? 4 : 3}px solid ${nodeBd}`,
                 display:"flex", alignItems:"center", justifyContent:"center",
                 cursor:accessible && !isStart ? "pointer" : "default",
                 boxShadow:nodeGlow,
                 opacity:!accessible && !isStart ? 0.42 : 1,
                 transition:"transform .15s", position:"relative", flexShrink:0, outline:"none",
+                overflow:"visible", padding:0,
               }}
               onMouseEnter={e=>{ if(accessible&&!isStart)(e.currentTarget as HTMLButtonElement).style.transform="scale(1.10)" }}
               onMouseLeave={e=>{ (e.currentTarget as HTMLButtonElement).style.transform="scale(1)" }}
             >
               {isPlayer && (
-                <div style={{ position:"absolute", inset:-5, borderRadius:"50%",
+                <div style={{ position:"absolute", inset:-5, borderRadius: isScene ? 18 : "50%",
                   border:"2px solid #38bdf8", boxShadow:"0 0 12px rgba(56,189,248,0.9)",
                   pointerEvents:"none" }}/>
               )}
+
+              {/* Conteúdo central do nó */}
               {isStart ? (
                 <Home size={26} color="#94a3b8"/>
-              ) : isCompleted ? (
-                <span style={{color:"#4ade80",fontSize:26,fontWeight:900,lineHeight:1}}>✓</span>
+              ) : isBoss ? (
+                <>
+                  {/* Retrato do Mefisto dentro do círculo */}
+                  <img src={BOSS_IMG || "/placeholder.svg"} alt="" aria-hidden="true"
+                    onError={e => { e.currentTarget.style.display = "none" }}
+                    style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+                      borderRadius:"50%", objectFit:"cover", objectPosition:"center top",
+                      filter: !accessible ? "grayscale(1) brightness(0.35)" : "none" }}/>
+                  {!accessible && (
+                    <Lock size={26} color="#94a3b8" style={{ position:"relative", zIndex:2 }}/>
+                  )}
+                  {/* Faixa "BOSS" */}
+                  <div style={{ position:"absolute", top:-11, left:"50%", transform:"translateX(-50%)",
+                    background:"linear-gradient(135deg,#991b1b,#dc2626)", borderRadius:6,
+                    border:"1px solid rgba(245,158,11,0.7)", padding:"1px 8px", zIndex:3 }}>
+                    <span style={{ color:"#fde68a", fontSize:8, fontWeight:900, letterSpacing:".14em" }}>BOSS</span>
+                  </div>
+                </>
               ) : !accessible ? (
-                <Lock size={22} color="#334155"/>
-              ) : nodeDef.type==="scene" ? (
-                <BookOpen size={24} color="#c4b5fd"/>
-              ) : nodeDef.type==="boss" ? (
-                <Swords size={24} color="#fca5a5"/>
+                <Lock size={isScene ? 17 : 22} color="#334155"/>
+              ) : isScene ? (
+                <Scroll size={20} color={isCompleted ? "#86efac" : "#c4b5fd"}/>
               ) : (
-                <Swords size={24} color="#93c5fd"/>
+                <Swords size={24} color={isCompleted ? "#86efac" : "#93c5fd"}/>
+              )}
+
+              {/* Badge de concluído (check no canto, mantendo o ícone do tipo visível) */}
+              {isCompleted && (
+                <div style={{ position:"absolute", bottom:-4, right:-4, width:20, height:20,
+                  borderRadius:"50%", background:"#14532d", border:"2px solid #22c55e",
+                  display:"flex", alignItems:"center", justifyContent:"center", zIndex:3,
+                  boxShadow:"0 2px 6px rgba(0,0,0,0.6)" }}>
+                  <Check size={11} color="#4ade80" strokeWidth={3.5}/>
+                </div>
+              )}
+
+              {/* Badge de Varredura liberada (3 estrelas) */}
+              {canSweep && (
+                <div title="Varredura liberada — 3 estrelas"
+                  style={{ position:"absolute", top:-4, left:-4, width:20, height:20,
+                    borderRadius:"50%", background:"#422006", border:"2px solid #facc15",
+                    display:"flex", alignItems:"center", justifyContent:"center", zIndex:3,
+                    boxShadow:"0 0 8px rgba(250,204,21,0.6)" }}>
+                  <FastForward size={10} color="#fde047"/>
+                </div>
               )}
             </button>
+
+            {/* Avaliação de 3 estrelas (batalhas e boss) */}
+            {(isBattle || isBoss) && (accessible || isCompleted) && (
+              <div style={{ background:"rgba(2,6,16,0.80)", borderRadius:8, padding:"2px 7px",
+                marginTop:-1 }}>
+                <RatingStars rating={rating} size={isBoss ? 13 : 11}/>
+              </div>
+            )}
+
             <div style={{ background:"rgba(2,6,16,0.88)", border:"1px solid rgba(255,255,255,0.10)",
               borderRadius:8, padding:"3px 8px", textAlign:"center", maxWidth:112 }}>
               {nodeDef.sublabel && (
@@ -1069,10 +1202,11 @@ function StoryMapView({
             {earnedStars}<span style={{color:"#78591a",fontWeight:600,fontSize:10}}>/{TOTAL_STARS}</span>
           </span>
         </div>
-        <div style={{ display:"flex",alignItems:"center",gap:5,
+        <div title="Energia — gasta ao iniciar batalhas e varrer fases"
+          style={{ display:"flex",alignItems:"center",gap:5,
           background:"rgba(3,20,10,0.85)", border:"1px solid rgba(16,185,129,0.22)",
           borderRadius:9, padding:"5px 11px" }}>
-          <span style={{fontSize:11,color:"#34d399"}}>⚡</span>
+          <Zap size={12} color="#34d399" fill="#34d399"/>
           <span style={{fontWeight:900,fontSize:13,color:"#6ee7b7"}}>
             {stamina}<span style={{color:"#065f46",fontWeight:600,fontSize:10}}>/{maxStamina}</span>
           </span>
@@ -1082,12 +1216,17 @@ function StoryMapView({
             </span>
           )}
         </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontSize:11,fontWeight:900,color:"#a78bfa",marginBottom:3}}>{done}/{total}</div>
+        <div title="Fases concluídas do capítulo" style={{textAlign:"right"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4,marginBottom:3}}>
+            <MapIcon size={11} color="#a78bfa"/>
+            <span style={{fontSize:11,fontWeight:900,color:"#a78bfa"}}>{done}/{total}</span>
+          </div>
           <div style={{width:44,height:4,borderRadius:99,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}>
             <div style={{height:"100%",width:`${progPct}%`,borderRadius:99,
               background:"linear-gradient(90deg,#7c3aed,#a855f7)",transition:"width 0.6s"}}/>
           </div>
+          <div style={{fontSize:8,fontWeight:700,color:"#64748b",letterSpacing:".08em",
+            textTransform:"uppercase",marginTop:2}}>Fases</div>
         </div>
       </div>
 
@@ -1106,18 +1245,41 @@ function StoryMapView({
 
       {/* ── Legend ── */}
       <div style={{ position:"absolute",left:12,bottom:72,zIndex:50,
-        background:"rgba(2,6,16,0.82)",border:"1px solid rgba(255,255,255,0.07)",
-        borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",gap:5 }}>
+        background:"rgba(2,6,16,0.92)",border:"1px solid rgba(255,255,255,0.14)",
+        borderRadius:12,padding:"10px 12px",display:"flex",flexDirection:"column",gap:8,
+        backdropFilter:"blur(10px)", boxShadow:"0 4px 18px rgba(0,0,0,0.5)" }}>
+        <span style={{ fontSize:9, fontWeight:900, letterSpacing:".12em", textTransform:"uppercase",
+          color:"rgba(255,255,255,0.55)" }}>Legenda</span>
         {([
-          { icon:<Swords size={11} color="#93c5fd"/>, label:"Batalha" },
-          { icon:<BookOpen size={11} color="#c4b5fd"/>, label:"Cena" },
-          { icon:<Swords size={11} color="#fca5a5"/>, label:"Boss" },
+          { swatch:{ bg:"linear-gradient(145deg,#172554,#1d4ed8)", bd:"#3b82f6", round:"50%" },
+            icon:<Swords size={13} color="#bfdbfe"/>, label:"Batalha" },
+          { swatch:{ bg:"linear-gradient(145deg,#3b0764,#5b21b6)", bd:"#8b5cf6", round:"7px" },
+            icon:<Scroll size={13} color="#ddd6fe"/>, label:"Cena (história)" },
+          { swatch:{ bg:"linear-gradient(145deg,#450a0a,#991b1b)", bd:"#f59e0b", round:"50%" },
+            icon:<Swords size={13} color="#fecaca"/>, label:"Boss" },
         ] as const).map(item=>(
-          <div key={item.label} style={{display:"flex",alignItems:"center",gap:5}}>
-            {item.icon}
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.50)",fontWeight:600}}>{item.label}</span>
+          <div key={item.label} style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{ width:24, height:24, borderRadius:item.swatch.round,
+              background:item.swatch.bg, border:`2px solid ${item.swatch.bd}`,
+              display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              {item.icon}
+            </div>
+            <span style={{fontSize:11,color:"rgba(255,255,255,0.85)",fontWeight:700}}>{item.label}</span>
           </div>
         ))}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{ width:24, height:24, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <Star size={15} color="#facc15" fill="#facc15"/>
+          </div>
+          <span style={{fontSize:11,color:"rgba(255,255,255,0.85)",fontWeight:700}}>Desempenho na batalha</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{ width:24, height:24, borderRadius:"50%", background:"#422006",
+            border:"2px solid #facc15", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <FastForward size={11} color="#fde047"/>
+          </div>
+          <span style={{fontSize:11,color:"rgba(255,255,255,0.85)",fontWeight:700}}>Varredura (3★)</span>
+        </div>
       </div>
 
       {/* ── Chapter chest progress bar ── */}
@@ -1154,6 +1316,7 @@ function StoryMapView({
 const LS_KEY        = "gpgame_story_progress"
 const LS_BATTLE_KEY = "gpgame_story_battle_pending"
 const LS_CHESTS_KEY = "gpgame_story_chests_c1"
+const LS_STARS_KEY  = "gpgame_story_battle_stars_c1"
 
 /** O que fazer quando a cena ativa terminar. */
 type SceneFlow =
@@ -1162,7 +1325,7 @@ type SceneFlow =
   | { kind: "post";  stageId: string; won: boolean }   // diálogo pós-batalha → resultado
 
 export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScreenProps) {
-  const { stamina, maxStamina, staminaNextTickSeconds, addCoins, setGearCoins, addFragments } = useGame()
+  const { stamina, maxStamina, staminaNextTickSeconds, addCoins, setGearCoins, addFragments, spendStamina } = useGame()
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
@@ -1171,6 +1334,10 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   const [claimedChests, setClaimedChests] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try { const s = localStorage.getItem(LS_CHESTS_KEY); return s ? new Set(JSON.parse(s)) : new Set() } catch { return new Set() }
+  })
+  const [battleStars, setBattleStars] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return {}
+    try { const s = localStorage.getItem(LS_STARS_KEY); return s ? JSON.parse(s) : {} } catch { return {} }
   })
 
   const [activeScene,  setActiveScene]  = useState<Scene | null>(null)
