@@ -316,14 +316,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           priority
           quality={75}
         />
-        <div
-          className="absolute inset-0"
-          style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 100%)" }}
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 h-56"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }}
-        />
       </div>
       </div>
 
