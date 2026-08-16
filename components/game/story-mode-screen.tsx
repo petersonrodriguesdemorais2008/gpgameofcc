@@ -609,8 +609,35 @@ function StageInfoModal({
 function ChestClaimModal({
   chest, canClaim, claimed, onClaim, onClose,
 }: { chest: ChapterChest; canClaim: boolean; claimed: boolean; onClaim: () => void; onClose: () => void }) {
+  // Fases da animação de coleta: idle → shake (tremor) → burst (explosão de luz) → done
+  const [openPhase, setOpenPhase] = useState<"idle" | "shake" | "burst">("idle")
+  const [justOpened, setJustOpened] = useState(false)
+  const opening = openPhase !== "idle"
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
+
+  const handleClaimClick = () => {
+    if (!canClaim || opening) return
+    setOpenPhase("shake")
+    timers.current.push(setTimeout(() => {
+      setOpenPhase("burst")
+      setJustOpened(true)
+      onClaim()
+    }, 520))
+    timers.current.push(setTimeout(() => setOpenPhase("idle"), 1450))
+  }
+
+  const handleClose = () => { if (!opening) onClose() }
+
+  const rewardEntries = ([
+    chest.rewards.gacha ? { kind: "gacha" as const, amount: chest.rewards.gacha } : null,
+    chest.rewards.gear  ? { kind: "gear"  as const, amount: chest.rewards.gear  } : null,
+    chest.rewards.galio ? { kind: "galio" as const, amount: chest.rewards.galio } : null,
+  ]).filter(Boolean) as { kind: "gacha" | "gear" | "galio"; amount: number }[]
+
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:250,
+    <div onClick={handleClose} style={{ position:"fixed", inset:0, zIndex:250,
       background:"rgba(0,0,0,0.72)", backdropFilter:"blur(8px)",
       display:"flex", alignItems:"center", justifyContent:"center",
       fontFamily:"'Segoe UI',system-ui,sans-serif", padding:20 }}>
@@ -618,35 +645,111 @@ function ChestClaimModal({
         background:"linear-gradient(165deg,#151007,#0b0803)",
         border:"1px solid rgba(234,179,8,0.30)", borderRadius:18,
         padding:"22px 18px 18px", textAlign:"center",
-        boxShadow:"0 20px 60px rgba(0,0,0,0.6)", position:"relative" }}>
+        boxShadow:"0 20px 60px rgba(0,0,0,0.6)", position:"relative", overflow:"hidden" }}>
 
-        <button onClick={onClose} aria-label="Fechar"
+        <button onClick={handleClose} aria-label="Fechar"
           style={{ position:"absolute", top:12, right:12, background:"rgba(255,255,255,0.06)",
             border:"1px solid rgba(255,255,255,0.10)", borderRadius:8, width:28, height:28,
-            display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+            display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", zIndex:6 }}>
           <X size={14} color="#94a3b8"/>
         </button>
 
         <div style={{ width:112, height:112, margin:"0 auto 8px", position:"relative",
           display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ position:"absolute", inset:8, borderRadius:"50%",
-            background: claimed
+            background: claimed && !opening
               ? "radial-gradient(circle,rgba(34,197,94,0.22) 0%,transparent 70%)"
               : "radial-gradient(circle,rgba(234,179,8,0.30) 0%,transparent 70%)",
-            animation: claimed ? undefined : "chestGlow 2.2s ease-in-out infinite" }}/>
+            animation: claimed && !opening ? undefined : "chestGlow 2.2s ease-in-out infinite" }}/>
+
           <img src={CHEST_ART[chest.id] || "/placeholder.svg"} alt={chest.label}
             onError={e => { e.currentTarget.style.display = "none" }}
-            style={{ width:"100%", height:"100%", objectFit:"contain", position:"relative",
-              filter: claimed ? "grayscale(0.5) brightness(0.75)" : "drop-shadow(0 6px 16px rgba(0,0,0,0.6))" }}/>
-          {claimed && (
-            <div style={{ position:"absolute", bottom:2, right:2, width:28, height:28,
+            style={{ width:"100%", height:"100%", objectFit:"contain", position:"relative", zIndex:2,
+              filter: claimed && !opening
+                ? "grayscale(0.5) brightness(0.75)"
+                : openPhase === "burst"
+                ? "drop-shadow(0 0 22px rgba(250,204,21,0.95)) brightness(1.25)"
+                : "drop-shadow(0 6px 16px rgba(0,0,0,0.6))",
+              animation: openPhase === "shake"
+                ? "chestShakeAnim 0.52s ease-in-out"
+                : openPhase === "burst"
+                ? "chestPopAnim 0.55s cubic-bezier(.34,1.56,.64,1)"
+                : undefined,
+              transition:"filter 0.35s ease" }}/>
+
+          {/* Explosão de luz + raios + partículas na coleta */}
+          {openPhase === "burst" && (
+            <>
+              <div aria-hidden="true" style={{ position:"absolute", inset:-8, borderRadius:"50%", zIndex:3,
+                background:"radial-gradient(circle,rgba(255,247,214,0.95) 0%,rgba(250,204,21,0.55) 40%,transparent 70%)",
+                animation:"chestFlash 0.65s ease-out forwards", pointerEvents:"none" }}/>
+              <div aria-hidden="true" style={{ position:"absolute", inset:-22, zIndex:1,
+                background:"conic-gradient(from 0deg, rgba(250,204,21,0.55) 0deg 9deg, transparent 9deg 45deg, rgba(250,204,21,0.45) 45deg 54deg, transparent 54deg 90deg, rgba(250,204,21,0.55) 90deg 99deg, transparent 99deg 135deg, rgba(250,204,21,0.45) 135deg 144deg, transparent 144deg 180deg, rgba(250,204,21,0.55) 180deg 189deg, transparent 189deg 225deg, rgba(250,204,21,0.45) 225deg 234deg, transparent 234deg 270deg, rgba(250,204,21,0.55) 270deg 279deg, transparent 279deg 315deg, rgba(250,204,21,0.45) 315deg 324deg, transparent 324deg 360deg)",
+                borderRadius:"50%", animation:"chestRays 0.9s ease-out forwards", pointerEvents:"none" }}/>
+              {Array.from({ length: 14 }).map((_, i) => {
+                const ang  = (i / 14) * Math.PI * 2 + (i % 2 ? 0.22 : 0)
+                const dist = 58 + (i % 3) * 24
+                const sz   = i % 2 ? 7 : 4
+                return (
+                  <div key={i} aria-hidden="true" style={{
+                    position:"absolute", left:"50%", top:"50%", width:sz, height:sz, zIndex:4,
+                    borderRadius:"50%",
+                    background: i % 3 === 0 ? "#fff7d6" : i % 3 === 1 ? "#fde047" : "#fbbf24",
+                    boxShadow:"0 0 9px rgba(250,204,21,0.9)",
+                    ["--tx" as string]: `${Math.round(Math.cos(ang) * dist)}px`,
+                    ["--ty" as string]: `${Math.round(Math.sin(ang) * dist)}px`,
+                    animation:`chestParticle 0.85s cubic-bezier(.17,.67,.35,1) ${i * 0.018}s forwards`,
+                    pointerEvents:"none" }}/>
+                )
+              })}
+            </>
+          )}
+
+          {claimed && !opening && (
+            <div style={{ position:"absolute", bottom:2, right:2, width:28, height:28, zIndex:5,
               borderRadius:"50%", background:"#14532d", border:"2px solid #22c55e",
-              display:"flex", alignItems:"center", justifyContent:"center" }}>
+              display:"flex", alignItems:"center", justifyContent:"center",
+              animation: justOpened ? "chestCheckPop 0.4s cubic-bezier(.34,1.56,.64,1) both" : undefined }}>
               <Check size={15} color="#4ade80" strokeWidth={3}/>
             </div>
           )}
         </div>
-        <style>{`@keyframes chestGlow { 0%,100% { opacity:0.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }`}</style>
+        <style>{`
+          @keyframes chestGlow { 0%,100% { opacity:0.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }
+          @keyframes chestShakeAnim {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            15% { transform: rotate(-7deg) scale(1.02); }
+            30% { transform: rotate(6deg)  scale(1.04); }
+            45% { transform: rotate(-6deg) scale(1.06); }
+            60% { transform: rotate(5deg)  scale(1.08); }
+            80% { transform: rotate(-3deg) scale(1.10); }
+          }
+          @keyframes chestPopAnim {
+            0%   { transform: scale(0.88); }
+            45%  { transform: scale(1.26); }
+            100% { transform: scale(1); }
+          }
+          @keyframes chestFlash {
+            0%   { opacity: 0.95; transform: scale(0.45); }
+            100% { opacity: 0;    transform: scale(2.1);  }
+          }
+          @keyframes chestRays {
+            0%   { opacity: 0.9; transform: scale(0.5) rotate(0deg);  }
+            100% { opacity: 0;   transform: scale(1.9) rotate(28deg); }
+          }
+          @keyframes chestParticle {
+            0%   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+            100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.25); }
+          }
+          @keyframes chestCheckPop {
+            from { opacity: 0; transform: scale(0.3); }
+            to   { opacity: 1; transform: scale(1);   }
+          }
+          @keyframes chestRewardIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to   { opacity: 1; transform: translateY(0)    scale(1);    }
+          }
+        `}</style>
 
         <h3 style={{ color:"#fbbf24", fontWeight:900, fontSize:17, margin:"0 0 2px" }}>{chest.label}</h3>
         <p style={{ color:"#78716c", fontSize:11, margin:"0 0 14px", display:"flex",
@@ -655,15 +758,24 @@ function ChestClaimModal({
         </p>
 
         <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:16, textAlign:"left" }}>
-          {chest.rewards.gacha ? <DropRow kind="gacha" amount={chest.rewards.gacha} obtained={claimed}/> : null}
-          {chest.rewards.gear  ? <DropRow kind="gear"  amount={chest.rewards.gear}  obtained={claimed}/> : null}
-          {chest.rewards.galio ? <DropRow kind="galio" amount={chest.rewards.galio} obtained={claimed}/> : null}
+          {rewardEntries.map((r, i) => (
+            <div key={r.kind} style={ justOpened
+              ? { animation:`chestRewardIn 0.45s cubic-bezier(.34,1.56,.64,1) ${0.35 + i * 0.13}s both` }
+              : undefined }>
+              <DropRow kind={r.kind} amount={r.amount} obtained={claimed}/>
+            </div>
+          ))}
         </div>
 
-        {claimed ? (
-          <p style={{ color:"#4ade80", fontSize:12, fontWeight:800, margin:0 }}>Recompensas coletadas!</p>
+        {claimed && !opening ? (
+          <p style={{ color:"#4ade80", fontSize:12, fontWeight:800, margin:0,
+            animation: justOpened ? "chestRewardIn 0.45s ease 0.7s both" : undefined }}>
+            Recompensas coletadas!
+          </p>
+        ) : opening ? (
+          <p style={{ color:"#fde047", fontSize:12, fontWeight:800, margin:0 }}>Abrindo baú...</p>
         ) : (
-          <button onClick={onClaim} disabled={!canClaim}
+          <button onClick={handleClaimClick} disabled={!canClaim}
             style={{ width:"100%", padding:"13px 0", borderRadius:12, border:"none",
               background: canClaim ? "linear-gradient(135deg,#a16207,#eab308)" : "rgba(255,255,255,0.06)",
               color: canClaim ? "#1a1206" : "#475569",
@@ -762,7 +874,7 @@ function ChestProgressBar({
   )
 }
 
-// ─── Battle Intro ──────────────────────────────────────────────���──────────────
+// ─── Battle Intro ──────────────────────────────────────────────�����──────────────
 
 function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()=>void; onBack:()=>void }) {
   const { stamina, maxStamina } = useGame()
@@ -899,7 +1011,7 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
   )
 }
 
-// ─── Post-Battle Result ────────────��───────────────────────────────────────────
+// ─── Post-Battle Result ──────────��─��───────────────────────────────────────────
 
 function PostBattleScreen({
   won, rewards, onReturnStory, onContinue,
@@ -1121,21 +1233,36 @@ function StoryMapView({
       <div style={{ position:"absolute", inset:0, pointerEvents:"none",
         background:"linear-gradient(160deg,rgba(3,6,14,0.38) 0%,rgba(3,6,14,0.14) 50%,rgba(3,6,14,0.46) 100%)" }}/>
 
-      {/* ── SVG path lines (trilha suave em curvas com brilho e fluxo de energia) ── */}
+      {/* ── SVG path lines (trilha épica em curvas com aura, fluxo de energia e orbes) ── */}
       <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%",
         pointerEvents:"none", zIndex:5, overflow:"visible" }}>
         <defs>
           <linearGradient id="storyPathLit" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%"   stopColor="#c084fc"/>
-            <stop offset="50%"  stopColor="#8b5cf6"/>
-            <stop offset="100%" stopColor="#a78bfa"/>
+            <stop offset="0%"   stopColor="#e9d5ff"/>
+            <stop offset="30%"  stopColor="#c084fc"/>
+            <stop offset="55%"  stopColor="#8b5cf6"/>
+            <stop offset="80%"  stopColor="#a78bfa"/>
+            <stop offset="100%" stopColor="#ddd6fe"/>
           </linearGradient>
+          <linearGradient id="storyPathCore" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="rgba(255,255,255,0.0)"/>
+            <stop offset="50%"  stopColor="rgba(255,255,255,0.85)"/>
+            <stop offset="100%" stopColor="rgba(255,255,255,0.0)"/>
+          </linearGradient>
+          <radialGradient id="storyOrb" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#ffffff"/>
+            <stop offset="35%"  stopColor="#e9d5ff"/>
+            <stop offset="100%" stopColor="rgba(168,85,247,0)"/>
+          </radialGradient>
           <filter id="storyPathGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="4.5" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
+          </filter>
+          <filter id="storyPathAura" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="9"/>
           </filter>
         </defs>
         {MAP_NODES.slice(0, -1).map((node, i) => {
@@ -1157,29 +1284,56 @@ function StoryMapView({
             <g key={`seg-${i}`}>
               {/* Contorno escuro (profundidade da trilha) */}
               <path d={d} fill="none" stroke="rgba(0,0,0,0.60)"
-                strokeWidth={lit ? 10 : 8} strokeLinecap="round"
+                strokeWidth={lit ? 11 : 8} strokeLinecap="round"
                 opacity={lit ? 0.9 : 0.4}/>
               {lit ? (
                 <>
+                  {/* Aura ampla e difusa (respiração suave) */}
+                  <path d={d} fill="none" stroke="rgba(168,85,247,0.35)" strokeWidth={16}
+                    strokeLinecap="round" filter="url(#storyPathAura)"
+                    style={{ animation:"storyAuraBreath 3.4s ease-in-out infinite" }}/>
                   {/* Halo luminoso */}
-                  <path d={d} fill="none" stroke="rgba(168,85,247,0.50)" strokeWidth={8}
+                  <path d={d} fill="none" stroke="rgba(168,85,247,0.55)" strokeWidth={8}
                     strokeLinecap="round" filter="url(#storyPathGlow)"/>
                   {/* Trilho principal em gradiente */}
                   <path d={d} fill="none" stroke="url(#storyPathLit)" strokeWidth={4.5}
                     strokeLinecap="round"/>
+                  {/* Filete de luz central */}
+                  <path d={d} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth={1.4}
+                    strokeLinecap="round"/>
                   {/* Fluxo de energia percorrendo a trilha */}
-                  <path d={d} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2}
-                    strokeLinecap="round" strokeDasharray="4 21"
-                    style={{ animation:"storyFlow 1.5s linear infinite" }}/>
+                  <path d={d} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.2}
+                    strokeLinecap="round" strokeDasharray="5 22"
+                    style={{ animation:"storyFlow 1.6s linear infinite" }}/>
+                  {/* Orbe de energia viajando pela trilha */}
+                  <circle r={5.5} fill="url(#storyOrb)" opacity={0.95}>
+                    <animateMotion dur={`${2.4 + (i % 3) * 0.5}s`} repeatCount="indefinite"
+                      path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear"
+                      begin={`${(i * 0.45) % 2}s`}/>
+                  </circle>
                 </>
               ) : (
-                <path d={d} fill="none"
-                  stroke={isNextSeg ? "#8b5cf6" : "#3b0764"}
-                  strokeWidth={isNextSeg ? 4 : 3.5} strokeLinecap="round"
-                  strokeDasharray="1 14"
-                  opacity={isNextSeg ? 0.95 : 0.42}
-                  style={isNextSeg ? { animation:"storyFlow 2.2s linear infinite",
-                    filter:"drop-shadow(0 0 5px rgba(139,92,246,0.8))" } : undefined}/>
+                <>
+                  <path d={d} fill="none"
+                    stroke={isNextSeg ? "#8b5cf6" : "#3b0764"}
+                    strokeWidth={isNextSeg ? 4.5 : 3.5} strokeLinecap="round"
+                    strokeDasharray="1 14"
+                    opacity={isNextSeg ? 0.95 : 0.42}
+                    style={isNextSeg ? { animation:"storyFlow 2.2s linear infinite",
+                      filter:"drop-shadow(0 0 6px rgba(139,92,246,0.9))" } : undefined}/>
+                  {isNextSeg && (
+                    <>
+                      {/* Convite sutil: brilho pulsante no segmento da próxima fase */}
+                      <path d={d} fill="none" stroke="rgba(139,92,246,0.30)" strokeWidth={9}
+                        strokeLinecap="round" filter="url(#storyPathGlow)"
+                        style={{ animation:"storyAuraBreath 2.4s ease-in-out infinite" }}/>
+                      <circle r={4} fill="url(#storyOrb)" opacity={0.85}>
+                        <animateMotion dur="2.8s" repeatCount="indefinite" path={d}
+                          keyPoints="0;1" keyTimes="0;1" calcMode="linear"/>
+                      </circle>
+                    </>
+                  )}
+                </>
               )}
             </g>
           )
@@ -1251,6 +1405,14 @@ function StoryMapView({
                 border:"2px solid #38bdf8",
                 animation:"storyPulseRing 1.8s ease-out infinite",
                 pointerEvents:"none" }}/>
+            )}
+            {isNext && (
+              <div style={{ position:"absolute", top:"50%", left:"50%",
+                width:size + 26, height:size + 26, borderRadius:"50%",
+                border:"2px dashed rgba(74,222,128,0.85)",
+                boxShadow:"0 0 14px rgba(34,197,94,0.35)",
+                animation:"storySpinRing 7s linear infinite",
+                pointerEvents:"none", zIndex:1 }}/>
             )}
             <button
               onClick={() => accessible && !isStart && stage ? onPress(stage) : undefined}
@@ -1345,12 +1507,22 @@ function StoryMapView({
             )}
 
             <div style={{
-              background:"linear-gradient(180deg,rgba(14,18,34,0.92) 0%,rgba(2,6,16,0.94) 100%)",
-              border:`1px solid ${accessible || isStart ? "rgba(139,92,246,0.40)" : "rgba(255,255,255,0.08)"}`,
-              borderRadius:9, padding:"3px 9px", textAlign:"center", maxWidth:112,
-              backdropFilter:"blur(6px)",
-              boxShadow:"0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
-              transition:"border-color .3s ease" }}>
+              background:"linear-gradient(180deg,rgba(20,25,45,0.94) 0%,rgba(2,6,16,0.96) 100%)",
+              border:`1px solid ${isNext ? "rgba(74,222,128,0.55)"
+                : accessible || isStart ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.08)"}`,
+              borderRadius:10, padding:"4px 10px", textAlign:"center", maxWidth:116,
+              backdropFilter:"blur(8px)", position:"relative",
+              boxShadow: isNext
+                ? "0 3px 14px rgba(0,0,0,0.55), 0 0 14px rgba(34,197,94,0.25), inset 0 1px 0 rgba(255,255,255,0.10)"
+                : accessible || isStart
+                ? "0 3px 14px rgba(0,0,0,0.55), 0 0 10px rgba(139,92,246,0.18), inset 0 1px 0 rgba(255,255,255,0.10)"
+                : "0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)",
+              transition:"border-color .35s ease, box-shadow .35s ease" }}>
+              {/* Filete decorativo no topo da plaqueta */}
+              {(accessible || isStart) && (
+                <div aria-hidden="true" style={{ position:"absolute", top:0, left:"18%", right:"18%", height:1,
+                  background:`linear-gradient(90deg,transparent,${isNext ? "rgba(74,222,128,0.8)" : "rgba(196,181,253,0.7)"},transparent)` }}/>
+              )}
               {nodeDef.sublabel && (
                 <div style={{ fontSize:8, fontWeight:900, textTransform:"uppercase",
                   letterSpacing:".08em", lineHeight:1.4, color:subColor }}>{nodeDef.sublabel}</div>
@@ -1496,7 +1668,15 @@ function StoryMapView({
           50%       { transform: translateY(-4px); }
         }
         @keyframes storyFlow {
-          to { stroke-dashoffset: -75; }
+          to { stroke-dashoffset: -135; }
+        }
+        @keyframes storyAuraBreath {
+          0%, 100% { opacity: 0.45; }
+          50%      { opacity: 1;    }
+        }
+        @keyframes storySpinRing {
+          from { transform: translate(-50%,-50%) rotate(0deg);   }
+          to   { transform: translate(-50%,-50%) rotate(360deg); }
         }
         @keyframes storyNodeIn {
           from { opacity: 0; transform: translate(-50%,-50%) scale(0.55); }
