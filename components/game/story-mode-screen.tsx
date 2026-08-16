@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Coins, Gem, Gift, X, Play, Check, Scroll, Zap, FastForward, Map as MapIcon } from "lucide-react"
+import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Gift, X, Play, Check, Scroll, Zap, FastForward, Map as MapIcon } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -222,8 +222,33 @@ const CHAPTER_CHESTS: ChapterChest[] = [
   { id: "c1chest3", stars: TOTAL_STARS, label: "Baú de Ouro", rewards: { gacha: 500, gear: 500 } },
 ]
 
-const GALIO_IMG = "/images/fragments/fragmento-galio.png"
+/** Artes dos baús de capítulo, na mesma ordem de CHAPTER_CHESTS. */
+const CHEST_ART: Record<string, string> = {
+  c1chest1: "/images/chests/bau-bronze.png",
+  c1chest2: "/images/chests/bau-prata.png",
+  c1chest3: "/images/chests/bau-ouro.png",
+}
+
+/** Artes oficiais dos itens/moedas do jogo. */
+const ITEM_ART = {
+  gear:  "/images/gear-coin.png",
+  gacha: "/images/icons/gacha-coin.png",
+  galio: "/images/fragments/fragmento-galio.png",
+} as const
+
+const GALIO_IMG = ITEM_ART.galio
 const BOSS_IMG  = "/images/mefisto-foles.png"
+
+/** Ícone de item com a arte oficial e brilho na cor do recurso. */
+function ItemIcon({ kind, size = 20 }: { kind: keyof typeof ITEM_ART; size?: number }) {
+  const glow = { gear: "rgba(251,191,36,0.55)", gacha: "rgba(192,132,252,0.55)", galio: "rgba(226,232,240,0.45)" }[kind]
+  return (
+    <img src={ITEM_ART[kind] || "/placeholder.svg"} alt="" aria-hidden="true"
+      onError={e => { e.currentTarget.style.display = "none" }}
+      style={{ width:size, height:size, objectFit:"contain", flexShrink:0,
+        filter:`drop-shadow(0 0 5px ${glow})` }}/>
+  )
+}
 
 /** Custo de stamina da Varredura (Sweep) por tipo de fase. */
 const SWEEP_COST: Record<"battle" | "boss", number> = { battle: 5, boss: 10 }
@@ -421,29 +446,31 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
 
 function DropRow({ kind, amount, obtained }: { kind: "gear" | "gacha" | "galio" | "star"; amount: number; obtained?: boolean }) {
   const meta = {
-    gear:  { label: "Ouro (Gear Coins)",     color: "#fbbf24" },
-    gacha: { label: "Moedas de Gacha",       color: "#c084fc" },
-    galio: { label: "Fragmentos de Gálio",   color: "#e2e8f0" },
-    star:  { label: "Estrelas de Capítulo",  color: "#facc15" },
+    gear:  { label: "Gear Coins",           color: "#fbbf24", frame: "rgba(251,191,36,0.28)",  frameBg: "rgba(251,191,36,0.08)" },
+    gacha: { label: "Gacha Coins",          color: "#c084fc", frame: "rgba(192,132,252,0.28)", frameBg: "rgba(192,132,252,0.08)" },
+    galio: { label: "Fragmentos de Gálio",  color: "#e2e8f0", frame: "rgba(226,232,240,0.22)", frameBg: "rgba(226,232,240,0.06)" },
+    star:  { label: "Estrelas de Capítulo", color: "#facc15", frame: "rgba(250,204,21,0.28)",  frameBg: "rgba(250,204,21,0.08)" },
   }[kind]
 
   return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-      background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)",
-      borderRadius:10, padding:"8px 12px" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-        {kind === "gear"  && <Coins size={16} color={meta.color}/>}
-        {kind === "gacha" && <Gem size={16} color={meta.color}/>}
-        {kind === "star"  && <Star size={16} color={meta.color} fill={meta.color}/>}
-        {kind === "galio" && (
-          <img src={GALIO_IMG || "/placeholder.svg"} alt="" aria-hidden="true"
-            style={{ width:18, height:18, objectFit:"contain" }}
-            onError={e => { e.currentTarget.style.display = "none" }}/>
-        )}
-        <span style={{ color:"#cbd5e1", fontSize:12, fontWeight:600 }}>{meta.label}</span>
+      background:"linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
+      border:"1px solid rgba(255,255,255,0.08)",
+      borderRadius:12, padding:"7px 12px 7px 8px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ width:32, height:32, borderRadius:9, flexShrink:0,
+          background:meta.frameBg, border:`1px solid ${meta.frame}`,
+          display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {kind === "star"
+            ? <Star size={17} color={meta.color} fill={meta.color}
+                style={{ filter:"drop-shadow(0 0 4px rgba(250,204,21,0.6))" }}/>
+            : <ItemIcon kind={kind} size={24}/>}
+        </div>
+        <span style={{ color:"#e2e8f0", fontSize:12, fontWeight:700, letterSpacing:"0.01em" }}>{meta.label}</span>
       </div>
       <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-        <span style={{ color:meta.color, fontWeight:900, fontSize:13 }}>x{amount}</span>
+        <span style={{ color:meta.color, fontWeight:900, fontSize:14,
+          textShadow:`0 0 10px ${meta.frame}` }}>x{amount}</span>
         {obtained && <Check size={14} color="#4ade80"/>}
       </div>
     </div>
@@ -600,12 +627,26 @@ function ChestClaimModal({
           <X size={14} color="#94a3b8"/>
         </button>
 
-        <div style={{ width:64, height:64, borderRadius:"50%", margin:"0 auto 10px",
-          background: claimed ? "rgba(34,197,94,0.12)" : "rgba(234,179,8,0.14)",
-          border:`2px solid ${claimed ? "rgba(34,197,94,0.5)" : "rgba(234,179,8,0.5)"}`,
+        <div style={{ width:112, height:112, margin:"0 auto 8px", position:"relative",
           display:"flex", alignItems:"center", justifyContent:"center" }}>
-          {claimed ? <Check size={28} color="#4ade80"/> : <Gift size={28} color="#fbbf24"/>}
+          <div style={{ position:"absolute", inset:8, borderRadius:"50%",
+            background: claimed
+              ? "radial-gradient(circle,rgba(34,197,94,0.22) 0%,transparent 70%)"
+              : "radial-gradient(circle,rgba(234,179,8,0.30) 0%,transparent 70%)",
+            animation: claimed ? undefined : "chestGlow 2.2s ease-in-out infinite" }}/>
+          <img src={CHEST_ART[chest.id] || "/placeholder.svg"} alt={chest.label}
+            onError={e => { e.currentTarget.style.display = "none" }}
+            style={{ width:"100%", height:"100%", objectFit:"contain", position:"relative",
+              filter: claimed ? "grayscale(0.5) brightness(0.75)" : "drop-shadow(0 6px 16px rgba(0,0,0,0.6))" }}/>
+          {claimed && (
+            <div style={{ position:"absolute", bottom:2, right:2, width:28, height:28,
+              borderRadius:"50%", background:"#14532d", border:"2px solid #22c55e",
+              display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <Check size={15} color="#4ade80" strokeWidth={3}/>
+            </div>
+          )}
         </div>
+        <style>{`@keyframes chestGlow { 0%,100% { opacity:0.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }`}</style>
 
         <h3 style={{ color:"#fbbf24", fontWeight:900, fontSize:17, margin:"0 0 2px" }}>{chest.label}</h3>
         <p style={{ color:"#78716c", fontSize:11, margin:"0 0 14px", display:"flex",
@@ -682,17 +723,30 @@ function ChestProgressBar({
               aria-label={`${chest.label} — ${chest.stars} estrelas`}
               style={{ position:"absolute", top:"50%", left:`${chestPct}%`,
                 transform:"translate(-50%,-50%)",
-                width:34, height:34, borderRadius:"50%", cursor:"pointer",
-                background: isClaimed ? "rgba(20,83,45,0.92)" : isReady ? "rgba(120,80,7,0.95)" : "rgba(12,16,28,0.95)",
-                border:`2px solid ${isClaimed ? "#22c55e" : isReady ? "#facc15" : "#334155"}`,
+                width:42, height:42, borderRadius:12, cursor:"pointer",
+                background:"transparent", border:"none", padding:0,
                 display:"flex", alignItems:"center", justifyContent:"center",
-                boxShadow: isReady ? "0 0 16px rgba(250,204,21,0.65)" : "0 2px 8px rgba(0,0,0,0.5)",
+                filter: isReady ? "drop-shadow(0 0 12px rgba(250,204,21,0.75))" : "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                 animation: isReady ? "chestBounce 1.4s ease-in-out infinite" : undefined }}>
-              {isClaimed
-                ? <Check size={15} color="#4ade80"/>
-                : isReady
-                ? <Gift size={15} color="#fde047"/>
-                : <Lock size={13} color="#475569"/>}
+              <img src={CHEST_ART[chest.id] || "/placeholder.svg"} alt=""
+                aria-hidden="true"
+                onError={e => { e.currentTarget.style.display = "none" }}
+                style={{ width:"100%", height:"100%", objectFit:"contain",
+                  filter: !isClaimed && !isReady ? "grayscale(0.85) brightness(0.55)" : isClaimed ? "brightness(0.85)" : "none" }}/>
+              {isClaimed && (
+                <div style={{ position:"absolute", bottom:-3, right:-3, width:17, height:17,
+                  borderRadius:"50%", background:"#14532d", border:"2px solid #22c55e",
+                  display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Check size={9} color="#4ade80" strokeWidth={3.5}/>
+                </div>
+              )}
+              {!isClaimed && !isReady && (
+                <div style={{ position:"absolute", bottom:-3, right:-3, width:17, height:17,
+                  borderRadius:"50%", background:"#0c1018", border:"1.5px solid #334155",
+                  display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Lock size={9} color="#64748b"/>
+                </div>
+              )}
             </button>
           )
         })}
@@ -726,20 +780,57 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
     <div style={{ position:"fixed", inset:0, zIndex:200,
       background:"linear-gradient(160deg,#020610 0%,#050d1a 50%,#030a14 100%)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9" }}>
+      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9", overflow:"hidden" }}>
+      {/* Cenário de fundo */}
+      <div style={{ position:"absolute", inset:0,
+        backgroundImage:"url(/images/camelot_scene.png)", backgroundSize:"cover",
+        backgroundPosition:"center", filter:"brightness(0.22) saturate(0.7)",
+        animation:"introBgZoom 14s ease-in-out infinite alternate" }}/>
       <div style={{ position:"absolute", inset:0, pointerEvents:"none",
         background: isBoss
-          ? "radial-gradient(ellipse 60% 40% at 50% 50%,rgba(220,38,38,0.18) 0%,transparent 70%)"
-          : "radial-gradient(ellipse 60% 40% at 50% 50%,rgba(37,99,235,0.15) 0%,transparent 70%)" }}/>
-      <div style={{ textAlign:"center", position:"relative", zIndex:1, padding:"0 24px" }}>
-        <div style={{ fontSize:52, marginBottom:14 }}>{isBoss ? "💀" : "⚔️"}</div>
-        <div style={{ fontSize:10, fontWeight:800, letterSpacing:"0.15em",
-          color: isBoss?"#f87171":"#60a5fa", textTransform:"uppercase",
-          background: isBoss?"rgba(220,38,38,0.12)":"rgba(37,99,235,0.12)",
-          padding:"4px 14px", borderRadius:8, display:"inline-block", marginBottom:8 }}>
-          {isBoss ? "Boss Battle" : "Batalha"}
+          ? "radial-gradient(ellipse 70% 50% at 50% 42%,rgba(220,38,38,0.26) 0%,transparent 70%)"
+          : "radial-gradient(ellipse 70% 50% at 50% 42%,rgba(37,99,235,0.22) 0%,transparent 70%)" }}/>
+      {/* Linhas de velocidade laterais */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.5,
+        background:`repeating-linear-gradient(115deg, transparent 0 46px, ${isBoss ? "rgba(220,38,38,0.05)" : "rgba(59,130,246,0.05)"} 46px 48px)` }}/>
+
+      <div style={{ textAlign:"center", position:"relative", zIndex:1, padding:"0 24px",
+        animation:"introRise 0.45s ease both" }}>
+        {/* Emblema central */}
+        <div style={{ width:104, height:104, margin:"0 auto 14px", borderRadius:"50%",
+          position:"relative",
+          background: isBoss
+            ? "radial-gradient(circle at 50% 35%,#450a0a,#1a0505)"
+            : "radial-gradient(circle at 50% 35%,#172554,#060b16)",
+          border:`3px solid ${isBoss ? "#dc2626" : "#3b82f6"}`,
+          boxShadow: isBoss
+            ? "0 0 40px rgba(220,38,38,0.5), inset 0 0 24px rgba(220,38,38,0.25)"
+            : "0 0 40px rgba(59,130,246,0.45), inset 0 0 24px rgba(59,130,246,0.2)",
+          display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+          {isBoss ? (
+            <img src={BOSS_IMG || "/placeholder.svg"} alt="Mefisto"
+              onError={e => { e.currentTarget.style.display = "none" }}
+              style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+                objectFit:"cover", objectPosition:"center top" }}/>
+          ) : (
+            <Swords size={44} color="#93c5fd" style={{ filter:"drop-shadow(0 0 10px rgba(59,130,246,0.8))" }}/>
+          )}
         </div>
-        <h1 style={{ fontWeight:900, fontSize:22, margin:"8px 0 16px" }}>{stage.title}</h1>
+        <div style={{ fontSize:10, fontWeight:900, letterSpacing:"0.22em",
+          color: isBoss?"#f87171":"#60a5fa", textTransform:"uppercase",
+          background: isBoss?"rgba(220,38,38,0.14)":"rgba(37,99,235,0.14)",
+          border:`1px solid ${isBoss ? "rgba(220,38,38,0.35)" : "rgba(37,99,235,0.35)"}`,
+          padding:"4px 16px", borderRadius:8, display:"inline-block", marginBottom:8 }}>
+          {isBoss ? "⟨ Boss Battle ⟩" : "⟨ Batalha ⟩"}
+        </div>
+        <h1 style={{ fontWeight:900, fontSize:26, margin:"8px 0 4px", letterSpacing:"0.01em",
+          textShadow: isBoss ? "0 0 24px rgba(220,38,38,0.55)" : "0 0 24px rgba(59,130,246,0.5)" }}>
+          {stage.title}
+        </h1>
+        <p style={{ margin:"0 0 16px", fontSize:12, fontWeight:800, letterSpacing:"0.1em",
+          color: isBoss ? "#fca5a5" : "#93c5fd", textTransform:"uppercase" }}>
+          VS {stage.opponent ?? (isBoss ? "Rei Arthur" : "Guardas do Reino")}
+        </p>
         <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
           borderRadius:14, padding:"14px 20px", marginBottom:16, maxWidth:300 }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
@@ -787,17 +878,23 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
             background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.10)",
             color:"#64748b", fontWeight:800, fontSize:13, cursor:"pointer" }}>Voltar</button>
           <button onClick={handleStart} disabled={false}
-            style={{ padding:"11px 28px", borderRadius:11, border:"none",
+            style={{ padding:"12px 30px", borderRadius:11, border:"none",
                background: isBoss ? "linear-gradient(135deg,#7f1d1d,#dc2626)" : "linear-gradient(135deg,#1e3a8a,#3b82f6)",
                color: "#fff",
-              fontWeight:900, fontSize:14,
+              fontWeight:900, fontSize:14, letterSpacing:"0.03em",
               cursor: "pointer",
-               boxShadow: isBoss ? "0 6px 20px rgba(220,38,38,0.35)" : "0 6px 20px rgba(59,130,246,0.35)",
+              display:"flex", alignItems:"center", gap:8,
+               boxShadow: isBoss ? "0 6px 26px rgba(220,38,38,0.5)" : "0 6px 26px rgba(59,130,246,0.5)",
               transition:"all 0.2s" }}>
-            {isBoss ? "⚔️ Batalha Final!" : "⚔️ Iniciar Batalha!"}
+            <Swords size={16}/>
+            {isBoss ? "Batalha Final!" : "Iniciar Batalha!"}
           </button>
         </div>
       </div>
+      <style>{`
+        @keyframes introBgZoom { from { transform: scale(1); } to { transform: scale(1.07); } }
+        @keyframes introRise { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+      `}</style>
     </div>
   )
 }
@@ -811,11 +908,32 @@ function PostBattleScreen({
     <div style={{ position:"fixed", inset:0, zIndex:200,
       background:"rgba(0,0,0,0.92)", backdropFilter:"blur(16px)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9" }}>
-      <div style={{ textAlign:"center", padding:"0 24px", width:"100%", maxWidth:340 }}>
-        <div style={{ fontSize:56, marginBottom:16 }}>{won ? "🏆" : "💀"}</div>
-        <h2 style={{ fontWeight:900, fontSize:24, margin:"0 0 8px" }}>{won ? "Vitória!" : "Derrota..."}</h2>
-        <p style={{ color:"#64748b", fontSize:14, margin:"0 0 20px" }}>
+      fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#f1f5f9", overflow:"hidden" }}>
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+        background: won
+          ? "radial-gradient(ellipse 70% 45% at 50% 38%,rgba(250,204,21,0.14) 0%,transparent 70%)"
+          : "radial-gradient(ellipse 70% 45% at 50% 38%,rgba(220,38,38,0.14) 0%,transparent 70%)" }}/>
+      <div style={{ textAlign:"center", padding:"0 24px", width:"100%", maxWidth:340,
+        position:"relative", animation:"resultRise 0.45s ease both" }}>
+        <div style={{ width:96, height:96, margin:"0 auto 16px", borderRadius:"50%",
+          background: won
+            ? "radial-gradient(circle at 50% 35%,#422006,#140a02)"
+            : "radial-gradient(circle at 50% 35%,#450a0a,#160404)",
+          border:`3px solid ${won ? "#facc15" : "#dc2626"}`,
+          boxShadow: won
+            ? "0 0 44px rgba(250,204,21,0.5), inset 0 0 22px rgba(250,204,21,0.2)"
+            : "0 0 44px rgba(220,38,38,0.45), inset 0 0 22px rgba(220,38,38,0.2)",
+          display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {won
+            ? <Trophy size={44} color="#fde047" style={{ filter:"drop-shadow(0 0 12px rgba(250,204,21,0.8))" }}/>
+            : <Swords size={44} color="#f87171" style={{ filter:"drop-shadow(0 0 12px rgba(220,38,38,0.8))" }}/>}
+        </div>
+        <h2 style={{ fontWeight:900, fontSize:26, margin:"0 0 8px", letterSpacing:"0.02em",
+          color: won ? "#fde047" : "#f87171",
+          textShadow: won ? "0 0 26px rgba(250,204,21,0.55)" : "0 0 26px rgba(220,38,38,0.5)" }}>
+          {won ? "Vitória!" : "Derrota..."}
+        </h2>
+        <p style={{ color:"#94a3b8", fontSize:14, margin:"0 0 20px" }}>
           {won ? "Batalha concluída com sucesso." : "Você foi derrotado. Tente novamente."}
         </p>
 
@@ -846,10 +964,11 @@ function PostBattleScreen({
           <button onClick={onReturnStory} style={{ width:260, padding:"13px 0", borderRadius:14,
             background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
             color:"#94a3b8", fontWeight:800, fontSize:14, cursor:"pointer" }}>
-            ← Voltar ao Story Mode
+            ← Voltar à Campanha
           </button>
         </div>
       </div>
+      <style>{`@keyframes resultRise { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }`}</style>
     </div>
   )
 }
@@ -871,14 +990,20 @@ function RewardToast({ drops, stars }: { drops: StageDropTable; stars: number })
       )}
       {drops.gear > 0 && (
         <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-          <Coins size={14} color="#fbbf24"/>
+          <ItemIcon kind="gear" size={17}/>
           <span style={{ color:"#fbbf24", fontWeight:900, fontSize:13 }}>+{drops.gear}</span>
         </div>
       )}
       {drops.gacha > 0 && (
         <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-          <Gem size={14} color="#c084fc"/>
+          <ItemIcon kind="gacha" size={17}/>
           <span style={{ color:"#c084fc", fontWeight:900, fontSize:13 }}>+{drops.gacha}</span>
+        </div>
+      )}
+      {drops.galio > 0 && (
+        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+          <ItemIcon kind="galio" size={17}/>
+          <span style={{ color:"#e2e8f0", fontWeight:900, fontSize:13 }}>+{drops.galio}</span>
         </div>
       )}
       <span style={{ color:"#94a3b8", fontSize:11, fontWeight:700 }}>Recompensas coletadas!</span>
