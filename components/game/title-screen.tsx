@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import Image from "next/image"
 import { ChevronsUpDown, Globe, UserCog, Wrench } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
+import TitleBeatFX from "./title-beat-fx"
 import {
   GAME_VERSION,
   TitleMenuPanel,
@@ -347,6 +348,9 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           ))}
         </div>
       )}
+
+      {/* Pulsos de tela inteira sincronizados com as batidas da música */}
+      <TitleBeatFX audioRef={bgMusicRef} active={audioPlaying} leaving={leaving} />
 
       {/* Cinematic light rays - soft gradients, no blur filter (GPU friendly) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
