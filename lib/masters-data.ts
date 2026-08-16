@@ -180,6 +180,23 @@ export const MASTERS_DATA: Master[] = [
     maxLevel:    50, currentLevel:1, currentXP:0, xpToNext:xpRequiredForLevel(1), totalXP:0,
     rewards:     buildRewards(), isActive:false, isUnlocked:true,
   },
+
+  // ── Arthur Pendragon — Darkus ─────────────────────────────────────────────
+  {
+    id:          "arthur",
+    name:        "Arthur",
+    fullName:    "Arthur Pendragon",
+    element:     "Darkus",
+    rarity:      "LR",
+    iconPath:    "/images/masters/arthur-icon.png",
+    artPath:     "/images/masters/arthur-art.png",
+    bgColor:     "#0d0718",
+    accentColor: "#7c3aed",
+    description: "O Rei de Camelot que carrega o peso do trono e o poder das trevas. Imponente e calculista, ele trata cada duelo como um julgamento real onde a última palavra é sempre a dele.",
+    quote:       '"Veredito do Rei Tirano!"',
+    maxLevel:    50, currentLevel:1, currentXP:0, xpToNext:xpRequiredForLevel(1), totalXP:0,
+    rewards:     buildRewards(), isActive:false, isUnlocked:true,
+  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

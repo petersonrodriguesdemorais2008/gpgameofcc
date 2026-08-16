@@ -22,6 +22,7 @@ const MASTER_INTRO_LINES: Record<string, string> = {
   fehnon:  "Eu tô louco pra entrar nessa festa!",
   calem:   "Com meu poder, eu não tenho o que temer!",
   morgana: "Vamos sentir a melodia de batalha!",
+  arthur:  "Tá na hora do Rei se posicionar aqui!",
 }
 
 export interface DuelIntroOpponent {

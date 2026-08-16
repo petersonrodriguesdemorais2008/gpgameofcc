@@ -391,7 +391,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         const arr = JSON.parse(raw)
         const active = arr.find((m:any)=>m.isActive)
         if (active) {
-          const names:Record<string,string> = {fehnon:"Fehnon Hoskie",morgana:"Morgana Pendragon",calem:"Calem Hidenori"}
+          const names:Record<string,string> = {fehnon:"Fehnon Hoskie",morgana:"Morgana Pendragon",calem:"Calem Hidenori",arthur:"Arthur Pendragon"}
           setActiveMasterName(names[active.id]||active.id)
           // Prefer the iconPath stored in master data; fall back to /images/masters/
           const iconPath: string = active.iconPath || `/images/masters/${active.id}-icon.png`
