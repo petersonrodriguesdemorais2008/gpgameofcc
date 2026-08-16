@@ -762,7 +762,7 @@ function ChestProgressBar({
   )
 }
 
-// ─── Battle Intro ─────────────────────────────────────────────────────────────
+// ─── Battle Intro ──────────────────────────────────────────────���──────────────
 
 function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()=>void; onBack:()=>void }) {
   const { stamina, maxStamina } = useGame()
@@ -899,7 +899,7 @@ function BattleIntroScreen({ stage, onStart, onBack }: { stage:Stage; onStart:()
   )
 }
 
-// ─── Post-Battle Result ────────────────────────────────────────────────────────
+// ─── Post-Battle Result ────────────��───────────────────────────────────────────
 
 function PostBattleScreen({
   won, rewards, onReturnStory, onContinue,
@@ -1121,29 +1121,73 @@ function StoryMapView({
       <div style={{ position:"absolute", inset:0, pointerEvents:"none",
         background:"linear-gradient(160deg,rgba(3,6,14,0.38) 0%,rgba(3,6,14,0.14) 50%,rgba(3,6,14,0.46) 100%)" }}/>
 
-      {/* ── SVG path lines ── */}
+      {/* ── SVG path lines (trilha suave em curvas com brilho e fluxo de energia) ── */}
       <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%",
         pointerEvents:"none", zIndex:5, overflow:"visible" }}>
+        <defs>
+          <linearGradient id="storyPathLit" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stopColor="#c084fc"/>
+            <stop offset="50%"  stopColor="#8b5cf6"/>
+            <stop offset="100%" stopColor="#a78bfa"/>
+          </linearGradient>
+          <filter id="storyPathGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="4.5" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
         {MAP_NODES.slice(0, -1).map((node, i) => {
           const next = MAP_NODES[i + 1]
           const lit  = node.stageId === null ? true : completedIds.has(node.stageId)
-          const x1=px(node.x), y1=py(node.y), x2=px(next.x), y2=py(next.y)
+          // Segmento que leva à próxima fase disponível (destaque animado)
+          const isNextSeg = !lit && next.stageId === nextStageId
+          // Curva Catmull-Rom → Bézier cúbica: trilha contínua e suave entre os nós
+          const prevN  = MAP_NODES[i - 1] ?? node
+          const afterN = MAP_NODES[i + 2] ?? next
+          const p0 = { x: px(prevN.x),  y: py(prevN.y)  }
+          const p1 = { x: px(node.x),   y: py(node.y)   }
+          const p2 = { x: px(next.x),   y: py(next.y)   }
+          const p3 = { x: px(afterN.x), y: py(afterN.y) }
+          const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 }
+          const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 }
+          const d = `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`
           return (
             <g key={`seg-${i}`}>
-              <line x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="rgba(0,0,0,0.55)" strokeWidth={7} strokeLinecap="round"
-                strokeDasharray={lit ? undefined : "16 9"} opacity={lit ? 1 : 0.5}/>
-              <line x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke={lit ? "#8b5cf6" : "#3b0764"}
-                strokeWidth={3} strokeLinecap="round"
-                strokeDasharray={lit ? undefined : "16 9"} opacity={lit ? 0.95 : 0.4}/>
+              {/* Contorno escuro (profundidade da trilha) */}
+              <path d={d} fill="none" stroke="rgba(0,0,0,0.60)"
+                strokeWidth={lit ? 10 : 8} strokeLinecap="round"
+                opacity={lit ? 0.9 : 0.4}/>
+              {lit ? (
+                <>
+                  {/* Halo luminoso */}
+                  <path d={d} fill="none" stroke="rgba(168,85,247,0.50)" strokeWidth={8}
+                    strokeLinecap="round" filter="url(#storyPathGlow)"/>
+                  {/* Trilho principal em gradiente */}
+                  <path d={d} fill="none" stroke="url(#storyPathLit)" strokeWidth={4.5}
+                    strokeLinecap="round"/>
+                  {/* Fluxo de energia percorrendo a trilha */}
+                  <path d={d} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2}
+                    strokeLinecap="round" strokeDasharray="4 21"
+                    style={{ animation:"storyFlow 1.5s linear infinite" }}/>
+                </>
+              ) : (
+                <path d={d} fill="none"
+                  stroke={isNextSeg ? "#8b5cf6" : "#3b0764"}
+                  strokeWidth={isNextSeg ? 4 : 3.5} strokeLinecap="round"
+                  strokeDasharray="1 14"
+                  opacity={isNextSeg ? 0.95 : 0.42}
+                  style={isNextSeg ? { animation:"storyFlow 2.2s linear infinite",
+                    filter:"drop-shadow(0 0 5px rgba(139,92,246,0.8))" } : undefined}/>
+              )}
             </g>
           )
         })}
       </svg>
 
       {/* ── Map Nodes ── */}
-      {MAP_NODES.map((nodeDef) => {
+      {MAP_NODES.map((nodeDef, nodeIdx) => {
         const isStart     = nodeDef.stageId === null
         const stage       = isStart ? null : stages.find(s => s.id === nodeDef.stageId)
         const isCompleted = !isStart && !!stage && completedIds.has(nodeDef.stageId!)
@@ -1174,13 +1218,16 @@ function StoryMapView({
           : (!accessible && !isStart) ? "#1e293b"
           : isCompleted && !isBoss ? "#22c55e"
           : palette.border
-        const nodeGlow = isPlayer
-          ? "0 0 24px rgba(56,189,248,0.7),0 6px 16px rgba(0,0,0,0.6)"
+        const innerLight = ", inset 0 1px 3px rgba(255,255,255,0.28), inset 0 -4px 8px rgba(0,0,0,0.38)"
+        const nodeGlow = (isPlayer
+          ? "0 0 26px rgba(56,189,248,0.75),0 6px 18px rgba(0,0,0,0.6)"
           : isNext
-          ? "0 0 24px rgba(34,197,94,0.7),0 6px 16px rgba(0,0,0,0.6)"
+          ? "0 0 26px rgba(34,197,94,0.75),0 6px 18px rgba(0,0,0,0.6)"
           : isBoss && accessible
-          ? "0 0 26px rgba(220,38,38,0.55),0 6px 16px rgba(0,0,0,0.6)"
-          : "0 4px 14px rgba(0,0,0,0.55)"
+          ? "0 0 30px rgba(220,38,38,0.60),0 6px 18px rgba(0,0,0,0.6)"
+          : accessible
+          ? "0 0 12px rgba(139,92,246,0.30),0 5px 16px rgba(0,0,0,0.55)"
+          : "0 4px 14px rgba(0,0,0,0.55)") + (accessible || isStart ? innerLight : "")
         const subColor = { boss:"#fca5a5", battle:"#93c5fd", scene:"#c4b5fd", start:"#94a3b8" }[nodeDef.type]
 
         return (
@@ -1188,6 +1235,7 @@ function StoryMapView({
             position:"absolute", left:`${nodeDef.x}%`, top:`${nodeDef.y}%`,
             transform:"translate(-50%,-50%)", zIndex: isBoss ? 12 : 10,
             display:"flex", flexDirection:"column", alignItems:"center", gap:5,
+            animation:`storyNodeIn .55s cubic-bezier(.34,1.56,.64,1) ${nodeIdx * 0.06}s backwards`,
           }}>
             {isNext && (
               <div style={{ background:"#16a34a", borderRadius:8, padding:"3px 9px",
@@ -1216,16 +1264,25 @@ function StoryMapView({
                 cursor:accessible && !isStart ? "pointer" : "default",
                 boxShadow:nodeGlow,
                 opacity:!accessible && !isStart ? 0.42 : 1,
-                transition:"transform .15s", position:"relative", flexShrink:0, outline:"none",
+                transition:"transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .35s ease, filter .3s ease",
+                position:"relative", flexShrink:0, outline:"none",
                 overflow:"visible", padding:0,
+                animation: isBoss && accessible && !isCompleted ? "storyBossBreath 2.6s ease-in-out infinite" : undefined,
               }}
-              onMouseEnter={e=>{ if(accessible&&!isStart)(e.currentTarget as HTMLButtonElement).style.transform="scale(1.10)" }}
-              onMouseLeave={e=>{ (e.currentTarget as HTMLButtonElement).style.transform="scale(1)" }}
+              onMouseEnter={e=>{ if(accessible&&!isStart){ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1.14)"; b.style.filter="brightness(1.15)" } }}
+              onMouseLeave={e=>{ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1)"; b.style.filter="none" }}
             >
               {isPlayer && (
                 <div style={{ position:"absolute", inset:-5, borderRadius: isScene ? 18 : "50%",
                   border:"2px solid #38bdf8", boxShadow:"0 0 12px rgba(56,189,248,0.9)",
                   pointerEvents:"none" }}/>
+              )}
+
+              {/* Reflexo vítreo no topo do nó */}
+              {(accessible || isStart) && (
+                <div aria-hidden="true" style={{ position:"absolute", inset:0,
+                  borderRadius: isScene ? 11 : "50%", pointerEvents:"none", zIndex:2,
+                  background:"linear-gradient(165deg,rgba(255,255,255,0.30) 0%,rgba(255,255,255,0.06) 36%,transparent 52%)" }}/>
               )}
 
               {/* Conteúdo central do nó */}
@@ -1287,8 +1344,13 @@ function StoryMapView({
               </div>
             )}
 
-            <div style={{ background:"rgba(2,6,16,0.88)", border:"1px solid rgba(255,255,255,0.10)",
-              borderRadius:8, padding:"3px 8px", textAlign:"center", maxWidth:112 }}>
+            <div style={{
+              background:"linear-gradient(180deg,rgba(14,18,34,0.92) 0%,rgba(2,6,16,0.94) 100%)",
+              border:`1px solid ${accessible || isStart ? "rgba(139,92,246,0.40)" : "rgba(255,255,255,0.08)"}`,
+              borderRadius:9, padding:"3px 9px", textAlign:"center", maxWidth:112,
+              backdropFilter:"blur(6px)",
+              boxShadow:"0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
+              transition:"border-color .3s ease" }}>
               {nodeDef.sublabel && (
                 <div style={{ fontSize:8, fontWeight:900, textTransform:"uppercase",
                   letterSpacing:".08em", lineHeight:1.4, color:subColor }}>{nodeDef.sublabel}</div>
@@ -1432,6 +1494,19 @@ function StoryMapView({
         @keyframes storyBounce {
           0%, 100% { transform: translateY(0);    }
           50%       { transform: translateY(-4px); }
+        }
+        @keyframes storyFlow {
+          to { stroke-dashoffset: -75; }
+        }
+        @keyframes storyNodeIn {
+          from { opacity: 0; transform: translate(-50%,-50%) scale(0.55); }
+          to   { opacity: 1; transform: translate(-50%,-50%) scale(1);    }
+        }
+        @keyframes storyBossBreath {
+          0%, 100% { box-shadow: 0 0 22px rgba(220,38,38,0.45), 0 6px 18px rgba(0,0,0,0.6),
+                      inset 0 1px 3px rgba(255,255,255,0.28), inset 0 -4px 8px rgba(0,0,0,0.38); }
+          50%      { box-shadow: 0 0 42px rgba(220,38,38,0.85), 0 6px 18px rgba(0,0,0,0.6),
+                      inset 0 1px 3px rgba(255,255,255,0.28), inset 0 -4px 8px rgba(0,0,0,0.38); }
         }
       `}</style>
     </div>
