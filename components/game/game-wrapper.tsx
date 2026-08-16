@@ -441,7 +441,7 @@ export function GameWrapper() {
           onBack={() => navigateTo("menu")}
           onStartBattle={(mode, stageId) => {
             // Save the pending battle so story mode can handle the result
-            localStorage.setItem("gpgame_story_battle_pending", JSON.stringify({ stageId, won: false }))
+            localStorage.setItem("gpgame_story_battle_pending", JSON.stringify({ stageId, won: false, lp: mode === "story-boss" ? 30 : 20 }))
             setDuelMode("bot")
             navigateTo("duel-bot")
           }}
