@@ -1012,6 +1012,10 @@ const ACTIVATION_LINES: Record<string, { winduel: string; introduel: string }> =
     winduel:   "Radical! É isso que eu chamo de sinfonia épica!",
     introduel: "Vamos sentir a melodia de batalha!",
   },
+  arthur: {
+    winduel:   "Hahaha! Veja como um soberano é imponente!",
+    introduel: "Tá na hora do Rei se posicionar aqui!",
+  },
 }
 
 /** 75% de chance de `_voice_4_winduel`, 25% de `_voice_2_introduel`. */

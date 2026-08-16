@@ -1093,6 +1093,13 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
       { text: "Radical! É isso que eu chamo de sinfonia épica!",        src: "/audio/masters/morgana_voice_4_winduel.mp3" },
       { text: "Sinfonia Relâmpago!",                                    src: "/audio/masters/morgana_voice_5_magic.mp3" },
     ],
+    arthur: [
+      { text: "Olá, prazer em te conhecer! Eu sou o Rei Arthur!",       src: "/audio/masters/arthur_voice_1_apresentacao.mp3" },
+      { text: "Tá na hora do Rei se posicionar aqui!",                  src: "/audio/masters/arthur_voice_2_introduel.mp3" },
+      { text: "Todos tem o seu tempo, e eu tenho o meu, para mim já basta desse lugar...", src: "/audio/masters/arthur_voice_3_loseduel.mp3" },
+      { text: "Hahaha! Veja como um soberano é imponente!",             src: "/audio/masters/arthur_voice_4_winduel.mp3" },
+      { text: "Veredito do Rei Tirano!",                                src: "/audio/masters/arthur_voice_5_magic.mp3" },
+    ],
   }
 
   const [activeMasterId,  setActiveMasterId]  = useState<string>(() => {

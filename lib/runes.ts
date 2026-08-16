@@ -169,6 +169,23 @@ const RUNE_NAMES: Record<string, Record<RuneBranchId, string[]>> = {
       "Runa do Limiar Infinito", "Runa do Guardião do Nada", "Runa do Deus do Vazio",
     ],
   },
+  arthur: {
+    fortuna: [
+      "Runa do Tributo Real", "Runa da Coroa Sombria", "Runa do Cofre de Camelot", "Runa do Imposto do Tirano",
+      "Runa das Joias Usurpadas", "Runa do Erário Eterno", "Runa da Riqueza da Távola",
+      "Runa do Espólio dos Reinos", "Runa da Herança Pendragon", "Runa do Trono de Ouro Negro",
+    ],
+    guerra: [
+      "Runa da Lâmina do Rei", "Runa da Ordem Imposta", "Runa do Decreto Sangrento", "Runa do Cerco Real",
+      "Runa da Legião das Trevas", "Runa da Sentença Inapelável", "Runa da Marcha de Camelot",
+      "Runa do Golpe Soberano", "Runa do Veredito do Tirano", "Runa do Fim de Todos os Reinos",
+    ],
+    dominio: [
+      "Runa do Passo do Monarca", "Runa da Sombra do Trono", "Runa do Juramento Quebrado", "Runa do Soberano Absoluto",
+      "Runa da Corte Silenciosa", "Runa da Vontade Inquebrável", "Runa do Reino Sem Aurora",
+      "Runa da Coroa Inquestionável", "Runa do Senhor de Camelot", "Runa do Rei Eterno das Trevas",
+    ],
+  },
 }
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"] as const
