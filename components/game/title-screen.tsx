@@ -9,9 +9,21 @@ import {
   TitleMenuPanel,
   getServerLabel,
   pingColor,
+  useDisplayUid,
   useSelectedServer,
   type TitlePanel,
 } from "./title-menu-panels"
+
+/** Estilo compartilhado dos botões em ícone posicionados nos cantos/laterais. */
+const ICON_BUTTON_CLASS =
+  "group absolute flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105"
+
+const ICON_BUTTON_STYLE: React.CSSProperties = {
+  background: "rgba(8,14,30,0.55)",
+  border: "1px solid rgba(56,189,248,0.25)",
+  boxShadow: "0 0 20px rgba(56,189,248,0.1), inset 0 1px 0 rgba(255,255,255,0.06)",
+  backdropFilter: "blur(6px)",
+}
 
 interface TitleScreenProps {
   onEnter: () => void
@@ -24,6 +36,7 @@ const PARTICLE_COUNT = 18
 export default function TitleScreen({ onEnter }: TitleScreenProps) {
   const { t } = useLanguage()
   const { server, selectServer, ping, status, liveServerId, refresh } = useSelectedServer()
+  const { uid, isGuest, ready: uidReady } = useDisplayUid()
   const [panel, setPanel] = useState<TitlePanel | null>(null)
   const bgMusicRef = useRef<HTMLAudioElement | null>(null)
   const narratorRef = useRef<HTMLAudioElement | null>(null)
@@ -437,26 +450,45 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           />
         </div>
 
-        <p
-          className={leaving ? "ts-anim-paused" : undefined}
+      </div>
+
+      {/* Centro inferior - seleção de servidor + chamada principal em destaque */}
+      <div
+        className="absolute bottom-24 left-0 right-0 flex flex-col items-center gap-4 px-4 sm:bottom-20"
+        style={{
+          zIndex: 55,
+          opacity: leaving ? 0 : 1,
+          transition: "opacity 0.45s ease-out",
+          pointerEvents: "none",
+        }}
+      >
+        {/* Faixa semitransparente destaca o texto da roupa escura do personagem, sem piscar */}
+        <div
+          className={`relative flex items-center justify-center rounded-full px-7 py-3 sm:px-9${leaving ? " ts-anim-paused" : ""}`}
           style={{
-            fontFamily: "'Segoe UI', sans-serif",
-            fontSize: "clamp(14px, 2.8vw, 18px)",
-            letterSpacing: "0.35em",
-            fontWeight: 500,
-            color: "#f0f9ff",
-            textTransform: "uppercase",
-            textShadow: "0 0 30px rgba(56,189,248,0.9), 0 2px 10px rgba(0,0,0,0.9)",
-            animation: visible
-              ? "textEntrance 1s ease-out 1.1s both, softBlink 2.4s ease-in-out 2.1s infinite"
-              : undefined,
-            willChange: "opacity",
+            background: "rgba(4,10,24,0.6)",
+            border: "1px solid rgba(125,211,252,0.35)",
+            backdropFilter: "blur(8px)",
+            boxShadow: "0 0 24px rgba(56,189,248,0.22), inset 0 1px 0 rgba(255,255,255,0.08)",
+            animation: visible ? "textEntrance 1s ease-out 1.1s both" : undefined,
           }}
         >
-          {t("tapToStart")}
-        </p>
+          <p
+            style={{
+              fontFamily: "'Segoe UI', sans-serif",
+              fontSize: "clamp(14px, 2.8vw, 18px)",
+              letterSpacing: "0.35em",
+              fontWeight: 700,
+              color: "#f8fdff",
+              textTransform: "uppercase",
+              textShadow:
+                "0 0 12px rgba(224,242,254,0.9), 0 0 34px rgba(56,189,248,0.85), 0 2px 12px rgba(0,0,0,0.95)",
+            }}
+          >
+            {t("tapToStart")}
+          </p>
+        </div>
 
-        {/* Seleção de servidor - logo abaixo do "toque para começar" */}
         <button
           type="button"
           onClick={(e) => {
@@ -464,14 +496,13 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             setPanel("server")
           }}
           aria-label={`${t("titleServer")}: ${getServerLabel(server)}`}
-          className="group mt-7 flex items-center gap-2.5 rounded-full px-4 py-2 transition-all duration-300 hover:scale-[1.03]"
+          className="group flex items-center gap-2.5 rounded-full px-4 py-2 transition-all duration-300 hover:scale-[1.03]"
           style={{
-            background: "rgba(8,14,30,0.55)",
-            border: "1px solid rgba(56,189,248,0.28)",
-            boxShadow: "0 0 24px rgba(56,189,248,0.12), inset 0 1px 0 rgba(255,255,255,0.06)",
-            backdropFilter: "blur(6px)",
+            ...ICON_BUTTON_STYLE,
+            borderColor: "rgba(56,189,248,0.28)",
             animation: visible ? "textEntrance 1s ease-out 1.45s both" : undefined,
             opacity: panel ? 0.4 : undefined,
+            pointerEvents: leaving ? "none" : "auto",
           }}
         >
           <span
@@ -563,76 +594,143 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         }}
       />
 
-      {/* Barra de utilitários - conta, reparo de cliente e idioma */}
-      <div
-        className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6"
+      {/* Cantos superiores - reparo de cliente (esq) e idioma (dir) */}
+      {[
+        { key: "repair" as const, Icon: Wrench, label: t("titleRepair"), position: "left-4 top-4 sm:left-6 sm:top-6" },
+        {
+          key: "language" as const,
+          Icon: Globe,
+          label: t("titleLanguage"),
+          position: "right-4 top-4 sm:right-6 sm:top-6",
+        },
+      ].map(({ key, Icon, label, position }) => (
+        <button
+          key={key}
+          type="button"
+          title={label}
+          aria-label={label}
+          onClick={(e) => {
+            e.stopPropagation()
+            setPanel(key)
+          }}
+          className={`${ICON_BUTTON_CLASS} ${position}`}
+          style={{
+            ...ICON_BUTTON_STYLE,
+            zIndex: 60,
+            opacity: leaving ? 0 : 1,
+            transition: "opacity 0.4s ease-out, transform 0.3s",
+            pointerEvents: leaving ? "none" : "auto",
+            animation: visible ? "textEntrance 0.9s ease-out 1.6s both" : undefined,
+          }}
+        >
+          <Icon
+            className="h-5 w-5 text-sky-200/75 transition-colors duration-300 group-hover:text-sky-100"
+            aria-hidden="true"
+          />
+          <span className="sr-only">{label}</span>
+        </button>
+      ))}
+
+      {/* Lateral esquerda (centro) - menu de conta */}
+      <button
+        type="button"
+        title={t("titleAccount")}
+        aria-label={t("titleAccount")}
+        onClick={(e) => {
+          e.stopPropagation()
+          setPanel("account")
+        }}
+        className={`${ICON_BUTTON_CLASS} left-4 top-1/2 sm:left-6`}
         style={{
+          ...ICON_BUTTON_STYLE,
           zIndex: 60,
+          marginTop: "-22px",
+          opacity: leaving ? 0 : 1,
+          transition: "opacity 0.4s ease-out, transform 0.3s",
+          pointerEvents: leaving ? "none" : "auto",
+          animation: visible ? "textEntrance 0.9s ease-out 1.7s both" : undefined,
+        }}
+      >
+        <UserCog
+          className="h-5 w-5 text-sky-200/75 transition-colors duration-300 group-hover:text-sky-100"
+          aria-hidden="true"
+        />
+        <span className="sr-only">{t("titleAccount")}</span>
+      </button>
+
+      {/* Cantos inferiores - versão/UID à esquerda, legal à direita (empilha no mobile) */}
+      <footer
+        className="absolute bottom-3 left-4 right-4 flex flex-col-reverse items-center gap-1.5 sm:left-6 sm:right-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
+        style={{
+          zIndex: 50,
           opacity: leaving ? 0 : 1,
           transition: "opacity 0.4s ease-out",
           pointerEvents: leaving ? "none" : "auto",
-          animation: visible ? "textEntrance 0.9s ease-out 1.6s both" : undefined,
+          animation: visible ? "textEntrance 1s ease-out 1.6s both" : undefined,
         }}
       >
-        {[
-          { key: "account" as const, Icon: UserCog, label: t("titleAccount") },
-          { key: "repair" as const, Icon: Wrench, label: t("titleRepair") },
-          { key: "language" as const, Icon: Globe, label: t("titleLanguage") },
-        ].map(({ key, Icon, label }) => (
-          <button
-            key={key}
-            type="button"
-            title={label}
-            aria-label={label}
-            onClick={(e) => {
-              e.stopPropagation()
-              setPanel(key)
-            }}
-            className="group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105"
+        {/* Versão e UID: é o que o suporte pede em um relato de bug */}
+        <div className="flex items-center gap-3 sm:flex-col sm:items-start sm:gap-0.5">
+          <p
+            className="font-mono"
+            style={{ fontSize: "11px", letterSpacing: "0.08em", color: "rgba(255,255,255,0.32)" }}
+          >
+            {GAME_VERSION}
+          </p>
+          {uidReady && uid ? (
+            <p
+              className="font-mono"
+              style={{ fontSize: "11px", letterSpacing: "0.08em", color: "rgba(125,211,252,0.45)" }}
+            >
+              <span className="uppercase">{isGuest ? t("uidGuestLabel") : t("uidLabel")}</span> {uid}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col items-center gap-0.5 sm:items-end">
+          <nav className="flex items-center gap-2" aria-label={t("legalTerms")}>
+            {[
+              { key: "terms" as const, label: t("legalTerms") },
+              { key: "privacy" as const, label: t("legalPrivacy") },
+            ].map(({ key, label }, index) => (
+              <span key={key} className="flex items-center gap-2">
+                {index > 0 ? (
+                  <span aria-hidden="true" style={{ fontSize: "10px", color: "rgba(255,255,255,0.2)" }}>
+                    ·
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPanel(key)
+                  }}
+                  className="rounded transition-colors hover:text-sky-200"
+                  style={{
+                    fontFamily: "'Segoe UI', sans-serif",
+                    fontSize: "11px",
+                    letterSpacing: "0.06em",
+                    color: "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {label}
+                </button>
+              </span>
+            ))}
+          </nav>
+          <p
+            className="text-center sm:text-right"
             style={{
-              background: "rgba(8,14,30,0.55)",
-              border: "1px solid rgba(56,189,248,0.25)",
-              boxShadow: "0 0 20px rgba(56,189,248,0.1), inset 0 1px 0 rgba(255,255,255,0.06)",
-              backdropFilter: "blur(6px)",
+              fontFamily: "'Segoe UI', sans-serif",
+              fontSize: "10px",
+              letterSpacing: "0.06em",
+              color: "rgba(255,255,255,0.28)",
             }}
           >
-            <Icon
-              className="h-5 w-5 text-sky-200/75 transition-colors duration-300 group-hover:text-sky-100"
-              aria-hidden="true"
-            />
-            <span className="sr-only">{label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Versão do jogo - canto inferior esquerdo, para relatos de bug */}
-      <div className="absolute bottom-4 left-4 sm:left-6" style={{ zIndex: 50 }}>
-        <p
-          className="font-mono"
-          style={{
-            fontSize: "11px",
-            letterSpacing: "0.08em",
-            color: "rgba(255,255,255,0.32)",
-            animation: visible ? "textEntrance 1s ease-out 1.7s both" : undefined,
-          }}
-        >
-          {GAME_VERSION}
-        </p>
-      </div>
-
-      <div className="absolute bottom-4 left-0 right-0 text-center">
-        <p
-          style={{
-            fontFamily: "'Segoe UI', sans-serif",
-            fontSize: "11px",
-            letterSpacing: "0.1em",
-            color: "rgba(255,255,255,0.35)",
-            animation: visible ? "textEntrance 1s ease-out 1.5s both" : undefined,
-          }}
-        >
-          Gear Perks Card Game
-        </p>
-      </div>
+            {t("legalCopyright")}
+          </p>
+        </div>
+      </footer>
 
       {/* Painéis do menu - o stopPropagation evita que o clique inicie o jogo */}
       {panel ? (

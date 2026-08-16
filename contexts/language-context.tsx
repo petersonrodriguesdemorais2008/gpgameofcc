@@ -219,6 +219,88 @@ const translations: Translations = {
     ja: "pingは実際にあなたの接続で測定されています。他のリージョンは未開放です。",
   },
   serverRemeasure: { pt: "Medir novamente", en: "Measure again", ja: "再測定" },
+
+  // UID / rodapé
+  uidLabel: { pt: "UID", en: "UID", ja: "UID" },
+  uidGuestLabel: { pt: "UID Convidado", en: "Guest UID", ja: "ゲストUID" },
+  uidCopy: { pt: "Copiar UID", en: "Copy UID", ja: "UIDをコピー" },
+  uidCopied: { pt: "UID copiado", en: "UID copied", ja: "UIDをコピーしました" },
+  uidHint: {
+    pt: "Informe este UID ao relatar um problema para o suporte.",
+    en: "Provide this UID when reporting an issue to support.",
+    ja: "サポートへの問題報告時にこのUIDをお伝えください。",
+  },
+
+  // Legal
+  legalTerms: { pt: "Termos de Serviço", en: "Terms of Service", ja: "利用規約" },
+  legalPrivacy: { pt: "Política de Privacidade", en: "Privacy Policy", ja: "プライバシーポリシー" },
+  legalCopyright: {
+    pt: "© 2026 Gear Perks Card Game. Todos os direitos reservados.",
+    en: "© 2026 Gear Perks Card Game. All rights reserved.",
+    ja: "© 2026 Gear Perks Card Game. All rights reserved.",
+  },
+  legalUpdated: { pt: "Última atualização", en: "Last updated", ja: "最終更新" },
+  legalUpdatedDate: { pt: "Fevereiro de 2026", en: "February 2026", ja: "2026年2月" },
+
+  termsIntro: {
+    pt: "Ao jogar Gear Perks Card Game você concorda com estes Termos. Se não concordar, não utilize o jogo.",
+    en: "By playing Gear Perks Card Game you agree to these Terms. If you do not agree, do not use the game.",
+    ja: "Gear Perks Card Gameをプレイすることで、本規約に同意したものとみなされます。同意されない場合はご利用をお控えください。",
+  },
+  termsAccountTitle: { pt: "1. Conta e progresso", en: "1. Account and progress", ja: "1. アカウントと進行状況" },
+  termsAccountBody: {
+    pt: "Você é responsável por manter suas credenciais em segurança. O progresso de convidado fica salvo apenas no dispositivo e pode ser perdido se os dados do navegador forem apagados.",
+    en: "You are responsible for keeping your credentials safe. Guest progress is stored only on the device and may be lost if browser data is cleared.",
+    ja: "認証情報の安全な管理はお客様の責任です。ゲストの進行状況は端末にのみ保存され、ブラウザデータを消去すると失われる場合があります。",
+  },
+  termsConductTitle: { pt: "2. Conduta", en: "2. Conduct", ja: "2. 行為規範" },
+  termsConductBody: {
+    pt: "É proibido usar trapaças, automação, exploração de falhas ou qualquer conduta abusiva contra outros jogadores. Contas infratoras podem ser suspensas.",
+    en: "Cheating, automation, exploiting bugs and abusive behaviour toward other players are prohibited. Offending accounts may be suspended.",
+    ja: "チート、自動化、不具合の悪用、他プレイヤーへの迷惑行為は禁止されています。違反アカウントは停止される場合があります。",
+  },
+  termsContentTitle: { pt: "3. Conteúdo do jogo", en: "3. Game content", ja: "3. ゲームコンテンツ" },
+  termsContentBody: {
+    pt: "Cartas, itens e moedas virtuais são licenciados para uso dentro do jogo e não constituem propriedade nem valor monetário real.",
+    en: "Cards, items and virtual currency are licensed for in-game use and do not constitute property or real monetary value.",
+    ja: "カード・アイテム・仮想通貨はゲーム内利用のためにライセンスされるもので、財産権や実際の金銭的価値を持ちません。",
+  },
+  termsChangesTitle: { pt: "4. Alterações", en: "4. Changes", ja: "4. 変更" },
+  termsChangesBody: {
+    pt: "O jogo está em desenvolvimento contínuo. Recursos, balanceamento e estes Termos podem mudar, e mudanças relevantes serão avisadas no jogo.",
+    en: "The game is under continuous development. Features, balance and these Terms may change, and relevant changes will be announced in-game.",
+    ja: "本ゲームは継続的に開発中です。機能・バランス・本規約は変更される場合があり、重要な変更はゲーム内で告知します。",
+  },
+
+  privacyIntro: {
+    pt: "Coletamos o mínimo necessário para o jogo funcionar e para salvar seu progresso.",
+    en: "We collect the minimum needed for the game to work and to save your progress.",
+    ja: "ゲームの動作と進行状況の保存に必要な最小限の情報のみを取得します。",
+  },
+  privacyDataTitle: { pt: "1. Dados coletados", en: "1. Data we collect", ja: "1. 取得するデータ" },
+  privacyDataBody: {
+    pt: "Se você criar uma conta, guardamos e-mail, código de jogador e progresso. Sem conta, o progresso fica somente no armazenamento local do seu navegador.",
+    en: "If you create an account we store your email, player code and progress. Without an account, progress stays only in your browser's local storage.",
+    ja: "アカウントを作成した場合、メールアドレス・プレイヤーコード・進行状況を保存します。アカウントなしの場合、進行状況はブラウザのローカル保存領域にのみ残ります。",
+  },
+  privacyUseTitle: { pt: "2. Como usamos", en: "2. How we use it", ja: "2. 利用目的" },
+  privacyUseBody: {
+    pt: "Os dados são usados para autenticar você, sincronizar o progresso entre dispositivos e investigar erros. Não vendemos seus dados.",
+    en: "Data is used to authenticate you, sync progress across devices and investigate errors. We do not sell your data.",
+    ja: "データは認証、端末間の進行状況同期、不具合調査のために使用します。データの販売は行いません。",
+  },
+  privacyStorageTitle: { pt: "3. Armazenamento local", en: "3. Local storage", ja: "3. ローカル保存" },
+  privacyStorageBody: {
+    pt: "Usamos armazenamento local para guardar preferências como idioma, servidor e sessão. Limpar os dados do navegador remove o progresso de convidado.",
+    en: "We use local storage to keep preferences such as language, server and session. Clearing browser data removes guest progress.",
+    ja: "言語・サーバー・セッションなどの設定をローカル保存領域に保持します。ブラウザデータの消去でゲストの進行状況は削除されます。",
+  },
+  privacyRightsTitle: { pt: "4. Seus direitos", en: "4. Your rights", ja: "4. お客様の権利" },
+  privacyRightsBody: {
+    pt: "Você pode solicitar acesso, correção ou exclusão dos dados da sua conta a qualquer momento pelo suporte do jogo, informando seu UID.",
+    en: "You can request access, correction or deletion of your account data at any time through game support, providing your UID.",
+    ja: "UIDをお知らせいただくことで、いつでもサポート経由でアカウントデータの開示・訂正・削除を請求できます。",
+  },
 }
 
 interface LanguageContextType {
