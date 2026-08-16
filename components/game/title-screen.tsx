@@ -462,21 +462,18 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           pointerEvents: "none",
         }}
       >
-        {/* Faixa semitransparente + brilho externo destacam o texto da roupa escura do personagem */}
+        {/* Faixa semitransparente destaca o texto da roupa escura do personagem, sem piscar */}
         <div
           className={`relative flex items-center justify-center rounded-full px-7 py-3 sm:px-9${leaving ? " ts-anim-paused" : ""}`}
           style={{
             background: "rgba(4,10,24,0.6)",
-            border: "1px solid rgba(125,211,252,0.4)",
+            border: "1px solid rgba(125,211,252,0.35)",
             backdropFilter: "blur(8px)",
-            animation: visible
-              ? "textEntrance 1s ease-out 1.1s both, ctaBandGlow 3s ease-in-out 2.1s infinite"
-              : undefined,
-            willChange: "box-shadow",
+            boxShadow: "0 0 24px rgba(56,189,248,0.22), inset 0 1px 0 rgba(255,255,255,0.08)",
+            animation: visible ? "textEntrance 1s ease-out 1.1s both" : undefined,
           }}
         >
           <p
-            className={leaving ? "ts-anim-paused" : undefined}
             style={{
               fontFamily: "'Segoe UI', sans-serif",
               fontSize: "clamp(14px, 2.8vw, 18px)",
@@ -486,8 +483,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
               textTransform: "uppercase",
               textShadow:
                 "0 0 12px rgba(224,242,254,0.9), 0 0 34px rgba(56,189,248,0.85), 0 2px 12px rgba(0,0,0,0.95)",
-              animation: visible ? "ctaPulse 2.2s ease-in-out 2.1s infinite" : undefined,
-              willChange: "opacity",
             }}
           >
             {t("tapToStart")}
@@ -779,20 +774,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         @keyframes softBlink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.3; }
-        }
-        @keyframes ctaPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.55; }
-        }
-        @keyframes ctaBandGlow {
-          0%, 100% {
-            box-shadow: 0 0 22px rgba(56,189,248,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
-            border-color: rgba(125,211,252,0.32);
-          }
-          50% {
-            box-shadow: 0 0 46px rgba(56,189,248,0.5), 0 0 90px rgba(56,189,248,0.2), inset 0 1px 0 rgba(255,255,255,0.12);
-            border-color: rgba(165,231,255,0.6);
-          }
         }
         @keyframes dotPulse {
           0%, 100% { transform: scale(1); opacity: 1; }
