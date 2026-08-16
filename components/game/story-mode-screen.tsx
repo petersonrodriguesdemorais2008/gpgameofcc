@@ -332,8 +332,8 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ display:"flex", gap:4 }}>
             {scene.panels.map((_,i) => (
-              <div key={i} style={{ width: i===idx ? 16 : 5, height:4, borderRadius:99,
-                background: i===idx ? "#8b5cf6" : i<idx ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.18)",
+              <div key={i} style={{ width: i===safeIdx ? 16 : 5, height:4, borderRadius:99,
+                background: i===safeIdx ? "#8b5cf6" : i<safeIdx ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.18)",
                 transition:"width 0.3s" }}/>
             ))}
           </div>
@@ -863,10 +863,12 @@ function RewardToast({ drops, stars }: { drops: StageDropTable; stars: number })
       borderRadius:14, padding:"10px 18px", display:"flex", alignItems:"center", gap:14,
       backdropFilter:"blur(12px)", boxShadow:"0 8px 30px rgba(0,0,0,0.6)",
       animation:"toastIn 0.3s ease", fontFamily:"'Segoe UI',system-ui,sans-serif", whiteSpace:"nowrap" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-        <Star size={14} color="#facc15" fill="#facc15"/>
-        <span style={{ color:"#facc15", fontWeight:900, fontSize:13 }}>+{stars}</span>
-      </div>
+      {stars > 0 && (
+        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+          <Star size={14} color="#facc15" fill="#facc15"/>
+          <span style={{ color:"#facc15", fontWeight:900, fontSize:13 }}>+{stars}</span>
+        </div>
+      )}
       {drops.gear > 0 && (
         <div style={{ display:"flex", alignItems:"center", gap:5 }}>
           <Coins size={14} color="#fbbf24"/>
@@ -1368,9 +1370,12 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
     if (!pending) return
     localStorage.removeItem(LS_BATTLE_KEY)
     try {
-      const { stageId, won } = JSON.parse(pending)
+      const { stageId, won, lp, lpLeft } = JSON.parse(pending)
       const stage = CHAPTER1_STAGES.find(s => s.id === stageId)
       if (won && stage) {
+        // Avaliação de 1–3 estrelas com base no LP restante (melhor resultado é mantido)
+        const rating = computeBattleRating(lpLeft, typeof lp === "number" && lp > 0 ? lp : 20)
+        setBattleStars(prev => ({ ...prev, [stageId]: Math.max(prev[stageId] ?? 0, rating) }))
         const firstTime = !completedIds.has(stageId)
         let rewards: StageDropTable | null = null
         if (firstTime) {
@@ -1402,6 +1407,10 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
   useEffect(() => {
     try { localStorage.setItem(LS_CHESTS_KEY, JSON.stringify([...claimedChests])) } catch {}
   }, [claimedChests])
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_STARS_KEY, JSON.stringify(battleStars)) } catch {}
+  }, [battleStars])
 
   // Auto-hide do toast de recompensas
   useEffect(() => {
@@ -1461,8 +1470,23 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
     const isBoss = battleStage.type === "boss"
     const stageId = battleStage.id
     const mode = isBoss ? "story-boss" as const : "story-normal" as const
+    // Gasta a stamina exibida na intro (nunca bloqueia o início da batalha:
+    // se não houver stamina suficiente, spendStamina retorna false e segue).
+    spendStamina(isBoss ? SWEEP_COST.boss : SWEEP_COST.battle)
     setBattleStage(null)
     onStartBattle(mode, stageId)
+  }
+
+  // ── Varredura: coleta instantânea dos drops de uma fase já dominada (3★) ──
+  const handleSweepStage = (stage: Stage) => {
+    if (stage.type !== "battle" && stage.type !== "boss") return
+    if (!completedIds.has(stage.id)) return
+    if ((battleStars[stage.id] ?? 0) < 3) return
+    const cost = SWEEP_COST[stage.type]
+    if (!spendStamina(cost)) return
+    const drops = grantStageRewards(stage)
+    setInfoStage(null)
+    setRewardToast({ drops, stars: 0 })
   }
 
   const getNextStage = (stageId: string): Stage | null => {
@@ -1518,6 +1542,7 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
         <StoryMapView
           stages={CHAPTER1_STAGES}
           completedIds={completedIds}
+          battleStars={battleStars}
           onPress={handleNodePress}
           onBack={onBack}
           stamina={stamina}
@@ -1534,7 +1559,10 @@ export default function StoryModeScreen({ onBack, onStartBattle }: StoryModeScre
         <StageInfoModal
           stage={infoStage}
           completed={completedIds.has(infoStage.id)}
+          battleRating={battleStars[infoStage.id] ?? 0}
+          stamina={stamina}
           onPlay={() => handlePlayStage(infoStage)}
+          onSweep={() => handleSweepStage(infoStage)}
           onClose={() => setInfoStage(null)}
         />
       )}
