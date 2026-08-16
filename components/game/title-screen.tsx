@@ -23,7 +23,7 @@ const PARTICLE_COUNT = 18
 
 export default function TitleScreen({ onEnter }: TitleScreenProps) {
   const { t } = useLanguage()
-  const { server, selectServer } = useSelectedServer()
+  const { server, selectServer, ping, status, liveServerId, refresh } = useSelectedServer()
   const [panel, setPanel] = useState<TitlePanel | null>(null)
   const bgMusicRef = useRef<HTMLAudioElement | null>(null)
   const narratorRef = useRef<HTMLAudioElement | null>(null)
@@ -338,24 +338,22 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       {/* Cinematic light rays - soft gradients, no blur filter (GPU friendly) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute top-0 left-1/4 w-[500px] h-full opacity-[0.07]"
+          className={`absolute top-0 left-1/4 w-[500px] h-full opacity-[0.07]${leaving ? " ts-anim-paused" : ""}`}
           style={{
             background:
               "radial-gradient(ellipse 60% 90% at 50% 0%, rgba(56, 189, 248, 0.5) 0%, rgba(56, 189, 248, 0.15) 45%, transparent 75%)",
             transform: "skewX(-15deg) translateZ(0)",
             animation: "lightSway 9s ease-in-out infinite",
-            animationPlayState: leaving ? "paused" : "running",
             willChange: "transform, opacity",
           }}
         />
         <div
-          className="absolute top-0 right-1/3 w-[400px] h-full opacity-[0.06]"
+          className={`absolute top-0 right-1/3 w-[400px] h-full opacity-[0.06]${leaving ? " ts-anim-paused" : ""}`}
           style={{
             background:
               "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(168, 85, 247, 0.5) 0%, rgba(168, 85, 247, 0.12) 40%, transparent 70%)",
             transform: "skewX(10deg) translateZ(0)",
             animation: "lightSway 12s ease-in-out infinite reverse",
-            animationPlayState: leaving ? "paused" : "running",
             willChange: "transform, opacity",
           }}
         />
@@ -366,7 +364,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         particles.map((particle, i) => (
           <div
             key={i}
-            className="absolute rounded-full"
+            className={`absolute rounded-full${leaving ? " ts-anim-paused" : ""}`}
             style={{
               width: `${particle.size}px`,
               height: `${particle.size}px`,
@@ -376,7 +374,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
               opacity: particle.opacity,
               boxShadow: `0 0 ${particle.size * 4}px ${particle.color}`,
               animation: `floatParticle ${particle.animationDuration}s ease-in-out ${particle.animationDelay}s infinite`,
-              animationPlayState: leaving ? "paused" : "running",
               willChange: "transform, opacity",
             }}
           />
@@ -397,10 +394,9 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         }}
       >
         <div
-          className="relative"
+          className={`relative${leaving ? " ts-anim-paused" : ""}`}
           style={{
             animation: visible ? "logoEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) both, logoFloat 5s ease-in-out 1.4s infinite" : undefined,
-            animationPlayState: leaving ? "paused" : "running",
             willChange: "transform",
           }}
         >
@@ -442,6 +438,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
         </div>
 
         <p
+          className={leaving ? "ts-anim-paused" : undefined}
           style={{
             fontFamily: "'Segoe UI', sans-serif",
             fontSize: "clamp(14px, 2.8vw, 18px)",
@@ -453,7 +450,6 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             animation: visible
               ? "textEntrance 1s ease-out 1.1s both, softBlink 2.4s ease-in-out 2.1s infinite"
               : undefined,
-            animationPlayState: leaving ? "paused" : "running",
             willChange: "opacity",
           }}
         >
@@ -481,8 +477,8 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           <span
             className="h-2 w-2 rounded-full"
             style={{
-              background: pingColor(server.ping),
-              boxShadow: `0 0 8px ${pingColor(server.ping)}`,
+              background: pingColor(ping),
+              boxShadow: `0 0 8px ${pingColor(ping)}`,
               animation: "dotPulse 2.4s ease-in-out infinite",
             }}
             aria-hidden="true"
@@ -493,8 +489,8 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
           >
             {getServerLabel(server)}
           </span>
-          <span className="font-mono text-[10px]" style={{ color: pingColor(server.ping) }}>
-            {server.ping}ms
+          <span className="font-mono text-[10px]" style={{ color: pingColor(ping) }}>
+            {status === "measuring" ? "..." : status === "offline" ? "--" : `${ping}ms`}
           </span>
           <ChevronsUpDown
             className="h-3.5 w-3.5 text-sky-300/60 transition-colors group-hover:text-sky-200"
@@ -645,6 +641,10 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
             panel={panel}
             onClose={() => setPanel(null)}
             currentServerId={server.id}
+            liveServerId={liveServerId}
+            ping={ping}
+            status={status}
+            onRefresh={() => void refresh()}
             onSelectServer={(id) => {
               selectServer(id)
               setPanel(null)
@@ -654,6 +654,7 @@ export default function TitleScreen({ onEnter }: TitleScreenProps) {
       ) : null}
 
       <style>{`
+        .ts-anim-paused { animation-play-state: paused !important; }
         @keyframes kenBurns {
           0%   { transform: scale(1) translate(0px, 0px); }
           50%  { transform: scale(1.05) translate(-8px, -5px); }
