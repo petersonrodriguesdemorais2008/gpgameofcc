@@ -5,8 +5,11 @@ import {
   Apple,
   Check,
   Chrome,
+  Copy,
+  FileText,
   Globe,
   Loader2,
+  Lock,
   LogOut,
   Mail,
   RefreshCw,
@@ -21,7 +24,7 @@ import { useLanguage } from "@/contexts/language-context"
 /** Versão exibida no canto da Title Screen. Atualize junto com cada release. */
 export const GAME_VERSION = "v1.0.0"
 
-export type TitlePanel = "account" | "repair" | "language" | "server"
+export type TitlePanel = "account" | "repair" | "language" | "server" | "terms" | "privacy"
 
 export interface GameServer {
   id: string
@@ -175,6 +178,56 @@ export function useSelectedServer() {
   return { server, selectServer, ping, status, liveServerId, refresh }
 }
 
+/* ------------------------------------------------------------------- uid ---- */
+
+export const DEVICE_UID_KEY = "gpgame_device_uid"
+
+/** Gera um identificador de dispositivo estável e legível (ex.: GP-4F2A-91C7). */
+function createDeviceUid() {
+  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+  const bytes = new Uint8Array(8)
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  const chars = Array.from(bytes, (b) => alphabet[b % alphabet.length])
+  return `GP-${chars.slice(0, 4).join("")}-${chars.slice(4, 8).join("")}`
+}
+
+/**
+ * UID mostrado no canto da tela. Se o login (automático ou manual) já aconteceu,
+ * usa o código real da conta; caso contrário, usa um ID de convidado persistente
+ * no dispositivo, para o jogador sempre ter um identificador a informar ao suporte.
+ */
+export function useDisplayUid() {
+  const { accountAuth } = useGame()
+  const [guestUid, setGuestUid] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      let saved = localStorage.getItem(DEVICE_UID_KEY)
+      if (!saved) {
+        saved = createDeviceUid()
+        localStorage.setItem(DEVICE_UID_KEY, saved)
+      }
+      setGuestUid(saved)
+    } catch {
+      /* localStorage indisponível: segue sem UID de convidado */
+    }
+  }, [])
+
+  const isLoggedIn = Boolean(accountAuth?.isLoggedIn)
+  const accountUid = isLoggedIn ? accountAuth?.uniqueCode || null : null
+
+  return {
+    uid: accountUid ?? guestUid,
+    isGuest: !accountUid,
+    /** Fica false até o efeito rodar no cliente, evitando divergência de hidratação. */
+    ready: Boolean(accountUid) || guestUid !== null,
+  }
+}
+
 /* ---------------------------------------------------------------- shell ---- */
 
 const PANEL_META: Record<TitlePanel, { icon: typeof UserCog; titleKey: string }> = {
@@ -182,6 +235,8 @@ const PANEL_META: Record<TitlePanel, { icon: typeof UserCog; titleKey: string }>
   repair: { icon: Wrench, titleKey: "repairTitle" },
   language: { icon: Globe, titleKey: "titleLanguage" },
   server: { icon: Globe, titleKey: "selectServerTitle" },
+  terms: { icon: FileText, titleKey: "legalTerms" },
+  privacy: { icon: Lock, titleKey: "legalPrivacy" },
 }
 
 function PanelShell({
@@ -251,7 +306,7 @@ function PanelShell({
           </button>
         </header>
 
-        <div className="px-5 py-5">{children}</div>
+        <div className="max-h-[70vh] overflow-y-auto px-5 py-5">{children}</div>
       </div>
 
       <style>{`
@@ -282,6 +337,57 @@ const activeRowStyle: React.CSSProperties = {
 }
 
 /* --------------------------------------------------------------- account ---- */
+
+/** Linha do UID com cópia rápida — é o identificador que o suporte pede. */
+function UidRow() {
+  const { t } = useLanguage()
+  const { uid, isGuest, ready } = useDisplayUid()
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!copied) return
+    const id = window.setTimeout(() => setCopied(false), 2000)
+    return () => window.clearTimeout(id)
+  }, [copied])
+
+  if (!ready || !uid) return null
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(uid)
+      setCopied(true)
+    } catch {
+      /* clipboard bloqueado pelo navegador */
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2" style={rowStyle}>
+        <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+          {isGuest ? t("uidGuestLabel") : t("uidLabel")}
+        </span>
+        <span className="ml-auto font-mono text-xs text-sky-200">{uid}</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label={t("uidCopy")}
+          title={t("uidCopy")}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-sky-200"
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5" style={{ color: "#4ade80" }} aria-hidden="true" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+        </button>
+      </div>
+      <p className="px-1 text-[10px] leading-relaxed text-slate-500" aria-live="polite">
+        {copied ? t("uidCopied") : t("uidHint")}
+      </p>
+    </div>
+  )
+}
 
 function AccountPanel({ onClose }: { onClose: () => void }) {
   const { t } = useLanguage()
@@ -324,9 +430,11 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {!isLoggedIn ? (
-        <p className="text-xs leading-relaxed text-amber-200/75">{t("guestWarning")}</p>
-      ) : accountAuth?.uniqueCode ? (
+      {!isLoggedIn ? <p className="text-xs leading-relaxed text-amber-200/75">{t("guestWarning")}</p> : null}
+
+      <UidRow />
+
+      {isLoggedIn && accountAuth?.uniqueCode ? (
         <div className="flex items-center justify-between rounded-lg px-3 py-2" style={rowStyle}>
           <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{t("playerCode")}</span>
           <span className="font-mono text-xs text-sky-200">{accountAuth.uniqueCode}</span>
@@ -697,6 +805,50 @@ function ServerPanel({
   )
 }
 
+/* ----------------------------------------------------------------- legal ---- */
+
+const TERMS_SECTIONS = [
+  { titleKey: "termsAccountTitle", bodyKey: "termsAccountBody" },
+  { titleKey: "termsConductTitle", bodyKey: "termsConductBody" },
+  { titleKey: "termsContentTitle", bodyKey: "termsContentBody" },
+  { titleKey: "termsChangesTitle", bodyKey: "termsChangesBody" },
+]
+
+const PRIVACY_SECTIONS = [
+  { titleKey: "privacyDataTitle", bodyKey: "privacyDataBody" },
+  { titleKey: "privacyUseTitle", bodyKey: "privacyUseBody" },
+  { titleKey: "privacyStorageTitle", bodyKey: "privacyStorageBody" },
+  { titleKey: "privacyRightsTitle", bodyKey: "privacyRightsBody" },
+]
+
+function LegalPanel({ kind }: { kind: "terms" | "privacy" }) {
+  const { t } = useLanguage()
+  const sections = kind === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS
+  const introKey = kind === "terms" ? "termsIntro" : "privacyIntro"
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm leading-relaxed text-slate-300">{t(introKey)}</p>
+
+      <div className="flex flex-col gap-3">
+        {sections.map((section) => (
+          <section key={section.titleKey} className="flex flex-col gap-1">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-200/85">
+              {t(section.titleKey)}
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-400">{t(section.bodyKey)}</p>
+          </section>
+        ))}
+      </div>
+
+      <p className="border-t border-white/5 pt-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+        {t("legalUpdated")}: {t("legalUpdatedDate")}
+      </p>
+      <p className="text-[10px] leading-relaxed text-slate-500">{t("legalCopyright")}</p>
+    </div>
+  )
+}
+
 /* ----------------------------------------------------------------- entry ---- */
 
 export function TitleMenuPanel({
@@ -723,6 +875,8 @@ export function TitleMenuPanel({
       {panel === "account" ? <AccountPanel onClose={onClose} /> : null}
       {panel === "repair" ? <RepairPanel /> : null}
       {panel === "language" ? <LanguagePanel /> : null}
+      {panel === "terms" ? <LegalPanel kind="terms" /> : null}
+      {panel === "privacy" ? <LegalPanel kind="privacy" /> : null}
       {panel === "server" ? (
         <ServerPanel
           currentServerId={currentServerId}
