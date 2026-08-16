@@ -10,8 +10,7 @@ import { useEffect, useRef } from "react"
  * <canvas> — zero re-render do React por frame.
  *
  * Camadas:
- *  - Canvas: espectro luminoso espelhado na base, partículas de energia que
- *    sobem a cada batida e ondas de choque duplas expandindo do centro
+ *  - Canvas: partículas de energia que sobem a cada batida
  *  - Moldura de luz dupla nas bordas que respira com o grave
  *  - Varredura aurora no topo reagindo aos agudos
  *  - Bloom radial central + glows nos cantos
@@ -37,11 +36,6 @@ interface Particle {
   maxLife: number
   size: number
   hue: number
-}
-
-interface ShockRing {
-  born: number
-  strength: number
 }
 
 const CYAN = "56, 189, 248"
@@ -133,11 +127,6 @@ export default function TitleBeatFX({ audioRef, active, leaving }: TitleBeatFXPr
     let lastBeatAt = 0
 
     const particles: Particle[] = []
-    const rings: ShockRing[] = []
-
-    // Barras do espectro (suavizadas individualmente para fluidez)
-    const BAR_COUNT = 56
-    const barLevels = new Float32Array(BAR_COUNT)
 
     const spawnBurst = (strength: number) => {
       const count = Math.round(10 + strength * 14)
@@ -206,8 +195,6 @@ export default function TitleBeatFX({ audioRef, active, leaving }: TitleBeatFXPr
         const strength = Math.min(1, Math.max(0.4, (bass - avg) * 6 + 0.5))
         flash = strength
         punch = strength
-        rings.push({ born: now, strength })
-        if (rings.length > 5) rings.shift()
         spawnBurst(strength)
       }
 
@@ -223,45 +210,6 @@ export default function TitleBeatFX({ audioRef, active, leaving }: TitleBeatFXPr
       if (!c2d) return
       c2d.clearRect(0, 0, cw, ch)
       c2d.globalCompositeOperation = "lighter"
-
-      // Espectro luminoso espelhado na base
-      const half = BAR_COUNT / 2
-      const barW = cw / BAR_COUNT
-      const maxBarH = ch * 0.26
-      for (let i = 0; i < half; i++) {
-        // Bins logarítmicos aproximados para distribuir melhor a energia
-        const bin = 1 + Math.round(Math.pow(i / half, 1.6) * 100)
-        const raw = (freqData[bin] / 255) * (0.5 + smoothBass * 0.9)
-        const idxR = half + i
-        const idxL = half - 1 - i
-        barLevels[idxR] = Math.max(barLevels[idxR] * 0.86, raw)
-        barLevels[idxL] = barLevels[idxR]
-      }
-      for (let i = 0; i < BAR_COUNT; i++) {
-        const level = barLevels[i]
-        if (level < 0.02) continue
-        const h = level * maxBarH
-        const x = i * barW
-        const centerDist = Math.abs(i - half + 0.5) / half
-        const hue = 199 + centerDist * 72 // ciano no centro → roxo nas pontas
-        const grad = c2d.createLinearGradient(0, ch, 0, ch - h)
-        grad.addColorStop(0, `hsla(${hue}, 95%, 62%, ${0.5 * level + 0.12})`)
-        grad.addColorStop(0.7, `hsla(${hue}, 95%, 70%, ${0.22 * level})`)
-        grad.addColorStop(1, "hsla(199, 95%, 80%, 0)")
-        c2d.fillStyle = grad
-        c2d.fillRect(x + barW * 0.15, ch - h, barW * 0.7, h)
-        // Ponta brilhante
-        c2d.fillStyle = `hsla(${hue}, 100%, 85%, ${0.55 * level})`
-        c2d.fillRect(x + barW * 0.15, ch - h - 1.5, barW * 0.7, 2.5)
-      }
-
-      // Linha de horizonte pulsante na base
-      const hGrad = c2d.createLinearGradient(0, 0, cw, 0)
-      hGrad.addColorStop(0, `rgba(${PURPLE}, 0)`)
-      hGrad.addColorStop(0.5, `rgba(${CYAN}, ${0.25 + smoothBass * 0.55})`)
-      hGrad.addColorStop(1, `rgba(${PURPLE}, 0)`)
-      c2d.fillStyle = hGrad
-      c2d.fillRect(0, ch - 2 - smoothBass * 3, cw, 2 + smoothBass * 3)
 
       // Partículas de energia
       for (let i = particles.length - 1; i >= 0; i--) {
@@ -286,43 +234,6 @@ export default function TitleBeatFX({ audioRef, active, leaving }: TitleBeatFXPr
         c2d.arc(p.x, p.y, r * 3, 0, Math.PI * 2)
         c2d.fillStyle = `hsla(${p.hue}, 95%, 65%, ${alpha * 0.16})`
         c2d.fill()
-      }
-
-      // Ondas de choque duplas
-      const cx = cw / 2
-      const cy = ch * 0.42
-      const maxR = Math.hypot(cw, ch) * 0.62
-      for (let i = rings.length - 1; i >= 0; i--) {
-        const ring = rings[i]
-        const age = (now - ring.born) / 1100
-        if (age >= 1) {
-          rings.splice(i, 1)
-          continue
-        }
-        const ease = 1 - Math.pow(1 - age, 3)
-        const alpha = (1 - age) * 0.7 * ring.strength
-
-        // Anel principal — ciano brilhante
-        c2d.beginPath()
-        c2d.arc(cx, cy, 30 + ease * maxR, 0, Math.PI * 2)
-        c2d.strokeStyle = `rgba(${ICE}, ${alpha})`
-        c2d.lineWidth = 2.5 * (1 - age) + 0.5
-        c2d.stroke()
-        c2d.beginPath()
-        c2d.arc(cx, cy, 30 + ease * maxR, 0, Math.PI * 2)
-        c2d.strokeStyle = `rgba(${CYAN}, ${alpha * 0.7})`
-        c2d.lineWidth = 9 * (1 - age) + 1
-        c2d.stroke()
-
-        // Anel secundário atrasado — roxo
-        const ease2 = 1 - Math.pow(1 - Math.max(0, age - 0.12) / 0.88, 3)
-        if (age > 0.12) {
-          c2d.beginPath()
-          c2d.arc(cx, cy, 20 + ease2 * maxR * 0.85, 0, Math.PI * 2)
-          c2d.strokeStyle = `rgba(${PURPLE}, ${alpha * 0.55})`
-          c2d.lineWidth = 5 * (1 - age) + 0.5
-          c2d.stroke()
-        }
       }
 
       c2d.globalCompositeOperation = "source-over"
@@ -393,7 +304,7 @@ export default function TitleBeatFX({ audioRef, active, leaving }: TitleBeatFXPr
         }}
       />
 
-      {/* Canvas: espectro, partículas e ondas de choque */}
+      {/* Canvas: partículas de energia */}
       <canvas ref={canvasRef} className="absolute inset-0" />
 
       {/* Moldura de luz dupla nas bordas — respira com o grave */}
