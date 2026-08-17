@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Gift, X, Play, Check, Scroll, Zap, FastForward, Map as MapIcon } from "lucide-react"
+import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Gift, X, Play, Check, Scroll, Zap, FastForward, Search, Map as MapIcon } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -509,31 +509,34 @@ function DropTile({ kind, amount, obtained, accent }: {
     star:  { label: "Estrelas", color: "#facc15" },
   }[kind]
   return (
-    <div style={{ position:"relative", width:62, flexShrink:0,
-      display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-      <div style={{ position:"relative", width:56, height:56,
-        background:"linear-gradient(170deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))",
-        border:`1px solid ${obtained ? "rgba(74,222,128,0.45)" : "rgba(255,255,255,0.16)"}`,
-        clipPath:"polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px)",
+    <div style={{ position:"relative", width:64, flexShrink:0,
+      display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+      <div style={{ position:"relative", width:54, height:54, borderRadius:"50%",
+        background:"radial-gradient(circle at 35% 30%, #3a3f46 0%, #16181d 72%)",
+        border:`2px solid ${obtained ? "rgba(120,220,130,0.85)" : "#e7b93c"}`,
+        boxShadow: obtained
+          ? "0 0 8px rgba(74,222,128,0.35), inset 0 2px 6px rgba(0,0,0,0.6)"
+          : "0 0 10px rgba(231,185,60,0.30), inset 0 2px 6px rgba(0,0,0,0.6)",
         display:"flex", alignItems:"center", justifyContent:"center" }}>
         {kind === "star"
-          ? <Star size={26} color={meta.color} fill={meta.color}
-              style={{ filter:"drop-shadow(0 0 6px rgba(250,204,21,0.6))" }}/>
-          : <ItemIcon kind={kind} size={34}/>}
-        {/* Quantidade encaixada no canto do tile */}
-        <span style={{ position:"absolute", bottom:1, right:4, color:"#fff",
-          fontSize:11, fontWeight:900, fontStyle:"italic",
-          textShadow:"0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8)" }}>x{amount}</span>
+          ? <Star size={24} color={meta.color} fill={meta.color}
+              style={{ filter:"drop-shadow(0 0 5px rgba(250,204,21,0.6))" }}/>
+          : <ItemIcon kind={kind} size={32}/>}
+        {/* Quantidade em placa chanfrada, encostada na borda do anel */}
+        <span style={{ position:"absolute", bottom:-3, right:-6, color:"#fff",
+          background:"rgba(8,10,14,0.94)", border:"1px solid rgba(255,255,255,0.25)",
+          padding:"0 6px", fontSize:10, fontWeight:900, fontStyle:"italic",
+          clipPath:"polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)" }}>x{amount}</span>
         {obtained && (
-          <span style={{ position:"absolute", top:2, left:3, width:15, height:15,
-            background:"#14532d", border:"1px solid #22c55e", borderRadius:3,
+          <span style={{ position:"absolute", top:-3, left:-3, width:16, height:16,
+            borderRadius:"50%", background:"#14532d", border:"1px solid #22c55e",
             display:"flex", alignItems:"center", justifyContent:"center" }}>
             <Check size={9} color="#4ade80" strokeWidth={4}/>
           </span>
         )}
       </div>
       <span style={{ fontSize:8, fontWeight:800, letterSpacing:".08em", textTransform:"uppercase",
-        color: obtained ? "#4ade80" : accent, whiteSpace:"nowrap" }}>
+        color: obtained ? "#4ade80" : "#9aa3ad", whiteSpace:"nowrap" }}>
         {obtained ? "Obtido" : meta.label}
       </span>
     </div>
@@ -577,111 +580,117 @@ function StageInfoModal({
   const sweepCanPay  = stamina >= sweepCost
 
   const typeMeta = {
-    scene:  { label:"Cena de História", opLabel:"Operação de História", accent:"#a78bfa",
-      accentDim:"rgba(167,139,250,0.55)", grad:"linear-gradient(135deg,#4c1d95,#7c3aed)",
-      glow:"rgba(139,92,246,0.45)" },
-    battle: { label: stage.preDialogue ? "Batalha com Diálogo" : "Batalha", opLabel:"Operação Padrão", accent:"#60a5fa",
-      accentDim:"rgba(96,165,250,0.55)", grad:"linear-gradient(135deg,#1e3a8a,#2563eb)",
-      glow:"rgba(59,130,246,0.45)" },
-    boss:   { label:"Boss Battle", opLabel:"Operação Crítica", accent:"#f87171",
-      accentDim:"rgba(248,113,113,0.55)", grad:"linear-gradient(135deg,#7f1d1d,#dc2626)",
-      glow:"rgba(220,38,38,0.5)" },
+    scene:  { label:"Cena de História", opLabel:"Operação de História", accent:"#9b7bff",
+      accentDim:"rgba(155,123,255,0.55)", grad:"linear-gradient(180deg,#6d4fd8,#4527a0)",
+      glow:"rgba(124,92,255,0.45)" },
+    battle: { label: stage.preDialogue ? "Batalha com Diálogo" : "Batalha", opLabel:"Operação Padrão", accent:"#2fb5e8",
+      accentDim:"rgba(47,181,232,0.55)", grad:"linear-gradient(180deg,#2fb5e8,#0f7fb4)",
+      glow:"rgba(47,181,232,0.45)" },
+    boss:   { label:"Boss Battle", opLabel:"Operação Crítica", accent:"#ff5f4a",
+      accentDim:"rgba(255,95,74,0.55)", grad:"linear-gradient(180deg,#e2492f,#8f1d0e)",
+      glow:"rgba(226,73,47,0.5)" },
   }[stage.type]
+
+  // Miniaturas táticas do briefing (inimigo / mapa)
+  const mapThumb   = stage.sceneData?.panels[0]?.bg ?? stage.preDialogue?.panels[0]?.bg ?? BG.camelot
+  const enemyThumb = isBoss ? BOSS_IMG : isBattle ? charImg("guard1", "normal") : charImg("calem", "normal")
 
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:250,
       fontFamily:"'Segoe UI',system-ui,sans-serif",
-      background:"linear-gradient(90deg,rgba(2,4,10,0.18) 0%,rgba(2,4,10,0.42) 45%,rgba(2,4,10,0.82) 100%)",
+      background:"linear-gradient(90deg,rgba(3,4,7,0.10) 0%,rgba(3,4,7,0.40) 45%,rgba(3,4,7,0.85) 100%)",
       animation:"opBackdropIn .3s ease both" }}>
 
       <aside onClick={e=>e.stopPropagation()} role="dialog" aria-label={`Operação ${code} — ${stage.title}`}
         style={{ position:"absolute", top:0, right:0, bottom:0,
-          width:"min(430px, 100%)", display:"flex", flexDirection:"column",
-          background:"linear-gradient(200deg,rgba(10,14,28,0.97) 0%,rgba(4,7,16,0.985) 60%,rgba(3,5,12,0.99) 100%)",
-          borderLeft:`1px solid ${typeMeta.accentDim}`,
-          boxShadow:"-24px 0 60px rgba(0,0,0,0.6)",
+          width:"min(440px, 100%)", display:"flex", flexDirection:"column",
+          background:"linear-gradient(180deg,rgba(17,19,23,0.97) 0%,rgba(10,12,15,0.99) 100%)",
+          borderLeft:"1px solid rgba(255,255,255,0.10)",
+          boxShadow:"-30px 0 70px rgba(0,0,0,0.7)",
           backdropFilter:"blur(14px)",
           animation:"opPanelIn .42s cubic-bezier(.22,1,.36,1) both" }}>
 
         {/* Textura diagonal sutil no painel inteiro */}
-        <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.05,
+        <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.04,
           background:"repeating-linear-gradient(-55deg, transparent 0 10px, #fff 10px 11px)" }}/>
-        {/* Filete de energia na borda esquerda */}
-        <div aria-hidden="true" style={{ position:"absolute", top:0, bottom:0, left:0, width:2,
-          background:`linear-gradient(180deg, transparent, ${typeMeta.accent}, transparent)`,
-          animation:"opEdgePulse 3s ease-in-out infinite" }}/>
 
-        {/* ── Cabeçalho da operação ── */}
-        <header style={{ position:"relative", padding:"18px 18px 14px",
-          background:`linear-gradient(105deg, rgba(0,0,0,0.55) 0%, transparent 70%), ${typeMeta.grad}`,
-          clipPath:"polygon(0 0, 100% 0, 100% 100%, 22px 100%, 0 calc(100% - 22px))",
-          overflow:"hidden" }}>
-          <div aria-hidden="true" style={{ position:"absolute", inset:0, opacity:0.10,
-            background:"repeating-linear-gradient(-55deg, transparent 0 14px, #000 14px 16px)" }}/>
-          <div aria-hidden="true" style={{ position:"absolute", top:-30, right:-30, width:150, height:150,
-            borderRadius:"50%", background:`radial-gradient(circle, ${typeMeta.glow}, transparent 65%)` }}/>
+        {/* ── Cabeçalho da operação: bloco de tipo + código gigante ── */}
+        <header style={{ position:"relative", padding:"16px 16px 14px",
+          background:"rgba(4,5,7,0.92)",
+          borderBottom:"1px solid rgba(255,255,255,0.08)",
+          display:"flex", alignItems:"stretch", gap:14, overflow:"hidden" }}>
+          <div aria-hidden="true" style={{ position:"absolute", inset:0, opacity:0.06,
+            background:"repeating-linear-gradient(-55deg, transparent 0 14px, #fff 14px 15px)" }}/>
 
           <button onClick={onClose} aria-label="Fechar"
-            style={{ position:"absolute", top:12, right:12, zIndex:3,
-              background:"rgba(0,0,0,0.40)", border:"1px solid rgba(255,255,255,0.22)",
+            style={{ position:"absolute", top:10, right:10, zIndex:3,
+              background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.18)",
               width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center",
               cursor:"pointer", clipPath:"polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)" }}>
             <X size={15} color="#e2e8f0"/>
           </button>
 
-          <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-            <span aria-hidden="true" style={{ width:10, height:10, transform:"rotate(45deg)",
-              background:"#fff", opacity:0.9, flexShrink:0 }}/>
-            <span style={{ color:"rgba(255,255,255,0.85)", fontSize:10, fontWeight:900,
-              letterSpacing:".22em", textTransform:"uppercase" }}>{typeMeta.opLabel}</span>
+          {/* Bloco de tipo (à la "Standard Operation") */}
+          <div style={{ position:"relative", zIndex:2, width:56, flexShrink:0,
+            background:typeMeta.grad, boxShadow:`0 0 20px ${typeMeta.glow}`,
+            clipPath:"polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)",
+            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3 }}>
+            {isBattle
+              ? <Swords size={22} color="#fff" style={{ filter:"drop-shadow(0 1px 3px rgba(0,0,0,0.6))" }}/>
+              : <Scroll size={22} color="#fff" style={{ filter:"drop-shadow(0 1px 3px rgba(0,0,0,0.6))" }}/>}
+            <span style={{ color:"rgba(255,255,255,0.92)", fontSize:7.5, fontWeight:900,
+              letterSpacing:".16em" }}>{isBoss ? "BOSS" : isBattle ? "COMBATE" : "HISTÓRIA"}</span>
           </div>
 
-          <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"flex-end",
-            justifyContent:"space-between", gap:10 }}>
-            <div style={{ minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"baseline", gap:10 }}>
-                <span style={{ color:"#fff", fontSize:38, fontWeight:900, fontStyle:"italic",
-                  lineHeight:1, letterSpacing:".02em",
-                  textShadow:"0 2px 12px rgba(0,0,0,0.6)" }}>{code}</span>
-                {isBoss && (
-                  <span style={{ background:"rgba(0,0,0,0.5)", border:"1px solid rgba(253,224,71,0.6)",
-                    color:"#fde68a", fontSize:9, fontWeight:900, letterSpacing:".18em",
-                    padding:"2px 8px" }}>BOSS</span>
-                )}
-              </div>
-              <h3 style={{ color:"#fff", fontWeight:800, fontSize:16, margin:"4px 0 0",
+          <div style={{ position:"relative", zIndex:2, flex:1, minWidth:0 }}>
+            <div style={{ color:typeMeta.accent, fontSize:9.5, fontWeight:900,
+              letterSpacing:".26em", textTransform:"uppercase" }}>{typeMeta.opLabel}</div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:10, marginTop:1 }}>
+              <span style={{ color:"#fff", fontSize:44, fontWeight:900, fontStyle:"italic",
+                lineHeight:1.05, letterSpacing:".03em",
+                textShadow:"0 2px 14px rgba(0,0,0,0.7)" }}>{code}</span>
+              {isBoss && (
+                <span style={{ background:"rgba(226,73,47,0.18)", border:"1px solid rgba(255,95,74,0.6)",
+                  color:"#ffb4a8", fontSize:9, fontWeight:900, letterSpacing:".18em",
+                  padding:"2px 8px" }}>BOSS</span>
+              )}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+              <h3 style={{ color:"#e5e7eb", fontWeight:800, fontSize:15, margin:"2px 0 0",
                 whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                 textShadow:"0 1px 8px rgba(0,0,0,0.5)" }}>{stage.title}</h3>
+              {/* Medalhas de desempenho (batalhas) ou emblema de cena */}
+              {isBattle ? (
+                <div style={{ display:"flex", gap:9, flexShrink:0, paddingRight:2 }}>
+                  {[1,2,3].map(i => (
+                    <Medal key={i} earned={completed && battleRating >= i} accent={typeMeta.accent} delay={0.15 + i*0.08}/>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ width:28, height:28, transform:"rotate(45deg)", flexShrink:0, marginRight:8,
+                  background: completed ? "rgba(74,222,128,0.16)" : "rgba(255,255,255,0.06)",
+                  border:`1px solid ${completed ? "#4ade80" : "rgba(255,255,255,0.28)"}`,
+                  display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {completed
+                    ? <Check size={13} color="#4ade80" strokeWidth={3.5} style={{ transform:"rotate(-45deg)" }}/>
+                    : <Scroll size={13} color="rgba(255,255,255,0.75)" style={{ transform:"rotate(-45deg)" }}/>}
+                </div>
+              )}
             </div>
-            {/* Medalhas de desempenho (batalhas) ou emblema de cena */}
-            {isBattle ? (
-              <div style={{ display:"flex", gap:11, paddingRight:4, paddingBottom:2, flexShrink:0 }}>
-                {[1,2,3].map(i => (
-                  <Medal key={i} earned={completed && battleRating >= i} accent={typeMeta.accent} delay={0.15 + i*0.08}/>
-                ))}
-              </div>
-            ) : (
-              <div style={{ width:34, height:34, transform:"rotate(45deg)", flexShrink:0, marginRight:6,
-                background: completed ? "rgba(74,222,128,0.16)" : "rgba(255,255,255,0.08)",
-                border:`1px solid ${completed ? "#4ade80" : "rgba(255,255,255,0.30)"}`,
-                display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {completed
-                  ? <Check size={15} color="#4ade80" strokeWidth={3.5} style={{ transform:"rotate(-45deg)" }}/>
-                  : <Scroll size={15} color="rgba(255,255,255,0.75)" style={{ transform:"rotate(-45deg)" }}/>}
-              </div>
-            )}
           </div>
         </header>
 
-        {/* ── Faixa de contexto (inimigo / tipo) ── */}
-        <div style={{ margin:"12px 18px 0", display:"flex", alignItems:"center", gap:8 }}>
-          <span style={{ background: isBattle ? "#b91c1c" : "rgba(124,58,237,0.85)",
+        {/* ── Faixa de recomendação (placa vermelha de alerta) ── */}
+        <div style={{ margin:"14px 16px 0", display:"flex", alignItems:"center" }}>
+          <span style={{ background: isBattle ? "#c8321f" : "#5b3bbd",
             color:"#fff", fontSize:9, fontWeight:900, letterSpacing:".12em", textTransform:"uppercase",
-            padding:"3px 9px",
-            clipPath:"polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%)" }}>
+            padding:"4px 10px",
+            clipPath:"polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%)" }}>
             {isBattle ? "Inimigo" : "História"}
           </span>
-          <span style={{ color:"#cbd5e1", fontSize:11, fontWeight:700 }}>
+          <span style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.10)",
+            borderLeft:"none", color:"#f3f4f6", fontSize:11, fontWeight:800, padding:"3px 12px 3px 14px",
+            marginLeft:-6, clipPath:"polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%)" }}>
             {isBattle && stage.opponent ? `vs ${stage.opponent}` : typeMeta.label}
           </span>
           {completed && (
@@ -693,20 +702,51 @@ function StageInfoModal({
         </div>
 
         {/* ── Briefing ── */}
-        <div style={{ margin:"10px 18px 0", position:"relative", paddingLeft:12 }}>
+        <div style={{ margin:"10px 16px 0", position:"relative", paddingLeft:12 }}>
           <div aria-hidden="true" style={{ position:"absolute", left:0, top:2, bottom:2, width:2,
             background:typeMeta.accentDim }}/>
-          <p style={{ color:"#94a3b8", fontSize:12, lineHeight:1.6, margin:0 }}>{desc}</p>
+          <p style={{ color:"#aeb7c0", fontSize:12, lineHeight:1.6, margin:0 }}>{desc}</p>
+        </div>
+
+        {/* ── Miniaturas táticas (Info do Inimigo / Mapa) ── */}
+        <div style={{ margin:"14px 16px 0", display:"flex", gap:10 }}>
+          {[
+            { label: isBattle ? "Info do Inimigo" : "Personagens", img: enemyThumb },
+            { label: "Mapa", img: mapThumb },
+          ].map(t => (
+            <div key={t.label} style={{ flex:1, position:"relative", height:76,
+              border:"1px solid rgba(255,255,255,0.18)", overflow:"hidden",
+              clipPath:"polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)",
+              background:"#0a0c10" }}>
+              <img src={t.img || "/placeholder.svg"} alt="" aria-hidden="true"
+                onError={e => { e.currentTarget.style.display = "none" }}
+                style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+                  objectFit:"cover", objectPosition:"center top",
+                  opacity:0.55, filter:"grayscale(0.35) contrast(1.05)" }}/>
+              <div aria-hidden="true" style={{ position:"absolute", inset:0,
+                background:"linear-gradient(180deg,rgba(5,6,8,0.55) 0%,transparent 45%,rgba(5,6,8,0.35) 100%)" }}/>
+              <span style={{ position:"absolute", top:0, left:0, background:"rgba(5,6,8,0.88)",
+                color:"#e5e7eb", fontSize:8, fontWeight:900, letterSpacing:".1em",
+                textTransform:"uppercase", padding:"3px 8px",
+                clipPath:"polygon(0 0,100% 0,calc(100% - 7px) 100%,0 100%)" }}>{t.label}</span>
+              <span aria-hidden="true" style={{ position:"absolute", top:"50%", left:"50%",
+                transform:"translate(-50%,-50%)", width:26, height:26, borderRadius:"50%",
+                background:"rgba(5,6,8,0.65)", border:"1px solid rgba(255,255,255,0.35)",
+                display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <Search size={13} color="#e5e7eb"/>
+              </span>
+            </div>
+          ))}
         </div>
 
         {/* ── Dica de desempenho (batalhas) ── */}
         {isBattle && (
-          <div style={{ margin:"12px 18px 0", display:"flex", alignItems:"center", gap:9,
-            background:"rgba(250,204,21,0.05)", border:"1px solid rgba(250,204,21,0.16)",
+          <div style={{ margin:"12px 16px 0", display:"flex", alignItems:"center", gap:9,
+            background:"rgba(231,185,60,0.05)", border:"1px solid rgba(231,185,60,0.18)",
             padding:"8px 12px",
             clipPath:"polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }}>
             <RatingStars rating={completed ? battleRating : 0} size={13}/>
-            <span style={{ color:"#94a3b8", fontSize:10.5, fontWeight:600, lineHeight:1.4 }}>
+            <span style={{ color:"#aeb7c0", fontSize:10.5, fontWeight:600, lineHeight:1.4 }}>
               {completed
                 ? (battleRating >= 3 ? "Desempenho perfeito — varredura liberada." : `Desempenho ${battleRating}/3 — vença com mais LP para melhorar.`)
                 : "Vença mantendo seu LP alto para conquistar as 3 medalhas."}
@@ -717,21 +757,20 @@ function StageInfoModal({
         <div style={{ flex:1 }}/>
 
         {/* ── Recompensas (canto inferior, junto do iniciar) ── */}
-        <div style={{ padding:"0 18px 12px", position:"relative" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:9 }}>
-            <span aria-hidden="true" style={{ width:7, height:7, transform:"rotate(45deg)",
-              background:typeMeta.accent, flexShrink:0 }}/>
-            <span style={{ color:typeMeta.accent, fontSize:10, fontWeight:900,
-              letterSpacing:".16em", textTransform:"uppercase" }}>
-              {completed ? "Recompensas obtidas" : "Drops da operação"}
+        <div style={{ padding:"0 16px 12px", position:"relative" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+            <span style={{ background:"#f2f4f5", color:"#15171b", fontSize:9.5, fontWeight:900,
+              letterSpacing:".14em", textTransform:"uppercase", padding:"3px 10px",
+              clipPath:"polygon(0 0,100% 0,calc(100% - 7px) 100%,0 100%)" }}>
+              {completed ? "Recompensas obtidas" : "Recompensas"}
             </span>
             {!completed && (
-              <span style={{ marginLeft:"auto", background:"rgba(255,255,255,0.07)",
-                border:"1px solid rgba(255,255,255,0.14)", color:"#cbd5e1",
+              <span style={{ background:"rgba(231,185,60,0.10)",
+                border:"1px solid rgba(231,185,60,0.40)", color:"#e7b93c",
                 fontSize:8.5, fontWeight:900, letterSpacing:".1em", textTransform:"uppercase",
                 padding:"2px 7px" }}>1ª conclusão</span>
             )}
-            <div aria-hidden="true" style={{ flex: completed ? 1 : "unset", height:1,
+            <div aria-hidden="true" style={{ flex:1, height:1,
               background:"linear-gradient(90deg, rgba(255,255,255,0.14), transparent)" }}/>
           </div>
           <div style={{ display:"flex", gap:9, flexWrap:"wrap" }}>
@@ -747,27 +786,32 @@ function StageInfoModal({
           )}
         </div>
 
-        {/* ── Barra de ação inferior ── */}
-        <div style={{ display:"flex", alignItems:"stretch", gap:8, padding:"0 18px 18px" }}>
-          {sweepReady && (
-            <button onClick={onSweep} disabled={!sweepCanPay}
-              title={sweepCanPay
+        {/* ── Barra de ação inferior (estilo Practice / Start) ── */}
+        <div style={{ display:"flex", alignItems:"stretch", gap:8, padding:"0 16px 16px" }}>
+          {isBattle && (
+            <button onClick={sweepReady && sweepCanPay ? onSweep : undefined}
+              disabled={!sweepReady || !sweepCanPay}
+              title={!sweepReady
+                ? "Conquiste as 3 medalhas para liberar a varredura."
+                : sweepCanPay
                 ? "Liberado por 3 medalhas: receba os drops sem jogar."
                 : "Stamina insuficiente para varrer."}
-              style={{ flexShrink:0, padding:"0 16px", border:"none",
-                cursor: sweepCanPay ? "pointer" : "default",
-                background: sweepCanPay ? "rgba(250,204,21,0.12)" : "rgba(255,255,255,0.05)",
-                outline:`1px solid ${sweepCanPay ? "rgba(250,204,21,0.5)" : "rgba(255,255,255,0.10)"}`,
+              style={{ flexShrink:0, padding:"0 18px", border:"none",
+                cursor: sweepReady && sweepCanPay ? "pointer" : "default",
+                background: sweepReady
+                  ? (sweepCanPay ? "linear-gradient(180deg,#e9ecee,#c3c9ce)" : "rgba(255,255,255,0.06)")
+                  : "rgba(255,255,255,0.05)",
+                outline:`1px solid ${sweepReady && sweepCanPay ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.12)"}`,
                 outlineOffset:-1,
-                clipPath:"polygon(10px 0,100% 0,100% 100%,0 100%,0 10px)",
+                clipPath:"polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)",
                 display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}>
               <span style={{ display:"flex", alignItems:"center", gap:5,
-                color: sweepCanPay ? "#fde047" : "#475569", fontWeight:900, fontSize:12,
-                letterSpacing:".06em", textTransform:"uppercase" }}>
-                <FastForward size={13}/> Varrer
+                color: sweepReady ? (sweepCanPay ? "#15171b" : "#6b7280") : "#4b5563",
+                fontWeight:900, fontSize:12, letterSpacing:".06em", textTransform:"uppercase" }}>
+                {sweepReady ? <FastForward size={13}/> : <Lock size={12}/>} Varrer
               </span>
               <span style={{ display:"flex", alignItems:"center", gap:2, fontSize:10,
-                color: sweepCanPay ? "#a3e635" : "#dc2626", fontWeight:800 }}>
+                color: sweepReady ? (sweepCanPay ? "#8f6a00" : "#b91c1c") : "#4b5563", fontWeight:800 }}>
                 <Zap size={10}/> -{sweepCost}
               </span>
             </button>
@@ -775,13 +819,13 @@ function StageInfoModal({
           <button onClick={onPlay}
             style={{ flex:1, border:"none", cursor:"pointer", position:"relative",
               padding:"14px 16px", background:typeMeta.grad,
-              clipPath:"polygon(14px 0,100% 0,100% 100%,0 100%,0 14px)",
-              boxShadow:`0 6px 24px ${typeMeta.glow}`,
+              clipPath:"polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%)",
+              boxShadow:`0 6px 26px ${typeMeta.glow}`,
               display:"flex", alignItems:"center", justifyContent:"center", gap:10,
               overflow:"hidden" }}
             onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.15)" }}
             onMouseLeave={e => { e.currentTarget.style.filter = "none" }}>
-            <span aria-hidden="true" style={{ position:"absolute", inset:0, opacity:0.12,
+            <span aria-hidden="true" style={{ position:"absolute", inset:0, opacity:0.10,
               background:"repeating-linear-gradient(-55deg, transparent 0 12px, #fff 12px 13px)" }}/>
             <span aria-hidden="true" style={{ position:"absolute", top:0, bottom:0, left:"-40%", width:"30%",
               background:"linear-gradient(105deg, transparent, rgba(255,255,255,0.35), transparent)",
@@ -796,8 +840,8 @@ function StageInfoModal({
             {isBattle && (
               <span style={{ position:"relative", display:"flex", alignItems:"center", gap:3,
                 background:"rgba(0,0,0,0.35)", padding:"3px 9px", fontSize:11,
-                color: stamina >= entryCost ? "#6ee7b7" : "#fca5a5", fontWeight:900,
-                clipPath:"polygon(5px 0,100% 0,100% 100%,0 100%,0 5px)" }}>
+                color: stamina >= entryCost ? "#bfe9ff" : "#fca5a5", fontWeight:900,
+                clipPath:"polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)" }}>
                 <Zap size={11}/> -{entryCost}
               </span>
             )}
@@ -1522,165 +1566,84 @@ function StoryMapView({
     <div style={{ position:"fixed", inset:0, overflow:"hidden",
       fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
 
-      {/* ── World background ── */}
+      {/* ── World background (maquete tática 3D) ── */}
       <img
-        src="/images/gearperks-world.png"
+        src="/images/story-map-tactical-bg.png"
         alt="" aria-hidden="true"
         onError={(e) => {
           const t = e.currentTarget
           if (t.dataset.fallback) return
           t.dataset.fallback = "1"
-          t.src = "/images/gearperks-word.png"
+          t.src = "/images/gearperks-world.png"
         }}
         style={{ position:"absolute", inset:0, width:"100%", height:"100%",
-          objectFit:"cover", objectPosition:"center top", pointerEvents:"none" }}
+          objectFit:"cover", objectPosition:"center", pointerEvents:"none",
+          filter:"saturate(0.55) contrast(1.05)" }}
       />
 
-      {/* Overlay */}
+      {/* Overlay: vinheta escura + varredura fria no topo */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none",
-        background:"linear-gradient(160deg,rgba(3,6,14,0.38) 0%,rgba(3,6,14,0.14) 50%,rgba(3,6,14,0.46) 100%)" }}/>
+        background:"radial-gradient(120% 90% at 50% 42%, transparent 40%, rgba(4,6,9,0.55) 100%), linear-gradient(180deg,rgba(4,6,9,0.55) 0%,rgba(4,6,9,0.08) 30%,rgba(4,6,9,0.10) 70%,rgba(4,6,9,0.60) 100%)" }}/>
+      {/* Névoa azulada sutil (leitura das rotas) */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", mixBlendMode:"overlay",
+        background:"linear-gradient(200deg,rgba(47,181,232,0.10) 0%,transparent 45%,rgba(47,181,232,0.06) 100%)" }}/>
 
-      {/* ── SVG path lines (trilha épica em curvas com aura, fluxo de energia e orbes) ── */}
+      {/* ── SVG path lines (rotas táticas retas, estilo mapa de operações) ── */}
       <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%",
         pointerEvents:"none", zIndex:5, overflow:"visible" }}>
         <defs>
-          <linearGradient id="storyPathLit" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#e9d5ff">
-              <animate attributeName="stop-color" values="#e9d5ff;#c4b5fd;#f0abfc;#e9d5ff" dur="6s" repeatCount="indefinite"/>
-            </stop>
-            <stop offset="30%" stopColor="#c084fc">
-              <animate attributeName="stop-color" values="#c084fc;#a78bfa;#e879f9;#c084fc" dur="6s" repeatCount="indefinite"/>
-            </stop>
-            <stop offset="55%" stopColor="#8b5cf6">
-              <animate attributeName="stop-color" values="#8b5cf6;#7c3aed;#a855f7;#8b5cf6" dur="6s" repeatCount="indefinite"/>
-            </stop>
-            <stop offset="80%" stopColor="#a78bfa">
-              <animate attributeName="stop-color" values="#a78bfa;#c084fc;#8b5cf6;#a78bfa" dur="6s" repeatCount="indefinite"/>
-            </stop>
-            <stop offset="100%" stopColor="#ddd6fe">
-              <animate attributeName="stop-color" values="#ddd6fe;#f5d0fe;#c4b5fd;#ddd6fe" dur="6s" repeatCount="indefinite"/>
-            </stop>
-          </linearGradient>
-          <linearGradient id="storyPathCore" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="rgba(255,255,255,0.0)"/>
-            <stop offset="50%"  stopColor="rgba(255,255,255,0.85)"/>
-            <stop offset="100%" stopColor="rgba(255,255,255,0.0)"/>
-          </linearGradient>
-          <radialGradient id="storyOrb" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#ffffff"/>
-            <stop offset="35%"  stopColor="#e9d5ff"/>
-            <stop offset="100%" stopColor="rgba(168,85,247,0)"/>
-          </radialGradient>
-          <radialGradient id="storyOrbGold" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#fffbeb"/>
-            <stop offset="40%"  stopColor="#fde68a"/>
-            <stop offset="100%" stopColor="rgba(250,204,21,0)"/>
-          </radialGradient>
-          <filter id="storyPathGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="4.5" result="blur"/>
+          <filter id="storyLineGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="2.2" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <filter id="storyPathAura" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="9"/>
-          </filter>
         </defs>
         {MAP_NODES.slice(0, -1).map((node, i) => {
           const next = MAP_NODES[i + 1]
           const lit  = node.stageId === null ? true : completedIds.has(node.stageId)
-          // Segmento que leva à próxima fase disponível (destaque animado)
-          const isNextSeg = !lit && next.stageId === nextStageId
-          // Curva Catmull-Rom → Bézier cúbica: trilha contínua e suave entre os nós
-          const prevN  = MAP_NODES[i - 1] ?? node
-          const afterN = MAP_NODES[i + 2] ?? next
-          const p0 = { x: px(prevN.x),  y: py(prevN.y)  }
-          const p1 = { x: px(node.x),   y: py(node.y)   }
-          const p2 = { x: px(next.x),   y: py(next.y)   }
-          const p3 = { x: px(afterN.x), y: py(afterN.y) }
-          const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 }
-          const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 }
-          const d = `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`
+          // Segmento que leva à próxima operação disponível (fluxo azul animado)
+          const isNextSeg = next.stageId === nextStageId
+          const x1 = px(node.x), y1 = py(node.y)
+          const x2 = px(next.x), y2 = py(next.y)
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
           return (
             <g key={`seg-${i}`}>
-              {/* Contorno escuro (profundidade da trilha) */}
-              <path d={d} fill="none" stroke="rgba(0,0,0,0.60)"
-                strokeWidth={lit ? 11 : 8} strokeLinecap="round"
-                opacity={lit ? 0.9 : 0.4}/>
+              {/* Sombra dura da linha (profundidade sobre a maquete) */}
+              <line x1={x1} y1={y1 + 2.5} x2={x2} y2={y2 + 2.5}
+                stroke="rgba(0,0,0,0.55)" strokeWidth={lit ? 5 : 4}
+                strokeLinecap="square" opacity={lit ? 0.85 : 0.4}/>
               {lit ? (
                 <>
-                  {/* Aura ampla e difusa (respiração suave) */}
-                  <path d={d} fill="none" stroke="rgba(168,85,247,0.38)" strokeWidth={18}
-                    strokeLinecap="round" filter="url(#storyPathAura)"
-                    style={{ animation:`storyAuraBreath 3.4s ease-in-out ${(i * 0.35) % 1.8}s infinite` }}/>
-                  {/* Halo luminoso */}
-                  <path d={d} fill="none" stroke="rgba(168,85,247,0.55)" strokeWidth={8}
-                    strokeLinecap="round" filter="url(#storyPathGlow)"/>
-                  {/* Trilho principal em gradiente animado */}
-                  <path d={d} fill="none" stroke="url(#storyPathLit)" strokeWidth={4.5}
-                    strokeLinecap="round"/>
-                  {/* Filete de luz central */}
-                  <path d={d} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth={1.4}
-                    strokeLinecap="round"/>
-                  {/* Fluxo de energia percorrendo a trilha (duas camadas defasadas) */}
-                  <path d={d} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.2}
-                    strokeLinecap="round" strokeDasharray="5 22"
-                    style={{ animation:"storyFlow 1.6s linear infinite" }}/>
-                  <path d={d} fill="none" stroke="rgba(233,213,255,0.55)" strokeWidth={1.3}
-                    strokeLinecap="round" strokeDasharray="2 30"
-                    style={{ animation:"storyFlowSlow 3.2s linear infinite" }}/>
-                  {/* Cintilação varrendo o segmento */}
-                  <path d={d} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth={5}
-                    strokeLinecap="round" strokeDasharray="26 320" filter="url(#storyPathGlow)"
-                    style={{ animation:`storyShimmer 4.6s ease-in-out ${(i * 0.6) % 3}s infinite` }}/>
-                  {/* Orbe de energia principal com rastro */}
-                  <circle r={7.5} fill="url(#storyOrb)" opacity={0.5} filter="url(#storyPathAura)">
-                    <animateMotion dur={`${2.4 + (i % 3) * 0.5}s`} repeatCount="indefinite"
-                      path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear"
-                      begin={`${(i * 0.45) % 2}s`}/>
-                  </circle>
-                  <circle r={5.5} fill="url(#storyOrb)" opacity={0.95}>
-                    <animateMotion dur={`${2.4 + (i % 3) * 0.5}s`} repeatCount="indefinite"
-                      path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear"
-                      begin={`${(i * 0.45) % 2}s`}/>
-                  </circle>
-                  {/* Orbe secundário, menor e defasado, na direção oposta do brilho */}
-                  <circle r={3} fill="url(#storyOrbGold)" opacity={0.8}>
-                    <animateMotion dur={`${3.6 + (i % 2) * 0.8}s`} repeatCount="indefinite"
-                      path={d} keyPoints="1;0" keyTimes="0;1" calcMode="linear"
-                      begin={`${(i * 0.7 + 1.1) % 3}s`}/>
-                  </circle>
-                </>
-              ) : (
-                <>
-                  <path d={d} fill="none"
-                    stroke={isNextSeg ? "#8b5cf6" : "#3b0764"}
-                    strokeWidth={isNextSeg ? 4.5 : 3.5} strokeLinecap="round"
-                    strokeDasharray="1 14"
-                    opacity={isNextSeg ? 0.95 : 0.42}
-                    style={isNextSeg ? { animation:"storyFlow 2.2s linear infinite",
-                      filter:"drop-shadow(0 0 6px rgba(139,92,246,0.9))" } : undefined}/>
+                  {/* Trilho branco sólido e nítido */}
+                  <line x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke="rgba(255,255,255,0.95)" strokeWidth={3}
+                    strokeLinecap="square" filter="url(#storyLineGlow)"/>
+                  {/* Losango tático no meio do trecho */}
+                  <rect x={mx - 4} y={my - 4} width={8} height={8}
+                    transform={`rotate(45 ${mx} ${my})`}
+                    fill={isNextSeg ? "#2fb5e8" : "#f2f4f5"}
+                    stroke="rgba(0,0,0,0.5)" strokeWidth={1}/>
                   {isNextSeg && (
-                    <>
-                      {/* Convite sutil: brilho pulsante no segmento da próxima fase */}
-                      <path d={d} fill="none" stroke="rgba(139,92,246,0.30)" strokeWidth={9}
-                        strokeLinecap="round" filter="url(#storyPathGlow)"
-                        style={{ animation:"storyAuraBreath 2.4s ease-in-out infinite" }}/>
-                      <circle r={4} fill="url(#storyOrb)" opacity={0.85}>
-                        <animateMotion dur="2.8s" repeatCount="indefinite" path={d}
-                          keyPoints="0;1" keyTimes="0;1" calcMode="linear"/>
-                      </circle>
-                    </>
+                    <line x1={x1} y1={y1} x2={x2} y2={y2}
+                      stroke="#2fb5e8" strokeWidth={3.5} strokeLinecap="square"
+                      strokeDasharray="12 16"
+                      style={{ animation:"storyFlow 1.8s linear infinite",
+                        filter:"drop-shadow(0 0 6px rgba(47,181,232,0.9))" }}/>
                   )}
                 </>
+              ) : (
+                <line x1={x1} y1={y1} x2={x2} y2={y2}
+                  stroke="rgba(255,255,255,0.30)" strokeWidth={2}
+                  strokeLinecap="square" strokeDasharray="3 9"/>
               )}
             </g>
           )
         })}
       </svg>
 
-      {/* ── Map Nodes ── */}
+      {/* ── Map Nodes: hexágono tático + plaqueta de operação ── */}
       {MAP_NODES.map((nodeDef, nodeIdx) => {
         const isStart     = nodeDef.stageId === null
         const stage       = isStart ? null : stages.find(s => s.id === nodeDef.stageId)
@@ -1692,37 +1655,24 @@ function StoryMapView({
         const isBoss   = nodeDef.type === "boss"
         const isScene  = nodeDef.type === "scene"
         const isBattle = nodeDef.type === "battle"
-        // Boss é maior para dar impacto; cenas são menores (apenas história)
-        const size = isBoss ? 88 : isScene ? 50 : 64
 
         const rating   = !isStart && nodeDef.stageId ? (battleStars[nodeDef.stageId] ?? 0) : 0
         const canSweep = (isBattle || isBoss) && isCompleted && rating >= 3
 
-        const palette = {
-          start:  { bg:"#1e293b",                                 border:"#475569" },
-          scene:  { bg:"linear-gradient(145deg,#3b0764,#5b21b6)", border:"#7c3aed" },
-          battle: { bg:"linear-gradient(145deg,#172554,#1d4ed8)", border:"#2563eb" },
-          boss:   { bg:"linear-gradient(145deg,#450a0a,#991b1b)", border:"#f59e0b" },
-        }[nodeDef.type]
-
-        const nodeBg = (!accessible && !isStart) ? "rgba(12,16,28,0.92)"
-          : isCompleted && isScene ? "linear-gradient(145deg,#14532d,#166534)"
-          : palette.bg
-        const nodeBd = isPlayer ? "#38bdf8" : isNext ? "#22c55e"
-          : (!accessible && !isStart) ? "#1e293b"
-          : isCompleted && !isBoss ? "#22c55e"
-          : palette.border
-        const innerLight = ", inset 0 1px 3px rgba(255,255,255,0.28), inset 0 -4px 8px rgba(0,0,0,0.38)"
-        const nodeGlow = (isPlayer
-          ? "0 0 26px rgba(56,189,248,0.75),0 6px 18px rgba(0,0,0,0.6)"
-          : isNext
-          ? "0 0 26px rgba(34,197,94,0.75),0 6px 18px rgba(0,0,0,0.6)"
-          : isBoss && accessible
-          ? "0 0 30px rgba(220,38,38,0.60),0 6px 18px rgba(0,0,0,0.6)"
-          : accessible
-          ? "0 0 12px rgba(139,92,246,0.30),0 5px 16px rgba(0,0,0,0.55)"
-          : "0 4px 14px rgba(0,0,0,0.55)") + (accessible || isStart ? innerLight : "")
-        const subColor = { boss:"#fca5a5", battle:"#93c5fd", scene:"#c4b5fd", start:"#94a3b8" }[nodeDef.type]
+        const unlocked = accessible || isStart
+        const hexClip  = "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"
+        const hexSize  = isBoss ? 54 : isStart ? 32 : 38
+        const hexBg = !unlocked ? "linear-gradient(180deg,#262b31,#14171b)"
+          : isStart  ? "linear-gradient(180deg,#3c434b,#1b1f24)"
+          : isBoss   ? "linear-gradient(180deg,#e2492f,#8f1d0e)"
+          : isNext   ? "linear-gradient(180deg,#5ecdf5,#1181b4)"
+          : isScene && !isCompleted ? "linear-gradient(180deg,#9b7bff,#5b2fd1)"
+          : "linear-gradient(180deg,#2fb5e8,#0f7fb4)"
+        const hexGlow = isPlayer ? "drop-shadow(0 0 12px rgba(94,205,245,0.9))"
+          : isNext ? "drop-shadow(0 0 12px rgba(47,181,232,0.9))"
+          : isBoss && accessible ? "drop-shadow(0 0 14px rgba(226,73,47,0.75))"
+          : unlocked ? "drop-shadow(0 3px 6px rgba(0,0,0,0.6))"
+          : "drop-shadow(0 2px 5px rgba(0,0,0,0.6))"
 
         return (
           <div key={nodeDef.stageId ?? "start"} style={{
@@ -1730,159 +1680,151 @@ function StoryMapView({
             transform:"translate(-50%,-50%)", zIndex: isBoss ? 12 : 10,
             display:"flex", flexDirection:"column", alignItems:"center", gap:5,
             animation:`storyNodeIn .55s cubic-bezier(.34,1.56,.64,1) ${nodeIdx * 0.06}s backwards`
-              + ((isNext || isPlayer)
+              + (isNext
                 ? `, storyNodeFloat ${4.6 + (nodeIdx % 3) * 0.7}s ease-in-out ${nodeIdx * 0.06 + 0.6}s infinite`
                 : ""),
           }}>
+            {/* Tag superior (à la "Limited Drop"): próximo ou varredura */}
             {isNext && (
-              <div style={{ background:"#16a34a", borderRadius:8, padding:"3px 9px",
-                fontSize:10, fontWeight:900, color:"#fff", letterSpacing:".06em",
-                whiteSpace:"nowrap", marginBottom:2,
-                boxShadow:"0 2px 10px rgba(22,163,74,0.65)",
-                animation:"storyBounce 1.6s ease-in-out infinite" }}>▶ PRÓXIMO</div>
+              <div style={{ display:"flex", alignItems:"center", gap:5,
+                background:"rgba(5,6,8,0.92)", border:"1px solid rgba(94,205,245,0.7)",
+                padding:"3px 10px", marginBottom:2, whiteSpace:"nowrap",
+                clipPath:"polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)",
+                boxShadow:"0 2px 10px rgba(47,181,232,0.45)",
+                animation:"storyBounce 1.6s ease-in-out infinite" }}>
+                <Play size={9} color="#5ecdf5" fill="#5ecdf5"/>
+                <span style={{ fontSize:9, fontWeight:900, color:"#cdeefb", letterSpacing:".1em" }}>PRÓXIMO</span>
+              </div>
             )}
-            {isPlayer && (
-              <div style={{ position:"absolute", top:"50%", left:"50%",
-                transform:"translate(-50%,-50%)",
-                width:size + 20, height:size + 20, borderRadius:"50%",
-                border:"2px solid #38bdf8",
-                animation:"storyPulseRing 1.8s ease-out infinite",
-                pointerEvents:"none" }}/>
+            {!isNext && canSweep && (
+              <div title="Varredura liberada — 3 estrelas"
+                style={{ display:"flex", alignItems:"center", gap:5,
+                  background:"rgba(5,6,8,0.92)", border:"1px solid rgba(231,185,60,0.6)",
+                  padding:"2px 9px", marginBottom:2, whiteSpace:"nowrap",
+                  clipPath:"polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)" }}>
+                <FastForward size={9} color="#e7b93c"/>
+                <span style={{ fontSize:8, fontWeight:900, color:"#f3d27a", letterSpacing:".1em" }}>VARREDURA</span>
+              </div>
             )}
-            {isNext && (
-              <div style={{ position:"absolute", top:"50%", left:"50%",
-                width:size + 26, height:size + 26, borderRadius:"50%",
-                border:"2px dashed rgba(74,222,128,0.85)",
-                boxShadow:"0 0 14px rgba(34,197,94,0.35)",
-                animation:"storySpinRing 7s linear infinite",
-                pointerEvents:"none", zIndex:1 }}/>
+            {isBoss && (
+              <div style={{ background:"linear-gradient(180deg,#e2492f,#8f1d0e)",
+                border:"1px solid rgba(255,180,168,0.5)", padding:"2px 10px", marginBottom:2,
+                clipPath:"polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)" }}>
+                <span style={{ color:"#ffe4de", fontSize:8, fontWeight:900, letterSpacing:".18em" }}>BOSS</span>
+              </div>
             )}
+
             <button
               onClick={() => accessible && !isStart && stage ? onPress(stage) : undefined}
               disabled={!accessible || isStart}
               aria-label={`${nodeDef.label}${isCompleted ? " — concluída" : !accessible && !isStart ? " — bloqueada" : ""}`}
               style={{
-                width:size, height:size,
-                borderRadius: isScene ? 14 : "50%",
-                background:nodeBg, border:`${isBoss ? 4 : 3}px solid ${nodeBd}`,
-                display:"flex", alignItems:"center", justifyContent:"center",
+                display:"flex", alignItems:"center", background:"transparent",
+                border:"none", padding:0, position:"relative", outline:"none",
                 cursor:accessible && !isStart ? "pointer" : "default",
-                boxShadow:nodeGlow,
-                opacity:!accessible && !isStart ? 0.42 : 1,
-                transition:"transform .45s cubic-bezier(.34,1.56,.64,1), box-shadow .45s ease, filter .35s ease",
-                position:"relative", flexShrink:0, outline:"none",
-                overflow:"visible", padding:0,
-                animation: isBoss && accessible && !isCompleted ? "storyBossBreath 2.6s ease-in-out infinite" : undefined,
+                transition:"transform .35s cubic-bezier(.34,1.56,.64,1), filter .3s ease",
               }}
-              onMouseEnter={e=>{ if(accessible&&!isStart){ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1.16) translateY(-3px)"; b.style.filter="brightness(1.18) saturate(1.15)" } }}
+              onMouseEnter={e=>{ if(accessible&&!isStart){ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1.08) translateY(-2px)"; b.style.filter="brightness(1.15)" } }}
               onMouseLeave={e=>{ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1) translateY(0)"; b.style.filter="none" }}
             >
+              {/* Anel de posição do jogador */}
               {isPlayer && (
-                <div style={{ position:"absolute", inset:-5, borderRadius: isScene ? 18 : "50%",
-                  border:"2px solid #38bdf8", boxShadow:"0 0 12px rgba(56,189,248,0.9)",
+                <div style={{ position:"absolute", left:hexSize/2, top:"50%",
+                  transform:"translate(-50%,-50%)",
+                  width:hexSize + 22, height:hexSize + 22, borderRadius:"50%",
+                  border:"2px solid #5ecdf5",
+                  animation:"storyPulseRing 1.8s ease-out infinite",
                   pointerEvents:"none" }}/>
               )}
 
-              {/* Reflexo vítreo no topo do nó */}
-              {(accessible || isStart) && (
-                <div aria-hidden="true" style={{ position:"absolute", inset:0,
-                  borderRadius: isScene ? 11 : "50%", pointerEvents:"none", zIndex:2,
-                  background:"linear-gradient(165deg,rgba(255,255,255,0.30) 0%,rgba(255,255,255,0.06) 36%,transparent 52%)" }}/>
-              )}
+              {/* Hexágono tático */}
+              <div style={{ width:hexSize, height:hexSize, clipPath:hexClip,
+                background:hexBg, position:"relative", zIndex:2, flexShrink:0,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                filter:hexGlow,
+                animation: isBoss && accessible && !isCompleted ? "storyBossBreath 2.4s ease-in-out infinite" : undefined }}>
+                {/* Facetas internas do hexágono */}
+                <div aria-hidden="true" style={{ position:"absolute", inset:2, clipPath:hexClip,
+                  background:"linear-gradient(165deg,rgba(255,255,255,0.30) 0%,rgba(255,255,255,0.04) 40%,transparent 55%, rgba(0,0,0,0.25) 100%)",
+                  pointerEvents:"none" }}/>
+                {isStart ? (
+                  <Home size={15} color="#c8cfd6"/>
+                ) : isBoss ? (
+                  <>
+                    <img src={BOSS_IMG || "/placeholder.svg"} alt="" aria-hidden="true"
+                      onError={e => { e.currentTarget.style.display = "none" }}
+                      style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+                        clipPath:hexClip, objectFit:"cover", objectPosition:"center top",
+                        filter: !accessible ? "grayscale(1) brightness(0.35)" : "none" }}/>
+                    {!accessible && (
+                      <Lock size={20} color="#8a929b" style={{ position:"relative", zIndex:2 }}/>
+                    )}
+                  </>
+                ) : !accessible ? (
+                  <Lock size={15} color="#4b545e"/>
+                ) : isCompleted ? (
+                  <Check size={18} color="#fff" strokeWidth={4}
+                    style={{ filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }}/>
+                ) : isScene ? (
+                  <Scroll size={16} color="#fff" style={{ filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }}/>
+                ) : (
+                  <Swords size={17} color="#fff" style={{ filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }}/>
+                )}
+              </div>
 
-              {/* Conteúdo central do nó */}
-              {isStart ? (
-                <Home size={26} color="#94a3b8"/>
-              ) : isBoss ? (
-                <>
-                  {/* Retrato do Mefisto dentro do círculo */}
-                  <img src={BOSS_IMG || "/placeholder.svg"} alt="" aria-hidden="true"
-                    onError={e => { e.currentTarget.style.display = "none" }}
-                    style={{ position:"absolute", inset:0, width:"100%", height:"100%",
-                      borderRadius:"50%", objectFit:"cover", objectPosition:"center top",
-                      filter: !accessible ? "grayscale(1) brightness(0.35)" : "none" }}/>
-                  {!accessible && (
-                    <Lock size={26} color="#94a3b8" style={{ position:"relative", zIndex:2 }}/>
-                  )}
-                  {/* Faixa "BOSS" */}
-                  <div style={{ position:"absolute", top:-11, left:"50%", transform:"translateX(-50%)",
-                    background:"linear-gradient(135deg,#991b1b,#dc2626)", borderRadius:6,
-                    border:"1px solid rgba(245,158,11,0.7)", padding:"1px 8px", zIndex:3 }}>
-                    <span style={{ color:"#fde68a", fontSize:8, fontWeight:900, letterSpacing:".14em" }}>BOSS</span>
+              {/* Plaqueta da operação (código + nome) */}
+              {!isStart && (
+                <div style={{ marginLeft:-9, textAlign:"left", position:"relative",
+                  background: unlocked ? "linear-gradient(180deg,#f7f8f9,#dfe4e8)" : "rgba(24,28,33,0.92)",
+                  clipPath:"polygon(0 0,100% 0,calc(100% - 11px) 100%,0 100%)",
+                  padding:"4px 22px 5px 17px", minWidth:96,
+                  boxShadow:"0 4px 12px rgba(0,0,0,0.6)" }}>
+                  <div style={{ fontSize:6.5, fontWeight:900, letterSpacing:".2em",
+                    textTransform:"uppercase", lineHeight:1.3,
+                    color: unlocked ? "#8a929b" : "#4b545e" }}>
+                    {nodeDef.sublabel ?? "Operação"}
                   </div>
-                </>
-              ) : !accessible ? (
-                <Lock size={isScene ? 17 : 22} color="#334155"/>
-              ) : isScene ? (
-                <Scroll size={20} color={isCompleted ? "#86efac" : "#c4b5fd"}/>
-              ) : (
-                <Swords size={24} color={isCompleted ? "#86efac" : "#93c5fd"}/>
-              )}
-
-              {/* Badge de concluído (check no canto, mantendo o ícone do tipo visível) */}
-              {isCompleted && (
-                <div style={{ position:"absolute", bottom:-4, right:-4, width:20, height:20,
-                  borderRadius:"50%", background:"#14532d", border:"2px solid #22c55e",
-                  display:"flex", alignItems:"center", justifyContent:"center", zIndex:3,
-                  boxShadow:"0 2px 6px rgba(0,0,0,0.6)" }}>
-                  <Check size={11} color="#4ade80" strokeWidth={3.5}/>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                    <span style={{ fontSize:15, fontWeight:900, fontStyle:"italic", lineHeight:1.1,
+                      color: unlocked ? "#15171b" : "#5b636c" }}>
+                      {stage ? stageCode(stage) : "—"}
+                    </span>
+                    <span style={{ fontSize:8.5, fontWeight:800, lineHeight:1.2,
+                      color: unlocked ? "#3c4650" : "#4b545e",
+                      whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:86 }}>
+                      {nodeDef.label}
+                    </span>
+                  </div>
+                  {/* Filete azul de status na base da plaqueta */}
+                  <div aria-hidden="true" style={{ position:"absolute", left:0, right:8, bottom:0, height:2,
+                    background: !unlocked ? "rgba(255,255,255,0.06)"
+                      : isBoss ? "linear-gradient(90deg,#e2492f,transparent)"
+                      : isCompleted ? "linear-gradient(90deg,#2fb5e8,transparent)"
+                      : isNext ? "linear-gradient(90deg,#5ecdf5,transparent)"
+                      : isScene ? "linear-gradient(90deg,#9b7bff,transparent)"
+                      : "linear-gradient(90deg,#2fb5e8,transparent)" }}/>
                 </div>
               )}
 
-              {/* Badge de Varredura liberada (3 estrelas) */}
-              {canSweep && (
-                <div title="Varredura liberada — 3 estrelas"
-                  style={{ position:"absolute", top:-4, left:-4, width:20, height:20,
-                    borderRadius:"50%", background:"#422006", border:"2px solid #facc15",
-                    display:"flex", alignItems:"center", justifyContent:"center", zIndex:3,
-                    boxShadow:"0 0 8px rgba(250,204,21,0.6)" }}>
-                  <FastForward size={10} color="#fde047"/>
+              {/* Rótulo do ponto de partida */}
+              {isStart && (
+                <div style={{ marginLeft:-8, background:"rgba(24,28,33,0.92)",
+                  clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                  padding:"3px 16px 3px 14px" }}>
+                  <span style={{ fontSize:8.5, fontWeight:900, letterSpacing:".16em",
+                    textTransform:"uppercase", color:"#8a929b" }}>Início</span>
                 </div>
               )}
             </button>
 
             {/* Avaliação de 3 estrelas (batalhas e boss) */}
             {(isBattle || isBoss) && (accessible || isCompleted) && (
-              <div style={{ background:"rgba(2,6,16,0.80)", borderRadius:8, padding:"2px 7px",
-                marginTop:-1 }}>
-                <RatingStars rating={rating} size={isBoss ? 13 : 11}/>
+              <div style={{ background:"rgba(5,6,8,0.88)", border:"1px solid rgba(255,255,255,0.12)",
+                padding:"2px 9px", marginTop:-1,
+                clipPath:"polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)" }}>
+                <RatingStars rating={rating} size={isBoss ? 12 : 10}/>
               </div>
             )}
-
-            <div style={{
-              background: isNext
-                ? "linear-gradient(180deg,rgba(14,42,24,0.94) 0%,rgba(2,10,6,0.97) 100%)"
-                : accessible || isStart
-                ? "linear-gradient(180deg,rgba(28,22,54,0.94) 0%,rgba(4,4,16,0.97) 100%)"
-                : "linear-gradient(180deg,rgba(15,18,32,0.92) 0%,rgba(2,6,16,0.95) 100%)",
-              border:`1px solid ${isNext ? "rgba(74,222,128,0.60)"
-                : accessible || isStart ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.08)"}`,
-              borderRadius:11, padding:"5px 11px", textAlign:"center", maxWidth:120,
-              backdropFilter:"blur(10px)", position:"relative",
-              boxShadow: isNext
-                ? "0 4px 16px rgba(0,0,0,0.60), 0 0 18px rgba(34,197,94,0.30), inset 0 1px 0 rgba(255,255,255,0.12)"
-                : accessible || isStart
-                ? "0 4px 16px rgba(0,0,0,0.60), 0 0 14px rgba(139,92,246,0.22), inset 0 1px 0 rgba(255,255,255,0.12)"
-                : "0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)",
-              transition:"border-color .4s ease, box-shadow .4s ease, background .4s ease" }}>
-              {/* Filete decorativo no topo da plaqueta */}
-              {(accessible || isStart) && (
-                <div aria-hidden="true" style={{ position:"absolute", top:0, left:"18%", right:"18%", height:1,
-                  background:`linear-gradient(90deg,transparent,${isNext ? "rgba(74,222,128,0.8)" : "rgba(196,181,253,0.7)"},transparent)` }}/>
-              )}
-              {nodeDef.sublabel && (
-                <div style={{ fontSize:8, fontWeight:900, textTransform:"uppercase",
-                  letterSpacing:".08em", lineHeight:1.4, color:subColor }}>
-                  {stage ? <span style={{ fontStyle:"italic", marginRight:4,
-                    color: accessible ? "#f1f5f9" : undefined }}>{stageCode(stage)}</span> : null}
-                  {nodeDef.sublabel}
-                </div>
-              )}
-              <div style={{ fontSize:10, fontWeight:700, lineHeight:1.35,
-                color:accessible||isStart?"#e2e8f0":"#334155",
-                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:108
-              }}>{nodeDef.label}</div>
-            </div>
           </div>
         )
       })}
