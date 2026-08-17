@@ -253,6 +253,25 @@ function ItemIcon({ kind, size = 20 }: { kind: keyof typeof ITEM_ART; size?: num
 /** Custo de stamina da Varredura (Sweep) por tipo de fase. */
 const SWEEP_COST: Record<"battle" | "boss", number> = { battle: 5, boss: 10 }
 
+/** Código tático da operação (exibido no painel e nas plaquetas do mapa). */
+function stageCode(stage: Stage) {
+  return `1-${stage.number}`
+}
+
+/** Briefing curto de cada fase, exibido no painel de operação. */
+const STAGE_DESC: Record<string, string> = {
+  c1s1:   "Uma casa isolada no topo da colina, fora do reino. Um fugitivo invade a vida pacata de Calem — e nada mais será como antes.",
+  c1s2:   "Os guardas cercaram a colina. Abra caminho pela floresta e proteja Calem antes que o cerco se feche.",
+  c1s3:   "Ruínas esquecidas além dos limites do reino. Nas paredes gastas, a lenda da estrela que realiza desejos.",
+  c1s4:   "Uma rachadura roxa rasga o céu. Calem foi levado — e uma voz marca o encontro em Camelot antes do meio-dia.",
+  c1b1:   "Os portões do reino estão trancados e vigiados. Ninguém entra sem autorização. Fehnon não pediu permissão.",
+  c1s5:   "No salão do trono, Rei Arthur revela seu jogo: ele quer os segredos dos Poderes Ultimates da estrela misteriosa.",
+  c1s6:   "A recusa vira sentença. Soldados de elite invadem o salão — só existe uma saída, e é lutando.",
+  c1s7:   "Raios roxos caem sobre Camelot. Nos telhados do reino, Arthur prepara a invocação do seu Ultimate Guardian.",
+  c1boss: "Mefisto, o Guardião de Arthur, desperta em sua forma completa. A Protonix Sword contra o poder de um reino inteiro.",
+  c1s8:   "O guardião tomba, mas Arthur ainda sorri. Uma carta na manga não foi jogada...",
+}
+
 /** Calcula a avaliação (1–3 estrelas) de uma batalha com base no LP restante. */
 function computeBattleRating(lpLeft: number | undefined, lpMax: number): number {
   if (lpLeft == null || !Number.isFinite(lpLeft)) return 3
@@ -477,7 +496,68 @@ function DropRow({ kind, amount, obtained }: { kind: "gear" | "gacha" | "galio" 
   )
 }
 
-// ─── Stage Info Pop-up (drops da fase) ────────────────────────────────────────
+// ─── Painel de Operação (lateral, estilo tático) ──────────────────────────────
+
+/** Tile quadrado de recompensa (drops no rodapé do painel). */
+function DropTile({ kind, amount, obtained, accent }: {
+  kind: "gear" | "gacha" | "galio" | "star"; amount: number; obtained?: boolean; accent: string
+}) {
+  const meta = {
+    gear:  { label: "Gear",     color: "#fbbf24" },
+    gacha: { label: "Gacha",    color: "#c084fc" },
+    galio: { label: "Gálio",    color: "#e2e8f0" },
+    star:  { label: "Estrelas", color: "#facc15" },
+  }[kind]
+  return (
+    <div style={{ position:"relative", width:62, flexShrink:0,
+      display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+      <div style={{ position:"relative", width:56, height:56,
+        background:"linear-gradient(170deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))",
+        border:`1px solid ${obtained ? "rgba(74,222,128,0.45)" : "rgba(255,255,255,0.16)"}`,
+        clipPath:"polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px)",
+        display:"flex", alignItems:"center", justifyContent:"center" }}>
+        {kind === "star"
+          ? <Star size={26} color={meta.color} fill={meta.color}
+              style={{ filter:"drop-shadow(0 0 6px rgba(250,204,21,0.6))" }}/>
+          : <ItemIcon kind={kind} size={34}/>}
+        {/* Quantidade encaixada no canto do tile */}
+        <span style={{ position:"absolute", bottom:1, right:4, color:"#fff",
+          fontSize:11, fontWeight:900, fontStyle:"italic",
+          textShadow:"0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8)" }}>x{amount}</span>
+        {obtained && (
+          <span style={{ position:"absolute", top:2, left:3, width:15, height:15,
+            background:"#14532d", border:"1px solid #22c55e", borderRadius:3,
+            display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <Check size={9} color="#4ade80" strokeWidth={4}/>
+          </span>
+        )}
+      </div>
+      <span style={{ fontSize:8, fontWeight:800, letterSpacing:".08em", textTransform:"uppercase",
+        color: obtained ? "#4ade80" : accent, whiteSpace:"nowrap" }}>
+        {obtained ? "Obtido" : meta.label}
+      </span>
+    </div>
+  )
+}
+
+/** Medalha de desempenho (losango com estrela), estilo emblema de operação. */
+function Medal({ earned, accent, delay }: { earned: boolean; accent: string; delay: number }) {
+  return (
+    <div style={{ width:30, height:30, transform:"rotate(45deg)",
+      background: earned
+        ? "linear-gradient(135deg,rgba(250,204,21,0.28),rgba(250,204,21,0.08))"
+        : "rgba(255,255,255,0.04)",
+      border:`1px solid ${earned ? "#facc15" : "rgba(255,255,255,0.14)"}`,
+      display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+      boxShadow: earned ? "0 0 12px rgba(250,204,21,0.35)" : "none",
+      animation:`opMedalIn .5s cubic-bezier(.34,1.56,.64,1) ${delay}s backwards` }}>
+      <Star size={14} style={{ transform:"rotate(-45deg)",
+          filter: earned ? "drop-shadow(0 0 4px rgba(250,204,21,0.8))" : "none" }}
+        color={earned ? "#facc15" : "rgba(255,255,255,0.22)"}
+        fill={earned ? "#facc15" : "transparent"}/>
+    </div>
+  )
+}
 
 function StageInfoModal({
   stage, completed, battleRating, stamina, onPlay, onSweep, onClose,
@@ -488,118 +568,263 @@ function StageInfoModal({
   const drops = STAGE_DROPS[stage.type]
   const stars = STAGE_STARS[stage.type]
   const isBattle = stage.type === "battle" || stage.type === "boss"
-  const sweepCost   = isBattle ? SWEEP_COST[stage.type as "battle" | "boss"] : 0
-  const sweepReady  = isBattle && completed && battleRating >= 3
-  const sweepCanPay = stamina >= sweepCost
+  const isBoss   = stage.type === "boss"
+  const code     = stageCode(stage)
+  const desc     = STAGE_DESC[stage.id] ?? ""
+  const entryCost    = isBattle ? SWEEP_COST[stage.type as "battle" | "boss"] : 0
+  const sweepCost    = entryCost
+  const sweepReady   = isBattle && completed && battleRating >= 3
+  const sweepCanPay  = stamina >= sweepCost
+
   const typeMeta = {
-    scene:  { label: "Cena de História", color: "#c4b5fd", bg: "rgba(124,58,237,0.14)" },
-    battle: { label: stage.preDialogue ? "Batalha com Diálogo" : "Batalha", color: "#93c5fd", bg: "rgba(37,99,235,0.14)" },
-    boss:   { label: "Boss Battle", color: "#fca5a5", bg: "rgba(220,38,38,0.14)" },
+    scene:  { label:"Cena de História", opLabel:"Operação de História", accent:"#a78bfa",
+      accentDim:"rgba(167,139,250,0.55)", grad:"linear-gradient(135deg,#4c1d95,#7c3aed)",
+      glow:"rgba(139,92,246,0.45)" },
+    battle: { label: stage.preDialogue ? "Batalha com Diálogo" : "Batalha", opLabel:"Operação Padrão", accent:"#60a5fa",
+      accentDim:"rgba(96,165,250,0.55)", grad:"linear-gradient(135deg,#1e3a8a,#2563eb)",
+      glow:"rgba(59,130,246,0.45)" },
+    boss:   { label:"Boss Battle", opLabel:"Operação Crítica", accent:"#f87171",
+      accentDim:"rgba(248,113,113,0.55)", grad:"linear-gradient(135deg,#7f1d1d,#dc2626)",
+      glow:"rgba(220,38,38,0.5)" },
   }[stage.type]
 
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:250,
-      background:"rgba(0,0,0,0.72)", backdropFilter:"blur(8px)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-      fontFamily:"'Segoe UI',system-ui,sans-serif", padding:20 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:360,
-        background:"linear-gradient(165deg,#0a1120,#060b16)",
-        border:"1px solid rgba(255,255,255,0.10)", borderRadius:18,
-        padding:"18px 18px 16px", boxShadow:"0 20px 60px rgba(0,0,0,0.6)", position:"relative" }}>
+      fontFamily:"'Segoe UI',system-ui,sans-serif",
+      background:"linear-gradient(90deg,rgba(2,4,10,0.18) 0%,rgba(2,4,10,0.42) 45%,rgba(2,4,10,0.82) 100%)",
+      animation:"opBackdropIn .3s ease both" }}>
 
-        <button onClick={onClose} aria-label="Fechar"
-          style={{ position:"absolute", top:12, right:12, background:"rgba(255,255,255,0.06)",
-            border:"1px solid rgba(255,255,255,0.10)", borderRadius:8, width:28, height:28,
-            display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-          <X size={14} color="#94a3b8"/>
-        </button>
+      <aside onClick={e=>e.stopPropagation()} role="dialog" aria-label={`Operação ${code} — ${stage.title}`}
+        style={{ position:"absolute", top:0, right:0, bottom:0,
+          width:"min(430px, 100%)", display:"flex", flexDirection:"column",
+          background:"linear-gradient(200deg,rgba(10,14,28,0.97) 0%,rgba(4,7,16,0.985) 60%,rgba(3,5,12,0.99) 100%)",
+          borderLeft:`1px solid ${typeMeta.accentDim}`,
+          boxShadow:"-24px 0 60px rgba(0,0,0,0.6)",
+          backdropFilter:"blur(14px)",
+          animation:"opPanelIn .42s cubic-bezier(.22,1,.36,1) both" }}>
 
-        <div style={{ display:"inline-block", background:typeMeta.bg, borderRadius:8,
-          padding:"3px 10px", marginBottom:8 }}>
-          <span style={{ color:typeMeta.color, fontSize:10, fontWeight:900,
-            letterSpacing:"0.1em", textTransform:"uppercase" }}>{typeMeta.label}</span>
+        {/* Textura diagonal sutil no painel inteiro */}
+        <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.05,
+          background:"repeating-linear-gradient(-55deg, transparent 0 10px, #fff 10px 11px)" }}/>
+        {/* Filete de energia na borda esquerda */}
+        <div aria-hidden="true" style={{ position:"absolute", top:0, bottom:0, left:0, width:2,
+          background:`linear-gradient(180deg, transparent, ${typeMeta.accent}, transparent)`,
+          animation:"opEdgePulse 3s ease-in-out infinite" }}/>
+
+        {/* ── Cabeçalho da operação ── */}
+        <header style={{ position:"relative", padding:"18px 18px 14px",
+          background:`linear-gradient(105deg, rgba(0,0,0,0.55) 0%, transparent 70%), ${typeMeta.grad}`,
+          clipPath:"polygon(0 0, 100% 0, 100% 100%, 22px 100%, 0 calc(100% - 22px))",
+          overflow:"hidden" }}>
+          <div aria-hidden="true" style={{ position:"absolute", inset:0, opacity:0.10,
+            background:"repeating-linear-gradient(-55deg, transparent 0 14px, #000 14px 16px)" }}/>
+          <div aria-hidden="true" style={{ position:"absolute", top:-30, right:-30, width:150, height:150,
+            borderRadius:"50%", background:`radial-gradient(circle, ${typeMeta.glow}, transparent 65%)` }}/>
+
+          <button onClick={onClose} aria-label="Fechar"
+            style={{ position:"absolute", top:12, right:12, zIndex:3,
+              background:"rgba(0,0,0,0.40)", border:"1px solid rgba(255,255,255,0.22)",
+              width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center",
+              cursor:"pointer", clipPath:"polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)" }}>
+            <X size={15} color="#e2e8f0"/>
+          </button>
+
+          <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+            <span aria-hidden="true" style={{ width:10, height:10, transform:"rotate(45deg)",
+              background:"#fff", opacity:0.9, flexShrink:0 }}/>
+            <span style={{ color:"rgba(255,255,255,0.85)", fontSize:10, fontWeight:900,
+              letterSpacing:".22em", textTransform:"uppercase" }}>{typeMeta.opLabel}</span>
+          </div>
+
+          <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"flex-end",
+            justifyContent:"space-between", gap:10 }}>
+            <div style={{ minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"baseline", gap:10 }}>
+                <span style={{ color:"#fff", fontSize:38, fontWeight:900, fontStyle:"italic",
+                  lineHeight:1, letterSpacing:".02em",
+                  textShadow:"0 2px 12px rgba(0,0,0,0.6)" }}>{code}</span>
+                {isBoss && (
+                  <span style={{ background:"rgba(0,0,0,0.5)", border:"1px solid rgba(253,224,71,0.6)",
+                    color:"#fde68a", fontSize:9, fontWeight:900, letterSpacing:".18em",
+                    padding:"2px 8px" }}>BOSS</span>
+                )}
+              </div>
+              <h3 style={{ color:"#fff", fontWeight:800, fontSize:16, margin:"4px 0 0",
+                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                textShadow:"0 1px 8px rgba(0,0,0,0.5)" }}>{stage.title}</h3>
+            </div>
+            {/* Medalhas de desempenho (batalhas) ou emblema de cena */}
+            {isBattle ? (
+              <div style={{ display:"flex", gap:11, paddingRight:4, paddingBottom:2, flexShrink:0 }}>
+                {[1,2,3].map(i => (
+                  <Medal key={i} earned={completed && battleRating >= i} accent={typeMeta.accent} delay={0.15 + i*0.08}/>
+                ))}
+              </div>
+            ) : (
+              <div style={{ width:34, height:34, transform:"rotate(45deg)", flexShrink:0, marginRight:6,
+                background: completed ? "rgba(74,222,128,0.16)" : "rgba(255,255,255,0.08)",
+                border:`1px solid ${completed ? "#4ade80" : "rgba(255,255,255,0.30)"}`,
+                display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {completed
+                  ? <Check size={15} color="#4ade80" strokeWidth={3.5} style={{ transform:"rotate(-45deg)" }}/>
+                  : <Scroll size={15} color="rgba(255,255,255,0.75)" style={{ transform:"rotate(-45deg)" }}/>}
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* ── Faixa de contexto (inimigo / tipo) ── */}
+        <div style={{ margin:"12px 18px 0", display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ background: isBattle ? "#b91c1c" : "rgba(124,58,237,0.85)",
+            color:"#fff", fontSize:9, fontWeight:900, letterSpacing:".12em", textTransform:"uppercase",
+            padding:"3px 9px",
+            clipPath:"polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%)" }}>
+            {isBattle ? "Inimigo" : "História"}
+          </span>
+          <span style={{ color:"#cbd5e1", fontSize:11, fontWeight:700 }}>
+            {isBattle && stage.opponent ? `vs ${stage.opponent}` : typeMeta.label}
+          </span>
+          {completed && (
+            <span style={{ marginLeft:"auto", color:"#4ade80", fontSize:10, fontWeight:800,
+              letterSpacing:".08em", textTransform:"uppercase", display:"flex", alignItems:"center", gap:4 }}>
+              <Check size={11} strokeWidth={3.5}/> Concluída
+            </span>
+          )}
         </div>
 
-        <h3 style={{ color:"#f1f5f9", fontWeight:900, fontSize:18, margin:"0 0 2px" }}>{stage.title}</h3>
-        <p style={{ color:"#64748b", fontSize:11, margin:"0 0 10px" }}>
-          {stage.subtitle}{isBattle && stage.opponent ? ` — vs ${stage.opponent}` : ""}
-          {completed ? "  ·  Concluída" : ""}
-        </p>
+        {/* ── Briefing ── */}
+        <div style={{ margin:"10px 18px 0", position:"relative", paddingLeft:12 }}>
+          <div aria-hidden="true" style={{ position:"absolute", left:0, top:2, bottom:2, width:2,
+            background:typeMeta.accentDim }}/>
+          <p style={{ color:"#94a3b8", fontSize:12, lineHeight:1.6, margin:0 }}>{desc}</p>
+        </div>
 
+        {/* ── Dica de desempenho (batalhas) ── */}
         {isBattle && (
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12,
-            background:"rgba(250,204,21,0.06)", border:"1px solid rgba(250,204,21,0.18)",
-            borderRadius:10, padding:"7px 12px" }}>
-            <RatingStars rating={completed ? battleRating : 0} size={16}/>
-            <span style={{ color:"#94a3b8", fontSize:11, fontWeight:600 }}>
+          <div style={{ margin:"12px 18px 0", display:"flex", alignItems:"center", gap:9,
+            background:"rgba(250,204,21,0.05)", border:"1px solid rgba(250,204,21,0.16)",
+            padding:"8px 12px",
+            clipPath:"polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }}>
+            <RatingStars rating={completed ? battleRating : 0} size={13}/>
+            <span style={{ color:"#94a3b8", fontSize:10.5, fontWeight:600, lineHeight:1.4 }}>
               {completed
-                ? (battleRating >= 3 ? "Desempenho perfeito!" : `Desempenho: ${battleRating}/3 — vença com mais LP para melhorar`)
-                : "Vença mantendo seu LP alto para ganhar até 3 estrelas"}
+                ? (battleRating >= 3 ? "Desempenho perfeito — varredura liberada." : `Desempenho ${battleRating}/3 — vença com mais LP para melhorar.`)
+                : "Vença mantendo seu LP alto para conquistar as 3 medalhas."}
             </span>
           </div>
         )}
 
-        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-          <Gift size={13} color="#a78bfa"/>
-          <span style={{ color:"#a78bfa", fontSize:11, fontWeight:800,
-            letterSpacing:"0.08em", textTransform:"uppercase" }}>
-            {completed ? "Recompensas obtidas" : "Drops desta fase"}
-          </span>
+        <div style={{ flex:1 }}/>
+
+        {/* ── Recompensas (canto inferior, junto do iniciar) ── */}
+        <div style={{ padding:"0 18px 12px", position:"relative" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:9 }}>
+            <span aria-hidden="true" style={{ width:7, height:7, transform:"rotate(45deg)",
+              background:typeMeta.accent, flexShrink:0 }}/>
+            <span style={{ color:typeMeta.accent, fontSize:10, fontWeight:900,
+              letterSpacing:".16em", textTransform:"uppercase" }}>
+              {completed ? "Recompensas obtidas" : "Drops da operação"}
+            </span>
+            {!completed && (
+              <span style={{ marginLeft:"auto", background:"rgba(255,255,255,0.07)",
+                border:"1px solid rgba(255,255,255,0.14)", color:"#cbd5e1",
+                fontSize:8.5, fontWeight:900, letterSpacing:".1em", textTransform:"uppercase",
+                padding:"2px 7px" }}>1ª conclusão</span>
+            )}
+            <div aria-hidden="true" style={{ flex: completed ? 1 : "unset", height:1,
+              background:"linear-gradient(90deg, rgba(255,255,255,0.14), transparent)" }}/>
+          </div>
+          <div style={{ display:"flex", gap:9, flexWrap:"wrap" }}>
+            <DropTile kind="star" amount={stars} obtained={completed} accent={typeMeta.accent}/>
+            {drops.gear  > 0 && <DropTile kind="gear"  amount={drops.gear}  obtained={completed} accent={typeMeta.accent}/>}
+            {drops.gacha > 0 && <DropTile kind="gacha" amount={drops.gacha} obtained={completed} accent={typeMeta.accent}/>}
+            {drops.galio > 0 && <DropTile kind="galio" amount={drops.galio} obtained={completed} accent={typeMeta.accent}/>}
+          </div>
+          {completed && (
+            <p style={{ color:"#475569", fontSize:9.5, margin:"8px 0 0", fontStyle:"italic" }}>
+              Drops de primeira conclusão já coletados — você pode rejogar a fase.
+            </p>
+          )}
         </div>
 
-        <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:16 }}>
-          <DropRow kind="star" amount={stars} obtained={completed}/>
-          {drops.gear  > 0 && <DropRow kind="gear"  amount={drops.gear}  obtained={completed}/>}
-          {drops.gacha > 0 && <DropRow kind="gacha" amount={drops.gacha} obtained={completed}/>}
-          {drops.galio > 0 && <DropRow kind="galio" amount={drops.galio} obtained={completed}/>}
-        </div>
-
-        {completed && (
-          <p style={{ color:"#475569", fontSize:10, margin:"0 0 12px", fontStyle:"italic" }}>
-            Recompensas de primeira conclusão já coletadas. Você pode rejogar a fase.
-          </p>
-        )}
-
-        <button onClick={onPlay} style={{ width:"100%", padding:"13px 0", borderRadius:12,
-          border:"none", cursor:"pointer",
-          background: stage.type === "boss"
-            ? "linear-gradient(135deg,#7f1d1d,#dc2626)"
-            : stage.type === "battle"
-            ? "linear-gradient(135deg,#1e3a8a,#3b82f6)"
-            : "linear-gradient(135deg,#4c1d95,#7c3aed)",
-          color:"#fff", fontWeight:900, fontSize:14,
-          display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <Play size={15}/>
-          {completed
-            ? (isBattle ? "Batalhar novamente" : "Reassistir cena")
-            : (isBattle ? "Iniciar" : "Assistir cena")}
-        </button>
-
-        {sweepReady && (
-          <>
+        {/* ── Barra de ação inferior ── */}
+        <div style={{ display:"flex", alignItems:"stretch", gap:8, padding:"0 18px 18px" }}>
+          {sweepReady && (
             <button onClick={onSweep} disabled={!sweepCanPay}
-              style={{ width:"100%", padding:"11px 0", borderRadius:12, marginTop:8,
-                border:`1px solid ${sweepCanPay ? "rgba(250,204,21,0.45)" : "rgba(255,255,255,0.08)"}`,
+              title={sweepCanPay
+                ? "Liberado por 3 medalhas: receba os drops sem jogar."
+                : "Stamina insuficiente para varrer."}
+              style={{ flexShrink:0, padding:"0 16px", border:"none",
                 cursor: sweepCanPay ? "pointer" : "default",
-                background: sweepCanPay ? "rgba(250,204,21,0.10)" : "rgba(255,255,255,0.04)",
-                color: sweepCanPay ? "#fde047" : "#475569",
-                fontWeight:900, fontSize:13,
-                display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <FastForward size={14}/>
-              Varrer (coleta instantânea)
-              <span style={{ display:"flex", alignItems:"center", gap:3, fontSize:11,
+                background: sweepCanPay ? "rgba(250,204,21,0.12)" : "rgba(255,255,255,0.05)",
+                outline:`1px solid ${sweepCanPay ? "rgba(250,204,21,0.5)" : "rgba(255,255,255,0.10)"}`,
+                outlineOffset:-1,
+                clipPath:"polygon(10px 0,100% 0,100% 100%,0 100%,0 10px)",
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}>
+              <span style={{ display:"flex", alignItems:"center", gap:5,
+                color: sweepCanPay ? "#fde047" : "#475569", fontWeight:900, fontSize:12,
+                letterSpacing:".06em", textTransform:"uppercase" }}>
+                <FastForward size={13}/> Varrer
+              </span>
+              <span style={{ display:"flex", alignItems:"center", gap:2, fontSize:10,
                 color: sweepCanPay ? "#a3e635" : "#dc2626", fontWeight:800 }}>
-                <Zap size={11}/> -{sweepCost}
+                <Zap size={10}/> -{sweepCost}
               </span>
             </button>
-            <p style={{ color:"#57534e", fontSize:9, margin:"6px 0 0", textAlign:"center", fontStyle:"italic" }}>
-              {sweepCanPay
-                ? "Liberado por ter 3 estrelas: receba os drops sem jogar a batalha."
-                : "Stamina insuficiente para varrer esta fase."}
-            </p>
-          </>
-        )}
-      </div>
+          )}
+          <button onClick={onPlay}
+            style={{ flex:1, border:"none", cursor:"pointer", position:"relative",
+              padding:"14px 16px", background:typeMeta.grad,
+              clipPath:"polygon(14px 0,100% 0,100% 100%,0 100%,0 14px)",
+              boxShadow:`0 6px 24px ${typeMeta.glow}`,
+              display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+              overflow:"hidden" }}
+            onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.15)" }}
+            onMouseLeave={e => { e.currentTarget.style.filter = "none" }}>
+            <span aria-hidden="true" style={{ position:"absolute", inset:0, opacity:0.12,
+              background:"repeating-linear-gradient(-55deg, transparent 0 12px, #fff 12px 13px)" }}/>
+            <span aria-hidden="true" style={{ position:"absolute", top:0, bottom:0, left:"-40%", width:"30%",
+              background:"linear-gradient(105deg, transparent, rgba(255,255,255,0.35), transparent)",
+              animation:"opSheen 2.8s ease-in-out infinite" }}/>
+            <Play size={17} color="#fff" fill="#fff" style={{ position:"relative" }}/>
+            <span style={{ position:"relative", color:"#fff", fontWeight:900, fontSize:15,
+              letterSpacing:".08em", textTransform:"uppercase", fontStyle:"italic" }}>
+              {completed
+                ? (isBattle ? "Rejogar" : "Reassistir")
+                : (isBattle ? "Iniciar" : "Assistir")}
+            </span>
+            {isBattle && (
+              <span style={{ position:"relative", display:"flex", alignItems:"center", gap:3,
+                background:"rgba(0,0,0,0.35)", padding:"3px 9px", fontSize:11,
+                color: stamina >= entryCost ? "#6ee7b7" : "#fca5a5", fontWeight:900,
+                clipPath:"polygon(5px 0,100% 0,100% 100%,0 100%,0 5px)" }}>
+                <Zap size={11}/> -{entryCost}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <style>{`
+          @keyframes opPanelIn {
+            from { transform: translateX(60px); opacity: 0; }
+            to   { transform: translateX(0);    opacity: 1; }
+          }
+          @keyframes opBackdropIn {
+            from { opacity: 0; } to { opacity: 1; }
+          }
+          @keyframes opMedalIn {
+            from { transform: rotate(45deg) scale(0); opacity: 0; }
+            to   { transform: rotate(45deg) scale(1); opacity: 1; }
+          }
+          @keyframes opEdgePulse {
+            0%, 100% { opacity: 0.45; } 50% { opacity: 1; }
+          }
+          @keyframes opSheen {
+            0%       { left: -40%; }
+            55%, 100% { left: 115%; }
+          }
+        `}</style>
+      </aside>
     </div>
   )
 }
@@ -1647,7 +1872,11 @@ function StoryMapView({
               )}
               {nodeDef.sublabel && (
                 <div style={{ fontSize:8, fontWeight:900, textTransform:"uppercase",
-                  letterSpacing:".08em", lineHeight:1.4, color:subColor }}>{nodeDef.sublabel}</div>
+                  letterSpacing:".08em", lineHeight:1.4, color:subColor }}>
+                  {stage ? <span style={{ fontStyle:"italic", marginRight:4,
+                    color: accessible ? "#f1f5f9" : undefined }}>{stageCode(stage)}</span> : null}
+                  {nodeDef.sublabel}
+                </div>
               )}
               <div style={{ fontSize:10, fontWeight:700, lineHeight:1.35,
                 color:accessible||isStart?"#e2e8f0":"#334155",
