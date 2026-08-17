@@ -624,8 +624,8 @@ function ChestClaimModal({
       setOpenPhase("burst")
       setJustOpened(true)
       onClaim()
-    }, 520))
-    timers.current.push(setTimeout(() => setOpenPhase("idle"), 1450))
+    }, 640))
+    timers.current.push(setTimeout(() => setOpenPhase("idle"), 1900))
   }
 
   const handleClose = () => { if (!opening) onClose() }
@@ -671,35 +671,71 @@ function ChestClaimModal({
                 ? "drop-shadow(0 0 22px rgba(250,204,21,0.95)) brightness(1.25)"
                 : "drop-shadow(0 6px 16px rgba(0,0,0,0.6))",
               animation: openPhase === "shake"
-                ? "chestShakeAnim 0.52s ease-in-out"
+                ? "chestShakeAnim 0.64s cubic-bezier(.36,.07,.19,.97) forwards"
                 : openPhase === "burst"
-                ? "chestPopAnim 0.55s cubic-bezier(.34,1.56,.64,1)"
+                ? "chestPopAnim 0.72s cubic-bezier(.34,1.56,.64,1)"
                 : undefined,
               transition:"filter 0.35s ease" }}/>
 
-          {/* Explosão de luz + raios + partículas na coleta */}
+          {/* Explosão de luz + feixe + ondas de choque + raios + fagulhas na coleta */}
           {openPhase === "burst" && (
             <>
+              {/* Feixe de luz vertical subindo do baú */}
+              <div aria-hidden="true" style={{ position:"absolute", left:"50%", bottom:"38%", zIndex:1,
+                width:54, height:190, transform:"translateX(-50%)", transformOrigin:"bottom center",
+                background:"linear-gradient(to top,rgba(253,224,71,0.55) 0%,rgba(255,247,214,0.30) 45%,transparent 100%)",
+                clipPath:"polygon(32% 100%, 68% 100%, 100% 0%, 0% 0%)",
+                animation:"chestBeam 1.1s ease-out forwards", pointerEvents:"none" }}/>
+              {/* Clarão central */}
               <div aria-hidden="true" style={{ position:"absolute", inset:-8, borderRadius:"50%", zIndex:3,
-                background:"radial-gradient(circle,rgba(255,247,214,0.95) 0%,rgba(250,204,21,0.55) 40%,transparent 70%)",
-                animation:"chestFlash 0.65s ease-out forwards", pointerEvents:"none" }}/>
+                background:"radial-gradient(circle,rgba(255,251,235,0.98) 0%,rgba(253,224,71,0.60) 38%,transparent 70%)",
+                animation:"chestFlash 0.70s ease-out forwards", pointerEvents:"none" }}/>
+              {/* Ondas de choque em anel */}
+              {[0, 0.14].map((delay, ri) => (
+                <div key={ri} aria-hidden="true" style={{ position:"absolute", inset:0, zIndex:3,
+                  borderRadius:"50%", border:`${ri ? 2 : 3}px solid rgba(253,224,71,${ri ? 0.55 : 0.85})`,
+                  boxShadow:"0 0 18px rgba(250,204,21,0.55), inset 0 0 12px rgba(250,204,21,0.35)",
+                  animation:`chestShockwave 0.85s cubic-bezier(.16,.84,.44,1) ${delay}s forwards`,
+                  pointerEvents:"none" }}/>
+              ))}
+              {/* Raios giratórios */}
               <div aria-hidden="true" style={{ position:"absolute", inset:-22, zIndex:1,
                 background:"conic-gradient(from 0deg, rgba(250,204,21,0.55) 0deg 9deg, transparent 9deg 45deg, rgba(250,204,21,0.45) 45deg 54deg, transparent 54deg 90deg, rgba(250,204,21,0.55) 90deg 99deg, transparent 99deg 135deg, rgba(250,204,21,0.45) 135deg 144deg, transparent 144deg 180deg, rgba(250,204,21,0.55) 180deg 189deg, transparent 189deg 225deg, rgba(250,204,21,0.45) 225deg 234deg, transparent 234deg 270deg, rgba(250,204,21,0.55) 270deg 279deg, transparent 279deg 315deg, rgba(250,204,21,0.45) 315deg 324deg, transparent 324deg 360deg)",
-                borderRadius:"50%", animation:"chestRays 0.9s ease-out forwards", pointerEvents:"none" }}/>
-              {Array.from({ length: 14 }).map((_, i) => {
-                const ang  = (i / 14) * Math.PI * 2 + (i % 2 ? 0.22 : 0)
-                const dist = 58 + (i % 3) * 24
-                const sz   = i % 2 ? 7 : 4
+                borderRadius:"50%", animation:"chestRays 1.0s ease-out forwards", pointerEvents:"none" }}/>
+              {/* Fagulhas radiais: círculos + estrelas de 4 pontas */}
+              {Array.from({ length: 22 }).map((_, i) => {
+                const ang    = (i / 22) * Math.PI * 2 + (i % 2 ? 0.19 : 0)
+                const dist   = 54 + (i % 4) * 22
+                const sz     = i % 3 === 0 ? 9 : i % 2 ? 6 : 4
+                const isStarShape = i % 4 === 0
                 return (
                   <div key={i} aria-hidden="true" style={{
                     position:"absolute", left:"50%", top:"50%", width:sz, height:sz, zIndex:4,
-                    borderRadius:"50%",
-                    background: i % 3 === 0 ? "#fff7d6" : i % 3 === 1 ? "#fde047" : "#fbbf24",
-                    boxShadow:"0 0 9px rgba(250,204,21,0.9)",
+                    borderRadius: isStarShape ? 0 : "50%",
+                    clipPath: isStarShape
+                      ? "polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)"
+                      : undefined,
+                    background: i % 3 === 0 ? "#fffbeb" : i % 3 === 1 ? "#fde047" : "#fbbf24",
+                    boxShadow: isStarShape ? undefined : "0 0 10px rgba(250,204,21,0.95)",
                     ["--tx" as string]: `${Math.round(Math.cos(ang) * dist)}px`,
                     ["--ty" as string]: `${Math.round(Math.sin(ang) * dist)}px`,
-                    animation:`chestParticle 0.85s cubic-bezier(.17,.67,.35,1) ${i * 0.018}s forwards`,
+                    ["--rot" as string]: `${(i % 2 ? 1 : -1) * (140 + (i % 3) * 90)}deg`,
+                    animation:`${isStarShape ? "chestSparkle" : "chestParticle"} ${0.85 + (i % 3) * 0.12}s cubic-bezier(.17,.67,.35,1) ${i * 0.016}s forwards`,
                     pointerEvents:"none" }}/>
+                )
+              })}
+              {/* Confete dourado flutuando para cima */}
+              {Array.from({ length: 10 }).map((_, i) => {
+                const offX = (i - 4.5) * 13 + (i % 2 ? 5 : -4)
+                return (
+                  <div key={`c${i}`} aria-hidden="true" style={{
+                    position:"absolute", left:"50%", top:"46%", width: i % 2 ? 5 : 7, height: i % 2 ? 9 : 5,
+                    zIndex:4, borderRadius:2,
+                    background: i % 3 === 0 ? "#fde68a" : i % 3 === 1 ? "#facc15" : "#f59e0b",
+                    ["--cx" as string]: `${offX}px`,
+                    ["--rot" as string]: `${(i % 2 ? 1 : -1) * (200 + i * 40)}deg`,
+                    animation:`chestConfetti ${1.05 + (i % 4) * 0.14}s cubic-bezier(.22,.78,.4,1) ${0.06 + i * 0.03}s forwards`,
+                    opacity:0, pointerEvents:"none" }}/>
                 )
               })}
             </>
@@ -717,29 +753,55 @@ function ChestClaimModal({
         <style>{`
           @keyframes chestGlow { 0%,100% { opacity:0.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }
           @keyframes chestShakeAnim {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            15% { transform: rotate(-7deg) scale(1.02); }
-            30% { transform: rotate(6deg)  scale(1.04); }
-            45% { transform: rotate(-6deg) scale(1.06); }
-            60% { transform: rotate(5deg)  scale(1.08); }
-            80% { transform: rotate(-3deg) scale(1.10); }
+            0%   { transform: rotate(0deg) scale(1); }
+            8%   { transform: rotate(0deg) scale(0.94, 1.05); }
+            18%  { transform: rotate(-8deg) scale(1.02); }
+            30%  { transform: rotate(7deg)  scale(1.04); }
+            42%  { transform: rotate(-7deg) scale(1.06); }
+            54%  { transform: rotate(6deg)  scale(1.08); }
+            66%  { transform: rotate(-5deg) scale(1.10); }
+            78%  { transform: rotate(4deg)  scale(1.12); }
+            90%  { transform: rotate(-2deg) scale(1.06, 0.94); }
+            100% { transform: rotate(0deg)  scale(0.92, 1.10); }
           }
           @keyframes chestPopAnim {
-            0%   { transform: scale(0.88); }
-            45%  { transform: scale(1.26); }
-            100% { transform: scale(1); }
+            0%   { transform: scale(0.80, 1.14); }
+            28%  { transform: scale(1.34, 0.92); }
+            52%  { transform: scale(0.96, 1.08); }
+            74%  { transform: scale(1.10, 0.97); }
+            100% { transform: scale(1, 1); }
           }
           @keyframes chestFlash {
-            0%   { opacity: 0.95; transform: scale(0.45); }
-            100% { opacity: 0;    transform: scale(2.1);  }
+            0%   { opacity: 0.98; transform: scale(0.40); }
+            100% { opacity: 0;    transform: scale(2.3);  }
+          }
+          @keyframes chestShockwave {
+            0%   { opacity: 0.95; transform: scale(0.55); }
+            100% { opacity: 0;    transform: scale(2.6);  }
+          }
+          @keyframes chestBeam {
+            0%   { opacity: 0;    transform: translateX(-50%) scaleY(0.1); }
+            25%  { opacity: 1;    transform: translateX(-50%) scaleY(1.05); }
+            60%  { opacity: 0.85; transform: translateX(-50%) scaleY(1); }
+            100% { opacity: 0;    transform: translateX(-50%) scaleY(1.15); }
           }
           @keyframes chestRays {
             0%   { opacity: 0.9; transform: scale(0.5) rotate(0deg);  }
-            100% { opacity: 0;   transform: scale(1.9) rotate(28deg); }
+            100% { opacity: 0;   transform: scale(2.0) rotate(40deg); }
           }
           @keyframes chestParticle {
             0%   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
             100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.25); }
+          }
+          @keyframes chestSparkle {
+            0%   { opacity: 1; transform: translate(-50%,-50%) scale(0.4) rotate(0deg); }
+            35%  { opacity: 1; transform: translate(calc(-50% + var(--tx) * 0.6), calc(-50% + var(--ty) * 0.6)) scale(1.25) rotate(calc(var(--rot) * 0.5)); }
+            100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.2) rotate(var(--rot)); }
+          }
+          @keyframes chestConfetti {
+            0%   { opacity: 0; transform: translate(calc(-50% + var(--cx) * 0.2), 0) rotate(0deg); }
+            15%  { opacity: 1; }
+            100% { opacity: 0; transform: translate(calc(-50% + var(--cx)), -118px) rotate(var(--rot)); }
           }
           @keyframes chestCheckPop {
             from { opacity: 0; transform: scale(0.3); }
@@ -820,10 +882,17 @@ function ChestProgressBar({
       {/* Track + chests */}
       <div style={{ position:"relative", height:34, marginTop:2 }}>
         <div style={{ position:"absolute", top:"50%", left:0, right:0, height:7,
-          transform:"translateY(-50%)", borderRadius:99, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
-          <div style={{ height:"100%", width:`${pct}%`, borderRadius:99,
-            background:"linear-gradient(90deg,#a16207,#facc15)",
-            boxShadow:"0 0 10px rgba(250,204,21,0.5)", transition:"width 0.6s" }}/>
+          transform:"translateY(-50%)", borderRadius:99, background:"rgba(255,255,255,0.07)",
+          boxShadow:"inset 0 1px 3px rgba(0,0,0,0.55)", overflow:"hidden" }}>
+          <div style={{ height:"100%", width:`${pct}%`, borderRadius:99, position:"relative",
+            background:"linear-gradient(90deg,#a16207,#eab308,#fde047)",
+            boxShadow:"0 0 12px rgba(250,204,21,0.6)", overflow:"hidden",
+            transition:"width 0.8s cubic-bezier(.22,.9,.35,1)" }}>
+            {/* Brilho deslizante na barra */}
+            <div aria-hidden="true" style={{ position:"absolute", inset:0,
+              background:"linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.55) 50%,transparent 100%)",
+              width:"46%", animation:"chestBarShine 2.6s ease-in-out infinite" }}/>
+          </div>
         </div>
 
         {CHAPTER_CHESTS.map(chest => {
@@ -838,8 +907,13 @@ function ChestProgressBar({
                 width:42, height:42, borderRadius:12, cursor:"pointer",
                 background:"transparent", border:"none", padding:0,
                 display:"flex", alignItems:"center", justifyContent:"center",
-                filter: isReady ? "drop-shadow(0 0 12px rgba(250,204,21,0.75))" : "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
+                filter: isReady ? "drop-shadow(0 0 14px rgba(250,204,21,0.85))" : "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                 animation: isReady ? "chestBounce 1.4s ease-in-out infinite" : undefined }}>
+              {isReady && (
+                <div aria-hidden="true" style={{ position:"absolute", inset:-4, borderRadius:"50%",
+                  border:"2px solid rgba(253,224,71,0.75)",
+                  animation:"chestReadyRing 1.6s ease-out infinite", pointerEvents:"none" }}/>
+              )}
               <img src={CHEST_ART[chest.id] || "/placeholder.svg"} alt=""
                 aria-hidden="true"
                 onError={e => { e.currentTarget.style.display = "none" }}
@@ -868,6 +942,14 @@ function ChestProgressBar({
         @keyframes chestBounce {
           0%, 100% { transform: translate(-50%,-50%) scale(1); }
           50%      { transform: translate(-50%,-52%) scale(1.12); }
+        }
+        @keyframes chestBarShine {
+          0%   { transform: translateX(-120%); }
+          60%, 100% { transform: translateX(320%); }
+        }
+        @keyframes chestReadyRing {
+          0%   { opacity: 0.85; transform: scale(0.9); }
+          100% { opacity: 0;    transform: scale(1.55); }
         }
       `}</style>
     </div>
@@ -1238,11 +1320,21 @@ function StoryMapView({
         pointerEvents:"none", zIndex:5, overflow:"visible" }}>
         <defs>
           <linearGradient id="storyPathLit" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%"   stopColor="#e9d5ff"/>
-            <stop offset="30%"  stopColor="#c084fc"/>
-            <stop offset="55%"  stopColor="#8b5cf6"/>
-            <stop offset="80%"  stopColor="#a78bfa"/>
-            <stop offset="100%" stopColor="#ddd6fe"/>
+            <stop offset="0%" stopColor="#e9d5ff">
+              <animate attributeName="stop-color" values="#e9d5ff;#c4b5fd;#f0abfc;#e9d5ff" dur="6s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="30%" stopColor="#c084fc">
+              <animate attributeName="stop-color" values="#c084fc;#a78bfa;#e879f9;#c084fc" dur="6s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="55%" stopColor="#8b5cf6">
+              <animate attributeName="stop-color" values="#8b5cf6;#7c3aed;#a855f7;#8b5cf6" dur="6s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="80%" stopColor="#a78bfa">
+              <animate attributeName="stop-color" values="#a78bfa;#c084fc;#8b5cf6;#a78bfa" dur="6s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="100%" stopColor="#ddd6fe">
+              <animate attributeName="stop-color" values="#ddd6fe;#f5d0fe;#c4b5fd;#ddd6fe" dur="6s" repeatCount="indefinite"/>
+            </stop>
           </linearGradient>
           <linearGradient id="storyPathCore" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%"   stopColor="rgba(255,255,255,0.0)"/>
@@ -1253,6 +1345,11 @@ function StoryMapView({
             <stop offset="0%"   stopColor="#ffffff"/>
             <stop offset="35%"  stopColor="#e9d5ff"/>
             <stop offset="100%" stopColor="rgba(168,85,247,0)"/>
+          </radialGradient>
+          <radialGradient id="storyOrbGold" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#fffbeb"/>
+            <stop offset="40%"  stopColor="#fde68a"/>
+            <stop offset="100%" stopColor="rgba(250,204,21,0)"/>
           </radialGradient>
           <filter id="storyPathGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="4.5" result="blur"/>
@@ -1289,27 +1386,45 @@ function StoryMapView({
               {lit ? (
                 <>
                   {/* Aura ampla e difusa (respiração suave) */}
-                  <path d={d} fill="none" stroke="rgba(168,85,247,0.35)" strokeWidth={16}
+                  <path d={d} fill="none" stroke="rgba(168,85,247,0.38)" strokeWidth={18}
                     strokeLinecap="round" filter="url(#storyPathAura)"
-                    style={{ animation:"storyAuraBreath 3.4s ease-in-out infinite" }}/>
+                    style={{ animation:`storyAuraBreath 3.4s ease-in-out ${(i * 0.35) % 1.8}s infinite` }}/>
                   {/* Halo luminoso */}
                   <path d={d} fill="none" stroke="rgba(168,85,247,0.55)" strokeWidth={8}
                     strokeLinecap="round" filter="url(#storyPathGlow)"/>
-                  {/* Trilho principal em gradiente */}
+                  {/* Trilho principal em gradiente animado */}
                   <path d={d} fill="none" stroke="url(#storyPathLit)" strokeWidth={4.5}
                     strokeLinecap="round"/>
                   {/* Filete de luz central */}
                   <path d={d} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth={1.4}
                     strokeLinecap="round"/>
-                  {/* Fluxo de energia percorrendo a trilha */}
+                  {/* Fluxo de energia percorrendo a trilha (duas camadas defasadas) */}
                   <path d={d} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.2}
                     strokeLinecap="round" strokeDasharray="5 22"
                     style={{ animation:"storyFlow 1.6s linear infinite" }}/>
-                  {/* Orbe de energia viajando pela trilha */}
+                  <path d={d} fill="none" stroke="rgba(233,213,255,0.55)" strokeWidth={1.3}
+                    strokeLinecap="round" strokeDasharray="2 30"
+                    style={{ animation:"storyFlowSlow 3.2s linear infinite" }}/>
+                  {/* Cintilação varrendo o segmento */}
+                  <path d={d} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth={5}
+                    strokeLinecap="round" strokeDasharray="26 320" filter="url(#storyPathGlow)"
+                    style={{ animation:`storyShimmer 4.6s ease-in-out ${(i * 0.6) % 3}s infinite` }}/>
+                  {/* Orbe de energia principal com rastro */}
+                  <circle r={7.5} fill="url(#storyOrb)" opacity={0.5} filter="url(#storyPathAura)">
+                    <animateMotion dur={`${2.4 + (i % 3) * 0.5}s`} repeatCount="indefinite"
+                      path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear"
+                      begin={`${(i * 0.45) % 2}s`}/>
+                  </circle>
                   <circle r={5.5} fill="url(#storyOrb)" opacity={0.95}>
                     <animateMotion dur={`${2.4 + (i % 3) * 0.5}s`} repeatCount="indefinite"
                       path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear"
                       begin={`${(i * 0.45) % 2}s`}/>
+                  </circle>
+                  {/* Orbe secundário, menor e defasado, na direção oposta do brilho */}
+                  <circle r={3} fill="url(#storyOrbGold)" opacity={0.8}>
+                    <animateMotion dur={`${3.6 + (i % 2) * 0.8}s`} repeatCount="indefinite"
+                      path={d} keyPoints="1;0" keyTimes="0;1" calcMode="linear"
+                      begin={`${(i * 0.7 + 1.1) % 3}s`}/>
                   </circle>
                 </>
               ) : (
@@ -1389,7 +1504,10 @@ function StoryMapView({
             position:"absolute", left:`${nodeDef.x}%`, top:`${nodeDef.y}%`,
             transform:"translate(-50%,-50%)", zIndex: isBoss ? 12 : 10,
             display:"flex", flexDirection:"column", alignItems:"center", gap:5,
-            animation:`storyNodeIn .55s cubic-bezier(.34,1.56,.64,1) ${nodeIdx * 0.06}s backwards`,
+            animation:`storyNodeIn .55s cubic-bezier(.34,1.56,.64,1) ${nodeIdx * 0.06}s backwards`
+              + ((isNext || isPlayer)
+                ? `, storyNodeFloat ${4.6 + (nodeIdx % 3) * 0.7}s ease-in-out ${nodeIdx * 0.06 + 0.6}s infinite`
+                : ""),
           }}>
             {isNext && (
               <div style={{ background:"#16a34a", borderRadius:8, padding:"3px 9px",
@@ -1426,13 +1544,13 @@ function StoryMapView({
                 cursor:accessible && !isStart ? "pointer" : "default",
                 boxShadow:nodeGlow,
                 opacity:!accessible && !isStart ? 0.42 : 1,
-                transition:"transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .35s ease, filter .3s ease",
+                transition:"transform .45s cubic-bezier(.34,1.56,.64,1), box-shadow .45s ease, filter .35s ease",
                 position:"relative", flexShrink:0, outline:"none",
                 overflow:"visible", padding:0,
                 animation: isBoss && accessible && !isCompleted ? "storyBossBreath 2.6s ease-in-out infinite" : undefined,
               }}
-              onMouseEnter={e=>{ if(accessible&&!isStart){ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1.14)"; b.style.filter="brightness(1.15)" } }}
-              onMouseLeave={e=>{ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1)"; b.style.filter="none" }}
+              onMouseEnter={e=>{ if(accessible&&!isStart){ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1.16) translateY(-3px)"; b.style.filter="brightness(1.18) saturate(1.15)" } }}
+              onMouseLeave={e=>{ const b=e.currentTarget as HTMLButtonElement; b.style.transform="scale(1) translateY(0)"; b.style.filter="none" }}
             >
               {isPlayer && (
                 <div style={{ position:"absolute", inset:-5, borderRadius: isScene ? 18 : "50%",
@@ -1507,17 +1625,21 @@ function StoryMapView({
             )}
 
             <div style={{
-              background:"linear-gradient(180deg,rgba(20,25,45,0.94) 0%,rgba(2,6,16,0.96) 100%)",
-              border:`1px solid ${isNext ? "rgba(74,222,128,0.55)"
-                : accessible || isStart ? "rgba(139,92,246,0.45)" : "rgba(255,255,255,0.08)"}`,
-              borderRadius:10, padding:"4px 10px", textAlign:"center", maxWidth:116,
-              backdropFilter:"blur(8px)", position:"relative",
-              boxShadow: isNext
-                ? "0 3px 14px rgba(0,0,0,0.55), 0 0 14px rgba(34,197,94,0.25), inset 0 1px 0 rgba(255,255,255,0.10)"
+              background: isNext
+                ? "linear-gradient(180deg,rgba(14,42,24,0.94) 0%,rgba(2,10,6,0.97) 100%)"
                 : accessible || isStart
-                ? "0 3px 14px rgba(0,0,0,0.55), 0 0 10px rgba(139,92,246,0.18), inset 0 1px 0 rgba(255,255,255,0.10)"
+                ? "linear-gradient(180deg,rgba(28,22,54,0.94) 0%,rgba(4,4,16,0.97) 100%)"
+                : "linear-gradient(180deg,rgba(15,18,32,0.92) 0%,rgba(2,6,16,0.95) 100%)",
+              border:`1px solid ${isNext ? "rgba(74,222,128,0.60)"
+                : accessible || isStart ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.08)"}`,
+              borderRadius:11, padding:"5px 11px", textAlign:"center", maxWidth:120,
+              backdropFilter:"blur(10px)", position:"relative",
+              boxShadow: isNext
+                ? "0 4px 16px rgba(0,0,0,0.60), 0 0 18px rgba(34,197,94,0.30), inset 0 1px 0 rgba(255,255,255,0.12)"
+                : accessible || isStart
+                ? "0 4px 16px rgba(0,0,0,0.60), 0 0 14px rgba(139,92,246,0.22), inset 0 1px 0 rgba(255,255,255,0.12)"
                 : "0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)",
-              transition:"border-color .35s ease, box-shadow .35s ease" }}>
+              transition:"border-color .4s ease, box-shadow .4s ease, background .4s ease" }}>
               {/* Filete decorativo no topo da plaqueta */}
               {(accessible || isStart) && (
                 <div aria-hidden="true" style={{ position:"absolute", top:0, left:"18%", right:"18%", height:1,
@@ -1670,9 +1792,23 @@ function StoryMapView({
         @keyframes storyFlow {
           to { stroke-dashoffset: -135; }
         }
+        @keyframes storyFlowSlow {
+          to { stroke-dashoffset: -160; }
+        }
+        @keyframes storyShimmer {
+          0%   { stroke-dashoffset: 346;  opacity: 0;   }
+          12%  { opacity: 0.9; }
+          55%  { stroke-dashoffset: 0;    opacity: 0.9; }
+          70%  { opacity: 0; }
+          100% { stroke-dashoffset: -346; opacity: 0;   }
+        }
         @keyframes storyAuraBreath {
           0%, 100% { opacity: 0.45; }
           50%      { opacity: 1;    }
+        }
+        @keyframes storyNodeFloat {
+          0%, 100% { transform: translate(-50%,-50%) translateY(0px);   }
+          50%      { transform: translate(-50%,-50%) translateY(-4px);  }
         }
         @keyframes storySpinRing {
           from { transform: translate(-50%,-50%) rotate(0deg);   }
