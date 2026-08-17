@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Gift, X, Play, Check, Scroll, Zap, FastForward, Search, Map as MapIcon } from "lucide-react"
+import { ArrowLeft, BookOpen, Swords, Home, Lock, SkipForward, Trophy, Star, Gift, X, Play, Check, Scroll, Zap, FastForward, Search } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1130,20 +1130,23 @@ function ChestProgressBar({
   return (
     <div style={{ position:"absolute", bottom:62, left:"50%", transform:"translateX(-50%)",
       zIndex:50, width:"min(480px, 92vw)",
-      background:"rgba(2,6,16,0.90)", border:"1px solid rgba(255,255,255,0.09)",
-      borderRadius:16, padding:"10px 16px 14px", backdropFilter:"blur(14px)",
-      boxShadow:"0 6px 26px rgba(0,0,0,0.5)" }}>
+      background:"rgba(5,6,8,0.92)", border:"1px solid rgba(255,255,255,0.12)",
+      borderTop:"2px solid rgba(231,185,60,0.65)",
+      clipPath:"polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)",
+      padding:"10px 18px 14px", backdropFilter:"blur(14px)",
+      boxShadow:"0 6px 26px rgba(0,0,0,0.55)" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <Gift size={13} color="#fbbf24"/>
-          <span style={{ color:"#e2e8f0", fontSize:11, fontWeight:900, letterSpacing:"0.04em" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+          <Gift size={12} color="#e7b93c"/>
+          <span style={{ color:"#f2f4f5", fontSize:9.5, fontWeight:900, letterSpacing:".2em",
+            textTransform:"uppercase" }}>
             Baús do Capítulo
           </span>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-          <Star size={12} color="#facc15" fill="#facc15"/>
-          <span style={{ color:"#facc15", fontWeight:900, fontSize:12 }}>
-            {earnedStars}<span style={{ color:"#57534e", fontWeight:600, fontSize:10 }}>/{TOTAL_STARS}</span>
+        <div style={{ display:"flex", alignItems:"baseline", gap:3 }}>
+          <Star size={11} color="#fde047" fill="#fde047" style={{ alignSelf:"center" }}/>
+          <span style={{ color:"#fde047", fontWeight:900, fontSize:13, fontStyle:"italic" }}>
+            {earnedStars}<span style={{ color:"#78591a", fontWeight:700, fontSize:10, fontStyle:"normal" }}>/{TOTAL_STARS}</span>
           </span>
         </div>
       </div>
@@ -1151,9 +1154,9 @@ function ChestProgressBar({
       {/* Track + chests */}
       <div style={{ position:"relative", height:34, marginTop:2 }}>
         <div style={{ position:"absolute", top:"50%", left:0, right:0, height:7,
-          transform:"translateY(-50%)", borderRadius:99, background:"rgba(255,255,255,0.07)",
+          transform:"translateY(-50%) skewX(-18deg)", background:"rgba(255,255,255,0.07)",
           boxShadow:"inset 0 1px 3px rgba(0,0,0,0.55)", overflow:"hidden" }}>
-          <div style={{ height:"100%", width:`${pct}%`, borderRadius:99, position:"relative",
+          <div style={{ height:"100%", width:`${pct}%`, position:"relative",
             background:"linear-gradient(90deg,#a16207,#eab308,#fde047)",
             boxShadow:"0 0 12px rgba(250,204,21,0.6)", overflow:"hidden",
             transition:"width 0.8s cubic-bezier(.22,.9,.35,1)" }}>
@@ -1538,7 +1541,6 @@ function StoryMapView({
 
   const done          = stages.filter(s => completedIds.has(s.id)).length
   const total         = stages.length
-  const progPct       = Math.round((done / total) * 100)
   const isChapterDone = done === total
 
   const nextStageId = (() => {
@@ -1588,6 +1590,41 @@ function StoryMapView({
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", mixBlendMode:"overlay",
         background:"linear-gradient(200deg,rgba(47,181,232,0.10) 0%,transparent 45%,rgba(47,181,232,0.06) 100%)" }}/>
 
+      {/* Grade tática fina sobre a maquete */}
+      <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.05,
+        backgroundImage:"linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)",
+        backgroundSize:"56px 56px" }}/>
+
+      {/* Marca d'água do episódio (decoração de fundo, à la Arknights) */}
+      <div aria-hidden="true" style={{ position:"absolute", right:"3%", bottom:"9%", zIndex:2,
+        pointerEvents:"none", textAlign:"right", userSelect:"none" }}>
+        <div style={{ fontSize:"clamp(52px, 9vw, 110px)", fontWeight:900, fontStyle:"italic",
+          lineHeight:0.9, letterSpacing:"-0.02em", color:"transparent",
+          WebkitTextStroke:"1px rgba(255,255,255,0.10)" }}>EPISODE</div>
+        <div style={{ fontSize:"clamp(52px, 9vw, 110px)", fontWeight:900, fontStyle:"italic",
+          lineHeight:0.9, letterSpacing:".06em", color:"rgba(255,255,255,0.05)" }}>01</div>
+      </div>
+
+      {/* Fagulhas flutuando sobre a maquete */}
+      <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:3, overflow:"hidden" }}>
+        {[...Array(14)].map((_, i) => (
+          <span key={i} style={{ position:"absolute",
+            left:`${(i * 137) % 100}%`, top:`${(i * 61) % 100}%`,
+            width: i % 3 === 0 ? 3 : 2, height: i % 3 === 0 ? 3 : 2, borderRadius:"50%",
+            background: i % 4 === 0 ? "rgba(255,150,90,0.85)" : "rgba(255,196,140,0.6)",
+            boxShadow:"0 0 6px rgba(255,150,90,0.8)",
+            animation:`storyEmber ${7 + (i % 5) * 2.4}s linear ${-(i * 1.7)}s infinite` }}/>
+        ))}
+      </div>
+
+      {/* Cantoneiras HUD */}
+      {([["top","left"],["top","right"],["bottom","left"],["bottom","right"]] as const).map(([v,h]) => (
+        <div key={v+h} aria-hidden="true" style={{ position:"absolute", zIndex:4, pointerEvents:"none",
+          [v]: v === "top" ? 66 : 10, [h]: 10, width:22, height:22,
+          [`border${v === "top" ? "Top" : "Bottom"}`]:"2px solid rgba(255,255,255,0.22)",
+          [`border${h === "left" ? "Left" : "Right"}`]:"2px solid rgba(255,255,255,0.22)" } as React.CSSProperties}/>
+      ))}
+
       {/* ── SVG path lines (rotas táticas retas, estilo mapa de operações) ── */}
       <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%",
         pointerEvents:"none", zIndex:5, overflow:"visible" }}>
@@ -1608,35 +1645,65 @@ function StoryMapView({
           const x1 = px(node.x), y1 = py(node.y)
           const x2 = px(next.x), y2 = py(next.y)
           const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+          const ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI
+          // Pontos a 30% e 70% do trecho (ticks e chevrons direcionais)
+          const p30 = { x: x1 + (x2 - x1) * 0.3, y: y1 + (y2 - y1) * 0.3 }
+          const p70 = { x: x1 + (x2 - x1) * 0.7, y: y1 + (y2 - y1) * 0.7 }
           return (
             <g key={`seg-${i}`}>
               {/* Sombra dura da linha (profundidade sobre a maquete) */}
               <line x1={x1} y1={y1 + 2.5} x2={x2} y2={y2 + 2.5}
-                stroke="rgba(0,0,0,0.55)" strokeWidth={lit ? 5 : 4}
+                stroke="rgba(0,0,0,0.55)" strokeWidth={lit ? 6 : 4}
                 strokeLinecap="square" opacity={lit ? 0.85 : 0.4}/>
               {lit ? (
                 <>
-                  {/* Trilho branco sólido e nítido */}
+                  {/* Trilho branco sólido e nítido, com contorno escuro */}
                   <line x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke="rgba(255,255,255,0.95)" strokeWidth={3}
+                    stroke="rgba(10,12,16,0.9)" strokeWidth={5.5} strokeLinecap="square"/>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke="rgba(255,255,255,0.96)" strokeWidth={3.2}
                     strokeLinecap="square" filter="url(#storyLineGlow)"/>
+                  {/* Ticks perpendiculares (marcação de rota) */}
+                  {[p30, p70].map((p, j) => (
+                    <line key={j} x1={p.x} y1={p.y - 5} x2={p.x} y2={p.y + 5}
+                      transform={`rotate(${ang + 90} ${p.x} ${p.y})`}
+                      stroke="rgba(255,255,255,0.75)" strokeWidth={2} strokeLinecap="square"/>
+                  ))}
                   {/* Losango tático no meio do trecho */}
-                  <rect x={mx - 4} y={my - 4} width={8} height={8}
+                  <rect x={mx - 4.5} y={my - 4.5} width={9} height={9}
                     transform={`rotate(45 ${mx} ${my})`}
                     fill={isNextSeg ? "#2fb5e8" : "#f2f4f5"}
-                    stroke="rgba(0,0,0,0.5)" strokeWidth={1}/>
+                    stroke="rgba(0,0,0,0.55)" strokeWidth={1.2}/>
                   {isNextSeg && (
-                    <line x1={x1} y1={y1} x2={x2} y2={y2}
-                      stroke="#2fb5e8" strokeWidth={3.5} strokeLinecap="square"
-                      strokeDasharray="12 16"
-                      style={{ animation:"storyFlow 1.8s linear infinite",
-                        filter:"drop-shadow(0 0 6px rgba(47,181,232,0.9))" }}/>
+                    <>
+                      <line x1={x1} y1={y1} x2={x2} y2={y2}
+                        stroke="#2fb5e8" strokeWidth={3.5} strokeLinecap="square"
+                        strokeDasharray="12 16"
+                        style={{ animation:"storyFlow 1.8s linear infinite",
+                          filter:"drop-shadow(0 0 6px rgba(47,181,232,0.9))" }}/>
+                      {/* Chevrons direcionais apontando para a próxima operação */}
+                      {[p30, p70].map((p, j) => (
+                        <path key={`ch-${j}`}
+                          d={`M ${p.x - 5} ${p.y - 6} L ${p.x + 3} ${p.y} L ${p.x - 5} ${p.y + 6}`}
+                          transform={`rotate(${ang} ${p.x} ${p.y})`}
+                          fill="none" stroke="#8fdcf8" strokeWidth={2.5}
+                          strokeLinecap="square" strokeLinejoin="miter"
+                          style={{ animation:`storyChevron 1.4s ease-in-out ${j * 0.35}s infinite`,
+                            filter:"drop-shadow(0 0 5px rgba(47,181,232,0.9))" }}/>
+                      ))}
+                    </>
                   )}
                 </>
               ) : (
-                <line x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke="rgba(255,255,255,0.30)" strokeWidth={2}
-                  strokeLinecap="square" strokeDasharray="3 9"/>
+                <>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke="rgba(255,255,255,0.28)" strokeWidth={2}
+                    strokeLinecap="square" strokeDasharray="3 9"/>
+                  {/* Losango apagado no meio do trecho bloqueado */}
+                  <rect x={mx - 3} y={my - 3} width={6} height={6}
+                    transform={`rotate(45 ${mx} ${my})`}
+                    fill="rgba(255,255,255,0.14)" stroke="rgba(0,0,0,0.4)" strokeWidth={1}/>
+                </>
               )}
             </g>
           )
@@ -1829,110 +1896,168 @@ function StoryMapView({
         )
       })}
 
-      {/* ── Top header ── */}
+      {/* ── Top header (barra tática angular) ── */}
       <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:50,
-        background:"rgba(2,6,16,0.90)", backdropFilter:"blur(16px)",
-        borderBottom:"1px solid rgba(255,255,255,0.07)",
-        padding:"11px 16px", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"rgba(255,255,255,0.06)",
-          border:"1px solid rgba(255,255,255,0.10)", borderRadius:10, padding:"7px 10px",
-          cursor:"pointer", color:"#94a3b8", display:"flex", alignItems:"center" }}>
-          <ArrowLeft size={17}/>
+        background:"linear-gradient(180deg,rgba(4,5,8,0.94) 0%,rgba(4,5,8,0.86) 100%)",
+        backdropFilter:"blur(14px)",
+        borderBottom:"1px solid rgba(255,255,255,0.10)",
+        padding:"0 14px 0 0", display:"flex", alignItems:"stretch", gap:0, height:56 }}>
+        {/* Textura diagonal sutil */}
+        <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.05,
+          background:"repeating-linear-gradient(-55deg, transparent 0 12px, #fff 12px 13px)" }}/>
+
+        {/* Bloco de voltar chanfrado */}
+        <button onClick={onBack} aria-label="Voltar"
+          style={{ position:"relative", background:"rgba(255,255,255,0.06)",
+            border:"none", borderRight:"1px solid rgba(255,255,255,0.12)",
+            padding:"0 22px 0 18px", cursor:"pointer", color:"#e2e8f0",
+            display:"flex", alignItems:"center",
+            clipPath:"polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)",
+            transition:"background .2s" }}
+          onMouseEnter={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.12)" }}
+          onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.06)" }}>
+          <ArrowLeft size={19}/>
         </button>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:7}}>
-            <BookOpen size={15} color="#8b5cf6"/>
-            <span style={{fontWeight:900,fontSize:15,color:"#e2e8f0"}}>Campanha</span>
+
+        {/* Divisor vertical */}
+        <div aria-hidden="true" style={{ width:1, background:"rgba(255,255,255,0.14)",
+          margin:"12px 0 12px 4px" }}/>
+
+        {/* Emblema do episódio */}
+        <div style={{ display:"flex", flexDirection:"column", justifyContent:"center",
+          padding:"0 16px", minWidth:0, flex:1, position:"relative" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <BookOpen size={12} color="#5ecdf5"/>
+            <span style={{ fontSize:8.5, fontWeight:900, letterSpacing:".3em",
+              textTransform:"uppercase", color:"#5ecdf5" }}>Episode 01 · Campanha</span>
           </div>
-          <p style={{color:"#475569",fontSize:10,margin:0}}>
-            Capítulo 1 — A Lenda da Estrela
-          </p>
+          <div style={{ display:"flex", alignItems:"baseline", gap:9 }}>
+            <span style={{ fontWeight:900, fontSize:17, fontStyle:"italic", color:"#f2f4f5",
+              letterSpacing:".02em", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+              textShadow:"0 1px 8px rgba(0,0,0,0.6)" }}>A Lenda da Estrela</span>
+          </div>
         </div>
-        <div style={{ display:"flex",alignItems:"center",gap:4,
-          background:"rgba(30,20,2,0.85)", border:"1px solid rgba(250,204,21,0.25)",
-          borderRadius:9, padding:"5px 11px" }}>
-          <Star size={12} color="#facc15" fill="#facc15"/>
-          <span style={{fontWeight:900,fontSize:13,color:"#facc15"}}>
-            {earnedStars}<span style={{color:"#78591a",fontWeight:600,fontSize:10}}>/{TOTAL_STARS}</span>
+
+        {/* Placa: estrelas (à la contador PLAN) */}
+        <div style={{ display:"flex", alignItems:"center", alignSelf:"center", height:34 }}>
+          <span style={{ height:"100%", display:"flex", alignItems:"center", gap:4,
+            background:"#f2f4f5", padding:"0 10px",
+            clipPath:"polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)" }}>
+            <Star size={12} color="#15171b" fill="#15171b"/>
+            <span style={{ fontSize:8, fontWeight:900, letterSpacing:".14em", color:"#15171b" }}>STARS</span>
+          </span>
+          <span style={{ height:"100%", display:"flex", alignItems:"baseline", gap:2,
+            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.12)",
+            borderLeft:"none", padding:"6px 14px 0 16px", marginLeft:-7,
+            clipPath:"polygon(9px 0,100% 0,100% 100%,0 100%)" }}>
+            <span style={{ fontWeight:900, fontSize:19, fontStyle:"italic", color:"#fde047", lineHeight:1.3 }}>{earnedStars}</span>
+            <span style={{ color:"#8a929b", fontWeight:700, fontSize:10 }}>/{TOTAL_STARS}</span>
           </span>
         </div>
+
+        {/* Placa: stamina */}
         <div title="Energia — gasta ao iniciar batalhas e varrer fases"
-          style={{ display:"flex",alignItems:"center",gap:5,
-          background:"rgba(3,20,10,0.85)", border:"1px solid rgba(16,185,129,0.22)",
-          borderRadius:9, padding:"5px 11px" }}>
-          <Zap size={12} color="#34d399" fill="#34d399"/>
-          <span style={{fontWeight:900,fontSize:13,color:"#6ee7b7"}}>
-            {stamina}<span style={{color:"#065f46",fontWeight:600,fontSize:10}}>/{maxStamina}</span>
+          style={{ display:"flex", alignItems:"center", alignSelf:"center", height:34, marginLeft:10 }}>
+          <span style={{ height:"100%", display:"flex", alignItems:"center",
+            background:"linear-gradient(180deg,#2fb5e8,#0f7fb4)", padding:"0 9px",
+            clipPath:"polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)" }}>
+            <Zap size={13} color="#fff" fill="#fff"/>
           </span>
-          {stamina < maxStamina && staminaNextTickSeconds > 0 && (
-            <span style={{fontSize:9,color:"rgba(52,211,153,0.55)",fontVariantNumeric:"tabular-nums"}}>
-              {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
-            </span>
-          )}
+          <span style={{ height:"100%", display:"flex", alignItems:"baseline", gap:2,
+            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.12)",
+            borderLeft:"none", padding:"6px 12px 0 15px", marginLeft:-7,
+            clipPath:"polygon(9px 0,100% 0,100% 100%,0 100%)" }}>
+            <span style={{ fontWeight:900, fontSize:19, fontStyle:"italic", color:"#f2f4f5", lineHeight:1.3 }}>{stamina}</span>
+            <span style={{ color:"#8a929b", fontWeight:700, fontSize:10 }}>/{maxStamina}</span>
+            {stamina < maxStamina && staminaNextTickSeconds > 0 && (
+              <span style={{ fontSize:9, color:"#5ecdf5", fontWeight:700, marginLeft:5,
+                fontVariantNumeric:"tabular-nums" }}>
+                {String(Math.floor(staminaNextTickSeconds/60)).padStart(1,"0")}:{String(staminaNextTickSeconds%60).padStart(2,"0")}
+              </span>
+            )}
+          </span>
         </div>
-        <div title="Fases concluídas do capítulo" style={{textAlign:"right"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4,marginBottom:3}}>
-            <MapIcon size={11} color="#a78bfa"/>
-            <span style={{fontSize:11,fontWeight:900,color:"#a78bfa"}}>{done}/{total}</span>
+
+        {/* Progresso de fases */}
+        <div title="Fases concluídas do capítulo"
+          style={{ alignSelf:"center", textAlign:"right", marginLeft:14 }}>
+          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"flex-end", gap:3 }}>
+            <span style={{ fontSize:14, fontWeight:900, fontStyle:"italic", color:"#f2f4f5" }}>{done}</span>
+            <span style={{ fontSize:9, fontWeight:700, color:"#8a929b" }}>/{total}</span>
           </div>
-          <div style={{width:44,height:4,borderRadius:99,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${progPct}%`,borderRadius:99,
-              background:"linear-gradient(90deg,#7c3aed,#a855f7)",transition:"width 0.6s"}}/>
+          <div style={{ display:"flex", gap:2, marginTop:3 }}>
+            {stages.map((s, i) => (
+              <div key={s.id} style={{ width:6, height:4,
+                transform:"skewX(-18deg)",
+                background: completedIds.has(s.id) ? "#2fb5e8" : "rgba(255,255,255,0.12)",
+                boxShadow: completedIds.has(s.id) ? "0 0 4px rgba(47,181,232,0.7)" : "none",
+                transition:"background .4s" }}/>
+            ))}
           </div>
-          <div style={{fontSize:8,fontWeight:700,color:"#64748b",letterSpacing:".08em",
-            textTransform:"uppercase",marginTop:2}}>Fases</div>
+          <div style={{ fontSize:7, fontWeight:800, color:"#5b636c", letterSpacing:".16em",
+            textTransform:"uppercase", marginTop:2 }}>Operações</div>
         </div>
       </div>
 
       {isChapterDone && (
-        <div style={{ position:"absolute",top:64,left:"50%",transform:"translateX(-50%)",
-          zIndex:60,background:"rgba(234,179,8,0.12)",border:"1px solid rgba(234,179,8,0.30)",
-          borderRadius:14,padding:"10px 22px",display:"flex",alignItems:"center",gap:10,
-          backdropFilter:"blur(12px)",whiteSpace:"nowrap" }}>
-          <Trophy size={20} color="#fbbf24"/>
+        <div style={{ position:"absolute",top:66,left:"50%",transform:"translateX(-50%)",
+          zIndex:60, background:"rgba(5,6,8,0.92)", border:"1px solid rgba(231,185,60,0.55)",
+          borderTop:"2px solid #e7b93c",
+          clipPath:"polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)",
+          padding:"9px 30px 10px", display:"flex", alignItems:"center", gap:11,
+          backdropFilter:"blur(12px)", whiteSpace:"nowrap",
+          boxShadow:"0 6px 26px rgba(231,185,60,0.25)" }}>
+          <Trophy size={19} color="#e7b93c"/>
           <div>
-            <p style={{fontWeight:900,fontSize:13,color:"#fbbf24",margin:0}}>Capítulo 1 Concluído!</p>
-            <p style={{color:"#78716c",fontSize:10,margin:0}}>Capítulo 2 em breve...</p>
+            <p style={{ fontWeight:900, fontSize:12, fontStyle:"italic", letterSpacing:".08em",
+              textTransform:"uppercase", color:"#f3d27a", margin:0 }}>Episode 01 — Concluído</p>
+            <p style={{ color:"#8a929b", fontSize:9.5, margin:0, letterSpacing:".04em" }}>Capítulo 2 em breve...</p>
           </div>
         </div>
       )}
 
-      {/* ── Legend ── */}
-      <div style={{ position:"absolute",left:12,bottom:72,zIndex:50,
-        background:"rgba(2,6,16,0.92)",border:"1px solid rgba(255,255,255,0.14)",
-        borderRadius:12,padding:"10px 12px",display:"flex",flexDirection:"column",gap:8,
-        backdropFilter:"blur(10px)", boxShadow:"0 4px 18px rgba(0,0,0,0.5)" }}>
-        <span style={{ fontSize:9, fontWeight:900, letterSpacing:".12em", textTransform:"uppercase",
-          color:"rgba(255,255,255,0.55)" }}>Legenda</span>
+      {/* ── Legend (placa tática angular) ── */}
+      <div style={{ position:"absolute", left:12, bottom:76, zIndex:50,
+        background:"rgba(5,6,8,0.92)", border:"1px solid rgba(255,255,255,0.14)",
+        borderLeft:"3px solid #2fb5e8",
+        clipPath:"polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)",
+        padding:"9px 18px 13px 12px", display:"flex", flexDirection:"column", gap:7,
+        backdropFilter:"blur(10px)", boxShadow:"0 4px 18px rgba(0,0,0,0.55)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+          <span style={{ fontSize:8.5, fontWeight:900, letterSpacing:".26em", textTransform:"uppercase",
+            color:"#8a929b" }}>Legenda</span>
+          <div aria-hidden="true" style={{ flex:1, height:1,
+            background:"linear-gradient(90deg,rgba(255,255,255,0.18),transparent)" }}/>
+        </div>
         {([
-          { swatch:{ bg:"linear-gradient(145deg,#172554,#1d4ed8)", bd:"#3b82f6", round:"50%" },
-            icon:<Swords size={13} color="#bfdbfe"/>, label:"Batalha" },
-          { swatch:{ bg:"linear-gradient(145deg,#3b0764,#5b21b6)", bd:"#8b5cf6", round:"7px" },
-            icon:<Scroll size={13} color="#ddd6fe"/>, label:"Cena (história)" },
-          { swatch:{ bg:"linear-gradient(145deg,#450a0a,#991b1b)", bd:"#f59e0b", round:"50%" },
-            icon:<Swords size={13} color="#fecaca"/>, label:"Boss" },
+          { bg:"linear-gradient(180deg,#2fb5e8,#0f7fb4)", icon:<Swords size={11} color="#fff"/>, label:"Batalha" },
+          { bg:"linear-gradient(180deg,#9b7bff,#5b2fd1)", icon:<Scroll size={11} color="#fff"/>, label:"Cena (história)" },
+          { bg:"linear-gradient(180deg,#e2492f,#8f1d0e)", icon:<Swords size={11} color="#fff"/>, label:"Boss" },
         ] as const).map(item=>(
-          <div key={item.label} style={{display:"flex",alignItems:"center",gap:8}}>
-            <div style={{ width:24, height:24, borderRadius:item.swatch.round,
-              background:item.swatch.bg, border:`2px solid ${item.swatch.bd}`,
-              display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <div key={item.label} style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:20, height:20, flexShrink:0,
+              clipPath:"polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+              background:item.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
               {item.icon}
             </div>
-            <span style={{fontSize:11,color:"rgba(255,255,255,0.85)",fontWeight:700}}>{item.label}</span>
+            <span style={{ fontSize:10, color:"#c8cfd6", fontWeight:800,
+              letterSpacing:".04em" }}>{item.label}</span>
           </div>
         ))}
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{ width:24, height:24, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <Star size={15} color="#facc15" fill="#facc15"/>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <Star size={13} color="#fde047" fill="#fde047"/>
           </div>
-          <span style={{fontSize:11,color:"rgba(255,255,255,0.85)",fontWeight:700}}>Desempenho na batalha</span>
+          <span style={{ fontSize:10, color:"#c8cfd6", fontWeight:800, letterSpacing:".04em" }}>Desempenho na batalha</span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{ width:24, height:24, borderRadius:"50%", background:"#422006",
-            border:"2px solid #facc15", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <FastForward size={11} color="#fde047"/>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, flexShrink:0,
+            clipPath:"polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+            background:"linear-gradient(180deg,#e7b93c,#8f6a00)",
+            display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <FastForward size={10} color="#fff"/>
           </div>
-          <span style={{fontSize:11,color:"rgba(255,255,255,0.85)",fontWeight:700}}>Varredura (3★)</span>
+          <span style={{ fontSize:10, color:"#c8cfd6", fontWeight:800, letterSpacing:".04em" }}>Varredura (3★)</span>
         </div>
       </div>
 
@@ -1943,11 +2068,16 @@ function StoryMapView({
       <div style={{ position:"absolute",bottom:0,left:0,right:0,zIndex:50,
         padding:"0 0 14px",display:"flex",justifyContent:"center",
         background:"linear-gradient(to top,rgba(2,6,16,0.92) 0%,transparent 100%)" }}>
-        <button onClick={onBack} style={{ display:"flex",alignItems:"center",gap:8,
-          background:"rgba(2,6,16,0.92)",border:"1px solid rgba(255,255,255,0.12)",
-          borderRadius:16,padding:"10px 24px",color:"#94a3b8",fontWeight:800,fontSize:13,
-          cursor:"pointer",boxShadow:"0 4px 20px rgba(0,0,0,0.4)" }}>
-          <Home size={14}/> Menu Principal
+        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:9,
+          background:"rgba(5,6,8,0.94)", border:"1px solid rgba(255,255,255,0.16)",
+          clipPath:"polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%)",
+          padding:"10px 34px", color:"#c8cfd6", fontWeight:900, fontSize:11.5,
+          letterSpacing:".14em", textTransform:"uppercase", fontStyle:"italic",
+          cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.4)",
+          transition:"background .2s, color .2s" }}
+          onMouseEnter={e=>{ e.currentTarget.style.background="rgba(242,244,245,0.95)"; e.currentTarget.style.color="#15171b" }}
+          onMouseLeave={e=>{ e.currentTarget.style.background="rgba(5,6,8,0.94)"; e.currentTarget.style.color="#c8cfd6" }}>
+          <Home size={13}/> Menu Principal
         </button>
       </div>
 
@@ -1988,6 +2118,16 @@ function StoryMapView({
         @keyframes storyNodeIn {
           from { opacity: 0; transform: translate(-50%,-50%) scale(0.55); }
           to   { opacity: 1; transform: translate(-50%,-50%) scale(1);    }
+        }
+        @keyframes storyEmber {
+          0%   { transform: translate(0, 12vh) scale(0.6); opacity: 0; }
+          12%  { opacity: 0.9; }
+          85%  { opacity: 0.7; }
+          100% { transform: translate(4vw, -110vh) scale(1); opacity: 0; }
+        }
+        @keyframes storyChevron {
+          0%, 100% { opacity: 0.25; }
+          50%      { opacity: 1;    }
         }
         @keyframes storyBossBreath {
           0%, 100% { box-shadow: 0 0 22px rgba(220,38,38,0.45), 0 6px 18px rgba(0,0,0,0.6),
