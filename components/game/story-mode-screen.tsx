@@ -1580,15 +1580,28 @@ function StoryMapView({
         }}
         style={{ position:"absolute", inset:0, width:"100%", height:"100%",
           objectFit:"cover", objectPosition:"center", pointerEvents:"none",
-          filter:"saturate(0.55) contrast(1.05)" }}
+          filter:"saturate(0.72) contrast(1.14) brightness(0.94)",
+          animation:"storyBgDrift 46s ease-in-out infinite alternate" }}
       />
 
+      {/* Grade de cor cinematográfico: sombras frias azuladas + luz quente */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", mixBlendMode:"color",
+        background:"linear-gradient(215deg, rgba(38,84,124,0.55) 0%, rgba(18,32,52,0.45) 55%, rgba(64,38,20,0.30) 100%)" }}/>
+      {/* Feixe de luz quente varrendo a maquete (holofote de comando) */}
+      <div aria-hidden="true" style={{ position:"absolute", inset:"-20%", pointerEvents:"none",
+        mixBlendMode:"soft-light", opacity:0.9,
+        background:"linear-gradient(115deg, transparent 30%, rgba(255,196,140,0.55) 46%, rgba(255,220,180,0.75) 50%, rgba(255,196,140,0.55) 54%, transparent 70%)",
+        animation:"storySweep 14s ease-in-out infinite" }}/>
       {/* Overlay: vinheta escura + varredura fria no topo */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none",
-        background:"radial-gradient(120% 90% at 50% 42%, transparent 40%, rgba(4,6,9,0.55) 100%), linear-gradient(180deg,rgba(4,6,9,0.55) 0%,rgba(4,6,9,0.08) 30%,rgba(4,6,9,0.10) 70%,rgba(4,6,9,0.60) 100%)" }}/>
+        background:"radial-gradient(120% 90% at 50% 42%, transparent 36%, rgba(3,5,10,0.62) 100%), linear-gradient(180deg,rgba(3,5,10,0.60) 0%,rgba(3,5,10,0.06) 28%,rgba(3,5,10,0.08) 68%,rgba(3,5,10,0.68) 100%)" }}/>
       {/* Névoa azulada sutil (leitura das rotas) */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", mixBlendMode:"overlay",
-        background:"linear-gradient(200deg,rgba(47,181,232,0.10) 0%,transparent 45%,rgba(47,181,232,0.06) 100%)" }}/>
+        background:"linear-gradient(200deg,rgba(47,181,232,0.14) 0%,transparent 45%,rgba(47,181,232,0.08) 100%)" }}/>
+      {/* Névoa baixa deslizando entre os prédios */}
+      <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.5,
+        background:"radial-gradient(60% 34% at 22% 82%, rgba(120,170,210,0.16), transparent 70%), radial-gradient(52% 30% at 74% 30%, rgba(120,170,210,0.12), transparent 70%)",
+        animation:"storyFogDrift 22s ease-in-out infinite alternate" }}/>
 
       {/* Grade tática fina sobre a maquete */}
       <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", opacity:0.05,
@@ -1598,11 +1611,20 @@ function StoryMapView({
       {/* Marca d'água do episódio (decoração de fundo, à la Arknights) */}
       <div aria-hidden="true" style={{ position:"absolute", right:"3%", bottom:"9%", zIndex:2,
         pointerEvents:"none", textAlign:"right", userSelect:"none" }}>
-        <div style={{ fontSize:"clamp(52px, 9vw, 110px)", fontWeight:900, fontStyle:"italic",
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:10, marginBottom:6 }}>
+          <div style={{ width:"clamp(60px,10vw,140px)", height:1,
+            background:"linear-gradient(90deg,transparent,rgba(94,205,245,0.55))" }}/>
+          <span style={{ fontSize:10, fontWeight:900, letterSpacing:".5em", textTransform:"uppercase",
+            color:"rgba(94,205,245,0.5)" }}>A Lenda da Estrela</span>
+        </div>
+        <div style={{ fontSize:"clamp(52px, 9vw, 118px)", fontWeight:900, fontStyle:"italic",
           lineHeight:0.9, letterSpacing:"-0.02em", color:"transparent",
-          WebkitTextStroke:"1px rgba(255,255,255,0.10)" }}>EPISODE</div>
-        <div style={{ fontSize:"clamp(52px, 9vw, 110px)", fontWeight:900, fontStyle:"italic",
-          lineHeight:0.9, letterSpacing:".06em", color:"rgba(255,255,255,0.05)" }}>01</div>
+          WebkitTextStroke:"1.5px rgba(255,255,255,0.14)" }}>EPISODE</div>
+        <div style={{ fontSize:"clamp(52px, 9vw, 118px)", fontWeight:900, fontStyle:"italic",
+          lineHeight:0.9, letterSpacing:".06em",
+          background:"linear-gradient(180deg, rgba(94,205,245,0.22), rgba(94,205,245,0.04))",
+          WebkitBackgroundClip:"text", backgroundClip:"text", color:"transparent",
+          WebkitTextStroke:"1px rgba(94,205,245,0.18)" }}>01</div>
       </div>
 
       {/* Fagulhas flutuando sobre a maquete */}
