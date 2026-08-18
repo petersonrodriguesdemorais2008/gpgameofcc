@@ -7,7 +7,7 @@ import { useGame } from "@/contexts/game-context"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Emotion = "normal" | "happy" | "rage"
-type CharacterId = "fehnon" | "calem" | "arthur" | "guard1" | "guard2"
+type CharacterId = "fehnon" | "calem" | "arthur" | "morgana" | "guard1" | "guard2"
 
 interface Character {
   id: CharacterId
@@ -25,6 +25,10 @@ interface Panel {
   text: string
   textType?: "speech" | "thought" | "narrator"
   overlayCaption?: string
+  /** Efeito cinematográfico disparado ao exibir o painel. */
+  fx?: "purpleLightning" | "shake"
+  /** Entrada dramática do personagem à direita (surge no topo de um telhado). */
+  revealRight?: boolean
 }
 
 interface Scene {
@@ -182,14 +186,30 @@ const CHAPTER1_STAGES: Stage[] = [
     opponent: "Rei Arthur",
   },
   {
-    id: "c1s8", number: 10, title: "A Revelação", subtitle: "Cena Final", type: "scene",
+    id: "c1s8", number: 10, title: "A Revelação", subtitle: "Cena 6", type: "scene",
     sceneData: { id: "c1s8", title: "A Revelação", panels: [
       { id:"p1", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"Desapareça, Mefisto!", textType:"speech" },
       { id:"p2", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Como... meu Mefisto está sendo machucado?!", textType:"speech" },
       { id:"p3", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"calem",name:"Calem",emotion:"happy",side:"right"}], speaker:"calem", speakerName:"Calem", text:"Conseguimos! Fehnon, você é incrível!", textType:"speech" },
       { id:"p4", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"rage",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Heh... Vocês acham que ganharam? Eu ainda tenho... uma carta na manga.", textType:"speech" },
       { id:"p5", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"calem",name:"Calem",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Uma carta na manga...?! O quê?!", textType:"speech" },
-      { id:"p6", bg: BG.camelot, characters:[], speaker:"narrator", speakerName:"", text:"— A ser continuado no Capítulo 2 —", textType:"narrator", overlayCaption:"Fim do Capítulo 1" },
+      { id:"p6", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"happy",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"E ela já está aqui há um bom tempo... apenas assistindo.", textType:"speech" },
+    ]},
+  },
+  {
+    id: "c1s9", number: 11, title: "A Carta na Manga", subtitle: "Cena Final", type: "scene",
+    sceneData: { id: "c1s9", title: "A Carta na Manga", panels: [
+      { id:"p1", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"arthur",name:"Rei Arthur",emotion:"happy",side:"right"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Você foi muito ingênuo, Fehnon. Vir me enfrentar sozinho... isso foi um erro.", textType:"speech", overlayCaption:"Telhados do Reino de Camelot — logo após a queda de Mefisto" },
+      { id:"p2", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"arthur",name:"Rei Arthur",emotion:"happy",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Sozinho...? Do que você está falando? Você já perdeu, Arthur.", textType:"speech" },
+      { id:"p3", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"narrator", speakerName:"", text:"CRAAACK!! Um raio roxo rasga o céu e explode a poucos passos de Fehnon, estilhaçando as telhas.", textType:"narrator", fx:"purpleLightning" },
+      { id:"p4", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"fehnon", speakerName:"Fehnon", text:"O QUÊ?! De onde veio isso?!", textType:"speech", fx:"shake" },
+      { id:"p5", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"morgana",name:"Morgana",emotion:"normal",side:"right"}], speaker:"narrator", speakerName:"", text:"No topo de uma das casas, uma silhueta observa tudo. Uma garota — imóvel, com raios roxos dançando entre seus dedos.", textType:"narrator", revealRight:true },
+      { id:"p6", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"normal",side:"left"},{id:"morgana",name:"Morgana",emotion:"happy",side:"right"}], speaker:"morgana", speakerName:"Morgana", text:"Hahaha! Então é ESSE o famoso Fehnon? Sério? Achei que fosse maior.", textType:"speech" },
+      { id:"p7", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"morgana",name:"Morgana",emotion:"happy",side:"right"}], speaker:"morgana", speakerName:"Morgana", text:"Vou ajudar meu irmão a te derrotar. E, sinceramente, isso não vai demorar nada.", textType:"speech" },
+      { id:"p8", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"morgana",name:"Morgana",emotion:"normal",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Irmão...? Arthur tem uma irmã?! Ninguém no reino nunca falou disso...", textType:"thought" },
+      { id:"p9", bg: BG.camelot, characters:[{id:"arthur",name:"Rei Arthur",emotion:"happy",side:"right"},{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"}], speaker:"arthur", speakerName:"Rei Arthur", text:"Minha irmã, Morgana. A verdadeira carta na manga de Camelot.", textType:"speech" },
+      { id:"p10", bg: BG.camelot, characters:[{id:"fehnon",name:"Fehnon",emotion:"rage",side:"left"},{id:"morgana",name:"Morgana",emotion:"rage",side:"right"}], speaker:"fehnon", speakerName:"Fehnon", text:"Não importa! Um ou dois, tanto faz — eu vou fazer de TUDO para derrotar vocês dois!", textType:"speech" },
+      { id:"p11", bg: BG.camelot, characters:[], speaker:"narrator", speakerName:"", text:"— A ser continuado no Capítulo 2 —", textType:"narrator", overlayCaption:"Fim do Capítulo 1" },
     ]},
   },
 ]
@@ -270,6 +290,7 @@ const STAGE_DESC: Record<string, string> = {
   c1s7:   "Raios roxos caem sobre Camelot. Nos telhados do reino, Arthur prepara a invocação do seu Ultimate Guardian.",
   c1boss: "Mefisto, o Guardião de Arthur, desperta em sua forma completa. A Protonix Sword contra o poder de um reino inteiro.",
   c1s8:   "O guardião tomba, mas Arthur ainda sorri. Uma carta na manga não foi jogada...",
+  c1s9:   "Um raio roxo explode nas telhas. No topo de uma casa, alguém observava desde o começo — e ela não veio sozinha por acaso.",
 }
 
 /** Calcula a avaliação (1–3 estrelas) de uma batalha com base no LP restante. */
@@ -346,6 +367,7 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
 
   const nameBg = (id?: CharacterId | "narrator") => {
     if (id === "arthur") return "linear-gradient(135deg,#7f1d1d,#991b1b)"
+    if (id === "morgana") return "linear-gradient(135deg,#4c1d95,#7c3aed)"
     if (id === "fehnon") return "linear-gradient(135deg,#1e3a8a,#2563eb)"
     return "linear-gradient(135deg,#1f2937,#374151)"
   }
@@ -361,10 +383,33 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
       style={{ position:"fixed", inset:0, zIndex:200, background:"#000",
         userSelect:"none", cursor:"pointer", fontFamily:"'Segoe UI',system-ui,sans-serif", overflow:"hidden" }}
     >
-      <div style={{ position:"absolute", inset:0, backgroundImage:`url(${panel.bg})`,
-        backgroundSize:"cover", backgroundPosition:"center", filter:"brightness(0.70)" }}/>
+      <div key={`bg-${panel.id}`} style={{ position:"absolute", inset:0, backgroundImage:`url(${panel.bg})`,
+        backgroundSize:"cover", backgroundPosition:"center", filter:"brightness(0.70)",
+        animation: panel.fx ? "sceneShake .55s cubic-bezier(.36,.07,.19,.97) both" : undefined }}/>
       <div style={{ position:"absolute", inset:0,
         background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.0) 42%, rgba(0,0,0,0.10) 100%)" }}/>
+
+      {/* Raio roxo caindo perto do personagem */}
+      {panel.fx === "purpleLightning" && (
+        <div key={`fx-${panel.id}`} aria-hidden="true"
+          style={{ position:"absolute", inset:0, zIndex:22, pointerEvents:"none" }}>
+          <div style={{ position:"absolute", inset:0, background:"rgba(167,110,255,0.6)",
+            mixBlendMode:"screen", animation:"boltFlash 1s ease-out both" }}/>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+            style={{ position:"absolute", top:0, left:"20%", width:"17%", height:"84%",
+              animation:"boltStrike .9s ease-out both",
+              filter:"drop-shadow(0 0 14px rgba(167,110,255,0.95))" }}>
+            <path d="M62 0 L40 34 L58 36 L28 78 L44 52 L26 50 L48 12 Z"
+              fill="#e9d5ff" stroke="#a855f7" strokeWidth="1.2"/>
+            <path d="M62 0 L40 34 L58 36 L28 78" fill="none"
+              stroke="#f5f3ff" strokeWidth="2.4" strokeLinejoin="miter"/>
+          </svg>
+          <div style={{ position:"absolute", left:"22%", bottom:100, width:"30%", height:150,
+            transform:"translateX(-40%)",
+            background:"radial-gradient(closest-side, rgba(216,180,254,0.85), rgba(147,51,234,0.35), transparent 75%)",
+            animation:"boltImpact 1s ease-out both" }}/>
+        </div>
+      )}
 
       {/* Top HUD */}
       <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:30,
@@ -407,12 +452,13 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
       )}
 
       {right && (
-        <img src={charImg(right.id, right.emotion)} alt={right.name}
+        <img key={`right-${panel.id}`} src={charImg(right.id, right.emotion)} alt={right.name}
           style={{ position:"absolute", bottom:126, right:0,
             height:"calc(100vh - 174px)", width:"auto", maxWidth:"48%",
             objectFit:"contain", objectPosition:"bottom", transform:"scaleX(-1)",
             pointerEvents:"none", opacity: fading ? 0 : 1, transition:"opacity 0.14s ease",
-            filter: charFilter(isRightSpeaking), zIndex:10, display:"block" }}/>
+            filter: charFilter(isRightSpeaking), zIndex:10, display:"block",
+            animation: panel.revealRight ? "charDrop .85s cubic-bezier(.22,1,.36,1) both" : undefined }}/>
       )}
 
       {/* Dialogue box */}
@@ -456,7 +502,36 @@ function SceneViewer({ scene, onComplete }: { scene: Scene; onComplete: () => vo
         )}
       </div>
 
-      <style>{`@keyframes blink { 0%,100%{opacity:.22} 50%{opacity:0.9} }`}</style>
+      <style>{`
+        @keyframes blink { 0%,100%{opacity:.22} 50%{opacity:0.9} }
+        @keyframes boltFlash {
+          0%{opacity:0} 5%{opacity:.85} 13%{opacity:.1} 20%{opacity:.6}
+          32%{opacity:.05} 100%{opacity:0}
+        }
+        @keyframes boltStrike {
+          0%{opacity:0; transform:translateY(-14%) scaleY(.5)}
+          8%{opacity:1; transform:translateY(0) scaleY(1)}
+          26%{opacity:.15} 38%{opacity:.9} 60%{opacity:0} 100%{opacity:0}
+        }
+        @keyframes boltImpact {
+          0%{opacity:0; transform:translateX(-40%) scale(.3)}
+          12%{opacity:1; transform:translateX(-40%) scale(1)}
+          100%{opacity:0; transform:translateX(-40%) scale(1.5)}
+        }
+        @keyframes sceneShake {
+          0%,100%{transform:translate3d(0,0,0)}
+          12%{transform:translate3d(-9px,4px,0)}
+          26%{transform:translate3d(8px,-5px,0)}
+          42%{transform:translate3d(-6px,3px,0)}
+          58%{transform:translate3d(5px,-2px,0)}
+          76%{transform:translate3d(-3px,1px,0)}
+        }
+        @keyframes charDrop {
+          0%{opacity:0; transform:scaleX(-1) translateY(-46px); filter:brightness(3) saturate(1.6)}
+          55%{opacity:1; filter:brightness(1.6)}
+          100%{opacity:1; transform:scaleX(-1) translateY(0)}
+        }
+      `}</style>
     </div>
   )
 }
@@ -1504,8 +1579,9 @@ const MAP_NODES: MapNodeDef[] = [
   { stageId: "c1s5",   type: "scene",  label: "O Refém",            sublabel: "Cena 4",         x: 56,  y: 54 },
   { stageId: "c1s6",   type: "battle", label: "Recusa e Confronto", sublabel: "Batalha + Cena", x: 60,  y: 41 },
   { stageId: "c1s7",   type: "scene",  label: "Nos Telhados",       sublabel: "Cena 5",         x: 61,  y: 29 },
-  { stageId: "c1boss", type: "boss",   label: "Mefisto",            sublabel: "Boss Battle",    x: 59,  y: 17 },
-  { stageId: "c1s8",   type: "scene",  label: "A Revelação",        sublabel: "Cena Final",     x: 55,  y: 6  },
+  { stageId: "c1boss", type: "boss",   label: "Mefisto",            sublabel: "Boss Battle",    x: 63,  y: 22 },
+  { stageId: "c1s8",   type: "scene",  label: "A Revelação",        sublabel: "Cena 6",         x: 48,  y: 13 },
+  { stageId: "c1s9",   type: "scene",  label: "A Carta na Manga",   sublabel: "Cena Final",     x: 34,  y: 19 },
 ]
 
 
@@ -2038,7 +2114,7 @@ function StoryMapView({
         </div>
       )}
 
-      {/* ── Legend (placa tática angular) ── */}
+      {/* ���─ Legend (placa tática angular) ── */}
       <div style={{ position:"absolute", left:12, bottom:76, zIndex:50,
         background:"rgba(5,6,8,0.92)", border:"1px solid rgba(255,255,255,0.14)",
         borderLeft:"3px solid #2fb5e8",
