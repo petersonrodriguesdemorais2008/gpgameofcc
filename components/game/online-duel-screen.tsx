@@ -1185,6 +1185,109 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
   // ========== NEW ACTION FUNCTION CARDS ==========
 
+  "chamado-ao-banquete-nordico": {
+    id: "chamado-ao-banquete-nordico",
+    name: "Chamado ao Banquete Nórdico",
+    requiresTargets: false,
+    canActivate: (context) => ({
+      canActivate: context.playerField.graveyard.some((c) => c.type === "troops" && (c.element === "Aquos" || c.element === "Fire")),
+      reason: "Nenhuma Unidade de Tropa Aquos ou Fire no Cemitério",
+    }),
+    resolve: (context) => {
+      const index = context.playerField.graveyard.findIndex((c) => c.type === "troops" && (c.element === "Aquos" || c.element === "Fire"))
+      if (index < 0) return { success: false, message: "Nenhum alvo válido no Cemitério" }
+      const card = context.playerField.graveyard[index]
+      const slot = context.playerField.unitZone.findIndex((u) => u === null)
+      if (slot < 0) return { success: false, message: "Não há espaço para invocar a unidade" }
+      context.setPlayerField((prev) => {
+        const graveyard = prev.graveyard.filter((_, i) => i !== index)
+        const unitZone = [...prev.unitZone]
+        unitZone[slot] = { ...card, currentDp: card.dp, hasAttacked: false, canAttackTurn: 999 } as FieldCard
+        return { ...prev, graveyard, unitZone }
+      })
+      return { success: true, message: `${card.name} foi invocada do Cemitério!` }
+    },
+  },
+  "chamas-de-eldfjall": {
+    id: "chamas-de-eldfjall",
+    name: "Chamas de Eldfjall",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Fire"), reason: "Você precisa ter uma unidade Fire" }),
+    resolve: (context, targets) => {
+      const index = targets?.allyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.playerField.unitZone[index]
+      if (!unit || unit.element !== "Fire") return { success: false, message: "Escolha uma unidade Fire" }
+      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
+      return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
+    },
+  },
+  "maelstrom-boreal": {
+    id: "maelstrom-boreal",
+    name: "Maelstrom Boreal",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Aquos"), reason: "Você precisa ter uma unidade Aquos" }),
+    resolve: (context, targets) => {
+      const index = targets?.allyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.playerField.unitZone[index]
+      if (!unit || unit.element !== "Aquos") return { success: false, message: "Escolha uma unidade Aquos" }
+      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
+      return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
+    },
+  },
+  "dualidade-do-caos-nordico": {
+    id: "dualidade-do-caos-nordico",
+    name: "Dualidade do Caos Nórdico",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u && (u.name.includes("Logi") || u.name.includes("Hrotti"))), reason: "É necessário ter Logi ou Hrotti no campo" }),
+    resolve: (context, targets) => {
+      const index = targets?.enemyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.enemyField.unitZone[index]
+      if (!unit || unit.dp >= 5) return { success: false, message: "Escolha uma unidade inimiga com menos de 5 DP" }
+      context.setEnemyField((prev) => { const zone = [...prev.unitZone]; zone[index!] = null; return { ...prev, unitZone: zone, graveyard: [...prev.graveyard, unit] } })
+      context.setPlayerField((prev) => { const [draw, ...deck] = prev.deck; return draw ? { ...prev, deck, hand: [...prev.hand, draw] } : prev })
+      return { success: true, message: `${unit.name} foi destruída e você comprou uma carta!` }
+    },
+  },
+  "colapso-da-bifrost": {
+    id: "colapso-da-bifrost",
+    name: "Colapso da Bifrost",
+    requiresTargets: false,
+    canActivate: (context) => ({ canActivate: Boolean(context.enemyField.scenarioZone), reason: "O oponente não possui Cenário ativo" }),
+    resolve: (context) => {
+      context.setEnemyField((prev) => ({ ...prev, scenarioZone: null, life: Math.max(0, prev.life - 2) }))
+      return { success: true, message: "Cenário destruído! O oponente sofreu 2 de dano." }
+    },
+  },
+  "forja-de-brokk-e-eitri": {
+    id: "forja-de-brokk-e-eitri",
+    name: "Forja de Brokk e Eitri",
+    requiresTargets: false,
+    canActivate: (context) => ({ canActivate: context.playerField.life > 5 && context.playerField.deck.some((c) => c.type === "ultimateGear"), reason: "É necessário ter mais de 5 LP e uma Ultimate Gear no deck" }),
+    resolve: (context) => {
+      const index = context.playerField.deck.findIndex((c) => c.type === "ultimateGear")
+      if (index < 0) return { success: false, message: "Nenhuma Ultimate Gear encontrada" }
+      context.setPlayerField((prev) => { const card = prev.deck[index]; return { ...prev, life: prev.life - 5, deck: prev.deck.filter((_, i) => i !== index), hand: [...prev.hand, card] } })
+      return { success: true, message: "Você pagou 5 LP e adicionou uma Ultimate Gear à mão!" }
+    },
+  },
+  "rivalidade-de-destinos-azuis": {
+    id: "rivalidade-de-destinos-azuis",
+    name: "Rivalidade de Destinos Azuis",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u && (u.name.includes("Fehnon") || u.name.includes("Hrotti"))), reason: "É necessário ter Fehnon Hoskie ou Hrotti no campo" }),
+    resolve: (context, targets) => {
+      const index = targets?.enemyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.enemyField.unitZone[index]
+      if (!unit || unit.dp >= 4) return { success: false, message: "Escolha uma unidade inimiga com menos de 4 DP" }
+      context.setEnemyField((prev) => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === index ? null : u), graveyard: [...prev.graveyard, unit, ...prev.functionZone.filter(Boolean) as FunctionZoneCard[]], functionZone: prev.functionZone.map(() => null) }))
+      return { success: true, message: "Unidade e cartas de Função do oponente destruídas!" }
+    },
+  },
+
   "investida-coordenada": {
     id: "investida-coordenada",
     name: "Investida Coordenada",
