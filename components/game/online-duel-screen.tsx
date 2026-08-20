@@ -60,9 +60,11 @@ interface FieldCard extends GameCard {
   canAttack: boolean
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
+  frozenUntilTurn?: number
 }
 
 interface FunctionZoneCard extends GameCard {
+  frozenUntilTurn?: number
   isFaceDown?: boolean
   isRevealing?: boolean
   isSettingDown?: boolean
@@ -1183,6 +1185,109 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
   // ========== NEW ACTION FUNCTION CARDS ==========
 
+  "chamado-ao-banquete-nordico": {
+    id: "chamado-ao-banquete-nordico",
+    name: "Chamado ao Banquete Nórdico",
+    requiresTargets: false,
+    canActivate: (context) => ({
+      canActivate: context.playerField.graveyard.some((c) => c.type === "troops" && (c.element === "Aquos" || c.element === "Fire")),
+      reason: "Nenhuma Unidade de Tropa Aquos ou Fire no Cemitério",
+    }),
+    resolve: (context) => {
+      const index = context.playerField.graveyard.findIndex((c) => c.type === "troops" && (c.element === "Aquos" || c.element === "Fire"))
+      if (index < 0) return { success: false, message: "Nenhum alvo válido no Cemitério" }
+      const card = context.playerField.graveyard[index]
+      const slot = context.playerField.unitZone.findIndex((u) => u === null)
+      if (slot < 0) return { success: false, message: "Não há espaço para invocar a unidade" }
+      context.setPlayerField((prev) => {
+        const graveyard = prev.graveyard.filter((_, i) => i !== index)
+        const unitZone = [...prev.unitZone]
+        unitZone[slot] = { ...card, currentDp: card.dp, hasAttacked: false, canAttackTurn: 999 } as FieldCard
+        return { ...prev, graveyard, unitZone }
+      })
+      return { success: true, message: `${card.name} foi invocada do Cemitério!` }
+    },
+  },
+  "chamas-de-eldfjall": {
+    id: "chamas-de-eldfjall",
+    name: "Chamas de Eldfjall",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Fire"), reason: "Você precisa ter uma unidade Fire" }),
+    resolve: (context, targets) => {
+      const index = targets?.allyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.playerField.unitZone[index]
+      if (!unit || unit.element !== "Fire") return { success: false, message: "Escolha uma unidade Fire" }
+      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
+      return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
+    },
+  },
+  "maelstrom-boreal": {
+    id: "maelstrom-boreal",
+    name: "Maelstrom Boreal",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Aquos"), reason: "Você precisa ter uma unidade Aquos" }),
+    resolve: (context, targets) => {
+      const index = targets?.allyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.playerField.unitZone[index]
+      if (!unit || unit.element !== "Aquos") return { success: false, message: "Escolha uma unidade Aquos" }
+      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
+      return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
+    },
+  },
+  "dualidade-do-caos-nordico": {
+    id: "dualidade-do-caos-nordico",
+    name: "Dualidade do Caos Nórdico",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u && (u.name.includes("Logi") || u.name.includes("Hrotti"))), reason: "É necessário ter Logi ou Hrotti no campo" }),
+    resolve: (context, targets) => {
+      const index = targets?.enemyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.enemyField.unitZone[index]
+      if (!unit || unit.dp >= 5) return { success: false, message: "Escolha uma unidade inimiga com menos de 5 DP" }
+      context.setEnemyField((prev) => { const zone = [...prev.unitZone]; zone[index!] = null; return { ...prev, unitZone: zone, graveyard: [...prev.graveyard, unit] } })
+      context.setPlayerField((prev) => { const [draw, ...deck] = prev.deck; return draw ? { ...prev, deck, hand: [...prev.hand, draw] } : prev })
+      return { success: true, message: `${unit.name} foi destruída e você comprou uma carta!` }
+    },
+  },
+  "colapso-da-bifrost": {
+    id: "colapso-da-bifrost",
+    name: "Colapso da Bifrost",
+    requiresTargets: false,
+    canActivate: (context) => ({ canActivate: Boolean(context.enemyField.scenarioZone), reason: "O oponente não possui Cenário ativo" }),
+    resolve: (context) => {
+      context.setEnemyField((prev) => ({ ...prev, scenarioZone: null, life: Math.max(0, prev.life - 2) }))
+      return { success: true, message: "Cenário destruído! O oponente sofreu 2 de dano." }
+    },
+  },
+  "forja-de-brokk-e-eitri": {
+    id: "forja-de-brokk-e-eitri",
+    name: "Forja de Brokk e Eitri",
+    requiresTargets: false,
+    canActivate: (context) => ({ canActivate: context.playerField.life > 5 && context.playerField.deck.some((c) => c.type === "ultimateGear"), reason: "É necessário ter mais de 5 LP e uma Ultimate Gear no deck" }),
+    resolve: (context) => {
+      const index = context.playerField.deck.findIndex((c) => c.type === "ultimateGear")
+      if (index < 0) return { success: false, message: "Nenhuma Ultimate Gear encontrada" }
+      context.setPlayerField((prev) => { const card = prev.deck[index]; return { ...prev, life: prev.life - 5, deck: prev.deck.filter((_, i) => i !== index), hand: [...prev.hand, card] } })
+      return { success: true, message: "Você pagou 5 LP e adicionou uma Ultimate Gear à mão!" }
+    },
+  },
+  "rivalidade-de-destinos-azuis": {
+    id: "rivalidade-de-destinos-azuis",
+    name: "Rivalidade de Destinos Azuis",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u && (u.name.includes("Fehnon") || u.name.includes("Hrotti"))), reason: "É necessário ter Fehnon Hoskie ou Hrotti no campo" }),
+    resolve: (context, targets) => {
+      const index = targets?.enemyUnitIndices?.[0]
+      const unit = index === undefined ? null : context.enemyField.unitZone[index]
+      if (!unit || unit.dp >= 4) return { success: false, message: "Escolha uma unidade inimiga com menos de 4 DP" }
+      context.setEnemyField((prev) => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === index ? null : u), graveyard: [...prev.graveyard, unit, ...prev.functionZone.filter(Boolean) as FunctionZoneCard[]], functionZone: prev.functionZone.map(() => null) }))
+      return { success: true, message: "Unidade e cartas de Função do oponente destruídas!" }
+    },
+  },
+
   "investida-coordenada": {
     id: "investida-coordenada",
     name: "Investida Coordenada",
@@ -1784,7 +1889,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
       const finalRX = rx + (Math.random()>.5 ? extraX : -extraX) + (target.rx - ((rx % 360)+360)%360)
       const finalRY = ry + (Math.random()>.5 ? extraY : -extraY) + (target.ry - ((ry % 360)+360)%360)
 
-      // ── PHASE 1: DECELERATE  1800ms ────────────────────────────────
+      // ── PHASE 1: DECELERATE  1800ms ───────────────��────────────────
       // Dice is already spinning; speed goes from FAST → 0, steering to face.
       const DECEL_MS = 1800
       const fromRX = rx, fromRY = ry
@@ -2749,7 +2854,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | "vatnavordr_messiham" | "yggdra_nidhogg" | null
   }>({ active: false, ugCard: null, type: null })
   const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
   const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
@@ -3333,9 +3438,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!card) return false
     if (phase !== "battle") return false
     if (!isMyTurn) return false
-    if (card.hasAttacked) return false
-    // Only check turn restriction
-    if (turn <= card.canAttackTurn) return false
+  if (card.hasAttacked) return false
+  if (card.frozenUntilTurn !== undefined && turn <= card.frozenUntilTurn) return false
+  // Only check turn restriction
+  if (turn <= card.canAttackTurn) return false
+
     return true
   }
 
@@ -4259,6 +4366,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           // +2 DP to Rei Arthur
           newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
           bonusMsg = `${requiredUnit} +2 DP! (Mefisto Foles)`
+        } else if (ability === "Congelamento de Vatnavordr") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${requiredUnit} +2 DP! (Vatnavordr Messiham)`
+        } else if (ability === "Destruição de Nidhogg") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 3 }
+          bonusMsg = `${requiredUnit} +3 DP! (Yggdra Nidhogg)`
         }
       }
 
@@ -4333,6 +4446,22 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
+    } else if (ug.ability === "Congelamento de Vatnavordr") {
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente nao tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
+      showEffectFeedback("VATNAVORDR MESSIHAM: selecione uma carta inimiga para congelar!", "success")
+    } else if (ug.ability === "Destruição de Nidhogg") {
+      const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyFunctions) {
+        showEffectFeedback("Oponente nao tem cartas de Função no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "yggdra_nidhogg" })
+      showEffectFeedback("YGGDRA NIDHOGG: selecione uma carta de Função inimiga para destruir!", "success")
     } else if (ug.ability === "MIGUEL ARCANJO") {
       // Julgamento Divino: once per turn, select enemy unit and reduce -1DP
       if (julgamentoDivinoUsedThisTurn) {
@@ -4355,7 +4484,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     const funcCard = enemyField.functionZone[funcIndex]
     if (!funcCard) return
 
-    if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") {
+    if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       markDestroyed(funcCard)
       setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
@@ -4367,7 +4496,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
         }
       })
-      const label = ugTargetMode.type === "mefisto" ? "MEFISTO FOLES" : "ODEN SWORD"
+      const label = ugTargetMode.type === "mefisto" ? "MEFISTO FOLES" : ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "ODEN SWORD"
       showEffectFeedback(`${label}: ${funcCard.name} destruida!`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
@@ -4440,7 +4569,25 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) => {
     if (!ugTargetMode.active) return
 
-    if (ugTargetMode.type === "twiligh_avalon") {
+    if (ugTargetMode.type === "vatnavordr_messiham") {
+      const target = type === "unit" ? enemyField.unitZone[index] : enemyField.functionZone[index]
+      if (!target) return
+      setEnemyField((prev) => {
+        if (type === "unit") {
+          const units = [...prev.unitZone]
+          const unit = units[index]
+          if (unit) units[index] = { ...unit, frozenUntilTurn: turn + 2 } as FieldCard
+          return { ...prev, unitZone: units as (FieldCard | null)[], life: Math.max(0, prev.life - 2) }
+        }
+        const functions = [...prev.functionZone]
+        const func = functions[index]
+        if (func) functions[index] = { ...func, frozenUntilTurn: turn + 2 } as FunctionZoneCard
+        return { ...prev, functionZone: functions }
+      })
+      showEffectFeedback(`VATNAVORDR MESSIHAM: ${target.name} congelada!${type === "unit" ? " -2 LP no oponente!" : ""}`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+    } else if (ugTargetMode.type === "twiligh_avalon") {
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
@@ -4479,8 +4626,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
-    } else if (ugTargetMode.type === "mefisto") {
-      // MEFISTO: destroy any card on opponent's field
+    } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
+      // MEFISTO/YGGDRA: destroy the selected card on opponent's field
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
@@ -4637,8 +4784,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       if (!isMyTurn || phase !== "battle") return
 
       const unit = playerField.unitZone[index]
-      if (!unit || unit.hasAttacked) return
-      if (turn <= unit.canAttackTurn) return
+  if (!unit || unit.hasAttacked) return
+  if (unit.frozenUntilTurn !== undefined && turn <= unit.frozenUntilTurn) {
+    showEffectFeedback(`${unit.name} está congelada e não pode atacar neste turno!`, "error")
+    return
+  }
+  if (turn <= unit.canAttackTurn) return
+
 
       e.preventDefault()
       e.stopPropagation()
@@ -7434,15 +7586,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 <div className="flex justify-center items-center gap-2">
                   {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
-                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto"
+                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg" || ugTargetMode.type === "vatnavordr_messiham"
                     )
                     return (
                       <div
                         key={i}
                         onClick={() => {
-                          if (ugTargetMode.active && (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") && card) {
+                          if (ugTargetMode.active && (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") && card) {
                             handleUgTargetEnemyFunction(i)
-                          } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                          } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham") && card) {
                             handleUgTargetEnemyCard("function", i)
                           } else if (julgamentoVazioTargetMode.active && card) {
                             handleJulgamentoVazioTarget("function", i)
@@ -7492,7 +7644,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                       onClick={() => {
                         if (mrpTargetMode && card) {
                           handleMrpTarget(i)
-                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham") && card) {
                           handleUgTargetEnemyCard("unit", i)
                         } else if (ugTargetMode.active && ugTargetMode.type === "julgamento_divino" && card) {
                           handleJulgamentoDivinoTarget(i)
@@ -7503,7 +7655,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         }
                       }}
                       className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-visible transition-all ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
-                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
+                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
@@ -7843,7 +7995,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         </div>
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isMyTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO") &&
+                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
                           playerField.ultimateZone.requiresUnit &&
                           findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
                             <button
