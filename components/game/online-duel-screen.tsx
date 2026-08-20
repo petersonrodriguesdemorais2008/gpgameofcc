@@ -3335,9 +3335,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!card) return false
     if (phase !== "battle") return false
     if (!isMyTurn) return false
-    if (card.hasAttacked) return false
-    // Only check turn restriction
-    if (turn <= card.canAttackTurn) return false
+  if (card.hasAttacked) return false
+  if (card.frozenUntilTurn !== undefined && turn <= card.frozenUntilTurn) return false
+  // Only check turn restriction
+  if (turn <= card.canAttackTurn) return false
+
     return true
   }
 
@@ -4679,8 +4681,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       if (!isMyTurn || phase !== "battle") return
 
       const unit = playerField.unitZone[index]
-      if (!unit || unit.hasAttacked) return
-      if (turn <= unit.canAttackTurn) return
+  if (!unit || unit.hasAttacked) return
+  if (unit.frozenUntilTurn !== undefined && turn <= unit.frozenUntilTurn) {
+    showEffectFeedback(`${unit.name} está congelada e não pode atacar neste turno!`, "error")
+    return
+  }
+  if (turn <= unit.canAttackTurn) return
+
 
       e.preventDefault()
       e.stopPropagation()
@@ -7545,7 +7552,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         }
                       }}
                       className={`w-16 h-24 bg-red-900/30 border-2 rounded relative overflow-visible transition-all ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
-                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
+                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
@@ -7885,7 +7892,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         </div>
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isMyTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO") &&
+                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
                           playerField.ultimateZone.requiresUnit &&
                           findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
                             <button
