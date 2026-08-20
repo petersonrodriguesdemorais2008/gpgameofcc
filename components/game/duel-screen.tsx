@@ -150,6 +150,7 @@ interface FieldCard extends GameCard {
   canAttack: boolean
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
+  frozenUntilTurn?: number
   /** For Ultimate cards: which unit on the field this Ultimate is equipped to */
   equippedUnitName?: string
   equippedUnitIndex?: number
@@ -164,6 +165,7 @@ interface FunctionZoneCard extends GameCard {
   isRevealing?: boolean
   isSettingDown?: boolean
   turnSet?: number
+  frozenUntilTurn?: number
 }
 
 interface FieldState {
@@ -3390,7 +3392,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | "vatnavordr_messiham" | "yggdra_nidhogg" | null
   }>({ active: false, ugCard: null, type: null })
   const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
   const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
@@ -3527,7 +3529,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [onlineRoomData, setOnlineRoomData] = useState<OnlineRoomData|null>(null)
   const onlineRoomDataRef = useRef<OnlineRoomData|null>(null) // always latest, safe in callbacks
 
-  // ── INTRO CINEMÁTICA DO DUELO ─────────────────────────────────────────────
+  // ── INTRO CINEMÁTICA DO DUELO ──────────────────���──────────────────────────
   // Antes do duelo começar de verdade: fala do Mestre ativo (áudio
   // <master>_voice_2_introduel.mp3 + balão sincronizado) e o choque
   // "jogador × oponente". Enquanto o overlay está no ar, a OST e o primeiro
@@ -4694,6 +4696,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (phase !== "battle") return false
     if (!isPlayerTurn) return false
     if (card.hasAttacked) return false
+    if ((card.frozenUntilTurn ?? -1) >= turn) return false
     // Only check turn restriction
     if (turn <= card.canAttackTurn) return false
     return true
@@ -5970,6 +5973,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           // +2 DP to Rei Arthur
           newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
           bonusMsg = `${requiredUnit} +2 DP! (Mefisto Foles)`
+        } else if (ability === "Congelamento de Vatnavordr") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${requiredUnit} +2 DP! (Vatnavordr Messiham)`
+        } else if (ability === "Destruição de Nidhogg") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 3 }
+          bonusMsg = `${requiredUnit} +3 DP! (Yggdra Nidhogg)`
         }
       }
 
@@ -6036,6 +6045,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const isTwilighAvalon = ugAbilityUpper.includes("TWILIGH") || ugNameLower.includes("twiligh") || ugNameLower.includes("twilight avalon")
     const isMefisto       = ugAbilityUpper.includes("MEFISTO") || ugNameLower.includes("mefisto")
     const isMiguelArcanjo = ugAbilityUpper.includes("MIGUEL ARCANJO") || ugNameLower.includes("miguel arcanjo")
+    const isVatnavordr = ugAbilityUpper.includes("VATNAVORDR") || ugNameLower.includes("vatnavordr")
+    const isYggdra = ugAbilityUpper.includes("NIDHOGG") || ugNameLower.includes("nidhogg")
 
     if (isOdenSword) {
       // Check if opponent has function cards
@@ -6065,6 +6076,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
+    } else if (isVatnavordr) {
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente não tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
+      showEffectFeedback("VATNAVORDR MESSIHAM: clique em uma carta inimiga para congelar!", "success")
+    } else if (isYggdra) {
+      if (!enemyField.functionZone.some((f) => f !== null)) {
+        showEffectFeedback("Oponente não tem cartas de Função no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "yggdra_nidhogg" })
+      showEffectFeedback("YGGDRA NIDHOGG: clique em uma carta de Função inimiga para destruir!", "success")
     } else if (isMiguelArcanjo) {
       // Julgamento Divino: once per turn, select enemy unit and reduce -1DP
       if (julgamentoDivinoUsedThisTurn) {
@@ -6285,7 +6311,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const funcCard = enemyField.functionZone[funcIndex]
     if (!funcCard) return
 
-    if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") {
+    if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       markDestroyed(funcCard)
       setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
@@ -6297,7 +6323,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
         }
       })
-      const label = ugTargetMode.type === "mefisto" ? "MEFISTO FOLES" : "ODEN SWORD"
+      const label = ugTargetMode.type === "mefisto" ? "MEFISTO FOLES" : ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "ODEN SWORD"
       showEffectFeedback(`${label}: ${funcCard.name} destruida!`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
@@ -6404,8 +6430,33 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       type === "scenario" ? (enemyField.scenarioZone as FieldCard | null) :
       type === "ultimate" ? (enemyField.ultimateZones[index] ?? null) : null
     if (!targetCard) return
+    if (ugTargetMode.type === "yggdra_nidhogg" && type !== "function") {
+      showEffectFeedback("YGGDRA NIDHOGG só pode selecionar cartas de Função!", "error")
+      return
+    }
 
-    if (ugTargetMode.type === "twiligh_avalon") {
+    if (ugTargetMode.type === "vatnavordr_messiham") {
+      setEnemyField((prev) => {
+        if (type === "unit") {
+          const zone = [...prev.unitZone]
+          const unit = zone[index]
+          if (!unit) return prev
+          zone[index] = { ...unit, frozenUntilTurn: turn + 2 }
+          return { ...prev, unitZone: zone, life: Math.max(0, prev.life - 2) }
+        }
+        if (type === "function") {
+          const zone = [...prev.functionZone]
+          const func = zone[index]
+          if (!func) return prev
+          zone[index] = { ...func, frozenUntilTurn: turn + 2 }
+          return { ...prev, functionZone: zone }
+        }
+        return prev
+      })
+      showEffectFeedback(`VATNAVORDR MESSIHAM: ${targetCard.name} congelada!${type === "unit" ? " 2 LP de dano causado." : ""}`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+    } else if (ugTargetMode.type === "twiligh_avalon") {
       // Return card to opponent's hand; if it was a unit, deal 3 LP damage
       setEnemyField((prev) => {
         let updated = { ...prev }
@@ -6428,8 +6479,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
 
-    } else if (ugTargetMode.type === "mefisto") {
-      // Destroy any card on opponent's field
+    } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
+      // Destroy the selected card on opponent's field
       markDestroyed(targetCard)
       setEnemyField((prev) => {
         let updated = { ...prev, graveyard: [...prev.graveyard, targetCard] }
@@ -11777,7 +11828,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
                   <div
                     className={`h-16 w-24 bg-amber-900/40 border flex items-center justify-center relative overflow-visible transition-all ${enemyField.scenarioZone ? "gp-card-float" : ""} ${
-                      ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                      ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg")
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                         : "border-amber-600/40"
                     }`}
@@ -11788,7 +11839,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       ["--float-x" as any]: "2.5px",
                     }}
                     onClick={() => {
-                      if (ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")) {
+                      if (ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg")) {
                         handleUgTargetEnemyCard("scenario", 0)
                       }
                     }}
@@ -11814,7 +11865,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const eults = enemyField.ultimateZones
                       .map((c, i) => ({ c, i }))
                       .filter((e): e is { c: FieldCard; i: number } => e.c !== null)
-                    const targetable = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto")
+                    const targetable = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg")
                     const STEP_X = 8
                     const STEP_Y = 4
                     const focusIdx =
@@ -11894,7 +11945,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <div className="flex justify-center items-center gap-2">
                   {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
-                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto"
+                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg"
                     )
                     return (
                       <div
@@ -11903,7 +11954,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           if (ugTargetMode.active && ugTargetMode.type === "oden_sword" && card) {
                             // Oden Sword destroys function cards only
                             handleUgTargetEnemyFunction(i)
-                          } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                          } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg") && card) {
                             // Twiligh Avalon (return to hand) and Mefisto (destroy) handle all card types
                             handleUgTargetEnemyCard("function", i)
                           } else if (julgamentoVazioTargetMode.active && card) {
@@ -11955,7 +12006,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       onClick={() => {
                         if (mrpTargetMode && card) {
                           handleMrpTarget(i)
-                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg") && card) {
                           handleUgTargetEnemyCard("unit", i)
                         } else if (ugTargetMode.active && ugTargetMode.type === "julgamento_divino" && card) {
                           handleJulgamentoDivinoTarget(i)
@@ -11969,7 +12020,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         }
                       }}
                       className={`w-[69px] h-24 border-2 relative overflow-visible transition-all duration-150 ${card ? "gp-card-float" : ""} ${(mrpTargetMode && card) ||
-                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "julgamento_divino") && card) ||
+                        (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg" || ugTargetMode.type === "julgamento_divino") && card) ||
                         (julgamentoVazioTargetMode.active && card) ||
                         (trapTargetMode.active && card)
                         ? "border-yellow-400 cursor-pointer ring-2 ring-yellow-400/60 animate-pulse"
