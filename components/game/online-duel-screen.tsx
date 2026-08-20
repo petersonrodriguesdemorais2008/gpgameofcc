@@ -60,9 +60,11 @@ interface FieldCard extends GameCard {
   canAttack: boolean
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
+  frozenUntilTurn?: number
 }
 
 interface FunctionZoneCard extends GameCard {
+  frozenUntilTurn?: number
   isFaceDown?: boolean
   isRevealing?: boolean
   isSettingDown?: boolean
@@ -1784,7 +1786,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
       const finalRX = rx + (Math.random()>.5 ? extraX : -extraX) + (target.rx - ((rx % 360)+360)%360)
       const finalRY = ry + (Math.random()>.5 ? extraY : -extraY) + (target.ry - ((ry % 360)+360)%360)
 
-      // ── PHASE 1: DECELERATE  1800ms ────────────────────────────────
+      // ── PHASE 1: DECELERATE  1800ms ───────────────��────────────────
       // Dice is already spinning; speed goes from FAST → 0, steering to face.
       const DECEL_MS = 1800
       const fromRX = rx, fromRY = ry
@@ -2749,7 +2751,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | "vatnavordr_messiham" | "yggdra_nidhogg" | null
   }>({ active: false, ugCard: null, type: null })
   const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
   const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
@@ -4259,6 +4261,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           // +2 DP to Rei Arthur
           newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
           bonusMsg = `${requiredUnit} +2 DP! (Mefisto Foles)`
+        } else if (ability === "Congelamento de Vatnavordr") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${requiredUnit} +2 DP! (Vatnavordr Messiham)`
+        } else if (ability === "Destruição de Nidhogg") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 3 }
+          bonusMsg = `${requiredUnit} +3 DP! (Yggdra Nidhogg)`
         }
       }
 
@@ -4333,6 +4341,22 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
+    } else if (ug.ability === "Congelamento de Vatnavordr") {
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente nao tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
+      showEffectFeedback("VATNAVORDR MESSIHAM: selecione uma carta inimiga para congelar!", "success")
+    } else if (ug.ability === "Destruição de Nidhogg") {
+      const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyFunctions) {
+        showEffectFeedback("Oponente nao tem cartas de Função no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "yggdra_nidhogg" })
+      showEffectFeedback("YGGDRA NIDHOGG: selecione uma carta de Função inimiga para destruir!", "success")
     } else if (ug.ability === "MIGUEL ARCANJO") {
       // Julgamento Divino: once per turn, select enemy unit and reduce -1DP
       if (julgamentoDivinoUsedThisTurn) {
@@ -4355,7 +4379,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     const funcCard = enemyField.functionZone[funcIndex]
     if (!funcCard) return
 
-    if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") {
+    if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       markDestroyed(funcCard)
       setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
@@ -4367,7 +4391,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
         }
       })
-      const label = ugTargetMode.type === "mefisto" ? "MEFISTO FOLES" : "ODEN SWORD"
+      const label = ugTargetMode.type === "mefisto" ? "MEFISTO FOLES" : ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "ODEN SWORD"
       showEffectFeedback(`${label}: ${funcCard.name} destruida!`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
@@ -4440,7 +4464,25 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) => {
     if (!ugTargetMode.active) return
 
-    if (ugTargetMode.type === "twiligh_avalon") {
+    if (ugTargetMode.type === "vatnavordr_messiham") {
+      const target = type === "unit" ? enemyField.unitZone[index] : enemyField.functionZone[index]
+      if (!target) return
+      setEnemyField((prev) => {
+        if (type === "unit") {
+          const units = [...prev.unitZone]
+          const unit = units[index]
+          if (unit) units[index] = { ...unit, frozenUntilTurn: turn + 2 } as FieldCard
+          return { ...prev, unitZone: units as (FieldCard | null)[], life: Math.max(0, prev.life - 2) }
+        }
+        const functions = [...prev.functionZone]
+        const func = functions[index]
+        if (func) functions[index] = { ...func, frozenUntilTurn: turn + 2 } as FunctionZoneCard
+        return { ...prev, functionZone: functions }
+      })
+      showEffectFeedback(`VATNAVORDR MESSIHAM: ${target.name} congelada!${type === "unit" ? " -2 LP no oponente!" : ""}`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+    } else if (ugTargetMode.type === "twiligh_avalon") {
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
@@ -4479,8 +4521,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
-    } else if (ugTargetMode.type === "mefisto") {
-      // MEFISTO: destroy any card on opponent's field
+    } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
+      // MEFISTO/YGGDRA: destroy the selected card on opponent's field
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
@@ -7434,15 +7476,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 <div className="flex justify-center items-center gap-2">
                   {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
-                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto"
+                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg" || ugTargetMode.type === "vatnavordr_messiham"
                     )
                     return (
                       <div
                         key={i}
                         onClick={() => {
-                          if (ugTargetMode.active && (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto") && card) {
+                          if (ugTargetMode.active && (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") && card) {
                             handleUgTargetEnemyFunction(i)
-                          } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                          } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham") && card) {
                             handleUgTargetEnemyCard("function", i)
                           } else if (julgamentoVazioTargetMode.active && card) {
                             handleJulgamentoVazioTarget("function", i)
@@ -7492,7 +7534,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                       onClick={() => {
                         if (mrpTargetMode && card) {
                           handleMrpTarget(i)
-                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto") && card) {
+                        } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham") && card) {
                           handleUgTargetEnemyCard("unit", i)
                         } else if (ugTargetMode.active && ugTargetMode.type === "julgamento_divino" && card) {
                           handleJulgamentoDivinoTarget(i)
