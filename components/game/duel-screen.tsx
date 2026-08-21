@@ -12470,7 +12470,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           const isVatnavordr = c.id === "vatnavordr-messiham-ur" || a.includes("VATNAVORDR") || a.includes("CONGELAMENTO DE VATNAVORDR") || n.includes("vatnavordr")
                           const isYggdra = c.id === "yggdra-nidhogg-ur" || a.includes("NIDHOGG") || a.includes("DESTRUIÇÃO DE NIDHOGG") || n.includes("nidhogg")
                           const requiredName = c.requiresUnit || (isVatnavordr ? "Hrotti" : isYggdra ? "Logi" : "")
-                          const unitOnField = !requiredName || playerField.unitZone.some((unit) => unit && (isVatnavordr ? unit.name.toLowerCase().includes("hrotti") : isYggdra ? unit.name.toLowerCase().includes("logi") : unit.name === requiredName))
+                          const unitOnField = isVatnavordr || isYggdra || !requiredName || playerField.unitZone.some((unit) => unit && (isVatnavordr ? unit.name.toLowerCase().includes("hrotti") : isYggdra ? unit.name.toLowerCase().includes("logi") : unit.name === requiredName))
                           const canActivate = isVatnavordr || isYggdra || a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto")
                           const canJudge = a.includes("MIGUEL ARCANJO") || n.includes("miguel arcanjo")
                           return (
@@ -12503,7 +12503,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               {equipChainHighlight?.side === "player" && equipChainHighlight.ultimateIndex === i && (
                                 <EquipChainOverlay reverse />
                               )}
-                              {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
+                              {isPlayerTurn && (phase === "main" || phase === "draw") && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
                                 <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
                                   className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-30 text-center">
                                   ⚡ ATIVAR
