@@ -2073,7 +2073,7 @@ function StarfieldCanvas() {
       nebBlob(OW*.12,OH*.80, OW*.24,OH*.16, -.30, "rgba(60,30,200,1)",  .15,.08)
       nebBlob(OW*.10,OH*.82, OW*.14,OH*.10, -.22, "rgba(100,60,255,1)", .20,.10)
 
-      // ── LAYER 3: Bright emission cores (HII regions) ──
+      // ���─ LAYER 3: Bright emission cores (HII regions) ──
       nebBlob(OW*.30,OH*.38, OW*.06,OH*.04, .18, "rgba(255,150,255,1)", .55,.30)
       nebBlob(OW*.77,OH*.22, OW*.05,OH*.03,-.15, "rgba(100,230,255,1)", .58,.32)
       nebBlob(OW*.50,OH*.79, OW*.05,OH*.03, .08, "rgba(255,180,80,1)",  .52,.28)
@@ -4408,8 +4408,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!playerField.ultimateZone) return
 
     const ug = playerField.ultimateZone
-    const requiredUnit = ug.requiresUnit
-    if (!requiredUnit) return
+  const requiredUnit = ug.requiresUnit || ug.requiresEquip
+  if (!requiredUnit) return
 
     // Check if the required unit is on the field
     const unitIdx = findUnitByName(playerField.unitZone, requiredUnit)
@@ -4446,7 +4446,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
-    } else if (ug.ability === "Congelamento de Vatnavordr") {
+    } else if (ug.id === "vatnavordr-messiham-ur" || ug.name?.toLowerCase().includes("vatnavordr") || ug.ability === "Congelamento de Vatnavordr") {
       const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
@@ -4454,7 +4454,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
       showEffectFeedback("VATNAVORDR MESSIHAM: selecione uma carta inimiga para congelar!", "success")
-    } else if (ug.ability === "Destruição de Nidhogg") {
+    } else if (ug.id === "yggdra-nidhogg-ur" || ug.name?.toLowerCase().includes("nidhogg") || ug.ability === "Destruição de Nidhogg") {
       const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
         showEffectFeedback("Oponente nao tem cartas de Função no campo!", "error")
@@ -7995,9 +7995,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         </div>
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isMyTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
-                          playerField.ultimateZone.requiresUnit &&
-                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
+                          (playerField.ultimateZone.id === "vatnavordr-messiham-ur" || playerField.ultimateZone.id === "yggdra-nidhogg-ur" || playerField.ultimateZone.name?.toLowerCase().includes("vatnavordr") || playerField.ultimateZone.name?.toLowerCase().includes("nidhogg") || playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
+                          (playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip) &&
+                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip || "") !== -1 && (
                             <button
                               onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
                               className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
