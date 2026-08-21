@@ -2073,7 +2073,7 @@ function StarfieldCanvas() {
       nebBlob(OW*.12,OH*.80, OW*.24,OH*.16, -.30, "rgba(60,30,200,1)",  .15,.08)
       nebBlob(OW*.10,OH*.82, OW*.14,OH*.10, -.22, "rgba(100,60,255,1)", .20,.10)
 
-      // �����─ LAYER 3: Bright emission cores (HII regions) ──
+      // �������─ LAYER 3: Bright emission cores (HII regions) ──
       nebBlob(OW*.30,OH*.38, OW*.06,OH*.04, .18, "rgba(255,150,255,1)", .55,.30)
       nebBlob(OW*.77,OH*.22, OW*.05,OH*.03,-.15, "rgba(100,230,255,1)", .58,.32)
       nebBlob(OW*.50,OH*.79, OW*.05,OH*.03, .08, "rgba(255,180,80,1)",  .52,.28)
@@ -4288,7 +4288,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // Helper: find index of a unit by name in a unit zone
   const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number => {
-    return unitZone.findIndex((u) => u && u.name === unitName)
+    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "")
+    const expected = normalize(unitName)
+    return unitZone.findIndex((u) => {
+      if (!u) return false
+      const actual = normalize(u.name)
+      return actual === expected || actual.includes(expected) || expected.includes(actual)
+    })
   }
 
   // Helper: count fire element units in graveyard + field (already used)
@@ -6750,7 +6756,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }, 400)
   }, [supabase, roomData.roomId, playerId])
 
-  // ─── Online chat ─────────────────────────────────────────────────────────
+  // ─── Online chat ────────────────────────────────────────────────────���────
   const subscribeToChat = useCallback(() => {
     if (!supabase) return
     if (chatChannelRef.current) chatChannelRef.current.unsubscribe()
@@ -8004,7 +8010,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                           ((playerField.ultimateZone.id === "vatnavordr-messiham-ur" || playerField.ultimateZone.id === "yggdra-nidhogg-ur") || ((playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip) && findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip || "") !== -1)) && (
                             <button
                               onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                              className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
+                              className="absolute top-1 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
                             >
                               ATIVAR
                             </button>

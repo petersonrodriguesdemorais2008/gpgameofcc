@@ -12503,7 +12503,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               {equipChainHighlight?.side === "player" && equipChainHighlight.ultimateIndex === i && (
                                 <EquipChainOverlay reverse />
                               )}
-                              {isFocused && isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
+                              {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
                                 <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
                                   className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-30 text-center">
                                   ⚡ ATIVAR
@@ -14502,7 +14502,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           to   { opacity:1; }
         }
 
-        /* ── ORDEM DE LACERAÇÃO — sword slash animation ── */
+        /* ── ORDEM DE LACERAÇÃO — sword slash animation ─��� */
         @keyframes lacerationBgFlash {
           0%   { opacity: 0; }
           6%   { opacity: 1; }
@@ -14618,7 +14618,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* ── SINFONIA RELÂMPAGO CSS ── */
+        /* ── SINFONIA RELÂMPAGO CSS ���─ */
         @keyframes sinBg    { 0%{opacity:.4} 50%{opacity:.15} 100%{opacity:0} }
         @keyframes sinBolt  { 0%{opacity:1}  40%{opacity:.7}  70%{opacity:.2}  85%,100%{opacity:0} }
         @keyframes sinNote  { 0%{opacity:1;transform:scale(.5) translateY(6px)} 25%{opacity:1;transform:scale(1.25) translateY(-5px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-18px)} 100%{opacity:0;transform:scale(.7) translateY(-35px)} }
