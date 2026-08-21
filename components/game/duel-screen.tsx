@@ -12467,8 +12467,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           const isFocused = focusIdx === i
                           const n = (c.name || "").toLowerCase()
                           const a = (c.ability || "").toUpperCase()
-                          const unitOnField = !c.requiresUnit || findUnitByName(playerField.unitZone, c.requiresUnit) !== -1
-                          const canActivate = (a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto"))
+                          const isVatnavordr = c.id === "vatnavordr-messiham-ur" || a.includes("VATNAVORDR") || a.includes("CONGELAMENTO DE VATNAVORDR") || n.includes("vatnavordr")
+                          const isYggdra = c.id === "yggdra-nidhogg-ur" || a.includes("NIDHOGG") || a.includes("DESTRUIÇÃO DE NIDHOGG") || n.includes("nidhogg")
+                          const requiredName = c.requiresUnit || (isVatnavordr ? "Hrotti" : isYggdra ? "Logi" : "")
+                          const unitOnField = !requiredName || playerField.unitZone.some((unit) => unit && (isVatnavordr ? unit.name.toLowerCase().includes("hrotti") : isYggdra ? unit.name.toLowerCase().includes("logi") : unit.name === requiredName))
+                          const canActivate = isVatnavordr || isYggdra || a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto")
                           const canJudge = a.includes("MIGUEL ARCANJO") || n.includes("miguel arcanjo")
                           return (
                             <div
@@ -14220,7 +14223,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ──────────────────────────────────────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��─────────────────────────────────────────────────────────��───────── */}
+      ─��──────────────────────────────────���──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
