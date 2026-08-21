@@ -6045,8 +6045,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const isTwilighAvalon = ugAbilityUpper.includes("TWILIGH") || ugNameLower.includes("twiligh") || ugNameLower.includes("twilight avalon")
     const isMefisto       = ugAbilityUpper.includes("MEFISTO") || ugNameLower.includes("mefisto")
     const isMiguelArcanjo = ugAbilityUpper.includes("MIGUEL ARCANJO") || ugNameLower.includes("miguel arcanjo")
-    const isVatnavordr = ugAbilityUpper.includes("VATNAVORDR") || ugNameLower.includes("vatnavordr")
-    const isYggdra = ugAbilityUpper.includes("NIDHOGG") || ugNameLower.includes("nidhogg")
+    const isVatnavordr = ug.id === "vatnavordr-messiham-ur" || ugAbilityUpper.includes("VATNAVORDR") || ugAbilityUpper.includes("CONGELAMENTO DE VATNAVORDR") || ugNameLower.includes("vatnavordr")
+    const isYggdra = ug.id === "yggdra-nidhogg-ur" || ugAbilityUpper.includes("NIDHOGG") || ugAbilityUpper.includes("DESTRUIÇÃO DE NIDHOGG") || ugNameLower.includes("nidhogg")
 
     if (isOdenSword) {
       // Check if opponent has function cards
@@ -14220,7 +14220,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ──────────────────────────────────────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��─────────────────────────────────────────────────────────────────── */}
+      ─��─────────────────────────────────────────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
