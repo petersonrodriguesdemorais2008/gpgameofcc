@@ -3427,7 +3427,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [fehnonUrSingBonus, setFehnonUrSingBonus] = useState(0) // Tracks Singularidade Zero temp +DP (reset each turn)
 
 
-  // ── Pre-game setup state ──
+  // ── Pre-game setup state ─��
   type Difficulty = 'easy' | 'medium' | 'hard'
   const [setupStep, setSetupStep] = useState<'selectDeck' | 'selectDifficulty' | 'selectBotDeck'>('selectDeck')
   const [pendingPlayerDeck, setPendingPlayerDeck] = useState<DeckWithImages | null>(null)
@@ -6015,9 +6015,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       cardType: cardToPlace.type,
     })
     mpBroadcast("place_card", { zone: "ultimate", card: cardToPlace, source: "hand" })
-    // Reset one-time ability flag for a new UG
-    setPlayerUgAbilityUsed(false)
-    setSelectedHandCard(null)
+  // A habilidade Ultimate é única por duelo; equipar outra carta não reinicia o uso.
+  setSelectedHandCard(null)
     setDraggedHandCard(null)
   }
 
@@ -6481,6 +6480,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       // Destroy the selected card on opponent's field
+      const effectLabel = ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "MEFISTO FOLES"
       markDestroyed(targetCard)
       setEnemyField((prev) => {
         let updated = { ...prev, graveyard: [...prev.graveyard, targetCard] }
@@ -6490,7 +6490,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         else if (type === "ultimate") updated = { ...updated, ultimateZones: updated.ultimateZones.map((z:FieldCard|null)=>z?.id === targetCard.id ? null : z) as (FieldCard|null)[] }
         return updated
       })
-      showEffectFeedback(`MEFISTO FOLES: ${targetCard.name} destruida!`, "success")
+      showEffectFeedback(`${effectLabel}: ${targetCard.name} destruída!`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     }
@@ -11704,7 +11704,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               "inset 0 0 90px rgba(0,0,0,0.55)",
           }}
         >
-          {/* ── Playmat: laje de obsidiana + nebulosa + runas ── */}
+          {/* ���─ Playmat: laje de obsidiana + nebulosa + runas ── */}
           <div className="absolute inset-0"
             style={{
               background: "linear-gradient(180deg, rgba(17,9,26,0.96) 0%, rgba(11,9,28,0.96) 48%, rgba(6,11,26,0.96) 100%)",

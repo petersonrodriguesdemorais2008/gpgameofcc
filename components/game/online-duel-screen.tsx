@@ -2073,7 +2073,7 @@ function StarfieldCanvas() {
       nebBlob(OW*.12,OH*.80, OW*.24,OH*.16, -.30, "rgba(60,30,200,1)",  .15,.08)
       nebBlob(OW*.10,OH*.82, OW*.14,OH*.10, -.22, "rgba(100,60,255,1)", .20,.10)
 
-      // ���������─ LAYER 3: Bright emission cores (HII regions) ──
+      // �����������─ LAYER 3: Bright emission cores (HII regions) ──
       nebBlob(OW*.30,OH*.38, OW*.06,OH*.04, .18, "rgba(255,150,255,1)", .55,.30)
       nebBlob(OW*.77,OH*.22, OW*.05,OH*.03,-.15, "rgba(100,230,255,1)", .58,.32)
       nebBlob(OW*.50,OH*.79, OW*.05,OH*.03, .08, "rgba(255,180,80,1)",  .52,.28)
@@ -2366,7 +2366,7 @@ function StarfieldCanvas() {
       ctx.restore()
     }
 
-    /* ── Runtime particles ── */
+    /* ── Runtime particles ─��� */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -4401,8 +4401,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       data: { zone: "ultimate", card: cardToPlace, source: "hand" },
       timestamp: Date.now(),
     })
-    // Reset one-time ability flag for a new UG
-    setPlayerUgAbilityUsed(false)
+    // A habilidade Ultimate é única por duelo; equipar outra carta não reinicia o uso.
     setSelectedHandCard(null)
     setDraggedHandCard(null)
   }
@@ -4639,6 +4638,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setUgTargetMode({ active: false, ugCard: null, type: null })
     } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       // MEFISTO/YGGDRA: destroy the selected card on opponent's field
+      const effectLabel = ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "MEFISTO FOLES"
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
@@ -4653,7 +4653,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
           }
         })
-        showEffectFeedback(`MEFISTO FOLES: ${unit.name} destruida!`, "success")
+        showEffectFeedback(`${effectLabel}: ${unit.name} destruída!`, "success")
       } else {
         const func = enemyField.functionZone[index]
         if (!func) return
@@ -4668,7 +4668,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
           }
         })
-        showEffectFeedback(`MEFISTO FOLES: ${func.name} destruida!`, "success")
+        showEffectFeedback(`${effectLabel}: ${func.name} destruída!`, "success")
       }
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
