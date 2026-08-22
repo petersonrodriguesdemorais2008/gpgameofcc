@@ -1,8 +1,14 @@
 "use client"
 
+import { useEffect } from "react"
 import { Snowflake } from "lucide-react"
 
 export function FreezeCardAnimation({ cardName, onComplete }: { cardName: string; onComplete?: () => void }) {
+  useEffect(() => {
+    const timer = window.setTimeout(() => onComplete?.(), 950)
+    return () => window.clearTimeout(timer)
+  }, [onComplete])
+
   return (
     <div
       className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center animate-freeze-overlay"

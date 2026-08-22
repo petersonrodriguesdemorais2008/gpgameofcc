@@ -2874,7 +2874,7 @@ export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: Gam
 class OnlineDuelErrorBoundary extends Component<
   { children: React.ReactNode; onBack: () => void },
   { hasError: boolean }
-> {
+{
   constructor(props: any) { super(props); this.state = { hasError: false } }
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(error: Error, info: any) {
@@ -6043,7 +6043,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const ugAbilityUpper = (ug.ability || "").toUpperCase()
     const ugNameLower = (ug.name || "").toLowerCase()
     const isOdenSword     = ugAbilityUpper.includes("ODEN SWORD") || ugNameLower.includes("oden sword")
-    const isTwilighAvalon = ugAbilityUpper.includes("TWILIGH") || ugNameLower.includes("twiligh") || ugNameLower.includes("twilight avalon")
+    const isTwilighAvalon = ug.id !== "vatnavordr-messiham-ur" && ug.id !== "yggdra-nidhogg-ur" && (ugAbilityUpper.includes("TWILIGH") || ugNameLower.includes("twiligh") || ugNameLower.includes("twilight avalon"))
     const isMefisto       = ugAbilityUpper.includes("MEFISTO") || ugNameLower.includes("mefisto")
     const isMiguelArcanjo = ugAbilityUpper.includes("MIGUEL ARCANJO") || ugNameLower.includes("miguel arcanjo")
     const isVatnavordr = ug.id === "vatnavordr-messiham-ur" || ugAbilityUpper.includes("VATNAVORDR") || ugAbilityUpper.includes("CONGELAMENTO DE VATNAVORDR") || ugNameLower.includes("vatnavordr")
