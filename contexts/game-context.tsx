@@ -322,12 +322,12 @@ export const SHOP_PROFILE_ICONS: ProfileIcon[] = [
 ]
 
 /** Icones gratuitos (base) normalizados para o mesmo formato dos icones de loja. */
-export const FREE_PROFILE_ICONS = PROFILE_ICONS.map((i) => ({ ...i, free: true as const }))
+export const FREE_PROFILE_ICONS = PROFILE_ICONS.map((i) =({ ...i, free: true as const }))
 
 /** Procura um icone da loja pela imagem equipada. */
 export function findShopIconByImage(image?: string | null): ProfileIcon | undefined {
   if (!image) return undefined
-  return SHOP_PROFILE_ICONS.find((i) => i.image === image)
+  return SHOP_PROFILE_ICONS.find((i) =i.image === image)
 }
 
 export interface AccountAuth {
@@ -345,12 +345,12 @@ export type DuelRewardKind =
 
 interface GameContextType {
   coins: number
-  setCoins: (coins: number) => void
-  addCoins: (amount: number) => void
-  addFP: (amount: number) => void
+  setCoins: (coins: number) =void
+  addCoins: (amount: number) =void
+  addFP: (amount: number) =void
   gearCoins: number
   setGearCoins: React.Dispatch<React.SetStateAction<number>>
-  addDuelRewards: (kind: DuelRewardKind) => {
+  addDuelRewards: (kind: DuelRewardKind) ={
     gacha: number
     gear: number
     fragments: FragmentCounts
@@ -362,113 +362,113 @@ interface GameContextType {
   /** Baús no inventário do jogador (1 garantido por duelo concluído). */
   chests: ChestCounts
   /** Soma baús ao inventário. */
-  addChests: (gain: ChestCounts) => void
+  addChests: (gain: ChestCounts) =void
   /** Quantidade de um baú específico. */
-  getChestCount: (id: ChestId) => number
+  getChestCount: (id: ChestId) =number
   /** Abre 1 baú: consome do inventário e entrega SOMENTE fragmentos da cor do baú. Retorna null se não houver o baú. */
-  openChest: (id: ChestId) => ChestOpenResult | null
+  openChest: (id: ChestId) =ChestOpenResult | null
   /** Soma fragmentos ao inventário e devolve o total atualizado. */
-  addFragments: (gain: FragmentCounts) => void
+  addFragments: (gain: FragmentCounts) =void
   /** Quantidade de um fragmento específico. */
-  getFragmentCount: (id: FragmentId) => number
+  getFragmentCount: (id: FragmentId) =number
   /** Consome fragmentos (ex.: desbloqueio de Runas). Retorna false se faltar algum. */
-  spendFragments: (cost: FragmentCounts) => boolean
+  spendFragments: (cost: FragmentCounts) =boolean
   /** Skip Tíquetes: itens que pulam um duelo de Evento. */
   skipTickets: number
   /** Soma tíquetes ao inventário (bônus das missões diárias). */
-  addSkipTickets: (amount: number) => void
+  addSkipTickets: (amount: number) =void
   /** Consome 1 tíquete. Retorna false quando o jogador não tem nenhum. */
-  consumeSkipTicket: () => boolean
+  consumeSkipTicket: () =boolean
   /** Garrafas de Energia: itens que recuperam stamina do jogador. */
   staminaBottles: number
   /** Soma garrafas ao inventário (ex.: Bônus Diário). */
-  addStaminaBottles: (amount: number) => void
+  addStaminaBottles: (amount: number) =void
   /** Consome 1 garrafa e recupera stamina. Só funciona faltando 10+ de stamina; retorna false caso contrário. */
-  useStaminaBottle: () => boolean
+  useStaminaBottle: () =boolean
   /** Livros de XP: itens que concedem XP a um Mestre escolhido (dropam em Duelos do Modo Campanha). */
   xpBooks: XPBookCounts
   /** Soma livros ao inventário. */
-  addXPBooks: (gain: XPBookCounts) => void
+  addXPBooks: (gain: XPBookCounts) =void
   /** Quantidade de um livro específico. */
-  getXPBookCount: (id: XPBookId) => number
+  getXPBookCount: (id: XPBookId) =number
   /** Consome livros do inventário. Retorna false se faltar algum (nada é debitado nesse caso). */
-  spendXPBooks: (cost: XPBookCounts) => boolean
+  spendXPBooks: (cost: XPBookCounts) =boolean
   /** Rola o drop de Livro de XP ao vencer um duelo do Modo Campanha; soma ao inventário se dropar. */
-  rollCampaignXPBook: () => { id: XPBookId; amount: number } | null
+  rollCampaignXPBook: () ={ id: XPBookId; amount: number } | null
   collection: Card[]
-  addToCollection: (cards: Card[]) => void
+  addToCollection: (cards: Card[]) =void
   decks: Deck[]
-  saveDeck: (deck: Deck) => void
-  deleteDeck: (deckId: string) => void
+  saveDeck: (deck: Deck) =void
+  deleteDeck: (deckId: string) =void
   matchHistory: MatchRecord[]
-  addMatchRecord: (record: MatchRecord) => void
+  addMatchRecord: (record: MatchRecord) =void
   allCards: Card[]
   giftBoxes: GiftBox[]
-  claimGift: (giftId: string) => Card | null
-  addGift: (gift: Omit<GiftBox, "id" | "claimed">) => void
+  claimGift: (giftId: string) =Card | null
+  addGift: (gift: Omit<GiftBox, "id" | "claimed">) =void
   hasUnclaimedGifts: boolean
   playerId: string
   playerProfile: PlayerProfile
-  updatePlayerProfile: (updates: Partial<PlayerProfile>) => void
+  updatePlayerProfile: (updates: Partial<PlayerProfile>) =void
   friends: Friend[]
   friendRequests: FriendRequest[]
   friendPoints: number
   spendableFP: number
-  sendFriendRequest: (targetId: string) => boolean
-  acceptFriendRequest: (requestId: string) => void
-  rejectFriendRequest: (requestId: string) => void
-  sendHeart: (friendId: string) => boolean
-  sendHeartToAll: () => number
-  likeFriendShowcase: (friendId: string) => void
-  spendFriendPoints: (amount: number) => boolean
-  searchPlayerById: (id: string) => Friend | null
-  getGhostPlayers: (count: number) => Friend[]
-  canSendHeartTo: (friendId: string) => boolean
+  sendFriendRequest: (targetId: string) =boolean
+  acceptFriendRequest: (requestId: string) =void
+  rejectFriendRequest: (requestId: string) =void
+  sendHeart: (friendId: string) =boolean
+  sendHeartToAll: () =number
+  likeFriendShowcase: (friendId: string) =void
+  spendFriendPoints: (amount: number) =boolean
+  searchPlayerById: (id: string) =Friend | null
+  getGhostPlayers: (count: number) =Friend[]
+  canSendHeartTo: (friendId: string) =boolean
   accountAuth: AccountAuth
-  loginAccount: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  registerAccount: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  loginWithCode: (code: string, password: string) => Promise<{ success: boolean; error?: string }>
-  registerWithCode: (password: string) => Promise<{ success: boolean; error?: string; code?: string }>
-  linkEmailToCode: (email: string) => Promise<{ success: boolean; error?: string }>
-  logoutAccount: () => void
-  saveProgressManually: () => void
+  loginAccount: (email: string, password: string) =Promise<{ success: boolean; error?: string }>
+  registerAccount: (email: string, password: string) =Promise<{ success: boolean; error?: string }>
+  loginWithCode: (code: string, password: string) =Promise<{ success: boolean; error?: string }>
+  registerWithCode: (password: string) =Promise<{ success: boolean; error?: string; code?: string }>
+  linkEmailToCode: (email: string) =Promise<{ success: boolean; error?: string }>
+  logoutAccount: () =void
+  saveProgressManually: () =void
   allPlaymats: Playmat[]
   ownedPlaymats: Playmat[]
   globalPlaymatId: string | null
-  setGlobalPlaymat: (playmatId: string | null) => void
-  getPlaymatForDeck: (deck: Deck) => Playmat | null
-  unlockPlaymat: (playmatId: string) => boolean
+  setGlobalPlaymat: (playmatId: string | null) =void
+  getPlaymatForDeck: (deck: Deck) =Playmat | null
+  unlockPlaymat: (playmatId: string) =boolean
   allSleeves: Sleeve[]
   ownedSleeves: Sleeve[]
   globalSleeveId: string | null
-  setGlobalSleeve: (sleeveId: string | null) => void
-  unlockSleeve: (sleeveId: string) => boolean
+  setGlobalSleeve: (sleeveId: string | null) =void
+  unlockSleeve: (sleeveId: string) =boolean
   // Icones de perfil (avatares)
   shopProfileIcons: ProfileIcon[]
   ownedIconIds: string[]
-  ownsProfileIcon: (iconId: string) => boolean
-  unlockProfileIcon: (iconId: string) => boolean
-  equipProfileIcon: (iconId: string) => boolean
+  ownsProfileIcon: (iconId: string) =boolean
+  unlockProfileIcon: (iconId: string) =boolean
+  equipProfileIcon: (iconId: string) =boolean
   /** Todos os icones que o jogador pode equipar agora (gratuitos + comprados). */
   availableProfileIcons: { id: string; name: string; image: string }[]
-  getActiveCardBack: () => string
-  redeemCode: (code: string) => { success: boolean; message: string }
+  getActiveCardBack: () =string
+  redeemCode: (code: string) ={ success: boolean; message: string }
   redeemedCodes: string[]
-  deleteAccountData: () => Promise<{ success: boolean; error?: string }>
+  deleteAccountData: () =Promise<{ success: boolean; error?: string }>
   mobileMode: boolean
-  setMobileMode: (enabled: boolean) => void
+  setMobileMode: (enabled: boolean) =void
   // Stamina
   stamina: number
   maxStamina: number
-  spendStamina: (amount: number) => boolean
-  refillStamina: () => void
+  spendStamina: (amount: number) =boolean
+  refillStamina: () =void
   staminaNextTickSeconds: number  // seconds until next +1 stamina (0 when full)
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined)
 
 // Generate unique player ID
-const generatePlayerId = () => {
+const generatePlayerId = () ={
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
   let id = "GP-"
   for (let i = 0; i < 8; i++) {
@@ -2099,7 +2099,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Fragmentos de evento (Nitrogênio, Irídio, Rubídio, Mercúrio, Hélio, Gálio).
   // Lidos direto do localStorage no primeiro render pra não perder o inventário
   // enquanto o resto do progresso é carregado (nuvem ou local).
-  const [fragments, setFragments] = useState<FragmentCounts>(() => {
+  const [fragments, setFragments] = useState<FragmentCounts>(() ={
     if (typeof window === "undefined") return {}
     try {
       const raw =
@@ -2109,7 +2109,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   })
   // Baús — mesma estratégia dos fragmentos: leitura direta do localStorage
   // no primeiro render pra não zerar o inventário durante o load.
-  const [chests, setChests] = useState<ChestCounts>(() => {
+  const [chests, setChests] = useState<ChestCounts>(() ={
     if (typeof window === "undefined") return {}
     try {
       const raw = localStorage.getItem("gear-perks-chests")
@@ -2118,28 +2118,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
   })
   // Skip Tíquetes — mesma estratégia dos fragmentos: leitura direta do
   // localStorage no primeiro render pra não zerar o item durante o load.
-  const [skipTickets, setSkipTickets] = useState<number>(() => {
+  const [skipTickets, setSkipTickets] = useState<number>(() ={
     if (typeof window === "undefined") return 0
     try {
       const raw =
         localStorage.getItem("gear-perks-skiptickets") || localStorage.getItem("gearperks-skiptickets")
       const n = raw ? Number.parseInt(raw, 10) : 0
-      return Number.isFinite(n) && n > 0 ? n : 0
+      return Number.isFinite(n) && n 0 ? n : 0
     } catch { return 0 }
   })
   // Garrafas de Energia — mesma estratégia dos Skip Tíquetes.
-  const [staminaBottles, setStaminaBottles] = useState<number>(() => {
+  const [staminaBottles, setStaminaBottles] = useState<number>(() ={
     if (typeof window === "undefined") return 0
     try {
       const raw =
         localStorage.getItem("gear-perks-staminabottles") || localStorage.getItem("gearperks-staminabottles")
       const n = raw ? Number.parseInt(raw, 10) : 0
-      return Number.isFinite(n) && n > 0 ? n : 0
+      return Number.isFinite(n) && n 0 ? n : 0
     } catch { return 0 }
   })
   // Livros de XP — mesma estratégia dos fragmentos/baús: leitura direta do
   // localStorage no primeiro render pra não zerar o inventário durante o load.
-  const [xpBooks, setXpBooks] = useState<XPBookCounts>(() => {
+  const [xpBooks, setXpBooks] = useState<XPBookCounts>(() ={
     if (typeof window === "undefined") return {}
     try {
       const raw = localStorage.getItem("gear-perks-xpbooks")
@@ -2204,9 +2204,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // ── STAMINA ───────────────────────────────────────────────────────��────────
   const STAMINA_REGEN_SECS = 5 * 60
-  const getMaxStamina = (level: number) => 19 + level
+  const getMaxStamina = (level: number) =19 + level
 
-  const [stamina, setStamina] = useState<number>(() => {
+  const [stamina, setStamina] = useState<number>(() ={
     if (typeof window === "undefined") return 20
     try {
       const saved = localStorage.getItem("gpgame_stamina_v2")
@@ -2219,7 +2219,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } catch { return 20 }
   })
 
-  const [staminaCycleElapsed, setStaminaCycleElapsed] = useState<number>(() => {
+  const [staminaCycleElapsed, setStaminaCycleElapsed] = useState<number>(() ={
     if (typeof window === "undefined") return 0
     try {
       const saved = localStorage.getItem("gpgame_stamina_v2")
@@ -2234,23 +2234,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const prevLevelRef = useRef(playerProfile.level)
 
   // Tick every second for stamina regen
-  useEffect(() => {
-    const interval = setInterval(() => {
+  useEffect(() ={
+    const interval = setInterval(() ={
       const max = getMaxStamina(playerProfile.level)
-      setStaminaCycleElapsed(prev => {
+      setStaminaCycleElapsed(prev ={
         const next = prev + 1
         if (next >= STAMINA_REGEN_SECS) {
-          setStamina(s => Math.min(max, s + 1))
+          setStamina(s =Math.min(max, s + 1))
           return 0
         }
         return next
       })
     }, 1000)
-    return () => clearInterval(interval)
+    return () =clearInterval(interval)
   }, [playerProfile.level])
 
   // Persist stamina
-  useEffect(() => {
+  useEffect(() ={
     try {
       localStorage.setItem("gpgame_stamina_v2", JSON.stringify({
         value: stamina,
@@ -2261,21 +2261,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [stamina, playerProfile.level])
 
   // Fill stamina on level up
-  useEffect(() => {
-    if (playerProfile.level > prevLevelRef.current) {
+  useEffect(() ={
+    if (playerProfile.level prevLevelRef.current) {
       setStamina(getMaxStamina(playerProfile.level))
       setStaminaCycleElapsed(0)
     }
     prevLevelRef.current = playerProfile.level
   }, [playerProfile.level])
 
-  const spendStamina = (amount: number): boolean => {
+  const spendStamina = (amount: number): boolean ={
     if (stamina < amount) return false
-    setStamina(prev => prev - amount)
+    setStamina(prev =prev - amount)
     return true
   }
 
-  const refillStamina = () => {
+  const refillStamina = () ={
     setStamina(getMaxStamina(playerProfile.level))
     setStaminaCycleElapsed(0)
   }
@@ -2286,7 +2286,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     : Math.max(0, STAMINA_REGEN_SECS - staminaCycleElapsed)
 
   // Helper to get localStorage with fallback keys (old format vs new format)
-  const getLS = (key: string): string | null => {
+  const getLS = (key: string): string | null ={
     // Try new format first (gear-perks-*), then old format (gearperks-*)
     return localStorage.getItem(`gear-perks-${key}`) || localStorage.getItem(`gearperks-${key}`) || null
   }
@@ -2297,14 +2297,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     `redeemed-codes-${uniqueCode ? uniqueCode.toUpperCase() : "guest"}`
 
   // Save to localStorage with unified key format
-  const setLS = (key: string, value: string) => {
+  const setLS = (key: string, value: string) ={
     localStorage.setItem(`gearperks-${key}`, value)
     localStorage.setItem(`gear-perks-${key}`, value) // save to both for compatibility
   }
 
   // Load saved data from localStorage on mount, and from cloud if logged in
-  useEffect(() => {
-    const loadData = async () => {
+  useEffect(() ={
+    const loadData = async () ={
       // 1. Load auth first
       const savedAuth = localStorage.getItem("gear-perks-auth")
       let auth: AccountAuth | null = null
@@ -2341,7 +2341,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 if (Array.isArray(p.matchHistory)) setMatchHistory(p.matchHistory)
                 if (Array.isArray(p.giftBoxes)) setGiftBoxes(p.giftBoxes)
                 if (Array.isArray(p.friends)) {
-                  const hasGuest = p.friends.some((f: Friend) => f.id === "GUEST-001")
+                  const hasGuest = p.friends.some((f: Friend) =f.id === "GUEST-001")
                   setFriends(hasGuest ? p.friends : [DEFAULT_GUEST_FRIEND, ...p.friends])
                 }
                 if (Array.isArray(p.friendRequests)) setFriendRequests(p.friendRequests)
@@ -2354,7 +2354,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                   localStorage.setItem("gear-perks-player-id", p.playerId)
                 }
                 if (Array.isArray(p.ownedPlaymatIds)) {
-                  setOwnedPlaymats(ALL_PLAYMATS.filter((pm) => p.ownedPlaymatIds.includes(pm.id)))
+                  setOwnedPlaymats(ALL_PLAYMATS.filter((pm) =p.ownedPlaymatIds.includes(pm.id)))
                   localStorage.setItem("gearperks_owned_playmats", JSON.stringify(p.ownedPlaymatIds))
                 }
                 if (typeof p.globalPlaymatId === "string" && p.globalPlaymatId) {
@@ -2362,7 +2362,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                   localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
                 }
                 if (Array.isArray(p.ownedSleeveIds)) {
-                  setOwnedSleeves(ALL_SLEEVES.filter((s) => p.ownedSleeveIds.includes(s.id)))
+                  setOwnedSleeves(ALL_SLEEVES.filter((s) =p.ownedSleeveIds.includes(s.id)))
                   localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(p.ownedSleeveIds))
                 }
                 if (typeof p.globalSleeveId === "string" && p.globalSleeveId) {
@@ -2370,7 +2370,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                   localStorage.setItem("gearperks_global_sleeve", p.globalSleeveId)
                 }
                 if (Array.isArray(p.ownedIconIds)) {
-                  const ids = p.ownedIconIds.filter((id: unknown) => typeof id === "string")
+                  const ids = p.ownedIconIds.filter((id: unknown) =typeof id === "string")
                   setOwnedIconIds(ids)
                   localStorage.setItem("gearperks_owned_icons", JSON.stringify(ids))
                 }
@@ -2437,11 +2437,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (savedGifts) {
         try {
           const parsed = JSON.parse(savedGifts) as GiftBox[]
-          const merged = INITIAL_GIFT_BOXES.map((gift) => {
-            const saved = parsed.find((p) => p.id === gift.id)
+          const merged = INITIAL_GIFT_BOXES.map((gift) ={
+            const saved = parsed.find((p) =p.id === gift.id)
             return saved ? { ...gift, claimed: saved.claimed } : gift
           })
-          const newGifts = parsed.filter((p) => !INITIAL_GIFT_BOXES.find((g) => g.id === p.id))
+          const newGifts = parsed.filter((p) =!INITIAL_GIFT_BOXES.find((g) =g.id === p.id))
           setGiftBoxes([...merged, ...newGifts])
         } catch { }
       }
@@ -2461,7 +2461,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (savedFriends) {
         try {
           const parsed = JSON.parse(savedFriends) as Friend[]
-          const hasGuest = parsed.some((f) => f.id === "GUEST-001")
+          const hasGuest = parsed.some((f) =f.id === "GUEST-001")
           if (!hasGuest) {
             setFriends([DEFAULT_GUEST_FRIEND, ...parsed])
           } else {
@@ -2483,7 +2483,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (savedOwnedPlaymats) {
         try {
           const playmatIds = JSON.parse(savedOwnedPlaymats)
-          setOwnedPlaymats(ALL_PLAYMATS.filter((p) => playmatIds.includes(p.id)))
+          setOwnedPlaymats(ALL_PLAYMATS.filter((p) =playmatIds.includes(p.id)))
         } catch { }
       }
       if (savedGlobalPlaymat) {
@@ -2496,7 +2496,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (savedOwnedSleeves) {
         try {
           const sleeveIds = JSON.parse(savedOwnedSleeves)
-          setOwnedSleeves(ALL_SLEEVES.filter((s) => sleeveIds.includes(s.id)))
+          setOwnedSleeves(ALL_SLEEVES.filter((s) =sleeveIds.includes(s.id)))
         } catch { }
       }
       if (savedGlobalSleeve) {
@@ -2508,7 +2508,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (savedOwnedIcons) {
         try {
           const iconIds = JSON.parse(savedOwnedIcons)
-          if (Array.isArray(iconIds)) setOwnedIconIds(iconIds.filter((id: unknown) => typeof id === "string"))
+          if (Array.isArray(iconIds)) setOwnedIconIds(iconIds.filter((id: unknown) =typeof id === "string"))
         } catch { }
       }
 
@@ -2543,20 +2543,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Save to localStorage when data changes (both key formats for compatibility)
-  useEffect(() => {
+  useEffect(() ={
     setLS("coins", coins.toString())
   }, [coins])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("gearcoins", gearCoins.toString())
   }, [gearCoins])
 
   // ── Duel rewards: gacha coins + gear coins per victory ──────────────────
   // Aceita um preset ("normal" / "pvp") ou valores explícitos (eventos).
-  const addFragments = useCallback((gain: FragmentCounts) => {
+  const addFragments = useCallback((gain: FragmentCounts) ={
     const clean = normalizeFragmentCounts(gain)
     if (Object.keys(clean).length === 0) return
-    setFragments((prev) => {
+    setFragments((prev) ={
       const next: FragmentCounts = { ...prev }
       for (const [id, amount] of Object.entries(clean) as [FragmentId, number][]) {
         next[id] = (next[id] ?? 0) + amount
@@ -2565,20 +2565,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const getFragmentCount = useCallback((id: FragmentId) => fragments[id] ?? 0, [fragments])
+  const getFragmentCount = useCallback((id: FragmentId) =fragments[id] ?? 0, [fragments])
 
   /**
    * Consome fragmentos do inventário de forma atômica: se faltar QUALQUER item
    * do custo, nada é debitado e a função retorna false.
    */
-  const spendFragments = useCallback((cost: FragmentCounts) => {
+  const spendFragments = useCallback((cost: FragmentCounts) ={
     const clean = normalizeFragmentCounts(cost)
     const entries = Object.entries(clean) as [FragmentId, number][]
     if (entries.length === 0) return true
     for (const [id, amount] of entries) {
       if ((fragments[id] ?? 0) < amount) return false
     }
-    setFragments((prev) => {
+    setFragments((prev) ={
       const next: FragmentCounts = { ...prev }
       for (const [id, amount] of entries) {
         next[id] = Math.max(0, (next[id] ?? 0) - amount)
@@ -2589,10 +2589,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [fragments])
 
   // ── Baús ──────────────────────────────────────────────────────────────────
-  const addChests = useCallback((gain: ChestCounts) => {
+  const addChests = useCallback((gain: ChestCounts) ={
     const clean = normalizeChestCounts(gain)
     if (Object.keys(clean).length === 0) return
-    setChests((prev) => {
+    setChests((prev) ={
       const next: ChestCounts = { ...prev }
       for (const [id, amount] of Object.entries(clean) as [ChestId, number][]) {
         next[id] = (next[id] ?? 0) + amount
@@ -2601,43 +2601,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const getChestCount = useCallback((id: ChestId) => chests[id] ?? 0, [chests])
+  const getChestCount = useCallback((id: ChestId) =chests[id] ?? 0, [chests])
 
   // ── Skip Tíquetes ──────────────────────────────────────────────────────────���
-  const addSkipTickets = useCallback((amount: number) => {
+  const addSkipTickets = useCallback((amount: number) ={
     const gain = Math.floor(amount)
     if (!Number.isFinite(gain) || gain <= 0) return
-    setSkipTickets((prev) => prev + gain)
+    setSkipTickets((prev) =prev + gain)
   }, [])
 
-  const consumeSkipTicket = useCallback(() => {
+  const consumeSkipTicket = useCallback(() ={
     if (skipTickets <= 0) return false
-    setSkipTickets((prev) => Math.max(0, prev - 1))
+    setSkipTickets((prev) =Math.max(0, prev - 1))
     return true
   }, [skipTickets])
 
   // ── Garrafas de Energia ────────────────────────────────────────���─────────────
-  const addStaminaBottles = useCallback((amount: number) => {
+  const addStaminaBottles = useCallback((amount: number) ={
     const gain = Math.floor(amount)
     if (!Number.isFinite(gain) || gain <= 0) return
-    setStaminaBottles((prev) => prev + gain)
+    setStaminaBottles((prev) =prev + gain)
   }, [])
 
-  const useStaminaBottle = useCallback(() => {
+  const useStaminaBottle = useCallback(() ={
     const max = getMaxStamina(playerProfile.level)
     const missing = max - stamina
     if (staminaBottles <= 0) return false
     if (missing < STAMINA_BOTTLE_MIN_MISSING) return false
-    setStaminaBottles((prev) => Math.max(0, prev - 1))
-    setStamina((prev) => Math.min(max, prev + STAMINA_BOTTLE_REFILL_AMOUNT))
+    setStaminaBottles((prev) =Math.max(0, prev - 1))
+    setStamina((prev) =Math.min(max, prev + STAMINA_BOTTLE_REFILL_AMOUNT))
     return true
   }, [staminaBottles, stamina, playerProfile.level])
 
   // ── Livros de XP ─────────────────────────────────────────────────────────────
-  const addXPBooks = useCallback((gain: XPBookCounts) => {
+  const addXPBooks = useCallback((gain: XPBookCounts) ={
     const clean = normalizeXPBookCounts(gain)
     if (Object.keys(clean).length === 0) return
-    setXpBooks((prev) => {
+    setXpBooks((prev) ={
       const next: XPBookCounts = { ...prev }
       for (const [id, amount] of Object.entries(clean) as [XPBookId, number][]) {
         next[id] = (next[id] ?? 0) + amount
@@ -2646,20 +2646,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const getXPBookCount = useCallback((id: XPBookId) => xpBooks[id] ?? 0, [xpBooks])
+  const getXPBookCount = useCallback((id: XPBookId) =xpBooks[id] ?? 0, [xpBooks])
 
   /**
    * Consome livros do inventário de forma atômica: se faltar QUALQUER item
    * do custo, nada é debitado e a função retorna false.
    */
-  const spendXPBooks = useCallback((cost: XPBookCounts) => {
+  const spendXPBooks = useCallback((cost: XPBookCounts) ={
     const clean = normalizeXPBookCounts(cost)
     const entries = Object.entries(clean) as [XPBookId, number][]
     if (entries.length === 0) return true
     for (const [id, amount] of entries) {
       if ((xpBooks[id] ?? 0) < amount) return false
     }
-    setXpBooks((prev) => {
+    setXpBooks((prev) ={
       const next: XPBookCounts = { ...prev }
       for (const [id, amount] of entries) {
         next[id] = Math.max(0, (next[id] ?? 0) - amount)
@@ -2670,21 +2670,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [xpBooks])
 
   /** Rola o drop de Livro de XP ao vencer um duelo do Modo Campanha (História). */
-  const rollCampaignXPBook = useCallback(() => {
+  const rollCampaignXPBook = useCallback(() ={
     const drop = rollCampaignXPBookDrop()
     if (drop) addXPBooks({ [drop.id]: drop.amount })
     return drop
   }, [addXPBooks])
 
-  const addDuelRewards = useCallback((kind: DuelRewardKind) => {
+  const addDuelRewards = useCallback((kind: DuelRewardKind) ={
     const { gacha, gear, fragments: drop } =
       typeof kind === "object"
         ? kind
         : kind === "pvp"
           ? { gacha: 20, gear: 50, fragments: undefined }
           : { gacha: 10, gear: 30, fragments: undefined }
-    setCoins((prev) => prev + gacha)
-    setGearCoins((prev) => prev + gear)
+    setCoins((prev) =prev + gacha)
+    setGearCoins((prev) =prev + gear)
     const fragmentDrop = normalizeFragmentCounts(drop)
     addFragments(fragmentDrop)
     // Todo duelo (História, Treinamento, Eventos ou PvP) dropa 1 baú garantido.
@@ -2693,84 +2693,84 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return { gacha, gear, fragments: fragmentDrop, chest: chestDrop }
   }, [addFragments, addChests])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("fragments", JSON.stringify(fragments))
   }, [fragments])
 
-  useEffect(() => {
+  useEffect(() ={
     localStorage.setItem("gear-perks-chests", JSON.stringify(chests))
   }, [chests])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("skiptickets", skipTickets.toString())
   }, [skipTickets])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("staminabottles", staminaBottles.toString())
   }, [staminaBottles])
 
-  useEffect(() => {
+  useEffect(() ={
     localStorage.setItem("gear-perks-xpbooks", JSON.stringify(xpBooks))
   }, [xpBooks])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("collection", JSON.stringify(collection))
   }, [collection])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("decks", JSON.stringify(decks))
   }, [decks])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("history", JSON.stringify(matchHistory))
   }, [matchHistory])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("giftboxes", JSON.stringify(giftBoxes))
   }, [giftBoxes])
 
-  useEffect(() => {
+  useEffect(() ={
     if (playerId) setLS("playerid", playerId)
   }, [playerId])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("profile", JSON.stringify(playerProfile))
   }, [playerProfile])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("friends", JSON.stringify(friends))
   }, [friends])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("friendrequests", JSON.stringify(friendRequests))
   }, [friendRequests])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("fp", friendPoints.toString())
   }, [friendPoints])
 
-  useEffect(() => {
+  useEffect(() ={
     setLS("spendablefp", spendableFP.toString())
   }, [spendableFP])
 
-  // useEffect(() => {
+  // useEffect(() ={
   //   localStorage.setItem("gearperks-accountAuth", JSON.stringify(accountAuth)) // Replaced by gear-perks-auth
   //   if (accountAuth.isLoggedIn) {
-  //     setAccountAuth((prev) => ({ ...prev, lastSaved: new Date().toISOString() }))
+  //     setAccountAuth((prev) =({ ...prev, lastSaved: new Date().toISOString() }))
   //   }
   // }, [accountAuth])
 
   // Save account auth state to localStorage
-  useEffect(() => {
+  useEffect(() ={
     localStorage.setItem("gear-perks-auth", JSON.stringify(accountAuth))
     localStorage.setItem("gearperks-accountAuth", JSON.stringify(accountAuth))
   }, [accountAuth])
 
-  useEffect(() => {
-    localStorage.setItem("gearperks_owned_playmats", JSON.stringify(ownedPlaymats.map((p) => p.id)))
+  useEffect(() ={
+    localStorage.setItem("gearperks_owned_playmats", JSON.stringify(ownedPlaymats.map((p) =p.id)))
   }, [ownedPlaymats])
 
-  useEffect(() => {
+  useEffect(() ={
     if (globalPlaymatId) {
       localStorage.setItem("gearperks_global_playmat", globalPlaymatId)
     } else {
@@ -2778,15 +2778,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [globalPlaymatId])
 
-  useEffect(() => {
-    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(ownedSleeves.map((s) => s.id)))
+  useEffect(() ={
+    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(ownedSleeves.map((s) =s.id)))
   }, [ownedSleeves])
 
-  useEffect(() => {
+  useEffect(() ={
     localStorage.setItem("gearperks_owned_icons", JSON.stringify(ownedIconIds))
   }, [ownedIconIds])
 
-  useEffect(() => {
+  useEffect(() ={
     if (globalSleeveId) {
       localStorage.setItem("gearperks_global_sleeve", globalSleeveId)
     } else {
@@ -2794,8 +2794,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [globalSleeveId])
 
-  const addToCollection = (cards: Card[]) => {
-    setCollection((prev) => [...prev, ...cards])
+  const addToCollection = (cards: Card[]) ={
+    setCollection((prev) =[...prev, ...cards])
   }
 
   /**
@@ -2803,12 +2803,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
    * pareado com a cor do baú (ver lib/chests.ts). Nunca entrega moedas
    * ou cartas.
    */
-  const openChest = useCallback((id: ChestId): ChestOpenResult | null => {
+  const openChest = useCallback((id: ChestId): ChestOpenResult | null ={
     if ((chests[id] ?? 0) <= 0) return null
 
     const result = rollChestReward(id)
 
-    setChests((prev) => {
+    setChests((prev) ={
       const next: ChestCounts = { ...prev }
       next[id] = Math.max(0, (next[id] ?? 0) - 1)
       if (next[id] === 0) delete next[id]
@@ -2820,9 +2820,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return result
   }, [chests, addFragments])
 
-  const saveDeck = (deck: Deck) => {
-    setDecks((prev) => {
-      const existingIndex = prev.findIndex((d) => d.id === deck.id)
+  const saveDeck = (deck: Deck) ={
+    setDecks((prev) ={
+      const existingIndex = prev.findIndex((d) =d.id === deck.id)
       if (existingIndex >= 0) {
         const updated = [...prev]
         updated[existingIndex] = deck
@@ -2832,38 +2832,38 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const deleteDeck = (deckId: string) => {
-    setDecks((prev) => prev.filter((d) => d.id !== deckId))
+  const deleteDeck = (deckId: string) ={
+    setDecks((prev) =prev.filter((d) =d.id !== deckId))
   }
 
-  const addMatchRecord = (record: MatchRecord) => {
-    setMatchHistory((prev) => [record, ...prev])
+  const addMatchRecord = (record: MatchRecord) ={
+    setMatchHistory((prev) =[record, ...prev])
   }
 
-  const claimGift = (giftId: string): Card | null => {
-    const gift = giftBoxes.find((g) => g.id === giftId)
+  const claimGift = (giftId: string): Card | null ={
+    const gift = giftBoxes.find((g) =g.id === giftId)
     if (!gift || gift.claimed) return null
 
-    setGiftBoxes((prev) => prev.map((g) => (g.id === giftId ? { ...g, claimed: true } : g)))
+    setGiftBoxes((prev) =prev.map((g) =(g.id === giftId ? { ...g, claimed: true } : g)))
 
     // Handle playmat reward
     if (gift.playmatId) {
-      const playmat = ALL_PLAYMATS.find((p) => p.id === gift.playmatId)
-      if (playmat && !ownedPlaymats.some((p) => p.id === playmat.id)) {
-        setOwnedPlaymats((prev) => [...prev, playmat])
+      const playmat = ALL_PLAYMATS.find((p) =p.id === gift.playmatId)
+      if (playmat && !ownedPlaymats.some((p) =p.id === playmat.id)) {
+        setOwnedPlaymats((prev) =[...prev, playmat])
       }
       return null
     }
 
     // Handle coin reward
     if (gift.coinsReward) {
-      setCoins((prev) => prev + gift.coinsReward!)
+      setCoins((prev) =prev + gift.coinsReward!)
       return null
     }
 
     // Handle card reward
     if (gift.cardId) {
-      const card = ALL_CARDS.find((c) => c.id === gift.cardId)
+      const card = ALL_CARDS.find((c) =c.id === gift.cardId)
       if (card) {
         addToCollection([card])
         return card
@@ -2873,32 +2873,32 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return null
   }
 
-  const addGift = (gift: Omit<GiftBox, "id" | "claimed">) => {
+  const addGift = (gift: Omit<GiftBox, "id" | "claimed">) ={
     const newGift: GiftBox = {
       ...gift,
       id: `gift-${Date.now()}`,
       claimed: false,
     }
-    setGiftBoxes((prev) => [...prev, newGift])
+    setGiftBoxes((prev) =[...prev, newGift])
   }
 
-  const hasUnclaimedGifts = giftBoxes.some((g) => !g.claimed)
+  const hasUnclaimedGifts = giftBoxes.some((g) =!g.claimed)
 
-  const updatePlayerProfile = (updates: Partial<PlayerProfile>) => {
-    setPlayerProfile((prev) => ({ ...prev, ...updates }))
+  const updatePlayerProfile = (updates: Partial<PlayerProfile>) ={
+    setPlayerProfile((prev) =({ ...prev, ...updates }))
   }
 
-  const sendFriendRequest = (targetId: string): boolean => {
+  const sendFriendRequest = (targetId: string): boolean ={
     // In a real app, this would send to server
     // For demo, we simulate finding a player
     if (targetId === playerId) return false
-    if (friends.some((f) => f.id === targetId)) return false
+    if (friends.some((f) =f.id === targetId)) return false
     // Simulate a successful request being sent to a server
     return true
   }
 
-  const acceptFriendRequest = (requestId: string) => {
-    const request = friendRequests.find((r) => r.id === requestId)
+  const acceptFriendRequest = (requestId: string) ={
+    const request = friendRequests.find((r) =r.id === requestId)
     if (!request) return
 
     // Add to friends
@@ -2913,18 +2913,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       isGuest: false,
       likes: 0,
     }
-    setFriends((prev) => [...prev, newFriend])
+    setFriends((prev) =[...prev, newFriend])
 
     // Remove request
-    setFriendRequests((prev) => prev.filter((r) => r.id !== requestId))
+    setFriendRequests((prev) =prev.filter((r) =r.id !== requestId))
   }
 
-  const rejectFriendRequest = (requestId: string) => {
-    setFriendRequests((prev) => prev.filter((r) => r.id !== requestId))
+  const rejectFriendRequest = (requestId: string) ={
+    setFriendRequests((prev) =prev.filter((r) =r.id !== requestId))
   }
 
-  const canSendHeartTo = (friendId: string): boolean => {
-    const friend = friends.find((f) => f.id === friendId)
+  const canSendHeartTo = (friendId: string): boolean ={
+    const friend = friends.find((f) =f.id === friendId)
     if (!friend) return false
     // If it's a guest or they haven't sent a heart, they can receive one
     if (friend.isGuest && friend.id !== "GUEST-001") return true
@@ -2935,12 +2935,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return lastSent.toDateString() !== today.toDateString()
   }
 
-  const sendHeart = (friendId: string): boolean => {
+  const sendHeart = (friendId: string): boolean ={
     if (!canSendHeartTo(friendId)) return false
 
     // Update friend's affinity
     setFriends((prev) =>
-      prev.map((f) => {
+      prev.map((f) ={
         if (f.id === friendId) {
           // For guests, affinity increases by 10 (base) + likes received
           const pointsToAdd = f.isGuest && f.id !== "GUEST-001" ? 10 + f.likes : 10
@@ -2960,11 +2960,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     )
 
     // Add FP (both accumulated and spendable)
-    setFriendPoints((prev) => prev + 5)
-    setSpendableFP((prev) => prev + 5)
+    setFriendPoints((prev) =prev + 5)
+    setSpendableFP((prev) =prev + 5)
 
     // Add gift to gift box if it's not a guest
-    if (!friends.find((f) => f.id === friendId)?.isGuest || friendId === "GUEST-001") {
+    if (!friends.find((f) =f.id === friendId)?.isGuest || friendId === "GUEST-001") {
       addGift({
         title: "Recompensa por envio de afinidade",
         message: "Você ganhou 5 Friend Points por enviar coração para seu amigo!",
@@ -2975,9 +2975,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true
   }
 
-  const sendHeartToAll = (): number => {
+  const sendHeartToAll = (): number ={
     let sentCount = 0
-    friends.forEach((friend) => {
+    friends.forEach((friend) ={
       if (canSendHeartTo(friend.id)) {
         if (sendHeart(friend.id)) {
           sentCount++
@@ -2987,9 +2987,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return sentCount
   }
 
-  const likeFriendShowcase = (friendId: string) => {
+  const likeFriendShowcase = (friendId: string) ={
     setFriends((prev) =>
-      prev.map((f) => {
+      prev.map((f) ={
         if (f.id === friendId) {
           // Add affinity points based on likes, guests get more
           const pointsToAdd = f.isGuest && f.id !== "GUEST-001" ? 5 + f.likes : 5
@@ -2998,34 +2998,34 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return f
       }),
     )
-    setFriendPoints((prev) => prev + 2)
-    setSpendableFP((prev) => prev + 2)
+    setFriendPoints((prev) =prev + 2)
+    setSpendableFP((prev) =prev + 2)
   }
 
-  const spendFriendPoints = (amount: number): boolean => {
+  const spendFriendPoints = (amount: number): boolean ={
     if (spendableFP < amount) return false
-    setSpendableFP((prev) => prev - amount)
+    setSpendableFP((prev) =prev - amount)
     return true
   }
 
   /** Adiciona moedas de forma segura (functional update, sem closure stale) */
-  const addCoins = (amount: number) => {
+  const addCoins = (amount: number) ={
     if (!Number.isFinite(amount) || amount <= 0) return
-    setCoins((prev) => prev + amount)
+    setCoins((prev) =prev + amount)
   }
 
   /** Adiciona Friend Points (acumulados + gastáveis) de forma segura */
-  const addFP = (amount: number) => {
+  const addFP = (amount: number) ={
     if (!Number.isFinite(amount) || amount <= 0) return
-    setFriendPoints((prev) => prev + amount)
-    setSpendableFP((prev) => prev + amount)
+    setFriendPoints((prev) =prev + amount)
+    setSpendableFP((prev) =prev + amount)
   }
 
-  const searchPlayerById = (id: string): Friend | null => {
+  const searchPlayerById = (id: string): Friend | null ={
     // In real app, this would query server
     // For demo, return a simulated player
     if (id === playerId) return null
-    if (friends.some((f) => f.id === id)) return null
+    if (friends.some((f) =f.id === id)) return null
 
     // Simulate finding a random player
     if (id.startsWith("GP-") && id.length === 11) {
@@ -3043,7 +3043,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return null
   }
 
-  const getGhostPlayers = (count: number): Friend[] => {
+  const getGhostPlayers = (count: number): Friend[] ={
     const available = GHOST_PLAYERS.slice(0, count)
     return available
   }
@@ -3052,7 +3052,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const SESSION_TOKEN_KEY = "gear-perks-session-token"
 
   // Monta o payload de progresso completo para salvar na nuvem
-  const buildProgressPayload = () => ({
+  const buildProgressPayload = () =({
     coins,
     gearCoins,
     collection,
@@ -3065,16 +3065,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     spendableFP,
     playerProfile,
     playerId,
-    ownedPlaymatIds: ownedPlaymats.map((p) => p.id),
+    ownedPlaymatIds: ownedPlaymats.map((p) =p.id),
     globalPlaymatId,
-    ownedSleeveIds: ownedSleeves.map((s) => s.id),
+    ownedSleeveIds: ownedSleeves.map((s) =s.id),
     globalSleeveId,
     ownedIconIds,
     redeemedCodes,
   })
 
   // Aplica um progresso vindo da nuvem em todos os estados do jogo
-  const applyProgressPayload = (p: any) => {
+  const applyProgressPayload = (p: any) ={
     if (!p || typeof p !== "object") return
     if (typeof p.coins === "number") setCoins(p.coins)
     if (typeof p.gearCoins === "number") setGearCoins(p.gearCoins)
@@ -3083,7 +3083,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (Array.isArray(p.matchHistory)) setMatchHistory(p.matchHistory)
     if (Array.isArray(p.giftBoxes)) setGiftBoxes(p.giftBoxes)
     if (Array.isArray(p.friends)) {
-      const hasGuest = p.friends.some((f: Friend) => f.id === "GUEST-001")
+      const hasGuest = p.friends.some((f: Friend) =f.id === "GUEST-001")
       setFriends(hasGuest ? p.friends : [DEFAULT_GUEST_FRIEND, ...p.friends])
     }
     if (Array.isArray(p.friendRequests)) setFriendRequests(p.friendRequests)
@@ -3096,7 +3096,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("gear-perks-player-id", p.playerId)
     }
     if (Array.isArray(p.ownedPlaymatIds)) {
-      setOwnedPlaymats(ALL_PLAYMATS.filter((pm) => p.ownedPlaymatIds.includes(pm.id)))
+      setOwnedPlaymats(ALL_PLAYMATS.filter((pm) =p.ownedPlaymatIds.includes(pm.id)))
       localStorage.setItem("gearperks_owned_playmats", JSON.stringify(p.ownedPlaymatIds))
     }
     if (typeof p.globalPlaymatId === "string" && p.globalPlaymatId) {
@@ -3104,7 +3104,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("gearperks_global_playmat", p.globalPlaymatId)
     }
     if (Array.isArray(p.ownedSleeveIds)) {
-      setOwnedSleeves(ALL_SLEEVES.filter((s) => p.ownedSleeveIds.includes(s.id)))
+      setOwnedSleeves(ALL_SLEEVES.filter((s) =p.ownedSleeveIds.includes(s.id)))
       localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(p.ownedSleeveIds))
     }
     if (typeof p.globalSleeveId === "string" && p.globalSleeveId) {
@@ -3112,7 +3112,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("gearperks_global_sleeve", p.globalSleeveId)
     }
     if (Array.isArray(p.ownedIconIds)) {
-      const ids = p.ownedIconIds.filter((id: unknown) => typeof id === "string")
+      const ids = p.ownedIconIds.filter((id: unknown) =typeof id === "string")
       setOwnedIconIds(ids)
       localStorage.setItem("gearperks_owned_icons", JSON.stringify(ids))
     }
@@ -3128,7 +3128,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   // Chamada padrão à API de contas
-  const accountApi = async (payload: Record<string, unknown>): Promise<any> => {
+  const accountApi = async (payload: Record<string, unknown>): Promise<any={
     try {
       const res = await fetch("/api/account", {
         method: "POST",
@@ -3141,7 +3141,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const loginAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const loginAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }={
     const result = await accountApi({ action: "login", email, password })
     if (!result.success) {
       return { success: false, error: result.error || "Erro ao entrar. Tente novamente." }
@@ -3172,7 +3172,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return { success: true }
   }
 
-  const registerAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const registerAccount = async (email: string, password: string): Promise<{ success: boolean; error?: string }={
     if (!email.includes("@")) {
       return { success: false, error: "Email invalido" }
     }
@@ -3206,7 +3206,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   // Register with unique code (o código é gerado no servidor)
-  const registerWithCode = async (password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
+  const registerWithCode = async (password: string): Promise<{ success: boolean; error?: string; code?: string }={
     if (password.length < 6) {
       return { success: false, error: "Senha deve ter pelo menos 6 caracteres" }
     }
@@ -3238,7 +3238,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   // Login with unique code
-  const loginWithCode = async (code: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const loginWithCode = async (code: string, password: string): Promise<{ success: boolean; error?: string }={
     const normalizedCode = code.toUpperCase().replace(/[^A-Z0-9]/g, "")
 
     const result = await accountApi({ action: "login-code", code: normalizedCode, password })
@@ -3272,7 +3272,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   // Link email to existing code account
-  const linkEmailToCode = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  const linkEmailToCode = async (email: string): Promise<{ success: boolean; error?: string }={
     if (!accountAuth.uniqueCode) {
       return { success: false, error: "Nenhum codigo vinculado" }
     }
@@ -3291,7 +3291,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return { success: true }
   }
 
-  const logoutAccount = () => {
+  const logoutAccount = () ={
     // Clear local storage related to this account's progress before logging out
     // This prevents loading old progress when logging in with a different account or as a guest.
     // However, be careful not to clear general settings if they are stored separately.
@@ -3368,7 +3368,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     redeemedCodes,
     accountAuth,
   })
-  useEffect(() => {
+  useEffect(() ={
     progressRef.current = {
       coins,
       gearCoins,
@@ -3397,7 +3397,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const hasPendingSaveRef = useRef(false)
 
   // Marca que houve mudanca sempre que qualquer estado de progresso mudar
-  useEffect(() => {
+  useEffect(() ={
     if (accountAuth.isLoggedIn) {
       hasPendingSaveRef.current = true
     }
@@ -3422,7 +3422,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     accountAuth.isLoggedIn,
   ])
 
-  const saveProgressManually = async () => {
+  const saveProgressManually = async () ={
     const { accountAuth: auth } = progressRef.current
     if (!auth.isLoggedIn) return
     if (isSavingRef.current) return
@@ -3434,7 +3434,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     hasPendingSaveRef.current = false
 
     const { accountAuth: _auth, ownedPlaymats: mats, ownedSleeves: sleeves, ...rest } = progressRef.current
-    const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id), ownedSleeveIds: sleeves.map((s) => s.id) }
+    const payload = { ...rest, ownedPlaymatIds: mats.map((p) =p.id), ownedSleeveIds: sleeves.map((s) =s.id) }
 
     try {
       const result = await accountApi({
@@ -3459,7 +3459,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setLS("history", JSON.stringify(cur.matchHistory))
       setLS("profile", JSON.stringify(cur.playerProfile))
 
-      setAccountAuth((prev) => {
+      setAccountAuth((prev) ={
         const updated = { ...prev, lastSaved: now }
         localStorage.setItem("gear-perks-auth", JSON.stringify(updated))
         return updated
@@ -3470,28 +3470,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   // Autosave: interval fixo de 60s — so salva se houve mudanca real desde o ultimo save
-  useEffect(() => {
+  useEffect(() ={
     if (!accountAuth.isLoggedIn) return
 
-    const interval = setInterval(() => {
+    const interval = setInterval(() ={
       if (hasPendingSaveRef.current) {
         saveProgressManually()
       }
     }, 60_000)
 
-    return () => clearInterval(interval)
+    return () =clearInterval(interval)
   }, [accountAuth.isLoggedIn])
 
   // Salva imediatamente ao fechar/sair da aba se houver mudancas pendentes
-  useEffect(() => {
+  useEffect(() ={
     if (!accountAuth.isLoggedIn) return
 
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = () ={
       if (document.visibilityState === "hidden" && hasPendingSaveRef.current) {
         const token = localStorage.getItem(SESSION_TOKEN_KEY)
         if (!token) return
         const { accountAuth: _auth, ownedPlaymats: mats, ownedSleeves: sleeves, ...rest } = progressRef.current
-        const payload = { ...rest, ownedPlaymatIds: mats.map((p) => p.id), ownedSleeveIds: sleeves.map((s) => s.id) }
+        const payload = { ...rest, ownedPlaymatIds: mats.map((p) =p.id), ownedSleeveIds: sleeves.map((s) =s.id) }
         // sendBeacon é fire-and-forget: funciona mesmo enquanto a aba esta fechando
         navigator.sendBeacon(
           "/api/account",
@@ -3502,34 +3502,34 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+    return () =document.removeEventListener("visibilitychange", handleVisibilityChange)
   }, [accountAuth.isLoggedIn])
 
-  const setGlobalPlaymat = (playmatId: string | null) => {
+  const setGlobalPlaymat = (playmatId: string | null) ={
     setGlobalPlaymatId(playmatId)
   }
 
-  const setGlobalSleeve = (sleeveId: string | null) => {
+  const setGlobalSleeve = (sleeveId: string | null) ={
     setGlobalSleeveId(sleeveId)
   }
 
   // Unlocks a sleeve directly into the player's account (used by shop purchases)
-  const unlockSleeve = (sleeveId: string): boolean => {
-    const sleeve = ALL_SLEEVES.find((s) => s.id === sleeveId)
+  const unlockSleeve = (sleeveId: string): boolean ={
+    const sleeve = ALL_SLEEVES.find((s) =s.id === sleeveId)
     if (!sleeve) return false
-    if (ownedSleeves.some((s) => s.id === sleeveId)) return false
+    if (ownedSleeves.some((s) =s.id === sleeveId)) return false
     const updated = [...ownedSleeves, sleeve]
     setOwnedSleeves(updated)
-    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(updated.map((s) => s.id)))
+    localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(updated.map((s) =s.id)))
     return true
   }
 
   // ── ICONES DE PERFIL (avatares) ──────────────────────────────────────────
-  const ownsProfileIcon = (iconId: string): boolean => ownedIconIds.includes(iconId)
+  const ownsProfileIcon = (iconId: string): boolean =ownedIconIds.includes(iconId)
 
   /** Libera um icone da loja na conta do jogador (usado nas compras). */
-  const unlockProfileIcon = (iconId: string): boolean => {
-    const icon = SHOP_PROFILE_ICONS.find((i) => i.id === iconId)
+  const unlockProfileIcon = (iconId: string): boolean ={
+    const icon = SHOP_PROFILE_ICONS.find((i) =i.id === iconId)
     if (!icon) return false
     if (ownedIconIds.includes(iconId)) return false
     const updated = [...ownedIconIds, iconId]
@@ -3539,22 +3539,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   /** Equipa um icone (gratuito ou comprado) como avatar do perfil. */
-  const equipProfileIcon = (iconId: string): boolean => {
-    const free = PROFILE_ICONS.find((i) => i.id === iconId)
+  const equipProfileIcon = (iconId: string): boolean ={
+    const free = PROFILE_ICONS.find((i) =i.id === iconId)
     if (free) {
-      setPlayerProfile((prev) => ({ ...prev, avatarUrl: free.image }))
+      setPlayerProfile((prev) =({ ...prev, avatarUrl: free.image }))
       return true
     }
-    const shopIcon = SHOP_PROFILE_ICONS.find((i) => i.id === iconId)
+    const shopIcon = SHOP_PROFILE_ICONS.find((i) =i.id === iconId)
     if (!shopIcon || !ownedIconIds.includes(iconId)) return false
-    setPlayerProfile((prev) => ({ ...prev, avatarUrl: shopIcon.image }))
+    setPlayerProfile((prev) =({ ...prev, avatarUrl: shopIcon.image }))
     return true
   }
 
   /** Gratuitos + comprados, na ordem em que aparecem nos seletores. */
   const availableProfileIcons = [
-    ...PROFILE_ICONS.map((i) => ({ id: i.id, name: i.name, image: i.image })),
-    ...SHOP_PROFILE_ICONS.filter((i) => ownedIconIds.includes(i.id)).map((i) => ({
+    ...PROFILE_ICONS.map((i) =({ id: i.id, name: i.name, image: i.image })),
+    ...SHOP_PROFILE_ICONS.filter((i) =ownedIconIds.includes(i.id)).map((i) =({
       id: i.id,
       name: i.name,
       image: i.image,
@@ -3562,43 +3562,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
   ]
 
   // Returns the active card back image: active sleeve image or default card-back
-  const getActiveCardBack = (): string => {
+  const getActiveCardBack = (): string ={
     if (globalSleeveId) {
-      const sleeve = ownedSleeves.find((s) => s.id === globalSleeveId)
+      const sleeve = ownedSleeves.find((s) =s.id === globalSleeveId)
       if (sleeve) return sleeve.image
     }
     return CARD_BACK_IMAGE
   }
 
   // Unlocks a playmat directly into the player's account (used by shop purchases)
-  const unlockPlaymat = (playmatId: string): boolean => {
-    const playmat = ALL_PLAYMATS.find((p) => p.id === playmatId)
+  const unlockPlaymat = (playmatId: string): boolean ={
+    const playmat = ALL_PLAYMATS.find((p) =p.id === playmatId)
     if (!playmat) return false
-    if (ownedPlaymats.some((p) => p.id === playmatId)) return false
+    if (ownedPlaymats.some((p) =p.id === playmatId)) return false
     const updated = [...ownedPlaymats, playmat]
     setOwnedPlaymats(updated)
-    localStorage.setItem("gearperks_owned_playmats", JSON.stringify(updated.map((p) => p.id)))
+    localStorage.setItem("gearperks_owned_playmats", JSON.stringify(updated.map((p) =p.id)))
     return true
   }
 
-  const getPlaymatForDeck = (deck: Deck): Playmat | null => {
+  const getPlaymatForDeck = (deck: Deck): Playmat | null ={
     // If deck uses global playmat or has no specific setting
     if (deck.useGlobalPlaymat !== false && globalPlaymatId) {
-      return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+      return ownedPlaymats.find((p) =p.id === globalPlaymatId) || null
     }
     // If deck has specific playmat
     if (deck.playmatId) {
-      return ownedPlaymats.find((p) => p.id === deck.playmatId) || null
+      return ownedPlaymats.find((p) =p.id === deck.playmatId) || null
     }
     // Fallback to global
     if (globalPlaymatId) {
-      return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+      return ownedPlaymats.find((p) =p.id === globalPlaymatId) || null
     }
     return null
   }
 
   // Redeem promotional codes
-  const redeemCode = (code: string): { success: boolean; message: string } => {
+  const redeemCode = (code: string): { success: boolean; message: string } ={
     const normalizedCode = code.toUpperCase().trim()
 
     // Check if code was already redeemed
@@ -3610,7 +3610,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (normalizedCode === "ALLCARDS") {
       // Get all cards with 4 copies each
       const allCardsWithCopies: Card[] = []
-      ALL_CARDS.forEach((card) => {
+      ALL_CARDS.forEach((card) ={
         for (let i = 0; i < 4; i++) {
           allCardsWithCopies.push({ ...card })
         }
@@ -3631,11 +3631,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // PLAYMAT - Unlocks all playmats
     if (normalizedCode === "PLAYMAT") {
       const newOwnedPlaymats = ALL_PLAYMATS.filter(
-        (p) => !ownedPlaymats.some((op) => op.id === p.id)
+        (p) =!ownedPlaymats.some((op) =op.id === p.id)
       )
       const updatedPlaymats = [...ownedPlaymats, ...newOwnedPlaymats]
       setOwnedPlaymats(updatedPlaymats)
-      localStorage.setItem("gearperks_owned_playmats", JSON.stringify(updatedPlaymats.map((p) => p.id)))
+      localStorage.setItem("gearperks_owned_playmats", JSON.stringify(updatedPlaymats.map((p) =p.id)))
 
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
@@ -3647,11 +3647,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // SLEEVES - Unlocks every sleeve that exists at the moment the code is redeemed
     if (normalizedCode === "SLEEVES") {
       const newOwnedSleeves = ALL_SLEEVES.filter(
-        (s) => !ownedSleeves.some((os) => os.id === s.id)
+        (s) =!ownedSleeves.some((os) =os.id === s.id)
       )
       const updatedSleeves = [...ownedSleeves, ...newOwnedSleeves]
       setOwnedSleeves(updatedSleeves)
-      localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(updatedSleeves.map((s) => s.id)))
+      localStorage.setItem("gearperks_owned_sleeves", JSON.stringify(updatedSleeves.map((s) =s.id)))
 
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
@@ -3663,8 +3663,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // ICONS - Unlocks every profile icon that exists at the moment the code is redeemed
     if (normalizedCode === "ICONS") {
       const newOwnedIconIds = SHOP_PROFILE_ICONS.filter(
-        (i) => !ownedIconIds.includes(i.id)
-      ).map((i) => i.id)
+        (i) =!ownedIconIds.includes(i.id)
+      ).map((i) =i.id)
       const updatedIconIds = [...ownedIconIds, ...newOwnedIconIds]
       setOwnedIconIds(updatedIconIds)
       localStorage.setItem("gearperks_owned_icons", JSON.stringify(updatedIconIds))
@@ -3683,7 +3683,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const maxPoints = 20 * GEAR_PASS_MAX_LEVEL + Math.round((5 * GEAR_PASS_MAX_LEVEL * (GEAR_PASS_MAX_LEVEL + 1)) / 2)
 
       const LS_PASS_KEY = "gpgame_gear_pass"
-      let stored: Record<string, any> = {}
+      let stored: Record<string, any= {}
       try {
         stored = JSON.parse(localStorage.getItem(LS_PASS_KEY) || "{}")
       } catch {}
@@ -3709,7 +3709,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // EXP - Leva todos os Mestres que o jogador possui ao nível máximo
     if (normalizedCode === "EXP") {
       const masters = loadMastersFromStorage()
-      const maxedMasters = masters.map((m) => {
+      const maxedMasters = masters.map((m) ={
         if (!m.isUnlocked) return m
         return {
           ...m,
@@ -3733,7 +3733,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     // GOLD - Grants 1,000,000 gear coins to the player's account
     if (normalizedCode === "GOLD") {
-      setGearCoins((prev) => prev + 1_000_000)
+      setGearCoins((prev) =prev + 1_000_000)
 
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
@@ -3753,7 +3753,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const owned: string[] = JSON.parse(raw)
         const merged = Array.from(new Set([...owned, ...ALL_CARD_SKIN_IDS]))
         localStorage.setItem("gpgame_card_skins", JSON.stringify(merged))
-        ALL_CARD_SKIN_IDS.forEach((skinId) => {
+        ALL_CARD_SKIN_IDS.forEach((skinId) ={
           window.dispatchEvent(new CustomEvent("gpgame_skin_unlocked", { detail: { skinId } }))
         })
       } catch {}
@@ -3769,7 +3769,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (normalizedCode === "FRAG") {
       const allFragmentIds = Object.keys(FRAGMENTS) as FragmentId[]
       const gain: FragmentCounts = {}
-      allFragmentIds.forEach((id) => {
+      allFragmentIds.forEach((id) ={
         gain[id] = 10_000
       })
       addFragments(gain)
@@ -3786,7 +3786,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   // Delete all account data but keep logged in
-  const deleteAccountData = async (): Promise<{ success: boolean; error?: string }> => {
+  const deleteAccountData = async (): Promise<{ success: boolean; error?: string }={
     try {
       // Reset all game data to defaults
       setCoins(999)
@@ -4006,7 +4006,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         redeemedCodes,
         deleteAccountData,
         mobileMode,
-        setMobileMode: (enabled: boolean) => {
+        setMobileMode: (enabled: boolean) ={
           setMobileModeState(enabled)
           if (typeof window !== "undefined") {
             localStorage.setItem("gearperks-mobile-mode", enabled ? "true" : "false")
