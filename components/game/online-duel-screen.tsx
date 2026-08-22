@@ -4421,9 +4421,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   // Os nomes podem variar entre decks locais e partidas sincronizadas.
   const unitIdx = playerField.unitZone.findIndex((unit) => {
     if (!unit) return false
-    if (ug.id === "vatnavordr-messiham-ur") return unit.name.toLowerCase().includes("hrotti")
-    if (ug.id === "yggdra-nidhogg-ur") return unit.name.toLowerCase().includes("logi")
-    return unit.name === requiredUnit
+    const identity = `${ug.id} ${ug.name} ${ug.ability}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    const actual = unit.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    if (identity.includes("vatnavordr") || identity.includes("congelamento de vatnavordr")) return actual.includes("hrotti")
+    if (identity.includes("nidhogg") || identity.includes("destruicao de nidhogg")) return actual.includes("logi")
+    return actual.includes(requiredUnit.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())
   })
   if (unitIdx === -1) {
     showEffectFeedback(`${requiredUnit} precisa estar no campo!`, "error")

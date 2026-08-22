@@ -8,7 +8,9 @@ export function FreezeCardAnimation({ cardName, onComplete }: { cardName: string
       className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center animate-freeze-overlay"
       role="status"
       aria-label={`Congelando ${cardName}`}
-      onAnimationEnd={onComplete}
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) onComplete?.()
+      }}
     >
       <div className="relative flex flex-col items-center gap-3 text-center">
         <div className="absolute h-44 w-44 rounded-full border border-primary/30 animate-freeze-ring" />
