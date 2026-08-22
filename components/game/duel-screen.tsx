@@ -23,6 +23,7 @@ import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps, getElementPalette, normalizeElement } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import { FreezeCardAnimation } from "./freeze-card-animation"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
  import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
@@ -3389,6 +3390,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
   const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
@@ -6082,7 +6084,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         return
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
-      showEffectFeedback("VATNAVORDR MESSIHAM: clique em uma carta inimiga para congelar!", "success")
+      showEffectFeedback("CONGELAMENTO DE VATNAVORDR: selecione uma carta inimiga para congelar!", "success")
     } else if (isYggdra) {
       if (!enemyField.functionZone.some((f) => f !== null)) {
         showEffectFeedback("Oponente não tem cartas de Função no campo!", "error")
@@ -6452,7 +6454,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         return prev
       })
-      showEffectFeedback(`VATNAVORDR MESSIHAM: ${targetCard.name} congelada!${type === "unit" ? " 2 LP de dano causado." : ""}`, "success")
+      setFreezeAnimationCard(targetCard.name)
+      showEffectFeedback(`CONGELAMENTO DE VATNAVORDR: ${targetCard.name} congelada!${type === "unit" ? " 2 LP de dano causado." : ""}`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     } else if (ugTargetMode.type === "twiligh_avalon") {
@@ -10382,6 +10385,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
       <ScenarioRevealOverlay
         playerScenario={playerField.scenarioZone}

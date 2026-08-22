@@ -2627,7 +2627,6 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   })
   const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
   const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }>({})
-  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
 
   // Constants for card animations
   const CARD_JUMP_DURATION = 350 // Duration of the "jump" movement
@@ -2853,6 +2852,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
   const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
@@ -4439,7 +4439,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "oden_sword" })
       showEffectFeedback("Selecione uma Function inimiga para destruir!", "success")
-    } else if (ug.id !== "vatnavordr-messiham-ur" && !ug.name?.toLowerCase().includes("vatnavordr") && !ug.ability?.toLowerCase().includes("congelamento de vatnavordr") && ug.ability === "TWILIGH AVALON") {
+    } else if (ug.ability === "TWILIGH AVALON") {
       // Check if opponent has any cards on field (units or functions)
       const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
@@ -7259,7 +7259,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
-  {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
       <ScenarioRevealOverlay
         playerScenario={playerField.scenarioZone}
@@ -9442,7 +9442,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
         .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* ── SINFONIA RELÂMPAGO CSS ── */
+        /* ─�� SINFONIA RELÂMPAGO CSS ── */
         @keyframes sinBg    { 0%{opacity:.4} 50%{opacity:.15} 100%{opacity:0} }
         @keyframes sinBolt  { 0%{opacity:1}  40%{opacity:.7}  70%{opacity:.2}  85%,100%{opacity:0} }
         @keyframes sinNote  { 0%{opacity:1;transform:scale(.5) translateY(6px)} 25%{opacity:1;transform:scale(1.25) translateY(-5px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-18px)} 100%{opacity:0;transform:scale(.7) translateY(-35px)} }
