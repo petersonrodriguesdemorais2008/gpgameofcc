@@ -23,6 +23,7 @@ import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps, getElementPalette, normalizeElement } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import { FreezeCardAnimation } from "./freeze-card-animation"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
  import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
@@ -3163,6 +3164,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   })
   const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
   const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }>({})
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
 
   // Constants for card animations
   const CARD_JUMP_DURATION = 350 // Duration of the "jump" movement
@@ -6452,6 +6454,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         return prev
       })
+      setFreezeAnimationCard(targetCard.name)
       showEffectFeedback(`VATNAVORDR MESSIHAM: ${targetCard.name} congelada!${type === "unit" ? " 2 LP de dano causado." : ""}`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
@@ -10380,6 +10383,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         handleHandCardDragEnd()
       }}
     >
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}

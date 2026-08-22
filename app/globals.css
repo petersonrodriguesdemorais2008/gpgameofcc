@@ -109,6 +109,19 @@
   }
 }
 
+  /* ===== RAPID FREEZE CARD EFFECT ===== */
+  @keyframes freezeOverlay { 0% { opacity: 0 } 12%, 82% { opacity: 1 } 100% { opacity: 0 } }
+  @keyframes freezeRing { 0% { transform: scale(.35); opacity: 0 } 35% { opacity: 1 } 100% { transform: scale(1.35); opacity: 0 } }
+  @keyframes freezeCore { 0% { transform: scale(.6) rotate(-12deg); filter: brightness(1) } 35% { transform: scale(1.08) rotate(6deg); filter: brightness(1.8) } 100% { transform: scale(1) rotate(0); filter: brightness(1) } }
+  @keyframes freezeSnow { 0% { transform: rotate(-35deg) scale(.6) } 45% { transform: rotate(25deg) scale(1.15) } 100% { transform: rotate(0) scale(1) } }
+  @keyframes freezeLabel { 0% { transform: translateY(12px); opacity: 0 } 28% { transform: translateY(0); opacity: 1 } 82% { opacity: 1 } 100% { opacity: 0 } }
+  .animate-freeze-overlay { animation: freezeOverlay 900ms cubic-bezier(.22,1,.36,1) forwards; }
+  .animate-freeze-ring { animation: freezeRing 720ms cubic-bezier(.16,1,.3,1) forwards; }
+  .animate-freeze-core { animation: freezeCore 560ms cubic-bezier(.16,1,.3,1) forwards; }
+  .animate-freeze-snow { animation: freezeSnow 560ms cubic-bezier(.16,1,.3,1) forwards; }
+  .animate-freeze-label { animation: freezeLabel 900ms ease-out forwards; }
+  @media (prefers-reduced-motion: reduce) { .animate-freeze-overlay, .animate-freeze-ring, .animate-freeze-core, .animate-freeze-snow, .animate-freeze-label { animation-duration: 1ms; } }
+
   /* ===== FALLING CARDS BACKGROUND ===== */
   .falling-card-wrapper {
     top: -140px;

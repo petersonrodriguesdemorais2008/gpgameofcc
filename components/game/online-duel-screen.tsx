@@ -15,6 +15,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import { FreezeCardAnimation } from "./freeze-card-animation"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import { CHESTS, type ChestId } from "@/lib/chests"
 
@@ -2073,7 +2074,7 @@ function StarfieldCanvas() {
       nebBlob(OW*.12,OH*.80, OW*.24,OH*.16, -.30, "rgba(60,30,200,1)",  .15,.08)
       nebBlob(OW*.10,OH*.82, OW*.14,OH*.10, -.22, "rgba(100,60,255,1)", .20,.10)
 
-      // �����������─ LAYER 3: Bright emission cores (HII regions) ──
+      // �������������─ LAYER 3: Bright emission cores (HII regions) ──
       nebBlob(OW*.30,OH*.38, OW*.06,OH*.04, .18, "rgba(255,150,255,1)", .55,.30)
       nebBlob(OW*.77,OH*.22, OW*.05,OH*.03,-.15, "rgba(100,230,255,1)", .58,.32)
       nebBlob(OW*.50,OH*.79, OW*.05,OH*.03, .08, "rgba(255,180,80,1)",  .52,.28)
@@ -2564,7 +2565,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [gameStarted, setGameStarted] = useState(false)
   const [isMyTurn, setIsMyTurn]       = useState(roomData.isHost) // host goes first
 
-  // ─── Multiplayer channels ────────────────────────────────────────────────
+  // ─── Multiplayer channels ───────────────────────────��────────────────────
   const actionsChannelRef              = useRef<RealtimeChannel | null>(null)
   const chatChannelRef                 = useRef<RealtimeChannel | null>(null)
   const processedActionIdsRef          = useRef<Set<string>>(new Set())
@@ -2626,6 +2627,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   })
   const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
   const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }>({})
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
 
   // Constants for card animations
   const CARD_JUMP_DURATION = 350 // Duration of the "jump" movement
@@ -4594,6 +4596,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         if (func) functions[index] = { ...func, frozenUntilTurn: turn + 2 } as FunctionZoneCard
         return { ...prev, functionZone: functions }
       })
+      setFreezeAnimationCard(target.name)
       showEffectFeedback(`VATNAVORDR MESSIHAM: ${target.name} congelada!${type === "unit" ? " -2 LP no oponente!" : ""}`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
@@ -7254,6 +7257,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         handleHandCardDragEnd()
       }}
     >
+      {freezeAnimationCard && (
+        <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />
+      )}
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
@@ -9438,7 +9444,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
         .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* ── SINFONIA RELÂMPAGO CSS ── */
+        /* ─�� SINFONIA RELÂMPAGO CSS ── */
         @keyframes sinBg    { 0%{opacity:.4} 50%{opacity:.15} 100%{opacity:0} }
         @keyframes sinBolt  { 0%{opacity:1}  40%{opacity:.7}  70%{opacity:.2}  85%,100%{opacity:0} }
         @keyframes sinNote  { 0%{opacity:1;transform:scale(.5) translateY(6px)} 25%{opacity:1;transform:scale(1.25) translateY(-5px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-18px)} 100%{opacity:0;transform:scale(.7) translateY(-35px)} }
