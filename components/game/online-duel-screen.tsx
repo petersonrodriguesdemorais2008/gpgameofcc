@@ -7031,7 +7031,10 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot"
+      || itemSelectionMode.itemCard?.name === "Troca de Guarda"
+      || cardId === "chamas-de-eldfjall"
+      || cardId === "maelstrom-boreal"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
@@ -9061,7 +9064,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             {ugTargetMode.type === "oden_sword" ? "ODEN SWORD"
               : ugTargetMode.type === "twiligh_avalon" ? "TWILIGH AVALON"
                 : ugTargetMode.type === "mefisto" ? "MEFISTO FÓLES"
-                  : "JULGAMENTO DIVINO"}
+                  : ugTargetMode.type === "vatnavordr_messiham" ? "CONGELAMENTO DE VATNAVORDR"
+                    : ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG"
+                      : "JULGAMENTO DIVINO"}
           </h3>
           <p className="text-yellow-200/80 text-xs mb-2">
             {ugTargetMode.type === "oden_sword"
@@ -9070,7 +9075,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 ? "Selecione 1 carta inimiga para destruir"
                 : ugTargetMode.type === "julgamento_divino"
                   ? "Selecione uma Unidade inimiga para -1DP"
-                  : "Selecione uma carta inimiga para devolver a mao"
+                  : ugTargetMode.type === "vatnavordr_messiham"
+                    ? "Selecione uma carta inimiga para congelar"
+                    : ugTargetMode.type === "yggdra_nidhogg"
+                      ? "Selecione uma carta de Função inimiga para destruir"
+                      : "Selecione uma carta inimiga para devolver a mao"
             }
           </p>
           <button
