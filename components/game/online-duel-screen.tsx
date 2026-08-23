@@ -37,8 +37,7 @@ interface OnlineChatMessage {
 
 interface OnlineDuelScreenProps {
   roomData: RoomData
-  onBack: () =
- void
+  onBack: () => void
 }
 
 interface RoomData {
@@ -143,21 +142,15 @@ interface FunctionCardEffect {
   }
   requiresDice?: boolean
   needsDrawAfterResolve?: boolean
-  resolve: (context: EffectContext, targets?: EffectTargets) =
- EffectResult
-  canActivate: (context: EffectContext) =
- { canActivate: boolean; reason?: string }
+  resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
+  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
 }
 
 interface EffectContext {
   playerField: FieldState
   enemyField: FieldState
-  setPlayerField: React.Dispatch<React.SetStateAction<FieldState
-
-
-  setEnemyField: React.Dispatch<React.SetStateAction<FieldState
-
-
+  setPlayerField: React.Dispatch<React.SetStateAction<FieldState>>
+  setEnemyField: React.Dispatch<React.SetStateAction<FieldState>>
 }
 
 interface EffectTargets {
@@ -181,8 +174,7 @@ interface EffectResult {
 }
 
 // Registry of all Function card effects
-const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
- = {
+const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
   "amplificador-de-poder": {
     id: "amplificador-de-poder",
     name: "Amplificador de Poder",
@@ -191,12 +183,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       enemyUnits: 1,
       allyUnits: 1,
     },
-    canActivate: (context) =
- {
-      const hasEnemyUnits = context.enemyField.unitZone.some((u) =
- u !== null)
-      const hasPlayerUnits = context.playerField.unitZone.some((u) =
- u !== null)
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      const hasPlayerUnits = context.playerField.unitZone.some((u) => u !== null)
 
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "Nenhuma unidade inimiga no campo" }
@@ -206,8 +195,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.enemyUnitIndices?.length || !targets?.allyUnitIndices?.length) {
         return { success: false, message: "Alvos invalidos" }
       }
@@ -226,8 +214,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
       const newDp = allyCurrentDp + dpBonus
 
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
@@ -238,8 +225,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         return { ...prev, unitZone: newUnitZone }
       })
 
-      return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -
- ${newDp})` }
+      return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -> ${newDp})` }
     },
   },
 
@@ -247,19 +233,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "bandagem-restauradora",
     name: "Bandagem Restauradora",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20 // Max LP
 
-      if (currentLife 
-= maxLife) {
+      if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(2, maxLife - currentLife) // Heal up to 2, but don't exceed max
@@ -270,14 +253,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
 
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
 
-      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -
- ${newLife})` }
+      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
 
@@ -285,32 +266,27 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "adaga-energizada",
     name: "Adaga Energizada",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Count enemy units on the field
-      const enemyUnitCount = context.enemyField.unitZone.filter((u) =
- u !== null).length
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
 
       if (enemyUnitCount < 2) {
         return { canActivate: false, reason: "O oponente precisa ter 2 ou mais unidades no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       // Deal 4 direct damage to enemy LP
       const damage = 4
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =
- ({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -
- ${newEnemyLife}` }
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -318,19 +294,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "bandagens-duplas",
     name: "Bandagens Duplas",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20 // Max LP
 
-      if (currentLife 
-= maxLife) {
+      if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(4, maxLife - currentLife) // Heal up to 4, but don't exceed max
@@ -341,14 +314,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
 
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
 
-      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -
- ${newLife})` }
+      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
 
@@ -359,26 +330,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     // This effect needs special handling because it draws a card
     // We'll mark it as needing post-resolution draw
     needsDrawAfterResolve: true,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
 
-      if (currentLife 
-= maxLife) {
+      if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(3, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
@@ -386,8 +353,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       // Return special flag to indicate we need to draw and potentially heal more
       return {
         success: true,
-        message: `+${healAmount} LP restaurado! (${currentLife} -
- ${newLife})`,
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
         needsDrawAndCheck: true,
         currentLife: newLife,
       }
@@ -398,31 +364,26 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "cauda-de-dragao-assada",
     name: "Cauda de Dragão Assada",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Count player units on the field
-      const playerUnitCount = context.playerField.unitZone.filter((u) =
- u !== null).length
+      const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
 
       if (playerUnitCount < 2) {
         return { canActivate: false, reason: "Voce precisa ter 2 ou mais unidades no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const maxLife = 20
       const currentLife = context.playerField.life
       const healAmount = Math.min(2, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
       // Buff all player units with +1 DP
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
-        unitZone: prev.unitZone.map((unit) =
- {
+        unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
           return {
             ...unit,
@@ -431,11 +392,8 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         }),
       }))
 
-      const unitCount = context.playerField.unitZone.filter((u) =
- u !== null).length
-      const healMsg = healAmount 
- 0 ? ` +${healAmount} LP (${currentLife} -
- ${newLife})` : ""
+      const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
+      const healMsg = healAmount > 0 ? ` +${healAmount} LP (${currentLife} -> ${newLife})` : ""
       return { success: true, message: `+1 DP para ${unitCount} unidades!${healMsg}` }
     },
   },
@@ -444,26 +402,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "projetil-de-impacto",
     name: "Projétil de Impacto",
     requiresTargets: false,
-    canActivate: () =
- {
+    canActivate: () => {
       // No condition - can always be activated
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       // Deal 2 direct damage to enemy LP
       const damage = 2
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =
- ({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -
- ${newEnemyLife}` }
+      return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -479,11 +433,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has Fehnon Hoskie or Jaden Hainaegi on field
-      const hasRequiredUnit = context.playerField.unitZone.some((u) =
-
+      const hasRequiredUnit = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Fehnon Hoskie" || u.name === "Jaden Hainaegi")
       )
 
@@ -492,8 +444,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
 
       if (chosenOption === "buff") {
@@ -512,8 +463,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         const currentDp = allyUnit.currentDp || allyUnit.dp
         const newDp = currentDp + 2
 
-        context.setPlayerField((prev) =
- {
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[allyIndex]) {
             newUnitZone[allyIndex] = {
@@ -524,8 +474,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
           return { ...prev, unitZone: newUnitZone }
         })
 
-        return { success: true, message: `${allyUnit.name} recebeu +2 DP! (${currentDp} -
- ${newDp})` }
+        return { success: true, message: `${allyUnit.name} recebeu +2 DP! (${currentDp} -> ${newDp})` }
       } else if (chosenOption === "debuff") {
         // Debuff option: -2 DP to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
@@ -542,8 +491,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 2)
 
-        context.setEnemyField((prev) =
- {
+        context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[enemyIndex]) {
             newUnitZone[enemyIndex] = {
@@ -554,8 +502,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
           return { ...prev, unitZone: newUnitZone }
         })
 
-        return { success: true, message: `${enemyUnit.name} perdeu 2 DP! (${currentDp} -
- ${newDp})` }
+        return { success: true, message: `${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
       }
 
       return { success: false, message: "Escolha uma opcao" }
@@ -566,27 +513,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "nucleo-explosivo",
     name: "Núcleo Explosivo",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if opponent has at least 1 unit on field
-      const enemyUnitCount = context.enemyField.unitZone.filter((u) =
- u !== null).length
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
 
       if (enemyUnitCount === 0) {
         return { canActivate: false, reason: "O oponente precisa ter ao menos 1 unidade no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       // Deal 1 damage to each enemy unit
       let unitsHit = 0
 
-      context.setEnemyField((prev) =
- ({
+      context.setEnemyField((prev) => ({
         ...prev,
-        unitZone: prev.unitZone.map((unit) =
- {
+        unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
           unitsHit++
           const currentDp = unit.currentDp || unit.dp
@@ -607,26 +549,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Kit Médico Improvisado",
     requiresTargets: false,
     needsDrawAfterResolve: true,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
 
-      if (currentLife 
-= maxLife) {
+      if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(2, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
@@ -634,8 +572,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       // Return special flag to indicate we need to draw and check for Unit type
       return {
         success: true,
-        message: `+${healAmount} LP restaurado! (${currentLife} -
- ${newLife})`,
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
         needsDrawAndCheckUnit: true,
         currentLife: newLife,
       }
@@ -647,26 +584,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Soro Recuperador",
     requiresTargets: false,
     needsDrawAfterResolve: true,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
 
-      if (currentLife 
-= maxLife) {
+      if (currentLife >= maxLife) {
         return { canActivate: false, reason: "LP ja esta no maximo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 20
       const healAmount = Math.min(3, maxLife - currentLife)
       const newLife = Math.min(currentLife + healAmount, maxLife)
 
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: newLife,
       }))
@@ -674,8 +607,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       // Return special flag to indicate we need to draw (no bonus check)
       return {
         success: true,
-        message: `+${healAmount} LP restaurado! (${currentLife} -
- ${newLife})`,
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
         needsDrawOnly: true,
         currentLife: newLife,
       }
@@ -686,11 +618,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "ordem-de-laceracao",
     name: "Ordem de Laceração",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has Fehnon Hoskie on field
-      const hasFehnon = context.playerField.unitZone.some((u) =
-
+      const hasFehnon = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Fehnon Hoskie"
       )
 
@@ -699,21 +629,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       // Deal 3 direct damage to enemy LP (ignores unit abilities)
       const damage = 3
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =
- ({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -
- ${newEnemyLife}` }
+      return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -721,11 +648,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "sinfonia-relampago",
     name: "Sinfonia Relâmpago",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has Morgana Pendragon on field
-      const hasMorgana = context.playerField.unitZone.some((u) =
-
+      const hasMorgana = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Morgana Pendragon"
       )
 
@@ -734,21 +659,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       // Deal 4 direct damage to enemy LP (cannot be negated by traps)
       const damage = 4
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =
- ({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -
- ${newEnemyLife}` }
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -761,11 +683,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       { id: "unit", label: "Atacar Unidade", description: "Causa 3 de dano a uma unidade inimiga" },
       { id: "lp", label: "Atacar LP", description: "Causa 3 de dano direto ao LP do oponente" },
     ],
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has Scandinavian Angel Hrotti on field (any variant name)
-      const hasHrotti = context.playerField.unitZone.some((u) =
-
+      const hasHrotti = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Scandinavian Angel Hrotti" || u.name?.toLowerCase().includes("hrotti"))
       )
 
@@ -774,8 +694,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
 
       if (chosenOption === "lp") {
@@ -784,14 +703,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         const currentEnemyLife = context.enemyField.life
         const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-        context.setEnemyField((prev) =
- ({
+        context.setEnemyField((prev) => ({
           ...prev,
           life: newEnemyLife,
         }))
 
-        return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -
- ${newEnemyLife}` }
+        return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
       } else if (chosenOption === "unit") {
         // Damage to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
@@ -809,8 +726,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
 
-        context.setEnemyField((prev) =
- {
+        context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
 
@@ -835,8 +751,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         if (isDestroyed) {
           return { success: true, message: `Fafnisbani! ${enemyUnit.name} foi destruido!` }
         }
-        return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -
- ${newDp})` }
+        return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -> ${newDp})` }
       }
 
       return { success: false, message: "Escolha uma opcao" }
@@ -852,11 +767,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       { id: "unit", label: "Atacar Unidade", description: "Causa 4 de dano a uma unidade inimiga" },
       { id: "lp", label: "Atacar LP", description: "Causa 4 de dano direto ao LP do oponente" },
     ],
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has Scandinavian Angel Logi on field (any variant name)
-      const hasLogi = context.playerField.unitZone.some((u) =
-
+      const hasLogi = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Scandinavian Angel Logi" || u.name?.toLowerCase().includes("logi"))
       )
 
@@ -865,8 +778,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
 
       if (chosenOption === "lp") {
@@ -875,14 +787,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         const currentEnemyLife = context.enemyField.life
         const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-        context.setEnemyField((prev) =
- ({
+        context.setEnemyField((prev) => ({
           ...prev,
           life: newEnemyLife,
         }))
 
-        return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -
- ${newEnemyLife}` }
+        return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
       } else if (chosenOption === "unit") {
         // Damage to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
@@ -900,8 +810,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         const newDp = Math.max(0, currentDp - 4)
         const isDestroyed = newDp <= 0
 
-        context.setEnemyField((prev) =
- {
+        context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
 
@@ -926,8 +835,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         if (isDestroyed) {
           return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} foi destruido!` }
         }
-        return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -
- ${newDp})` }
+        return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -> ${newDp})` }
       }
 
       return { success: false, message: "Escolha uma opcao" }
@@ -944,17 +852,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) =
- {
-      const hasAllyUnits = context.playerField.unitZone.some((u) =
- u !== null)
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
       if (!hasAllyUnits) {
         return { canActivate: false, reason: "Voce precisa ter uma unidade em campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -969,14 +874,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       const diceResult = targets.diceResult || 1
       const currentDp = allyUnit.currentDp || allyUnit.dp
 
-      if (diceResult 
-= 1 && diceResult <= 3) {
+      if (diceResult >= 1 && diceResult <= 3) {
         // 1-3: -3 DP
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
 
-        context.setPlayerField((prev) =
- {
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
 
@@ -996,14 +899,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         if (isDestroyed) {
           return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP e foi destruida!` }
         }
-        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP (${currentDp} -
- ${newDp})` }
+        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP (${currentDp} -> ${newDp})` }
       } else {
         // 4-6: +5 DP
         const newDp = currentDp + 5
 
-        context.setPlayerField((prev) =
- {
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[allyIndex]) {
             newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
@@ -1011,8 +912,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
           return { ...prev, unitZone: newUnitZone }
         })
 
-        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} ganhou +5 DP! (${currentDp} -
- ${newDp})` }
+        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} ganhou +5 DP! (${currentDp} -> ${newDp})` }
       }
     },
   },
@@ -1025,25 +925,19 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Cards treated as Fire by name even if element tag differs
       const fireNames = ["scandinavian angel logi", "jaden hainaegi"]
-      const isFireByName = (u: any) =
-
-        fireNames.some(n =
- u.name?.toLowerCase().includes(n))
+      const isFireByName = (u: any) =>
+        fireNames.some(n => u.name?.toLowerCase().includes(n))
 
       // Cards treated as Darkness by name
       const darknessNames = ["morgana pendragon"]
-      const isDarknessByName = (u: any) =
-
-        darknessNames.some(n =
- u.name?.toLowerCase().includes(n))
+      const isDarknessByName = (u: any) =>
+        darknessNames.some(n => u.name?.toLowerCase().includes(n))
 
       const validElements = ["darkness", "fire", "aquos"]
-      const hasValidUnit = context.playerField.unitZone.some((u) =
-
+      const hasValidUnit = context.playerField.unitZone.some((u) =>
         u !== null && (
           validElements.includes(u.element?.toLowerCase() || "") ||
           isFireByName(u) ||
@@ -1055,8 +949,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -1070,15 +963,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
 
       // Cards treated as Fire by name
       const fireNames = ["scandinavian angel logi", "jaden hainaegi"]
-      const isFireByName = fireNames.some(n =
-
+      const isFireByName = fireNames.some(n =>
         allyUnit.name?.toLowerCase().includes(n)
       )
 
       // Cards treated as Darkness by name
       const darknessNames = ["morgana pendragon"]
-      const isDarknessByName = darknessNames.some(n =
-
+      const isDarknessByName = darknessNames.some(n =>
         allyUnit.name?.toLowerCase().includes(n)
       )
 
@@ -1096,16 +987,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       let dpBonus = 0
       let bonusMessage = ""
 
-      if (diceResult 
-= 1 && diceResult <= 2) {
+      if (diceResult >= 1 && diceResult <= 2) {
         dpBonus = 3
         if (effectiveElement === "darkness") {
           // Bonus: Draw 1 card
-          if (context.playerField.deck.length 
- 0) {
+          if (context.playerField.deck.length > 0) {
             const drawnCard = context.playerField.deck[0]
-            context.setPlayerField((prev) =
- ({
+            context.setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, drawnCard],
               deck: prev.deck.slice(1),
@@ -1113,28 +1001,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
             bonusMessage = " Bonus Darkness: Comprou 1 carta!"
           }
         }
-      } else if (diceResult 
-= 3 && diceResult <= 4) {
+      } else if (diceResult >= 3 && diceResult <= 4) {
         dpBonus = 4
         if (effectiveElement === "fire") {
           // Bonus: +2 LP
-          context.setPlayerField((prev) =
- ({ ...prev, life: prev.life + 2 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Fire: +2 LP!"
         }
       } else {
         dpBonus = 5
         if (effectiveElement === "aquos") {
           // Bonus: +3 LP
-          context.setPlayerField((prev) =
- ({ ...prev, life: prev.life + 3 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
           bonusMessage = " Bonus Aquos: +3 LP!"
         }
       }
 
       const newDp = currentDp + dpBonus
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
@@ -1154,25 +1038,19 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Cards treated as Lightness by name even if element tag differs
       const lightnessNames = ["santo graal galahad", "mordred, o usurpador"]
-      const isLightnessByName = (u: any) =
-
-        lightnessNames.some(n =
- u.name?.toLowerCase().includes(n))
+      const isLightnessByName = (u: any) =>
+        lightnessNames.some(n => u.name?.toLowerCase().includes(n))
 
       // Cards treated as Darkness by name
       const darknessNames = ["morgana pendragon"]
-      const isDarknessByName = (u: any) =
-
-        darknessNames.some(n =
- u.name?.toLowerCase().includes(n))
+      const isDarknessByName = (u: any) =>
+        darknessNames.some(n => u.name?.toLowerCase().includes(n))
 
       const validElements = ["neutral", "lightness", "ventus", "void", "darkness"]
-      const hasValidUnit = context.playerField.unitZone.some((u) =
-
+      const hasValidUnit = context.playerField.unitZone.some((u) =>
         u !== null && (
           validElements.includes(u.element?.toLowerCase() || "") ||
           isLightnessByName(u) ||
@@ -1184,8 +1062,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -1199,15 +1076,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
 
       // Cards treated as Lightness by name
       const lightnessNames = ["santo graal galahad", "mordred, o usurpador"]
-      const isLightnessByName = lightnessNames.some(n =
-
+      const isLightnessByName = lightnessNames.some(n =>
         allyUnit.name?.toLowerCase().includes(n)
       )
 
       // Cards treated as Darkness by name
       const darknessNames = ["morgana pendragon"]
-      const isDarknessByName = darknessNames.some(n =
-
+      const isDarknessByName = darknessNames.some(n =>
         allyUnit.name?.toLowerCase().includes(n)
       )
 
@@ -1231,16 +1106,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       let dpBonus = 0
       let bonusMessage = ""
 
-      if (diceResult 
-= 1 && diceResult <= 2) {
+      if (diceResult >= 1 && diceResult <= 2) {
         dpBonus = 3
         if (effectiveElement === "neutral") {
           // Bonus: Draw 1 card
-          if (context.playerField.deck.length 
- 0) {
+          if (context.playerField.deck.length > 0) {
             const drawnCard = context.playerField.deck[0]
-            context.setPlayerField((prev) =
- ({
+            context.setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, drawnCard],
               deck: prev.deck.slice(1),
@@ -1248,33 +1120,28 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
             bonusMessage = " Bonus Neutral: Comprou 1 carta!"
           }
         }
-      } else if (diceResult 
-= 3 && diceResult <= 4) {
+      } else if (diceResult >= 3 && diceResult <= 4) {
         dpBonus = 4
         if (effectiveElement === "lightness") {
           // Bonus: +2 LP
-          context.setPlayerField((prev) =
- ({ ...prev, life: prev.life + 2 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Lightness: +2 LP!"
         } else if (effectiveElement === "darkness") {
           // Bonus: enemy loses 2 LP
-          context.setEnemyField((prev) =
- ({ ...prev, life: Math.max(0, prev.life - 2) }))
+          context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
           bonusMessage = " Bonus Darkness: Inimigo -2 LP!"
         }
       } else {
         dpBonus = 5
         if (effectiveElement === "ventus") {
           // Bonus: +3 LP
-          context.setPlayerField((prev) =
- ({ ...prev, life: prev.life + 3 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
           bonusMessage = " Bonus Ventus: +3 LP!"
         }
       }
 
       const newDp = currentDp + dpBonus
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
@@ -1292,37 +1159,29 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "contra-ataque-surpresa",
     name: "Contra-Ataque Surpresa",
     requiresTargets: false,
-    canActivate: () =
- ({ canActivate: true }),
-    resolve: () =
- ({ success: true, message: "Armadilha ativada: Contra-Ataque Surpresa!" }),
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Contra-Ataque Surpresa!" }),
   },
   "escudo-de-mana": {
     id: "escudo-de-mana",
     name: "Escudo de Mana",
     requiresTargets: false,
-    canActivate: () =
- ({ canActivate: true }),
-    resolve: () =
- ({ success: true, message: "Armadilha ativada: Escudo de Mana!" }),
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Escudo de Mana!" }),
   },
   "portao-da-fortaleza": {
     id: "portao-da-fortaleza",
     name: "Portão da Fortaleza",
     requiresTargets: false,
-    canActivate: () =
- ({ canActivate: true }),
-    resolve: () =
- ({ success: true, message: "Armadilha ativada: Portão da Fortaleza!" }),
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Portão da Fortaleza!" }),
   },
   "brincadeira-de-mau-gosto": {
     id: "brincadeira-de-mau-gosto",
     name: "Brincadeira de Mau Gosto",
     requiresTargets: false,
-    canActivate: () =
- ({ canActivate: true }),
-    resolve: () =
- ({ success: true, message: "Armadilha ativada: Brincadeira de Mau Gosto!" }),
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "Armadilha ativada: Brincadeira de Mau Gosto!" }),
   },
 
   // ========== NEW ACTION FUNCTION CARDS ==========
@@ -1331,25 +1190,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "chamado-ao-banquete-nordico",
     name: "Chamado ao Banquete Nórdico",
     requiresTargets: false,
-    canActivate: (context) =
- ({
-      canActivate: context.playerField.graveyard.some((c) =
- c.type === "troops" && (c.element === "Aquos" || c.element === "Fire")),
+    canActivate: (context) => ({
+      canActivate: context.playerField.graveyard.some((c) => c.type === "troops" && (c.element === "Aquos" || c.element === "Fire")),
       reason: "Nenhuma Unidade de Tropa Aquos ou Fire no Cemitério",
     }),
-    resolve: (context) =
- {
-      const index = context.playerField.graveyard.findIndex((c) =
- c.type === "troops" && (c.element === "Aquos" || c.element === "Fire"))
+    resolve: (context) => {
+      const index = context.playerField.graveyard.findIndex((c) => c.type === "troops" && (c.element === "Aquos" || c.element === "Fire"))
       if (index < 0) return { success: false, message: "Nenhum alvo válido no Cemitério" }
       const card = context.playerField.graveyard[index]
-      const slot = context.playerField.unitZone.findIndex((u) =
- u === null)
+      const slot = context.playerField.unitZone.findIndex((u) => u === null)
       if (slot < 0) return { success: false, message: "Não há espaço para invocar a unidade" }
-      context.setPlayerField((prev) =
- {
-        const graveyard = prev.graveyard.filter((_, i) =
- i !== index)
+      context.setPlayerField((prev) => {
+        const graveyard = prev.graveyard.filter((_, i) => i !== index)
         const unitZone = [...prev.unitZone]
         unitZone[slot] = { ...card, currentDp: card.dp, hasAttacked: false, canAttackTurn: 999 } as FieldCard
         return { ...prev, graveyard, unitZone }
@@ -1362,16 +1214,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Chamas de Eldfjall",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) =
- ({ canActivate: context.playerField.unitZone.some((u) =
- u?.element === "Fire"), reason: "Você precisa ter uma unidade Fire" }),
-    resolve: (context, targets) =
- {
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Fire"), reason: "Você precisa ter uma unidade Fire" }),
+    resolve: (context, targets) => {
       const index = targets?.allyUnitIndices?.[0]
       const unit = index === undefined ? null : context.playerField.unitZone[index]
       if (!unit || unit.element !== "Fire") return { success: false, message: "Escolha uma unidade Fire" }
-      context.setPlayerField((prev) =
- { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
+      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
       return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
     },
   },
@@ -1380,16 +1228,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Maelstrom Boreal",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) =
- ({ canActivate: context.playerField.unitZone.some((u) =
- u?.element === "Aquos"), reason: "Você precisa ter uma unidade Aquos" }),
-    resolve: (context, targets) =
- {
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Aquos"), reason: "Você precisa ter uma unidade Aquos" }),
+    resolve: (context, targets) => {
       const index = targets?.allyUnitIndices?.[0]
       const unit = index === undefined ? null : context.playerField.unitZone[index]
       if (!unit || unit.element !== "Aquos") return { success: false, message: "Escolha uma unidade Aquos" }
-      context.setPlayerField((prev) =
- { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
+      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
       return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
     },
   },
@@ -1398,19 +1242,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Dualidade do Caos Nórdico",
     requiresTargets: true,
     targetConfig: { enemyUnits: 1 },
-    canActivate: (context) =
- ({ canActivate: context.playerField.unitZone.some((u) =
- u && (u.name.includes("Logi") || u.name.includes("Hrotti"))), reason: "É necessário ter Logi ou Hrotti no campo" }),
-    resolve: (context, targets) =
- {
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u && (u.name.includes("Logi") || u.name.includes("Hrotti"))), reason: "É necessário ter Logi ou Hrotti no campo" }),
+    resolve: (context, targets) => {
       const index = targets?.enemyUnitIndices?.[0]
       const unit = index === undefined ? null : context.enemyField.unitZone[index]
-      if (!unit || unit.dp 
-= 5) return { success: false, message: "Escolha uma unidade inimiga com menos de 5 DP" }
-      context.setEnemyField((prev) =
- { const zone = [...prev.unitZone]; zone[index!] = null; return { ...prev, unitZone: zone, graveyard: [...prev.graveyard, unit] } })
-      context.setPlayerField((prev) =
- { const [draw, ...deck] = prev.deck; return draw ? { ...prev, deck, hand: [...prev.hand, draw] } : prev })
+      if (!unit || unit.dp >= 5) return { success: false, message: "Escolha uma unidade inimiga com menos de 5 DP" }
+      context.setEnemyField((prev) => { const zone = [...prev.unitZone]; zone[index!] = null; return { ...prev, unitZone: zone, graveyard: [...prev.graveyard, unit] } })
+      context.setPlayerField((prev) => { const [draw, ...deck] = prev.deck; return draw ? { ...prev, deck, hand: [...prev.hand, draw] } : prev })
       return { success: true, message: `${unit.name} foi destruída e você comprou uma carta!` }
     },
   },
@@ -1418,12 +1256,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "colapso-da-bifrost",
     name: "Colapso da Bifrost",
     requiresTargets: false,
-    canActivate: (context) =
- ({ canActivate: Boolean(context.enemyField.scenarioZone), reason: "O oponente não possui Cenário ativo" }),
-    resolve: (context) =
- {
-      context.setEnemyField((prev) =
- ({ ...prev, scenarioZone: null, life: Math.max(0, prev.life - 2) }))
+    canActivate: (context) => ({ canActivate: Boolean(context.enemyField.scenarioZone), reason: "O oponente não possui Cenário ativo" }),
+    resolve: (context) => {
+      context.setEnemyField((prev) => ({ ...prev, scenarioZone: null, life: Math.max(0, prev.life - 2) }))
       return { success: true, message: "Cenário destruído! O oponente sofreu 2 de dano." }
     },
   },
@@ -1431,18 +1266,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "forja-de-brokk-e-eitri",
     name: "Forja de Brokk e Eitri",
     requiresTargets: false,
-    canActivate: (context) =
- ({ canActivate: context.playerField.life 
- 5 && context.playerField.deck.some((c) =
- c.type === "ultimateGear"), reason: "É necessário ter mais de 5 LP e uma Ultimate Gear no deck" }),
-    resolve: (context) =
- {
-      const index = context.playerField.deck.findIndex((c) =
- c.type === "ultimateGear")
+    canActivate: (context) => ({ canActivate: context.playerField.life > 5 && context.playerField.deck.some((c) => c.type === "ultimateGear"), reason: "É necessário ter mais de 5 LP e uma Ultimate Gear no deck" }),
+    resolve: (context) => {
+      const index = context.playerField.deck.findIndex((c) => c.type === "ultimateGear")
       if (index < 0) return { success: false, message: "Nenhuma Ultimate Gear encontrada" }
-      context.setPlayerField((prev) =
- { const card = prev.deck[index]; return { ...prev, life: prev.life - 5, deck: prev.deck.filter((_, i) =
- i !== index), hand: [...prev.hand, card] } })
+      context.setPlayerField((prev) => { const card = prev.deck[index]; return { ...prev, life: prev.life - 5, deck: prev.deck.filter((_, i) => i !== index), hand: [...prev.hand, card] } })
       return { success: true, message: "Você pagou 5 LP e adicionou uma Ultimate Gear à mão!" }
     },
   },
@@ -1451,19 +1279,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Rivalidade de Destinos Azuis",
     requiresTargets: true,
     targetConfig: { enemyUnits: 1 },
-    canActivate: (context) =
- ({ canActivate: context.playerField.unitZone.some((u) =
- u && (u.name.includes("Fehnon") || u.name.includes("Hrotti"))), reason: "É necessário ter Fehnon Hoskie ou Hrotti no campo" }),
-    resolve: (context, targets) =
- {
+    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u && (u.name.includes("Fehnon") || u.name.includes("Hrotti"))), reason: "É necessário ter Fehnon Hoskie ou Hrotti no campo" }),
+    resolve: (context, targets) => {
       const index = targets?.enemyUnitIndices?.[0]
       const unit = index === undefined ? null : context.enemyField.unitZone[index]
-      if (!unit || unit.dp 
-= 4) return { success: false, message: "Escolha uma unidade inimiga com menos de 4 DP" }
-      context.setEnemyField((prev) =
- ({ ...prev, unitZone: prev.unitZone.map((u, i) =
- i === index ? null : u), graveyard: [...prev.graveyard, unit, ...prev.functionZone.filter(Boolean) as FunctionZoneCard[]], functionZone: prev.functionZone.map(() =
- null) }))
+      if (!unit || unit.dp >= 4) return { success: false, message: "Escolha uma unidade inimiga com menos de 4 DP" }
+      context.setEnemyField((prev) => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === index ? null : u), graveyard: [...prev.graveyard, unit, ...prev.functionZone.filter(Boolean) as FunctionZoneCard[]], functionZone: prev.functionZone.map(() => null) }))
       return { success: true, message: "Unidade e cartas de Função do oponente destruídas!" }
     },
   },
@@ -1475,50 +1296,39 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     targetConfig: {
       enemyUnits: 1,
     },
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has 2+ units of the same brotherhood
-      const units = context.playerField.unitZone.filter((u) =
- u !== null) as FieldCard[]
+      const units = context.playerField.unitZone.filter((u) => u !== null) as FieldCard[]
 
       // Brotherhood check functions
       const brotherhoods = [
         // Avalon: Arthur, Morgana, Galahad, Vivian, Merlin, Mordred, Cavaleiro Verde, Caveiro Afogado
-        (name: string) =
- name.includes("arthur") || name.includes("morgana") || name.includes("galahad") || name.includes("vivian") || name.includes("merlin") || name.includes("mordred") || name.includes("cavaleiro verde") || name.includes("caveiro afogado"),
+        (name: string) => name.includes("arthur") || name.includes("morgana") || name.includes("galahad") || name.includes("vivian") || name.includes("merlin") || name.includes("mordred") || name.includes("cavaleiro verde") || name.includes("caveiro afogado"),
         // The Great Order: Fehnon, Morgana, Calem
-        (name: string) =
- name.includes("fehnon") || name.includes("morgana") || name.includes("calem"),
+        (name: string) => name.includes("fehnon") || name.includes("morgana") || name.includes("calem"),
         // Scandinavian Angels
-        (name: string) =
- name.includes("scandinavian angel"),
+        (name: string) => name.includes("scandinavian angel"),
         // Tormenta Prominence: Jaden
-        (name: string) =
- name.includes("jaden"),
+        (name: string) => name.includes("jaden"),
       ]
 
-      const hasBrotherhood = brotherhoods.some((checkFn) =
- {
-        const count = units.filter((u) =
- checkFn(u.name.toLowerCase())).length
-        return count 
-= 2
+      const hasBrotherhood = brotherhoods.some((checkFn) => {
+        const count = units.filter((u) => checkFn(u.name.toLowerCase())).length
+        return count >= 2
       })
 
       if (!hasBrotherhood) {
         return { canActivate: false, reason: "Você precisa ter 2 ou mais Unidades da mesma Irmandade em campo" }
       }
 
-      const hasEnemyUnits = context.enemyField.unitZone.some((u) =
- u !== null)
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "O oponente não possui unidades no campo" }
       }
 
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.enemyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade inimiga" }
       }
@@ -1533,8 +1343,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       const currentDp = enemyUnit.currentDp || enemyUnit.dp
       const newDp = Math.max(0, currentDp - 2)
 
-      context.setEnemyField((prev) =
- {
+      context.setEnemyField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const newGraveyard = [...prev.graveyard]
         if (newDp <= 0) {
@@ -1554,8 +1363,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       if (newDp <= 0) {
         return { success: true, message: `Investida Coordenada! ${enemyUnit.name} foi destruída!` }
       }
-      return { success: true, message: `Investida Coordenada! ${enemyUnit.name} perdeu 2 DP! (${currentDp} -
- ${newDp})` }
+      return { success: true, message: `Investida Coordenada! ${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
     },
   },
 
@@ -1563,16 +1371,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "lacos-da-ordem",
     name: "Laços da Ordem",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has 2+ Great Order units (Fehnon, Morgana, Calem)
       const greatOrderNames = ["fehnon", "morgana", "calem"]
-      const greatOrderCount = context.playerField.unitZone.filter((u) =
- {
+      const greatOrderCount = context.playerField.unitZone.filter((u) => {
         if (u === null) return false
         const name = u.name.toLowerCase()
-        return greatOrderNames.some((n) =
- name.includes(n))
+        return greatOrderNames.some((n) => name.includes(n))
       }).length
 
       if (greatOrderCount < 2) {
@@ -1581,32 +1386,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
 
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const greatOrderNames = ["fehnon", "morgana", "calem"]
 
       // Check for trio (all 3)
-      const hasFehnon = context.playerField.unitZone.some((u) =
- u !== null && u.name.toLowerCase().includes("fehnon"))
-      const hasMorgana = context.playerField.unitZone.some((u) =
- u !== null && u.name.toLowerCase().includes("morgana"))
-      const hasCalem = context.playerField.unitZone.some((u) =
- u !== null && u.name.toLowerCase().includes("calem"))
+      const hasFehnon = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("fehnon"))
+      const hasMorgana = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("morgana"))
+      const hasCalem = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("calem"))
       const hasTrio = hasFehnon && hasMorgana && hasCalem
 
       // Base effect: recover an Action Function from graveyard
-      const actionCards = context.playerField.graveyard.filter((c) =
- c.type === "action")
+      const actionCards = context.playerField.graveyard.filter((c) => c.type === "action")
       let recoveredCard: typeof actionCards[0] | null = null
 
-      if (actionCards.length 
- 0) {
+      if (actionCards.length > 0) {
         recoveredCard = actionCards[0]
-        context.setPlayerField((prev) =
- {
+        context.setPlayerField((prev) => {
           const graveyardCopy = [...prev.graveyard]
-          const cardIndex = graveyardCopy.findIndex((c) =
- c.id === recoveredCard!.id)
+          const cardIndex = graveyardCopy.findIndex((c) => c.id === recoveredCard!.id)
           if (cardIndex !== -1) {
             graveyardCopy.splice(cardIndex, 1)
           }
@@ -1623,18 +1420,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
         : "Nenhuma Action Function no Cemitério para recuperar."
 
       // Trio bonus: draw a card, if it's a Function type, +2DP to a unit
-      if (hasTrio && context.playerField.deck.length 
- 0) {
+      if (hasTrio && context.playerField.deck.length > 0) {
         const drawnCard = context.playerField.deck[0]
         const isFunction = drawnCard.type === "action" || drawnCard.type === "magic" || drawnCard.type === "trap"
 
         if (isFunction) {
           // Draw the card and give +2DP to the first unit on field
-          const firstUnitIndex = context.playerField.unitZone.findIndex((u) =
- u !== null)
+          const firstUnitIndex = context.playerField.unitZone.findIndex((u) => u !== null)
 
-          context.setPlayerField((prev) =
- {
+          context.setPlayerField((prev) => {
             const newUnitZone = [...prev.unitZone]
             if (firstUnitIndex !== -1 && newUnitZone[firstUnitIndex]) {
               const unit = newUnitZone[firstUnitIndex]!
@@ -1656,8 +1450,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
             : "unidade"
           message += ` Trio completo! Comprou "${drawnCard.name}" (Função) e ${unitName} ganhou +2DP!`
         } else {
-          context.setPlayerField((prev) =
- ({
+          context.setPlayerField((prev) => ({
             ...prev,
             hand: [...prev.hand, drawnCard],
             deck: prev.deck.slice(1),
@@ -1674,18 +1467,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "estrategia-real",
     name: "Estratégia Real",
     requiresTargets: false,
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       if (context.playerField.deck.length === 0) {
         return { canActivate: false, reason: "Seu deck está vazio" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       // Check if player has Rei Arthur on field
-      const hasArthur = context.playerField.unitZone.some((u) =
-
+      const hasArthur = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Rei Arthur"
       )
 
@@ -1693,8 +1483,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       const actualDraw = Math.min(drawCount, context.playerField.deck.length)
       const drawnCards = context.playerField.deck.slice(0, actualDraw)
 
-      context.setPlayerField((prev) =
- ({
+      context.setPlayerField((prev) => ({
         ...prev,
         hand: [...prev.hand, ...drawnCards],
         deck: prev.deck.slice(actualDraw),
@@ -1714,11 +1503,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) =
- {
+    canActivate: (context) => {
       // Check if player has a Ventus or Haos (Lightness) unit on field
-      const hasValidUnit = context.playerField.unitZone.some((u) =
- {
+      const hasValidUnit = context.playerField.unitZone.some((u) => {
         if (u === null) return false
         const el = u.element?.toLowerCase() || ""
         return el === "ventus" || el === "haos" || el === "lightness"
@@ -1729,8 +1516,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma Unidade Ventus ou Lightness sua" }
       }
@@ -1748,8 +1534,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
 
       // Allow the unit to attack twice (reset hasAttacked and canAttack)
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
@@ -1770,10 +1555,8 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Troca de Guarda",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) =
- {
-      const hasDarknessUnit = context.playerField.unitZone.some((u) =
-
+    canActivate: (context) => {
+      const hasDarknessUnit = context.playerField.unitZone.some((u) =>
         u !== null && u.element?.toLowerCase() === "darkus"
       )
       if (!hasDarknessUnit) {
@@ -1781,8 +1564,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma Unidade Darkus sua" }
       }
@@ -1792,8 +1574,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       if (allyUnit.element?.toLowerCase() !== "darkus") {
         return { success: false, message: "A unidade selecionada deve ser do Elemento Darkus" }
       }
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const unitToReturn = newUnitZone[allyIndex]
         if (!unitToReturn) return prev
@@ -1808,31 +1589,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "chamado-da-tavola",
     name: "Chamado da Távola",
     requiresTargets: false,
-    canActivate: (context) =
- {
-      const hasTroop = context.playerField.deck.some((c) =
- c.type === "troops")
+    canActivate: (context) => {
+      const hasTroop = context.playerField.deck.some((c) => c.type === "troops")
       if (!hasTroop) {
         return { canActivate: false, reason: "Não há Unidades de Tropa no seu deck" }
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
-      const troops = context.playerField.deck.filter((c) =
- c.type === "troops")
+    resolve: (context) => {
+      const troops = context.playerField.deck.filter((c) => c.type === "troops")
       if (troops.length === 0) {
         return { success: false, message: "Nenhuma Unidade de Tropa encontrada no deck" }
       }
       // Pick the first troop found (deck is already shuffled)
       const chosen = troops[0]
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         // Remove chosen card from deck and shuffle the rest
-        const newDeck = prev.deck.filter((c) =
- c !== chosen)
-        const shuffled = [...newDeck].sort(() =
- Math.random() - 0.5)
+        const newDeck = prev.deck.filter((c) => c !== chosen)
+        const shuffled = [...newDeck].sort(() => Math.random() - 0.5)
         return {
           ...prev,
           hand: [...prev.hand, chosen],
@@ -1849,15 +1623,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     requiresTargets: true,
     requiresDice: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) =
- {
-      const hasAllyUnits = context.playerField.unitZone.some((u) =
- u !== null)
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
       if (!hasAllyUnits) return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) return { success: false, message: "Selecione uma unidade sua" }
       const allyIndex = targets.allyUnitIndices[0]
       const allyUnit = context.playerField.unitZone[allyIndex]
@@ -1867,8 +1638,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       if (diceResult <= 2) {
         const newDp = Math.max(0, currentDp - 5)
         const isDestroyed = newDp <= 0
-        context.setPlayerField((prev) =
- {
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (isDestroyed) {
             const dead = newUnitZone[allyIndex]; newUnitZone[allyIndex] = null
@@ -1882,8 +1652,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       if (diceResult <= 4) return { success: true, message: `Dado: ${diceResult}! Nada acontece.` }
       const newDp = currentDp + 8
-      context.setPlayerField((prev) =
- {
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2 } as any
         return { ...prev, unitZone: newUnitZone as any }
@@ -1897,17 +1666,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     name: "Flecha de Balista",
     requiresTargets: true,
     targetConfig: { enemyUnits: 1 },
-    canActivate: (context) =
- {
-      const hasEnemyUnits = context.enemyField.unitZone.some((u) =
- u !== null)
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "O oponente não tem Unidades no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) =
- {
+    resolve: (context, targets) => {
       if (!targets?.enemyUnitIndices?.length) {
         return { success: false, message: "Selecione uma Unidade inimiga" }
       }
@@ -1919,8 +1685,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       const newDp = Math.max(0, currentDp - 2)
       const isDestroyed = newDp <= 0
 
-      context.setEnemyField((prev) =
- {
+      context.setEnemyField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const newGraveyard = [...prev.graveyard]
         if (isDestroyed) {
@@ -1943,10 +1708,8 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
     id: "pedra-de-afiar",
     name: "Pedra de Afiar",
     requiresTargets: false,
-    canActivate: (context) =
- {
-      const hasMainUnit = context.playerField.unitZone.some((u) =
-
+    canActivate: (context) => {
+      const hasMainUnit = context.playerField.unitZone.some((u) =>
         u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
       )
       if (!hasMainUnit) {
@@ -1954,14 +1717,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
       }
       return { canActivate: true }
     },
-    resolve: (context) =
- {
+    resolve: (context) => {
       const hasUltimateGear = context.playerField.ultimateZone !== null
 
       if (hasUltimateGear) {
         // Already has UG equipped: deal -1DP direct to enemy LP
-        context.setEnemyField((prev) =
- ({ ...prev, life: Math.max(0, prev.life - 1) }))
+        context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
         return { success: true, message: `Pedra de Afiar: Ultimate Gear já equipada! -1DP direto aos LP do oponente!` }
       }
 
@@ -1973,8 +1734,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
-const getBaseCardId = (cardId: string): string =
- {
+const getBaseCardId = (cardId: string): string => {
   // Card IDs in deck are formatted as: "original-id-deck-timestamp"
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
@@ -1985,8 +1745,7 @@ const getBaseCardId = (cardId: string): string =
 }
 
 // Helper function to get effect for a card - also checks by card name
-const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null =
- {
+const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
   // First try by base ID
   const baseId = getBaseCardId(card.id)
   if (FUNCTION_CARD_EFFECTS[baseId]) {
@@ -1995,15 +1754,13 @@ const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCar
 
   // Fallback: try to match by card name
   const effectByName = Object.values(FUNCTION_CARD_EFFECTS).find(
-    (effect) =
- effect.name === card.name
+    (effect) => effect.name === card.name
   )
   return effectByName || null
 }
 
 // Helper to check if a Function card can be activated
-const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } =
- {
+const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
   const effect = getFunctionCardEffect({ id: cardId })
   if (!effect) {
     return { canActivate: true } // Unknown cards can be placed normally
@@ -2012,14 +1769,12 @@ const canActivateFunctionCard = (cardId: string, context: EffectContext): { canA
 }
 
 // Function to get playmat for a deck
-// REMOVED: const getPlaymatForDeck = (deck: DeckWithImages): { image: string } | null =
- {
+// REMOVED: const getPlaymatForDeck = (deck: DeckWithImages): { image: string } | null => {
 //   if (!deck.playmatImage) return null
 //   return { image: deck.playmatImage }
 // }
 
-const getElementColors = (element: string): string[] =
- {
+const getElementColors = (element: string): string[] => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -2049,8 +1804,7 @@ const getElementColors = (element: string): string[] =
   }
 }
 
-const getElementGlow = (element: string): string =
- {
+const getElementGlow = (element: string): string => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -2083,8 +1837,7 @@ const getElementGlow = (element: string): string =
 // Transforms set via rAF JS — no @keyframes on preserve-3d elements (would flatten).
 interface DiceCanvas3DProps { result: number | null; cardName: string }
 
-const DICE_PIPS: Record<number,[number,number][]
- = {
+const DICE_PIPS: Record<number,[number,number][]> = {
   1:[[50,50]],
   2:[[25,25],[75,75]],
   3:[[22,22],[50,50],[78,78]],
@@ -2093,33 +1846,24 @@ const DICE_PIPS: Record<number,[number,number][]
   6:[[22,26],[50,26],[78,26],[22,74],[50,74],[78,74]],
 }
 const DICE_FACE_NUMS = [1,6,2,5,3,4] // front,back,right,left,top,bot
-const DICE_SETTLE: Record<number,{rx:number,ry:number}
- = {
+const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
   1:{rx:0,  ry:0  }, 2:{rx:0,  ry:-90},
   3:{rx:-90,ry:0  }, 4:{rx:90, ry:0  },
   5:{rx:0,  ry:90 }, 6:{rx:0,  ry:180},
 }
 
-function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=
-void }) {
-  const rigRef  = useRef<HTMLDivElement
-(null)
-  const cubeRef = useRef<HTMLDivElement
-(null)
-  const rollRef = useRef<((n:number)=
-void)|null
-(null)
-  const rafRef  = useRef<number
-(0)
+function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: ()=>void }) {
+  const rigRef  = useRef<HTMLDivElement>(null)
+  const cubeRef = useRef<HTMLDivElement>(null)
+  const rollRef = useRef<((n:number)=>void)|null>(null)
+  const rafRef  = useRef<number>(0)
 
-  useEffect(()=
-{
+  useEffect(()=>{
     const rig  = rigRef.current
     const cube = cubeRef.current
     if(!rig||!cube) return
 
-    const lerp  = (a:number,b:number,t:number)=
-a+(b-a)*t
+    const lerp  = (a:number,b:number,t:number)=>a+(b-a)*t
 
     // Live rotation state
     let rx = 0, ry = 0
@@ -2143,10 +1887,8 @@ a+(b-a)*t
       // Target: current position + many extra turns + face angle
       const extraX  = 720 + Math.ceil(Math.random()*2)*360
       const extraY  = 1080+ Math.ceil(Math.random()*2)*360
-      const finalRX = rx + (Math.random()
-.5 ? extraX : -extraX) + (target.rx - ((rx % 360)+360)%360)
-      const finalRY = ry + (Math.random()
-.5 ? extraY : -extraY) + (target.ry - ((ry % 360)+360)%360)
+      const finalRX = rx + (Math.random()>.5 ? extraX : -extraX) + (target.rx - ((rx % 360)+360)%360)
+      const finalRY = ry + (Math.random()>.5 ? extraY : -extraY) + (target.ry - ((ry % 360)+360)%360)
 
       // ── PHASE 1: DECELERATE  1800ms ───────────────��────────────────
       // Dice is already spinning; speed goes from FAST → 0, steering to face.
@@ -2218,22 +1960,18 @@ a+(b-a)*t
 
     rollRef.current=doRoll
     if(result!==null) doRoll(result)
-    return()=
-cancelAnimationFrame(rafRef.current)
+    return()=>cancelAnimationFrame(rafRef.current)
   },[])
 
-  useEffect(()=
-{
+  useEffect(()=>{
     if(result!==null&&rollRef.current) rollRef.current(result)
   },[result])
 
   const faceClasses = ['front','back','right','left','top','bot']
 
   return (
-    <
-
-      <style
-{`
+    <>
+      <style>{`
         .dc-scene{perspective:600px;perspective-origin:50% 42%;width:160px;height:160px;display:flex;align-items:center;justify-content:center}
         .dc-rig{position:relative;transform-style:preserve-3d}
         .dc-cube{width:110px;height:110px;transform-style:preserve-3d;position:relative}
@@ -2247,41 +1985,24 @@ cancelAnimationFrame(rafRef.current)
         .dc-fb   {position:absolute;inset:0;background:linear-gradient(145deg,#ffffff 0%,#e4e4e4 100%)}
         .dc-shine{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.75) 0%,transparent 52%)}
         .dc-dot  {position:absolute;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 36% 32%,#3a3a3a,#000);box-shadow:0 1px 4px rgba(0,0,0,.55),inset 0 1px 1px rgba(255,255,255,.08);transform:translate(-50%,-50%)}
-      `}</style
-
-      <div className="dc-scene"
-
-        <div ref={rigRef} className="dc-rig"
-
-          <div ref={cubeRef} className="dc-cube"
-
-            {DICE_FACE_NUMS.map((faceNum,fi)=
-(
-              <div key={fi} className={`dc-face dc-face-${faceClasses[fi]}`}
-
-                <div className="dc-fb"/
-
-                <div className="dc-shine"/
-
-                {DICE_PIPS[faceNum].map(([top,left],pi)=
-(
-                  <div key={pi} className="dc-dot" style={{top:`${top}%`,left:`${left}%`}}/
-
+      `}</style>
+      <div className="dc-scene">
+        <div ref={rigRef} className="dc-rig">
+          <div ref={cubeRef} className="dc-cube">
+            {DICE_FACE_NUMS.map((faceNum,fi)=>(
+              <div key={fi} className={`dc-face dc-face-${faceClasses[fi]}`}>
+                <div className="dc-fb"/>
+                <div className="dc-shine"/>
+                {DICE_PIPS[faceNum].map(([top,left],pi)=>(
+                  <div key={pi} className="dc-dot" style={{top:`${top}%`,left:`${left}%`}}/>
                 ))}
-                <span style={{position:'absolute',top:5,left:8,fontSize:9,fontWeight:700,fontFamily:'monospace',color:'rgba(0,0,0,.12)',pointerEvents:'none'}}
-{faceNum}</span
-
-              </div
-
+                <span style={{position:'absolute',top:5,left:8,fontSize:9,fontWeight:700,fontFamily:'monospace',color:'rgba(0,0,0,.12)',pointerEvents:'none'}}>{faceNum}</span>
+              </div>
             ))}
-          </div
-
-        </div
-
-      </div
-
-    </
-
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2292,11 +2013,9 @@ cancelAnimationFrame(rafRef.current)
 // dust particles, cross-sparkles, fast/coloured shooting stars.
 
 function StarfieldCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement
-(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  useEffect(() =
- {
+  useEffect(() => {
     const cv = canvasRef.current
     if (!cv) return
     const ctx = cv.getContext("2d")!
@@ -2368,8 +2087,7 @@ function StarfieldCanvas() {
         {cx:.50,cy:.30,rx:.65,ry:.07,rot:.26,a:.10},
         {cx:.44,cy:.52,rx:.62,ry:.06,rot:.24,a:.09},
         {cx:.38,cy:.74,rx:.58,ry:.06,rot:.22,a:.07},
-      ].forEach(b=
-{
+      ].forEach(b=>{
         nebBlob(OW*b.cx,OH*b.cy, OW*b.rx,OH*b.ry, b.rot, "rgba(180,180,255,1)", b.a, b.a*.5)
         // Brighter inner streak
         nebBlob(OW*b.cx,OH*b.cy, OW*b.rx*.4,OH*b.ry*.5, b.rot, "rgba(220,215,255,1)", b.a*1.5, b.a*.8)
@@ -2381,8 +2099,7 @@ function StarfieldCanvas() {
         [.78,.20,.16,.03,-.18,"rgba(1,2,6,.50)"],
         [.50,.78,.20,.03, .06,"rgba(2,1,6,.48)"],
         [.84,.10,.14,.03, .38,"rgba(1,1,5,.45)"],
-      ].forEach(([px,py,rx,ry,rot,col])=
-{
+      ].forEach(([px,py,rx,ry,rot,col])=>{
         oc.save(); oc.translate(OW*(px as number),OH*(py as number))
         oc.rotate(rot as number); oc.scale(1,(ry as number)/(rx as number))
         const g=oc.createRadialGradient(0,0,0,0,0,OW*(rx as number))
@@ -2428,8 +2145,7 @@ function StarfieldCanvas() {
         hg.addColorStop(0,col); hg.addColorStop(.35,"rgba(255,255,255,0.10)"); hg.addColorStop(1,"rgba(0,0,0,0)")
         oc.beginPath(); oc.arc(sx,sy,sr*5.5,0,Math.PI*2); oc.fillStyle=hg; oc.fill()
         // Diffraction spikes (4-pointed cross)
-        if(sr
-1.4){
+        if(sr>1.4){
           oc.globalAlpha=.18+Math.random()*.18
           oc.strokeStyle=col; oc.lineWidth=.5
           const len=sr*8
@@ -2450,8 +2166,7 @@ function StarfieldCanvas() {
 
       function rg2(x:number,y:number,rad:number,stops:[number,string][]){
         const g=c2.createRadialGradient(x,y,0,x,y,rad)
-        stops.forEach(([t,col])=
-g.addColorStop(t,col))
+        stops.forEach(([t,col])=>g.addColorStop(t,col))
         c2.beginPath(); c2.arc(x,y,rad,0,Math.PI*2); c2.fillStyle=g; c2.fill()
       }
       rg2(half,half,r*3.0,[[0,coreCol+".18)"],[.30,coreCol+".09)"],[.65,coreCol+".03)"],[1,"rgba(0,0,0,0)"]])
@@ -2468,12 +2183,10 @@ g.addColorStop(t,col))
           const sc=(Math.random()-.5)*radius*.22
           const x=Math.cos(angle)*(radius+sc), y=Math.sin(angle)*(radius+sc)
           const bright=Math.pow(1-t,.65), sz=0.2+bright*3.0+Math.random()*.9
-          const alpha=(Math.random()
-.55?.60+bright*.32:.06+bright*.28)*bright
+          const alpha=(Math.random()>.55?.60+bright*.32:.06+bright*.28)*bright
           c2.globalAlpha=Math.max(0,Math.min(1,alpha))
           c2.beginPath(); c2.arc(x,y,sz,0,Math.PI*2)
-          c2.fillStyle=t<.15?"rgba(255,252,240,1)":Math.random()
-.42?col1:col2; c2.fill()
+          c2.fillStyle=t<.15?"rgba(255,252,240,1)":Math.random()>.42?col1:col2; c2.fill()
         }
         for(let i=0;i<90;i++){
           const t=.04+i/90*.65, radius=t*r*1.9, angle=base+t*Math.PI*3.7-.18
@@ -2522,8 +2235,7 @@ g.addColorStop(t,col))
         // Rose/violet — left, very flat tilt=0.16, slow
         {x:.04,y:.55,r:W*.10, arms:3,tilt:.16,rotation:0.7,  spinSpeed:.000042,precPhase:5.8, precSpeed:.00020,c1:"rgba(255,105,185,1)",c2:"rgba(185,88,255,1)", cc:"rgba(210,60,195,",  cl:"#ffc8ee",dc:"rgba(45,5,55,1)"},
       ]
-      galaxyLayers = defs.map(d =
- {
+      galaxyLayers = defs.map(d => {
         const cv = makeGalaxy(d.r,d.arms,d.c1,d.c2,d.cc,d.cl,d.dc)
         return { cv, half:cv.width/2, x:d.x, y:d.y, tilt:d.tilt, rotation:d.rotation, spinSpeed:d.spinSpeed, precPhase:d.precPhase, precSpeed:d.precSpeed }
       })
@@ -2544,8 +2256,7 @@ g.addColorStop(t,col))
       ]
 
       function drawRingHalf(startA:number, endA:number, ccw:boolean) {
-        RINGS.forEach(rr=
-{
+        RINGS.forEach(rr=>{
           if(rr.gap){
             ctx.beginPath(); ctx.arc(0,0,rr.ro,startA,endA,ccw); ctx.arc(0,0,rr.ri,endA,startA,!ccw)
             ctx.closePath(); ctx.fillStyle=`rgba(8,5,2,${rr.a})`; ctx.fill(); return
@@ -2578,8 +2289,7 @@ g.addColorStop(t,col))
         {y:-.70,h:.07,d:.26,ph:0  },{y:-.52,h:.06,d:.20,ph:.8 },{y:-.33,h:.11,d:.18,ph:1.6},
         {y:-.08,h:.15,d:.16,ph:2.4},{y: .18,h:.10,d:.18,ph:1.2},{y: .38,h:.07,d:.20,ph:.4},
         {y: .52,h:.06,d:.23,ph:2.0},{y: .68,h:.07,d:.26,ph:1.0},
-      ].forEach(b=
-{
+      ].forEach(b=>{
         const yC=b.y*r, hH=b.h*r
         ctx.beginPath(); ctx.moveTo(-r,yC-hH)
         for(let xi=-r;xi<=r;xi+=2){
@@ -2627,8 +2337,7 @@ g.addColorStop(t,col))
         {y:-.60,h:.08,d:.07,ph:0  },{y:-.35,h:.06,d:.06,ph:1.4},
         {y:-.10,h:.10,d:.05,ph:2.8},{y: .15,h:.08,d:.06,ph:1.0},
         {y: .40,h:.06,d:.07,ph:2.2},{y: .60,h:.07,d:.07,ph:.7},
-      ].forEach(b=
-{
+      ].forEach(b=>{
         const yC=b.y*r, hH=b.h*r
         ctx.beginPath(); ctx.moveTo(-r,yC-hH)
         for(let xi=-r;xi<=r;xi+=2){
@@ -2670,8 +2379,7 @@ g.addColorStop(t,col))
       for(let i=0;i<85;i++) dust.push({
         x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.12,vy:(Math.random()-.5)*.08,
         s:.5+Math.random()*3,a:.03+Math.random()*.12,
-        col:Math.random()
-.5?"rgba(145,68,255,1)":"rgba(68,118,255,1)",
+        col:Math.random()>.5?"rgba(145,68,255,1)":"rgba(68,118,255,1)",
         ph:Math.random()*Math.PI*2,fr:.002+Math.random()*.007,
       })
       sparkles=[]
@@ -2683,8 +2391,7 @@ g.addColorStop(t,col))
     }
 
     function spawnShoot(fast:boolean){
-      const a=(Math.random()
-.5?.11:Math.PI-.11)+(Math.random()-.5)*.30
+      const a=(Math.random()>.5?.11:Math.PI-.11)+(Math.random()-.5)*.30
       const spd=fast?18+Math.random()*24:5+Math.random()*9
       const COLS=["rgba(205,158,255,1)","rgba(158,212,255,1)","rgba(255,212,158,1)","rgba(158,255,200,1)"]
       shoots.push({
@@ -2736,9 +2443,7 @@ g.addColorStop(t,col))
 
       for(const d of dust){
         d.x+=d.vx; d.y+=d.vy
-        if(d.x<0)d.x=W; if(d.x
-W)d.x=0; if(d.y<0)d.y=H; if(d.y
-H)d.y=0
+        if(d.x<0)d.x=W; if(d.x>W)d.x=0; if(d.y<0)d.y=H; if(d.y>H)d.y=0
         ctx.globalAlpha=d.a*(.52+.48*Math.sin(t*d.fr*Math.PI*2+d.ph))
         ctx.beginPath(); ctx.arc(d.x,d.y,d.s,0,Math.PI*2); ctx.fillStyle=d.col; ctx.fill()
       }
@@ -2764,8 +2469,7 @@ H)d.y=0
       if(shootT%130===0) spawnShoot(true)
       if(shootT%200===0) spawnShoot(false)
       if(shootT%290===0) spawnShoot(false)
-      for(let i=shoots.length-1;i
-=0;i--){
+      for(let i=shoots.length-1;i>=0;i--){
         const sh=shoots[i]
         const tail=ctx.createLinearGradient(sh.x,sh.y,sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len)
         tail.addColorStop(0,sh.col.replace(/[\d.]+\)$/,`${sh.alpha})`))
@@ -2775,23 +2479,19 @@ H)d.y=0
         ctx.lineTo(sh.x-sh.vx/14*sh.len,sh.y-sh.vy/14*sh.len)
         ctx.strokeStyle=tail; ctx.lineWidth=sh.w; ctx.stroke()
         sh.x+=sh.vx; sh.y+=sh.vy; sh.alpha-=sh.dec
-        if(sh.alpha<=0||sh.x<-300||sh.x
-W+300||sh.y
-H+120) shoots.splice(i,1)
+        if(sh.alpha<=0||sh.x<-300||sh.x>W+300||sh.y>H+120) shoots.splice(i,1)
       }
     }
 
     raf=requestAnimationFrame(tick)
-    return()=
-{ cancelAnimationFrame(raf); window.removeEventListener("resize",resize) }
+    return()=>{ cancelAnimationFrame(raf); window.removeEventListener("resize",resize) }
   },[])
 
   return (
     <canvas
       ref={canvasRef}
       style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:0,pointerEvents:"none"}}
-    /
-
+    />
   )
 }
 
@@ -2799,8 +2499,7 @@ H+120) shoots.splice(i,1)
 
 interface GameResultScreenProps {
   result: "won" | "lost"
-  onBack: () =
- void
+  onBack: () => void
 }
 
 function GameResultScreen({ result, onBack }: GameResultScreenProps) {
@@ -2809,11 +2508,9 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
   // ── Duel rewards: PVP online → +20 gacha coins, +50 gear coins ──
   const { addDuelRewards } = useGame()
   const rewardsGrantedRef = useRef(false)
-  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number; chest: ChestId | null } | null
-(null)
+  const [duelRewards, setDuelRewards] = useState<{ gacha: number; gear: number; chest: ChestId | null } | null>(null)
 
-  useEffect(() =
- {
+  useEffect(() => {
     if (!isWon || rewardsGrantedRef.current) return
     rewardsGrantedRef.current = true
     setDuelRewards(addDuelRewards("pvp"))
@@ -2825,8 +2522,7 @@ function GameResultScreen({ result, onBack }: GameResultScreenProps) {
       result={result}
       onBack={onBack}
       rewards={duelRewards}
-    /
-
+    />
   )
 }
 // ─────────────────────────────────────────────────────────────────
@@ -2850,8 +2546,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     : (roomData.hostName  || "Anfitrião")
 
   // Safe deck parser — handles JSON string, plain object, or null
-  const parseDeck = (raw: any): DeckWithImages | null =
- {
+  const parseDeck = (raw: any): DeckWithImages | null => {
     if (!raw) return null
     try {
       const d = typeof raw === "string" ? JSON.parse(raw) : raw
@@ -2871,34 +2566,24 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [isMyTurn, setIsMyTurn]       = useState(roomData.isHost) // host goes first
 
   // ─── Multiplayer channels ────────────────────────────────────────────────
-  const actionsChannelRef              = useRef<RealtimeChannel | null
-(null)
-  const chatChannelRef                 = useRef<RealtimeChannel | null
-(null)
-  const processedActionIdsRef          = useRef<Set<string
-
-(new Set())
-  const actionsPollRef                 = useRef<NodeJS.Timeout | null
-(null)
-  const lastActionTimeRef              = useRef<string
-("1970-01-01")
+  const actionsChannelRef              = useRef<RealtimeChannel | null>(null)
+  const chatChannelRef                 = useRef<RealtimeChannel | null>(null)
+  const processedActionIdsRef          = useRef<Set<string>>(new Set())
+  const actionsPollRef                 = useRef<NodeJS.Timeout | null>(null)
+  const lastActionTimeRef              = useRef<string>("1970-01-01")
 
   // ─── Online chat state ───────────────────────────────────────────────────
-  const [onlineChat, setOnlineChat]       = useState<OnlineChatMessage[]
-([])
+  const [onlineChat, setOnlineChat]       = useState<OnlineChatMessage[]>([])
   const [onlineChatInput, setOnlineChatInput] = useState("")
   const [showOnlineChat, setShowOnlineChat]   = useState(false)
-  const onlineChatRef                         = useRef<HTMLDivElement
-(null)
+  const onlineChatRef                         = useRef<HTMLDivElement>(null)
 
   // Multiplayer state
-  const [multiplayerRoomData, setMultiplayerRoomData] = useState<RoomData | null
-(null)
+  const [multiplayerRoomData, setMultiplayerRoomData] = useState<RoomData | null>(null)
   const [showOnlineDuel, setShowOnlineDuel] = useState(false)
 
   const [turn, setTurn] = useState(1)
-  const [phase, setPhase] = useState<Phase
-("draw")
+  const [phase, setPhase] = useState<Phase>("draw")
 
   // Draw card animation state
   const [drawAnimation, setDrawAnimation] = useState<{
@@ -2909,17 +2594,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     fromX: number; fromY: number
     midX:  number; midY:  number
     toX:   number; toY:   number
-  } | null
-(null)
+  } | null>(null)
   const [enemyDrawAnimation, setEnemyDrawAnimation] = useState<{
     fromX: number; fromY: number
     midX:  number; midY:  number
     toX:   number; toY:   number
-  } | null
-(null)
+  } | null>(null)
   const [playerWentFirst, setPlayerWentFirst] = useState(true)
-  const [playerField, setPlayerField] = useState<FieldState
-({
+  const [playerField, setPlayerField] = useState<FieldState>({
     unitZone: [null, null, null, null],
     functionZone: [null, null, null, null],
     equipZone: null,
@@ -2931,8 +2613,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     tap: [],
     life: 50,
   })
-  const [enemyField, setEnemyField] = useState<FieldState
-({
+  const [enemyField, setEnemyField] = useState<FieldState>({
     unitZone: [null, null, null, null],
     functionZone: [null, null, null, null],
     equipZone: null,
@@ -2944,111 +2625,79 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     tap: [],
     life: 50,
   })
-  const [selectedHandCard, setSelectedHandCard] = useState<number | null
-(null)
-  const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }
-({})
+  const [selectedHandCard, setSelectedHandCard] = useState<number | null>(null)
+  const [cardAnimations, setCardAnimations] = useState<{ [key: string]: string }>({})
 
   // Constants for card animations
   const CARD_JUMP_DURATION = 350 // Duration of the "jump" movement
   const CARD_JUMP_DELAY = 150 // Wait for charge phase before jumping
-  const [gameResult, setGameResult] = useState<"won" | "lost" | null
-(null)
+  const [gameResult, setGameResult] = useState<"won" | "lost" | null>(null)
 
-  const [attackState, setAttackState] = useState<AttackState
-({
+  const [attackState, setAttackState] = useState<AttackState>({
     isAttacking: false,
     attackerIndex: null,
     targetInfo: null, // Initialize targetInfo
   })
-  const [attackTarget, setAttackTarget] = useState<{ type: "direct" | "unit"; index?: number } | null
-(null)
+  const [attackTarget, setAttackTarget] = useState<{ type: "direct" | "unit"; index?: number } | null>(null)
   const [itemSelectionMode, setItemSelectionMode] = useState<{
     active: boolean
     itemCard: GameCard | null
     step: "selectEnemy" | "selectAlly" | "selectChoice"
     selectedEnemyIndex: number | null
     chosenOption: string | null
-  }
-({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+  }>({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
 
   // State for choice modal (for cards like Véu dos Laços Cruzados)
   const [choiceModal, setChoiceModal] = useState<{
     visible: boolean
     cardName: string
     options: { id: string; label: string; description: string }[]
-    onChoose: (optionId: string) =
- void
+    onChoose: (optionId: string) => void
     gridLayout?: boolean
-  } | null
-(null)
+  } | null>(null)
 
   // Deck search modal (Pedra de Afiar and future search effects)
   const [deckSearchModal, setDeckSearchModal] = useState<{
     visible: boolean
     title: string
     cards: GameCard[]
-    onSelect: (card: GameCard) =
- void
-    onCancel: () =
- void
-  } | null
-(null)
+    onSelect: (card: GameCard) => void
+    onCancel: () => void
+  } | null>(null)
 
   // Attack arrow state
   const [arrowPos, setArrowPos] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 })
-  const [activeProjectiles, setActiveProjectiles] = useState<Omit<AttackAnimationProps, "onComplete"
-[]
-([])
+  const [activeProjectiles, setActiveProjectiles] = useState<Omit<AttackAnimationProps, "onComplete">[]>([])
 
-  const [explosionEffects, setExplosionEffects] = useState<ExplosionEffect[]
-([])
-  const explosionCanvasRef = useRef<HTMLCanvasElement
-(null)
-  const activeParticlesRef = useRef<Map<string, { particles: Particle[], startTime: number, element: string, x: number, y: number }
-
-(new Map())
-  const [impactFlash, setImpactFlash] = useState<{ active: boolean; color: string }
-({ active: false, color: "#ffffff" })
+  const [explosionEffects, setExplosionEffects] = useState<ExplosionEffect[]>([])
+  const explosionCanvasRef = useRef<HTMLCanvasElement>(null)
+  const activeParticlesRef = useRef<Map<string, { particles: Particle[], startTime: number, element: string, x: number, y: number }>>(new Map())
+  const [impactFlash, setImpactFlash] = useState<{ active: boolean; color: string }>({ active: false, color: "#ffffff" })
   const [screenShake, setScreenShake] = useState({ active: false, intensity: 0 })
   const positionRef = useRef({ startX: 0, startY: 0, currentX: 0, currentY: 0, lastTargetCheck: 0 })
-  const arrowRef = useRef<SVGLineElement
-(null)
-  const rafRef = useRef<number | null
-(null)
-  const fieldRef = useRef<HTMLDivElement
-(null)
-  const playerGraveyardRef = useRef<HTMLDivElement
-(null)
-  const enemyGraveyardRef  = useRef<HTMLDivElement
-(null)
-  const playerDeckRef      = useRef<HTMLDivElement
-(null)
-  const enemyDeckRef       = useRef<HTMLDivElement
-(null)
-  const handContainerRef   = useRef<HTMLDivElement
-(null)
-  const enemyUnitRectsRef = useRef<DOMRect[]
-([])
+  const arrowRef = useRef<SVGLineElement>(null)
+  const rafRef = useRef<number | null>(null)
+  const fieldRef = useRef<HTMLDivElement>(null)
+  const playerGraveyardRef = useRef<HTMLDivElement>(null)
+  const enemyGraveyardRef  = useRef<HTMLDivElement>(null)
+  const playerDeckRef      = useRef<HTMLDivElement>(null)
+  const enemyDeckRef       = useRef<HTMLDivElement>(null)
+  const handContainerRef   = useRef<HTMLDivElement>(null)
+  const enemyUnitRectsRef = useRef<DOMRect[]>([])
   const isDraggingRef = useRef(false) // Track drag state
-  const playerCardsRef = useRef<(HTMLDivElement | null)[]
-([]) // Added for player unit zone refs
+  const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
 
-  const triggerScreenShake = useCallback((intensity: number = 5, duration: number = 150) =
- {
+  const triggerScreenShake = useCallback((intensity: number = 5, duration: number = 150) => {
     setScreenShake({ active: true, intensity })
-    setTimeout(() =
- setScreenShake({ active: false, intensity: 0 }), duration)
+    setTimeout(() => setScreenShake({ active: false, intensity: 0 }), duration)
   }, [])
 
-  const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) =
- {
+  const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) => {
     const el = element?.toLowerCase().trim() || "neutral"
     const particles: Particle[] = []
 
     // Screen shake — heavier for earth/fire, lighter for others
-    const shakeMap: Record<string, number
- = { pyrus:7, fire:7, terra:8, subterra:8, darkus:5, darkness:5, dark:5, void:4 }
+    const shakeMap: Record<string, number> = { pyrus:7, fire:7, terra:8, subterra:8, darkus:5, darkness:5, dark:5, void:4 }
     triggerScreenShake(shakeMap[el] ?? 3, 130)
 
     // ── AQUOS ── water droplets with gravity arc
@@ -3159,11 +2808,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
     const effectId = `explosion-${Date.now()}`
     const startTime = Date.now()
-    setExplosionEffects((prev) =
- [...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
+    setExplosionEffects((prev) => [...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
 
-    const flashColors: Record<string,string
- = {
+    const flashColors: Record<string,string> = {
       aquos:"rgba(0,191,255,0.45)", aquo:"rgba(0,191,255,0.45)",
       fire:"rgba(255,80,0,0.55)", pyrus:"rgba(255,80,0,0.55)",
       ventus:"rgba(100,220,50,0.4)",
@@ -3173,14 +2820,10 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       terra:"rgba(120,60,10,0.5)", subterra:"rgba(120,60,10,0.5)",
     }
     setImpactFlash({ active:true, color: flashColors[el] ?? "rgba(255,255,255,0.35)" })
-    setTimeout(() =
- setImpactFlash({ active:false, color:"#ffffff" }), 90)
+    setTimeout(() => setImpactFlash({ active:false, color:"#ffffff" }), 90)
 
-    setTimeout(() =
- {
-      setExplosionEffects((prev) =
- prev.filter((e) =
- e.id !== effectId))
+    setTimeout(() => {
+      setExplosionEffects((prev) => prev.filter((e) => e.id !== effectId))
     }, 1000)
   }, [triggerScreenShake])
 
@@ -3192,50 +2835,35 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     x: number
     y: number
     element: string
-  } | null
-(null)
+  } | null>(null)
 
   // ── All missing state declarations ──
   const [diceAnimation, setDiceAnimation] = useState<{
     visible: boolean; rolling: boolean; result: number | null
-    cardName: string; onComplete: ((result: number) =
- void) | null
-  } | null
-(null)
+    cardName: string; onComplete: ((result: number) => void) | null
+  } | null>(null)
   const [lacerationAnimation, setLacerationAnimation] = useState(false)
   const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
-  const [draggedHandCard, setDraggedHandCard] = useState<{ index: number; card: GameCard; currentY?: number } | null
-(null)
-  const [dropTarget, setDropTarget] = useState<DropTarget | null
-(null)
-  const [droppingCard, setDroppingCard] = useState<{ card: GameCard; targetX: number; targetY: number } | null
-(null)
-  const [inspectedCard, setInspectedCard] = useState<GameCard | null
-(null)
-  const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null
-(null)
-  const [tapView, setTapView] = useState<"player" | "enemy" | null
-(null)
-  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null
-(null)
+  const [draggedHandCard, setDraggedHandCard] = useState<{ index: number; card: GameCard; currentY?: number } | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+  const [droppingCard, setDroppingCard] = useState<{ card: GameCard; targetX: number; targetY: number } | null>(null)
+  const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
+  const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
+  const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
+  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
   const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
-  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null
-(null)
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
     type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | "vatnavordr_messiham" | "yggdra_nidhogg" | null
-  }
-({ active: false, ugCard: null, type: null })
+  }>({ active: false, ugCard: null, type: null })
   const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
-  const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null
-(null)
-  const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null
-(null)
+  const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
+  const [impactoSemFeLastUsedTurn, setImpactoSemFeLastUsedTurn] = useState<number | null>(null)
   const [calemUrDoubleAttack, setCalemUrDoubleAttack] = useState(false)
   const [normalSummonUsed, setNormalSummonUsed] = useState(false)  // 1 normal unit summon per turn
-  const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }
-({ active: false, attackerIndex: null })
+  const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
   const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
 
   // ── Fehnon double-attack & bonus DP flags ──
@@ -3252,30 +2880,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   // ── Multiplayer state ──
   // ── Ullr states ──
   const [ullrSrMarcaUsed, setUllrSrMarcaUsed] = useState(false)                      // Marca da Caçada — once per duel (or cooldown?) — description says always active, treat as once per main phase
-  const [ullrUrJuramentoLastTurn, setUllrUrJuramentoLastTurn] = useState<number|null
-(null)  // Juramento Eterno — every 4 turns
+  const [ullrUrJuramentoLastTurn, setUllrUrJuramentoLastTurn] = useState<number|null>(null)  // Juramento Eterno — every 4 turns
   const [ullrUrFlechaUsed, setUllrUrFlechaUsed] = useState(false)                    // Flecha de Skadi — once ever
 
   // ── Logi states ──
   const [logiSrKillsThisBattle, setLogiSrKillsThisBattle] = useState(0)           // Incêndio Vivo: extra attacks this battle
-  const [logiUrDevorarLastTurn, setLogiUrDevorarLastTurn] = useState<number|null
-(null)  // Devorar o Mundo cooldown (3 turns)
+  const [logiUrDevorarLastTurn, setLogiUrDevorarLastTurn] = useState<number|null>(null)  // Devorar o Mundo cooldown (3 turns)
 
   // ── Hrotti states ──
-  const [hrottiSrLastTurn, setHrottiSrLastTurn] = useState<number|null
-(null)      // Avareza de Fafnir cooldown (3 turns)
-  const [hrottiSrAttackLastTurn, setHrottiSrAttackLastTurn] = useState<number|null
-(null)  // Corte do Medo Rúnico cooldown (2 turns)
+  const [hrottiSrLastTurn, setHrottiSrLastTurn] = useState<number|null>(null)      // Avareza de Fafnir cooldown (3 turns)
+  const [hrottiSrAttackLastTurn, setHrottiSrAttackLastTurn] = useState<number|null>(null)  // Corte do Medo Rúnico cooldown (2 turns)
   const [hrottiUrUsed, setHrottiUrUsed] = useState(false)                           // Herança de Andvaranaut — once ever
-  const [hrottiUrNullifyUntil, setHrottiUrNullifyUntil] = useState<number|null
-(null)  // turn until UG effects nullified
-  const [hrottiLrTidalActiveTurn, setHrottiLrTidalActiveTurn] = useState<number|null
-(null)  // turn Tidal first activated
+  const [hrottiUrNullifyUntil, setHrottiUrNullifyUntil] = useState<number|null>(null)  // turn until UG effects nullified
+  const [hrottiLrTidalActiveTurn, setHrottiLrTidalActiveTurn] = useState<number|null>(null)  // turn Tidal first activated
   const [hrottiLrIraUsed, setHrottiLrIraUsed] = useState(false)                    // Ira Maelstrom triggered this battle
 
   // ── Unit ability confirmation modal ──
-  const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null
-(null)
+  const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null>(null)
 
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
@@ -3290,65 +2911,44 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [mordredCamlannUsed, setMordredCamlannUsed] = useState(false)  // once per duel
 
   // ── Rei Arthur effect states ──
-  const [arthurUrVeredito, setArthurUrVeredito] = useState<number|null
-(null)   // last turn UR used Veredito
-  const [arthurLrCalice, setArthurLrCalice] = useState<number|null
-(null)        // last turn LR used Cálice
+  const [arthurUrVeredito, setArthurUrVeredito] = useState<number|null>(null)   // last turn UR used Veredito
+  const [arthurLrCalice, setArthurLrCalice] = useState<number|null>(null)        // last turn LR used Cálice
   const [arthurLrCaliceMode, setArthurLrCaliceMode] = useState(false)            // LR: awaiting 2-target selection
-  const [arthurLrCaliceTargets, setArthurLrCaliceTargets] = useState<number[]
-([]) // LR: selected targets
+  const [arthurLrCaliceTargets, setArthurLrCaliceTargets] = useState<number[]>([]) // LR: selected targets
 
   // ── Morgana Pendragon effect states ──
-  const [morganaEclipseLastTurn, setMorganaEclipseLastTurn] = useState<number|null
-(null)       // SR: Ressonância em Eclipse cooldown
-  const [morganaSinfoniaLastTurn, setMorganaSinfoniaLastTurn] = useState<number|null
-(null)     // UR: Sinfonia Relâmpago cooldown
-  const [morganaDiscordiaLastTurn, setMorganaDiscordiaLastTurn] = useState<number|null
-(null)   // LR: Sinfonia da Discórdia cooldown
-  const [morganaEclipseActive, setMorganaEclipseActive] = useState<{target:'direct'|'unit';turn:number}|null
-(null)  // SR: eclipse debuff on enemy
+  const [morganaEclipseLastTurn, setMorganaEclipseLastTurn] = useState<number|null>(null)       // SR: Ressonância em Eclipse cooldown
+  const [morganaSinfoniaLastTurn, setMorganaSinfoniaLastTurn] = useState<number|null>(null)     // UR: Sinfonia Relâmpago cooldown
+  const [morganaDiscordiaLastTurn, setMorganaDiscordiaLastTurn] = useState<number|null>(null)   // LR: Sinfonia da Discórdia cooldown
+  const [morganaEclipseActive, setMorganaEclipseActive] = useState<{target:'direct'|'unit';turn:number}|null>(null)  // SR: eclipse debuff on enemy
   const [morganaTrapBlocked, setMorganaTrapBlocked] = useState(false)     // UR 3dp: traps blocked while on field
   const [morganaActionBlocked, setMorganaActionBlocked] = useState(false) // LR 4dp: actions+traps blocked while on field
 
   // Destruction sequencing: IDs of cards with an active on-field destruction animation.
   // DiscardAnimationManager delays graveyard animation until the field explosion finishes.
-  const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string
-
-(new Set())
-  const markDestroyed = useCallback((card: GameCard) =
-
-    setDestroyedCardIds(prev =
- { const s = new Set(prev); s.add(card.id); return s })
+  const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
+  const markDestroyed = useCallback((card: GameCard) =>
+    setDestroyedCardIds(prev => { const s = new Set(prev); s.add(card.id); return s })
   , [])
 
-  const prevUnitZoneRef = useRef<(string | null)[]
-([])
-  const cardPressTimer = useRef<NodeJS.Timeout | null
-(null)
+  const prevUnitZoneRef = useRef<(string | null)[]>([])
+  const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const animationInProgressRef = useRef(false)
   const attackIdRef = useRef(0)
-  const draggedCardRef = useRef<HTMLDivElement
-(null)
+  const draggedCardRef = useRef<HTMLDivElement>(null)
   const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
 
-  useEffect(() =
- {
+  useEffect(() => {
     if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
-      prevUnitZoneRef.current = playerField.unitZone.map((u) =
- u?.name || null); return
+      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null); return
     }
     const ug = playerField.ultimateZone; const requiredUnit = ug.requiresUnit!; const ability = ug.ability
-    const prevNames = prevUnitZoneRef.current; const currentNames = playerField.unitZone.map((u) =
- u?.name || null)
-    const wasPresent = prevNames.some((n) =
- n === requiredUnit); const isNowPresent = currentNames.some((n) =
- n === requiredUnit)
+    const prevNames = prevUnitZoneRef.current; const currentNames = playerField.unitZone.map((u) => u?.name || null)
+    const wasPresent = prevNames.some((n) => n === requiredUnit); const isNowPresent = currentNames.some((n) => n === requiredUnit)
     if (!wasPresent && isNowPresent) {
-      const unitIdx = playerField.unitZone.findIndex((u) =
- u && u.name === requiredUnit)
+      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
       if (unitIdx !== -1) {
-        setPlayerField((prev) =
- {
+        setPlayerField((prev) => {
           const newUnits = [...prev.unitZone]; const unit = newUnits[unitIdx]; if (!unit) return prev
           let bonus = 0; let msg = ""
           if (ability === "ODEN SWORD") { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
@@ -3361,8 +2961,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             const fireCount = countFireUnitsUsed(prev); bonus = fireCount * 2
             setFornbrennaFireCount(fireCount); msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
           }
-          if (bonus 
- 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
+          if (bonus > 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
           if (msg) showEffectFeedback(msg, "success")
           return { ...prev, unitZone: newUnits as any }
         })
@@ -3372,25 +2971,16 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerField.unitZone, playerField.ultimateZone])
 
-  const handleAnimationComplete = useCallback((id: string) =
- { setActiveProjectiles((prev) =
- prev.filter((p) =
- p.id !== id)) }, [])
-  const handleImpact = useCallback((id: string, x: number, y: number, element: string) =
- {
-    setActiveProjectiles((prev) =
- prev.filter((p) =
- p.id !== id)); triggerExplosion(x, y, element)
+  const handleAnimationComplete = useCallback((id: string) => { setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)) }, [])
+  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
+    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)); triggerExplosion(x, y, element)
   }, [triggerExplosion])
   const gameResultRecordedRef = useRef(false)
-  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") =
- {
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
     setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
-    setTimeout(() =
- setEffectFeedback(null), 2000)
+    setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
-  const showDrawAnimation = useCallback((card: GameCard) =
- {
+  const showDrawAnimation = useCallback((card: GameCard) => {
     const deckEl      = playerDeckRef.current
     const handEl      = handContainerRef.current
 
@@ -3420,53 +3010,40 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }
 
     // Arc peak: midway but lifted well above both points
-    const mx = (fx + tx) / 2 + (tx 
- fx ? 30 : -30)
+    const mx = (fx + tx) / 2 + (tx > fx ? 30 : -30)
     const my = Math.min(fy, ty) - window.innerHeight * 0.18
 
     setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type,
       fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
-    setTimeout(() =
- setDrawAnimation(null), 1100)
+    setTimeout(() => setDrawAnimation(null), 1100)
   }, [playerDeckRef, handContainerRef, playerField.hand.length])
-  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) =
- {
+  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
     markDestroyed(card)
-    setTimeout(() =
- setDestructionAnimation(null), 1200)
+    setTimeout(() => setDestructionAnimation(null), 1200)
   }, [markDestroyed])
-  const rollDice = useCallback((cardName: string): Promise<number
- =
- {
-    return new Promise((resolve) =
- {
+  const rollDice = useCallback((cardName: string): Promise<number> => {
+    return new Promise((resolve) => {
       // Compute result immediately so the dice can start decelerating to the right face from frame 1
       const result = Math.floor(Math.random() * 6) + 1
       // rolling=true hides the result number; rolling=false reveals it
       // We pass result from the start so DiceCanvas3D can decelerate to the correct face immediately
       setDiceAnimation({ visible: true, rolling: true, result, cardName, onComplete: null })
       // After dice physics finishes decelerating (~1800ms), reveal the number
-      setTimeout(() =
- {
-        setDiceAnimation((prev) =
- prev ? { ...prev, rolling: false } : null)
+      setTimeout(() => {
+        setDiceAnimation((prev) => prev ? { ...prev, rolling: false } : null)
         // Close 1800ms after number is revealed (bounce plays during this time)
-        setTimeout(() =
- { setDiceAnimation(null); resolve(result) }, 1800)
+        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1800)
       }, 2000)
     })
   }, [])
-  const resolveEffectWithDice = useCallback(async (effect: FunctionCardEffect, effectContext: EffectContext, targets: EffectTargets, cardName: string): Promise<EffectResult
- =
- {
+  const resolveEffectWithDice = useCallback(async (effect: FunctionCardEffect, effectContext: EffectContext, targets: EffectTargets, cardName: string): Promise<EffectResult> => {
     if (effect.requiresDice) { const diceResult = await rollDice(cardName); return effect.resolve(effectContext, { ...targets, diceResult }) }
     return effect.resolve(effectContext, targets)
   }, [rollDice])
 
 
-  useEffect(() =
- {
+  useEffect(() => {
     if (explosionEffects.length === 0) {
       const canvas = explosionCanvasRef.current
       if (canvas) { const ctx = canvas.getContext("2d"); if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height) }
@@ -3481,24 +3058,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     let animationId: number
     const duration = 1000
 
-    const animate = () =
- {
+    const animate = () => {
       const now = Date.now()
       const activeEffects = activeParticlesRef.current
 
-      explosionEffects.forEach((effect) =
- {
+      explosionEffects.forEach((effect) => {
         if (!activeEffects.has(effect.id)) {
           activeEffects.set(effect.id, {
-            particles: effect.particles.map((p) =
- ({ ...p })),
+            particles: effect.particles.map((p) => ({ ...p })),
             startTime: effect.startTime, element: effect.element, x: effect.x, y: effect.y
           })
         }
       })
       for (const [id, effect] of activeEffects.entries()) {
-        if (now - effect.startTime 
- duration) activeEffects.delete(id)
+        if (now - effect.startTime > duration) activeEffects.delete(id)
       }
       if (activeEffects.size === 0) { ctx.clearRect(0,0,canvas.width,canvas.height); return }
       if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
@@ -3506,11 +3079,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       ctx.clearRect(0,0,canvas.width,canvas.height)
 
-      activeEffects.forEach((effect) =
- {
+      activeEffects.forEach((effect) => {
         const elapsed = now - effect.startTime
-        if (elapsed 
- duration) return
+        if (elapsed > duration) return
         const el = effect.element?.toLowerCase()
         const t = elapsed / duration // 0→1
         const cx = effect.x; const cy = effect.y
@@ -3532,8 +3103,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           ctx.closePath(); ctx.stroke(); ctx.restore()
           // Second thinner ring delayed
           const rt2 = Math.min(1, Math.max(0,(t-0.15)*3))
-          if (rt2 
- 0) {
+          if (rt2 > 0) {
             ctx.save(); ctx.globalAlpha = (1-rt2)*0.35
             ctx.strokeStyle = "#40e0d0"; ctx.lineWidth = 1.5
             ctx.beginPath(); ctx.arc(cx, cy, rt2*45, 0, Math.PI*2); ctx.stroke(); ctx.restore()
@@ -3574,8 +3144,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           ctx.stroke()
           // Horizontal shockwave ellipse
           const sw = Math.min(1,(t-0.1)*2.5)
-          if (sw 
- 0) {
+          if (sw > 0) {
             ctx.globalAlpha = (1-sw)*0.4
             ctx.strokeStyle = "#adff2f"; ctx.lineWidth = 2
             ctx.beginPath(); ctx.ellipse(cx,cy,sw*70,sw*22,0,0,Math.PI*2); ctx.stroke()
@@ -3595,8 +3164,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           for (let i = 0; i < 8; i++) {
             const ang = (Math.PI*2*i/8) + elapsed*0.003
             const len = 58*(1-dp)
-            if (len 
- 2) {
+            if (len > 2) {
               ctx.strokeStyle = `rgba(${100+i*8},0,${130+i*5},0.5)`
               ctx.lineWidth = 1.5; ctx.beginPath()
               ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*len, cy+Math.sin(ang)*len)
@@ -3672,8 +3240,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           ctx.restore()
           // Dust cloud
           const dc = Math.min(1,(t-0.05)*3)
-          if (dc 
- 0 && dc < 1) {
+          if (dc > 0 && dc < 1) {
             ctx.save()
             const grad = ctx.createRadialGradient(cx,cy+10,0,cx,cy+10,dc*55)
             grad.addColorStop(0,`rgba(160,90,20,${(1-dc)*0.4})`)
@@ -3683,8 +3250,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
 
         // ── Particles (shared) ──
-        effect.particles.forEach((p: any) =
- {
+        effect.particles.forEach((p: any) => {
           if (p.gravity) p.vy += p.gravity
           if (p.heat) p.vy += p.heat
           if (p.rotation !== undefined) p.rotation += (p.rv || 0.1)
@@ -3716,8 +3282,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── Central residual glow ──
         const ga = Math.max(0, 0.7 - t * 1.3)
-        if (ga 
- 0) {
+        if (ga > 0) {
           const glowColor = getElementGlow(effect.element)
           const gr = ctx.createRadialGradient(cx,cy,0,cx,cy,70)
           gr.addColorStop(0, glowColor.replace("0.8", String(ga * 0.55)))
@@ -3730,28 +3295,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }
 
     animationId = requestAnimationFrame(animate)
-    return () =
- cancelAnimationFrame(animationId)
+    return () => cancelAnimationFrame(animationId)
   }, [explosionEffects])
 
 
-  const canPlayerAttack = () =
- {
+  const canPlayerAttack = () => {
     if (phase !== "battle") return false
     if (!isMyTurn) return false
     if (playerWentFirst) {
-      return turn 
-= 3
+      return turn >= 3
     } else {
-      return turn 
-= 2
+      return turn >= 2
     }
   }
 
   // Cards that go in the Ultimate Zone (gear/weapons only)
   // Rei Arthur (ultimateGuardian) is a UNIT and goes in the Unit Zone
-  const isUltimateCard = (card: GameCard) =
- {
+  const isUltimateCard = (card: GameCard) => {
     if (card.name.toLowerCase().includes("rei arthur")) return false
     if (card.name.toLowerCase().includes("hrotti")) return false
     return (
@@ -3760,8 +3320,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     )
   }
 
-  const isUnitCard = (card: GameCard) =
- {
+  const isUnitCard = (card: GameCard) => {
     return (
       card.type === "unit" ||
       card.type === "ultimateGear" ||
@@ -3772,8 +3331,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Brotherhood Helpers
-  const isAvalonUnit = (card: GameCard) =
- {
+  const isAvalonUnit = (card: GameCard) => {
     const name = card.name.toLowerCase()
     return name.includes("arthur") || 
            name.includes("morgana") || 
@@ -3785,38 +3343,30 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
            name.includes("caveiro afogado") // Sic: handle typo in card name
   }
 
-  const isGreatOrderUnit = (card: GameCard) =
- {
+  const isGreatOrderUnit = (card: GameCard) => {
     const name = card.name.toLowerCase()
     return name.includes("fehnon") || name.includes("tsubasa")
   }
 
-  const isScandinavianAngel = (card: GameCard) =
- {
+  const isScandinavianAngel = (card: GameCard) => {
     return card.name.toLowerCase().includes("scandinavian angel")
   }
 
-  const isTormentaProminence = (card: GameCard) =
- {
+  const isTormentaProminence = (card: GameCard) => {
     return card.name.toLowerCase().includes("jaden")
   }
 
-  const isTroopUnit = (card: GameCard) =
- {
+  const isTroopUnit = (card: GameCard) => {
     return card.type === "troops"
   }
 
-  const calculateCardDP = (card: GameCard, ownerField: FieldState, isEnemy: boolean): number =
- {
+  const calculateCardDP = (card: GameCard, ownerField: FieldState, isEnemy: boolean): number => {
     let dp = card.dp
     
     // Use the ownerField properly to check what continuous functions they have
-    const ownerFunctions = ownerField.functionZone.filter(f =
- f && !f.isFaceDown);
-    const hasAlvorada = ownerFunctions.some(f =
- f?.name === "Alvorada de Albion");
-    const hasGrandeOrdem = ownerFunctions.some(f =
- f?.name === "A Grande Ordem");
+    const ownerFunctions = ownerField.functionZone.filter(f => f && !f.isFaceDown);
+    const hasAlvorada = ownerFunctions.some(f => f?.name === "Alvorada de Albion");
+    const hasGrandeOrdem = ownerFunctions.some(f => f?.name === "A Grande Ordem");
 
     // Apply Brotherhood Function Auras
     if (hasGrandeOrdem) {
@@ -3839,8 +3389,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     // ── LANCELOT: Virtude do Cavaleiro — +2DP if any Void unit on owner's field ──
     if (card.name.toLowerCase().includes("lancelot")) {
       const ownerUnitZone = isEnemy ? enemyField.unitZone : playerField.unitZone
-      const hasVoidUnit = ownerUnitZone.some(u =
- u !== null && u.id !== card.id && (u.element === "Void" || u.element === "Darkus"))
+      const hasVoidUnit = ownerUnitZone.some(u => u !== null && u.id !== card.id && (u.element === "Void" || u.element === "Darkus"))
       if (hasVoidUnit) dp += 2
     }
 
@@ -3850,8 +3399,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       { card: enemyField.scenarioZone, isPlayer: false }
     ]
 
-    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) =
- {
+    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) => {
       if (!scenario) return
 
       const ability = scenario.ability
@@ -3888,8 +3436,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     return Math.max(0, dp)
   }
 
-  const canUnitAttackNow = (card: FieldCard | null): boolean =
- {
+  const canUnitAttackNow = (card: FieldCard | null): boolean => {
     if (!card) return false
     if (phase !== "battle") return false
     if (!isMyTurn) return false
@@ -3901,25 +3448,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     return true
   }
 
-  const cacheEnemyRects = useCallback(() =
- {
+  const cacheEnemyRects = useCallback(() => {
     const enemyUnitElements = document.querySelectorAll("[data-enemy-unit]")
-    enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) =
- el.getBoundingClientRect())
+    enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) => el.getBoundingClientRect())
   }, [])
 
   // ─── initGame: called once on mount for multiplayer ────────────────────────
-  const initGame = (playerDeck: DeckWithImages, opponentDeck: DeckWithImages | null) =
- {
+  const initGame = (playerDeck: DeckWithImages, opponentDeck: DeckWithImages | null) => {
     // Safety: ensure cards is always an array
     const safeCards = Array.isArray(playerDeck.cards) ? playerDeck.cards : []
-    const shuffledDeck = [...safeCards].sort(() =
- Math.random() - 0.5)
+    const shuffledDeck = [...safeCards].sort(() => Math.random() - 0.5)
     const hand = shuffledDeck.slice(0, 5)
     const remainingDeck = shuffledDeck.slice(5)
 
-    setPlayerField((prev) =
- ({
+    setPlayerField((prev) => ({
       ...prev,
       hand,
       deck: remainingDeck,
@@ -3933,14 +3475,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }))
 
     if (opponentDeck) {
-      const shuffledOpp = [...opponentDeck.cards].sort(() =
- Math.random() - 0.5)
-      setEnemyField((prev) =
- ({
+      const shuffledOpp = [...opponentDeck.cards].sort(() => Math.random() - 0.5)
+      setEnemyField((prev) => ({
         ...prev,
         hand: Array(5).fill(null),
-        deck: Array(shuffledOpp.length - 5 
- 0 ? shuffledOpp.length - 5 : 0).fill(null),
+        deck: Array(shuffledOpp.length - 5 > 0 ? shuffledOpp.length - 5 : 0).fill(null),
         tap: opponentDeck.tapCards ? [...opponentDeck.tapCards] : [],
         life: 50,
         unitZone: [null, null, null, null],
@@ -3958,24 +3497,21 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     setPlayerWentFirst(roomData.isHost)
   }
 
-  const drawCard = () =
- {
+  const drawCard = () => {
     if (playerField.deck.length === 0) return
 
     const drawnCard = playerField.deck[0]
     showDrawAnimation(drawnCard)
     // Broadcast draw to opponent
     sendActionRef.current({ type: "draw", playerId, data: { handSize: playerField.hand.length + 1, deckSize: playerField.deck.length - 1 }, timestamp: Date.now() })
-    setPlayerField((prev) =
- ({
+    setPlayerField((prev) => ({
       ...prev,
       hand: [...prev.hand, drawnCard],
       deck: prev.deck.slice(1),
     }))
   }
 
-  const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) =
- {
+  const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
     if (!isMyTurn) return
     if (phase !== "main") return
 
@@ -4008,15 +3544,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         canAttackTurn: turn, // Store current turn when card is placed
       }
 
-      setPlayerField((prev) =
- {
+      setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         newUnitZone[slotIndex] = fieldCard
         return {
           ...prev,
           unitZone: newUnitZone,
-          hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+          hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
       setNormalSummonUsed(true)
@@ -4030,15 +3564,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       // ── LOGI UR: Cinzas do Mundo — ao entrar em campo, +2DP a outra unidade (ou compra 1 carta) ──
       if (cardToPlace.name.toLowerCase().includes("logi") && cardToPlace.dp === 2) {
         // Use functional setter to read FRESH state after Logi was placed
-        setTimeout(() =
- {
-          setPlayerField(prev =
- {
+        setTimeout(() => {
+          setPlayerField(prev => {
             const otherUnits = prev.unitZone
-              .map((u, i) =
- ({ u, i }))
-              .filter(({ u }) =
- u !== null && !u.name.toLowerCase().includes("logi"))
+              .map((u, i) => ({ u, i }))
+              .filter(({ u }) => u !== null && !u.name.toLowerCase().includes("logi"))
             if (otherUnits.length === 0) {
               // No other units — draw a card
               const drawn = prev.deck[0]
@@ -4058,23 +3588,19 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             }
             // Multiple options — show modal (read options from fresh state)
             const opts = otherUnits.slice(0, 4)
-            setTimeout(() =
- {
+            setTimeout(() => {
               setChoiceModal({
                 visible: true,
                 cardName: "Cinzas do Mundo — Escolha 1 unidade para receber +2DP",
-                options: opts.map(({ u, i }) =
- ({
+                options: opts.map(({ u, i }) => ({
                   id: String(i),
                   label: u!.name,
                   description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
                 })),
-                onChoose: (optId) =
- {
+                onChoose: (optId) => {
                   setChoiceModal(null)
                   const idx = parseInt(optId)
-                  setPlayerField(prev2 =
- {
+                  setPlayerField(prev2 => {
                     const newUnits = [...prev2.unitZone]
                     if (newUnits[idx]) {
                       const chosen = newUnits[idx]!
@@ -4093,17 +3619,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
       // ── VIVIAN: Abraço das Profundezas — ao entrar em campo, pode evocar unidade 2/3DP do deck ──
       if (cardToPlace.name.toLowerCase().includes("vivian") && !vivianAbracoUsed) {
-        setTimeout(() =
- activateVivianAbility(), 300)
+        setTimeout(() => activateVivianAbility(), 300)
       }
 
       // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
       if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
-        setTimeout(() =
- {
+        setTimeout(() => {
           const hasMefisto = playerField.ultimateZone?.ability === "MEFISTO"
-          if (hasMefisto && playerField.deck.length 
- 0) {
+          if (hasMefisto && playerField.deck.length > 0) {
             setChoiceModal({
               visible: true,
               cardName: "O Preço da Coroa — Comprar 1 carta?",
@@ -4111,15 +3634,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 { id: "draw", label: "Comprar 1 carta", description: "Compre a carta do topo do deck" },
                 { id: "skip", label: "Não comprar", description: "Pular esta oportunidade" },
               ],
-              onChoose: (optId) =
- {
+              onChoose: (optId) => {
                 setChoiceModal(null)
                 if (optId === "draw") {
                   const drawn = playerField.deck[0]
                   if (drawn) {
                     showDrawAnimation(drawn)
-                    setPlayerField(prev =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+                    setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
                     showEffectFeedback(`O PREÇO DA COROA: ${drawn.name} comprada!`, "success")
                   }
                 }
@@ -4130,14 +3651,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
 
       if (cardToPlace.name.toLowerCase().includes("balin")) {
-        setTimeout(() =
- {
+        setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
           if (top3.length === 0) return
           if (top3.length === 1) {
             showDrawAnimation(top3[0])
-            setPlayerField((prev) =
- ({
+            setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, top3[0]],
               deck: prev.deck.slice(1),
@@ -4148,22 +3667,18 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           setChoiceModal({
             visible: true,
             cardName: "Vigília Eterna — Escolha 1 carta",
-            options: top3.map((c, i) =
- ({
+            options: top3.map((c, i) => ({
               id: String(i),
               label: c.name,
               description: c.rarity + " · " + (c.category || c.type),
             })),
-            onChoose: (optionId: string) =
- {
+            onChoose: (optionId: string) => {
               setChoiceModal(null)
               const pickedIdx = Number(optionId)
-              setPlayerField((prev) =
- {
+              setPlayerField((prev) => {
                 const deckWithout = prev.deck.slice(top3.length)
                 const chosen = top3[pickedIdx]
-                const toBottom = top3.filter((_, i) =
- i !== pickedIdx)
+                const toBottom = top3.filter((_, i) => i !== pickedIdx)
                 showEffectFeedback(`Vigília Eterna: ${chosen.name} adicionada à mão!`, "success")
                 showDrawAnimation(chosen)
                 return {
@@ -4180,15 +3695,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       // União da Grande Ordem check
       const cardNameLower = cardToPlace.name.toLowerCase()
       const isGreatOrderMember = cardNameLower.includes("fehnon") || cardNameLower.includes("morgana") || cardNameLower.includes("calem")
-      const hasGrandeOrdem = playerField.functionZone.some(f =
- f && !f.isFaceDown && f.name === "A Grande Ordem")
+      const hasGrandeOrdem = playerField.functionZone.some(f => f && !f.isFaceDown && f.name === "A Grande Ordem")
       
       if (hasGrandeOrdem && isGreatOrderMember) {
-         const searchedNames = ["fehnon", "morgana", "calem"].filter(m =
- !cardNameLower.includes(m))
-         const searchOptions = playerField.deck.filter(c =
- searchedNames.some(m =
- c.name.toLowerCase().includes(m)))
+         const searchedNames = ["fehnon", "morgana", "calem"].filter(m => !cardNameLower.includes(m))
+         const searchOptions = playerField.deck.filter(c => searchedNames.some(m => c.name.toLowerCase().includes(m)))
          
          const uniqueOptions: { id: string, label: string, description: string }[] = []
          const seenNames = new Set()
@@ -4199,8 +3710,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             }
          }
          
-         if (uniqueOptions.length 
- 0) {
+         if (uniqueOptions.length > 0) {
            setChoiceModal({
              visible: true,
              cardName: "A Grande Ordem (União)",
@@ -4208,25 +3718,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                ...uniqueOptions,
                { id: "cancel", label: "Cancelar", description: "Não buscar nada" }
              ],
-             onChoose: (optionId: string) =
- {
+             onChoose: (optionId: string) => {
                setChoiceModal(null)
                if (optionId === "cancel") return
                
-               setPlayerField(prev =
- {
-                  const targetCardIndex = prev.deck.findIndex(c =
- c.id === optionId)
+               setPlayerField(prev => {
+                  const targetCardIndex = prev.deck.findIndex(c => c.id === optionId)
                   if (targetCardIndex === -1) return prev
                   
                   const cardToDraw = prev.deck[targetCardIndex]
                   const newDeck = [...prev.deck]
                   newDeck.splice(targetCardIndex, 1)
-                  newDeck.sort(() =
- Math.random() - 0.5) // Shuffle
+                  newDeck.sort(() => Math.random() - 0.5) // Shuffle
                   
-                  setTimeout(() =
- showEffectFeedback(`A Grande Ordem: ${cardToDraw.name} adicionado à mão!`, "success"), 500)
+                  setTimeout(() => showEffectFeedback(`A Grande Ordem: ${cardToDraw.name} adicionado à mão!`, "success"), 500)
                   return {
                     ...prev,
                     hand: [...prev.hand, cardToDraw],
@@ -4242,15 +3747,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
       // Trap cards are placed face-down and not activated immediately
       if (cardToPlace.type === "trap") {
-        setPlayerField((prev) =
- {
+        setPlayerField((prev) => {
           const newFunctionZone = [...prev.functionZone]
           newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: true }
           return {
             ...prev,
             functionZone: newFunctionZone,
-            hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
           }
         })
         // ── Broadcast trap placement ──
@@ -4266,23 +3769,19 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
       // Special handling for Brotherhood Functions - they stay on field
       if (cardToPlace.name === "Alvorada de Albion" || cardToPlace.name === "A Grande Ordem") {
-        setPlayerField((prev) =
- {
+        setPlayerField((prev) => {
           const newFunctionZone = [...prev.functionZone]
           newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: false }
           
-          let newHand = prev.hand.filter((_, i) =
- i !== cardIndex)
+          let newHand = prev.hand.filter((_, i) => i !== cardIndex)
           let newDeck = [...prev.deck]
           
           // Hora das Sombras: Draw a card when played
-          if (cardToPlace.name === "Alvorada de Albion" && newDeck.length 
- 0) {
+          if (cardToPlace.name === "Alvorada de Albion" && newDeck.length > 0) {
             const drawnCard = newDeck[0]
             newDeck = newDeck.slice(1)
             newHand.push(drawnCard)
-            setTimeout(() =
- showEffectFeedback("Hora das Sombras: 1 carta comprada!", "success"), 500)
+            setTimeout(() => showEffectFeedback("Hora das Sombras: 1 carta comprada!", "success"), 500)
           }
 
           return {
@@ -4377,13 +3876,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         // For player's perspective: this has no direct UI block needed since bot is auto
 
         // ── REI ARTHUR SR 2DP: Soberania das Sombras — block healing cards while on field ──
-        const _arthurSrOnField = enemyField.unitZone.some(u =
-
+        const _arthurSrOnField = enemyField.unitZone.some(u =>
           u && u.name.toLowerCase().includes("rei arthur") && u.dp === 2
         )
         const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas"]
-        const _isHealingCard = _healingCardIds.some(id =
- effectToUse.id?.includes(id)) ||
+        const _isHealingCard = _healingCardIds.some(id => effectToUse.id?.includes(id)) ||
           (cardToPlace.name.toLowerCase().includes("bandagem") || cardToPlace.name.toLowerCase().includes("cristal recuperador") ||
            cardToPlace.name.toLowerCase().includes("kit médico") || cardToPlace.name.toLowerCase().includes("soro recuperador"))
         if (_arthurSrOnField && _isHealingCard) {
@@ -4405,8 +3902,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             visible: true,
             cardName: cardToPlace.name,
             options: effectToUse.choiceOptions,
-            onChoose: (optionId: string) =
- {
+            onChoose: (optionId: string) => {
               setChoiceModal(null)
 
               // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
@@ -4414,11 +3910,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
                 if (result.success) {
                   showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
-                  setPlayerField((prev) =
- ({
+                  setPlayerField((prev) => ({
                     ...prev,
-                    hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }))
                 } else {
@@ -4438,11 +3932,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 selectedEnemyIndex: null,
                 chosenOption: optionId,
               })
-              setPlayerField((prev) =
- ({
+              setPlayerField((prev) => ({
                 ...prev,
-                hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+                hand: prev.hand.filter((_, i) => i !== cardIndex),
               }))
               setSelectedHandCard(null)
               setDraggedHandCard(null)
@@ -4453,18 +3945,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // FLECHA DE BALISTA: direct enemy unit selection, bypasses requiresTargets system entirely
         if (cardToPlace.name === "Flecha de Balista") {
-          const hasEnemyUnits = enemyField.unitZone.some((u) =
- u !== null)
+          const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
           if (!hasEnemyUnits) {
             showEffectFeedback("Flecha de Balista: O oponente não tem Unidades no campo!", "error")
             return
           }
           // Remove from hand, enter enemy selection mode
-          setPlayerField((prev) =
- ({
+          setPlayerField((prev) => ({
             ...prev,
-            hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
           }))
           setSelectedHandCard(null)
           setDraggedHandCard(null)
@@ -4482,8 +3971,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         if (effectToUse.requiresTargets && effectToUse.targetConfig) {
           // Determine the correct step based on target config
           // If only needs ally units (like dice cards), go straight to selectAlly
-          const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits 
- 0
+          const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits > 0
           const initialStep = needsEnemyFirst ? "selectEnemy" : "selectAlly"
 
           setItemSelectionMode({
@@ -4493,11 +3981,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             selectedEnemyIndex: null,
             chosenOption: null,
           })
-          setPlayerField((prev) =
- ({
+          setPlayerField((prev) => ({
             ...prev,
-            hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
           }))
           setSelectedHandCard(null)
           setDraggedHandCard(null)
@@ -4509,18 +3995,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         if (result.success) {
           if (result.message === "PEDRA_AFIAR_SEARCH") {
             // Collect all Ultimate Gear cards in the player's deck
-            const ugCardsInDeck = playerField.deck.filter((c) =
- c.type === "ultimateGear")
+            const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
             if (ugCardsInDeck.length === 0) {
               showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
               return
             }
             // Remove card from hand now
-            setPlayerField((prev) =
- ({
+            setPlayerField((prev) => ({
               ...prev,
-              hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
               graveyard: [...prev.graveyard, cardToPlace],
             }))
             setSelectedHandCard(null)
@@ -4530,16 +4013,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               visible: true,
               title: "Pedra de Afiar — Escolha uma Ultimate Gear",
               cards: ugCardsInDeck,
-              onSelect: (chosenCard) =
- {
+              onSelect: (chosenCard) => {
                 setDeckSearchModal(null)
-                setPlayerField((prev) =
- {
-                  const newDeck = prev.deck.filter((c) =
- c.id !== chosenCard.id)
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
                   // Shuffle deck
-                  for (let i = newDeck.length - 1; i 
- 0; i--) {
+                  for (let i = newDeck.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
                   }
@@ -4547,8 +4026,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 })
                 showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
               },
-              onCancel: () =
- setDeckSearchModal(null),
+              onCancel: () => setDeckSearchModal(null),
             })
             return
           }
@@ -4559,35 +4037,29 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           // ORDEM DE LACERAÇÃO: trigger slash animation
           if (cardToPlace.name === "Ordem de Laceração") {
             setLacerationAnimation(true)
-            setTimeout(() =
- setLacerationAnimation(false), 1800)
+            setTimeout(() => setLacerationAnimation(false), 1800)
           }
           if (cardToPlace.name === "Sinfonia Relâmpago") {
             setSinfoniaAnimation(true)
-            setTimeout(() =
- setSinfoniaAnimation(false), 1500)
+            setTimeout(() => setSinfoniaAnimation(false), 1500)
           }
 
           // Special handling for Cristal Recuperador - draw a card and check if Function type
           if (result.needsDrawAndCheck) {
-            setTimeout(() =
- {
-              setPlayerField((prev) =
- {
+            setTimeout(() => {
+              setPlayerField((prev) => {
                 if (prev.deck.length === 0) {
                   showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
                   return {
                     ...prev,
-                    hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
 
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
-                const newHand = [...prev.hand.filter((_, i) =
- i !== cardIndex), drawnCard]
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
 
                 // Check if drawn card is a Function type (item)
                 const isFunctionCard = drawnCard.type === "item"
@@ -4597,10 +4069,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                   const maxLife = 20
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
-                  if (bonusHeal 
- 0) {
-                    showEffectFeedback(`Carta Function comprada! +1 LP bonus! (${finalLife - 1} -
- ${finalLife})`, "success")
+                  if (bonusHeal > 0) {
+                    showEffectFeedback(`Carta Function comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
                   }
                 } else {
                   showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
@@ -4623,24 +4093,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
           // Special handling for Kit Médico Improvisado - draw and check if Unit type for bonus
           if (result.needsDrawAndCheckUnit) {
-            setTimeout(() =
- {
-              setPlayerField((prev) =
- {
+            setTimeout(() => {
+              setPlayerField((prev) => {
                 if (prev.deck.length === 0) {
                   showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
                   return {
                     ...prev,
-                    hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
 
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
-                const newHand = [...prev.hand.filter((_, i) =
- i !== cardIndex), drawnCard]
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
 
                 // Check if drawn card is a Unit type
                 const isUnitCard = drawnCard.type === "unit"
@@ -4650,10 +4116,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                   const maxLife = 20
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
-                  if (bonusHeal 
- 0) {
-                    showEffectFeedback(`Carta Unidade comprada! +1 LP bonus! (${finalLife - 1} -
- ${finalLife})`, "success")
+                  if (bonusHeal > 0) {
+                    showEffectFeedback(`Carta Unidade comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
                   }
                 } else {
                   showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
@@ -4676,24 +4140,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
           // Special handling for Soro Recuperador - just draw, no bonus check
           if (result.needsDrawOnly) {
-            setTimeout(() =
- {
-              setPlayerField((prev) =
- {
+            setTimeout(() => {
+              setPlayerField((prev) => {
                 if (prev.deck.length === 0) {
                   showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
                   return {
                     ...prev,
-                    hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
 
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
-                const newHand = [...prev.hand.filter((_, i) =
- i !== cardIndex), drawnCard]
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
 
                 showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
 
@@ -4712,11 +4172,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           }
 
           // Send card to graveyard after resolution
-          setPlayerField((prev) =
- ({
+          setPlayerField((prev) => ({
             ...prev,
-            hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
             graveyard: [...prev.graveyard, cardToPlace],
           }))
           // ── Broadcast function card use ──
@@ -4734,15 +4192,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
 
       // Fallback: place card in function zone without effect
-      setPlayerField((prev) =
- {
+      setPlayerField((prev) => {
         const newFunctionZone = [...prev.functionZone]
         newFunctionZone[slotIndex] = cardToPlace
         return {
           ...prev,
           functionZone: newFunctionZone,
-          hand: prev.hand.filter((_, i) =
- i !== cardIndex),
+          hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
       sendActionRef.current({
@@ -4756,8 +4212,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     setDraggedHandCard(null) // Clear drag state
   }
 
-  const placeScenarioCard = (forcedCardIndex?: number) =
- {
+  const placeScenarioCard = (forcedCardIndex?: number) => {
     if (!isMyTurn) return
     if (phase !== "main") return
 
@@ -4768,22 +4223,18 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!cardToPlace || cardToPlace.type !== "scenario") return
     if (playerField.scenarioZone !== null) return
 
-    setPlayerField((prev) =
- {
-      const newHand = prev.hand.filter((_, i) =
- i !== cardIndex)
+    setPlayerField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
       let newDeck = prev.deck
       let finalScenarioZone = cardToPlace
 
       // Ruinas Abandonadas and Arena Escandinava: Draw 1 card when played
       if (cardToPlace.ability === "RUÍNAS ABANDONADAS" || cardToPlace.ability === "ARENA ESCANDINAVA") {
-        if (newDeck.length 
- 0) {
+        if (newDeck.length > 0) {
           const drawn = newDeck[0]
           newDeck = newDeck.slice(1)
           newHand.push(drawn)
-          setTimeout(() =
- {
+          setTimeout(() => {
             showDrawAnimation(drawn)
             showEffectFeedback(`${cardToPlace.name}: Comprou 1 carta!`, "success")
           }, 300)
@@ -4793,8 +4244,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       // Apply ONLY the delta bonus of the new scenario to the OWNER's units,
       // preserving previously accumulated buffs (equips, effects, etc).
       // Scenarios never affect the opponent's units.
-      const getNewScenarioBonus = (u: FieldCard): number =
- {
+      const getNewScenarioBonus = (u: FieldCard): number => {
         const ability = cardToPlace.ability
         if (ability === "RUÍNAS ABANDONADAS") {
           if (isGreatOrderUnit(u) || isTroopUnit(u)) return 2
@@ -4810,15 +4260,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         return 0
       }
 
-      const updatedPlayerUnitZone = prev.unitZone.map(u =
- {
+      const updatedPlayerUnitZone = prev.unitZone.map(u => {
         if (!u) return null
         return { ...u, currentDp: (u.currentDp ?? u.dp) + getNewScenarioBonus(u) }
       })
 
       if (cardToPlace.ability === "REINO DE CAMELOT" || cardToPlace.ability === "VILA DA PÓLVORA") {
-        setTimeout(() =
- showEffectFeedback(`${cardToPlace.name} ativado! O campo mudou!`, "success"), 500)
+        setTimeout(() => showEffectFeedback(`${cardToPlace.name} ativado! O campo mudou!`, "success"), 500)
       }
 
       return {
@@ -4841,13 +4289,10 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Helper: find index of a unit by name in a unit zone
-  const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number =
- {
-    const normalize = (value: string) =
- value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "")
+  const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number => {
+    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "")
     const expected = normalize(unitName)
-    return unitZone.findIndex((u) =
- {
+    return unitZone.findIndex((u) => {
       if (!u) return false
       const actual = normalize(u.name)
       return actual === expected || actual.includes(expected) || expected.includes(actual)
@@ -4855,20 +4300,16 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Helper: count fire element units in graveyard + field (already used)
-  const countFireUnitsUsed = (field: FieldState): number =
- {
+  const countFireUnitsUsed = (field: FieldState): number => {
     let count = 0
     // Graveyard fire units
-    count += field.graveyard.filter((c) =
- c.element === "Pyrus" && (c.type === "unit" || c.type === "ultimateGear" || c.type === "ultimateGuardian" || c.type === "ultimateElemental")).length
+    count += field.graveyard.filter((c) => c.element === "Pyrus" && (c.type === "unit" || c.type === "ultimateGear" || c.type === "ultimateGuardian" || c.type === "ultimateElemental")).length
     // Field fire units currently in play
-    field.unitZone.forEach((u) =
- { if (u && u.element === "Pyrus") count++ })
+    field.unitZone.forEach((u) => { if (u && u.element === "Pyrus") count++ })
     return count
   }
 
-  const placeUltimateCard = (forcedCardIndex?: number) =
- {
+  const placeUltimateCard = (forcedCardIndex?: number) => {
     if (!isMyTurn) return
     if (phase !== "main") return
 
@@ -4887,10 +4328,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       canAttackTurn: turn,
     }
 
-    setPlayerField((prev) =
- {
-      const newHand = prev.hand.filter((_, i) =
- i !== cardIndex)
+    setPlayerField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
       const requiredUnit = cardToPlace.requiresUnit
       const unitIdx = requiredUnit ? findUnitByName(prev.unitZone, requiredUnit) : -1
       const unitFound = unitIdx !== -1
@@ -4922,8 +4361,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           // Count fire units used so far
           const fireCount = countFireUnitsUsed(prev)
           const bonus = fireCount * 2
-          if (bonus 
- 0) {
+          if (bonus > 0) {
             newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + bonus }
           }
           setFornbrennaFireCount(fireCount)
@@ -4946,11 +4384,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
 
       if (bonusMsg) {
-        setTimeout(() =
- showEffectFeedback(bonusMsg, "success"), 300)
+        setTimeout(() => showEffectFeedback(bonusMsg, "success"), 300)
       } else if (requiredUnit && !unitFound) {
-        setTimeout(() =
- showEffectFeedback(`${cardToPlace.name} equipada! Coloque ${requiredUnit} no campo para ativar.`, "success"), 300)
+        setTimeout(() => showEffectFeedback(`${cardToPlace.name} equipada! Coloque ${requiredUnit} no campo para ativar.`, "success"), 300)
       }
 
       return {
@@ -4973,8 +4409,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Activate Ultimate Gear one-time ability
-  const activateUgAbility = () =
- {
+  const activateUgAbility = () => {
     if (!isMyTurn || phase !== "main") return
     if (playerUgAbilityUsed) return
     if (!playerField.ultimateZone) return
@@ -4984,8 +4419,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   if (!requiredUnit) return
 
   // Os nomes podem variar entre decks locais e partidas sincronizadas.
-  const unitIdx = playerField.unitZone.findIndex((unit) =
- {
+  const unitIdx = playerField.unitZone.findIndex((unit) => {
     if (!unit) return false
     if (ug.id === "vatnavordr-messiham-ur") return unit.name.toLowerCase().includes("hrotti")
     if (ug.id === "yggdra-nidhogg-ur") return unit.name.toLowerCase().includes("logi")
@@ -4998,8 +4432,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
     if (ug.ability === "ODEN SWORD") {
       // Check if opponent has function cards
-      const hasEnemyFunctions = enemyField.functionZone.some((f) =
- f !== null)
+      const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
         showEffectFeedback("Oponente nao tem cartas de Function no campo!", "error")
         return
@@ -5008,9 +4441,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       showEffectFeedback("Selecione uma Function inimiga para destruir!", "success")
     } else if (ug.ability === "TWILIGH AVALON") {
       // Check if opponent has any cards on field (units or functions)
-      const hasEnemyCards = enemyField.unitZone.some((u) =
- u !== null) || enemyField.functionZone.some((f) =
- f !== null)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
         return
@@ -5020,9 +4451,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     } else if (ug.ability === "MEFISTO") {
       // Once per duel: destroy any 1 card on opponent's field
       if (playerUgAbilityUsed) return
-      const hasEnemyCards = enemyField.unitZone.some((u) =
- u !== null) || enemyField.functionZone.some((f) =
- f !== null)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
         return
@@ -5030,9 +4459,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
     } else if (ug.id === "vatnavordr-messiham-ur" || ug.name?.toLowerCase().includes("vatnavordr") || ug.ability === "Congelamento de Vatnavordr") {
-      const hasEnemyCards = enemyField.unitZone.some((u) =
- u !== null) || enemyField.functionZone.some((f) =
- f !== null)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
         return
@@ -5040,8 +4467,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
       showEffectFeedback("VATNAVORDR MESSIHAM: selecione uma carta inimiga para congelar!", "success")
     } else if (ug.id === "yggdra-nidhogg-ur" || ug.name?.toLowerCase().includes("nidhogg") || ug.ability === "Destruição de Nidhogg") {
-      const hasEnemyFunctions = enemyField.functionZone.some((f) =
- f !== null)
+      const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
         showEffectFeedback("Oponente nao tem cartas de Função no campo!", "error")
         return
@@ -5054,8 +4480,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         showEffectFeedback("Julgamento Divino ja foi usado neste turno!", "error")
         return
       }
-      const hasEnemyUnits = enemyField.unitZone.some((u) =
- u !== null)
+      const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
       if (!hasEnemyUnits) {
         showEffectFeedback("Oponente nao tem Unidades no campo!", "error")
         return
@@ -5066,16 +4491,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Handle UG target selection for enemy function cards (ODEN SWORD / MEFISTO)
-  const handleUgTargetEnemyFunction = (funcIndex: number) =
- {
+  const handleUgTargetEnemyFunction = (funcIndex: number) => {
     if (!ugTargetMode.active) return
     const funcCard = enemyField.functionZone[funcIndex]
     if (!funcCard) return
 
     if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       markDestroyed(funcCard)
-      setEnemyField((prev) =
- {
+      setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
         const destroyed = newFuncs[funcIndex]
         newFuncs[funcIndex] = null
@@ -5093,13 +4516,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Play a card from TAP (Tactical Access Pile)
-  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number) =
- {
+  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number) => {
     if (!isMyTurn || phase !== "main") return
 
     // Every 3 turns restriction
-    const isTapAvailable = turn 
- 0 && turn % 3 === 0
+    const isTapAvailable = turn > 0 && turn % 3 === 0
     if (!isTapAvailable) {
       showEffectFeedback("TAP Pile disponivel apenas a cada 3 turnos!", "error")
       return
@@ -5114,10 +4535,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (zone === "scenario" && playerField.scenarioZone !== null) return
     if (zone === "ultimate" && playerField.ultimateZone !== null) return
 
-    setPlayerField((prev) =
- {
-      const newTap = prev.tap.filter((_, i) =
- i !== cardIndex)
+    setPlayerField((prev) => {
+      const newTap = prev.tap.filter((_, i) => i !== cardIndex)
 
       if (zone === "unit") {
         const newUnitZone = [...prev.unitZone]
@@ -5159,15 +4578,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Handle UG target selection for any enemy card (TWILIGH AVALON / MEFISTO)
-  const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) =
- {
+  const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) => {
     if (!ugTargetMode.active) return
 
     if (ugTargetMode.type === "vatnavordr_messiham") {
       const target = type === "unit" ? enemyField.unitZone[index] : enemyField.functionZone[index]
       if (!target) return
-      setEnemyField((prev) =
- {
+      setEnemyField((prev) => {
         if (type === "unit") {
           const units = [...prev.unitZone]
           const unit = units[index]
@@ -5188,8 +4605,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const unit = enemyField.unitZone[index]
         if (!unit) return
 
-        setEnemyField((prev) =
- {
+        setEnemyField((prev) => {
           const newUnits = [...prev.unitZone]
           const returned = newUnits[index]
           newUnits[index] = null
@@ -5200,8 +4616,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           }
         })
         // If returned card is a unit, deal 3 DP to opponent
-        setEnemyField((prev) =
- ({
+        setEnemyField((prev) => ({
           ...prev,
           life: Math.max(0, prev.life - 3),
         }))
@@ -5210,8 +4625,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const func = enemyField.functionZone[index]
         if (!func) return
 
-        setEnemyField((prev) =
- {
+        setEnemyField((prev) => {
           const newFuncs = [...prev.functionZone]
           const returned = newFuncs[index]
           newFuncs[index] = null
@@ -5232,8 +4646,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const unit = enemyField.unitZone[index]
         if (!unit) return
         markDestroyed(unit)
-        setEnemyField((prev) =
- {
+        setEnemyField((prev) => {
           const newUnits = [...prev.unitZone]
           const destroyed = newUnits[index]
           newUnits[index] = null
@@ -5248,8 +4661,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const func = enemyField.functionZone[index]
         if (!func) return
         markDestroyed(func)
-        setEnemyField((prev) =
- {
+        setEnemyField((prev) => {
           const newFuncs = [...prev.functionZone]
           const destroyed = newFuncs[index]
           newFuncs[index] = null
@@ -5267,14 +4679,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Handle JULGAMENTO DIVINO: select enemy unit and reduce -1DP
-  const handleJulgamentoDivinoTarget = (unitIndex: number) =
- {
+  const handleJulgamentoDivinoTarget = (unitIndex: number) => {
     if (!ugTargetMode.active || ugTargetMode.type !== "julgamento_divino") return
     const unit = enemyField.unitZone[unitIndex]
     if (!unit) return
 
-    setEnemyField((prev) =
- {
+    setEnemyField((prev) => {
       const newUnits = [...prev.unitZone]
       const target = newUnits[unitIndex]
       if (!target) return prev
@@ -5299,8 +4709,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // CALEM LR: Julgamento do Vazio Eterno - destroy selected enemy unit or function
-  const handleJulgamentoVazioTarget = (type: "unit" | "function", index: number) =
- {
+  const handleJulgamentoVazioTarget = (type: "unit" | "function", index: number) => {
     if (!julgamentoVazioTargetMode.active) return
 
     const attackerIdx = julgamentoVazioTargetMode.attackerIndex
@@ -5309,8 +4718,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       const target = enemyField.unitZone[index]
       if (!target) return
       markDestroyed(target)
-      setEnemyField((prev) =
- {
+      setEnemyField((prev) => {
         const newUnits = [...prev.unitZone]
         newUnits[index] = null
         return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
@@ -5320,8 +4728,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       const target = enemyField.functionZone[index]
       if (!target) return
       markDestroyed(target)
-      setEnemyField((prev) =
- {
+      setEnemyField((prev) => {
         const newFunctions = [...prev.functionZone]
         newFunctions[index] = null
         return { ...prev, functionZone: newFunctions, graveyard: [...prev.graveyard, target] }
@@ -5331,8 +4738,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
     // Mark attacker as having attacked and fully reset attack arrow/drag state
     if (attackerIdx !== null) {
-      setPlayerField((prev) =
- {
+      setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[attackerIdx]) {
           newUnitZone[attackerIdx] = { ...newUnitZone[attackerIdx]!, hasAttacked: true }
@@ -5347,22 +4753,18 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   // Cancel UG target mode
-  const cancelUgTargetMode = () =
- {
+  const cancelUgTargetMode = () => {
     setUgTargetMode({ active: false, ugCard: null, type: null })
   }
 
-  const advancePhase = () =
- {
+  const advancePhase = () => {
     if (!isMyTurn) return
     if (phase === "draw") {
       // Compra uma carta automaticamente ao sair da fase de draw
-      if (playerField.deck.length 
- 0) {
+      if (playerField.deck.length > 0) {
         const drawnCard = playerField.deck[0]
         showDrawAnimation(drawnCard)
-        setPlayerField((prev) =
- ({
+        setPlayerField((prev) => ({
           ...prev,
           hand: [...prev.hand, drawnCard],
           deck: prev.deck.slice(1),
@@ -5374,8 +4776,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
         const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
         if (ullrIdx !== -1) {
-          setPlayerField((prev) =
- {
+          setPlayerField((prev) => {
             const newUnits = [...prev.unitZone]
             const unit = newUnits[ullrIdx]
             if (unit) {
@@ -5393,8 +4794,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   }
 
   const handleAttackStart = useCallback(
-    (index: number, e: React.MouseEvent | React.TouchEvent) =
- {
+    (index: number, e: React.MouseEvent | React.TouchEvent) => {
       if (!isMyTurn || phase !== "battle") return
 
       const unit = playerField.unitZone[index]
@@ -5434,8 +4834,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   )
 
   const handleAttackMove = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) =
- {
+    (e: React.MouseEvent | React.TouchEvent) => {
       if (!isDraggingRef.current || !attackState.isAttacking) return
 
       e.preventDefault()
@@ -5444,13 +4843,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
       // Direct state update for immediate response
-      setArrowPos((prev) =
- ({ ...prev, x2: clientX, y2: clientY }))
+      setArrowPos((prev) => ({ ...prev, x2: clientX, y2: clientY }))
 
       // Throttled target detection
       const now = Date.now()
-      if (!positionRef.current.lastTargetCheck || now - positionRef.current.lastTargetCheck 
- 50) {
+      if (!positionRef.current.lastTargetCheck || now - positionRef.current.lastTargetCheck > 50) {
         positionRef.current.lastTargetCheck = now
 
         const fieldRect = fieldRef.current?.getBoundingClientRect()
@@ -5463,9 +4860,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         if (relativeY < fieldRect.height / 2) {
           for (let idx = 0; idx < enemyUnitRectsRef.current.length; idx++) {
             const rect = enemyUnitRectsRef.current[idx]
-            if (clientX 
-= rect.left && clientX <= rect.right && clientY 
-= rect.top && clientY <= rect.bottom) {
+            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
               if (enemyField.unitZone[idx]) {
                 foundTarget = { type: "unit", index: idx }
                 break
@@ -5474,23 +4869,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           }
           // Check for direct attack if no units
           if (!foundTarget) {
-            const hasEnemyUnits = enemyField.unitZone.some((u) =
- u !== null)
+            const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
             if (!hasEnemyUnits) {
               foundTarget = { type: "direct" }
             }
           }
         }
 
-        setAttackState((prev) =
- ({ ...prev, targetInfo: foundTarget }))
+        setAttackState((prev) => ({ ...prev, targetInfo: foundTarget }))
       }
     },
     [attackState.isAttacking, enemyField.unitZone, setAttackState],
   )
 
-  const handleAttackEnd = useCallback(() =
- {
+  const handleAttackEnd = useCallback(() => {
     if (!isDraggingRef.current || animationInProgressRef.current) return
     isDraggingRef.current = false
     animationInProgressRef.current = true
@@ -5506,8 +4898,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
-            setPlayerField((prev) =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             if (isUnit) {
               setFehnonSrDouble(true)
@@ -5524,8 +4915,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
-            setPlayerField((prev) =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             // Only grant double attack if Protonix Sword is equipped (Singularidade Zero condition)
             const hasProtonixSword =
@@ -5550,8 +4940,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           if (drawn) {
             // "Unit or Action Function" = unit, troops, ultimates, or function cards
             const isUnitOrAction = ["unit","troops","ultimateGuardian","ultimateElemental","function","action"].includes(drawn.type)
-            setPlayerField((prev) =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             // Check ODEN SWORD is equipped on Fehnon LR (Laceração do Mundo requirement)
             const hasOdenSword =
@@ -5560,8 +4949,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             if (isUnitOrAction && hasOdenSword) {
               setFehnonLrDouble(true)
               setFehnonLrBonusDp(3)
-              setPlayerField((prev) =
- {
+              setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
                 if (newUnitZone[idx]) {
@@ -5581,8 +4969,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── MORGANA SR 2DP: Ressonância em Eclipse — ao declarar ataque (cada 2 turnos) ──
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
-          if (morganaEclipseLastTurn === null || turn - morganaEclipseLastTurn 
-= 2) {
+          if (morganaEclipseLastTurn === null || turn - morganaEclipseLastTurn >= 2) {
             setMorganaEclipseActive({ target: attackState.targetInfo!.type === "direct" ? "direct" : "unit", turn })
             setMorganaEclipseLastTurn(turn)
             showEffectFeedback("RESSONÂNCIA EM ECLIPSE: Se sobreviver, oponente não pode comprar ou ativar habilidades no próximo turno!", "warning")
@@ -5591,26 +4978,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── MORGANA UR 3DP: Sinfonia Relâmpago — ao atacar, a cada 3 turnos destrói 2 Functions/Traps ──
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 3) {
-          if (morganaSinfoniaLastTurn === null || turn - morganaSinfoniaLastTurn 
-= 3) {
+          if (morganaSinfoniaLastTurn === null || turn - morganaSinfoniaLastTurn >= 3) {
             const destroyableEnemy = enemyField.functionZone
-              .map((f, i) =
- ({ f, i }))
-              .filter(({ f }) =
- f !== null)
+              .map((f, i) => ({ f, i }))
+              .filter(({ f }) => f !== null)
               .slice(0, 2)
-            if (destroyableEnemy.length 
- 0) {
+            if (destroyableEnemy.length > 0) {
               setMorganaSinfoniaLastTurn(turn)
               const discardCount = destroyableEnemy.length * 3
-              setEnemyField(prev =
- {
+              setEnemyField(prev => {
                 const newFuncs = [...prev.functionZone]
                 const newGrave = [...prev.graveyard]
                 const newDeck = [...prev.deck]
                 const newGraveFromDeck: typeof prev.graveyard[0][] = []
-                destroyableEnemy.forEach(({ i }) =
- {
+                destroyableEnemy.forEach(({ i }) => {
                   if (newFuncs[i]) { newGrave.push(newFuncs[i]!); newFuncs[i] = null }
                 })
                 // Discard top 3 per destroyed card
@@ -5625,18 +5006,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── MORGANA LR 4DP: Sinfonia da Discórdia — roubar 1 carta do cemitério inimigo a cada 2 turnos ──
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 4) {
-          if (morganaDiscordiaLastTurn === null || turn - morganaDiscordiaLastTurn 
-= 2) {
-            const stealableCards = enemyField.graveyard.filter(c =
-
+          if (morganaDiscordiaLastTurn === null || turn - morganaDiscordiaLastTurn >= 2) {
+            const stealableCards = enemyField.graveyard.filter(c =>
               c.type === "function" || c.type === "action" || c.type === "trap"
             )
-            if (stealableCards.length 
- 0) {
+            if (stealableCards.length > 0) {
               setMorganaDiscordiaLastTurn(turn)
               // Show choice modal to pick which graveyard card to steal
-              const options = stealableCards.slice(0, 6).map((c, i) =
- ({
+              const options = stealableCards.slice(0, 6).map((c, i) => ({
                 id: String(i),
                 label: c.name,
                 description: `${c.type} · ${c.element || "Neutro"}`,
@@ -5645,25 +5022,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 visible: true,
                 cardName: "Sinfonia da Discórdia — Escolha 1 carta do cemitério inimigo",
                 options,
-                onChoose: (optionId: string) =
- {
+                onChoose: (optionId: string) => {
                   setChoiceModal(null)
                   const idx = parseInt(optionId)
                   const stolen = stealableCards[idx]
                   if (!stolen) return
                   // Remove from enemy graveyard, shuffle into player deck, enemy loses 2LP
-                  setEnemyField(prev =
- {
+                  setEnemyField(prev => {
                     const newGrave = [...prev.graveyard]
-                    const removeIdx = newGrave.findIndex(c =
- c.id === stolen.id)
+                    const removeIdx = newGrave.findIndex(c => c.id === stolen.id)
                     if (removeIdx !== -1) newGrave.splice(removeIdx, 1)
                     return { ...prev, graveyard: newGrave, life: Math.max(0, prev.life - 2) }
                   })
-                  setPlayerField(prev =
- {
-                    const newDeck = [...prev.deck, stolen].sort(() =
- Math.random() - 0.5)
+                  setPlayerField(prev => {
+                    const newDeck = [...prev.deck, stolen].sort(() => Math.random() - 0.5)
                     return { ...prev, deck: newDeck }
                   })
                   showEffectFeedback(`SINFONIA DA DISCÓRDIA: "${stolen.name}" roubada e embaralhada no seu deck! Oponente -2LP!`, "success")
@@ -5675,16 +5047,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── MR. P: A Pena é Mais Forte que a Espada — seleciona 1 carta da mão do oponente para descartar ──
         if (attacker.name.toLowerCase().includes("mr. p") || attacker.name.toLowerCase().includes("mr p") || attacker.name.toLowerCase().includes("penguim")) {
-          if (enemyField.hand.length 
- 0) {
+          if (enemyField.hand.length > 0) {
             // Bot hand is unknown — discard random card (bot doesn't reveal hand)
             const randIdx = Math.floor(Math.random() * enemyField.hand.length)
             const discarded = enemyField.hand[randIdx]
-            setEnemyField(prev =
- ({
+            setEnemyField(prev => ({
               ...prev,
-              hand: prev.hand.filter((_, i) =
- i !== randIdx),
+              hand: prev.hand.filter((_, i) => i !== randIdx),
               graveyard: [...prev.graveyard, discarded],
             }))
             showEffectFeedback(`A PENA É MAIS FORTE: ${discarded.name} descartada da mão do oponente!`, "success")
@@ -5698,18 +5067,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           const drawn1 = playerField.deck[0]
           if (drawn1) {
             const isVentus1 = drawn1.element === "Ventus" || drawn1.element === "Wind"
-            setPlayerField(prev =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn1] }))
+            setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn1] }))
             showDrawAnimation(drawn1)
             showEffectFeedback(`VEREDICTO DE ULLR: ${drawn1.name} comprada!${isVentus1 ? " É Ventus! Compra mais 1!" : ""}`, isVentus1 ? "success" : "info")
             if (isVentus1) {
               const drawn2 = playerField.deck[1] // index 1 since deck[0] was drawn1
               if (drawn2) {
-                setPlayerField(prev =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn2] }))
+                setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn2] }))
                 showDrawAnimation(drawn2)
-                setTimeout(() =
- showEffectFeedback(`VEREDICTO DE ULLR: ${drawn2.name} (bônus Ventus)!`, "success"), 400)
+                setTimeout(() => showEffectFeedback(`VEREDICTO DE ULLR: ${drawn2.name} (bônus Ventus)!`, "success"), 400)
               }
             }
           }
@@ -5718,30 +5084,24 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         // ── ULLR UR: Flecha de Skadi — antes de atacar, pode destruir 1 unidade inimiga com 2DP (uma vez) ──
         if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 3 && !ullrUrFlechaUsed) {
           const twoDpTargets = enemyField.unitZone
-            .map((u,i) =
- ({u,i}))
-            .filter(({u}) =
- u !== null && (u.currentDp ?? u.dp) === 2)
-          if (twoDpTargets.length 
- 0) {
+            .map((u,i) => ({u,i}))
+            .filter(({u}) => u !== null && (u.currentDp ?? u.dp) === 2)
+          if (twoDpTargets.length > 0) {
             setChoiceModal({
               visible: true,
               cardName: "Flecha de Skadi — Destruir 1 unidade inimiga com 2DP?",
               options: [
-                ...twoDpTargets.slice(0,4).map(({u,i}) =
- ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
+                ...twoDpTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
                 { id: "skip", label: "Não usar", description: "Atacar normalmente" },
               ],
-              onChoose: (optId) =
- {
+              onChoose: (optId) => {
                 setChoiceModal(null)
                 if (optId === "skip") return
                 const idx = parseInt(optId)
                 const target = enemyField.unitZone[idx]
                 if (!target) return
                 markDestroyed(target)
-                setEnemyField(prev =
- {
+                setEnemyField(prev => {
                   const newUnits = [...prev.unitZone]
                   newUnits[idx] = null
                   return { ...prev, unitZone: newUnits as (FieldCard|null)[], graveyard: [...prev.graveyard, target] }
@@ -5761,19 +5121,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         // Flag to signal that Devorar ran this attack cycle (used in attack resolution to re-check target)
         let _devorarRanThisAttack = false
         if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 2) {
-          if (logiUrDevorarLastTurn === null || turn - logiUrDevorarLastTurn 
-= 3) {
-            const hasEnemyUnits = enemyField.unitZone.some(u =
- u !== null)
+          if (logiUrDevorarLastTurn === null || turn - logiUrDevorarLastTurn >= 3) {
+            const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
             if (hasEnemyUnits) {
               setLogiUrDevorarLastTurn(turn)
               _devorarRanThisAttack = true
-              setEnemyField(prev =
- {
+              setEnemyField(prev => {
                 const newUnits = [...prev.unitZone]
                 const newGrave = [...prev.graveyard]
-                prev.unitZone.forEach((u, i) =
- {
+                prev.unitZone.forEach((u, i) => {
                   if (!u) return
                   const newDp = (u.currentDp ?? u.dp) - 2
                   if (newDp <= 0) {
@@ -5793,16 +5149,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── HROTTI SR: Corte do Medo Rúnico — antes de atacar, todas unidades inimigas -1DP (a cada 2 turnos na fase de batalha) ──
         if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 2) {
-          if (hrottiSrAttackLastTurn === null || turn - hrottiSrAttackLastTurn 
-= 2) {
-            const hasEnemyUnits = enemyField.unitZone.some(u =
- u !== null)
+          if (hrottiSrAttackLastTurn === null || turn - hrottiSrAttackLastTurn >= 2) {
+            const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
             if (hasEnemyUnits) {
-              setEnemyField(prev =
- ({
+              setEnemyField(prev => ({
                 ...prev,
-                unitZone: prev.unitZone.map(u =
- u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 1) } : null) as (FieldCard|null)[],
+                unitZone: prev.unitZone.map(u => u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 1) } : null) as (FieldCard|null)[],
               }))
               setHrottiSrAttackLastTurn(turn)
               showEffectFeedback("CORTE DO MEDO RÚNICO: Todas as unidades inimigas -1DP!", "warning")
@@ -5816,8 +5168,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             const target = enemyField.unitZone[attackState.targetInfo.index]
             if (target && (target.currentDp ?? target.dp) <= 3) {
               const attackerIdx = attackState.attackerIndex!
-              setPlayerField(prev =
- {
+              setPlayerField(prev => {
                 const newUnits = [...prev.unitZone]
                 if (newUnits[attackerIdx]) {
                   const h = newUnits[attackerIdx]!
@@ -5840,13 +5191,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isTroop = drawn.type === "troops"
-            setPlayerField(prev =
- ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             setMordredCamlannUsed(true)
             if (isTroop) {
-              setPlayerField(prev =
- {
+              setPlayerField(prev => {
                 const newUnits = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
                 if (newUnits[idx]) newUnits[idx] = { ...newUnits[idx]!, currentDp: (newUnits[idx]!.currentDp ?? newUnits[idx]!.dp) + 2 }
@@ -5860,13 +5209,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
 
         // CALEM SR: Pulso da Nulidade - draw on attack every 3 turns
-        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 2 && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn 
-= 3)) {
+        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 2 && (pulsoNulidadeLastUsedTurn === null || turn - pulsoNulidadeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isVoidTroop = (drawn.element === "Void" && drawn.type === "troops")
-            setPlayerField((prev) =
- {
+            setPlayerField((prev) => {
               const newDeck = [...prev.deck.slice(1)]
               const newHand = [...prev.hand, drawn]
               const newUnitZone = [...prev.unitZone]
@@ -5884,13 +5231,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
 
         // CALEM UR: Impacto sem Fé - draw on attack every 3 turns, if Unit → attack again
-        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 3 && (impactoSemFeLastUsedTurn === null || turn - impactoSemFeLastUsedTurn 
-= 3)) {
+        if (attacker.name.toLowerCase().includes("calem") && attacker.dp === 3 && (impactoSemFeLastUsedTurn === null || turn - impactoSemFeLastUsedTurn >= 3)) {
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
-            setPlayerField((prev) =
- {
+            setPlayerField((prev) => {
               const newDeck = [...prev.deck.slice(1)]
               const newHand = [...prev.hand, drawn]
               return { ...prev, deck: newDeck, hand: newHand }
@@ -5908,49 +5253,39 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── REI ARTHUR UR 3DP: Veredito do Rei Tirano — antes de atacar, descarte 1 carta → destrua 1 unidade inimiga (a cada 2 turnos) ──
         if (attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 3) {
-          if (arthurUrVeredito === null || turn - arthurUrVeredito 
-= 2) {
-            const hasHandCards = playerField.hand.length 
- 0
-            const hasEnemyTargets = enemyField.unitZone.some(u =
- u !== null)
+          if (arthurUrVeredito === null || turn - arthurUrVeredito >= 2) {
+            const hasHandCards = playerField.hand.length > 0
+            const hasEnemyTargets = enemyField.unitZone.some(u => u !== null)
             if (hasHandCards && hasEnemyTargets) {
               // Show hand selection to discard, then enemy unit selection
               setChoiceModal({
                 visible: true,
                 cardName: "Veredito do Rei Tirano — Descarte 1 carta para destruir 1 unidade inimiga",
                 options: [
-                  ...playerField.hand.slice(0, 6).map((c, i) =
- ({ id: String(i), label: c.name, description: c.type })),
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
                 ],
-                onChoose: (optId) =
- {
+                onChoose: (optId) => {
                   setChoiceModal(null)
                   if (optId === "skip") return
                   const discardIdx = parseInt(optId)
                   const discarded = playerField.hand[discardIdx]
                   if (!discarded) return
                   // Discard the card
-                  setPlayerField(prev =
- ({
+                  setPlayerField(prev => ({
                     ...prev,
-                    hand: prev.hand.filter((_, i) =
- i !== discardIdx),
+                    hand: prev.hand.filter((_, i) => i !== discardIdx),
                     graveyard: [...prev.graveyard, discarded],
                   }))
                   setArthurUrVeredito(turn)
                   // Now select enemy unit to destroy
                   const enemyTargets = enemyField.unitZone
-                    .map((u, i) =
- ({u, i}))
-                    .filter(({u}) =
- u !== null)
+                    .map((u, i) => ({u, i}))
+                    .filter(({u}) => u !== null)
                   if (enemyTargets.length === 1) {
                     const target = enemyTargets[0].u!
                     markDestroyed(target)
-                    setEnemyField(prev =
- {
+                    setEnemyField(prev => {
                       const newUnits = [...prev.unitZone]
                       newUnits[enemyTargets[0].i] = null
                       return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
@@ -5960,17 +5295,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                     setChoiceModal({
                       visible: true,
                       cardName: "Veredito do Rei Tirano — Escolha a unidade inimiga para destruir",
-                      options: enemyTargets.slice(0,4).map(({u,i}) =
- ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
-                      onChoose: (targetId) =
- {
+                      options: enemyTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP` })),
+                      onChoose: (targetId) => {
                         setChoiceModal(null)
                         const tIdx = parseInt(targetId)
                         const target = enemyField.unitZone[tIdx]
                         if (!target) return
                         markDestroyed(target)
-                        setEnemyField(prev =
- {
+                        setEnemyField(prev => {
                           const newUnits = [...prev.unitZone]
                           newUnits[tIdx] = null
                           return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
@@ -5987,44 +5319,35 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
         // ── REI ARTHUR LR 4DP: Cálice do Monarca — antes de atacar, descarte 1 carta → destrua 2 unidades inimigas; se carta mágica → +2DP (a cada 2 turnos) ──
         if (attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 4) {
-          if (arthurLrCalice === null || turn - arthurLrCalice 
-= 2) {
-            const hasHandCards = playerField.hand.length 
- 0
-            const enemyUnitCount = enemyField.unitZone.filter(u =
- u !== null).length
-            if (hasHandCards && enemyUnitCount 
- 0) {
+          if (arthurLrCalice === null || turn - arthurLrCalice >= 2) {
+            const hasHandCards = playerField.hand.length > 0
+            const enemyUnitCount = enemyField.unitZone.filter(u => u !== null).length
+            if (hasHandCards && enemyUnitCount > 0) {
               setChoiceModal({
                 visible: true,
                 cardName: "Cálice do Monarca — Descarte 1 carta para destruir 2 unidades inimigas",
                 gridLayout: true,
                 options: [
-                  ...playerField.hand.slice(0, 6).map((c, i) =
- ({ id: String(i), label: c.name, description: c.type })),
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
                 ],
-                onChoose: (optId) =
- {
+                onChoose: (optId) => {
                   setChoiceModal(null)
                   if (optId === "skip") return
                   const discardIdx = parseInt(optId)
                   const discarded = playerField.hand[discardIdx]
                   if (!discarded) return
                   const isMagic = discarded.type === "function" || discarded.type === "action"
-                  setPlayerField(prev =
- ({
+                  setPlayerField(prev => ({
                     ...prev,
-                    hand: prev.hand.filter((_, i) =
- i !== discardIdx),
+                    hand: prev.hand.filter((_, i) => i !== discardIdx),
                     graveyard: [...prev.graveyard, discarded],
                   }))
                   setArthurLrCalice(turn)
                   // +2DP if discarded card is magic
                   if (isMagic) {
                     const attackerIdx = attackState.attackerIndex!
-                    setPlayerField(prev =
- {
+                    setPlayerField(prev => {
                       const newUnits = [...prev.unitZone]
                       if (newUnits[attackerIdx]) {
                         const cur = newUnits[attackerIdx]!
@@ -6035,20 +5358,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                     showEffectFeedback("CÁLICE DO MONARCA: Carta mágica! Arthur +2DP!", "success")
                   }
                   // Destroy up to 2 enemy units
-                  const enemyTargetPool = enemyField.unitZone.map((u,i) =
- ({u,i})).filter(({u}) =
- u !== null)
+                  const enemyTargetPool = enemyField.unitZone.map((u,i) => ({u,i})).filter(({u}) => u !== null)
                   const toDestroy = enemyTargetPool.slice(0, Math.min(2, enemyTargetPool.length))
-                  toDestroy.forEach(({u, i}) =
- {
+                  toDestroy.forEach(({u, i}) => {
                     if (u) markDestroyed(u)
                   })
-                  setEnemyField(prev =
- {
+                  setEnemyField(prev => {
                     const newUnits = [...prev.unitZone]
                     const newGrave = [...prev.graveyard]
-                    toDestroy.forEach(({u, i}) =
- {
+                    toDestroy.forEach(({u, i}) => {
                       if (newUnits[i]) { newGrave.push(newUnits[i]!); newUnits[i] = null }
                     })
                     return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: newGrave }
@@ -6067,16 +5385,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const _miguelEquipped = !!(playerField.ultimateZone && playerField.ultimateZone.ability === "MIGUEL ARCANJO")
         if (_isCalemLr && _miguelEquipped) {
           const grave = playerField.graveyard
-          const lastCard = grave.length 
- 0 ? grave[grave.length - 1] : null
+          const lastCard = grave.length > 0 ? grave[grave.length - 1] : null
           const triggerTypes = ["unit","troops","ultimateGuardian","ultimateElemental","function","action"]
           const _triggered = lastCard && triggerTypes.includes(lastCard.type)
           if (_triggered) {
             const enemyHasCards =
-              enemyField.unitZone.some(u =
- u !== null) ||
-              enemyField.functionZone.some(f =
- f !== null)
+              enemyField.unitZone.some(u => u !== null) ||
+              enemyField.functionZone.some(f => f !== null)
             if (enemyHasCards) {
               // Freeze the attack, open target selector
               const savedAttackerIdx = attackState.attackerIndex!
@@ -6088,8 +5403,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               return
             } else {
               // No enemy cards left → +4DP bonus, attack still proceeds
-              setPlayerField((prev) =
- {
+              setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
                 if (idx !== null && newUnitZone[idx]) {
@@ -6129,8 +5443,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
 
         const projId = `proj-${Date.now()}-${currentAttackId}`
-        setActiveProjectiles((prev) =
- [
+        setActiveProjectiles((prev) => [
           ...prev,
           { 
             id: projId, 
@@ -6164,19 +5477,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const diffX = (targetX - startX) * 0.4 // Move 40% of the way
         const diffY = (targetY - startY) * 0.4
         
-        setTimeout(() =
- {
-          setCardAnimations(prev =
- ({
+        setTimeout(() => {
+          setCardAnimations(prev => ({
             ...prev,
             [key]: `translate3d(${diffX}px, ${diffY}px, 0) scale(1.1) rotate(${Math.random() * 4 - 2}deg)`
           }))
           
           // Reset card position after impact
-          setTimeout(() =
- {
-            setCardAnimations(prev =
- {
+          setTimeout(() => {
+            setCardAnimations(prev => {
               const next = { ...prev }
               delete next[key]
               return next
@@ -6187,8 +5496,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         // Hide arrow immediately — before any animation
         setAttackState({ isAttacking: false, attackerIndex: attackState.attackerIndex, targetInfo: attackState.targetInfo })
 
-        setTimeout(() =
- {
+        setTimeout(() => {
           // Reset fully after projectile lands
           if (attackState.targetInfo!.type === "unit" && attackState.targetInfo!.index !== undefined) {
             // If Devorar o Mundo ran this cycle, the closure's enemyField is stale.
@@ -6200,28 +5508,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             if (defender) {
               // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
               // ── MORGANA UR/LR: Domínio Eterno/Horizontes — traps blocked ──
-              const _morganaTrapBlock = playerField.unitZone.some(u =
-
+              const _morganaTrapBlock = playerField.unitZone.some(u =>
                 u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)
               )
-              const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f =
- f?.id === "portao-da-fortaleza" && f.isFaceDown)
+              const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
               if (trapPortaoIndex !== -1) {
-                setEnemyField(prev =
- {
+                setEnemyField(prev => {
                   const newFuncs = [...prev.functionZone]
                   newFuncs[trapPortaoIndex] = { ...newFuncs[trapPortaoIndex]!, isFaceDown: false }
                   const newHand = [...prev.hand]
-                  if (newHand.length 
- 0) {
+                  if (newHand.length > 0) {
                     const discardIdx = Math.floor(Math.random() * newHand.length)
                     const discarded = newHand.splice(discardIdx, 1)[0]
                     return { ...prev, functionZone: newFuncs, hand: newHand, graveyard: [...prev.graveyard, discarded] }
                   }
                   return { ...prev, functionZone: newFuncs }
                 })
-                setPlayerField(prev =
- {
+                setPlayerField(prev => {
                   const newUnitZone = [...prev.unitZone]
                   newUnitZone[attackState.attackerIndex!] = null
                   return { ...prev, unitZone: newUnitZone, hand: [...prev.hand, attacker] }
@@ -6237,19 +5540,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               const newDefenderDp = defenderDp - attackerDp
 
               // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
-              if (attackerDp 
- 0) {
-                const trapContraAtaqueIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f =
- f?.id === "contra-ataque-surpresa" && f.isFaceDown)
+              if (attackerDp > 0) {
+                const trapContraAtaqueIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown)
                 if (trapContraAtaqueIndex !== -1) {
-                  setEnemyField(prev =
- {
+                  setEnemyField(prev => {
                     const newFuncs = [...prev.functionZone]
                     newFuncs[trapContraAtaqueIndex] = { ...newFuncs[trapContraAtaqueIndex]!, isFaceDown: false }
                     return { ...prev, functionZone: newFuncs }
                   })
-                  setPlayerField(prev =
- ({
+                  setPlayerField(prev => ({
                     ...prev,
                     life: Math.max(0, prev.life - attackerDp)
                   }))
@@ -6262,8 +5561,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               const targetRect = targetElement?.getBoundingClientRect()
 
               // Recompute damage using fresh enemy state via functional updater
-              setEnemyField((prev) =
- {
+              setEnemyField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const newGraveyard = [...prev.graveyard]
                 // Re-check from fresh prev state — Devorar may have already destroyed this unit
@@ -6288,8 +5586,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         targetRect.left + targetRect.width / 2,
                         targetRect.top + targetRect.height / 2
                       )
-                      setTimeout(() =
- {
+                      setTimeout(() => {
                         triggerExplosion(
                           targetRect.left + targetRect.width / 2,
                           targetRect.top + targetRect.height / 2,
@@ -6316,28 +5613,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
               // ── FEHNON SR 2DP: Fluxo de Ruptura — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
-                setTimeout(() =
- {
-                  setEnemyField((prev) =
- ({ ...prev, life: Math.max(0, prev.life - 2) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("FLUXO DE RUPTURA: 2DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
               // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 2) {
-                setTimeout(() =
- {
-                  setEnemyField((prev) =
- ({ ...prev, life: Math.max(0, prev.life - 3) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 3) }))
                   showEffectFeedback("ECLIPSE DE AVALON: 3DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
               // ── FEHNON UR 3DP: Singularidade Zero — ao destruir unidade: +2DP até o final do turno ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) {
-                setPlayerField((prev) =
- {
+                setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
                   const idx = attackState.attackerIndex!
                   if (newUnitZone[idx]) {
@@ -6351,26 +5643,21 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
               // ── FEHNON LR 4DP: Ruptura do Núcleo Supremo — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) {
-                setTimeout(() =
- {
-                  setEnemyField((prev) =
- ({ ...prev, life: Math.max(0, prev.life - 2) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("RUPTURA DO NÚCLEO SUPREMO: 2DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 2) {
-                setTimeout(() =
- {
-                  setEnemyField((prev) =
- ({ ...prev, life: Math.max(0, prev.life - 1) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
                   showEffectFeedback("VÁCUO DE ESSÊNCIA: 1DP de dano direto ao oponente!", "warning")
                 }, 600)
               }
 
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) {
-                setPlayerField((prev) =
- {
+                setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
                   const idx = attackState.attackerIndex!
                   if (newUnitZone[idx]) {
@@ -6386,8 +5673,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 // Legião do Guardião Alado requires Miguel Arcanjo equipped
                 const hasMiguelArcanjo = playerField.ultimateZone?.ability === "MIGUEL ARCANJO"
                 if (hasMiguelArcanjo) {
-                  setPlayerField((prev) =
- {
+                  setPlayerField((prev) => {
                     const newUnitZone = [...prev.unitZone]
                     const idx = attackState.attackerIndex!
                     if (newUnitZone[idx]) {
@@ -6403,48 +5689,39 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               // ── LOGI SR: Incêndio Vivo — ao destruir unidade, Logi pode atacar novamente ──
               const isLogiSrKill = newDefenderDp <= 0 && attacker.name.toLowerCase().includes("logi") && attacker.dp === 1
               if (isLogiSrKill) {
-                setLogiSrKillsThisBattle(prev =
- prev + 1)
+                setLogiSrKillsThisBattle(prev => prev + 1)
                 showEffectFeedback("INCÊNDIO VIVO: Logi destruiu uma unidade! Pode atacar novamente!", "success")
               }
 
               // ── LOGI SR: Explosão de Muspell — após ataque, +1DP a unidade de fogo no campo ──
               if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 1) {
                 const fireUnits = playerField.unitZone
-                  .map((u, i) =
- ({ u, i }))
-                  .filter(({ u }) =
- u !== null && (u.element === "Pyrus" || u.element === "Fire") && !u.name.toLowerCase().includes("logi"))
+                  .map((u, i) => ({ u, i }))
+                  .filter(({ u }) => u !== null && (u.element === "Pyrus" || u.element === "Fire") && !u.name.toLowerCase().includes("logi"))
                 if (fireUnits.length === 1) {
                   const { u, i } = fireUnits[0]
-                  setPlayerField(prev =
- {
+                  setPlayerField(prev => {
                     const nz = [...prev.unitZone]
                     if (nz[i]) nz[i] = { ...nz[i]!, currentDp: (nz[i]!.currentDp ?? nz[i]!.dp) + 1 }
                     return { ...prev, unitZone: nz as (FieldCard|null)[] }
                   })
                   showEffectFeedback(`EXPLOSÃO DE MUSPELL: ${u!.name} +1DP até o final da fase de batalha!`, "success")
-                } else if (fireUnits.length 
- 1) {
+                } else if (fireUnits.length > 1) {
                   setChoiceModal({
                     visible: true,
                     cardName: "Explosão de Muspell — Escolha 1 unidade de fogo para +1DP",
-                    options: fireUnits.slice(0, 4).map(({ u, i }) =
- ({
+                    options: fireUnits.slice(0, 4).map(({ u, i }) => ({
                       id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`
                     })),
-                    onChoose: (optId) =
- {
+                    onChoose: (optId) => {
                       setChoiceModal(null)
                       const idx = parseInt(optId)
-                      setPlayerField(prev =
- {
+                      setPlayerField(prev => {
                         const nz = [...prev.unitZone]
                         if (nz[idx]) nz[idx] = { ...nz[idx]!, currentDp: (nz[idx]!.currentDp ?? nz[idx]!.dp) + 1 }
                         return { ...prev, unitZone: nz as (FieldCard|null)[] }
                       })
-                      showEffectFeedback(`EXPLOSÃO DE MUSPELL: ${fireUnits.find(f=
-f.i===idx)?.u?.name} +1DP!`, "success")
+                      showEffectFeedback(`EXPLOSÃO DE MUSPELL: ${fireUnits.find(f=>f.i===idx)?.u?.name} +1DP!`, "success")
                     },
                   })
                 }
@@ -6457,8 +5734,7 @@ f.i===idx)?.u?.name} +1DP!`, "success")
                 (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
                 (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
 
-              setPlayerField((prev) =
- {
+              setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
                 return { ...prev, unitZone: newUnitZone }
@@ -6478,21 +5754,17 @@ f.i===idx)?.u?.name} +1DP!`, "success")
                 attacker.element || "neutral",
               )
             }
-            setEnemyField((prev) =
- ({
+            setEnemyField((prev) => ({
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
 
             // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
             if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
-              const hasEnemyLight = enemyField.unitZone.some(u =
- u && (u.element === "Haos" || u.element === "Light" || u.element === "Lightness"))
+              const hasEnemyLight = enemyField.unitZone.some(u => u && (u.element === "Haos" || u.element === "Light" || u.element === "Lightness"))
               const drain = hasEnemyLight ? 2 : 1
-              setTimeout(() =
- {
-                setPlayerField(prev =
- ({ ...prev, life: prev.life + drain }))
+              setTimeout(() => {
+                setPlayerField(prev => ({ ...prev, life: prev.life + drain }))
                 showEffectFeedback(`ACORDE DO ABISMO: Morgana drena ${drain}LP!${hasEnemyLight ? " (Unidade Luz inimiga — drenagem dobrada!)" : ""}`, "success")
               }, 400)
             }
@@ -6500,8 +5772,7 @@ f.i===idx)?.u?.name} +1DP!`, "success")
             // ── HROTTI LR: Ira Maelstrom — after dealing direct battle damage ──
             if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 4 && !hrottiLrIraUsed) {
               setHrottiLrIraUsed(true)
-              setTimeout(() =
- activateHrottiLrIra(), 500)
+              setTimeout(() => activateHrottiLrIra(), 500)
             }
 
             const keepReadyDirect =
@@ -6509,8 +5780,7 @@ f.i===idx)?.u?.name} +1DP!`, "success")
               (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) ||
               (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4)
 
-            setPlayerField((prev) =
- {
+            setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
               newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepReadyDirect }
               return { ...prev, unitZone: newUnitZone }
@@ -6520,8 +5790,7 @@ f.i===idx)?.u?.name} +1DP!`, "success")
             if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) setFehnonLrDouble(false)
           }
           setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
-          setTimeout(() =
- {
+          setTimeout(() => {
             animationInProgressRef.current = false
           }, 100)
         }, PROJECTILE_DURATION)
@@ -6536,28 +5805,22 @@ f.i===idx)?.u?.name} +1DP!`, "success")
   }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, enemyField.graveyard, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, morganaEclipseLastTurn, morganaSinfoniaLastTurn, morganaDiscordiaLastTurn, setEnemyField, setPlayerField, setAttackState, showEffectFeedback, setChoiceModal])
 
   // ── Global 0DP Sweep — any unit that reaches 0 or below DP is auto-destroyed ──
-  useEffect(() =
- {
+  useEffect(() => {
     if (!gameStarted) return
 
     // Player units
-    const playerHasZeroDp = playerField.unitZone.some(u =
- u !== null && (u.currentDp ?? u.dp) <= 0)
+    const playerHasZeroDp = playerField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
     if (playerHasZeroDp) {
-      setPlayerField(prev =
- {
+      setPlayerField(prev => {
         let changed = false
-        const newUnits = prev.unitZone.map(u =
- {
-          if (!u || (u.currentDp ?? u.dp) 
- 0) return u
+        const newUnits = prev.unitZone.map(u => {
+          if (!u || (u.currentDp ?? u.dp) > 0) return u
           markDestroyed(u)
           changed = true
           return null
         })
         if (!changed) return prev
-        const destroyed = prev.unitZone.filter(u =
- u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
+        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
         return {
           ...prev,
           unitZone: newUnits as (FieldCard | null)[],
@@ -6567,23 +5830,18 @@ f.i===idx)?.u?.name} +1DP!`, "success")
     }
 
     // Enemy units
-    const enemyHasZeroDp = enemyField.unitZone.some(u =
- u !== null && (u.currentDp ?? u.dp) <= 0)
+    const enemyHasZeroDp = enemyField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
     if (enemyHasZeroDp) {
-      setEnemyField(prev =
- {
+      setEnemyField(prev => {
         let changed = false
-        const newUnits = prev.unitZone.map(u =
- {
-          if (!u || (u.currentDp ?? u.dp) 
- 0) return u
+        const newUnits = prev.unitZone.map(u => {
+          if (!u || (u.currentDp ?? u.dp) > 0) return u
           markDestroyed(u)
           changed = true
           return null
         })
         if (!changed) return prev
-        const destroyed = prev.unitZone.filter(u =
- u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
+        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
         return {
           ...prev,
           unitZone: newUnits as (FieldCard | null)[],
@@ -6592,21 +5850,15 @@ f.i===idx)?.u?.name} +1DP!`, "success")
       })
     }
   }, [
-    playerField.unitZone.map(u =
- u?.currentDp ?? u?.dp ?? 0).join(','),
-    enemyField.unitZone.map(u =
- u?.currentDp ?? u?.dp ?? 0).join(','),
+    playerField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
+    enemyField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
   ])
 
   // ── Lancelot: Virtude do Cavaleiro — recalc DP when field changes ──
-  useEffect(() =
- {
-    setPlayerField(prev =
- {
-      const hasVoidUnit = prev.unitZone.some(u =
- u !== null && (u.element === "Void" || u.element === "Darkus"))
-      const newUnitZone = prev.unitZone.map(u =
- {
+  useEffect(() => {
+    setPlayerField(prev => {
+      const hasVoidUnit = prev.unitZone.some(u => u !== null && (u.element === "Void" || u.element === "Darkus"))
+      const newUnitZone = prev.unitZone.map(u => {
         if (!u || !u.name.toLowerCase().includes("lancelot")) return u
         // recalc without Void bonus first, then re-apply
         const baseCalc = calculateCardDP(u, { ...prev, unitZone: prev.unitZone }, false)
@@ -6614,49 +5866,39 @@ f.i===idx)?.u?.name} +1DP!`, "success")
       })
       return { ...prev, unitZone: newUnitZone as (FieldCard | null)[] }
     })
-  }, [playerField.unitZone.map(u =
- u?.id).join(',')])
+  }, [playerField.unitZone.map(u => u?.id).join(',')])
 
   // ── Morgana UR 3DP: Domínio Eterno — block traps while on field ──
-  useEffect(() =
- {
-    const hasMorganaUr = playerField.unitZone.some(u =
- u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
+  useEffect(() => {
+    const hasMorganaUr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
     setMorganaTrapBlocked(hasMorganaUr)
   }, [playerField.unitZone])
 
   // ── Morgana LR 4DP: Domínio de Horizontes — block all actions+traps while on field ──
-  useEffect(() =
- {
-    const hasMorganaLr = playerField.unitZone.some(u =
- u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
+  useEffect(() => {
+    const hasMorganaLr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
     setMorganaActionBlocked(hasMorganaLr)
   }, [playerField.unitZone])
 
   // ── Merlin: Visão Além do Agora ──
-  const activateMerlinAbility = () =
- {
+  const activateMerlinAbility = () => {
     if (merlinUsed) { showEffectFeedback("Visão Além do Agora já foi usada neste duelo!", "error"); return }
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
     setMerlinUsed(true)
 
     // Each card in top5 is tagged with its original index so selection maps back cleanly
-    const tagged = top5.map((card, idx) =
- ({ card, idx }))
+    const tagged = top5.map((card, idx) => ({ card, idx }))
 
     if (top5.length <= 2) {
       // Fewer than 3 cards — all go to hand
-      setPlayerField(prev =
- ({
+      setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, ...top5],
         deck: prev.deck.slice(top5.length),
       }))
-      top5.forEach(card =
- showDrawAnimation(card))
-      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c =
- c.name).join(", ")} adicionadas!`, "success")
+      top5.forEach(card => showDrawAnimation(card))
+      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c => c.name).join(", ")} adicionadas!`, "success")
       return
     }
 
@@ -6664,49 +5906,39 @@ f.i===idx)?.u?.name} +1DP!`, "success")
     setChoiceModal({
       visible: true,
       cardName: "Visão Além do Agora — Escolha a 1ª carta para a mão",
-      options: tagged.map(({ card, idx }) =
- ({
+      options: tagged.map(({ card, idx }) => ({
         id: String(idx),
         label: card.name,
         description: `${card.type}${card.dp ? ` · ${card.dp}DP` : ''}`,
       })),
-      onChoose: (firstIdStr) =
- {
+      onChoose: (firstIdStr) => {
         const firstIdx = parseInt(firstIdStr)
         const firstCard = top5[firstIdx]
 
         // Pick 2nd card from the remaining
-        const remainingTagged = tagged.filter(({ idx }) =
- idx !== firstIdx)
+        const remainingTagged = tagged.filter(({ idx }) => idx !== firstIdx)
         setChoiceModal({
           visible: true,
           cardName: `Visão Além do Agora — Escolha a 2ª carta (${firstCard.name} escolhida)`,
-          options: remainingTagged.map(({ card, idx }) =
- ({
+          options: remainingTagged.map(({ card, idx }) => ({
             id: String(idx),
             label: card.name,
             description: `${card.type}${card.dp ? ` · ${card.dp}DP` : ''}`,
           })),
-          onChoose: (secondIdStr) =
- {
+          onChoose: (secondIdStr) => {
             setChoiceModal(null)
             const secondIdx = parseInt(secondIdStr)
             const chosenIndices = new Set([firstIdx, secondIdx])
-            const chosenCards = top5.filter((_, i) =
- chosenIndices.has(i))
-            const bottomCards = top5.filter((_, i) =
- !chosenIndices.has(i))
-            setPlayerField(prev =
- ({
+            const chosenCards = top5.filter((_, i) => chosenIndices.has(i))
+            const bottomCards = top5.filter((_, i) => !chosenIndices.has(i))
+            setPlayerField(prev => ({
               ...prev,
               hand: [...prev.hand, ...chosenCards],
               deck: [...prev.deck.slice(top5.length), ...bottomCards],
             }))
-            chosenCards.forEach(card =
- showDrawAnimation(card))
+            chosenCards.forEach(card => showDrawAnimation(card))
             showEffectFeedback(
-              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c =
- c.name).join(", ")} adicionadas à mão!`,
+              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c => c.name).join(", ")} adicionadas à mão!`,
               "success"
             )
           },
@@ -6716,29 +5948,24 @@ f.i===idx)?.u?.name} +1DP!`, "success")
   }
 
   // ── Oswin: Lucro na Crise ──
-  const activateOswinAbility = () =
- {
+  const activateOswinAbility = () => {
     if (oswinUsed) { showEffectFeedback("Lucro na Crise já foi usada neste duelo!", "error"); return }
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
     setOswinUsed(true)
     // Item cards: type "function" cards that are items (by name or category)
-    const itemCards = top5.filter(c =
-
+    const itemCards = top5.filter(c =>
       c.type === "function" || c.type === "action" || (c.category && c.category.toLowerCase().includes("item"))
     )
-    const hasItems = itemCards.length 
- 0
+    const hasItems = itemCards.length > 0
     const maxChoose = hasItems ? Math.min(2, itemCards.length) : 1
     const pool = hasItems ? itemCards : top5
 
     if (pool.length === 1) {
-      setPlayerField(prev =
- ({
+      setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, pool[0]],
-        deck: [...prev.deck.slice(top5.length), ...top5.filter(c =
- c !== pool[0])],
+        deck: [...prev.deck.slice(top5.length), ...top5.filter(c => c !== pool[0])],
       }))
       showDrawAnimation(pool[0])
       showEffectFeedback(`LUCRO NA CRISE: ${pool[0].name} adicionada à mão!`, "success")
@@ -6748,38 +5975,28 @@ f.i===idx)?.u?.name} +1DP!`, "success")
     const pickCount = maxChoose
     const picks: number[] = []
 
-    const pickNext = () =
- {
-      if (picks.length 
-= pickCount) {
-        const chosenCards = picks.map(i =
- pool[i])
-        const bottomCards = top5.filter(c =
- !chosenCards.includes(c))
-        setPlayerField(prev =
- ({
+    const pickNext = () => {
+      if (picks.length >= pickCount) {
+        const chosenCards = picks.map(i => pool[i])
+        const bottomCards = top5.filter(c => !chosenCards.includes(c))
+        setPlayerField(prev => ({
           ...prev,
           hand: [...prev.hand, ...chosenCards],
           deck: [...prev.deck.slice(5), ...bottomCards],
         }))
-        chosenCards.forEach(c =
- showDrawAnimation(c))
-        showEffectFeedback(`LUCRO NA CRISE: ${chosenCards.map(c=
-c.name).join(", ")} adicionadas à mão!`, "success")
+        chosenCards.forEach(c => showDrawAnimation(c))
+        showEffectFeedback(`LUCRO NA CRISE: ${chosenCards.map(c=>c.name).join(", ")} adicionadas à mão!`, "success")
         return
       }
-      const available = pool.filter((_, i) =
- !picks.includes(i))
+      const available = pool.filter((_, i) => !picks.includes(i))
       setChoiceModal({
         visible: true,
         cardName: `Lucro na Crise — Escolha carta ${picks.length + 1}/${pickCount}${hasItems ? " (Itens encontrados!)" : ""}`,
-        options: available.map((c, i) =
- {
+        options: available.map((c, i) => {
           const origIdx = pool.indexOf(c)
           return { id: String(origIdx), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : '') }
         }),
-        onChoose: (optId) =
- {
+        onChoose: (optId) => {
           setChoiceModal(null)
           picks.push(parseInt(optId))
           pickNext()
@@ -6790,13 +6007,10 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // ── Mr. P: Manuscrito de Guerra — (optional) select enemy unit, -2DP ──
-  const activateMrPAbility = () =
- {
+  const activateMrPAbility = () => {
     const enemyTargets = enemyField.unitZone
-      .map((u, i) =
- ({ u, i }))
-      .filter(({ u }) =
- u !== null)
+      .map((u, i) => ({ u, i }))
+      .filter(({ u }) => u !== null)
     if (enemyTargets.length === 0) {
       showEffectFeedback("Nenhuma unidade inimiga no campo!", "error")
       return
@@ -6805,21 +6019,18 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       visible: true,
       cardName: "Manuscrito de Guerra — Selecione uma unidade inimiga para -2DP",
       options: [
-        ...enemyTargets.slice(0, 4).map(({ u, i }) =
- ({
+        ...enemyTargets.slice(0, 4).map(({ u, i }) => ({
           id: String(i),
           label: u!.name,
           description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0, (u!.currentDp ?? u!.dp) - 2)}DP`,
         })),
         { id: "skip", label: "Não usar", description: "Pular este efeito" },
       ],
-      onChoose: (optId) =
- {
+      onChoose: (optId) => {
         setChoiceModal(null)
         if (optId === "skip") return
         const idx = parseInt(optId)
-        setEnemyField(prev =
- {
+        setEnemyField(prev => {
           const newUnits = [...prev.unitZone]
           if (newUnits[idx]) {
             const u = newUnits[idx]!
@@ -6828,47 +6039,38 @@ c.name).join(", ")} adicionadas à mão!`, "success")
           return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
         })
         setMrPManuscritoUsed(true)
-        showEffectFeedback(`MANUSCRITO DE GUERRA: ${enemyTargets.find(t =
- t.i === idx)?.u?.name} -2DP!`, "success")
+        showEffectFeedback(`MANUSCRITO DE GUERRA: ${enemyTargets.find(t => t.i === idx)?.u?.name} -2DP!`, "success")
       },
     })
   }
 
   // ── Vivian: Abraço das Profundezas — on summon, special-summon a 2 or 3DP unit from deck ──
-  const activateVivianAbility = () =
- {
+  const activateVivianAbility = () => {
     if (vivianAbracoUsed) return
-    const emptySlot = playerField.unitZone.findIndex(s =
- s === null)
+    const emptySlot = playerField.unitZone.findIndex(s => s === null)
     if (emptySlot === -1) {
       showEffectFeedback("Campo cheio! Não é possível evocar mais unidades.", "error")
       return
     }
-    const candidates = playerField.deck.filter(c =
-
+    const candidates = playerField.deck.filter(c =>
       isUnitCard(c) && !isUltimateCard(c) && (c.dp === 2 || c.dp === 3)
     )
     if (candidates.length === 0) {
       showEffectFeedback("Nenhuma unidade de 2 ou 3DP no deck!", "info")
       return
     }
-    const uniqueByName = candidates.filter((c, i, arr) =
- arr.findIndex(x =
- x.name === c.name) === i)
+    const uniqueByName = candidates.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i)
     setChoiceModal({
       visible: true,
       cardName: "Abraço das Profundezas — Escolha uma unidade (2 ou 3DP) do deck para evocar",
-      options: uniqueByName.slice(0, 6).map((c, i) =
- ({
+      options: uniqueByName.slice(0, 6).map((c, i) => ({
         id: c.id,
         label: c.name,
         description: `${c.dp}DP · ${c.element || "Neutro"}`,
       })),
-      onChoose: (cardId) =
- {
+      onChoose: (cardId) => {
         setChoiceModal(null)
-        const chosen = playerField.deck.find(c =
- c.id === cardId)
+        const chosen = playerField.deck.find(c => c.id === cardId)
         if (!chosen) return
         const fieldCard: FieldCard = {
           ...chosen,
@@ -6877,18 +6079,15 @@ c.name).join(", ")} adicionadas à mão!`, "success")
           hasAttacked: false,
           canAttackTurn: turn,
         }
-        setPlayerField(prev =
- {
+        setPlayerField(prev => {
           const newUnitZone = [...prev.unitZone]
-          const slot = newUnitZone.findIndex(s =
- s === null)
+          const slot = newUnitZone.findIndex(s => s === null)
           if (slot === -1) return prev
           newUnitZone[slot] = fieldCard
           return {
             ...prev,
             unitZone: newUnitZone as (FieldCard | null)[],
-            deck: prev.deck.filter(c =
- c.id !== cardId),
+            deck: prev.deck.filter(c => c.id !== cardId),
           }
         })
         setVivianAbracoUsed(true)
@@ -6898,21 +6097,18 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // ── Hrotti SR: Avareza de Fafnir — discard own field cards for +1DP each (every 3 turns) ──
-  const activateHrottiSrAbility = () =
- {
+  const activateHrottiSrAbility = () => {
     if (hrottiSrLastTurn !== null && turn - hrottiSrLastTurn < 3) {
       showEffectFeedback(`Avareza de Fafnir disponível no turno ${hrottiSrLastTurn + 3}!`, "error"); return
     }
 
     // Build field options from current playerField (now safe — called fresh from key lookup)
     const fieldOptions: { id: string; label: string; description: string }[] = []
-    playerField.unitZone.forEach((u, i) =
- {
+    playerField.unitZone.forEach((u, i) => {
       if (u && !u.name.toLowerCase().includes("hrotti"))
         fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp ?? u.dp}DP` })
     })
-    playerField.functionZone.forEach((f, i) =
- {
+    playerField.functionZone.forEach((f, i) => {
       if (f)
         fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}` })
     })
@@ -6925,19 +6121,16 @@ c.name).join(", ")} adicionadas à mão!`, "success")
 
     const selected: string[] = []
 
-    const applyDiscard = () =
- {
+    const applyDiscard = () => {
         if (selected.length === 0) { showEffectFeedback("Nenhuma carta selecionada.", "info"); return }
         const bonus = selected.length
-        setPlayerField(prev =
- {
+        setPlayerField(prev => {
           const newUnitZone = [...prev.unitZone]
           const newFuncZone = [...prev.functionZone]
           let newScenario = prev.scenarioZone
           let newUltimate = prev.ultimateZone
           const newGrave = [...prev.graveyard]
-          selected.forEach(sel =
- {
+          selected.forEach(sel => {
             if (sel.startsWith('unit-')) {
               const idx = parseInt(sel.replace('unit-', ''))
               if (newUnitZone[idx]) { newGrave.push(newUnitZone[idx]!); newUnitZone[idx] = null }
@@ -6951,8 +6144,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
             }
           })
           // +1DP per card discarded to Hrotti SR
-          const hrottiIdx = newUnitZone.findIndex(u =
- u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
+          const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
           if (hrottiIdx !== -1 && newUnitZone[hrottiIdx]) {
             const h = newUnitZone[hrottiIdx]!
             newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
@@ -6963,21 +6155,16 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
       }
 
-      const showPicker = () =
- {
-        const available = fieldOptions.filter(o =
- !selected.includes(o.id))
+      const showPicker = () => {
+        const available = fieldOptions.filter(o => !selected.includes(o.id))
         setChoiceModal({
           visible: true,
           cardName: `Avareza de Fafnir — Escolha cartas para descartar (${selected.length} selecionadas)`,
           options: [
-            ...available.map(o =
- ({ id: o.id, label: o.label, description: o.description })),
-            { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length 
- 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
+            ...available.map(o => ({ id: o.id, label: o.label, description: o.description })),
+            { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length > 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
           ],
-          onChoose: (optId) =
- {
+          onChoose: (optId) => {
             setChoiceModal(null)
             if (optId === '__confirm__') { applyDiscard(); return }
             selected.push(optId)
@@ -6989,8 +6176,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // ── Hrotti UR: Herança de Andvaranaut — nullify all Ultimate Gear effects for 3 turns (once ever) ──
-  const activateHrottiUrAbility = () =
- {
+  const activateHrottiUrAbility = () => {
     if (hrottiUrUsed) { showEffectFeedback("Herança de Andvaranaut já foi usada!", "error"); return }
     setHrottiUrUsed(true)
     setHrottiUrNullifyUntil(turn + 3)
@@ -6998,14 +6184,11 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // ── Hrotti LR: Ira Maelstrom — after dealing battle damage: shuffle top of enemy deck to bottom; look at own top ──
-  const activateHrottiLrIra = () =
- {
+  const activateHrottiLrIra = () => {
     // Move enemy's top deck card to bottom
-    if (enemyField.deck.length 
- 0) {
+    if (enemyField.deck.length > 0) {
       const top = enemyField.deck[0]
-      setEnemyField(prev =
- ({
+      setEnemyField(prev => ({
         ...prev,
         deck: [...prev.deck.slice(1), top],
       }))
@@ -7021,12 +6204,10 @@ c.name).join(", ")} adicionadas à mão!`, "success")
           { id: 'keep', label: 'Manter no topo', description: `${ownTop.name} permanece no topo` },
           { id: 'bottom', label: 'Enviar ao fundo', description: `${ownTop.name} vai ao fundo do seu deck` },
         ],
-        onChoose: (optId) =
- {
+        onChoose: (optId) => {
           setChoiceModal(null)
           if (optId === 'bottom') {
-            setPlayerField(prev =
- ({
+            setPlayerField(prev => ({
               ...prev,
               deck: [...prev.deck.slice(1), prev.deck[0]],
             }))
@@ -7039,27 +6220,21 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // ── Ullr SR: Marca da Caçada — choose enemy unit, Ventus -2DP / other -1DP (once per main phase) ──
-  const activateUllrSrAbility = () =
- {
-    const enemyTargets = enemyField.unitZone.map((u,i) =
- ({u,i})).filter(({u}) =
- u !== null)
+  const activateUllrSrAbility = () => {
+    const enemyTargets = enemyField.unitZone.map((u,i) => ({u,i})).filter(({u}) => u !== null)
     if (enemyTargets.length === 0) { showEffectFeedback("Nenhuma unidade inimiga no campo!", "error"); return }
     setChoiceModal({
       visible: true,
       cardName: "Marca da Caçada — Selecione uma unidade inimiga como alvo",
-      options: enemyTargets.slice(0,4).map(({u,i}) =
- {
+      options: enemyTargets.slice(0,4).map(({u,i}) => {
         const isVentus = u!.element === "Ventus" || u!.element === "Wind"
         const dpLoss = isVentus ? 2 : 1
         return { id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0,(u!.currentDp ?? u!.dp)-dpLoss)}DP${isVentus ? " (Ventus: -2DP)" : " (-1DP)"}` }
       }),
-      onChoose: (optId) =
- {
+      onChoose: (optId) => {
         setChoiceModal(null)
         const idx = parseInt(optId)
-        setEnemyField(prev =
- {
+        setEnemyField(prev => {
           const newUnits = [...prev.unitZone]
           const u = newUnits[idx]
           if (!u) return prev
@@ -7069,8 +6244,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
           return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
         })
         setUllrSrMarcaUsed(true)
-        const tgt = enemyTargets.find(t =
- t.i === idx)
+        const tgt = enemyTargets.find(t => t.i === idx)
         const isVentus = tgt?.u?.element === "Ventus" || tgt?.u?.element === "Wind"
         sendActionRef.current({
           type: "ability_used", playerId,
@@ -7083,17 +6257,14 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // ── Ullr UR: Juramento Eterno — all Wind/Ventus units +2DP (or +3DP with Ullrbogi), every 4 turns ──
-  const activateUllrUrAbility = () =
- {
+  const activateUllrUrAbility = () => {
     if (ullrUrJuramentoLastTurn !== null && turn - ullrUrJuramentoLastTurn < 4) {
       showEffectFeedback(`Juramento Eterno disponível no turno ${ullrUrJuramentoLastTurn + 4}!`, "error"); return
     }
     const hasUllrbogi = playerField.ultimateZone?.ability === "ULLRBOGI"
     const bonus = hasUllrbogi ? 3 : 2
-    setPlayerField(prev =
- {
-      const newUnits = prev.unitZone.map(u =
- {
+    setPlayerField(prev => {
+      const newUnits = prev.unitZone.map(u => {
         if (!u) return null
         if (u.element === "Ventus" || u.element === "Wind") {
           return { ...u, currentDp: (u.currentDp ?? u.dp) + bonus }
@@ -7112,18 +6283,15 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // Cleanup on unmount
-  useEffect(() =
- {
-    return () =
- {
+  useEffect(() => {
+    return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
       }
     }
   }, [])
 
-  const handleHandCardDragStart = (index: number, e: React.MouseEvent | React.TouchEvent) =
- {
+  const handleHandCardDragStart = (index: number, e: React.MouseEvent | React.TouchEvent) => {
     if (!isMyTurn || phase !== "main") return
 
     const card = playerField.hand[index]
@@ -7144,8 +6312,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     }
   }
 
-  const handleHandCardDragMove = (e: React.MouseEvent | React.TouchEvent) =
- {
+  const handleHandCardDragMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!draggedHandCard || !draggedCardRef.current) return
 
     e.preventDefault()
@@ -7166,8 +6333,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
 
     // Throttled drop target check - only every 50ms
     const now = Date.now()
-    if (!dragPosRef.current.lastCheck || now - dragPosRef.current.lastCheck 
- 16) {
+    if (!dragPosRef.current.lastCheck || now - dragPosRef.current.lastCheck > 16) {
       dragPosRef.current.lastCheck = now
 
       const elements = document.elementsFromPoint(clientX, clientY)
@@ -7211,8 +6377,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     }
   }
 
-  const handleHandCardDragEnd = () =
- {
+  const handleHandCardDragEnd = () => {
     if (!draggedHandCard) {
       setDropTarget(null)
       return
@@ -7255,8 +6420,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
           targetY,
         })
 
-        setTimeout(() =
- {
+        setTimeout(() => {
           setDroppingCard(null)
         }, 500)
       }
@@ -7268,19 +6432,16 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // Card inspection handlers (press and hold to view)
-  const handleCardPressStart = (card: GameCard) =
- {
+  const handleCardPressStart = (card: GameCard) => {
     if (cardPressTimer.current) {
       clearTimeout(cardPressTimer.current)
     }
-    cardPressTimer.current = setTimeout(() =
- {
+    cardPressTimer.current = setTimeout(() => {
       setInspectedCard(card)
     }, 300) // 300ms hold to inspect
   }
 
-  const handleCardPressEnd = () =
- {
+  const handleCardPressEnd = () => {
     if (cardPressTimer.current) {
       clearTimeout(cardPressTimer.current)
       cardPressTimer.current = null
@@ -7294,19 +6455,11 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   // ════════════════════════════════════════════════════════════════════════
 
   // sendActionRef allows calling sendAction from closures defined before it
-  const sendActionRef = useRef<(action: DuelAction) =
- Promise<void
-
-(async () =
- {})
+  const sendActionRef = useRef<(action: DuelAction) => Promise<void>>(async () => {})
   // handleOpponentActionRef — always points to latest version (avoids stale closure in subscription)
-  const handleOpponentActionRef = useRef<(action: DuelAction) =
- void
-(() =
- {})
+  const handleOpponentActionRef = useRef<(action: DuelAction) => void>(() => {})
 
-  const sendAction = useCallback(async (action: DuelAction) =
- {
+  const sendAction = useCallback(async (action: DuelAction) => {
     if (!supabase) return
     try {
       // Use timestamp as sequence — avoids extra RPC round-trip for speed
@@ -7324,13 +6477,10 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }, [supabase, roomData.roomId, playerId])
 
   // Keep ref in sync
-  useEffect(() =
- { sendActionRef.current = sendAction }, [sendAction])
-  useEffect(() =
- { handleOpponentActionRef.current = handleOpponentAction }, [handleOpponentAction])
+  useEffect(() => { sendActionRef.current = sendAction }, [sendAction])
+  useEffect(() => { handleOpponentActionRef.current = handleOpponentAction }, [handleOpponentAction])
 
-  const handleOpponentAction = useCallback((action: DuelAction) =
- {
+  const handleOpponentAction = useCallback((action: DuelAction) => {
     const actionId = `${action.type}-${action.timestamp}`
     if (processedActionIdsRef.current.has(actionId)) return
     processedActionIdsRef.current.add(actionId)
@@ -7338,8 +6488,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     switch (action.type) {
 
       case "draw":
-        setEnemyField(prev =
- ({
+        setEnemyField(prev => ({
           ...prev,
           hand: Array(action.data.handSize ?? 5).fill(null),
           deck: Array(action.data.deckSize ?? 0).fill(null),
@@ -7350,44 +6499,36 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         const card = action.data.card
         const src  = action.data.source || "hand"
         if (action.data.zone === "unit") {
-          setEnemyField(prev =
- {
+          setEnemyField(prev => {
             const newUZ = [...prev.unitZone]
             newUZ[action.data.index] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn }
             const ns = { ...prev, unitZone: newUZ }
-            if (src === "tap") ns.tap = prev.tap.filter(c =
- c.id !== card.id)
+            if (src === "tap") ns.tap = prev.tap.filter(c => c.id !== card.id)
             else ns.hand = prev.hand.slice(0, -1)
             return ns
           })
         } else if (action.data.zone === "function") {
-          setEnemyField(prev =
- {
+          setEnemyField(prev => {
             const newFZ = [...prev.functionZone]
             newFZ[action.data.index] = action.data.isTrap
               ? { ...card, isFaceDown: true, isRevealing: false, isSettingDown: true }
               : card
             const ns = { ...prev, functionZone: newFZ }
-            if (src === "tap") ns.tap = prev.tap.filter(c =
- c.id !== card.id)
+            if (src === "tap") ns.tap = prev.tap.filter(c => c.id !== card.id)
             else ns.hand = prev.hand.slice(0, -1)
             return ns
           })
         } else if (action.data.zone === "scenario") {
-          setEnemyField(prev =
- {
+          setEnemyField(prev => {
             const ns = { ...prev, scenarioZone: card }
-            if (src === "tap") ns.tap = prev.tap.filter(c =
- c.id !== card.id)
+            if (src === "tap") ns.tap = prev.tap.filter(c => c.id !== card.id)
             else ns.hand = prev.hand.slice(0, -1)
             return ns
           })
         } else if (action.data.zone === "ultimate") {
-          setEnemyField(prev =
- {
+          setEnemyField(prev => {
             const ns = { ...prev, ultimateZone: { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turn } }
-            if (src === "tap") ns.tap = prev.tap.filter(c =
- c.id !== card.id)
+            if (src === "tap") ns.tap = prev.tap.filter(c => c.id !== card.id)
             else ns.hand = prev.hand.slice(0, -1)
             return ns
           })
@@ -7401,8 +6542,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         const attacker = attackerCard ?? enemyField.unitZone[attackerIndex]
 
         // Projectile from enemy → my field
-        const getCoords = (sel: string) =
- {
+        const getCoords = (sel: string) => {
           const el = document.querySelector(sel)
           if (!el) return null
           const r = el.getBoundingClientRect()
@@ -7419,8 +6559,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
 
         if (tgt && attacker) {
           const projId = `opp-${Date.now()}`
-          setActiveProjectiles(prev =
- [...prev, {
+          setActiveProjectiles(prev => [...prev, {
             id: projId, startX, startY,
             targetX: tgt!.x, targetY: tgt!.y,
             element: attacker.element || "neutral",
@@ -7430,14 +6569,11 @@ c.name).join(", ")} adicionadas à mão!`, "success")
           }])
         }
 
-        setTimeout(() =
- {
+        setTimeout(() => {
           if (targetType === "direct") {
-            setPlayerField(prev =
- ({ ...prev, life: Math.max(0, prev.life - damage) }))
+            setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - damage) }))
           } else {
-            setPlayerField(prev =
- {
+            setPlayerField(prev => {
               const nUZ = [...prev.unitZone]
               const nGY = [...prev.graveyard]
               const t = nUZ[targetIndex]
@@ -7455,23 +6591,19 @@ c.name).join(", ")} adicionadas à mão!`, "success")
 
       case "end_turn":
         setIsMyTurn(true)
-        setTurn(prev =
- prev + 1)
+        setTurn(prev => prev + 1)
         setPhase("draw")
         setNormalSummonUsed(false) // reset for my new turn
-        setPlayerField(prev =
- ({
+        setPlayerField(prev => ({
           ...prev,
-          unitZone: prev.unitZone.map(u =
- u ? { ...u, canAttack: true, hasAttacked: false } : null),
+          unitZone: prev.unitZone.map(u => u ? { ...u, canAttack: true, hasAttacked: false } : null),
           ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false } : null,
         }))
         break
 
       case "damage":
         if (action.data.target === "player") {
-          setPlayerField(prev =
- ({ ...prev, life: Math.max(0, prev.life - action.data.amount) }))
+          setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - action.data.amount) }))
         }
         break
 
@@ -7481,8 +6613,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         break
 
       case "destroy_card":
-        setPlayerField(prev =
- {
+        setPlayerField(prev => {
           const nUZ = [...prev.unitZone]
           const destroyed = nUZ[action.data.index]
           if (destroyed) {
@@ -7496,8 +6627,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       case "use_function_card": {
         // Opponent used a function/item card — update visible state
         const card = action.data.card
-        setEnemyField(prev =
- ({
+        setEnemyField(prev => ({
           ...prev,
           hand: prev.hand.slice(0, -1),
           graveyard: [...prev.graveyard, card],
@@ -7505,8 +6635,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         // If it targeted a player unit, apply damage/effect
         if (action.data.targets?.allyUnitIndex != null) {
           const idx = action.data.targets.allyUnitIndex
-          setPlayerField(prev =
- {
+          setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
             const unit = nUZ[idx]
             if (unit && card.abilityDescription?.toLowerCase().includes("-2dp")) {
@@ -7529,29 +6658,24 @@ c.name).join(", ")} adicionadas à mão!`, "success")
 
       case "life_change":
         if (action.data.target === "enemy") {
-          setEnemyField(prev =
- ({ ...prev, life: Math.max(0, action.data.newLife) }))
+          setEnemyField(prev => ({ ...prev, life: Math.max(0, action.data.newLife) }))
         } else {
-          setPlayerField(prev =
- ({ ...prev, life: Math.max(0, action.data.newLife) }))
+          setPlayerField(prev => ({ ...prev, life: Math.max(0, action.data.newLife) }))
         }
         break
 
       case "field_update":
         if (action.data.enemyField) {
-          setEnemyField(prev =
- ({ ...prev, ...action.data.enemyField }))
+          setEnemyField(prev => ({ ...prev, ...action.data.enemyField }))
         }
         break
 
       case "tap_to_hand":
         // Opponent moved a card from TAP to hand — update visible hand size
-        setEnemyField(prev =
- ({
+        setEnemyField(prev => ({
           ...prev,
           hand: [...prev.hand, null as any], // opponent drew 1 more card
-          tap: prev.tap.filter(t =
- t?.id !== action.data.card?.id),
+          tap: prev.tap.filter(t => t?.id !== action.data.card?.id),
         }))
         break
 
@@ -7560,8 +6684,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         const ab = action.data.ability
         // Ullr SR: Marca da Caçada — debuff enemy unit (which is MY unit from opponent's perspective)
         if (ab === "ullrSr" && action.data.targetIndex !== undefined) {
-          setPlayerField(prev =
- {
+          setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
             const u = nUZ[action.data.targetIndex]
             if (u) {
@@ -7575,11 +6698,9 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         }
         // Ullr UR: Juramento Eterno — buff opponent's Ventus units (enemy field for me)
         if (ab === "ullrUr" && action.data.bonus) {
-          setEnemyField(prev =
- ({
+          setEnemyField(prev => ({
             ...prev,
-            unitZone: prev.unitZone.map(u =
- {
+            unitZone: prev.unitZone.map(u => {
               if (!u) return null
               if (u.element === "Ventus" || u.element === "Wind") {
                 return { ...u, currentDp: (u.currentDp ?? u.dp) + action.data.bonus }
@@ -7594,8 +6715,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }, [enemyField, playerField, turn, triggerExplosion])
 
   // ─── Subscribe to opponent actions ──────────────────────���────────────────
-  const subscribeToActions = useCallback(() =
- {
+  const subscribeToActions = useCallback(() => {
     if (!supabase) return
     if (actionsChannelRef.current) actionsChannelRef.current.unsubscribe()
 
@@ -7604,8 +6724,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
         table: "duel_actions", filter: `room_id=eq.${roomData.roomId}`,
-      }, (payload: { new: any }) =
- {
+      }, (payload: { new: any }) => {
         const row = payload.new
         if (row.player_id === playerId) return
         let data = row.action_data
@@ -7620,8 +6739,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
 
     // Aggressive polling fallback: 400ms
     if (actionsPollRef.current) clearInterval(actionsPollRef.current)
-    actionsPollRef.current = setInterval(async () =
- {
+    actionsPollRef.current = setInterval(async () => {
       const { data: rows } = await supabase
         .from("duel_actions")
         .select("*")
@@ -7630,8 +6748,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         .gt("created_at", lastActionTimeRef.current)
         .order("sequence_number", { ascending: true })
         .limit(10)
-      if (rows && rows.length 
- 0) {
+      if (rows && rows.length > 0) {
         for (const row of rows) {
           let actionData = row.action_data
           if (typeof actionData === "string") { try { actionData = JSON.parse(actionData) } catch {} }
@@ -7643,13 +6760,11 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }, [supabase, roomData.roomId, playerId])
 
   // ─── Online chat ────────────────────────────────────────────────────���────
-  const subscribeToChat = useCallback(() =
- {
+  const subscribeToChat = useCallback(() => {
     if (!supabase) return
     if (chatChannelRef.current) chatChannelRef.current.unsubscribe()
 
-    const loadChat = async () =
- {
+    const loadChat = async () => {
       const { data } = await supabase.from("duel_chat")
         .select("*").eq("room_id", roomData.roomId).order("created_at", { ascending: true })
       if (data) setOnlineChat(data)
@@ -7661,19 +6776,15 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
         table: "duel_chat", filter: `room_id=eq.${roomData.roomId}`,
-      }, (payload: { new: any }) =
- {
-        setOnlineChat(prev =
- prev.find(m =
- m.id === payload.new.id) ? prev : [...prev, payload.new])
+      }, (payload: { new: any }) => {
+        setOnlineChat(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
       })
       .subscribe()
 
     chatChannelRef.current = channel
   }, [supabase, roomData.roomId])
 
-  const sendChatMessage = async () =
- {
+  const sendChatMessage = async () => {
     if (!onlineChatInput.trim() || !supabase) return
     const msg = onlineChatInput.trim()
     setOnlineChatInput("")
@@ -7686,16 +6797,13 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }
 
   // Auto-scroll chat
-  useEffect(() =
- {
+  useEffect(() => {
     if (onlineChatRef.current) onlineChatRef.current.scrollTop = onlineChatRef.current.scrollHeight
   }, [onlineChat])
 
   // Cleanup multiplayer on unmount
-  useEffect(() =
- {
-    return () =
- {
+  useEffect(() => {
+    return () => {
       if (actionsChannelRef.current) actionsChannelRef.current.unsubscribe()
       if (chatChannelRef.current)    chatChannelRef.current.unsubscribe()
       if (actionsPollRef.current)    clearInterval(actionsPollRef.current)
@@ -7703,63 +6811,50 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   }, [])
 
   // ─── Start game on mount ─────────────────────────────────────────────────
-  useEffect(() =
- {
+  useEffect(() => {
     const deck = selectedDeck
-    if (deck && Array.isArray(deck.cards) && deck.cards.length 
- 0) {
+    if (deck && Array.isArray(deck.cards) && deck.cards.length > 0) {
       initGame(deck, oppDeckTyped)
       subscribeToActions()
       subscribeToChat()
     } else {
       // Deck not ready yet (can happen if Supabase data hasn't fully loaded)
       // Retry once after 500ms
-      const timer = setTimeout(() =
- {
+      const timer = setTimeout(() => {
         const retryDeck = roomData.isHost ? roomData.hostDeck : roomData.guestDeck
-        const parsed = retryDeck ? (typeof retryDeck === "string" ? (() =
- { try { return JSON.parse(retryDeck) } catch { return null } })() : retryDeck) : null
-        if (parsed && Array.isArray(parsed.cards) && parsed.cards.length 
- 0) {
+        const parsed = retryDeck ? (typeof retryDeck === "string" ? (() => { try { return JSON.parse(retryDeck) } catch { return null } })() : retryDeck) : null
+        if (parsed && Array.isArray(parsed.cards) && parsed.cards.length > 0) {
           initGame(parsed as DeckWithImages, oppDeckTyped)
           subscribeToActions()
           subscribeToChat()
         }
       }, 500)
-      return () =
- clearTimeout(timer)
+      return () => clearTimeout(timer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
 
-  const endTurn = () =
- {
+  const endTurn = () => {
     setPhase("end")
 
-    setPlayerField((prev) =
- ({
+    setPlayerField((prev) => ({
       ...prev,
-      unitZone: prev.unitZone.map((unit) =
- (unit ? { ...unit, hasAttacked: false } : null)),
+      unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false } : null)),
       ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, hasAttacked: false } : null,
     }))
 
-    setTimeout(() =
- {
+    setTimeout(() => {
       const nextTurn = turn + 1
       setTurn(nextTurn)
       setIsMyTurn(false)
       setPhase("draw")
       setNormalSummonUsed(false) // reset for next turn
 
-      setEnemyField((prev) =
- ({
+      setEnemyField((prev) => ({
         ...prev,
-        unitZone: prev.unitZone.map((unit) =
-
-          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn 
- unit.canAttackTurn } : null,
+        unitZone: prev.unitZone.map((unit) =>
+          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
       }))
 
@@ -7773,23 +6868,18 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     }, 500)
   }
 
-  const endEnemyTurn = () =
- {
+  const endEnemyTurn = () => {
     setPhase("end")
 
-    setEnemyField((prev) =
- ({
+    setEnemyField((prev) => ({
       ...prev,
-      unitZone: prev.unitZone.map((unit) =
- (unit ? { ...unit, hasAttacked: false } : null)),
+      unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false } : null)),
     }))
 
     // Bot ULLRBOGI: remove +3 DP from Ullr when ending turn (leaving battle phase)
-    setEnemyField((prevEnemy) =
- {
+    setEnemyField((prevEnemy) => {
       if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
-        const ullrIdx = prevEnemy.unitZone.findIndex((u) =
- u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+        const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
         if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
           const newUnits = [...prevEnemy.unitZone]
           newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: Math.max(0, newUnits[ullrIdx]!.currentDp - 3) }
@@ -7799,32 +6889,26 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       return prevEnemy
     })
 
-    setTimeout(() =
- {
+    setTimeout(() => {
       const nextTurn = turn + 1
       setTurn(nextTurn)
       setIsMyTurn(true)
       setPhase("draw")
       setJulgamentoDivinoUsedThisTurn(false)
 
-      setPlayerField((prev) =
- ({
+      setPlayerField((prev) => ({
         ...prev,
-        unitZone: prev.unitZone.map((unit) =
-
-          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn 
- unit.canAttackTurn } : null,
+        unitZone: prev.unitZone.map((unit) =>
+          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
         ultimateZone: prev.ultimateZone
-          ? { ...prev.ultimateZone, hasAttacked: false, canAttack: nextTurn 
- prev.ultimateZone.canAttackTurn }
+          ? { ...prev.ultimateZone, hasAttacked: false, canAttack: nextTurn > prev.ultimateZone.canAttackTurn }
           : null,
       }))
     }, 500)
   }
 
-  const surrender = () =
- {
+  const surrender = () => {
     // Broadcast surrender to opponent
     sendActionRef.current({
       type: "surrender",
@@ -7843,8 +6927,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     })
   }
 
-  const handleEnemyUnitSelect = (index: number) =
- {
+  const handleEnemyUnitSelect = (index: number) => {
     if (!itemSelectionMode.active || itemSelectionMode.step !== "selectEnemy") return
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
@@ -7858,8 +6941,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       const newDp = Math.max(0, currentDp - 2)
       const isDestroyed = newDp <= 0
 
-      setEnemyField((prev) =
- {
+      setEnemyField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const newGraveyard = [...prev.graveyard]
         if (isDestroyed) {
@@ -7871,8 +6953,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
       })
 
-      setPlayerField((prev) =
- ({
+      setPlayerField((prev) => ({
         ...prev,
         graveyard: [...prev.graveyard, cardToUse],
       }))
@@ -7916,12 +6997,10 @@ c.name).join(", ")} adicionadas à mão!`, "success")
         setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
 
         // Use async resolve for dice cards
-        resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) =
- {
+        resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
           if (result.success) {
             showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
-            setPlayerField((prev) =
- ({
+            setPlayerField((prev) => ({
               ...prev,
               graveyard: [...prev.graveyard, cardToUse],
             }))
@@ -7933,16 +7012,14 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       }
     }
 
-    setItemSelectionMode((prev) =
- ({
+    setItemSelectionMode((prev) => ({
       ...prev,
       step: "selectAlly",
       selectedEnemyIndex: index,
     }))
   }
 
-  const handleAllyUnitSelect = (index: number) =
- {
+  const handleAllyUnitSelect = (index: number) => {
     if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
     if (!itemSelectionMode.itemCard) return
 
@@ -8047,12 +7124,10 @@ c.name).join(", ")} adicionadas à mão!`, "success")
       setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
 
       // Use async resolve for dice cards
-      resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) =
- {
+      resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
         if (result.success) {
           showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
-          setPlayerField((prev) =
- ({
+          setPlayerField((prev) => ({
             ...prev,
             graveyard: [...prev.graveyard, cardToUse],
           }))
@@ -8076,11 +7151,9 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     }
   }
 
-  const cancelItemSelection = () =
- {
+  const cancelItemSelection = () => {
     if (itemSelectionMode.itemCard) {
-      setPlayerField((prev) =
- ({
+      setPlayerField((prev) => ({
         ...prev,
         hand: [...prev.hand, itemSelectionMode.itemCard!],
       }))
@@ -8088,8 +7161,7 @@ c.name).join(", ")} adicionadas à mão!`, "success")
     setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
   }
 
-  useEffect(() =
- {
+  useEffect(() => {
     if (!gameStarted || gameResultRecordedRef.current) return
 
     if (playerField.life <= 0) {
@@ -8121,62 +7193,39 @@ c.name).join(", ")} adicionadas à mão!`, "success")
   // ── Validate roomData before rendering ──────────────────────────────────
   if (!roomData?.roomId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900"
-
-        <div className="text-center"
-
-          <p className="text-red-400 text-xl font-bold mb-4"
-Erro ao iniciar duelo</p
-
-          <p className="text-slate-400 mb-6"
-Dados da sala inválidos.</p
-
-          <button onClick={onBack} className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl"
-Voltar</button
-
-        </div
-
-      </div
-
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <p className="text-red-400 text-xl font-bold mb-4">Erro ao iniciar duelo</p>
+          <p className="text-slate-400 mb-6">Dados da sala inválidos.</p>
+          <button onClick={onBack} className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl">Voltar</button>
+        </div>
+      </div>
     )
   }
 
   // Online: show loading until game initializes
   if (!gameStarted) {
-    const deckOk = selectedDeck && Array.isArray((selectedDeck as any).cards) && (selectedDeck as any).cards.length 
- 0
+    const deckOk = selectedDeck && Array.isArray((selectedDeck as any).cards) && (selectedDeck as any).cards.length > 0
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900"
-
-        <div className="text-center"
-
-          <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" /
-
-          <p className="text-white text-xl font-bold"
-Iniciando duelo...</p
-
-          <p className="text-slate-400 text-sm mt-2"
-
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white text-xl font-bold">Iniciando duelo...</p>
+          <p className="text-slate-400 text-sm mt-2">
             {deckOk ? `Conectando com ${opponentName}` : "Carregando deck..."}
-          </p
-
+          </p>
           {!deckOk && (
-            <p className="text-red-400 text-xs mt-3"
-
+            <p className="text-red-400 text-xs mt-3">
               Se ficar travado aqui, volte e tente novamente.
-            </p
-
+            </p>
           )}
-        </div
-
-      </div
-
+        </div>
+      </div>
     )
   }
 
   if (gameResult) {
-    return <GameResultScreen result={gameResult} onBack={onBack} /
-
+    return <GameResultScreen result={gameResult} onBack={onBack} />
   }
 
   return (
@@ -8187,55 +7236,43 @@ Iniciando duelo...</p
       style={{
         background: "#04030d",
       }}
-      onMouseMove={(e) =
- {
+      onMouseMove={(e) => {
         handleAttackMove(e)
         handleHandCardDragMove(e)
       }}
-      onMouseUp={() =
- {
+      onMouseUp={() => {
         handleAttackEnd()
         handleHandCardDragEnd()
       }}
-      onMouseLeave={() =
- {
+      onMouseLeave={() => {
         handleAttackEnd()
         handleHandCardDragEnd()
       }}
-      onTouchMove={(e) =
- {
+      onTouchMove={(e) => {
         handleAttackMove(e)
         handleHandCardDragMove(e)
       }}
-      onTouchEnd={() =
- {
+      onTouchEnd={() => {
         handleAttackEnd()
         handleHandCardDragEnd()
       }}
-    
-
+    >
       {/* Animated starfield — sits at z-0 behind all UI */}
-      <StarfieldCanvas /
-
-      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() =
- setFreezeAnimationCard(null)} /
-}
+      <StarfieldCanvas />
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
       <ScenarioRevealOverlay
         playerScenario={playerField.scenarioZone}
         enemyScenario={enemyField.scenarioZone}
-      /
-
-      {activeProjectiles.map((proj) =
- (
+      />
+      {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
           key={proj.id}
           {...proj}
           portalTarget={fieldRef.current}
           onImpact={handleImpact}
           onComplete={handleAnimationComplete}
-        /
-
+        />
       ))}
 
       {/* Impact Flash Overlay - Epic cinematic effect */}
@@ -8246,8 +7283,7 @@ Iniciando duelo...</p
             background: `radial-gradient(circle at center, ${impactFlash.color} 0%, transparent 70%)`,
             animation: "epicFlash 0.25s ease-out forwards"
           }}
-        /
-
+        />
       )}
 
       {/* Background pattern */}
@@ -8258,8 +7294,7 @@ Iniciando duelo...</p
                             radial-gradient(circle at 80% 70%, rgba(147, 51, 234, 0.3) 0%, transparent 50%),
                             radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.2) 0%, transparent 60%)`,
         }}
-      /
-
+      />
 
       {/* Animated grid lines */}
       <div
@@ -8269,60 +7304,39 @@ Iniciando duelo...</p
                             linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
           backgroundSize: "50px 50px",
         }}
-      /
-
+      />
 
       <canvas
         ref={explosionCanvasRef}
         className="fixed inset-0 pointer-events-none z-[60]"
         style={{ width: "100vw", height: "100vh" }}
-      /
-
+      />
 
       {attackState.isAttacking && (
-        <svg className="fixed inset-0 pointer-events-none z-50" style={{ width: "100vw", height: "100vh" }}
-
-          <defs
-
-            <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%"
-
-              <stop offset="0%" stopColor="#dc2626" /
-
-              <stop offset="50%" stopColor="#ef4444" /
-
-              <stop offset="100%" stopColor="#f87171" /
-
-            </linearGradient
-
-            <marker id="arrowhead" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"
-
-              <path d="M 0 0 L 12 5 L 0 10 L 3 5 Z" fill="#f87171" stroke="#dc2626" strokeWidth="0.5" /
-
-            </marker
-
-            <filter id="professionalGlow"
-
-              <feGaussianBlur stdDeviation="2.5" result="blur" /
-
+        <svg className="fixed inset-0 pointer-events-none z-50" style={{ width: "100vw", height: "100vh" }}>
+          <defs>
+            <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#dc2626" />
+              <stop offset="50%" stopColor="#ef4444" />
+              <stop offset="100%" stopColor="#f87171" />
+            </linearGradient>
+            <marker id="arrowhead" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto">
+              <path d="M 0 0 L 12 5 L 0 10 L 3 5 Z" fill="#f87171" stroke="#dc2626" strokeWidth="0.5" />
+            </marker>
+            <filter id="professionalGlow">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
               <feColorMatrix
                 in="blur"
                 type="matrix"
                 values="1 0 0 0 0  0 0.3 0 0 0  0 0 0.3 0 0  0 0 0 0.5 0"
                 result="redBlur"
-              /
-
-              <feMerge
-
-                <feMergeNode in="redBlur" /
-
-                <feMergeNode in="SourceGraphic" /
-
-              </feMerge
-
-            </filter
-
-          </defs
-
+              />
+              <feMerge>
+                <feMergeNode in="redBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
 
           {/* Outer glow */}
           <line
@@ -8334,8 +7348,7 @@ Iniciando duelo...</p
             strokeWidth="8"
             opacity="0.18"
             strokeLinecap="round"
-          /
-
+          />
 
           {/* Main arrow with border effect */}
           <line
@@ -8347,8 +7360,7 @@ Iniciando duelo...</p
             strokeWidth="5"
             strokeLinecap="round"
             opacity="0.7"
-          /
-
+          />
 
           {/* Main arrow */}
           <line
@@ -8362,122 +7374,79 @@ Iniciando duelo...</p
             markerEnd="url(#arrowhead)"
             filter="url(#professionalGlow)"
             strokeLinecap="round"
-          /
-
-        </svg
-
+          />
+        </svg>
       )}
 
       {/* Top HUD - Enemy info */}
-      <div className="relative z-20 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/80 to-transparent"
+      <div className="relative z-20 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/80 to-transparent">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center">
+            <Swords className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <span className="text-xs text-slate-400">Oponente</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-red-400">LP: {enemyField.life}</span>
+            </div>
+          </div>
+        </div>
 
-        <div className="flex items-center gap-3"
-
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-400 flex items-center justify-center"
-
-            <Swords className="w-6 h-6 text-white" /
-
-          </div
-
-          <div
-
-            <span className="text-xs text-slate-400"
-Oponente</span
-
-            <div className="flex items-center gap-2"
-
-              <span className="text-xl font-bold text-red-400"
-LP: {enemyField.life}</span
-
-            </div
-
-          </div
-
-        </div
-
-
-        <div className="flex items-center gap-4"
-
-          <div className="text-center px-4 py-1 bg-black/50 rounded-lg border border-amber-500/30"
-
-            <span className="text-xs text-slate-400"
-{t("turn")}</span
-
-            <span className="block text-2xl font-bold text-amber-400"
-{turn}</span
-
-          </div
-
+        <div className="flex items-center gap-4">
+          <div className="text-center px-4 py-1 bg-black/50 rounded-lg border border-amber-500/30">
+            <span className="text-xs text-slate-400">{t("turn")}</span>
+            <span className="block text-2xl font-bold text-amber-400">{turn}</span>
+          </div>
           {false /* online: no bot */ && (
             <div className={`px-2 py-1 rounded text-[9px] font-bold border ${
               difficulty === 'easy' ? 'bg-green-900/50 border-green-600/40 text-green-300'
               : difficulty === 'medium' ? 'bg-amber-900/50 border-amber-600/40 text-amber-300'
               : 'bg-red-900/50 border-red-600/40 text-red-300'
-            }`}
-
+            }`}>
               {difficulty === 'easy' ? '🟢 Fácil' : difficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
-            </div
-
+            </div>
           )}
           <div
             className={`px-4 py-2 rounded-lg text-sm font-bold border-2 ${isMyTurn
               ? "bg-green-600/20 border-green-500 text-green-400"
               : "bg-red-600/20 border-red-500 text-red-400"
               }`}
-          
-
+          >
             {isMyTurn ? t("yourTurn") : t("enemyTurn")}
-          </div
-
+          </div>
           {/* Morgana passive effects indicator */}
-          {playerField.unitZone.some(u =
- u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)) && (
-            <div className="px-2 py-1 rounded text-[9px] font-bold bg-purple-900/60 border border-purple-500/50 text-purple-300"
-
-              {playerField.unitZone.some(u =
- u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
+          {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)) && (
+            <div className="px-2 py-1 rounded text-[9px] font-bold bg-purple-900/60 border border-purple-500/50 text-purple-300">
+              {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
                 ? "🌑 Actions+Traps bloqueados"
                 : "🌑 Traps bloqueadas"}
-            </div
-
+            </div>
           )}
-        </div
+        </div>
 
-
-        <Button onClick={surrender} size="sm" variant="ghost" className="text-slate-400 hover:text-red-400"
-
-          <ArrowLeft className="w-4 h-4 mr-1" /
-
+        <Button onClick={surrender} size="sm" variant="ghost" className="text-slate-400 hover:text-red-400">
+          <ArrowLeft className="w-4 h-4 mr-1" />
           {t("surrender")}
-        </Button
-
-      </div
-
+        </Button>
+      </div>
 
       {/* Enemy hand (card backs) */}
-      <div className="relative z-10 flex justify-center py-1"
-
-        <div className="flex gap-1"
-
-          {enemyField.hand.map((_, i) =
- (
+      <div className="relative z-10 flex justify-center py-1">
+        <div className="flex gap-1">
+          {enemyField.hand.map((_, i) => (
             <div
               key={i}
               className="w-6 h-8 bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 rounded border border-slate-500/50 shadow-md"
               style={{
                 transform: `rotate(${(i - enemyField.hand.length / 2) * 3}deg) translateY(${Math.abs(i - enemyField.hand.length / 2) * 2}px)`,
               }}
-            /
-
+            />
           ))}
-        </div
-
-      </div
-
+        </div>
+      </div>
 
       {/* Main Battle Area — centered arena */}
-      <div className="flex-1 flex items-center justify-center px-2 py-1 duel-arena-perspective"
-
+      <div className="flex-1 flex items-center justify-center px-2 py-1 duel-arena-perspective">
         <div
           className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden duel-board-tilt"
           style={{
@@ -8485,75 +7454,53 @@ LP: {enemyField.life}</span
             maxHeight: "calc(100vh - 220px)",
             boxShadow: "0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3)",
           }}
-        
-
+        >
           {/* Playmat container with border */}
-          <div className="absolute inset-0 rounded-xl border-4 border-amber-600/30 bg-gradient-to-b from-slate-900/90 to-slate-800/90"
-
+          <div className="absolute inset-0 rounded-xl border-4 border-amber-600/30 bg-gradient-to-b from-slate-900/90 to-slate-800/90">
             {/* Enemy side background */}
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-red-950/30 to-transparent" /
-
+            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-red-950/30 to-transparent" />
 
             {/* Player Playmat Background */}
-            {(() =
- {
+            {(() => {
               const playmat = selectedDeck ? getPlaymatForDeck(selectedDeck) : null
               if (playmat) {
                 return (
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden"
-
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden">
                     <img
                       src={playmat.image || "/placeholder.svg"}
                       alt={playmat.name}
                       className="w-full h-full object-cover"
                       style={{ opacity: 0.75 }}
-                    /
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-slate-900/60" /
-
-                  </div
-
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-slate-900/60" />
+                  </div>
                 )
               }
               return (
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-blue-950/30 to-transparent" /
-
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-blue-950/30 to-transparent" />
               )
             })()}
-          </div
-
+          </div>
 
           {/* Field content */}
-          <div className="relative h-full flex flex-col justify-between p-1 pb-2 z-10"
-
+          <div className="relative h-full flex flex-col justify-between p-1 pb-2 z-10">
             {/* Enemy Field */}
-            <div className="flex justify-center items-center gap-2"
-
+            <div className="flex justify-center items-center gap-2">
               {/* Enemy Deck, Graveyard, Scenario and Ultimate */}
-              <div className="flex items-start gap-1.5"
-
-                <div className="flex gap-1.5"
-
-                  <div className="flex flex-col gap-1.5"
-
+              <div className="flex items-start gap-1.5">
+                <div className="flex gap-1.5">
+                  <div className="flex flex-col gap-1.5">
                     <div
                       ref={enemyGraveyardRef}
                       className="w-16 h-24 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
-                      onClick={() =
- setGraveyardView("enemy")}
-                    
-
+                      onClick={() => setGraveyardView("enemy")}
+                    >
                       {enemyField.graveyard.length}
-                    </div
-
-                    <div ref={enemyDeckRef} className="w-16 h-24 relative"
-
-                      {enemyField.deck.length 
- 0 ? (
-                        <
-
-                          {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) =
- (
+                    </div>
+                    <div ref={enemyDeckRef} className="w-16 h-24 relative">
+                      {enemyField.deck.length > 0 ? (
+                        <>
+                          {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) => (
                             <div
                               key={i}
                               className="absolute inset-0 rounded border border-black/40 shadow-sm overflow-hidden bg-red-900"
@@ -8561,60 +7508,37 @@ LP: {enemyField.life}</span
                                 transform: `translateY(-${i * 1.5}px)`,
                                 zIndex: 10 - i,
                               }}
-                            
-
+                            >
                               <Image
                                 src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Deck"
                                 fill
                                 className="object-cover"
-                              /
-
-                            </div
-
+                              />
+                            </div>
                           ))}
-                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-
-                            <span className="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full border border-white/20 font-bold backdrop-blur-sm"
-
+                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                            <span className="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full border border-white/20 font-bold backdrop-blur-sm">
                               {enemyField.deck.length}
-                            </span
-
-                          </div
-
-                        </
-
+                            </span>
+                          </div>
+                        </>
                       ) : (
-                        <div className="absolute inset-0 rounded border-2 border-dashed border-red-900/40 flex items-center justify-center"
-
-                          <span className="text-red-900/40 text-[8px] font-bold"
-VAZIO</span
-
-                        </div
-
+                        <div className="absolute inset-0 rounded border-2 border-dashed border-red-900/40 flex items-center justify-center">
+                          <span className="text-red-900/40 text-[8px] font-bold">VAZIO</span>
+                        </div>
                       )}
-                    </div
-
-                  </div
-
+                    </div>
+                  </div>
                   <div
                     className="w-16 h-24 bg-orange-600/80 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border border-orange-400/50 cursor-pointer hover:bg-orange-500/80 transition-animation"
-                    onClick={() =
- setTapView("enemy")}
-                  
-
-                    <span className="opacity-70"
-TAP</span
-
-                    <span
-{enemyField.tap.length}</span
-
-                  </div
-
-                </div
-
-                <div className="flex flex-col gap-1.5"
-
+                    onClick={() => setTapView("enemy")}
+                  >
+                    <span className="opacity-70">TAP</span>
+                    <span>{enemyField.tap.length}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
                   {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
                   <div
                     className={`h-16 w-24 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden ${enemyField.scenarioZone ? "gp-card-float" : ""}`}
@@ -8623,30 +7547,23 @@ TAP</span
                       ["--float-rot" as any]: "0.4deg",
                       ["--float-dur" as any]: "4.4s",
                     }}
-                  
-
+                  >
                     {enemyField.scenarioZone ? (
                       <Image
                         src={enemyField.scenarioZone.image || "/placeholder.svg"}
                         alt={enemyField.scenarioZone.name}
                         fill
                         className="object-cover rounded"
-                        onMouseDown={() =
- handleCardPressStart(enemyField.scenarioZone!)}
+                        onMouseDown={() => handleCardPressStart(enemyField.scenarioZone!)}
                         onMouseUp={handleCardPressEnd}
                         onMouseLeave={handleCardPressEnd}
-                        onTouchStart={() =
- handleCardPressStart(enemyField.scenarioZone!)}
+                        onTouchStart={() => handleCardPressStart(enemyField.scenarioZone!)}
                         onTouchEnd={handleCardPressEnd}
-                      /
-
+                      />
                     ) : (
-                      <span className="text-amber-500/50 text-[8px] text-center"
-SCENARIO</span
-
+                      <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
-                  </div
-
+                  </div>
                   {/* Enemy Ultimate Zone - single slot, green */}
                   <div
                     className={`w-16 h-24 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden ${enemyField.ultimateZone ? "gp-card-float" : ""}`}
@@ -8655,54 +7572,41 @@ SCENARIO</span
                       ["--float-rot" as any]: "-0.5deg",
                       ["--float-dur" as any]: "4.1s",
                     }}
-                  
-
+                  >
                     {enemyField.ultimateZone ? (
                       <Image
                         src={enemyField.ultimateZone.image || "/placeholder.svg"}
                         alt={enemyField.ultimateZone.name}
                         fill
                         className="object-cover rounded"
-                        onMouseDown={() =
- handleCardPressStart(enemyField.ultimateZone!)}
+                        onMouseDown={() => handleCardPressStart(enemyField.ultimateZone!)}
                         onMouseUp={handleCardPressEnd}
                         onMouseLeave={handleCardPressEnd}
-                        onTouchStart={() =
- handleCardPressStart(enemyField.ultimateZone!)}
+                        onTouchStart={() => handleCardPressStart(enemyField.ultimateZone!)}
                         onTouchEnd={handleCardPressEnd}
-                      /
-
+                      />
                     ) : null}
                     {enemyField.ultimateZone && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5"
-
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
                         {enemyField.ultimateZone.currentDp} DP
-                      </div
-
+                      </div>
                     )}
-                  </div
-
-                </div
-
-              </div
-
+                  </div>
+                </div>
+              </div>
 
               {/* Enemy Zones */}
-              <div className="flex flex-col gap-2"
-
+              <div className="flex flex-col gap-2">
                 {/* Enemy Function Zone */}
-                <div className="flex justify-center items-center gap-2"
-
-                  {enemyField.functionZone.map((card, i) =
- {
+                <div className="flex justify-center items-center gap-2">
+                  {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
                       ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg" || ugTargetMode.type === "vatnavordr_messiham"
                     )
                     return (
                       <div
                         key={i}
-                        onClick={() =
- {
+                        onClick={() => {
                           if (ugTargetMode.active && (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") && card) {
                             handleUgTargetEnemyFunction(i)
                           } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham") && card) {
@@ -8720,53 +7624,39 @@ SCENARIO</span
                           ["--float-rot" as any]: i % 2 === 0 ? "0.6deg" : "-0.6deg",
                           ["--float-dur" as any]: `${3.6 + (i % 3) * 0.4}s`,
                         }}
-                      
-
+                      >
                         {card && (
-                          <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}
-
-                            <div className="absolute inset-0 [backface-visibility:hidden]"
-
+                          <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
+                            <div className="absolute inset-0 [backface-visibility:hidden]">
                               <Image
                                 src={CARD_BACK_IMAGE || "/placeholder.svg"}
                                 alt="Face down card"
                                 fill
                                 className="object-cover rounded"
-                              /
-
-                            </div
-
-                            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]"
-
+                              />
+                            </div>
+                            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
                               <Image
                                 src={card.image || "/placeholder.svg"}
                                 alt={card.name}
                                 fill
                                 className="object-cover rounded"
-                              /
-
-                            </div
-
-                          </div
-
+                              />
+                            </div>
+                          </div>
                         )}
-                      </div
-
+                      </div>
                     )
                   })}
-                </div
-
+                </div>
 
                 {/* Enemy Unit Zone */}
-                <div className="flex justify-center items-center gap-2"
-
-                  {enemyField.unitZone.map((card, i) =
- (
+                <div className="flex justify-center items-center gap-2">
+                  {enemyField.unitZone.map((card, i) => (
                     <div
                       key={i}
                       data-enemy-unit={i}
-                      onClick={() =
- {
+                      onClick={() => {
                         if (mrpTargetMode && card) {
                           handleMrpTarget(i)
                         } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham") && card) {
@@ -8794,88 +7684,61 @@ SCENARIO</span
                         ["--float-rot" as any]: i % 2 === 0 ? "-0.7deg" : "0.7deg",
                         ["--float-dur" as any]: `${3.4 + (i % 3) * 0.5}s`,
                       }}
-                    
-
-                      <FieldCardFX card={card as FieldCard | null} image={card?.image || null} /
-
+                    >
+                      <FieldCardFX card={card as FieldCard | null} image={card?.image || null} />
                       {card && (
-                        <
-
+                        <>
                           <Image
                             src={card.image || "/placeholder.svg"}
                             alt={card.name}
                             fill
                             className="object-cover"
-                            onMouseDown={() =
- handleCardPressStart(card)}
+                            onMouseDown={() => handleCardPressStart(card)}
                             onMouseUp={handleCardPressEnd}
                             onMouseLeave={handleCardPressEnd}
-                            onTouchStart={() =
- handleCardPressStart(card)}
+                            onTouchStart={() => handleCardPressStart(card)}
                             onTouchEnd={handleCardPressEnd}
-                          /
-
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5"
-
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
                             {(card as FieldCard).currentDp} DP
-                          </div
-
-                        </
-
+                          </div>
+                        </>
                       )}
-                    </div
-
+                    </div>
                   ))}
-                </div
-
-              </div
-
-            </div
-
+                </div>
+              </div>
+            </div>
 
             {/* Center Phase indicator and Direct Attack Zone */}
-            <div className="flex flex-col items-center gap-1 py-1"
-
+            <div className="flex flex-col items-center gap-1 py-1">
               <div
                 data-direct-attack
                 className={`px-6 py-1 rounded-full border-2 border-dashed transition-all text-sm font-bold ${attackTarget?.type === "direct"
                   ? "border-red-500 bg-red-500/30 text-red-300 scale-105"
                   : "border-slate-500/50 text-slate-500"
                   }`}
-              
-
+              >
                 {attackTarget?.type === "direct" ? "ATAQUE DIRETO!" : ""}
-              </div
-
+              </div>
 
               {/* Phase divider */}
-              <div className="w-full flex items-center gap-2"
-
-                <div className="flex-1 h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-amber-500" /
-
-                <span className="text-amber-400 text-xs font-bold px-3 py-1 bg-black/60 rounded-full border border-amber-500/40"
-
+              <div className="w-full flex items-center gap-2">
+                <div className="flex-1 h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-amber-500" />
+                <span className="text-amber-400 text-xs font-bold px-3 py-1 bg-black/60 rounded-full border border-amber-500/40">
                   {phase === "draw" ? "DRAW" : phase === "main" ? "MAIN" : "BATTLE"}
-                </span
-
-                <div className="flex-1 h-0.5 bg-gradient-to-l from-transparent via-amber-500/60 to-amber-500" /
-
-              </div
-
-            </div
-
+                </span>
+                <div className="flex-1 h-0.5 bg-gradient-to-l from-transparent via-amber-500/60 to-amber-500" />
+              </div>
+            </div>
 
             {/* Player Field */}
-            <div className="flex justify-center items-center gap-2"
-
+            <div className="flex justify-center items-center gap-2">
               {/* Player Zones */}
-              <div className="flex flex-col gap-2"
-
+              <div className="flex flex-col gap-2">
                 {/* Player Unit Zone */}
-                <div className="flex justify-center items-center gap-2"
-
-                  {playerField.unitZone.map((card, i) =
- {
+                <div className="flex justify-center items-center gap-2">
+                  {playerField.unitZone.map((card, i) => {
                     const isDropTarget =
                       draggedHandCard &&
                       isUnitCard(draggedHandCard.card) &&
@@ -8891,26 +7754,20 @@ SCENARIO</span
                       (cardName.includes("merlin") && !merlinUsed) ||
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
-                      (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn 
-= 3)) ||
+                      (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
                       (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) ||
                       (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) ||
-                      (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn 
-= 4))
+                      (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
                     )
-                    const getAbilityFn = (): (() =
- void) | null =
- {
+                    const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
-                      if (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn 
-= 3)) return activateHrottiSrAbility
+                      if (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
                       if (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) return activateHrottiUrAbility
                       if (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) return activateUllrSrAbility
-                      if (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn 
-= 4)) return activateUllrUrAbility
+                      if (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
                       return null
                     }
 
@@ -8918,24 +7775,20 @@ SCENARIO</span
                       <div
                         key={i}
                         data-player-unit-slot={i}
-                        onClick={() =
- {
+                        onClick={() => {
                           if (selectedHandCard !== null) {
                             placeCard("unit", i)
                           } else if (itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card) {
                             handleAllyUnitSelect(i)
                           } else if (hasAbility && getAbilityFn()) {
-                            setUnitAbilityConfirm({ name: card!.name, abilityKey: (() =
- {
+                            setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
                           if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
                           if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
-                          if (cardName.includes('hrotti') && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn 
-= 3)) return 'hrottiSr'
+                          if (cardName.includes('hrotti') && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return 'hrottiSr'
                           if (cardName.includes('hrotti') && card.dp === 3 && !hrottiUrUsed) return 'hrottiUr'
                           if (cardName.includes('ullr') && card.dp === 2 && !ullrSrMarcaUsed) return 'ullrSr'
-                          if (cardName.includes('ullr') && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn 
-= 4)) return 'ullrUr'
+                          if (cardName.includes('ullr') && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return 'ullrUr'
                           return ''
                         })() })
                           }
@@ -8963,30 +7816,24 @@ SCENARIO</span
                           ["--float-rot" as any]: i % 2 === 0 ? "0.7deg" : "-0.7deg",
                           ["--float-dur" as any]: `${3.5 + (i % 3) * 0.45}s`,
                         }}
-                      
-
+                      >
                         {/* Green glow for ability-ready cards */}
                         {hasAbility && (
-                          <div className="absolute -inset-1 bg-emerald-400/30 rounded blur-sm animate-pulse -z-10" /
-
+                          <div className="absolute -inset-1 bg-emerald-400/30 rounded blur-sm animate-pulse -z-10" />
                         )}
                         {/* Yellow glow for attackable cards */}
                         {!hasAbility && canAttack && (
-                          <div className="absolute -inset-1 bg-yellow-400/40 rounded blur-sm animate-pulse -z-10" /
-
+                          <div className="absolute -inset-1 bg-yellow-400/40 rounded blur-sm animate-pulse -z-10" />
                         )}
-                        <FieldCardFX card={card as FieldCard | null} image={card?.image || null} /
-
+                        <FieldCardFX card={card as FieldCard | null} image={card?.image || null} />
                         {card && (
-                          <
-
+                          <>
                             <Image
                               src={card.image || "/placeholder.svg"}
                               alt={card.name}
                               fill
                               className="object-cover"
-                              onMouseDown={(e) =
- {
+                              onMouseDown={(e) => {
                                 if (canAttack && !hasAbility) {
                                   handleAttackStart(i, e)
                                 } else {
@@ -8995,8 +7842,7 @@ SCENARIO</span
                               }}
                               onMouseUp={handleCardPressEnd}
                               onMouseLeave={handleCardPressEnd}
-                              onTouchStart={(e) =
- {
+                              onTouchStart={(e) => {
                                 if (canAttack && !hasAbility) {
                                   handleAttackStart(i, e)
                                 } else {
@@ -9004,49 +7850,35 @@ SCENARIO</span
                                 }
                               }}
                               onTouchEnd={handleCardPressEnd}
-                            /
-
+                            />
                             {canAttack && !hasAbility && (
-                              <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-[10px] text-center font-bold animate-pulse"
-
+                              <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-[10px] text-center font-bold animate-pulse">
                                 {t("dragToAttack")}
-                              </div
-
+                              </div>
                             )}
                             {hasAbility && (
-                              <div className="absolute bottom-0 left-0 right-0 bg-emerald-600/90 text-white text-[8px] text-center font-bold py-0.5"
-
+                              <div className="absolute bottom-0 left-0 right-0 bg-emerald-600/90 text-white text-[8px] text-center font-bold py-0.5">
                                 ✦ HABILIDADE
-                              </div
-
+                              </div>
                             )}
                             {!canAttack && !hasAbility && card && turn <= (card as FieldCard).canAttackTurn && (
-                              <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center"
-
+                              <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center">
                                 T{(card as FieldCard).canAttackTurn + 1}
-                              </div
-
+                              </div>
                             )}
-                          </
-
+                          </>
                         )}
                         {!card && isDropTarget && (
-                          <span className="text-green-400 text-xs font-bold animate-pulse"
-SOLTAR</span
-
+                          <span className="text-green-400 text-xs font-bold animate-pulse">SOLTAR</span>
                         )}
-                      </div
-
+                      </div>
                     )
                   })}
-                </div
-
+                </div>
 
                 {/* Player Function Zone */}
-                <div className="flex justify-center items-center gap-2"
-
-                  {playerField.functionZone.map((card, i) =
- {
+                <div className="flex justify-center items-center gap-2">
+                  {playerField.functionZone.map((card, i) => {
                     const isDropTarget =
                       draggedHandCard &&
                       !isUnitCard(draggedHandCard.card) &&
@@ -9057,8 +7889,7 @@ SOLTAR</span
                       <div
                         key={i}
                         data-player-func-slot={i}
-                        onClick={() =
- selectedHandCard !== null && placeCard("function", i)}
+                        onClick={() => selectedHandCard !== null && placeCard("function", i)}
                         className={`w-16 h-24 bg-purple-900/30 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-hidden ${card ? "gp-card-float" : ""} ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 bg-green-500/60 scale-115 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                           : isDropTarget
@@ -9074,76 +7905,55 @@ SOLTAR</span
                           ["--float-rot" as any]: i % 2 === 0 ? "-0.6deg" : "0.6deg",
                           ["--float-dur" as any]: `${3.7 + (i % 3) * 0.4}s`,
                         }}
-                      
-
+                      >
                         {card && (
-                          <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}
-
+                          <div className={`absolute inset-0 transition-transform duration-500 [transform-style:preserve-3d] ${card.isFaceDown ? '' : '[transform:rotateY(180deg)]'}`}>
                             {/* Back of Card */}
-                            <div className="absolute inset-0 [backface-visibility:hidden]"
-
+                            <div className="absolute inset-0 [backface-visibility:hidden]">
                               <Image
                                 src={activeCardBack || "/placeholder.svg"}
                                 alt="Face down card"
                                 fill
                                 className="object-cover rounded"
-                                onMouseDown={() =
- handleCardPressStart(card)}
+                                onMouseDown={() => handleCardPressStart(card)}
                                 onMouseUp={handleCardPressEnd}
                                 onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() =
- handleCardPressStart(card)}
+                                onTouchStart={() => handleCardPressStart(card)}
                                 onTouchEnd={handleCardPressEnd}
-                              /
-
-                            </div
-
+                              />
+                            </div>
                             {/* Front of Card */}
-                            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]"
-
+                            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
                               <Image
                                 src={card.image || "/placeholder.svg"}
                                 alt={card.name}
                                 fill
                                 className="object-cover rounded"
-                                onMouseDown={() =
- handleCardPressStart(card)}
+                                onMouseDown={() => handleCardPressStart(card)}
                                 onMouseUp={handleCardPressEnd}
                                 onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() =
- handleCardPressStart(card)}
+                                onTouchStart={() => handleCardPressStart(card)}
                                 onTouchEnd={handleCardPressEnd}
-                              /
-
-                            </div
-
-                          </div
-
+                              />
+                            </div>
+                          </div>
                         )}
                         {!card && isDropTarget && (
-                          <span className="text-green-400 text-[10px] font-bold animate-pulse"
-SOLTAR</span
-
+                          <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
                         )}
-                      </div
-
+                      </div>
                     )
                   })}
-                </div
-
-              </div
-
+                </div>
+              </div>
 
               {/* Player Scenario, Ultimate Zone and Deck/Graveyard */}
-              <div className="flex items-start gap-1.5"
-
-                <div className="flex flex-col gap-1.5"
-
+              <div className="flex items-start gap-1.5">
+                <div className="flex flex-col gap-1.5">
                   {/* Player Scenario Zone - Horizontal slot, aligned with unit zone */}
                   <div
                     data-player-scenario-slot
-                    onClick={() =
- selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
+                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
                     className={`h-16 w-24 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "scenario" && !playerField.scenarioZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
@@ -9152,35 +7962,27 @@ SOLTAR</span
                           ? "border-amber-400/50 bg-amber-500/20"
                           : "border-amber-600/40"
                       }`}
-                  
-
+                  >
                     {playerField.scenarioZone ? (
                       <Image
                         src={playerField.scenarioZone.image || "/placeholder.svg"}
                         alt={playerField.scenarioZone.name}
                         fill
                         className="object-cover rounded"
-                        onMouseDown={() =
- handleCardPressStart(playerField.scenarioZone!)}
+                        onMouseDown={() => handleCardPressStart(playerField.scenarioZone!)}
                         onMouseUp={handleCardPressEnd}
                         onMouseLeave={handleCardPressEnd}
-                        onTouchStart={() =
- handleCardPressStart(playerField.scenarioZone!)}
+                        onTouchStart={() => handleCardPressStart(playerField.scenarioZone!)}
                         onTouchEnd={handleCardPressEnd}
-                      /
-
+                      />
                     ) : (
-                      <span className="text-amber-500/50 text-[8px] text-center"
-SCENARIO</span
-
+                      <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
                     )}
-                  </div
-
+                  </div>
                   {/* Player Ultimate Zone - single green slot below scenario */}
                   <div
                     data-player-ultimate-slot
-                    onClick={() =
- selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
+                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
                     className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
@@ -9189,43 +7991,33 @@ SCENARIO</span
                           ? "border-emerald-400/50 bg-emerald-500/20"
                           : "border-emerald-600/40"
                       }`}
-                  
-
+                  >
                     {playerField.ultimateZone ? (
-                      <
-
+                      <>
                         <Image
                           src={playerField.ultimateZone.image || "/placeholder.svg"}
                           alt={playerField.ultimateZone.name}
                           fill
                           className="object-cover rounded"
-                          onMouseDown={() =
- handleCardPressStart(playerField.ultimateZone!)}
+                          onMouseDown={() => handleCardPressStart(playerField.ultimateZone!)}
                           onMouseUp={handleCardPressEnd}
                           onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() =
- handleCardPressStart(playerField.ultimateZone!)}
+                          onTouchStart={() => handleCardPressStart(playerField.ultimateZone!)}
                           onTouchEnd={handleCardPressEnd}
-                        /
-
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5"
-
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
                           {playerField.ultimateZone.currentDp} DP
-                        </div
-
+                        </div>
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
                         {isMyTurn && (phase === "main" || phase === "draw") && !playerUgAbilityUsed && !ugTargetMode.active &&
                           (playerField.ultimateZone.id === "vatnavordr-messiham-ur" || playerField.ultimateZone.id === "yggdra-nidhogg-ur" || playerField.ultimateZone.name?.toLowerCase().includes("vatnavordr") || playerField.ultimateZone.name?.toLowerCase().includes("nidhogg") || playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
                           ((playerField.ultimateZone.id === "vatnavordr-messiham-ur" || playerField.ultimateZone.id === "yggdra-nidhogg-ur" || playerField.ultimateZone.name?.toLowerCase().includes("vatnavordr") || playerField.ultimateZone.name?.toLowerCase().includes("nidhogg")) || ((playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip) && findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip || "") !== -1)) && (
                             <button
-                              onClick={(e) =
- { e.stopPropagation(); activateUgAbility() }}
+                              onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
                               className="absolute top-1 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
-                            
-
+                            >
                               ATIVAR
-                            </button
-
+                            </button>
                           )}
                         {/* Activate button for Julgamento Divino (MIGUEL ARCANJO - once per turn) */}
                         {isMyTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active &&
@@ -9233,39 +8025,25 @@ SCENARIO</span
                           playerField.ultimateZone.requiresUnit &&
                           findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
                             <button
-                              onClick={(e) =
- { e.stopPropagation(); activateUgAbility() }}
+                              onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
                               className="absolute -top-8 left-1/2 -translate-x-1/2 bg-purple-600 hover:bg-purple-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-purple-500/50 animate-pulse whitespace-nowrap z-10"
-                            
-
+                            >
                               JULGAMENTO
-                            </button
-
+                            </button>
                           )}
-                      </
-
+                      </>
                     ) : null}
                     {!playerField.ultimateZone && dropTarget?.type === "ultimate" && (
-                      <span className="text-green-400 text-[10px] font-bold animate-pulse"
-SOLTAR</span
-
+                      <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
                     )}
-                  </div
-
-                </div
-
-                <div className="flex gap-1.5"
-
-                  <div className="flex flex-col gap-1.5"
-
-                    <div ref={playerDeckRef} className="w-16 h-24 relative"
-
-                      {playerField.deck.length 
- 0 ? (
-                        <
-
-                          {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) =
- (
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  <div className="flex flex-col gap-1.5">
+                    <div ref={playerDeckRef} className="w-16 h-24 relative">
+                      {playerField.deck.length > 0 ? (
+                        <>
+                          {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) => (
                             <div
                               key={i}
                               className="absolute inset-0 rounded border border-black/40 shadow-sm overflow-hidden bg-blue-900"
@@ -9273,94 +8051,61 @@ SOLTAR</span
                                 transform: `translateY(-${i * 1.5}px)`,
                                 zIndex: 10 - i,
                               }}
-                            
-
+                            >
                               <Image
                                 src={activeCardBack || "/placeholder.svg"}
                                 alt="Deck"
                                 fill
                                 className="object-cover"
-                              /
-
-                            </div
-
+                              />
+                            </div>
                           ))}
-                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-
-                            <span className="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full border border-white/20 font-bold backdrop-blur-sm"
-
+                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                            <span className="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full border border-white/20 font-bold backdrop-blur-sm">
                               {playerField.deck.length}
-                            </span
-
-                          </div
-
-                        </
-
+                            </span>
+                          </div>
+                        </>
                       ) : (
-                        <div className="absolute inset-0 rounded border-2 border-dashed border-blue-900/40 flex items-center justify-center"
-
-                          <span className="text-blue-900/40 text-[8px] font-bold"
-VAZIO</span
-
-                        </div
-
+                        <div className="absolute inset-0 rounded border-2 border-dashed border-blue-900/40 flex items-center justify-center">
+                          <span className="text-blue-900/40 text-[8px] font-bold">VAZIO</span>
+                        </div>
                       )}
-                    </div
-
+                    </div>
                     <div
                       ref={playerGraveyardRef}
                       className="w-16 h-24 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
-                      onClick={() =
- setGraveyardView("player")}
-                    
-
+                      onClick={() => setGraveyardView("player")}
+                    >
                       {playerField.graveyard.length}
-                    </div
-
-                  </div
-
+                    </div>
+                  </div>
                     {/* TAP Pile Button with availability glow and card preview */}
-                    {(() =
- {
-                      const isTapAvailable = turn 
- 0 && turn % 3 === 0 && isMyTurn && phase === "main" && playerField.tap.length 
- 0
+                    {(() => {
+                      const isTapAvailable = turn > 0 && turn % 3 === 0 && isMyTurn && phase === "main" && playerField.tap.length > 0
                       return (
-                        <div className="relative group/tap"
-
+                        <div className="relative group/tap">
                           <div
                             className={`w-16 h-24 rounded text-[10px] text-white flex flex-col items-center justify-center font-bold border transition-all duration-300 cursor-pointer relative z-10 ${isTapAvailable
                               ? "bg-orange-600/90 border-orange-400"
                               : "bg-slate-800/80 border-slate-700/50 opacity-60 grayscale-[0.5]"
                               }`}
-                            onClick={() =
- setTapView("player")}
-                          
-
+                            onClick={() => setTapView("player")}
+                          >
                             {isTapAvailable && (
-                              <div className="absolute -inset-1 bg-orange-500/20 rounded pointer-events-none" /
-
+                              <div className="absolute -inset-1 bg-orange-500/20 rounded pointer-events-none" />
                             )}
-                            <span className={`opacity-70 ${isTapAvailable ? "text-orange-200" : ""}`}
-TAP</span
-
-                            <span className={isTapAvailable ? "text-xl mt-1" : ""}
-{playerField.tap.length}</span
-
+                            <span className={`opacity-70 ${isTapAvailable ? "text-orange-200" : ""}`}>TAP</span>
+                            <span className={isTapAvailable ? "text-xl mt-1" : ""}>{playerField.tap.length}</span>
                             {isTapAvailable && (
-                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-white" /
-
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-white" />
                             )}
-                          </div
-
+                          </div>
 
                           {/* TAP Card Preview - Only shown when available */}
-                          {isTapAvailable && playerField.tap.length 
- 0 && (
-                            <div className="absolute left-full top-0 ml-4 flex gap-1 animate-in slide-in-from-left-4 fade-in duration-500 pointer-events-none"
-
-                              {playerField.tap.slice(0, 3).map((card, idx) =
- (
+                          {isTapAvailable && playerField.tap.length > 0 && (
+                            <div className="absolute left-full top-0 ml-4 flex gap-1 animate-in slide-in-from-left-4 fade-in duration-500 pointer-events-none">
+                              {playerField.tap.slice(0, 3).map((card, idx) => (
                                 <div 
                                   key={idx} 
                                   className="w-10 h-14 rounded border border-orange-500/50 overflow-hidden shadow-lg shadow-black/50 bg-slate-900"
@@ -9368,121 +8113,80 @@ TAP</span
                                     transform: `translateX(-${idx * 15}px) rotate(${idx * 5 - 5}deg)`,
                                     zIndex: 5 - idx 
                                   }}
-                                
-
-                                  <Image src={card.image || "/placeholder.svg"} alt="" fill className="object-cover" /
-
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" /
-
-                                </div
-
+                                >
+                                  <Image src={card.image || "/placeholder.svg"} alt="" fill className="object-cover" />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                                </div>
                               ))}
-                              {playerField.tap.length 
- 3 && (
-                                <div className="w-6 h-14 flex items-center justify-center text-[8px] font-black text-orange-400 bg-black/40 rounded border border-orange-500/20 backdrop-blur-sm -ml-4"
-
+                              {playerField.tap.length > 3 && (
+                                <div className="w-6 h-14 flex items-center justify-center text-[8px] font-black text-orange-400 bg-black/40 rounded border border-orange-500/20 backdrop-blur-sm -ml-4">
                                   +{playerField.tap.length - 3}
-                                </div
-
+                                </div>
                               )}
-                            </div
-
+                            </div>
                           )}
-                        </div
-
+                        </div>
                       )
                     })()}
-                </div
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              </div
-
-            </div
-
-          </div
-
-        </div
-
-
-      </div
-
+      </div>
 
 
       {/* Bottom HUD */}
-      <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-1 pb-2 px-4"
-
+      <div className="relative z-20 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-1 pb-2 px-4">
         {/* Player LP bar + phase buttons */}
-        <div className="flex items-center justify-between mb-2"
-
-          <div className="flex items-center gap-3"
-
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/30"
-
-              <span className="text-white font-bold"
-P1</span
-
-            </div
-
-            <div
-
-              <span className="text-xs text-slate-400"
-Você</span
-
-              <div className="text-xl font-bold text-blue-400"
-LP: {playerField.life}</div
-
-            </div
-
-          </div
-
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <span className="text-white font-bold">P1</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-400">Você</span>
+              <div className="text-xl font-bold text-blue-400">LP: {playerField.life}</div>
+            </div>
+          </div>
 
           {/* Phase buttons */}
-          <div className="flex gap-2 min-h-[40px]"
-
+          <div className="flex gap-2 min-h-[40px]">
             {isMyTurn && phase === "draw" && (
               <Button
                 onClick={advancePhase}
                 size="default"
                 className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold px-6 shadow-lg shadow-green-500/30"
-              
-
+              >
                 {t("drawCard")}
-              </Button
-
+              </Button>
             )}
             {isMyTurn && phase === "main" && (
               <Button
                 onClick={advancePhase}
                 size="default"
                 className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold px-6 shadow-lg shadow-blue-500/30"
-              
-
+              >
                 {t("toBattle")}
-              </Button
-
+              </Button>
             )}
             {isMyTurn && phase === "battle" && (
               <Button
                 onClick={endTurn}
                 size="default"
                 className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold px-6 shadow-lg shadow-amber-500/30"
-              
-
+              >
                 {t("endTurn")}
-              </Button
-
+              </Button>
             )}
-          </div
-
-        </div
-
+          </div>
+        </div>
 
         {/* Player Hand - PROMINENT display */}
-        <div className="flex justify-center -mt-14 min-h-28"
-
-          <div ref={handContainerRef} className="flex gap-3 items-end"
-
-            {playerField.hand.map((card, i) =
- {
+        <div className="flex justify-center -mt-14 min-h-28">
+          <div ref={handContainerRef} className="flex gap-3 items-end">
+            {playerField.hand.map((card, i) => {
               const offset = i - (playerField.hand.length - 1) / 2
               const rotation = offset * 4
               const translateY = Math.abs(offset) * 5
@@ -9495,17 +8199,14 @@ LP: {playerField.life}</div
                 : card.type === "scenario"
                   ? playerField.scenarioZone === null
                   : isUnitCard(card)
-                    ? playerField.unitZone.some(slot =
- slot === null) && !normalSummonUsed
-                    : playerField.functionZone.some(slot =
- slot === null)
+                    ? playerField.unitZone.some(slot => slot === null) && !normalSummonUsed
+                    : playerField.functionZone.some(slot => slot === null)
               const canPlay = isMyTurn && phase === "main" && hasSpaceInZone
 
               return (
                 <div
                   key={`hand-${card.id}-${i}`}
-                  onMouseDown={(e) =
- {
+                  onMouseDown={(e) => {
                     handleCardPressStart(card)
                     if (canPlay) {
                       handleHandCardDragStart(i, e)
@@ -9513,16 +8214,14 @@ LP: {playerField.life}</div
                   }}
                   onMouseUp={handleCardPressEnd}
                   onMouseLeave={handleCardPressEnd}
-                  onTouchStart={(e) =
- {
+                  onTouchStart={(e) => {
                     handleCardPressStart(card)
                     if (canPlay) {
                       handleHandCardDragStart(i, e)
                     }
                   }}
                   onTouchEnd={handleCardPressEnd}
-                  onClick={() =
- {
+                  onClick={() => {
                     handleCardPressEnd()
                     if (canPlay && !draggedHandCard) {
                       setSelectedHandCard(i === selectedHandCard ? null : i)
@@ -9535,16 +8234,13 @@ LP: {playerField.life}</div
                     zIndex: isSelected ? 100 : 50 - Math.abs(offset),
                     transition: 'transform 0.10s ease-out, opacity 0.08s ease-out',
                   }}
-                
-
+                >
                   {/* Playable card glow effect */}
                   {canPlay && (
-                    <div className="absolute -inset-1.5 bg-yellow-400/40 rounded-xl blur-md animate-pulse" /
-
+                    <div className="absolute -inset-1.5 bg-yellow-400/40 rounded-xl blur-md animate-pulse" />
                   )}
                   {isSelected && (
-                    <div className="absolute -inset-2 bg-yellow-400/50 rounded-2xl blur-lg" /
-
+                    <div className="absolute -inset-2 bg-yellow-400/50 rounded-2xl blur-lg" />
                   )}
                   <div
                     className={`relative w-20 h-28 rounded-xl border-3 shadow-xl bg-slate-900 transition-all duration-150 ${isSelected
@@ -9553,34 +8249,23 @@ LP: {playerField.life}</div
                         ? "border-yellow-400/70 hover:border-yellow-400 shadow-yellow-500/30"
                         : "border-slate-600/50"
                       }`}
-                  
-
-                    <div className="relative w-full h-full overflow-hidden rounded-lg"
-
-                      <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-contain" /
-
-                    </div
-
-                  </div
-
+                  >
+                    <div className="relative w-full h-full overflow-hidden rounded-lg">
+                      <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-contain" />
+                    </div>
+                  </div>
                   {/* Drag hint */}
                   {canPlay && isSelected && (
-                    <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-yellow-400 text-[10px] font-bold whitespace-nowrap"
-
+                    <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-yellow-400 text-[10px] font-bold whitespace-nowrap">
                       Arraste para jogar
-                    </div
-
+                    </div>
                   )}
-                </div
-
+                </div>
               )
             })}
-          </div
-
-        </div
-
-      </div
-
+          </div>
+        </div>
+      </div>
 
       {/* Dragged hand card ghost - GPU accelerated */}
       {draggedHandCard && (
@@ -9592,29 +8277,23 @@ LP: {playerField.life}</div
             contain: 'layout style paint',
             transform: `translate(${dragPosRef.current.x - 40}px, ${dragPosRef.current.y - 56}px) rotate(0deg) scale(1.1)`,
           }}
-        
-
+        >
           {/* Glow */}
           <div className={`absolute -inset-3 rounded-xl blur-xl transition-all duration-150 ${dropTarget ? 'bg-green-400/60' : 'bg-yellow-400/40'
-            }`} /
-
+            }`} />
           {/* Card */}
           <div className={`relative w-20 h-28 rounded-xl border-3 shadow-2xl overflow-hidden bg-slate-900 transition-all duration-100 ${dropTarget
             ? 'border-green-400 shadow-green-500/60'
             : 'border-yellow-400 shadow-yellow-500/50'
-            }`}
-
+            }`}>
             <img
               src={draggedHandCard.card.image || "/placeholder.svg"}
               alt={draggedHandCard.card.name}
               className="w-full h-full object-contain"
               draggable={false}
-            /
-
-          </div
-
-        </div
-
+            />
+          </div>
+        </div>
       )}
 
       {/* Card materialize in slot animation */}
@@ -9625,28 +8304,21 @@ LP: {playerField.life}</div
             left: droppingCard.targetX - 32,
             top: droppingCard.targetY - 44,
           }}
-        
-
+        >
           {/* Ring effect */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{ animation: 'summonRing 500ms ease-out forwards' }}
-          
-
-            <div className="w-20 h-20 rounded-full border-2 border-cyan-400/80" /
-
-          </div
-
+          >
+            <div className="w-20 h-20 rounded-full border-2 border-cyan-400/80" />
+          </div>
           {/* Glow burst */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{ animation: 'summonGlow 450ms ease-out forwards' }}
-          
-
-            <div className="w-16 h-16 bg-cyan-400/50 rounded-full blur-2xl" /
-
-          </div
-
+          >
+            <div className="w-16 h-16 bg-cyan-400/50 rounded-full blur-2xl" />
+          </div>
           {/* Card materializing */}
           <div
             className="relative rounded-lg border-2 border-cyan-400 shadow-xl shadow-cyan-500/60 overflow-hidden bg-slate-900"
@@ -9656,157 +8328,114 @@ LP: {playerField.life}</div
               animation: 'cardMaterialize 500ms ease-out forwards',
               transformStyle: 'preserve-3d',
             }}
-          
-
+          >
             <img
               src={droppingCard.card.image || "/placeholder.svg"}
               alt={droppingCard.card.name}
               className="w-full h-full object-contain"
               draggable={false}
-            /
-
-          </div
-
-        </div
-
+            />
+          </div>
+        </div>
       )}
 
       {/* Card Inspection Overlay - Press and hold to view */}
       {inspectedCard && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85"
-          onClick={() =
- setInspectedCard(null)}
-          onTouchEnd={() =
- setInspectedCard(null)}
-        
-
+          onClick={() => setInspectedCard(null)}
+          onTouchEnd={() => setInspectedCard(null)}
+        >
           <div
             className="relative flex flex-col items-center gap-4"
             style={{ animation: 'cardInspectIn 250ms ease-out forwards' }}
-          
-
+          >
             {/* Subtle ambient glow */}
-            <div className="absolute -inset-16 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 blur-3xl rounded-full pointer-events-none" /
-
+            <div className="absolute -inset-16 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 blur-3xl rounded-full pointer-events-none" />
 
             {/* Card — single image, no overlay duplicate */}
             <div className="relative rounded-2xl border-2 border-white/30 shadow-2xl overflow-hidden"
-              style={{ width: '280px', height: '392px' }}
-
+              style={{ width: '280px', height: '392px' }}>
               <img
                 src={inspectedCard.image || "/placeholder.svg"}
                 alt={inspectedCard.name}
                 className="w-full h-full object-cover"
-              /
-
-            </div
-
+              />
+            </div>
 
             {/* DP badge — unit cards only */}
             {isUnitCard(inspectedCard) && (
               <div className={`px-5 py-1.5 rounded-full font-bold text-lg border ${
-                (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp 
- inspectedCard.dp
+                (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp
                   ? "bg-green-900/60 border-green-400/60 text-green-300"
                   : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp
                     ? "bg-red-900/60 border-red-400/60 text-red-300"
                     : "bg-cyan-900/60 border-cyan-400/60 text-cyan-300"
-              }`}
-
+              }`}>
                 {(inspectedCard as FieldCard).currentDp !== undefined
                   ? (inspectedCard as FieldCard).currentDp
                   : inspectedCard.dp} DP
-              </div
-
+              </div>
             )}
 
             {/* Close hint */}
-            <div className="text-white/40 text-xs"
-Toque para fechar</div
-
-          </div
-
-        </div
-
+            <div className="text-white/40 text-xs">Toque para fechar</div>
+          </div>
+        </div>
       )}
 
       {/* Graveyard View Modal */}
       {graveyardView && (
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85"
-          onClick={() =
- setGraveyardView(null)}
-        
-
+          onClick={() => setGraveyardView(null)}
+        >
           <div
             className="relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 p-6 max-w-md w-full mx-4"
-            onClick={(e) =
- e.stopPropagation()}
-          
-
-            <h3 className="text-purple-400 font-bold text-xl mb-4 text-center"
-
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-purple-400 font-bold text-xl mb-4 text-center">
               {graveyardView === "player" ? "Seu Cemiterio" : "Cemiterio do Oponente"}
-            </h3
-
-            <div className="max-h-80 overflow-y-auto"
-
+            </h3>
+            <div className="max-h-80 overflow-y-auto">
               {(graveyardView === "player" ? playerField.graveyard : enemyField.graveyard).length === 0 ? (
-                <p className="text-gray-400 text-center py-8"
-Nenhuma carta no cemiterio</p
-
+                <p className="text-gray-400 text-center py-8">Nenhuma carta no cemiterio</p>
               ) : (
-                <div className="grid grid-cols-4 gap-2"
-
-                  {(graveyardView === "player" ? playerField.graveyard : enemyField.graveyard).map((card, i) =
- (
+                <div className="grid grid-cols-4 gap-2">
+                  {(graveyardView === "player" ? playerField.graveyard : enemyField.graveyard).map((card, i) => (
                     <div
                       key={i}
                       className="relative w-16 h-22 rounded-lg border-2 border-purple-500/50 overflow-hidden bg-slate-800 cursor-pointer hover:border-purple-400 hover:scale-105 transition-all"
                       style={{ height: '88px' }}
-                      onClick={() =
- {
+                      onClick={() => {
                         setInspectedCard(card)
                       }}
-                    
-
+                    >
                       <img
                         src={card.image || "/placeholder.svg"}
                         alt={card.name}
                         className="w-full h-full object-contain"
-                      /
-
+                      />
                       {isUnitCard(card) && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-[8px] text-center py-0.5"
-
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-[8px] text-center py-0.5">
                           {card.dp} DP
-                        </div
-
+                        </div>
                       )}
-                    </div
-
+                    </div>
                   ))}
-                </div
-
+                </div>
               )}
-            </div
-
+            </div>
             <Button
-              onClick={() =
- setGraveyardView(null)}
+              onClick={() => setGraveyardView(null)}
               size="sm"
               variant="outline"
               className="mt-4 w-full bg-transparent text-purple-400 border-purple-500/50 hover:bg-purple-500/20"
-            
-
+            >
               Fechar
-            </Button
-
-          </div
-
-        </div
-
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Effect Feedback Toast */}
@@ -9814,16 +8443,13 @@ Nenhuma carta no cemiterio</p
         <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${effectFeedback.type === "success"
           ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
           : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
-          }`}
-
+          }`}>
           {effectFeedback.message}
-        </div
-
+        </div>
       )}
 
       {/* ── Draw Animations ── */}
-      {(drawAnimation || enemyDrawAnimation) && (()=
-{
+      {(drawAnimation || enemyDrawAnimation) && (()=>{
         const anim  = drawAnimation
         const eAnim = enemyDrawAnimation
         const W = 56, H = 80   // matches actual hand card proportions
@@ -9847,57 +8473,44 @@ Nenhuma carta no cemiterio</p
         }
 
         return (
-          <div style={{position:'fixed',inset:0,zIndex:55,pointerEvents:'none',overflow:'hidden'}}
-
-            <style
-{`
+          <div style={{position:'fixed',inset:0,zIndex:55,pointerEvents:'none',overflow:'hidden'}}>
+            <style>{`
               ${anim  ? flyCSS(anim,  'dcp') : ''}
               ${eAnim ? flyCSS(eAnim, 'dce') : ''}
               @keyframes dc-shine { 0%{left:-120%;opacity:.6} 100%{left:230%;opacity:0} }
               @keyframes dc-land  { 0%{opacity:.5;transform:translate(var(--lx),var(--ly)) scale(.9)} 100%{opacity:0;transform:translate(var(--lx),var(--ly)) scale(1.15)} }
-            `}</style
-
+            `}</style>
 
             {/* ── PLAYER draw ── */}
-            {anim && (<
-
+            {anim && (<>
               {/* Card: back → flip → front */}
               <div style={{
                 position:'absolute', left:0, top:0, width:W, height:H,
                 transformStyle:'preserve-3d',
                 animation:'dcp-fly .68s cubic-bezier(.33,.6,.4,.97) forwards',
                 filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
-              }}
-
+              }}>
                 {/* Back face */}
-                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}
-
+                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
                   <img src={activeCardBack||"/placeholder.svg"} alt=""
-                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/
-
-                </div
-
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                </div>
                 {/* Front face — revealed after flip */}
                 <div style={{
                   position:'absolute',inset:0,backfaceVisibility:'hidden',
                   transform:'rotateY(180deg)',borderRadius:7,overflow:'hidden',
-                }}
-
+                }}>
                   <img src={anim.cardImage} alt=""
-                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/
-
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   {/* One-shot shine sweep on reveal */}
                   <div style={{
                     position:'absolute',top:0,bottom:0,width:'40%',
                     background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)',
                     animation:'dc-shine .30s ease-out .52s both',
                     pointerEvents:'none',
-                  }}/
-
-                </div
-
-              </div
-
+                  }}/>
+                </div>
+              </div>
 
               {/* Arrival: tiny soft pulse at destination only */}
               <div style={{
@@ -9908,10 +8521,8 @@ Nenhuma carta no cemiterio</p
                 animation:'dc-land .50s ease-out .65s both',
                 '--lx':`${anim.toX - (W+12)/2}px`,
                 '--ly':`${anim.toY - (H+12)/2}px`,
-              } as React.CSSProperties}/
-
-            </
-)}
+              } as React.CSSProperties}/>
+            </>)}
 
             {/* ── ENEMY draw — back only, red tint ── */}
             {eAnim && (
@@ -9920,33 +8531,24 @@ Nenhuma carta no cemiterio</p
                 transformStyle:'preserve-3d',
                 animation:'dce-fly .68s cubic-bezier(.33,.6,.4,.97) forwards',
                 filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
-              }}
-
-                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}
-
+              }}>
+                <div style={{position:'absolute',inset:0,backfaceVisibility:'hidden',borderRadius:7,overflow:'hidden'}}>
                   <img src={CARD_BACK_IMAGE||"/placeholder.svg"} alt=""
-                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/
-
-                  <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:7}}/
-
-                </div
-
-              </div
-
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                  <div style={{position:'absolute',inset:0,background:'rgba(140,10,10,0.20)',mixBlendMode:'multiply',borderRadius:7}}/>
+                </div>
+              </div>
             )}
-          </div
-
+          </div>
         )
       })()}
 
       {/* ── Dice Roll Animation ── */}
-      {diceAnimation && (()=
-{
+      {diceAnimation && (()=>{
         const rolling = diceAnimation.rolling
         const r       = diceAnimation.result  // always set from frame 1
 
-        const TIER: Record<number,{col:string,bg:string,border:string,label:string,icon:string,name:string}
- = {
+        const TIER: Record<number,{col:string,bg:string,border:string,label:string,icon:string,name:string}> = {
           1:{col:'#f87171',bg:'rgba(239,68,68,.14)', border:'rgba(239,68,68,.6)', label:'RESULTADO BAIXO', icon:'💀',name:'red'},
           2:{col:'#f87171',bg:'rgba(239,68,68,.14)', border:'rgba(239,68,68,.6)', label:'RESULTADO BAIXO', icon:'💀',name:'red'},
           3:{col:'#facc15',bg:'rgba(234,179,8,.14)',  border:'rgba(234,179,8,.6)',  label:'RESULTADO BOM',   icon:'⚡',name:'yellow'},
@@ -9958,10 +8560,8 @@ Nenhuma carta no cemiterio</p
         const col = t?.col ?? '#a78bfa'
 
         return (
-          <div style={{position:'fixed',inset:0,zIndex:60,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}
-
-            <style
-{`
+          <div style={{position:'fixed',inset:0,zIndex:60,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+            <style>{`
               @keyframes d-in   {from{opacity:0}to{opacity:1}}
               @keyframes d-pop  {0%{transform:scale(.2);opacity:0;filter:blur(7px)}65%{transform:scale(1.1);filter:blur(0);opacity:1}82%{transform:scale(.97)}100%{transform:scale(1);opacity:1}}
               @keyframes d-numgl{0%,100%{text-shadow:0 0 20px ${col},0 0 40px ${col}88}50%{text-shadow:0 0 40px ${col},0 0 80px ${col},0 0 120px ${col}55}}
@@ -9974,18 +8574,14 @@ Nenhuma carta no cemiterio</p
               @keyframes d-shat {0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--dr)) scale(0);opacity:0}}
               @keyframes d-strk {0%{transform:scaleY(0);opacity:.9;transform-origin:bottom}100%{transform:scaleY(1);opacity:0;transform-origin:bottom}}
               @keyframes pulse  {0%{opacity:.22}100%{opacity:1}}
-            `}</style
-
+            `}</style>
 
             {/* Backdrop */}
-            <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,rgba(18,8,44,.92),rgba(0,0,0,.88))',animation:'d-in 200ms ease-out forwards'}} /
-
+            <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,rgba(18,8,44,.92),rgba(0,0,0,.88))',animation:'d-in 200ms ease-out forwards'}} />
 
             {/* Result FX — appears when rolling flips to false (dice has settled) */}
-            {!rolling && r!==null && t && (()=
-{
-              const sparks = Array.from({length:14}).map((_,i)=
-{
+            {!rolling && r!==null && t && (()=>{
+              const sparks = Array.from({length:14}).map((_,i)=>{
                 const a=(i/14)*Math.PI*2
                 const dist=72+(i%3)*26
                 const baseAngle = t.name==='green' ? -Math.PI/2+(Math.random()-.5)*Math.PI*.85 : a
@@ -9996,111 +8592,74 @@ Nenhuma carta no cemiterio</p
                   animation:`d-spark .65s cubic-bezier(.2,0,.5,1) ${i*22}ms both`,
                   '--sx':`${Math.cos(baseAngle)*dist}px`,
                   '--sy':`${Math.sin(baseAngle)*dist}px`,
-                } as React.CSSProperties} /
-
+                } as React.CSSProperties} />
               })
-              const rings = [0,80].map((delay,i)=
-(
+              const rings = [0,80].map((delay,i)=>(
                 <div key={i} style={{
                   position:'absolute',borderRadius:'50%',
                   width:120+i*24,height:120+i*24,
                   border:`5px solid ${t.col}`,boxShadow:`0 0 18px 5px ${t.col}44`,
                   animation:`d-ring ${540+i*90}ms ease-out ${delay}ms both`,
-                }} /
-
+                }} />
               ))
-              const bgFlash = <div style={{position:'absolute',inset:0,background:`${t.col}18`,animation:'d-bgfl .65s ease-out forwards',pointerEvents:'none'}} /
-
-              const shatter = t.name==='red' ? Array.from({length:16}).map((_,i)=
-{
+              const bgFlash = <div style={{position:'absolute',inset:0,background:`${t.col}18`,animation:'d-bgfl .65s ease-out forwards',pointerEvents:'none'}} />
+              const shatter = t.name==='red' ? Array.from({length:16}).map((_,i)=>{
                 const a=Math.random()*Math.PI*2, d=55+Math.random()*75
                 return <div key={i} style={{
                   position:'absolute',width:`${5+Math.random()*9}px`,height:`${5+Math.random()*9}px`,
-                  borderRadius:Math.random()
-.5?'2px':'50%',
+                  borderRadius:Math.random()>.5?'2px':'50%',
                   background:t.col,boxShadow:`0 0 5px 2px ${t.col}`,
                   animation:`d-shat .8s cubic-bezier(.1,0,.4,1) ${i*20}ms both`,
                   '--dx':`${Math.cos(a)*d}px`,'--dy':`${Math.sin(a)*d}px`,
                   '--dr':`${-180+Math.random()*360}deg`,
-                } as React.CSSProperties} /
-
+                } as React.CSSProperties} />
               }) : null
-              const streaks = t.name==='yellow' ? [0,1,2].map(i=
-(
+              const streaks = t.name==='yellow' ? [0,1,2].map(i=>(
                 <div key={i} style={{
                   position:'absolute',width:`${2+i}px`,height:'52%',
                   background:`linear-gradient(to bottom,transparent,${t.col},${t.col}88,transparent)`,
                   borderRadius:'9999px',left:`calc(50% + ${(-18+i*18)}px)`,top:'24%',
                   animation:`d-strk .42s ease-out ${i*75}ms both`,
-                }} /
-
+                }} />
               )) : null
-              return <
-{bgFlash}{shatter}{streaks}{sparks}{rings}</
-
+              return <>{bgFlash}{shatter}{streaks}{sparks}{rings}</>
             })()}
 
             {/* Content */}
-            <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:16}}
-
+            <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:16}}>
 
               {/* Card name */}
-              <div style={{background:'linear-gradient(135deg,rgba(110,50,5,.97),rgba(160,85,8,.93))',padding:'8px 28px',borderRadius:12,border:'1px solid rgba(251,191,36,.55)',boxShadow:'0 4px 18px rgba(0,0,0,.5)',animation:'d-lbl 300ms ease-out forwards'}}
-
-                <p style={{color:'#fcd34d',fontWeight:700,fontSize:15,margin:0,letterSpacing:'.5px'}}
-{diceAnimation.cardName}</p
-
-              </div
-
+              <div style={{background:'linear-gradient(135deg,rgba(110,50,5,.97),rgba(160,85,8,.93))',padding:'8px 28px',borderRadius:12,border:'1px solid rgba(251,191,36,.55)',boxShadow:'0 4px 18px rgba(0,0,0,.5)',animation:'d-lbl 300ms ease-out forwards'}}>
+                <p style={{color:'#fcd34d',fontWeight:700,fontSize:15,margin:0,letterSpacing:'.5px'}}>{diceAnimation.cardName}</p>
+              </div>
 
               {/* 3D CSS dice — result passed immediately so it decelerates to correct face from frame 1 */}
-              <DiceCanvas3D result={r} cardName={diceAnimation.cardName} /
-
+              <DiceCanvas3D result={r} cardName={diceAnimation.cardName} />
 
               {/* Rolling text — shown while dice is still spinning */}
               {rolling && (
-                <div style={{textAlign:'center'}}
-
-                  <p style={{color:'#fff',fontWeight:700,fontSize:16,letterSpacing:'2px',textTransform:'uppercase',textShadow:'0 0 16px rgba(139,92,246,.9)',margin:'0 0 9px'}}
-Rolando...</p
-
-                  <div style={{display:'flex',gap:7,justifyContent:'center'}}
-
-                    {[0,1,2].map(i=
-(
-                      <div key={i} style={{width:8,height:8,borderRadius:'50%',background:'rgba(139,92,246,.9)',animation:`d-dot .7s ease-in-out ${i*.18}s infinite alternate`}} /
-
+                <div style={{textAlign:'center'}}>
+                  <p style={{color:'#fff',fontWeight:700,fontSize:16,letterSpacing:'2px',textTransform:'uppercase',textShadow:'0 0 16px rgba(139,92,246,.9)',margin:'0 0 9px'}}>Rolando...</p>
+                  <div style={{display:'flex',gap:7,justifyContent:'center'}}>
+                    {[0,1,2].map(i=>(
+                      <div key={i} style={{width:8,height:8,borderRadius:'50%',background:'rgba(139,92,246,.9)',animation:`d-dot .7s ease-in-out ${i*.18}s infinite alternate`}} />
                     ))}
-                  </div
-
-                </div
-
+                  </div>
+                </div>
               )}
 
               {/* Result — appears when dice has settled (rolling=false) while bounce still plays */}
               {!rolling && r!==null && t && (
-                <div style={{textAlign:'center',animation:'d-pop .5s cubic-bezier(.34,1.56,.64,1) forwards'}}
-
-                  <div style={{fontSize:84,fontWeight:900,fontFamily:'monospace',lineHeight:1,color:t.col,marginBottom:10,animation:'d-numgl 1.4s ease-in-out .5s infinite'}}
-{r}</div
-
-                  <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'8px 24px',borderRadius:24,background:t.bg,border:`1.5px solid ${t.border}`,animation:'d-bdg 1.5s ease-in-out infinite'}}
-
-                    <span style={{fontSize:18}}
-{t.icon}</span
-
-                    <span style={{fontWeight:700,fontSize:13,letterSpacing:'1px',textTransform:'uppercase',color:t.col}}
-{t.label}</span
-
-                  </div
-
-                </div
-
+                <div style={{textAlign:'center',animation:'d-pop .5s cubic-bezier(.34,1.56,.64,1) forwards'}}>
+                  <div style={{fontSize:84,fontWeight:900,fontFamily:'monospace',lineHeight:1,color:t.col,marginBottom:10,animation:'d-numgl 1.4s ease-in-out .5s infinite'}}>{r}</div>
+                  <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'8px 24px',borderRadius:24,background:t.bg,border:`1.5px solid ${t.border}`,animation:'d-bdg 1.5s ease-in-out infinite'}}>
+                    <span style={{fontSize:18}}>{t.icon}</span>
+                    <span style={{fontWeight:700,fontSize:13,letterSpacing:'1px',textTransform:'uppercase',color:t.col}}>{t.label}</span>
+                  </div>
+                </div>
               )}
-            </div
-
-          </div
-
+            </div>
+          </div>
         )
       })()}
 
@@ -10108,19 +8667,14 @@ Rolando...</p
 
 
       {lacerationAnimation && (
-        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden"
-
+        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
           {/* Dark tint */}
-          <div className="absolute inset-0 bg-black/30 laceration-bg-flash" /
-
+          <div className="absolute inset-0 bg-black/30 laceration-bg-flash" />
 
           {/* Fehnon silhouette flash top-left */}
-          <div className="absolute left-[8%] bottom-[30%] laceration-char-flash"
-
-            <div className="w-16 h-24 bg-gradient-to-t from-cyan-400/80 to-transparent rounded-full blur-sm" /
-
-          </div
-
+          <div className="absolute left-[8%] bottom-[30%] laceration-char-flash">
+            <div className="w-16 h-24 bg-gradient-to-t from-cyan-400/80 to-transparent rounded-full blur-sm" />
+          </div>
 
           {/* Slash 1 — diagonal from left, thick */}
           <div
@@ -10133,8 +8687,7 @@ Rolando...</p
               boxShadow: "0 0 16px 6px rgba(56,189,248,0.9), 0 0 40px 12px rgba(56,189,248,0.5)",
               filter: "blur(0.5px)",
             }}
-          /
-
+          />
           {/* Slash 1 afterglow */}
           <div
             className="absolute laceration-slash-1-glow"
@@ -10145,8 +8698,7 @@ Rolando...</p
               transform: "rotate(-12deg)",
               filter: "blur(3px)",
             }}
-          /
-
+          />
 
           {/* Slash 2 — steeper, slightly lower */}
           <div
@@ -10158,8 +8710,7 @@ Rolando...</p
               transform: "rotate(-8deg)",
               boxShadow: "0 0 14px 5px rgba(14,165,233,0.9), 0 0 35px 10px rgba(14,165,233,0.5)",
             }}
-          /
-
+          />
           <div
             className="absolute laceration-slash-2-glow"
             style={{
@@ -10169,8 +8720,7 @@ Rolando...</p
               transform: "rotate(-8deg)",
               filter: "blur(3px)",
             }}
-          /
-
+          />
 
           {/* Slash 3 — thin fast upper */}
           <div
@@ -10182,8 +8732,7 @@ Rolando...</p
               transform: "rotate(-14deg)",
               boxShadow: "0 0 10px 4px rgba(186,230,253,0.8)",
             }}
-          /
-
+          />
 
           {/* Slash 4 — wide sweeping lower */}
           <div
@@ -10195,8 +8744,7 @@ Rolando...</p
               transform: "rotate(-6deg)",
               boxShadow: "0 0 20px 8px rgba(2,132,199,0.8), 0 0 50px 15px rgba(2,132,199,0.4)",
             }}
-          /
-
+          />
           <div
             className="absolute laceration-slash-4-glow"
             style={{
@@ -10206,8 +8754,7 @@ Rolando...</p
               transform: "rotate(-6deg)",
               filter: "blur(4px)",
             }}
-          /
-
+          />
 
           {/* Slash 5 — ultra-fast thin finishing strike */}
           <div
@@ -10219,8 +8766,7 @@ Rolando...</p
               transform: "rotate(-10deg)",
               boxShadow: "0 0 12px 5px rgba(147,197,253,0.9), 0 0 30px 8px rgba(147,197,253,0.5)",
             }}
-          /
-
+          />
 
           {/* ── SVG sword-cut scar marks that appear as permanent slash wounds ── */}
           <svg
@@ -10228,34 +8774,26 @@ Rolando...</p
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             style={{ filter: "drop-shadow(0 0 6px rgba(56,189,248,0.9))" }}
-          
-
+          >
             {/* Scar 1 */}
             <line x1="5" y1="30" x2="78" y2="24" stroke="#38bdf8" strokeWidth="0.35" strokeLinecap="round"
-              className="laceration-scar-1" /
-
+              className="laceration-scar-1" />
             {/* Scar 2 */}
             <line x1="8" y1="41" x2="85" y2="36" stroke="#7dd3fc" strokeWidth="0.25" strokeLinecap="round"
-              className="laceration-scar-2" /
-
+              className="laceration-scar-2" />
             {/* Scar 3 */}
             <line x1="12" y1="20" x2="72" y2="15" stroke="#bae6fd" strokeWidth="0.2" strokeLinecap="round"
-              className="laceration-scar-3" /
-
+              className="laceration-scar-3" />
             {/* Scar 4 */}
             <line x1="3" y1="56" x2="82" y2="51" stroke="#0ea5e9" strokeWidth="0.3" strokeLinecap="round"
-              className="laceration-scar-4" /
-
+              className="laceration-scar-4" />
             {/* Scar 5 */}
             <line x1="10" y1="35" x2="92" y2="29" stroke="#e0f2fe" strokeWidth="0.2" strokeLinecap="round"
-              className="laceration-scar-5" /
-
-          </svg
-
+              className="laceration-scar-5" />
+          </svg>
 
           {/* ── Sword-cut air distortion ripples ── */}
-          {[0, 1, 2, 3, 4].map((i) =
- (
+          {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={`ripple-${i}`}
               className="absolute laceration-ripple"
@@ -10269,13 +8807,11 @@ Rolando...</p
                 animationDelay: `${i * 0.06}s`,
                 filter: "blur(1px)",
               }}
-            /
-
+            />
           ))}
 
           {/* ── Impact sparks where blades land ── */}
-          {[...Array(16)].map((_, i) =
- (
+          {[...Array(16)].map((_, i) => (
             <div
               key={i}
               className="absolute laceration-spark"
@@ -10292,17 +8828,13 @@ Rolando...</p
                 boxShadow: "0 0 4px 1px rgba(56,189,248,0.7)",
                 animationDelay: `${0.25 + i * 0.03}s`,
               }}
-            /
-
+            />
           ))}
 
           {/* ── Flash on each slash hit ── */}
-          <div className="absolute inset-0 laceration-flash-1" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 30%, rgba(56,189,248,0.35) 0%, transparent 70%)" }} /
-
-          <div className="absolute inset-0 laceration-flash-2" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 40%, rgba(255,255,255,0.2) 0%, transparent 70%)" }} /
-
-          <div className="absolute inset-0 laceration-flash-3" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 55%, rgba(56,189,248,0.3) 0%, transparent 70%)" }} /
-
+          <div className="absolute inset-0 laceration-flash-1" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 30%, rgba(56,189,248,0.35) 0%, transparent 70%)" }} />
+          <div className="absolute inset-0 laceration-flash-2" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 40%, rgba(255,255,255,0.2) 0%, transparent 70%)" }} />
+          <div className="absolute inset-0 laceration-flash-3" style={{ background: "radial-gradient(ellipse 80% 30% at 50% 55%, rgba(56,189,248,0.3) 0%, transparent 70%)" }} />
 
           {/* ── Central energy burst ── */}
           <div
@@ -10314,15 +8846,13 @@ Rolando...</p
               background: "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(56,189,248,0.7) 30%, transparent 70%)",
               borderRadius: "50%",
             }}
-          /
-
+          />
 
           {/* ── Damage number — -3 DP in white only ── */}
           <div
             className="absolute laceration-dmg-number"
             style={{ left: "50%", top: "18%", transform: "translateX(-50%)" }}
-          
-
+          >
             <span
               style={{
                 fontSize: "64px",
@@ -10334,79 +8864,49 @@ Rolando...</p
                 fontFamily: "system-ui, sans-serif",
                 display: "block",
               }}
-            
-
+            >
               -3 DP
-            </span
-
-          </div
-
-        </div
-
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Sinfonia Relâmpago Animation */}
       {sinfoniaAnimation && (
-        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden"
-
+        <div className="fixed inset-0 z-[80] pointer-events-none overflow-hidden">
           {/* Purple tint */}
-          <div className="absolute inset-0 sin-bg" /
-
+          <div className="absolute inset-0 sin-bg" />
           {/* Single main lightning bolt across enemy field */}
-          <svg className="absolute inset-0 w-full h-full sin-bolt" viewBox="0 0 100 100" preserveAspectRatio="none"
-
-            <defs
-
-              <linearGradient id="sinLG" x1="0%" y1="0%" x2="100%" y2="0%"
-
-                <stop offset="0%" stopColor="#7c3aed"/
-
-                <stop offset="50%" stopColor="#ffffff"/
-
-                <stop offset="100%" stopColor="#6d28d9"/
-
-              </linearGradient
-
-            </defs
-
+          <svg className="absolute inset-0 w-full h-full sin-bolt" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sinLG" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#7c3aed"/>
+                <stop offset="50%" stopColor="#ffffff"/>
+                <stop offset="100%" stopColor="#6d28d9"/>
+              </linearGradient>
+            </defs>
             <polyline points="0,20 16,13 26,5 38,18 52,3 65,16 78,4 92,14 100,9"
               fill="none" stroke="url(#sinLG)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter:"drop-shadow(0 0 8px #e879f9)" }}/
-
+              style={{ filter:"drop-shadow(0 0 8px #e879f9)" }}/>
             <polyline points="0,20 16,13 26,5 38,18 52,3 65,16 78,4 92,14 100,9"
-              fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.5" strokeLinecap="round"/
-
-          </svg
-
+              fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.5" strokeLinecap="round"/>
+          </svg>
           {/* 3 musical notes */}
-          <div className="absolute sin-note" style={{ left:"12%", top:"8%",  fontSize:"42px", color:"#f0abfc", textShadow:"0 0 14px #a855f7", animationDelay:"0s" }}
-♬</div
-
-          <div className="absolute sin-note" style={{ left:"80%", top:"5%",  fontSize:"38px", color:"#c084fc", textShadow:"0 0 14px #a855f7", animationDelay:"0.06s" }}
-♪</div
-
-          <div className="absolute sin-note" style={{ left:"48%", top:"10%", fontSize:"34px", color:"#f0abfc", textShadow:"0 0 14px #a855f7", animationDelay:"0.03s" }}
-♫</div
-
+          <div className="absolute sin-note" style={{ left:"12%", top:"8%",  fontSize:"42px", color:"#f0abfc", textShadow:"0 0 14px #a855f7", animationDelay:"0s" }}>♬</div>
+          <div className="absolute sin-note" style={{ left:"80%", top:"5%",  fontSize:"38px", color:"#c084fc", textShadow:"0 0 14px #a855f7", animationDelay:"0.06s" }}>♪</div>
+          <div className="absolute sin-note" style={{ left:"48%", top:"10%", fontSize:"34px", color:"#f0abfc", textShadow:"0 0 14px #a855f7", animationDelay:"0.03s" }}>♫</div>
           {/* Glow flash on enemy field */}
-          <div className="absolute sin-flash" style={{ left:0, right:0, top:0, height:"45%", background:"radial-gradient(ellipse 100% 80% at 50% 0%, rgba(232,121,249,0.35) 0%, transparent 75%)" }} /
-
+          <div className="absolute sin-flash" style={{ left:0, right:0, top:0, height:"45%", background:"radial-gradient(ellipse 100% 80% at 50% 0%, rgba(232,121,249,0.35) 0%, transparent 75%)" }} />
           {/* Title */}
-          <div className="absolute sin-title" style={{ left:"50%", top:"36%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}
-
-            <span style={{ fontSize:"20px", fontWeight:900, color:"#fff", letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 12px #f0abfc, 0 0 24px #a855f7, 0 2px 6px rgba(0,0,0,0.9)" }}
-♫ Sinfonia Relâmpago ♫</span
-
-          </div
-
-        </div
-
+          <div className="absolute sin-title" style={{ left:"50%", top:"36%", transform:"translateX(-50%)", whiteSpace:"nowrap" }}>
+            <span style={{ fontSize:"20px", fontWeight:900, color:"#fff", letterSpacing:"3px", textTransform:"uppercase", textShadow:"0 0 12px #f0abfc, 0 0 24px #a855f7, 0 2px 6px rgba(0,0,0,0.9)" }}>♫ Sinfonia Relâmpago ♫</span>
+          </div>
+        </div>
       )}
 
       {/* Card Destruction Animation */}      {/* Card Destruction Animation */}      {/* Card Destruction Animation */}
       {destructionAnimation && (
-        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden"
-
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
           {/* Shatter card animation at destruction position */}
           <div
             className="destruction-container"
@@ -10414,23 +8914,18 @@ Rolando...</p
               left: destructionAnimation.x,
               top: destructionAnimation.y,
             }}
-          
-
+          >
             {/* Card image that shatters */}
-            <div className="destruction-card"
-
+            <div className="destruction-card">
               <img
                 src={destructionAnimation.cardImage}
                 alt={destructionAnimation.cardName}
                 className="w-full h-full object-cover rounded"
-              /
-
-            </div
-
+              />
+            </div>
 
             {/* Shatter fragments */}
-            {[...Array(12)].map((_, i) =
- (
+            {[...Array(12)].map((_, i) => (
               <div
                 key={i}
                 className={`destruction-fragment destruction-fragment-${i + 1}`}
@@ -10438,217 +8933,137 @@ Rolando...</p
                   backgroundImage: `url(${destructionAnimation.cardImage})`,
                   backgroundSize: '100% 100%',
                 }}
-              /
-
+              />
             ))}
 
             {/* Flash effect */}
-            <div className="destruction-flash" /
-
+            <div className="destruction-flash" />
 
             {/* Card name */}
-            <div className="destruction-name"
-
-              <span className="text-red-400 font-bold text-xs uppercase tracking-wider"
-
+            <div className="destruction-name">
+              <span className="text-red-400 font-bold text-xs uppercase tracking-wider">
                 {destructionAnimation.cardName}
-              </span
-
-            </div
-
-          </div
-
-        </div
-
+              </span>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Choice Modal for cards like Véu dos Laços Cruzados */}
       {choiceModal && choiceModal.visible && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50"
-
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4"
-
-            <h3 className="text-purple-400 font-bold text-xl mb-4"
-{choiceModal.cardName}</h3
-
-            <p className="text-white/80 text-sm mb-5"
-Escolha um dos efeitos:</p
-
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4">
+            <h3 className="text-purple-400 font-bold text-xl mb-4">{choiceModal.cardName}</h3>
+            <p className="text-white/80 text-sm mb-5">Escolha um dos efeitos:</p>
             {choiceModal.gridLayout ? (
-              <div className="grid grid-cols-3 gap-2"
-
-                {choiceModal.options.map((option) =
- (
+              <div className="grid grid-cols-3 gap-2">
+                {choiceModal.options.map((option) => (
                   <button
                     key={option.id}
-                    onClick={() =
- choiceModal.onChoose(option.id)}
+                    onClick={() => choiceModal.onChoose(option.id)}
                     className={`bg-gradient-to-b ${option.id === 'skip' ? 'from-slate-600 to-slate-700 hover:from-slate-500 col-span-3' : 'from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600'} text-white font-bold py-2 px-2 rounded-lg border border-purple-400/40 transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[60px]`}
-                  
-
-                    <div className="text-[11px] font-bold leading-tight text-center"
-{option.label}</div
-
-                    {option.description && <div className="text-[9px] text-white/60 mt-0.5 text-center"
-{option.description}</div
-}
-                  </button
-
+                  >
+                    <div className="text-[11px] font-bold leading-tight text-center">{option.label}</div>
+                    {option.description && <div className="text-[9px] text-white/60 mt-0.5 text-center">{option.description}</div>}
+                  </button>
                 ))}
-              </div
-
+              </div>
             ) : (
-              <div className="flex flex-col gap-3"
-
-                {choiceModal.options.map((option) =
- (
+              <div className="flex flex-col gap-3">
+                {choiceModal.options.map((option) => (
                   <button
                     key={option.id}
-                    onClick={() =
- choiceModal.onChoose(option.id)}
+                    onClick={() => choiceModal.onChoose(option.id)}
                     className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
-                  
-
-                    <div className="text-lg"
-{option.label}</div
-
-                    <div className="text-xs text-white/70 mt-1"
-{option.description}</div
-
-                  </button
-
+                  >
+                    <div className="text-lg">{option.label}</div>
+                    <div className="text-xs text-white/70 mt-1">{option.description}</div>
+                  </button>
                 ))}
-              </div
-
+              </div>
             )}
             <Button
-              onClick={() =
- setChoiceModal(null)}
+              onClick={() => setChoiceModal(null)}
               size="sm"
               variant="outline"
               className="mt-4 border-red-500/50 text-red-400 hover:bg-red-950/50"
-            
-
+            >
               Cancelar
-            </Button
-
-          </div
-
-        </div
-
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Deck Search Modal (Pedra de Afiar) */}
       {deckSearchModal && deckSearchModal.visible && (
-        <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-[90]"
-
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-amber-500/50 shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
-
+        <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-[90]">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-amber-500/50 shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
             {/* Header */}
-            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-900/30 to-transparent"
-
-              <h3 className="text-amber-400 font-bold text-lg text-center"
-⚔️ Pedra de Afiar</h3
-
-              <p className="text-white/60 text-xs text-center mt-1"
-Escolha uma Ultimate Gear do seu Deck</p
-
-            </div
-
+            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-900/30 to-transparent">
+              <h3 className="text-amber-400 font-bold text-lg text-center">⚔️ Pedra de Afiar</h3>
+              <p className="text-white/60 text-xs text-center mt-1">Escolha uma Ultimate Gear do seu Deck</p>
+            </div>
 
             {/* Card list */}
-            <div className="p-4 max-h-72 overflow-y-auto flex flex-col gap-3"
-
-              {deckSearchModal.cards.map((card) =
- (
+            <div className="p-4 max-h-72 overflow-y-auto flex flex-col gap-3">
+              {deckSearchModal.cards.map((card) => (
                 <button
                   key={card.id}
-                  onClick={() =
- deckSearchModal.onSelect(card)}
+                  onClick={() => deckSearchModal.onSelect(card)}
                   className="flex items-center gap-3 bg-slate-700/60 hover:bg-amber-900/40 border border-slate-600/50 hover:border-amber-500/60 rounded-xl p-3 transition-all group text-left"
-                
-
+                >
                   {/* Card image */}
-                  <div className="w-12 h-16 rounded-lg overflow-hidden border border-amber-500/30 flex-shrink-0 relative"
-
+                  <div className="w-12 h-16 rounded-lg overflow-hidden border border-amber-500/30 flex-shrink-0 relative">
                     <img
                       src={card.image || "/placeholder.svg"}
                       alt={card.name}
                       className="w-full h-full object-cover"
-                    /
-
-                  </div
-
+                    />
+                  </div>
                   {/* Card info */}
-                  <div className="flex-1 min-w-0"
-
-                    <div className="text-white font-bold text-sm truncate group-hover:text-amber-300 transition-colors"
-
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-bold text-sm truncate group-hover:text-amber-300 transition-colors">
                       {card.name}
-                    </div
-
-                    <div className="text-amber-400/70 text-xs mt-0.5"
-{card.category || "Ultimate Gear"}</div
-
+                    </div>
+                    <div className="text-amber-400/70 text-xs mt-0.5">{card.category || "Ultimate Gear"}</div>
                     {card.requiresUnit && (
-                      <div className="text-slate-400 text-[10px] mt-1"
-
-                        Equipa em: <span className="text-cyan-400"
-{card.requiresUnit}</span
-
-                      </div
-
+                      <div className="text-slate-400 text-[10px] mt-1">
+                        Equipa em: <span className="text-cyan-400">{card.requiresUnit}</span>
+                      </div>
                     )}
                     {card.abilityDescription && (
-                      <div className="text-white/40 text-[9px] mt-1 line-clamp-2"
-{card.abilityDescription}</div
-
+                      <div className="text-white/40 text-[9px] mt-1 line-clamp-2">{card.abilityDescription}</div>
                     )}
-                  </div
-
+                  </div>
                   {/* Arrow */}
-                  <div className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity text-lg flex-shrink-0"
-→</div
-
-                </button
-
+                  <div className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity text-lg flex-shrink-0">→</div>
+                </button>
               ))}
-            </div
-
+            </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-white/10"
-
+            <div className="p-3 border-t border-white/10">
               <button
                 onClick={deckSearchModal.onCancel}
                 className="w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm font-bold hover:bg-red-950/40 transition-colors"
-              
-
+              >
                 Cancelar
-              </button
-
-            </div
-
-          </div
-
-        </div
-
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* UG Target Selection Mode overlay */}
       {ugTargetMode.active && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/50 rounded-xl px-4 py-3 text-center"
-
-          <h3 className="text-yellow-400 font-bold text-sm mb-1"
-
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/50 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-yellow-400 font-bold text-sm mb-1">
             {ugTargetMode.type === "oden_sword" ? "ODEN SWORD"
               : ugTargetMode.type === "twiligh_avalon" ? "TWILIGH AVALON"
                 : ugTargetMode.type === "mefisto" ? "MEFISTO FÓLES"
                   : "JULGAMENTO DIVINO"}
-          </h3
-
-          <p className="text-yellow-200/80 text-xs mb-2"
-
+          </h3>
+          <p className="text-yellow-200/80 text-xs mb-2">
             {ugTargetMode.type === "oden_sword"
               ? "Selecione uma Function inimiga para destruir"
               : ugTargetMode.type === "mefisto"
@@ -10657,18 +9072,14 @@ Escolha uma Ultimate Gear do seu Deck</p
                   ? "Selecione uma Unidade inimiga para -1DP"
                   : "Selecione uma carta inimiga para devolver a mao"
             }
-          </p
-
+          </p>
           <button
             onClick={cancelUgTargetMode}
             className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
-          
-
+          >
             CANCELAR
-          </button
-
-        </div
-
+          </button>
+        </div>
       )}
 
       {/* Unit Ability Confirmation Modal */}
@@ -10676,33 +9087,20 @@ Escolha uma Ultimate Gear do seu Deck</p
         <div
           className="fixed inset-0 z-[90] flex items-center justify-center"
           style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-          onClick={() =
- setUnitAbilityConfirm(null)}
-        
-
+          onClick={() => setUnitAbilityConfirm(null)}
+        >
           <div
             className="relative bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl border-2 border-emerald-500/60 shadow-2xl shadow-emerald-900/40 p-6 max-w-xs w-full mx-4 text-center"
-            onClick={e =
- e.stopPropagation()}
-          
-
+            onClick={e => e.stopPropagation()}
+          >
             {/* Glow accent */}
-            <div className="absolute inset-0 rounded-2xl bg-emerald-500/5 pointer-events-none" /
-
-            <div className="text-emerald-400 text-xs font-bold tracking-widest uppercase mb-1"
-Efeito de Habilidade</div
-
-            <div className="text-white font-bold text-lg mb-1"
-{unitAbilityConfirm.name}</div
-
-            <div className="text-slate-300 text-sm mb-5"
-Ativar Efeito de Habilidade?</div
-
-            <div className="flex gap-3 justify-center"
-
+            <div className="absolute inset-0 rounded-2xl bg-emerald-500/5 pointer-events-none" />
+            <div className="text-emerald-400 text-xs font-bold tracking-widest uppercase mb-1">Efeito de Habilidade</div>
+            <div className="text-white font-bold text-lg mb-1">{unitAbilityConfirm.name}</div>
+            <div className="text-slate-300 text-sm mb-5">Ativar Efeito de Habilidade?</div>
+            <div className="flex gap-3 justify-center">
               <button
-                onClick={() =
- {
+                onClick={() => {
                   const key = unitAbilityConfirm?.abilityKey
                   setUnitAbilityConfirm(null)
                   if (key === 'merlin') activateMerlinAbility()
@@ -10714,144 +9112,77 @@ Ativar Efeito de Habilidade?</div
                   else if (key === 'ullrUr') activateUllrUrAbility()
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
-              
-
+              >
                 ✓ Sim
-              </button
-
+              </button>
               <button
-                onClick={() =
- setUnitAbilityConfirm(null)}
+                onClick={() => setUnitAbilityConfirm(null)}
                 className="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition-colors"
-              
-
+              >
                 ✗ Não
-              </button
-
-            </div
-
-          </div
-
-        </div
-
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {mrpTargetMode && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/60 rounded-xl px-4 py-3 text-center"
-
-          <h3 className="text-yellow-300 font-bold text-sm mb-1"
-MANUSCRITO DE GUERRA</h3
-
-          <p className="text-yellow-200/80 text-xs mb-2"
-Selecione 1 unidade inimiga para -2DP</p
-
-          <button onClick={() =
- setMrpTargetMode(false)} className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
-CANCELAR</button
-
-        </div
-
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/60 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-yellow-300 font-bold text-sm mb-1">MANUSCRITO DE GUERRA</h3>
+          <p className="text-yellow-200/80 text-xs mb-2">Selecione 1 unidade inimiga para -2DP</p>
+          <button onClick={() => setMrpTargetMode(false)} className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold">CANCELAR</button>
+        </div>
       )}
 
       {julgamentoVazioTargetMode.active && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-violet-500/60 rounded-xl px-4 py-3 text-center"
-
-          <h3 className="text-violet-300 font-bold text-sm mb-1"
-JULGAMENTO DO VAZIO ETERNO</h3
-
-          <p className="text-violet-200/80 text-xs mb-2"
-Selecione 1 carta inimiga para destruir</p
-
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-violet-500/60 rounded-xl px-4 py-3 text-center">
+          <h3 className="text-violet-300 font-bold text-sm mb-1">JULGAMENTO DO VAZIO ETERNO</h3>
+          <p className="text-violet-200/80 text-xs mb-2">Selecione 1 carta inimiga para destruir</p>
           <button
-            onClick={() =
- { setJulgamentoVazioTargetMode({ active: false, attackerIndex: null }); animationInProgressRef.current = false }}
+            onClick={() => { setJulgamentoVazioTargetMode({ active: false, attackerIndex: null }); animationInProgressRef.current = false }}
             className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
-          
-
+          >
             CANCELAR
-          </button
-
-        </div
-
+          </button>
+        </div>
       )}
 
       {itemSelectionMode.active && itemSelectionMode.itemCard && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none"
-
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto"
-
-            <h3 className="text-yellow-400 font-bold text-lg mb-3"
-{itemSelectionMode.itemCard.name}</h3
-
-            {(() =
- {
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
+            <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
+            {(() => {
               const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
               const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
 
               if (isDiceCard) {
                 return (
-                  <p className="text-white text-sm"
-
-                    Clique em uma unidade <span className="text-cyan-400 font-bold"
-SUA</span
- para rolar o dado
-                  </p
-
+                  <p className="text-white text-sm">
+                    Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para rolar o dado
+                  </p>
                 )
               }
 
               if (itemSelectionMode.step === "selectEnemy") {
                 return (
-                  <p className="text-white text-sm"
-
+                  <p className="text-white text-sm">
                     {itemSelectionMode.chosenOption === "flecha_direct"
-                      ? <
-Selecione uma <span className="text-red-400 font-bold"
-Unidade Inimiga</span
- — dano de <span className="text-orange-400 font-bold"
-2DP</span
- ignorando Traps</
-
+                      ? <>Selecione uma <span className="text-red-400 font-bold">Unidade Inimiga</span> — dano de <span className="text-orange-400 font-bold">2DP</span> ignorando Traps</>
                       : itemSelectionMode.chosenOption === "debuff"
-                        ? <
-Clique em uma unidade <span className="text-red-400 font-bold"
-INIMIGA</span
- para reduzir <span className="text-red-400 font-bold"
--2 DP</span
-</
-
-                        : <
-Clique em uma unidade <span className="text-red-400 font-bold"
-INIMIGA</span
- para aplicar o efeito</
-
+                        ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+                        : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
                     }
-                  </p
-
+                  </p>
                 )
               }
 
               return (
-                <p className="text-white text-sm"
-
+                <p className="text-white text-sm">
                   {itemSelectionMode.chosenOption === "buff"
-                    ? <
-Clique em <span className="text-cyan-400 font-bold"
-Fehnon Hoskie</span
- ou <span className="text-cyan-400 font-bold"
-Jaden Hainaegi</span
- para receber <span className="text-green-400 font-bold"
-+2 DP</span
-</
-
-                    : <
-Clique em uma unidade <span className="text-cyan-400 font-bold"
-SUA</span
- para aplicar o efeito</
-
+                    ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
+                    : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para aplicar o efeito</>
                   }
-                </p
-
+                </p>
               )
             })()}
             <Button
@@ -10859,113 +9190,76 @@ SUA</span
               size="sm"
               variant="outline"
               className="mt-4 bg-transparent text-white border-white/50 hover:bg-white/10 pointer-events-auto"
-            
-
+            >
               Cancelar
-            </Button
-
-          </div
-
-        </div
-
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* TAP Modal - Redesigned with premium aesthetics */}
       {tapView && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
-
-          <div className="bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-orange-500/40 rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
-
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+          <div className="bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-orange-500/40 rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-orange-600/10 to-transparent"
-
-              <div className="flex items-center gap-5"
-
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 via-red-600 to-orange-700 flex items-center justify-center shadow-lg transform rotate-3"
-
-                  <Swords className="w-8 h-8 text-white" /
-
-                </div
-
-                <h2 className="text-4xl font-black text-white tracking-widest uppercase italic"
-TAP</h2
-
-              </div
-
+            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-orange-600/10 to-transparent">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 via-red-600 to-orange-700 flex items-center justify-center shadow-lg transform rotate-3">
+                  <Swords className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-4xl font-black text-white tracking-widest uppercase italic">TAP</h2>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() =
- setTapView(null)}
+                onClick={() => setTapView(null)}
                 className="text-slate-500 hover:text-white hover:bg-white/5 rounded-full w-12 h-12 transition-all"
-              
-
-                <X className="w-8 h-8" /
-
-              </Button
-
-            </div
-
+              >
+                <X className="w-8 h-8" />
+              </Button>
+            </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-10 scrollbar-hide"
-
-              {(() =
- {
-                const isAvailable = turn 
- 0 && turn % 3 === 0 && isMyTurn && phase === "main"
+            <div className="flex-1 overflow-y-auto p-10 scrollbar-hide">
+              {(() => {
+                const isAvailable = turn > 0 && turn % 3 === 0 && isMyTurn && phase === "main"
                 const activeTap = tapView === "player" ? playerField.tap : enemyField.tap
 
                 if (activeTap.length === 0) {
                   return (
-                    <div className="h-64 flex flex-col items-center justify-center text-slate-700 gap-5 opacity-50"
-
-                      <div className="w-20 h-20 rounded-full border-4 border-dashed border-slate-800 flex items-center justify-center"
-
-                        <Swords className="w-10 h-10" /
-
-                      </div
-
-                      <p className="font-bold text-xl tracking-wider"
-TAP AREA DEPLETED</p
-
-                    </div
-
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-700 gap-5 opacity-50">
+                      <div className="w-20 h-20 rounded-full border-4 border-dashed border-slate-800 flex items-center justify-center">
+                        <Swords className="w-10 h-10" />
+                      </div>
+                      <p className="font-bold text-xl tracking-wider">TAP AREA DEPLETED</p>
+                    </div>
                   )
                 }
 
                 return (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-10 justify-items-center"
-
-                    {activeTap.map((card, i) =
- {
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-10 justify-items-center">
+                    {activeTap.map((card, i) => {
                       const isPlayable = tapView === "player" && isAvailable
                       return (
                         <div 
                           key={i} 
                           className="relative group perspective-1000"
-                          onMouseDown={() =
- handleCardPressStart(card)}
+                          onMouseDown={() => handleCardPressStart(card)}
                           onMouseUp={handleCardPressEnd}
                           onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() =
- handleCardPressStart(card)}
+                          onTouchStart={() => handleCardPressStart(card)}
                           onTouchEnd={handleCardPressEnd}
-                        
-
+                        >
                           <div
                             className={`relative w-40 h-56 rounded-xl overflow-hidden border-2 transition-all duration-500 transform-gpu ${isPlayable
                               ? "border-orange-500/40 cursor-pointer group-hover:scale-110 group-hover:-translate-y-4 group-hover:border-orange-400 group-hover:shadow-[0_20px_40px_rgba(249,115,22,0.3)] shadow-[0_0_20px_rgba(249,115,22,0.1)]"
                               : "border-slate-800/50 opacity-40 grayscale-[0.8]"
                               }`}
-                            onClick={() =
- {
+                            onClick={() => {
                               if (isPlayable) {
                                 // Add card to hand and remove from TAP
-                                setPlayerField((prev) =
- {
-                                  const newTap = prev.tap.filter((_, idx) =
- idx !== i)
+                                setPlayerField((prev) => {
+                                  const newTap = prev.tap.filter((_, idx) => idx !== i)
                                   return { ...prev, tap: newTap, hand: [...prev.hand, card] }
                                 })
                                 sendActionRef.current({
@@ -10977,65 +9271,44 @@ TAP AREA DEPLETED</p
                                 showEffectFeedback(`TAP: ${card.name} adicionada à mão!`, "success")
                               }
                             }}
-                          
-
-                            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" /
-
+                          >
+                            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
 
                             {/* Available Glow Overlay */}
                             {isPlayable && (
-                              <div className="absolute inset-0 bg-gradient-to-t from-orange-600/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end pb-4"
-
-                                <div className="bg-orange-500 text-white font-black px-4 py-2 rounded-xl text-xs shadow-2xl tracking-widest"
-
+                              <div className="absolute inset-0 bg-gradient-to-t from-orange-600/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end pb-4">
+                                <div className="bg-orange-500 text-white font-black px-4 py-2 rounded-xl text-xs shadow-2xl tracking-widest">
                                   À MÃO
-                                </div
-
-                              </div
-
+                                </div>
+                              </div>
                             )}
 
                             {/* Shine Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-all duration-700 -translate-x-full group-hover:translate-x-full" /
-
-                          </div
-
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-all duration-700 -translate-x-full group-hover:translate-x-full" />
+                          </div>
 
                           {/* Card Info */}
-                          <div className="mt-4 text-center transition-all duration-300 group-hover:opacity-100 opacity-80"
-
-                            <div className="text-white font-black text-xs uppercase tracking-tight truncate w-40"
-{card.name}</div
-
-                            <div className={`text-[9px] font-black uppercase mt-1 tracking-[0.2em] ${isPlayable ? "text-orange-500" : "text-slate-600"}`}
-
+                          <div className="mt-4 text-center transition-all duration-300 group-hover:opacity-100 opacity-80">
+                            <div className="text-white font-black text-xs uppercase tracking-tight truncate w-40">{card.name}</div>
+                            <div className={`text-[9px] font-black uppercase mt-1 tracking-[0.2em] ${isPlayable ? "text-orange-500" : "text-slate-600"}`}>
                               {card.type}
-                            </div
-
-                          </div
-
-                        </div
-
+                            </div>
+                          </div>
+                        </div>
                       )
                     })}
-                  </div
-
+                  </div>
                 )
               })()}
-            </div
-
+            </div>
 
             {/* Footer / Status - Empty for practicality */}
-            <div className="p-4 bg-white/5 border-t border-white/5" /
-
-          </div
-
-        </div
-
+            <div className="p-4 bg-white/5 border-t border-white/5" />
+          </div>
+        </div>
       )}
       {/* Card Inspection Overlay */}
-      <style jsx global
-{`
+      <style jsx global>{`
         @keyframes shake {
           0% { transform: translate(1px, 1px) rotate(0deg); }
           10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -11190,8 +9463,7 @@ TAP AREA DEPLETED</p
           100%    { opacity: 0; transform: translateX(-50%) translateY(-28px) scale(0.85); }
         }
         .laceration-dmg-number { animation: lacerationDmgNumber 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-      `}</style
-
+      `}</style>
 
       {/* Discard/destroy animations */}
       <DiscardAnimationManager
@@ -11200,11 +9472,9 @@ TAP AREA DEPLETED</p
         playerGraveyardRef={playerGraveyardRef}
         enemyGraveyardRef={enemyGraveyardRef}
         destroyedCardIds={destroyedCardIds}
-      /
+      />
 
-
-    </div
-
+    </div>
   )
 }
 

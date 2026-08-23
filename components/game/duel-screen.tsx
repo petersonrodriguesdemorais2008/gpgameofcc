@@ -2199,7 +2199,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
       const finalRX = rx + (Math.random()>.5 ? extraX : -extraX) + (target.rx - ((rx % 360)+360)%360)
       const finalRY = ry + (Math.random()>.5 ? extraY : -extraY) + (target.ry - ((ry % 360)+360)%360)
 
-      // ── PHASE 1: DECELERATE  1800ms ────────────────────────────���───
+      // ── PHASE 1: DECELERATE  1800ms ────────────────────────────────
       // Dice is already spinning; speed goes from FAST → 0, steering to face.
       const DECEL_MS = 1800
       const fromRX = rx, fromRY = ry
@@ -2874,7 +2874,7 @@ export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: Gam
 class OnlineDuelErrorBoundary extends Component<
   { children: React.ReactNode; onBack: () => void },
   { hasError: boolean }
-{
+> {
   constructor(props: any) { super(props); this.state = { hasError: false } }
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(error: Error, info: any) {
