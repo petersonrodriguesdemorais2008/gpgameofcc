@@ -62,6 +62,10 @@ interface FieldCard extends GameCard {
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
   frozenUntilTurn?: number
+  /** ARMADILHA DE GELO — exige descarte para descongelar. */
+  frozenByIceTrap?: boolean
+  /** PÓDIO DA HUMILHAÇÃO — bloqueia buffs de Functions. */
+  functionBuffBlockedUntilTurn?: number
   /** PRESSÁGIO DE LOGI — Queimadura: turnos restantes de -1DP */
   burnTurnsLeft?: number
   /** VISÃO DO HROTTI — DP forçado a 0 até o final deste turno */
@@ -1471,6 +1475,42 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "chamado-das-valquirias": {
+    id: "chamado-das-valquirias", name: "CHAMADO DAS VALQUÍRIAS", requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Não há atacante válido" }),
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined) return { success: false, message: "Selecione o atacante" }
+      let destroyed = false
+      context.setEnemyField(prev => {
+        const units = [...prev.unitZone]; const attacker = units[idx]
+        if (!attacker) return prev
+        const dp = Math.max(0, (attacker.currentDp ?? attacker.dp) - 4); destroyed = dp === 0
+        units[idx] = destroyed ? null : { ...attacker, currentDp: dp }
+        return { ...prev, unitZone: units, graveyard: destroyed ? [...prev.graveyard, attacker] : prev.graveyard }
+      })
+      if (destroyed) context.setPlayerField(prev => ({ ...prev, life: prev.life + 2 }))
+      return { success: true, message: `CHAMADO DAS VALQUÍRIAS: -4DP!${destroyed ? " Atacante destruído; +2LP!" : ""}` }
+    },
+  },
+  "emboscada-dos-berserkers": {
+    id: "emboscada-dos-berserkers", name: "EMBOSCADA DOS BERSERKERS", requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "EMBOSCADA DOS BERSERKERS preparada para reduzir ou anular dano." }),
+  },
+  "armadilha-de-gelo": {
+    id: "armadilha-de-gelo", name: "ARMADILHA DE GELO", requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Não há atacante válido" }),
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined) return { success: false, message: "Selecione o atacante" }
+      context.setEnemyField(prev => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === idx && u ? { ...u, canAttack: false, hasAttacked: true, frozenUntilTurn: Number.MAX_SAFE_INTEGER, frozenByIceTrap: true } : u) }))
+      return { success: true, message: "ARMADILHA DE GELO cancelou o ataque e congelou a unidade!" }
+    },
+  },
+
   "investida-coordenada": {
     id: "investida-coordenada",
     name: "Investida Coordenada",
@@ -2099,7 +2139,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ──────────────────────────
+        // ── PHASE 2: SETTLE  spring 360ms ────────────────────────���─
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -5803,7 +5843,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 }, 500)
               }
 
-              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ──
+              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ��─
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 2) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 3) }))

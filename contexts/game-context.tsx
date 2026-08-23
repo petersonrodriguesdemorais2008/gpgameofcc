@@ -1748,6 +1748,48 @@ const ALL_CARDS: Card[] = [
     category: "Trap Funcion Card",
   },
   {
+    id: "chamado-das-valquirias",
+    name: "CHAMADO DAS VALQUÍRIAS",
+    image: "/images/cards/chamado-das-valquirias.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Chamado das Valquírias",
+    abilityDescription:
+      "Ativada quando uma Unidade do seu campo da Irmandade SCANDINAVIAN ANGELS é destruída por um ataque da Unidade do Oponente. A Unidade do Oponente perde -4DP. Se o DP da Unidade do Oponente chegar a 0 por conta desse efeito, ela é destruída e mandada para o Cemitério, e você ganha +2LP.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "emboscada-dos-berserkers",
+    name: "EMBOSCADA DOS BERSERKERS",
+    image: "/images/cards/emboscada-dos-berserkers.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Emboscada dos Berserkers",
+    abilityDescription:
+      "Ativada quando sua Unidade Ativa, ou você diretamente recebe dano de uma Magic Funcion ou de um ataque inimigo. Reduza o dano recebido pela metade, mas caso você tenha uma Unidade do elemento Fire ou Darkness na sua mão, você revela essa Unidade ao oponente, e todo o dano do oponente é anulado.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "armadilha-de-gelo",
+    name: "ARMADILHA DE GELO",
+    image: "/images/cards/armadilha-de-gelo.png",
+    rarity: "UR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Armadilha de Gelo",
+    abilityDescription:
+      "Ativada quando uma Unidade inimiga declara um ataque. O ataque é cancelado e a unidade atacante fica no estado Congelada. Uma unidade congelada não pode atacar nem usar habilidades relacionadas a ela; o controlador só consegue descongelá-la se descartar uma carta da mão.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
     id: "ordem-de-laceracao",
     name: "Ordem de Laceração",
     image: "/images/cards/ordem-de-laceracao.png",
@@ -3953,7 +3995,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_guild_id")
       localStorage.removeItem("gpgame_kicked_from")
 
-      // ── Daily check-in & misc ─────────────────────────────────────────────
+      // ── Daily check-in & misc ���────────────────────────────────────────────
       localStorage.removeItem("gpgame_checkin")
       localStorage.removeItem("gpgame_last_checkin")
 

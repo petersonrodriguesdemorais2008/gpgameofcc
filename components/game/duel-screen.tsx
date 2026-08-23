@@ -152,6 +152,8 @@ interface FieldCard extends GameCard {
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
   frozenUntilTurn?: number
+  /** ARMADILHA DE GELO — exige descartar uma carta para descongelar. */
+  frozenByIceTrap?: boolean
   /** PRESSÁGIO DE LOGI — Queimadura: remaining ticks of -1DP at the start of the owner's turn */
   burnTurnsLeft?: number
   /** VISÃO DO HROTTI — DP forced to 0 until the end of this turn number */
@@ -1573,6 +1575,49 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: "O PREÇO DO CAOLHO: 2LP pagos; a Magic Function foi negada!" }
     },
   },
+  "chamado-das-valquirias": {
+    id: "chamado-das-valquirias",
+    name: "CHAMADO DAS VALQUÍRIAS",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Não há unidade atacante válida" }),
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined) return { success: false, message: "Selecione a unidade atacante" }
+      let destroyed = false
+      context.setEnemyField((prev) => {
+        const units = [...prev.unitZone]
+        const attacker = units[idx]
+        if (!attacker) return prev
+        const dp = Math.max(0, (attacker.currentDp ?? attacker.dp) - 4)
+        destroyed = dp === 0
+        units[idx] = destroyed ? null : { ...attacker, currentDp: dp }
+        return { ...prev, unitZone: units, graveyard: destroyed ? [...prev.graveyard, attacker] : prev.graveyard }
+      })
+      if (destroyed) context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
+      return { success: true, message: `CHAMADO DAS VALQUÍRIAS: atacante -4DP!${destroyed ? " Atacante destruído; +2LP!" : ""}` }
+    },
+  },
+  "emboscada-dos-berserkers": {
+    id: "emboscada-dos-berserkers",
+    name: "EMBOSCADA DOS BERSERKERS",
+    requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "EMBOSCADA DOS BERSERKERS preparada para reduzir ou anular o próximo dano." }),
+  },
+  "armadilha-de-gelo": {
+    id: "armadilha-de-gelo",
+    name: "ARMADILHA DE GELO",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Não há atacante válido" }),
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined) return { success: false, message: "Selecione a unidade atacante" }
+      context.setEnemyField((prev) => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === idx && u ? { ...u, canAttack: false, frozenUntilTurn: Number.MAX_SAFE_INTEGER, frozenByIceTrap: true } : u) }))
+      return { success: true, message: "ARMADILHA DE GELO cancelou o ataque e congelou a unidade!" }
+    },
+  },
   "pressagio-de-logi": {
     id: "pressagio-de-logi",
     name: "PRESSÁGIO DE LOGI",
@@ -2496,7 +2541,7 @@ const getElementGlow = (element: string): string => {
   }
 }
 
-// ─── DiceCanvas3D ──────────────────────────���──────────────────────────────────
+// ─── DiceCanvas3D ──────────────────────────���──────��───────────────────────────
 // CSS preserve-3d dice. rig handles scale/translateY, cube handles rotateX/Y.
 // Transforms set via rAF JS �� no @keyframes on preserve-3d elements (would flatten).
 interface DiceCanvas3DProps { result: number | null; cardName: string }
@@ -9107,6 +9152,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   const executeBotTurn = () => {
+    // ── ARMADILHA DE GELO: bot descarta uma carta para descongelar uma unidade ──
+    setEnemyField((prev) => {
+      const frozenIndex = prev.unitZone.findIndex(u => u?.frozenByIceTrap)
+      if (frozenIndex === -1 || prev.hand.length === 0) return prev
+      const units = [...prev.unitZone]
+      const hand = [...prev.hand]
+      const discarded = hand.shift()!
+      const frozen = units[frozenIndex]!
+      units[frozenIndex] = { ...frozen, frozenByIceTrap: false, frozenUntilTurn: undefined, canAttack: true, hasAttacked: false }
+      setTimeout(() => showEffectFeedback(`${frozen.name} foi descongelada: o bot descartou ${discarded.name}.`, "info"), 100)
+      return { ...prev, unitZone: units as (FieldCard | null)[], hand, graveyard: [...prev.graveyard, discarded] }
+    })
     // ── PRESSÁGIO DE LOGI: Queimadura — -1DP no início de cada turno do oponente ──
     // Unidades que chegarem a 0 DP são destruídas e enviadas para o cemitério.
     setEnemyField((prev) => {
@@ -9802,12 +9859,47 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const defender = currentPlayerUnits[playerUnitIndex] as FieldCard
               const defenderDp = defender.currentDp ?? defender.dp
               const attackerDp = unit.currentDp ?? unit.dp
-              const newDefenderDp = defenderDp - attackerDp
+              const trapEmboscadaIdx = playerField.functionZone.findIndex(
+                f => f?.id === "emboscada-dos-berserkers" && f.isFaceDown
+              )
+              let finalAttackDamage = attackerDp
+              if (trapEmboscadaIdx !== -1 && window.confirm(`Ativar EMBOSCADA DOS BERSERKERS contra o dano de ${unit.name}?`)) {
+                const revealable = playerField.hand.filter(c => (c.type === "unit" || c.type === "troops") && ["fire", "darkness"].includes((c.element || "").toLowerCase()))
+                consumePlayerTrap(trapEmboscadaIdx)
+                if (revealable.length > 0) {
+                  const choices = revealable.map((c, i) => `${i + 1} — ${c.name}`).join("\n")
+                  const selected = Number(window.prompt(`Escolha a Unidade Fire/Darkness para revelar e anular todo o dano:\n${choices}`, "1")) - 1
+                  const revealed = revealable[Math.max(0, Math.min(selected, revealable.length - 1))]
+                  finalAttackDamage = 0
+                  showEffectFeedback(`EMBOSCADA DOS BERSERKERS: ${revealed.name} foi revelada. Dano anulado!`, "success")
+                } else {
+                  finalAttackDamage = Math.ceil(attackerDp / 2)
+                  showEffectFeedback(`EMBOSCADA DOS BERSERKERS reduziu o dano de ${attackerDp} para ${finalAttackDamage}!`, "success")
+                }
+              }
+              const newDefenderDp = defenderDp - finalAttackDamage
 
               const targetEl = document.querySelector(`[data-player-unit-slot="${playerUnitIndex}"]`)
               const targetRect = targetEl?.getBoundingClientRect()
               const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2
               const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.7
+
+              // ── TRAP CHECK: ARMADILHA DE GELO ────────────────────────────────
+              const trapGeloIdx = playerField.functionZone.findIndex(
+                f => f?.id === "armadilha-de-gelo" && f.isFaceDown
+              )
+              if (trapGeloIdx !== -1 && window.confirm(`Ativar ARMADILHA DE GELO contra o ataque de ${unit.name}?`)) {
+                consumePlayerTrap(trapGeloIdx)
+                setEnemyField(prev => {
+                  const units = [...prev.unitZone]
+                  const attacker = units[unitIdx]
+                  if (attacker) units[unitIdx] = { ...attacker, canAttack: false, hasAttacked: true, frozenUntilTurn: Number.MAX_SAFE_INTEGER, frozenByIceTrap: true }
+                  return { ...prev, unitZone: units as (FieldCard | null)[] }
+                })
+                showEffectFeedback(`ARMADILHA DE GELO cancelou o ataque e congelou ${unit.name}!`, "success")
+                setTimeout(() => fireBotAttack(rest), 600)
+                return
+              }
 
               // ── TRAP CHECK: PORTÃO DA FORTALEZA ──────────────────────────────
               // Quando o bot declara ataque em uma unidade do jogador, verificar se
@@ -9919,6 +10011,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     newGrave.push(defender)
                     newUnitZone[playerUnitIndex] = null
                     triggerExplosion(targetX, targetY, unit.element || "neutral")
+                    const trapChamadoIdx = prevPlayer.functionZone.findIndex(f => f?.id === "chamado-das-valquirias" && f.isFaceDown)
+                    const isScandinavianAngel = defender.name.toLowerCase().includes("scandinavian angel")
+                    if (isScandinavianAngel && trapChamadoIdx !== -1 && window.confirm(`Ativar CHAMADO DAS VALQUÍRIAS após a destruição de ${defender.name}?`)) {
+                      consumePlayerTrap(trapChamadoIdx)
+                      setEnemyField(enemy => {
+                        const enemyUnits = [...enemy.unitZone]
+                        const attacker = enemyUnits[unitIdx]
+                        if (!attacker) return enemy
+                        const remainingDp = Math.max(0, (attacker.currentDp ?? attacker.dp) - 4)
+                        if (remainingDp === 0) {
+                          enemyUnits[unitIdx] = null
+                          setTimeout(() => setPlayerField(p => ({ ...p, life: p.life + 2 })), 0)
+                          showEffectFeedback(`CHAMADO DAS VALQUÍRIAS destruiu ${attacker.name}! Você ganhou +2LP.`, "success")
+                          return { ...enemy, unitZone: enemyUnits as (FieldCard | null)[], graveyard: [...enemy.graveyard, attacker] }
+                        }
+                        enemyUnits[unitIdx] = { ...attacker, currentDp: remainingDp }
+                        showEffectFeedback(`CHAMADO DAS VALQUÍRIAS: ${attacker.name} perdeu 4DP!`, "success")
+                        return { ...enemy, unitZone: enemyUnits as (FieldCard | null)[] }
+                      })
+                    }
                     // ── Equipped Ultimate Gear is destroyed together with its unit ──
                     const __ugDestroyIdx = newUltimateZonesP.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
                     if (__ugDestroyIdx !== -1) {
