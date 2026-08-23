@@ -152,6 +152,12 @@ interface FieldCard extends GameCard {
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
   frozenUntilTurn?: number
+  /** PRESSÁGIO DE LOGI — Queimadura: remaining ticks of -1DP at the start of the owner's turn */
+  burnTurnsLeft?: number
+  /** VISÃO DO HROTTI — DP forced to 0 until the end of this turn number */
+  dpZeroUntilTurn?: number
+  /** DP saved before a "DP reduced to 0" effect, restored when it expires */
+  dpBeforeZero?: number
   /** For Ultimate cards: which unit on the field this Ultimate is equipped to */
   equippedUnitName?: string
   equippedUnitIndex?: number
@@ -258,6 +264,9 @@ interface EffectContext {
   enemyField: FieldState
   setPlayerField: React.Dispatch<React.SetStateAction<FieldState>>
   setEnemyField: React.Dispatch<React.SetStateAction<FieldState>>
+  /** Current duel turn — available when the caller provides it */
+  turn?: number
+  showEffectFeedback?: (message: string, type: "success" | "error" | "warning" | "info") => void
 }
 
 interface EffectTargets {
@@ -1455,6 +1464,75 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { ...prev, unitZone: nz }
       })
       return { success: true, message: "Armadilha Ativada! Brincadeira de Mau Gosto aplicou -2DP na unidade escolhida!" }
+    },
+  },
+  "visao-do-hrotti": {
+    id: "visao-do-hrotti",
+    name: "VISÃO DO HROTTI",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo para congelar" }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined || !context.enemyField.unitZone[idx]) {
+        return { success: false, message: "Escolha uma unidade inimiga válida." }
+      }
+      const targetName = context.enemyField.unitZone[idx]!.name
+      const turn = context.turn ?? 0
+      context.setEnemyField((prev) => {
+        const nz = [...prev.unitZone]
+        const u = nz[idx]
+        if (u) {
+          nz[idx] = {
+            ...u,
+            frozenUntilTurn: turn + 2,
+            dpZeroUntilTurn: turn + 2,
+            dpBeforeZero: u.dpBeforeZero ?? (u.currentDp ?? u.dp),
+            currentDp: 0,
+          }
+        }
+        return { ...prev, unitZone: nz }
+      })
+      return {
+        success: true,
+        message: `Armadilha Ativada! VISÃO DO HROTTI congelou ${targetName} e reduziu seu DP a 0 até o fim do próximo turno!`,
+      }
+    },
+  },
+  "pressagio-de-logi": {
+    id: "pressagio-de-logi",
+    name: "PRESSÁGIO DE LOGI",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasLogi = context.playerField.unitZone.some(
+        (u) => u !== null && u.name.toLowerCase().includes("logi"),
+      )
+      if (!hasLogi) return { canActivate: false, reason: "Você precisa controlar o Logi no seu campo" }
+      const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo" }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined || !context.enemyField.unitZone[idx]) {
+        return { success: false, message: "Escolha uma unidade inimiga válida." }
+      }
+      const targetName = context.enemyField.unitZone[idx]!.name
+      context.setEnemyField((prev) => {
+        const nz = [...prev.unitZone]
+        const u = nz[idx]
+        if (u) nz[idx] = { ...u, burnTurnsLeft: 2 }
+        return { ...prev, unitZone: nz }
+      })
+      return {
+        success: true,
+        message: `Armadilha Ativada! PRESSÁGIO DE LOGI colocou ${targetName} em Queimadura por 2 turnos (-1DP por turno)!`,
+      }
     },
   },
 
@@ -4526,6 +4604,154 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
     setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  NOVAS ARMADILHAS — VISÃO DO HROTTI / PRESSÁGIO DE LOGI
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Revela a armadilha do jogador no slot informado e a manda para o cemitério. */
+  const consumePlayerTrap = useCallback((slotIdx: number) => {
+    setPlayerField((pf) => {
+      const nz = [...pf.functionZone]
+      const trap = nz[slotIdx]
+      if (!trap) return pf
+      nz[slotIdx] = { ...trap, isFaceDown: false }
+      setTimeout(() => {
+        setPlayerField((pf2) => {
+          const nz2 = [...pf2.functionZone]
+          nz2[slotIdx] = null
+          return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, trap] }
+        })
+      }, 800)
+      return { ...pf, functionZone: nz }
+    })
+  }, [])
+
+  /**
+   * VISÃO DO HROTTI — congela a unidade inimiga mais forte e zera o DP dela
+   * até o final do próximo turno. Retorna o nome da unidade afetada.
+   */
+  const applyVisaoDoHrottiFreeze = useCallback((): string | null => {
+    let frozenName: string | null = null
+    setEnemyField((prev) => {
+      // Escolhe a unidade de maior DP que ainda não esteja congelada
+      let bestIdx = -1
+      let bestDp = -1
+      prev.unitZone.forEach((u, i) => {
+        if (!u) return
+        if ((u.frozenUntilTurn ?? -1) >= turn) return
+        const dp = u.currentDp ?? u.dp
+        if (dp > bestDp) { bestDp = dp; bestIdx = i }
+      })
+      if (bestIdx === -1) {
+        bestIdx = prev.unitZone.findIndex((u) => u !== null)
+        if (bestIdx === -1) return prev
+      }
+      const zone = [...prev.unitZone]
+      const unit = zone[bestIdx]!
+      frozenName = unit.name
+      zone[bestIdx] = {
+        ...unit,
+        frozenUntilTurn: turn + 2,
+        dpZeroUntilTurn: turn + 2,
+        dpBeforeZero: unit.dpBeforeZero ?? (unit.currentDp ?? unit.dp),
+        currentDp: 0,
+        canAttack: false,
+      }
+      return { ...prev, unitZone: zone as (FieldCard | null)[] }
+    })
+    if (frozenName) setFreezeAnimationCard(frozenName)
+    return frozenName
+  }, [turn])
+
+  /**
+   * PRESSÁGIO DE LOGI — coloca a unidade inimiga alvo em estado de Queimadura
+   * (-1DP no início de cada turno do oponente, por 2 turnos).
+   * Exige que o jogador controle o Logi no campo.
+   */
+  const applyPressagioDeLogiBurn = useCallback((preferredIdx?: number): string | null => {
+    let burnedName: string | null = null
+    setEnemyField((prev) => {
+      let idx = preferredIdx !== undefined && prev.unitZone[preferredIdx] ? preferredIdx : -1
+      if (idx === -1) {
+        // Prioriza a unidade com Ultimate Gear equipada, senão a mais forte
+        let bestDp = -1
+        prev.unitZone.forEach((u, i) => {
+          if (!u) return
+          const dp = u.currentDp ?? u.dp
+          if (dp > bestDp) { bestDp = dp; idx = i }
+        })
+      }
+      if (idx === -1) return prev
+      const zone = [...prev.unitZone]
+      const unit = zone[idx]!
+      burnedName = unit.name
+      zone[idx] = { ...unit, burnTurnsLeft: 2 }
+      return { ...prev, unitZone: zone as (FieldCard | null)[] }
+    })
+    return burnedName
+  }, [])
+
+  /** O jogador controla o Logi? (requisito do PRESSÁGIO DE LOGI) */
+  const playerControlsLogi = useCallback(
+    () => playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("logi")),
+    [playerField.unitZone],
+  )
+
+  /**
+   * Dispara o PRESSÁGIO DE LOGI quando o oponente equipa uma Ultimate Gear
+   * ou tenta curar uma unidade. Retorna true se a armadilha foi ativada.
+   */
+  const triggerPressagioDeLogi = useCallback(
+    (reason: string, targetIdx?: number): boolean => {
+      const slot = playerField.functionZone.findIndex(
+        (f) => f?.id === "pressagio-de-logi" && f.isFaceDown,
+      )
+      if (slot === -1) return false
+      if (!playerControlsLogi()) return false
+      if (!enemyField.unitZone.some((u) => u !== null)) return false
+      consumePlayerTrap(slot)
+      const name = applyPressagioDeLogiBurn(targetIdx)
+      setTimeout(
+        () =>
+          showEffectFeedback(
+            `Armadilha Ativada! PRESSÁGIO DE LOGI (${reason}) — ${name || "unidade inimiga"} entrou em Queimadura por 2 turnos!`,
+            "success",
+          ),
+        200,
+      )
+      return true
+    },
+    [playerField.functionZone, enemyField.unitZone, playerControlsLogi, consumePlayerTrap, applyPressagioDeLogiBurn, showEffectFeedback],
+  )
+
+  /**
+   * Dispara a VISÃO DO HROTTI quando o oponente ativa uma Habilidade.
+   * Retorna true se a habilidade foi negada.
+   */
+  const triggerVisaoDoHrottiOnAbility = useCallback(
+    (abilityLabel: string): boolean => {
+      const slot = playerField.functionZone.findIndex(
+        (f) => f?.id === "visao-do-hrotti" && f.isFaceDown,
+      )
+      if (slot === -1) return false
+      consumePlayerTrap(slot)
+      const frozen = applyVisaoDoHrottiFreeze()
+      setTimeout(
+        () =>
+          showEffectFeedback(
+            frozen
+              ? `Armadilha Ativada! VISÃO DO HROTTI negou ${abilityLabel}, congelou ${frozen} e zerou seu DP!`
+              : `Armadilha Ativada! VISÃO DO HROTTI negou ${abilityLabel}!`,
+            "success",
+          ),
+        200,
+      )
+      return true
+    },
+    [playerField.functionZone, consumePlayerTrap, applyVisaoDoHrottiFreeze, showEffectFeedback],
+  )
+
   const showDrawAnimation = useCallback((card: GameCard) => {
     const deckEl      = playerDeckRef.current
     const handEl      = handContainerRef.current
@@ -6532,7 +6758,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return
     }
 
-    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField }
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback }
     const { canActivate, reason } = effect.canActivate(effectContext)
     if (!canActivate) {
       showEffectFeedback(`${card.name}: ${reason}`, "error")
@@ -6556,7 +6782,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (!card) return
     const effect = getFunctionCardEffect(card)
     if (!effect) return
-    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField }
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback }
 
     // Reveal the trap face-up immediately for visual feedback, with a brief
     // "activation flash" animation (isRevealing) that clears itself after
@@ -7219,7 +7445,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
         }
 
-        // ── MORGANA UR 3DP: Sinfonia Relâmpago — ao atacar, a cada 3 turnos destrói 2 Functions/Traps ──
+        // ── MORGANA UR 3DP: Sinfonia Relâmpago — ao atacar, a cada 3 turnos destrói 2 Functions/Traps ─���
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 3) {
           if (morganaSinfoniaLastTurn === null || turn - morganaSinfoniaLastTurn >= 3) {
             const destroyableEnemy = enemyField.functionZone
@@ -8455,7 +8681,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     showEffectFeedback("HERANÇA DE ANDVARANAUT: Todos os efeitos de Ultimate Gear anulados por 3 turnos!", "warning")
   }
 
-  // ── Hrotti LR: Ira Maelstrom — after dealing battle damage: shuffle top of enemy deck to bottom; look at own top ──
+  // ── Hrotti LR: Ira Maelstrom — after dealing battle damage: shuffle top of enemy deck to bottom; look at own top ���─
   const activateHrottiLrIra = () => {
     // Move enemy's top deck card to bottom
     if (enemyField.deck.length > 0) {
@@ -8811,6 +9037,47 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   const executeBotTurn = () => {
+    // ── PRESSÁGIO DE LOGI: Queimadura — -1DP no início de cada turno do oponente ──
+    // Unidades que chegarem a 0 DP são destruídas e enviadas para o cemitério.
+    setEnemyField((prev) => {
+      if (!prev.unitZone.some((u) => u && (u.burnTurnsLeft ?? 0) > 0)) return prev
+      const zone = [...prev.unitZone]
+      const newGrave = [...prev.graveyard]
+      const burnedMessages: string[] = []
+      zone.forEach((u, i) => {
+        if (!u || (u.burnTurnsLeft ?? 0) <= 0) return
+        const newDp = Math.max(0, (u.currentDp ?? u.dp) - 1)
+        const remaining = (u.burnTurnsLeft ?? 0) - 1
+        if (newDp <= 0) {
+          markDestroyed(u)
+          newGrave.push(u)
+          zone[i] = null
+          burnedMessages.push(`${u.name} foi consumida pela Queimadura e foi para o cemitério!`)
+        } else {
+          zone[i] = { ...u, currentDp: newDp, burnTurnsLeft: remaining > 0 ? remaining : undefined }
+          burnedMessages.push(`${u.name} sofre Queimadura: -1DP (${newDp} DP restantes)`)
+        }
+      })
+      if (burnedMessages.length > 0) {
+        setTimeout(() => showEffectFeedback(`QUEIMADURA: ${burnedMessages.join(" | ")}`, "warning"), 150)
+      }
+      return { ...prev, unitZone: zone as (FieldCard | null)[], graveyard: newGrave }
+    })
+
+    // ── VISÃO DO HROTTI: restaura o DP das unidades cujo "DP 0" expirou ──
+    setEnemyField((prev) => {
+      if (!prev.unitZone.some((u) => u && u.dpZeroUntilTurn !== undefined && u.dpZeroUntilTurn <= turn)) return prev
+      const zone = prev.unitZone.map((u) => {
+        if (!u || u.dpZeroUntilTurn === undefined || u.dpZeroUntilTurn > turn) return u
+        const restored = { ...u, currentDp: u.dpBeforeZero ?? u.dp } as FieldCard
+        delete restored.dpZeroUntilTurn
+        delete restored.dpBeforeZero
+        setTimeout(() => showEffectFeedback(`${u.name}: o DP zerado pela VISÃO DO HROTTI foi restaurado.`, "info"), 250)
+        return restored
+      })
+      return { ...prev, unitZone: zone as (FieldCard | null)[] }
+    })
+
     // ── MORGANA SR 2DP: Ressonância em Eclipse — if active, enemy cannot draw ──
     const _eclipseActive = morganaEclipseActive && (turn - morganaEclipseActive.turn === 1)
     if (_eclipseActive) {
@@ -8925,6 +9192,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
             newHand.splice(i, 1)
             setEnemyUgAbilityUsed(false)
+            // ── TRAP CHECK: PRESSÁGIO DE LOGI (oponente equipou Ultimate Gear) ──
+            if (card.type === "ultimateGear" || (card as any).category?.includes("Ultimate Gear")) {
+              const __ugTargetIdx = card.requiresUnit
+                ? newUnitZone.findIndex((u) => u && u.name === card.requiresUnit)
+                : undefined
+              setTimeout(
+                () => triggerPressagioDeLogi(`${card.name} equipada`, __ugTargetIdx !== -1 ? __ugTargetIdx : undefined),
+                400,
+              )
+            }
             break // Only one ultimate at a time
           }
         }
@@ -9041,6 +9318,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
               newHand = newHand.filter((_, idx) => idx !== i)
               setTimeout(() => showEffectFeedback(`Armadilha Ativada! Escudo de Mana anulou ${card.name}!`, "success"), 200)
+              continue
+            }
+
+            // ── TRAP CHECK: PRESSÁGIO DE LOGI (oponente tenta curar) ─────────
+            // Ativa quando o bot usa uma carta de cura. A carta resolve normalmente,
+            // mas a unidade inimiga entra em Queimadura.
+            const __healingIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","calice-de-vinho-sagrado"]
+            if (__healingIds.some(id => card.id?.includes(id))) {
+              triggerPressagioDeLogi(`${card.name} — tentativa de cura`)
+            }
+
+            // ── TRAP CHECK: VISÃO DO HROTTI ──────────────────────────────────
+            // Ativa quando o bot joga uma Action Funcion (o gatilho de "Habilidade"
+            // é tratado em triggerVisaoDoHrottiOnAbility).
+            // Efeito: nega a carta, congela 1 unidade do bot e zera o DP dela até
+            // o fim do próximo turno.
+            const isActionFuncHrotti = card.type === "action" || (card as any).category === "Action Funcion Card"
+            const trapVisaoIdx = playerField.functionZone.findIndex(
+              f => f?.id === "visao-do-hrotti" && f.isFaceDown
+            )
+            if (isActionFuncHrotti && trapVisaoIdx !== -1) {
+              consumePlayerTrap(trapVisaoIdx)
+              // Negate the bot card
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
+              // Freeze + zero DP on the strongest bot unit
+              const frozenName = applyVisaoDoHrottiFreeze()
+              setTimeout(() => showEffectFeedback(
+                frozenName
+                  ? `Armadilha Ativada! VISÃO DO HROTTI anulou ${card.name}, congelou ${frozenName} e zerou seu DP!`
+                  : `Armadilha Ativada! VISÃO DO HROTTI anulou ${card.name}!`,
+                "success",
+              ), 200)
               continue
             }
 
@@ -9196,6 +9506,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const hasUnit = prevEnemy.unitZone.some((u) => u && u.name === requiredUnit)
           if (!hasUnit) return prevEnemy
 
+          // ── TRAP CHECK: VISÃO DO HROTTI (oponente ativou uma Habilidade) ──
+          const __visaoSlot = playerField.functionZone.findIndex(
+            (f) => f?.id === "visao-do-hrotti" && f.isFaceDown,
+          )
+          if (__visaoSlot !== -1) {
+            setEnemyUgAbilityUsed(true)
+            setTimeout(() => triggerVisaoDoHrottiOnAbility(`a habilidade ${ug.ability || ug.name}`), 0)
+            return prevEnemy
+          }
+
           if (ug.ability === "ODEN SWORD") {
             // Destroy a player function card
             const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
@@ -9290,13 +9610,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (botCanAttack) {
           // Sequential bot attack: fire one unit at a time using a recursive function.
           // Each call reads live state via setEnemyField/setPlayerField, avoiding stale closures.
-          const attackerIndices = difficulty === 'hard'
-            ? [...enemyField.unitZone.keys()]
-                .filter(i => enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
-                .sort((a,b) => (enemyField.unitZone[b]?.currentDp ?? 0) - (enemyField.unitZone[a]?.currentDp ?? 0))
-            : [...enemyField.unitZone.keys()]
-                .filter(i => enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
-                .sort(() => Math.random() - 0.5)
+  // Unidades congeladas (VATNAVORDR / VISÃO DO HROTTI) não podem atacar
+  const __botCanAttackWith = (i: number) => {
+    const u = enemyField.unitZone[i]
+    if (!u || u.hasAttacked) return false
+    if ((u.frozenUntilTurn ?? -1) >= turn) return false
+    return true
+  }
+  const attackerIndices = difficulty === 'hard'
+  ? [...enemyField.unitZone.keys()]
+  .filter(__botCanAttackWith)
+  .sort((a,b) => (enemyField.unitZone[b]?.currentDp ?? 0) - (enemyField.unitZone[a]?.currentDp ?? 0))
+  : [...enemyField.unitZone.keys()]
+  .filter(__botCanAttackWith)
+  .sort(() => Math.random() - 0.5)
 
           const destroyedPlayerSlots = new Set<number>()
 
@@ -9579,6 +9906,52 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   const endTurn = () => {
     setPhase("end")
+
+    // ── PRESSÁGIO DE LOGI / VISÃO DO HROTTI — efeitos aplicados nas unidades do jogador ──
+    // Queimadura: -1DP por turno (destrói ao chegar a 0). DP zerado: restaura ao expirar.
+    setPlayerField((prev) => {
+      const hasBurn = prev.unitZone.some((u) => u && (u.burnTurnsLeft ?? 0) > 0)
+      const hasExpiredZero = prev.unitZone.some(
+        (u) => u && u.dpZeroUntilTurn !== undefined && u.dpZeroUntilTurn <= turn,
+      )
+      if (!hasBurn && !hasExpiredZero) return prev
+
+      const zone = [...prev.unitZone]
+      const newGrave = [...prev.graveyard]
+
+      zone.forEach((u, i) => {
+        if (!u) return
+        let unit: FieldCard = u
+
+        // Restaura DP zerado pela VISÃO DO HROTTI quando o efeito expira
+        if (unit.dpZeroUntilTurn !== undefined && unit.dpZeroUntilTurn <= turn) {
+          const restored = { ...unit, currentDp: unit.dpBeforeZero ?? unit.dp } as FieldCard
+          delete restored.dpZeroUntilTurn
+          delete restored.dpBeforeZero
+          unit = restored
+          setTimeout(() => showEffectFeedback(`${unit.name}: DP restaurado (VISÃO DO HROTTI expirou).`, "info"), 250)
+        }
+
+        // Tick de Queimadura
+        if ((unit.burnTurnsLeft ?? 0) > 0) {
+          const newDp = Math.max(0, (unit.currentDp ?? unit.dp) - 1)
+          const remaining = (unit.burnTurnsLeft ?? 0) - 1
+          if (newDp <= 0) {
+            markDestroyed(unit)
+            newGrave.push(unit)
+            zone[i] = null
+            setTimeout(() => showEffectFeedback(`QUEIMADURA: ${unit.name} foi destruída e foi para o cemitério!`, "error"), 200)
+            return
+          }
+          unit = { ...unit, currentDp: newDp, burnTurnsLeft: remaining > 0 ? remaining : undefined }
+          setTimeout(() => showEffectFeedback(`QUEIMADURA: ${unit.name} -1DP (${newDp} DP restantes)`, "warning"), 200)
+        }
+
+        zone[i] = unit
+      })
+
+      return { ...prev, unitZone: zone as (FieldCard | null)[], graveyard: newGrave }
+    })
 
     // ── ULLRBOGI: remove +3 DP from Ullr when leaving battle phase ──
     // This runs regardless of whether endTurn was called from advancePhase or directly
@@ -9924,7 +10297,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         setGameResult("won")
         break
 
-      // ── Opponent used a unit ability ──────────────────────────────────────
+      // ── Opponent used a unit ability ───────────────────────────────���──────
       case "ability_used": {
         const ab = action.data.ability
         // Ullr SR: debuffs a player unit
@@ -14656,7 +15029,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE EVENT ANNOUNCEMENT ─────────────────────────────── */}
+      {/* ─── CATASTROPHE EVENT ANNOUNCEMENT ────────────────��────────────── */}
       {catastropheEvent && (
         <div className="fixed inset-0 z-[8500] flex items-center justify-center pointer-events-none"
           style={{animation:"catEventIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
@@ -14695,7 +15068,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ─── CATASTROPHE BADGE in HUD ─────��─────────────────────��────────── */}
 
-      {/* ──────────────────────────────────────────────────���──────────────────
+      {/* ─────────────────────────────────��────────────────���──────────────────
            ── PAUSE MENU ──
       ─��──────────────────────────────────���──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
