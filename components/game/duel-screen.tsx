@@ -4133,6 +4133,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   // ── Unit ability confirmation modal ──
   const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null>(null)
+  const [runiAbilityTurn, setRuniAbilityTurn] = useState<number | null>(null)
+  const [runistaAbilityTurn, setRunistaAbilityTurn] = useState<number | null>(null)
+  const newCardSummonsRef = useRef<Set<string>>(new Set())
 
   // ── Pause menu / HUD settings ──
   const [showPauseMenu, setShowPauseMenu]   = useState(false)
@@ -7572,7 +7575,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
         }
 
-        // ── MORGANA UR 3DP: Sinfonia Relâmpago — ao atacar, a cada 3 turnos destrói 2 Functions/Traps ─���
+        // ── MORGANA UR 3DP: Sinfonia Relâmpago ��� ao atacar, a cada 3 turnos destrói 2 Functions/Traps ─���
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 3) {
           if (morganaSinfoniaLastTurn === null || turn - morganaSinfoniaLastTurn >= 3) {
             const destroyableEnemy = enemyField.functionZone
@@ -8368,6 +8371,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
               if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
               if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) { setFehnonLrDouble(false) }
+              if (attacker.id === "vaelor-mestre-emboscada-r" && window.confirm("AVANÇO CALCULADO: retornar Vaelor para a mão após o ataque?")) {
+                setPlayerField(prev => {
+                  const unitZone = [...prev.unitZone]
+                  const returning = unitZone[attackState.attackerIndex!]
+                  if (!returning) return prev
+                  unitZone[attackState.attackerIndex!] = null
+                  return { ...prev, unitZone, hand: [...prev.hand, { ...returning, hasAttacked: false }] }
+                })
+                showEffectFeedback("AVANÇO CALCULADO: Vaelor retornou para a mão!", "success")
+              }
             }
           } else if (attackState.targetInfo!.type === "direct") {
             // Reuse the already-computed targetX/targetY (the exact arrow-release point)
@@ -8378,6 +8391,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
+
+            // ── PIROMANTES DE LABAREDA: outra unidade Fire causou dano direto ──
+            if (attacker.id !== "piromantes-labareda-r" && isElement(attacker.element, "fire")) {
+              setPlayerField(prev => {
+                const unitZone = prev.unitZone.map(unit => unit?.id === "piromantes-labareda-r"
+                  ? { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 1 }
+                  : unit) as (FieldCard | null)[]
+                return { ...prev, unitZone }
+              })
+              showEffectFeedback("FOGO COMPARTILHADO: Piromantes de Labareda ganham +1 DP!", "success")
+            }
 
             // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
             if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
@@ -8489,6 +8513,66 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
   }, [playerField.unitZone.map(u => u?.id).join(',')])
 
+  // ── Novas cartas R: aura e efeito de entrada em campo ──
+  useEffect(() => {
+    setPlayerField(prev => {
+      const thorenCount = prev.unitZone.filter(u => u?.id === "thoren-mareen-r").length
+      let changed = false
+      const unitZone = prev.unitZone.map(unit => {
+        if (!unit) return unit
+        const previousAura = (unit as any).thorenAuraBonus ?? 0
+        const nextAura = isElement(unit.element, "aquos") ? thorenCount * 2 : 0
+        if (previousAura === nextAura) return unit
+        changed = true
+        return { ...unit, currentDp: Math.max(0, (unit.currentDp ?? unit.dp) - previousAura + nextAura), thorenAuraBonus: nextAura }
+      }) as (FieldCard | null)[]
+      return changed ? { ...prev, unitZone } : prev
+    })
+  }, [playerField.unitZone.map(u => `${u?.id}:${(u as any)?.thorenAuraBonus ?? 0}`).join(",")])
+
+  useEffect(() => {
+    const priest = playerField.unitZone.find(u => u?.id === "sacerdote-olho-perdido-r")
+    if (!priest || newCardSummonsRef.current.has(priest.id)) return
+    newCardSummonsRef.current.add(priest.id)
+    const targets = playerField.unitZone
+      .map((u, index) => ({ u, index }))
+      .filter(({ u }) => u && u.id !== priest.id && (isElement(u.element, "darkus") || isElement(u.element, "darkness")))
+      .slice(0, 2)
+    if (!targets.length) return
+    setPlayerField(prev => ({
+      ...prev,
+      unitZone: prev.unitZone.map((u, index) => targets.some(t => t.index === index) && u
+        ? { ...u, currentDp: (u.currentDp ?? u.dp) + 2, priestBonus: ((u as any).priestBonus ?? 0) + 2 }
+        : u) as (FieldCard | null)[],
+    }))
+    showEffectFeedback(`OFERTA DA SABEDORIA: ${targets.map(t => t.u!.name).join(" e ")} recebem +2 DP!`, "success")
+  }, [playerField.unitZone.map(u => u?.id).join(",")])
+
+  const activateTradeAbility = (cardId: "runi-mercador-fiordes-r" | "runista-odin-r") => {
+    const usedTurn = cardId === "runi-mercador-fiordes-r" ? runiAbilityTurn : runistaAbilityTurn
+    if (usedTurn === turn) { showEffectFeedback("Esta habilidade já foi usada neste turno!", "error"); return }
+    if (!playerField.hand.length) { showEffectFeedback("Você não tem cartas na mão para descartar!", "error"); return }
+    const drawCount = cardId === "runista-odin-r" ? 2 : 1
+    setChoiceModal({
+      visible: true,
+      cardName: `${cardId === "runista-odin-r" ? "Runa da Revelação" : "Troca Justa"} — escolha uma carta para descartar`,
+      options: playerField.hand.map((c, i) => ({ id: String(i), label: c.name, description: c.type, image: c.image })),
+      onChoose: option => {
+        setChoiceModal(null)
+        const handIndex = Number(option)
+        setPlayerField(prev => {
+          const discarded = prev.hand[handIndex]
+          if (!discarded) return prev
+          const drawn = prev.deck.slice(0, drawCount)
+          drawn.forEach(showDrawAnimation)
+          return { ...prev, hand: [...prev.hand.filter((_, i) => i !== handIndex), ...drawn], deck: prev.deck.slice(drawn.length), graveyard: [...prev.graveyard, discarded] }
+        })
+        if (cardId === "runi-mercador-fiordes-r") setRuniAbilityTurn(turn); else setRunistaAbilityTurn(turn)
+        showEffectFeedback(`${drawCount} carta${drawCount > 1 ? "s" : ""} comprada${drawCount > 1 ? "s" : ""}!`, "success")
+      },
+    })
+  }
+
   // ── Morgana UR 3DP: Domínio Eterno — block traps while on field ──
   useEffect(() => {
     const hasMorganaUr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
@@ -8560,7 +8644,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }))
             chosenCards.forEach(card => showDrawAnimation(card))
             showEffectFeedback(
-              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c => c.name).join(", ")} adicionadas à mão!`,
+              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c => c.name).join(", ")} adicionadas à m��o!`,
               "success"
             )
           },
@@ -13234,8 +13318,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
                       (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) ||
                       (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) ||
-                      (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
-                    )
+  (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) ||
+  (card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn && playerField.hand.length > 0) ||
+  (card.id === "runista-odin-r" && runistaAbilityTurn !== turn && playerField.hand.length > 0)
+  )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
@@ -13244,8 +13330,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       if (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return activateHrottiSrAbility
                       if (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) return activateHrottiUrAbility
                       if (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) return activateUllrSrAbility
-                      if (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
-                      return null
+  if (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return activateUllrUrAbility
+  if (card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn) return () => activateTradeAbility("runi-mercador-fiordes-r")
+  if (card.id === "runista-odin-r" && runistaAbilityTurn !== turn) return () => activateTradeAbility("runista-odin-r")
+  return null
                     }
 
                     return (
@@ -13265,8 +13353,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           if (cardName.includes('hrotti') && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) return 'hrottiSr'
                           if (cardName.includes('hrotti') && card.dp === 3 && !hrottiUrUsed) return 'hrottiUr'
                           if (cardName.includes('ullr') && card.dp === 2 && !ullrSrMarcaUsed) return 'ullrSr'
-                          if (cardName.includes('ullr') && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return 'ullrUr'
-                          return ''
+  if (cardName.includes('ullr') && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) return 'ullrUr'
+  if (card.id === 'runi-mercador-fiordes-r' && runiAbilityTurn !== turn) return 'runi'
+  if (card.id === 'runista-odin-r' && runistaAbilityTurn !== turn) return 'runista'
+  return ''
                         })() })
                           }
                         }}
@@ -14003,7 +14093,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         .lp-bar--low > i { animation: lp-bar-panic 1.1s ease-in-out infinite; }
         @keyframes lp-bar-panic { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.7); } }
 
-        /* ══ BOTÃO DE FASE — placa de ação forjada ══ */
+        /* ���═ BOTÃO DE FASE — placa de ação forjada ══ */
         .phase-btn {
           position: relative; width: 100%; overflow: hidden;
           padding: 10px 12px;
@@ -15031,8 +15121,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   else if (key === 'hrottiSr') activateHrottiSrAbility()
                   else if (key === 'hrottiUr') activateHrottiUrAbility()
                   else if (key === 'ullrSr') activateUllrSrAbility()
-                  else if (key === 'ullrUr') activateUllrUrAbility()
-                }}
+  else if (key === 'ullrUr') activateUllrUrAbility()
+  else if (key === 'runi') activateTradeAbility('runi-mercador-fiordes-r')
+  else if (key === 'runista') activateTradeAbility('runista-odin-r')
+  }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
               >
                 ✓ Sim
@@ -15308,7 +15400,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         </div>
       )}
 
-      {/* ─── CATASTROPHE EVENT ANNOUNCEMENT ────────────────��────────────── */}
+      {/* ─── CATASTROPHE EVENT ANNOUNCEMENT ────────────────��───────��────── */}
       {catastropheEvent && (
         <div className="fixed inset-0 z-[8500] flex items-center justify-center pointer-events-none"
           style={{animation:"catEventIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
