@@ -2249,13 +2249,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
 const getBaseCardId = (cardId: string): string => {
-  // Card IDs in deck are formatted as: "original-id-deck-timestamp"
-  // We need to extract just "original-id"
-  const deckSuffixIndex = cardId.lastIndexOf("-deck-")
-  if (deckSuffixIndex !== -1) {
-    return cardId.substring(0, deckSuffixIndex)
+  // Card IDs can carry suffixes added at deck-build or event/draft setup time:
+  // "original-id-deck-<ts>", "original-id-tap-<ts>", "original-id-ev-<i>", "original-id-evtap-<i>"
+  // Strip ALL known suffixes so effect lookups and card comparisons work in every mode.
+  let id = cardId
+  for (const sep of ["-deck-", "-evtap-", "-ev-", "-tap-"]) {
+    const idx = id.lastIndexOf(sep)
+    if (idx !== -1) id = id.substring(0, idx)
   }
-  return cardId
+  return id
 }
 
 // Helper function to get effect for a card - also checks by card name
@@ -10354,8 +10356,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
-    // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot"
+    // For cards that ONLY target an ally.
+    // Derive it from the effect's targetConfig (needs ally targets and no enemy targets)
+    // so it works for every ally-only card regardless of ID suffixes, with the old name/ID checks as fallback.
+    const effectForTargetCheck = getFunctionCardEffect(itemSelectionMode.itemCard)
+    const isAllyOnlyByConfig = !!effectForTargetCheck?.targetConfig
+      && (effectForTargetCheck.targetConfig.allyUnits ?? 0) > 0
+      && !(effectForTargetCheck.targetConfig.enemyUnits && effectForTargetCheck.targetConfig.enemyUnits > 0)
+    const isAllyOnlyCard = isAllyOnlyByConfig
+      || itemSelectionMode.itemCard?.name === "Ventos de Camelot"
       || itemSelectionMode.itemCard?.name === "Troca de Guarda"
       || cardId === "chamas-de-eldfjall"
       || cardId === "maelstrom-boreal"
@@ -14589,7 +14598,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           </div>
         </div>
       )}
-      {/* ─── MOBILE DUEL LOG OVERLAY ───────────────���─────────────────────── */}
+      {/* ─── MOBILE DUEL LOG OVERLAY ──────────────�����─────────────────────── */}
       {showDuelLog && (
         <div className="lg:hidden fixed inset-0 z-[8400] flex flex-col"
           style={{background:"linear-gradient(180deg, rgba(14,9,3,0.96), rgba(0,0,0,0.94))",backdropFilter:"blur(8px)"}}>
