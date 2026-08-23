@@ -31,7 +31,7 @@ import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
  import type { XPBookId } from "@/lib/xp-books"
 
 // ─── Card Skin System (espelha deck-builder) ─────────────────────────────────
-const DUEL_CARD_SKINS: Record<string, { id: string; image: string }[]= {
+const DUEL_CARD_SKINS: Record<string, { id: string; image: string }[]> = {
   "fehnon-20ur.png":  [
     { id: "fehnon_skin_lv50",  image: "/uploads/fehnon_skin_lv50.jpg"  },
     { id: "fehnon_skin_pixel", image: "/uploads/fehnon_skin_3.jpg"     },
@@ -53,7 +53,7 @@ function getActiveSkin(cardImageUrl: string): string {
     const active   = JSON.parse(raw) as Record<string, string>
     const skinId   = active[filename]
     if (!skinId) return cardImageUrl
-    const skin = DUEL_CARD_SKINS[filename]?.find(s =s.id === skinId)
+    const skin = DUEL_CARD_SKINS[filename]?.find(s => s.id === skinId)
     return skin ? skin.image : cardImageUrl
   } catch { return cardImageUrl }
 }
@@ -110,9 +110,9 @@ interface DuelLogEntry {
 
 interface DuelScreenProps {
   mode: "bot" | "player"
-  onBack: () =void
+  onBack: () => void
   /** Called when player wins — used by roguelike/draft to intercept the result */
-  onWin?: () =void
+  onWin?: () => void
   /** Optional: pre-built draft deck that bypasses deck selection */
   draftDeck?: { id: string; name: string; cards: any[]; tapCards?: any[] }
   /** Optional: difficulty to use when draftDeck is provided */
@@ -159,7 +159,7 @@ interface FieldCard extends GameCard {
 
 /** Max Ultimate cards that can be equipped on the field at the same time */
 const MAX_ULTIMATE_SLOTS = 4
-const EMPTY_ULTIMATE_ZONES = (): (FieldCard | null)[] =Array(MAX_ULTIMATE_SLOTS).fill(null)
+const EMPTY_ULTIMATE_ZONES = (): (FieldCard | null)[] => Array(MAX_ULTIMATE_SLOTS).fill(null)
 
 interface FunctionZoneCard extends GameCard {
   isFaceDown?: boolean
@@ -218,7 +218,7 @@ interface Particle {
 }
 
 /** Nome exibido do deck elemental do oponente nos duelos de evento. */
-const EVENT_ELEMENT_LABELS: Record<string, string= {
+const EVENT_ELEMENT_LABELS: Record<string, string> = {
   aquos: "Aquos (Água)",
   ventus: "Ventus (Vento)",
   fire: "Pyrus (Fogo)",
@@ -249,8 +249,8 @@ interface FunctionCardEffect {
   }
   requiresDice?: boolean
   needsDrawAfterResolve?: boolean
-  resolve: (context: EffectContext, targets?: EffectTargets) =EffectResult
-  canActivate: (context: EffectContext) ={ canActivate: boolean; reason?: string }
+  resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
+  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
 }
 
 interface EffectContext {
@@ -282,7 +282,7 @@ interface EffectResult {
 }
 
 // Registry of all Function card effects
-const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
+const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
   "amplificador-de-poder": {
     id: "amplificador-de-poder",
     name: "Amplificador de Poder",
@@ -291,9 +291,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       enemyUnits: 1,
       allyUnits: 1,
     },
-    canActivate: (context) ={
-      const hasEnemyUnits = context.enemyField.unitZone.some((u) =u !== null)
-      const hasPlayerUnits = context.playerField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      const hasPlayerUnits = context.playerField.unitZone.some((u) => u !== null)
 
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "Nenhuma unidade inimiga no campo" }
@@ -303,7 +303,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.enemyUnitIndices?.length || !targets?.allyUnitIndices?.length) {
         return { success: false, message: "Alvos invalidos" }
       }
@@ -322,7 +322,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
       const newDp = allyCurrentDp + dpBonus
 
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
@@ -333,7 +333,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         return { ...prev, unitZone: newUnitZone }
       })
 
-      return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -${newDp})` }
+      return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -> ${newDp})` }
     },
   },
 
@@ -341,7 +341,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "bandagem-restauradora",
     name: "Bandagem Restauradora",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 50
 
@@ -350,11 +350,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const maxLife = 50
       const healAmount = 2
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: Math.min(prev.life + healAmount, maxLife),
       }))
@@ -367,27 +367,27 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "adaga-energizada",
     name: "Adaga Energizada",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Count enemy units on the field
-      const enemyUnitCount = context.enemyField.unitZone.filter((u) =u !== null).length
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
 
       if (enemyUnitCount < 2) {
         return { canActivate: false, reason: "O oponente precisa ter 2 ou mais unidades no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       // Deal 4 direct damage to enemy LP
       const damage = 4
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -${newEnemyLife}` }
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -395,7 +395,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "bandagens-duplas",
     name: "Bandagens Duplas",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 50
 
@@ -404,11 +404,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const maxLife = 50
       const healAmount = 4
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: Math.min(prev.life + healAmount, maxLife),
       }))
@@ -422,7 +422,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Cristal Recuperador",
     requiresTargets: false,
     needsDrawAfterResolve: true,
-    canActivate: (context) ={
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 50
 
@@ -431,11 +431,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const maxLife = 50
       const healAmount = 3
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: Math.min(prev.life + healAmount, maxLife),
       }))
@@ -453,23 +453,23 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "cauda-de-dragao-assada",
     name: "Cauda de Drag��o Assada",
     requiresTargets: false,
-    canActivate: (context) ={
-      const playerUnitCount = context.playerField.unitZone.filter((u) =u !== null).length
+    canActivate: (context) => {
+      const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
 
       if (playerUnitCount < 2) {
         return { canActivate: false, reason: "Voce precisa ter 2 ou mais unidades no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const maxLife = 50
       const healAmount = 2
-      const unitCount = context.playerField.unitZone.filter((u) =u !== null).length
+      const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: Math.min(prev.life + healAmount, maxLife),
-        unitZone: prev.unitZone.map((unit) ={
+        unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
           return { ...unit, currentDp: (unit.currentDp || unit.dp) + 1 }
         }),
@@ -483,22 +483,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "projetil-de-impacto",
     name: "Projétil de Impacto",
     requiresTargets: false,
-    canActivate: () ={
+    canActivate: () => {
       // No condition - can always be activated
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       // Deal 2 direct damage to enemy LP
       const damage = 2
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -${newEnemyLife}` }
+      return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -514,7 +514,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has Fehnon Hoskie or Jaden Hainaegi on field
       const hasRequiredUnit = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Fehnon Hoskie" || u.name === "Jaden Hainaegi")
@@ -525,7 +525,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
 
       if (chosenOption === "buff") {
@@ -544,7 +544,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const currentDp = allyUnit.currentDp || allyUnit.dp
         const newDp = currentDp + 2
 
-        context.setPlayerField((prev) ={
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[allyIndex]) {
             newUnitZone[allyIndex] = {
@@ -555,7 +555,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
           return { ...prev, unitZone: newUnitZone }
         })
 
-        return { success: true, message: `${allyUnit.name} recebeu +2 DP! (${currentDp} -${newDp})` }
+        return { success: true, message: `${allyUnit.name} recebeu +2 DP! (${currentDp} -> ${newDp})` }
       } else if (chosenOption === "debuff") {
         // Debuff option: -2 DP to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
@@ -572,7 +572,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 2)
 
-        context.setEnemyField((prev) ={
+        context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[enemyIndex]) {
             newUnitZone[enemyIndex] = {
@@ -583,7 +583,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
           return { ...prev, unitZone: newUnitZone }
         })
 
-        return { success: true, message: `${enemyUnit.name} perdeu 2 DP! (${currentDp} -${newDp})` }
+        return { success: true, message: `${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
       }
 
       return { success: false, message: "Escolha uma opcao" }
@@ -594,22 +594,22 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "nucleo-explosivo",
     name: "Núcleo Explosivo",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if opponent has at least 1 unit on field
-      const enemyUnitCount = context.enemyField.unitZone.filter((u) =u !== null).length
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
 
       if (enemyUnitCount === 0) {
         return { canActivate: false, reason: "O oponente precisa ter ao menos 1 unidade no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       // Deal 1 damage to each enemy unit
       let unitsHit = 0
 
-      context.setEnemyField((prev) =({
+      context.setEnemyField((prev) => ({
         ...prev,
-        unitZone: prev.unitZone.map((unit) ={
+        unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
           unitsHit++
           const currentDp = unit.currentDp || unit.dp
@@ -630,14 +630,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Kit Médico Improvisado",
     requiresTargets: false,
     needsDrawAfterResolve: true,
-    canActivate: (context) ={
+    canActivate: (context) => {
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const maxLife = 50
       const healAmount = 2
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: Math.min(prev.life + healAmount, maxLife),
       }))
@@ -656,7 +656,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Soro Recuperador",
     requiresTargets: false,
     needsDrawAfterResolve: true,
-    canActivate: (context) ={
+    canActivate: (context) => {
       const currentLife = context.playerField.life
       const maxLife = 50
 
@@ -665,11 +665,11 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const maxLife = 50
       const healAmount = 3
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         life: Math.min(prev.life + healAmount, maxLife),
       }))
@@ -686,7 +686,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "ordem-de-laceracao",
     name: "Ordem de Laceração",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has Fehnon Hoskie on field
       const hasFehnon = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Fehnon Hoskie"
@@ -697,18 +697,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       // Deal 3 direct damage to enemy LP (ignores unit abilities)
       const damage = 3
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -${newEnemyLife}` }
+      return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -716,7 +716,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "sinfonia-relampago",
     name: "Sinfonia Relâmpago",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has Morgana Pendragon on field
       const hasMorgana = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Morgana Pendragon"
@@ -727,18 +727,18 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       // Deal 4 direct damage to enemy LP (cannot be negated by traps)
       const damage = 4
       const currentEnemyLife = context.enemyField.life
       const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-      context.setEnemyField((prev) =({
+      context.setEnemyField((prev) => ({
         ...prev,
         life: newEnemyLife,
       }))
 
-      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -${newEnemyLife}` }
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
     },
   },
 
@@ -751,7 +751,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       { id: "unit", label: "Atacar Unidade", description: "Causa 3 de dano a uma unidade inimiga" },
       { id: "lp", label: "Atacar LP", description: "Causa 3 de dano direto ao LP do oponente" },
     ],
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has Scandinavian Angel Hrotti on field (any variant name)
       const hasHrotti = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Scandinavian Angel Hrotti" || u.name?.toLowerCase().includes("hrotti"))
@@ -762,7 +762,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
 
       if (chosenOption === "lp") {
@@ -771,12 +771,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const currentEnemyLife = context.enemyField.life
         const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-        context.setEnemyField((prev) =({
+        context.setEnemyField((prev) => ({
           ...prev,
           life: newEnemyLife,
         }))
 
-        return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -${newEnemyLife}` }
+        return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
       } else if (chosenOption === "unit") {
         // Damage to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
@@ -794,7 +794,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
 
-        context.setEnemyField((prev) ={
+        context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
 
@@ -819,7 +819,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         if (isDestroyed) {
           return { success: true, message: `Fafnisbani! ${enemyUnit.name} foi destruido!` }
         }
-        return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -${newDp})` }
+        return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -> ${newDp})` }
       }
 
       return { success: false, message: "Escolha uma opcao" }
@@ -835,7 +835,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       { id: "unit", label: "Atacar Unidade", description: "Causa 4 de dano a uma unidade inimiga" },
       { id: "lp", label: "Atacar LP", description: "Causa 4 de dano direto ao LP do oponente" },
     ],
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has Scandinavian Angel Logi on field (any variant name)
       const hasLogi = context.playerField.unitZone.some((u) =>
         u !== null && (u.name === "Scandinavian Angel Logi" || u.name?.toLowerCase().includes("logi"))
@@ -846,7 +846,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
 
       if (chosenOption === "lp") {
@@ -855,12 +855,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const currentEnemyLife = context.enemyField.life
         const newEnemyLife = Math.max(0, currentEnemyLife - damage)
 
-        context.setEnemyField((prev) =({
+        context.setEnemyField((prev) => ({
           ...prev,
           life: newEnemyLife,
         }))
 
-        return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -${newEnemyLife}` }
+        return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
       } else if (chosenOption === "unit") {
         // Damage to enemy unit
         if (!targets?.enemyUnitIndices?.length) {
@@ -878,7 +878,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const newDp = Math.max(0, currentDp - 4)
         const isDestroyed = newDp <= 0
 
-        context.setEnemyField((prev) ={
+        context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
 
@@ -903,7 +903,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         if (isDestroyed) {
           return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} foi destruido!` }
         }
-        return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -${newDp})` }
+        return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -> ${newDp})` }
       }
 
       return { success: false, message: "Escolha uma opcao" }
@@ -920,14 +920,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) ={
-      const hasAllyUnit = context.playerField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasAllyUnit = context.playerField.unitZone.some((u) => u !== null)
       if (!hasAllyUnit) {
         return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -955,7 +955,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
 
       // Apply DP buff
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
@@ -964,7 +964,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
           }
         }
         // Draw cards inline if any
-        if (drawAmt 0) {
+        if (drawAmt > 0) {
           const actualDraw  = Math.min(drawAmt, prev.deck.length)
           const drawnCards  = prev.deck.slice(0, actualDraw)
           return {
@@ -989,14 +989,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) ={
-      const hasAllyUnits = context.playerField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
       if (!hasAllyUnits) {
         return { canActivate: false, reason: "Voce precisa ter uma unidade em campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -1016,7 +1016,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
 
-        context.setPlayerField((prev) ={
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           const newGraveyard = [...prev.graveyard]
 
@@ -1036,12 +1036,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         if (isDestroyed) {
           return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP e foi destruida!` }
         }
-        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP (${currentDp} -${newDp})` }
+        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP (${currentDp} -> ${newDp})` }
       } else {
         // 4-6: +5 DP
         const newDp = currentDp + 5
 
-        context.setPlayerField((prev) ={
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (newUnitZone[allyIndex]) {
             newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
@@ -1049,7 +1049,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
           return { ...prev, unitZone: newUnitZone }
         })
 
-        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} ganhou +5 DP! (${currentDp} -${newDp})` }
+        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} ganhou +5 DP! (${currentDp} -> ${newDp})` }
       }
     },
   },
@@ -1062,16 +1062,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Cards treated as Fire by name even if element tag differs
       const fireNames = ["scandinavian angel logi", "jaden hainaegi"]
       const isFireByName = (u: any) =>
-        fireNames.some(n =u.name?.toLowerCase().includes(n))
+        fireNames.some(n => u.name?.toLowerCase().includes(n))
 
       // Cards treated as Darkness by name
       const darknessNames = ["morgana pendragon"]
       const isDarknessByName = (u: any) =>
-        darknessNames.some(n =u.name?.toLowerCase().includes(n))
+        darknessNames.some(n => u.name?.toLowerCase().includes(n))
 
       const validElements = ["darkness", "fire", "aquos"]
       const hasValidUnit = context.playerField.unitZone.some((u) =>
@@ -1086,7 +1086,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -1128,9 +1128,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         dpBonus = 3
         if (effectiveElement === "darkness") {
           // Bonus: Draw 1 card
-          if (context.playerField.deck.length 0) {
+          if (context.playerField.deck.length > 0) {
             const drawnCard = context.playerField.deck[0]
-            context.setPlayerField((prev) =({
+            context.setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, drawnCard],
               deck: prev.deck.slice(1),
@@ -1142,20 +1142,20 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         dpBonus = 4
         if (effectiveElement === "fire") {
           // Bonus: +2 LP
-          context.setPlayerField((prev) =({ ...prev, life: prev.life + 2 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Fire: +2 LP!"
         }
       } else {
         dpBonus = 5
         if (effectiveElement === "aquos") {
           // Bonus: +3 LP
-          context.setPlayerField((prev) =({ ...prev, life: prev.life + 3 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
           bonusMessage = " Bonus Aquos: +3 LP!"
         }
       }
 
       const newDp = currentDp + dpBonus
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
@@ -1175,16 +1175,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Cards treated as Lightness by name even if element tag differs
       const lightnessNames = ["santo graal galahad", "mordred, o usurpador"]
       const isLightnessByName = (u: any) =>
-        lightnessNames.some(n =u.name?.toLowerCase().includes(n))
+        lightnessNames.some(n => u.name?.toLowerCase().includes(n))
 
       // Cards treated as Darkness by name
       const darknessNames = ["morgana pendragon"]
       const isDarknessByName = (u: any) =>
-        darknessNames.some(n =u.name?.toLowerCase().includes(n))
+        darknessNames.some(n => u.name?.toLowerCase().includes(n))
 
       const validElements = ["neutral", "lightness", "ventus", "void", "darkness"]
       const hasValidUnit = context.playerField.unitZone.some((u) =>
@@ -1199,7 +1199,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade sua" }
       }
@@ -1247,9 +1247,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         dpBonus = 3
         if (effectiveElement === "neutral") {
           // Bonus: Draw 1 card
-          if (context.playerField.deck.length 0) {
+          if (context.playerField.deck.length > 0) {
             const drawnCard = context.playerField.deck[0]
-            context.setPlayerField((prev) =({
+            context.setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, drawnCard],
               deck: prev.deck.slice(1),
@@ -1261,24 +1261,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         dpBonus = 4
         if (effectiveElement === "lightness") {
           // Bonus: +2 LP
-          context.setPlayerField((prev) =({ ...prev, life: prev.life + 2 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
           bonusMessage = " Bonus Lightness: +2 LP!"
         } else if (effectiveElement === "darkness") {
           // Bonus: enemy loses 2 LP
-          context.setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - 2) }))
+          context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
           bonusMessage = " Bonus Darkness: Inimigo -2 LP!"
         }
       } else {
         dpBonus = 5
         if (effectiveElement === "ventus") {
           // Bonus: +3 LP
-          context.setPlayerField((prev) =({ ...prev, life: prev.life + 3 }))
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
           bonusMessage = " Bonus Ventus: +3 LP!"
         }
       }
 
       const newDp = currentDp + dpBonus
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
@@ -1296,12 +1296,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "contra-ataque-surpresa",
     name: "Contra-Ataque Surpresa",
     requiresTargets: false,
-    canActivate: () =({ canActivate: true }),
-    resolve: (context) ={
+    canActivate: () => ({ canActivate: true }),
+    resolve: (context) => {
       const strongest = context.enemyField.unitZone.reduce((max: FieldCard | null, u) =>
-        u && (!max || (u.currentDp ?? u.dp) (max.currentDp ?? max.dp)) ? u : max, null)
+        u && (!max || (u.currentDp ?? u.dp) > (max.currentDp ?? max.dp)) ? u : max, null)
       const dmg = strongest ? (strongest.currentDp ?? strongest.dp) : 3
-      context.setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - dmg) }))
+      context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - dmg) }))
       return { success: true, message: `Armadilha Ativada! Contra-Ataque Surpresa causou ${dmg} de dano direto ao oponente!` }
     },
   },
@@ -1309,17 +1309,17 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "escudo-de-mana",
     name: "Escudo de Mana",
     requiresTargets: false,
-    canActivate: (context) ={
-      const hasTarget = context.enemyField.functionZone.some((f) =f !== null)
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.functionZone.some((f) => f !== null)
       if (!hasTarget) return { canActivate: false, reason: "Oponente não tem carta de função em campo" }
       return { canActivate: true }
     },
-    resolve: (context) ={
-      const idx = context.enemyField.functionZone.findIndex((f) =f !== null)
+    resolve: (context) => {
+      const idx = context.enemyField.functionZone.findIndex((f) => f !== null)
       if (idx === -1) {
         return { success: true, message: "Escudo de Mana ativado, mas o oponente não tinha carta de função em campo pra destruir." }
       }
-      context.setEnemyField((prev) ={
+      context.setEnemyField((prev) => {
         const nz = [...prev.functionZone]
         const destroyed = nz[idx]
         nz[idx] = null
@@ -1332,25 +1332,25 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "portao-da-fortaleza",
     name: "Portão da Fortaleza",
     requiresTargets: false,
-    canActivate: (context) ={
-      const hasTarget = context.enemyField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo" }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const enemyUnitIndices = context.enemyField.unitZone
-        .map((u, i) =(u ? i : -1))
-        .filter((i) =i !== -1)
+        .map((u, i) => (u ? i : -1))
+        .filter((i) => i !== -1)
       if (enemyUnitIndices.length === 0) {
         return { success: true, message: "Portão da Fortaleza ativado, mas o oponente não tinha unidade em campo." }
       }
       const idx = enemyUnitIndices[Math.floor(Math.random() * enemyUnitIndices.length)]
-      context.setEnemyField((prev) ={
+      context.setEnemyField((prev) => {
         const nz = [...prev.unitZone]
         const returned = nz[idx]
         nz[idx] = null
         const newHand = returned ? [...prev.hand, returned] : [...prev.hand]
-        if (newHand.length 1) {
+        if (newHand.length > 1) {
           const discardIdx = Math.floor(Math.random() * (newHand.length - 1))
           const discarded = newHand.splice(discardIdx, 1)[0]
           return { ...prev, unitZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
@@ -1365,17 +1365,17 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Brincadeira de Mau Gosto",
     requiresTargets: true,
     targetConfig: { enemyUnits: 1 },
-    canActivate: (context) ={
-      const hasTarget = context.enemyField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasTarget = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasTarget) return { canActivate: false, reason: "Oponente não tem unidade em campo" }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       const idx = targets?.enemyUnitIndices?.[0]
       if (idx === undefined || !context.enemyField.unitZone[idx]) {
         return { success: false, message: "Escolha uma unidade inimiga válida." }
       }
-      context.setEnemyField((prev) ={
+      context.setEnemyField((prev) => {
         const nz = [...prev.unitZone]
         const u = nz[idx]
         if (u) {
@@ -1397,24 +1397,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       enemyUnits: 1,
     },
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has 2+ units of the same brotherhood
-      const units = context.playerField.unitZone.filter((u) =u !== null) as FieldCard[]
+      const units = context.playerField.unitZone.filter((u) => u !== null) as FieldCard[]
 
       // Brotherhood check functions
       const brotherhoods = [
         // Avalon: Arthur, Morgana, Galahad, Vivian, Merlin, Mordred, Cavaleiro Verde, Caveiro Afogado
-        (name: string) =name.includes("arthur") || name.includes("morgana") || name.includes("galahad") || name.includes("vivian") || name.includes("merlin") || name.includes("mordred") || name.includes("cavaleiro verde") || name.includes("caveiro afogado"),
+        (name: string) => name.includes("arthur") || name.includes("morgana") || name.includes("galahad") || name.includes("vivian") || name.includes("merlin") || name.includes("mordred") || name.includes("cavaleiro verde") || name.includes("caveiro afogado"),
         // The Great Order: Fehnon, Morgana, Calem
-        (name: string) =name.includes("fehnon") || name.includes("morgana") || name.includes("calem"),
+        (name: string) => name.includes("fehnon") || name.includes("morgana") || name.includes("calem"),
         // Scandinavian Angels
-        (name: string) =name.includes("scandinavian angel"),
+        (name: string) => name.includes("scandinavian angel"),
         // Tormenta Prominence: Jaden
-        (name: string) =name.includes("jaden"),
+        (name: string) => name.includes("jaden"),
       ]
 
-      const hasBrotherhood = brotherhoods.some((checkFn) ={
-        const count = units.filter((u) =checkFn(u.name.toLowerCase())).length
+      const hasBrotherhood = brotherhoods.some((checkFn) => {
+        const count = units.filter((u) => checkFn(u.name.toLowerCase())).length
         return count >= 2
       })
 
@@ -1422,14 +1422,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         return { canActivate: false, reason: "Você precisa ter 2 ou mais Unidades da mesma Irmandade em campo" }
       }
 
-      const hasEnemyUnits = context.enemyField.unitZone.some((u) =u !== null)
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "O oponente não possui unidades no campo" }
       }
 
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.enemyUnitIndices?.length) {
         return { success: false, message: "Selecione uma unidade inimiga" }
       }
@@ -1444,7 +1444,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       const currentDp = enemyUnit.currentDp || enemyUnit.dp
       const newDp = Math.max(0, currentDp - 2)
 
-      context.setEnemyField((prev) ={
+      context.setEnemyField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const newGraveyard = [...prev.graveyard]
         if (newDp <= 0) {
@@ -1464,7 +1464,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       if (newDp <= 0) {
         return { success: true, message: `Investida Coordenada! ${enemyUnit.name} foi destruída!` }
       }
-      return { success: true, message: `Investida Coordenada! ${enemyUnit.name} perdeu 2 DP! (${currentDp} -${newDp})` }
+      return { success: true, message: `Investida Coordenada! ${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
     },
   },
 
@@ -1472,13 +1472,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "lacos-da-ordem",
     name: "Laços da Ordem",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has 2+ Great Order units (Fehnon, Morgana, Calem)
       const greatOrderNames = ["fehnon", "morgana", "calem"]
-      const greatOrderCount = context.playerField.unitZone.filter((u) ={
+      const greatOrderCount = context.playerField.unitZone.filter((u) => {
         if (u === null) return false
         const name = u.name.toLowerCase()
-        return greatOrderNames.some((n) =name.includes(n))
+        return greatOrderNames.some((n) => name.includes(n))
       }).length
 
       if (greatOrderCount < 2) {
@@ -1487,24 +1487,24 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
 
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const greatOrderNames = ["fehnon", "morgana", "calem"]
 
       // Check for trio (all 3)
-      const hasFehnon = context.playerField.unitZone.some((u) =u !== null && u.name.toLowerCase().includes("fehnon"))
-      const hasMorgana = context.playerField.unitZone.some((u) =u !== null && u.name.toLowerCase().includes("morgana"))
-      const hasCalem = context.playerField.unitZone.some((u) =u !== null && u.name.toLowerCase().includes("calem"))
+      const hasFehnon = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("fehnon"))
+      const hasMorgana = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("morgana"))
+      const hasCalem = context.playerField.unitZone.some((u) => u !== null && u.name.toLowerCase().includes("calem"))
       const hasTrio = hasFehnon && hasMorgana && hasCalem
 
       // Base effect: recover an Action Function from graveyard
-      const actionCards = context.playerField.graveyard.filter((c) =c.type === "action")
+      const actionCards = context.playerField.graveyard.filter((c) => c.type === "action")
       let recoveredCard: typeof actionCards[0] | null = null
 
-      if (actionCards.length 0) {
+      if (actionCards.length > 0) {
         recoveredCard = actionCards[0]
-        context.setPlayerField((prev) ={
+        context.setPlayerField((prev) => {
           const graveyardCopy = [...prev.graveyard]
-          const cardIndex = graveyardCopy.findIndex((c) =c.id === recoveredCard!.id)
+          const cardIndex = graveyardCopy.findIndex((c) => c.id === recoveredCard!.id)
           if (cardIndex !== -1) {
             graveyardCopy.splice(cardIndex, 1)
           }
@@ -1521,15 +1521,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         : "Nenhuma Action Function no Cemitério para recuperar."
 
       // Trio bonus: draw a card, if it's a Function type, +2DP to a unit
-      if (hasTrio && context.playerField.deck.length 0) {
+      if (hasTrio && context.playerField.deck.length > 0) {
         const drawnCard = context.playerField.deck[0]
         const isFunction = drawnCard.type === "action" || drawnCard.type === "magic" || drawnCard.type === "trap"
 
         if (isFunction) {
           // Draw the card and give +2DP to the first unit on field
-          const firstUnitIndex = context.playerField.unitZone.findIndex((u) =u !== null)
+          const firstUnitIndex = context.playerField.unitZone.findIndex((u) => u !== null)
 
-          context.setPlayerField((prev) ={
+          context.setPlayerField((prev) => {
             const newUnitZone = [...prev.unitZone]
             if (firstUnitIndex !== -1 && newUnitZone[firstUnitIndex]) {
               const unit = newUnitZone[firstUnitIndex]!
@@ -1551,7 +1551,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
             : "unidade"
           message += ` Trio completo! Comprou "${drawnCard.name}" (Função) e ${unitName} ganhou +2DP!`
         } else {
-          context.setPlayerField((prev) =({
+          context.setPlayerField((prev) => ({
             ...prev,
             hand: [...prev.hand, drawnCard],
             deck: prev.deck.slice(1),
@@ -1568,13 +1568,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "estrategia-real",
     name: "Estratégia Real",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       if (context.playerField.deck.length === 0) {
         return { canActivate: false, reason: "Seu deck está vazio" }
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       // Check if player has Rei Arthur on field
       const hasArthur = context.playerField.unitZone.some((u) =>
         u !== null && u.name === "Rei Arthur"
@@ -1584,7 +1584,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       const actualDraw = Math.min(drawCount, context.playerField.deck.length)
       const drawnCards = context.playerField.deck.slice(0, actualDraw)
 
-      context.setPlayerField((prev) =({
+      context.setPlayerField((prev) => ({
         ...prev,
         hand: [...prev.hand, ...drawnCards],
         deck: prev.deck.slice(actualDraw),
@@ -1604,9 +1604,9 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     targetConfig: {
       allyUnits: 1,
     },
-    canActivate: (context) ={
+    canActivate: (context) => {
       // Check if player has a Ventus or Haos (Lightness) unit on field
-      const hasValidUnit = context.playerField.unitZone.some((u) ={
+      const hasValidUnit = context.playerField.unitZone.some((u) => {
         if (u === null) return false
         const el = u.element?.toLowerCase() || ""
         return el === "ventus" || el === "haos" || el === "lightness"
@@ -1617,7 +1617,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma Unidade Ventus ou Lightness sua" }
       }
@@ -1635,7 +1635,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
 
       // Allow the unit to attack twice (reset hasAttacked and canAttack)
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
@@ -1656,7 +1656,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Troca de Guarda",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) ={
+    canActivate: (context) => {
       const hasDarknessUnit = context.playerField.unitZone.some((u) =>
         u !== null && u.element?.toLowerCase() === "darkus"
       )
@@ -1665,7 +1665,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) {
         return { success: false, message: "Selecione uma Unidade Darkus sua" }
       }
@@ -1675,7 +1675,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       if (allyUnit.element?.toLowerCase() !== "darkus") {
         return { success: false, message: "A unidade selecionada deve ser do Elemento Darkus" }
       }
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const unitToReturn = newUnitZone[allyIndex]
         if (!unitToReturn) return prev
@@ -1690,7 +1690,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "chamado-da-tavola",
     name: "Chamado da Távola",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       // A Troop Unit is: type==="troops"|"trooper"  OR  type==="unit" with "troop" in category
       const isTroop = (c: any) =>
         c.type === "troops" ||
@@ -1702,7 +1702,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const isTroop = (c: any) =>
         c.type === "troops" ||
         c.type === "trooper" ||
@@ -1722,12 +1722,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     requiresTargets: true,
     requiresDice: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) ={
-      const hasAllyUnits = context.playerField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
       if (!hasAllyUnits) return { canActivate: false, reason: "Você precisa ter uma unidade em campo" }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.allyUnitIndices?.length) return { success: false, message: "Selecione uma unidade sua" }
       const allyIndex = targets.allyUnitIndices[0]
       const allyUnit = context.playerField.unitZone[allyIndex]
@@ -1737,7 +1737,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       if (diceResult <= 2) {
         const newDp = Math.max(0, currentDp - 5)
         const isDestroyed = newDp <= 0
-        context.setPlayerField((prev) ={
+        context.setPlayerField((prev) => {
           const newUnitZone = [...prev.unitZone]
           if (isDestroyed) {
             const dead = newUnitZone[allyIndex]; newUnitZone[allyIndex] = null
@@ -1751,7 +1751,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       if (diceResult <= 4) return { success: true, message: `Dado: ${diceResult}! Nada acontece.` }
       const newDp = currentDp + 8
-      context.setPlayerField((prev) ={
+      context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp, calamidadeDebuffTurn: (context.playerField as any).turnNumber + 2 } as any
         return { ...prev, unitZone: newUnitZone as any }
@@ -1767,16 +1767,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Veredito do Rei Tirano",
     requiresTargets: true,
     targetConfig: { enemyUnits: 1 },
-    canActivate: (context) ={
+    canActivate: (context) => {
       const hasArthur = context.playerField.unitZone.some(
-        u =u !== null && u.name.toLowerCase().includes("rei arthur")
+        u => u !== null && u.name.toLowerCase().includes("rei arthur")
       )
       if (!hasArthur) return { canActivate: false, reason: "Requer Rei Arthur em campo" }
-      const hasEnemyUnits = context.enemyField.unitZone.some(u =u !== null)
+      const hasEnemyUnits = context.enemyField.unitZone.some(u => u !== null)
       const hasTargets = hasEnemyUnits  // can also target LP directly
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       const DAMAGE = 5
       // If enemy unit selected — deal 5DP to it
       if (targets?.enemyUnitIndices?.length) {
@@ -1784,13 +1784,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         const target = context.enemyField.unitZone[idx]
         if (!target) {
           // No unit at index — deal directly to LP
-          context.setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - DAMAGE) }))
+          context.setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - DAMAGE) }))
           return { success: true, message: `Veredito! ${DAMAGE}DP causados diretamente ao LP inimigo!` }
         }
         const currentDp = (target as any).currentDp ?? target.dp
         const newDp = Math.max(0, currentDp - DAMAGE)
         const destroyed = newDp <= 0
-        context.setEnemyField(prev ={
+        context.setEnemyField(prev => {
           const newZone = [...prev.unitZone] as typeof prev.unitZone
           if (destroyed) {
             newZone[idx] = null
@@ -1803,7 +1803,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
         return { success: true, message: `Veredito! ${target.name} −${DAMAGE}DP (${currentDp}→${newDp})` }
       }
       // No enemy units on field — deal directly to LP
-      context.setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - DAMAGE) }))
+      context.setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - DAMAGE) }))
       return { success: true, message: `Veredito do Rei Tirano! ${DAMAGE}DP causados diretamente ao LP inimigo!` }
     },
   },
@@ -1813,14 +1813,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Flecha de Balista",
     requiresTargets: true,
     targetConfig: { enemyUnits: 1 },
-    canActivate: (context) ={
-      const hasEnemyUnits = context.enemyField.unitZone.some((u) =u !== null)
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
       if (!hasEnemyUnits) {
         return { canActivate: false, reason: "O oponente não tem Unidades no campo" }
       }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       if (!targets?.enemyUnitIndices?.length) {
         return { success: false, message: "Selecione uma Unidade inimiga" }
       }
@@ -1832,7 +1832,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       const newDp = Math.max(0, currentDp - 2)
       const isDestroyed = newDp <= 0
 
-      context.setEnemyField((prev) ={
+      context.setEnemyField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const newGraveyard = [...prev.graveyard]
         if (isDestroyed) {
@@ -1855,7 +1855,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "pedra-de-afiar",
     name: "Pedra de Afiar",
     requiresTargets: false,
-    canActivate: (context) ={
+    canActivate: (context) => {
       const hasMainUnit = context.playerField.unitZone.some((u) =>
         u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
       )
@@ -1864,12 +1864,12 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
       }
       return { canActivate: true }
     },
-    resolve: (context) ={
+    resolve: (context) => {
       const hasUltimateGear = context.playerField.ultimateZones.some(z=>z !== null)
 
       if (hasUltimateGear) {
         // Already has UG equipped: deal -1DP direct to enemy LP
-        context.setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - 1) }))
+        context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
         return { success: true, message: `Pedra de Afiar: Ultimate Gear já equipada! -1DP direto aos LP do oponente!` }
       }
 
@@ -1884,20 +1884,20 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     id: "julgamento-do-vazio-eterno",
     name: "Julgamento do Vazio Eterno",
     requiresTargets: false,
-    canActivate: (context) ={
-      const hasCalem = context.playerField.unitZone.some(u =u && u.name.toLowerCase().includes("calem"))
+    canActivate: (context) => {
+      const hasCalem = context.playerField.unitZone.some(u => u && u.name.toLowerCase().includes("calem"))
       if (!hasCalem) return { canActivate: false, reason: "Requer Calem Hidenori no seu campo de batalha!" }
       return { canActivate: true }
     },
-    resolve: (context) ={
-      const hasEnemyUnits = context.enemyField.unitZone.some(u =u !== null)
+    resolve: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some(u => u !== null)
       if (hasEnemyUnits) {
         // Show choice: attack unit or direct LP
-        context.setPlayerField(prev =prev) // trigger re-render handled by choice modal
+        context.setPlayerField(prev => prev) // trigger re-render handled by choice modal
         return { success: true, message: "JULGAMENTO_VAZIO_CHOOSE" }
       } else {
         // Direct LP damage
-        context.setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - 5) }))
+        context.setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 5) }))
         return { success: true, message: "JULGAMENTO DO VAZIO ETERNO: 5DP de dano direto ao oponente!" }
       }
     },
@@ -1909,14 +1909,14 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
     name: "Cálice de Vinho Sagrado",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) ={
-      const hasAllyUnit = context.playerField.unitZone.some(u =u !== null)
+    canActivate: (context) => {
+      const hasAllyUnit = context.playerField.unitZone.some(u => u !== null)
       if (!hasAllyUnit) return { canActivate: false, reason: "Precisa de pelo menos uma unidade no seu campo!" }
       return { canActivate: true }
     },
-    resolve: (context, targets) ={
+    resolve: (context, targets) => {
       // Heal 1LP
-      context.setPlayerField(prev ={
+      context.setPlayerField(prev => {
         const newLife = Math.min(50, prev.life + 1)
         const newUnitZone = [...prev.unitZone]
         // Apply +1DP to chosen unit if target provided
@@ -1936,7 +1936,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect= {
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
-const getBaseCardId = (cardId: string): string ={
+const getBaseCardId = (cardId: string): string => {
   // Card IDs in deck are formatted as: "original-id-deck-timestamp"
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
@@ -1947,7 +1947,7 @@ const getBaseCardId = (cardId: string): string ={
 }
 
 // Helper function to get effect for a card - also checks by card name
-const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null ={
+const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
   // First try by base ID
   const baseId = getBaseCardId(card.id)
   if (FUNCTION_CARD_EFFECTS[baseId]) {
@@ -1956,13 +1956,13 @@ const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCar
 
   // Fallback: try to match by card name
   const effectByName = Object.values(FUNCTION_CARD_EFFECTS).find(
-    (effect) =effect.name === card.name
+    (effect) => effect.name === card.name
   )
   return effectByName || null
 }
 
 // Helper to check if a Function card can be activated
-const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } ={
+const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
   const effect = getFunctionCardEffect({ id: cardId })
   if (!effect) {
     return { canActivate: true } // Unknown cards can be placed normally
@@ -1971,12 +1971,12 @@ const canActivateFunctionCard = (cardId: string, context: EffectContext): { canA
 }
 
 // Function to get playmat for a deck
-// REMOVED: const getPlaymatForDeck = (deck: DeckWithImages): { image: string } | null ={
+// REMOVED: const getPlaymatForDeck = (deck: DeckWithImages): { image: string } | null => {
 //   if (!deck.playmatImage) return null
 //   return { image: deck.playmatImage }
 // }
 
-const getElementColors = (element: string): string[] ={
+const getElementColors = (element: string): string[] => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -2006,7 +2006,7 @@ const getElementColors = (element: string): string[] ={
   }
 }
 
-const getElementGlow = (element: string): string ={
+const getElementGlow = (element: string): string => {
   const el = element?.toLowerCase()
   switch (el) {
     case "aquos":
@@ -2039,7 +2039,7 @@ const getElementGlow = (element: string): string ={
 // Transforms set via rAF JS �� no @keyframes on preserve-3d elements (would flatten).
 interface DiceCanvas3DProps { result: number | null; cardName: string }
 
-const DICE_PIPS: Record<number,[number,number][]= {
+const DICE_PIPS: Record<number,[number,number][]> = {
   1:[[50,50]],
   2:[[25,25],[75,75]],
   3:[[22,22],[50,50],[78,78]],
@@ -2048,7 +2048,7 @@ const DICE_PIPS: Record<number,[number,number][]= {
   6:[[22,26],[50,26],[78,26],[22,74],[50,74],[78,74]],
 }
 const DICE_FACE_NUMS = [1,6,2,5,3,4] // front,back,right,left,top,bot
-const DICE_SETTLE: Record<number,{rx:number,ry:number}= {
+const DICE_SETTLE: Record<number,{rx:number,ry:number}> = {
   1:{rx:0,  ry:0  }, 2:{rx:0,  ry:-90},
   3:{rx:-90,ry:0  }, 4:{rx:90, ry:0  },
   5:{rx:0,  ry:90 }, 6:{rx:0,  ry:180},
@@ -2057,7 +2057,7 @@ const DICE_SETTLE: Record<number,{rx:number,ry:number}= {
 
 // ─── Sound System ───���────────────────────��─────────────────��───────────────────
 // Paths relative to /public — all lowercase, served as static files by Next.js
-const SOUND_DATA: Record<string, string= {
+const SOUND_DATA: Record<string, string> = {
   cardSummon: "data:audio/wav;base64,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zQDhAOEA5QDlAN4A3gC9AL0AVgBWAOz/7P+b/5v/X/9f/zT/NP8b/xv/FP8U/x3/Hf8x/zH/bf9t/+P/4/9BAEEAgQCBAKoAqgDCAMIAzQDNANEA0QDNAM0AwADAAH0AfQAPAA8Au/+7/4T/hP9j/2P/U/9T/0v/S/9H/0f/Qf9B/0b/Rv+O/47/7P/s/zYANgBtAG0AkgCSAKkAqQC0ALQAuQC5ALsAuwCrAKsAVQBVAP////+9/73/if+J/2H/Yf9F/0X/Nf81/zL/Mv84/zj/ZP9k/83/zf8lACUAZABkAJIAkgCyALIAyQDJANYA1gDZANkAzwDPAIoAigAYABgAvv++/4D/gP9Y/1j/QP9A/zT/NP8v/y//Lv8u/zr/Ov+K/4r/8//z/0QARAB/AH8ApwCnALsAuwDDAMMAwgDCAL8AvwCqAKoAUQBRAPj/+P+3/7f/hf+F/2H/Yf9K/0r/QP9A/z//P/9H/0f/cP9w/9P/0/8kACQAXABcAIQAhACgAKAAtQC1AMEAwQDFAMUAvgC+AH4AfgATABMAwf/B/4j/iP9j/2P/TP9M/z//P/83/zf/NP80/z3/Pf+M/4z/9P/0/0UARQCBAIEAqQCpAL8AvwDIAMgAyQDJAMcAxwCyALIAWABYAP3//f+4/7j/gf+B/1v/W/9C/0L/OP84/zj/OP8//z//aP9o/8v/y/8cABwAVgBWAH8AfwCdAJ0AsgCyAL4AvgDAAMAAuQC5AHoAegATABMAw//D/47/jv9s/2z/V/9X/0r/Sv9E/0T/Qf9B/0r/Sv+Y/5j//f/9/0oASgCCAIIApgCmALkAuQDBAMEAwQDBAMAAwACrAKsAUwBTAPn/+f+z/7P/ff99/1f/V/8+/z7/NP80/zX/Nf87/zv/Zf9l/8b/xv8WABYAUQBRAH4AfgCeAJ4AtQC1AMIAwgDGAMYAvgC+AIEAgQAaABoAzf/N/5j/mP91/3X/YP9g/1H/Uf9I/0j/RP9E/03/Tf+Z/5n//P/8/0gASAB9AH0AnwCfALAAsAC2ALYAtwC3ALUAtQChAKEASgBKAPH/8f+t/63/ef95/1X/Vf8//z//OP84/zr/Ov9D/0P/a/9r/8v/y/8bABsAVgBWAIIAggCjAKMAugC6AMcAxwDKAMoAwQDBAIQAhAAfAB8A0v/S/53/nf95/3n/Yv9i/1H/Uf9G/0b/QP9A/0n/Sf+U/5T/9f/1/z8APwB0AHQAlACUAKUApQCtAK0ArwCvALAAsACeAJ4ASgBKAPL/8v+w/7D/ff99/1v/W/9I/0j/Qv9C/0X/Rf9N/03/dP90/9L/0v8gACAAWwBbAIYAhgCnAKcAvQC9AMYAxgDGAMYAvAC8AH8AfwAaABoAz//P/5n/mf92/3b/Xv9e/0z/TP9A/0D/O/87/0T/RP+P/4//8f/x/zsAOwBuAG4AjwCPAKEAoQCsAKwAsACwALMAswCjAKMATwBPAPr/+v+3/7f/hv+G/2T/ZP9T/1P/Tf9N/0//T/9U/1T/ef95/9T/1P8fAB8AWABYAIMAgwCiAKIAtgC2AL4AvgC9AL0AsQCxAHQAdAASABIAyP/I/5b/lv9z/3P/Wv9a/0r/Sv8+/z7/O/87/0b/Rv+T/5P/9P/0/z4APgBxAHEAkgCSAKQApACvAK8AtQC1ALgAuACpAKkAVQBVAP////+8/7z/iv+K/2n/af9X/1f/UP9Q/1D/UP9U/1T/dv92/87/zv8YABgATwBPAHoAegCZAJkArACsALUAtQCyALIAqACoAG4AbgAQABAAyP/I/5j/mP92/3b/X/9f/07/Tv9E/0T/Q/9D/1D/UP+c/5z//f/9/0QARAB2AHYAlQCVAKYApgCxALEAtwC3ALoAugCoAKgAVQBVAP3//f+6/7r/iP+I/2f/Z/9U/1T/Tv9O/03/Tf9W/1b/c/9z/5f/l/+F/4X/R/9H/1D/UP/k/+T/6QDpAB4CHgK5ArkCYAJgAggBCAEm/yb/Dv4O/hj+GP4j/yP/jACMAAgBCAFfAF8Axv7G/jT9NP09/T39y/7L/lgBWAGBA4ED2QPZA2UCZQKs/6z/hf2F/Vj9WP39/v3+ngGeAT4DPgPIAsgCbABsABr9Gv1f+1/7Hvwe/Pz+/P6WApYCOQQ5BFgDWAMqACoAhPyE/Fb7VvsH/Qf9AAEAAdYE1gTHBccFrAOsAyj/KP84+zj7mvqa+jj9OP3vAe8BPgU+Bf0E/QRwAXABHPwc/PP48/jm+eb5W/5b/iQEJAQbBxsH9AX0BVABUAHP+8/7o/mj+a/7r/sFAQUBNQY1BnQHdAddBF0EFv4W/pH4kfiE94T3E/sT+6wBrAHGBsYGNgc2BzkDOQOW/Jb8Pfg9+O747vg8/jz+ewV7BX0JfQkTCBMI/wH/AXb6dvrG9sb2z/jP+Gj/aP+DBoMGAwkDCcsFywVT/lP+WPdY96n1qfUP+g/6YgJiAi4JLgkgCiAKGgUaBbr8uvzA9sD2+fb59hf9F/3ABcAFzQrNCkkJSQkJAgkCE/kT+Wv0a/Sh9qH2dv52/iQHJAfACsAKeQd5By7/Lv8J9wn3qvSq9GD5YPm/Ar8C1QrVCmIMYgy5BrkG/fz9/Gf1Z/Wo9Kj07Prs+k0ETQRZClkKUwlTCfgB+AHi+OL4TPRM9PX29faL/4v/oQihCB0MHQw2CDYIJP8k/8z2zPau9K70yPnI+TYDNgOzCrMKQgtCC+wE7ARf+1/78vTy9Jf1l/W2/Lb88gXyBfQK9AqyCLIIkQCRAL/3v/cZ9Bn0wPfA98QAxAB6CXoJNQw1DLAHsAeO/o7+4fbh9ov1i/X9+v36FQQVBH4Kfgr4CfgJ3QLdAk/5T/mw87DzXfVd9VL9Uv3eBt4GoguiC/cI9wioAKgAI/gj+Dn1OfV3+Xf5fQJ9AlwKXArOC84L/QX9BUb8RvwC9QL1rvSu9C/7L/uhBKEEoAqgCnsJewn9Af0B2vja+Gn0afQs9yz3pP+k/5QIlAgODA4MPwg/CFj/WP8n9yf3G/Ub9Qb6BvoLAwsDMgoyCrUKtQpjBGME2frZ+m/0b/QZ9Rn1RvxG/J8FnwUECwQLPgk+CWoBagGZ+Jn44PTg9GT4ZPg4ATgBrwmvCTYMNgx/B38HA/4D/gr2Cvao9Kj0RfpF+oQDhAMaChoKywnLCeoC6gKP+Y/5KPQo9CL2IvY4/jj+kAeQBwQMBAwoCSgJsgCyABT4FPgb9Rv1TflN+SMCIwK5CbkJDgsOC3IFcgX9+/376PTo9K30rfQz+zP7nAScBJcKlwqqCaoJfAJ8Anv5e/np9On0ifeJ9+L/4v+8CLwIKwwrDFwIXAho/2j/8Pbw9pj0mPRx+XH5gwKDArcJtwlNCk0KGwQbBLT6tPpp9Gn0PfU99bj8uPxGBkYGnQudC7MJswnMAcwB7fjt+CD1IPWF+IX4LwEvAWIJYgmNC40LrAasBlr9Wv2b9Zv1Y/Rj9B76HvpxA3EDFgoWCt4J3glIA0gDRPpE+vr0+vTE9sT2n/6f/scHxwcXDBcMKQkpCa4ArgAC+AL4wPTA9Kv4q/hzAXMBLwkvCasKqwo0BTQF4Pvg++r06vS79Lv0VPtU+/sE+wQmCyYLMAowCuUC5QLX+df5NfU19bz3vPf4//j/tAi0COkL6QvPB88Hvv6+/nH2cfZG9Eb0L/kv+U8CTwKQCZAJNwo3Ch4EHgQH+wf7EPUQ9QL2AvZN/U39qAaoBtYL1gvTCdMJ3wHfAfj4+PgS9RL1JPgk+H0AfQCgCKAI9gr2CkIGQgYb/Rv9f/V/9V/0X/Qj+iP6kQORA4IKggqGCoYK6APoA8n6yfpl9WX1D/cP98T+xP7HB8cHAgwCDOYI5ggsACwAZfdl90f0R/RT+FP4KQEpAfAI8Ah7CnsKHgUeBe377fs79Tv1V/VX9QT8BPx4BXgFdQt1C2AKYAoGAwYD7/nv+UX1RfWw97D3mP+Y/wUIBQgwCzALRwdHB2b+Zv5A9kD2MfQx9Cb5JvlMAkwCqgmqCaEKoQrMBMwEs/uz+5n1mfVm9mb2jP2M/cQGxAbaC9oLwQnBCakBqQGD+IP4d/R39J33nfcNAA0AQAhACKsKqwoXBhcGEv0S/Zj1mPW69Lr0vfq9+jQENATwCvAKzQrNCiEEIQT2+vb6hvWG9R/3H/e0/rT+YwdjB1ULVQs4CDgIs/+z/x33Hfcg9CD0Pvg++B0BHQHnCOcIlQqVCowFjAWf/J/86fXp9df11/VZ/Fn8pQWlBYULhQtgCmAK/wL/AsD5wPnM9Mz0CPcI9wD/AP+EB4QHygrKCgQHBAdK/kr+R/ZH9k70TvR5+Xn51wLXAkEKQQoSCxILJAUkBQH8Afzc9dz1lPaU9p39nf2pBqkGawtrCxwJHAkHAQcBFfgV+DL0MvRw93D37f/t/ycIJwidCp0KMAYwBoP9g/1K9kr2YPVg9TH7Mft5BHkEEQsRC9oK2golBCUE9vr2+lv1W/Wm9qb2Bv4G/sYGxgbdCt0K5gfmB4b/hv8N9w33JvQm9Fj4WPhiAWIBZglmCSwLLAsKBgoGC/0L/UT2RPYb9hv2fPx8/KUFpQVeC14L9An0CWACYAIt+S35a/Rr9MT2xPbH/sf+VgdWB6cKpwrzBvMGZ/5n/rr2uvb79Pv0FPoU+j8DPwN+Cn4KNAs0CzkFOQUR/BH85vXm9W32bfYh/SH9+QX5BdIK0gquCK4IwwDDAPb39vcr9Cv0dvd29/n/+f9mCGYIIQshC9QG1AYN/g3+wPbA9rn1ufVk+2T7hQSFBAALAAuwCrAKwgPCA2X6ZfrP9M/0PvY+9rD9sP16BnoGngqeCr4Hvgd//3//PPc896b0pvQB+QH59QH1AcgJyAlrC2sLLwYvBkv9S/3t9u32YPdg9yz+LP7mBuYGfAt8C5oImgil/6X/F/YX9hvyG/Ip9in21//X/wIJAgn7C/sLHQcdB6n9qf0W9hb2jvWO9Xb8dvxUBlQGmwybDPUK9QozAjMCx/fH91zyXPJ+9X71HP8c//gI+AjHDMcMBggGCOz97P0S9RL1VfNV8xf6F/q2BLYEbAxsDB4MHgzdA90DLfkt+c/yz/Is9Sz1z/7P/koJSgkNDg0OyQnJCVP/U/9i9WL1LfIt8gb4Bvi7ArsCZgtmC04MTgyxBLEE0/nT+X7yfvLa89rzSv1K/YoIigjODs4Ougu6C38BfwHc9tz2M/Iz8gn3Cfe0AbQBLwsvC0MNQw0bBhsGwfrB+jbyNvIj8iPy/vr++sAGwAZDDkMOdwx3DLMCswKx97H3KfIp8kP2Q/b4APgARgtGC6MOow4sCCwInvye/BbzFvOU8ZTxfvl++REFEQVADUANhQyFDDMDMwP+9/73n/Gf8b30vfQ//z//MwozCgIPAg/4CfgJ3/7f/tn02fQf8h/y5Pjk+C8ELwT2DPYMXg1eDbIEsgQV+RX5ffF98R7zHvPh/OH8GQgZCCYOJg6MCowKFgAWAMX1xfUJ8gny8/fz9zMDMwO5DLkMeg56DsQGxAYW+xb7nfKd8tXy1fKh+6H7vwa/Bl0NXQ3DCsMK9gD2AMj2yPbW8tbySfhJ+P8C/wIFDAUMYw1jDZkFmQUy+jL6N/I38hrzGvN0/HT8rQetBxUOFQ4fCx8LAAEAAZD2kPZI8kjydPd09woCCgIOCw4LlwyXDCoFKgUT+hP6T/JP8k7zTvPA/MD8HAgcCKIOog69C70LrwGvASn3Kfet8q3ysPew9ysCKwImCyYLnwyfDAIFAgXJ+cn55PHk8cTyxPI1/DX8sAewB0YORg5sC2wLZQFlARD3EPfm8ubyLfgt+OIC4gL+C/4LXg1eDZ4FngVE+kT6QfJB8vry+vIY/Bj8MwczB4ANgA1zCnMKZQBlAEL2QvZO8k7yyPfI96sCqwL8C/wLuQ25DU0GTQYr+yv7SPNI8/jz+PPK/Mr8ngeeB7ENsQ2ACoAKSQBJAN/13/Wx8bHx//b/9sUBxQE1CzULLg0uDfoF+gUJ+wn7R/NH8xv0G/Qz/TP9OAg4CGsOaw5CC0IL3gDeAEP2Q/bx8fHxJfcl99cB1wEKCwoLvgy+DFoFWgVH+kf6hPKE8ojziPPL/Mv88AfwBz0OPQ41CzULHAEcAcn2yfas8qzyA/gD+KgCqAKpC6kLMQ0xDaoFqgV4+nj6lPKU8kLzQvMz/DP8GQcZB0INQg1ZClkKggCCAGb2ZvZ08nTy5Pfk97kCuQICDAIMxw3HDXIGcgZe+177SPNI88DzwPOI/Ij8SwdLB1YNVg0rCisKCgAKALz1vPWo8ajxHPcc9yUCJQKeC54Lig2KDVIGUgZe+177kfOR80z0TPQ//T/9HQgdCBUOFQ6zCrMKZQBlAPT19PXG8cbxDvcO98kByQEECwQLxAzEDHUFdQWg+qD6F/MX8/vz+/ME/QT98gfyBxoOGg4LCwsLBgEGAcz2zPay8rLyzPfM90oCSgJTC1ML8gzyDI8FjwWE+oT6qfKp8lXzVfM5/Dn8IwcjB3sNew2bCpsKugC6AJ32nfal8qXyCfgJ+MkCyQICDAIMwA3ADU0GTQYN+w37BvMG84/zj/NW/Fb8FQcVByANIA0DCgMK+f/5/8j1yPXw8fDxifeJ93UCdQLPC88LqA2oDW0GbQaB+4H7vfO982v0a/Q0/TT9uwe7B40NjQ1LCksKLgAuAOv16/XW8dbxHvce98gByAHzCvMKyAzIDMUFxQUN+w37bfNt8zj0OPQi/SL98gfyBwcOBw72CvYK+QD5AKn2qfZj8mPygPeA9wgCCAIZCxkLxAzEDHYFdgWD+oP6ufK58m3zbfN2/Hb8dwd3B7UNtQ3ECsQK4gDiAMj2yPbN8s3yIvgi+M8CzwLrC+sLag1qDeQF5AXX+tf69vL28ovzi/NH/Ef88gbyBvQM9AzlCeUJEAAQAD/2P/Z88nzy6ffp95kCmQLBC8ELiA2IDV0GXQaN+4371vPW8130XfTc/Nz8UAdQByoNKg0ECgQKEgASAPb19vX28fbxOPc4988BzwEUCxQLCw0LDQkGCQZX+1f7uvO683P0c/Q7/Tv95QflB+UN5Q3LCssKrwCvAGX2ZfY+8j7yYvdi994B3gHiCuIKkgySDF8FXwWN+o368PLw8tzz3PPR/NH8nwefB7wNvA3FCsUK8gDyAPf29/YF8wXzQPhA+J8CnwJmC2YL6gzqDJwFnAW++r76APMA853znfNL/Ev84AbgBt0M3QwGCgYKcABwAJz2nPbI8sjyG/gb+K4CrgK9C70LeA14DVIGUgaC+4L7nfOd8wz0DPSU/JT8DQcNB+8M7wzcCdwJAgACAP71/vUK8gryXfdd9x8CHwJbC1sLOg06DS8GLwaA+4D74vPi85H0kfRF/UX92gfaB6wNrA1mCmYKYQBhAEj2SPY98j3yYPdg98kByQG9Cr0KbwxvDFcFVwXR+tH6bfNt80P0Q/QM/Qz9rQetB6sNqw2zCrMK8wDzAAH3AfcF8wXzAfgB+D0CPQIOCw4LowyjDHIFcgWv+q/6B/MH86zzrPNU/FT88wbzBh4NHg1RClEKswCzANv22/YA8wDzPvg++LgCuAKzC7MLZA1kDSQGJAYx+zH7YPNg8+Tz5PNv/G/85QblBskMyQy0CbQJ/P/8/xz2HPZi8mLyy/fL914CXgJtC20LNw03DTQGNAaZ+5n7B/QH9LH0sfQ//T/9gQeBBy8NLw0ICggKMwAzADj2OPZB8kHyZPdk98UBxQGyCrIKeQx5DKMFowUy+zL7wvPC84T0hPQw/TD9tQe1B6ENoQ2mCqYK7gDuAOb25vbA8sDyu/e79/sB+wHQCtAKcAxwDFUFVQWs+qz6FfMV88Pzw/OL/Iv8Pwc/BzINMg1OCk4KAQEBAcb3xved9J30AfoB+sUDxQNbC1sLVQtVC1sDWwP2+Pb4m/Kb8rn0ufTb/dv9zgfOB1gMWAxHCEcIzv7O/m32bfac9Jz01vrW+pkEmQR+C34LvQq9CrwCvAIH+Qf55fPl89n22fbT/9P/1AjUCPUL9QsCBwIHff19/bb1tvXV9NX0Yfth+7wEvATBCsEKSQlJCVUBVQFq+Gr4ifSJ9GP4Y/h0AXQBrQmtCbMLswtIBkgG+fz5/Bf2F/Yb9hv2xfzF/G8FbwUbChsKpwenB6b/pv9793v3xPTE9EX5RfkaAhoCZglmCW4KbgrWBNYEU/xT/NH20fbg9+D3r/6v/pMGkwbyCfIJygbKBvP+8/6q96r33PXc9WP6Y/p1AnUCcghyCHcIdwjlAuUCR/tH+xb3Fvfo+Oj4n/+f/8wGzAZcCVwJDgYOBtH+0f6r+Kv4pPek9xP8E/xJA0kD8gfyBygHKAeKAYoBmPqY+mH3YfeB+YH5z//P/xYGFgbZB9kHjQSNBBr+Gv5B+UH5OPk4+b/9v/08BDwE1wfXB4QGhAYPAQ8B//r/+qv4q/jr+uv6fwB/AGAFYAUjBiMGwALAAgX9Bf1s+Wz5FPoU+m3+bf4DBAMEpwanBj4FPgWYAJgA2vva+4L6gvrS/NL8gQGBARAFEAUhBSEF1QHVAfX89fyD+oP6zvvO+yQAJACXBJcErgWuBRoDGgPs/ez96fnp+cn5yfli/WL91ALUAgIGAgZRBVEFUAFQAY78jvzP+s/6y/zL/HkBeQFBBUEFTgVOBb4BvgFP/E/8GPkY+ef55/lT/lP+rgOuA/QF9AVcBFwEz//P/7f7t/sp+yn7L/4v/j0DPQNQBlAGVgVWBfMA8wCd+537UPlQ+fr6+vq//7//UQRRBFwFXAWzArMCx/3H/ZD6kPoa+xr7Bf8F/xgEGARgBmAGxwTHBBYAFgBs+2z7QPpA+r/8v/ypAakBSwVLBTEFMQWbAZsBgvyC/O357fkt+y37kv+S/zoEOgSsBawFZwNnA3z+fP6l+qX6kfqR+hL+Ev5QA1ADPQY9BkoFSgUHAQcBDfwN/ED6QPpD/EP8CAEIAfsE+wRCBUIF7wHvAbb8tvyg+aD5gfqB+uL+4v4LBAsEGgYaBlAEUASc/5z/a/tr+9D60PrY/dj96wLrAgEGAQYsBSwFAgECAd773vup+an5UvtS+/3//f9pBGkEVAVUBZgCmAK2/bb9efp5+vf69/rX/tf+8QPxA0wGTAbPBM8EPgA+AKv7q/t++n764/zj/L0BvQFMBUwFIAUgBX4BfgFf/F/8x/nH+Qb7Bvtt/23/KgQqBLkFuQWCA4IDqP6o/tz63PrH+sf6Ov46/mMDYwM4BjgGNQU1BdcA1wDW+9b7D/oP+h38HfzfAN8A1wTXBC0FLQX1AfUB2PzY/Nj52PnM+sz6Gv8a/yUEJQQeBh4GSARIBJf/l/9p+2n7y/rL+sf9x/3OAs4C1QXVBQ8FDwX7APsA6vvq+8H5wflp+2n7CQAJAGgEaARKBUoFmgKaAsb9xv2C+oL6+fr5+tD+0P7jA+MDPwY/BsgEyAREAEQAu/u7+376fvrb/Nv8sQGxATwFPAURBREFcwFzAVz8XPzJ+cn5B/sH+27/bv83BDcEwwXDBZADkAPD/sP+AfsB++j66PpM/kz+XwNfAyYGJgYYBRgFsQCxAMH7wfsF+gX6DPwM/M0AzQDEBMQEHwUfBfIB8gHi/OL89vn2+fb69vo1/zX/LwQvBB4GHgZGBEYEl/+X/277bvvP+s/6xf3F/bECsQKyBbIF+AT4BPQA9ADx+/H7zvnO+Xb7dvsPAA8AZgRmBEkFSQWwArAC4P3g/Zn6mfoI+wj71v7W/tcD1wMpBikGuAS4BEEAQQC++777dPp0+s78zvyaAZoBHgUeBfYE9gRnAWcBYvxi/Nj52PkV+xX7fv9+/0wETATQBdAFnQOdA9X+1f4W+xb7+vr6+lb+Vv5eA14DHQYdBvwE/ASXAJcAt/u3+wL6AvoJ/An8xADEALgEuAQVBRUF7wHvAe387fwa+hr6FvsW+0X/Rf8xBDEEFgYWBj8EPwSW/5b/cftx+9P60/q//b/9iwKLAogFiAXYBNgE5wDnAPn7+fvh+eH5hvuG+xIAEgBdBF0ESwVLBcYCxgL+/f79u/q7+iT7JPvh/uH+1QPVAyIGIgawBLAEPwA/ALH7sftj+mP6v/y//IkBiQEKBQoF5QTlBF0BXQFk/GT83/nf+R77HvuV/5X/WQRZBNQF1AWgA6AD3f7d/iP7I/sG+wb7Wf5Z/lgDWAMKBgoG2gTaBIIAggCx+7H7BfoF+hL8EvzBAMEAqgSqBAcFBwXtAe0BCv0K/Uv6S/o8+zz7WP9Y/y0ELQQJBgkGNAQ0BJf/l/9++3773vre+qn9qf1pAmkCaAVoBb8EvwTZANkA+Pv4++f55/mL+4v7EQARAFoEWgRbBVsF2QLZAhT+FP7S+tL6Nvs2++n+6f7TA9MDGwYbBqsEqwQ4ADgAofuh+1v6W/q4/Lj8fgF+AfwE/ATaBNoEWwFbAWr8avzr+ev5PPs8+67/rv9bBFsEzAXMBZsDmwPl/uX+NPs0+xT7FPtc/lz+RwNHA94F3gWuBK4EbABsALD7sPsP+g/6E/wT/L0AvQCiBKIEAQUBBfIB8gEr/Sv9cPpw+ln7Wfto/2j/MQQxBAYGBgYxBDEEm/+b/4f7h/vf+t/6k/2T/U8CTwJOBU4FqwSrBM8AzwD5+/n77fnt+ZD7kPsPAA8AXgReBGgFaAXkAuQCIv4i/uL64vpK+0r77v7u/scDxwMFBgUGmQSZBCQAJACY+5j7Xvpe+rr8uvxzAXMB6QTpBMoEygRYAVgBevx6/Af6B/ph+2H7yf/J/2YEZgTPBc8FngOeA+z+7P4/+z/7Hfsd+1z+XP41AzUDtgW2BY0EjQRZAFkAqvuq+w/6D/oT/BP8uAC4AJcElwT3BPcE+wH7AUn9Sf2N+o36b/tv+3L/cv8wBDAEAAYABi0ELQSk/6T/q/ur+/P68/ph/WH9sAGwAVgEWATbA9sDpACkAMX8xfxf+1/75Pzk/JIAkgDEA8QDNwQ3BPgB+AFC/kL+G/wb/KD8oPxx/3H/wwLDAv8D/wPSAtICuv+6/yj9KP3P/M/8jP6M/mQBZAHqAuoCWwJbAhAAEAB3/Xf9ovyi/Mj9yP1GAEYATAJMAqQCpAJtAW0BXv9e/0f+R/6i/qL+MgAyANIB0gEpAikCRgFGAYT/hP8k/iT+7P3s/bz+vP4ZABkA3QDdAMYAxgASABIASf9J/xr/Gv+K/4r/aQBpABMBEwEyATIB1QDVADgAOADM/8z/k/+T/6H/of/R/9H/8P/w//v/+//0//T/4P/g/7v/u/+F/4X/XP9c/4T/hP/m/+b/dAB0AOgA6ADmAOYAcgByALL/sv9I/0j/g/+D/z0APQAVARUBRwFHAasAqwBn/2f/R/5H/in+Kf4K/wr/kgCSAH0BfQFKAUoBEgASAHb+dv74/fj93f7d/tkA2QCWApYCwALAAmIBYgEH/wf/fP18/b/9v/2h/6H//wH/AcACwAKTAZMB5v7m/p38nfxy/HL8Zv5m/q4BrgGdA50DIQMhA44AjgB0/XT9cvxy/O397f1MAUwBGgQaBCkEKQSUAZQBn/2f/WP7Y/sf/B/8Zv9m/y4DLgNgBGAEiAKIAn/+f/5l+2X7YPtg+zL+Mv5jAmMCoQShBM4DzgOCAIIACv0K/T38PfxC/kL+BAIEAoMEgwQCBAIE0ADQALP8s/zo+uj6L/wv/Nz/3P9IA0gD8APwA98B3wEf/h/+6/vr+638rfz7//v/yQPJAwQFBAU+Az4DTP9M/wv8C/yv+6/7Mf4x/hsCGwIdBB0EJAMkA7X/tf8n/Cf8UftR+2X9Zf19AX0BYwRjBDYENgRGAUYBWf1Z/a77rvsE/QT9tAC0ABYEFgSXBJcEHwIfAgP+A/6N+437Hvwe/En/Sf8DAwMDOgQ6BH8CfwKh/qH+mPuY+577nvtn/mf+fQJ9ApwEnAS3A7cDVgBWANH80fz7+/v7Bf4F/tsB2wFmBGYE/AP8A+kA6QDm/Ob8LPss+3P8c/wUABQAaANoA+8D7wO/Ab8B9/33/bv7u/t4/Hj8w//D/5UDlQPeBN4ELwMvA1n/Wf89/D388Pvw+2n+af5CAkICMgQyBCoDKgOw/7D/Ifwh/EP7Q/tH/Uf9QQFBASUEJQQKBAoENwE3AWj9aP3Q+9D7Kf0p/c0AzQAgBCAEnwSfBDUCNQIW/hb+l/uX+x38Hfw9/z3/7wLvAicEJwR2AnYCp/6n/qD7oPuf+5/7a/5r/nwCfAKVBJUErgOuA04ATgDK/Mr88fvx+/X99f3UAdQBYwRjBPoD+gPvAO8A9/z3/ET7RPuM/Iz8JgAmAHIDcgPwA/ADrgGuAej96P25+7n7dPx0/LP/s/96A3oDwgTCBB4DHgNc/1z/V/xX/B78HvyM/oz+UQJRAjUENQQqAyoDuP+4/yn8KfxI+0j7RP1E/ScBJwH6A/oD5wPnAyEBIQFg/WD90fvR+yz9LP3OAM4AGwQbBJoEmgREAkQCMf4x/rD7sPsv/C/8RP9E/+wC7AIhBCEEcwJzAq3+rf6p+6n7mvua+2H+Yf5vAm8ChwSHBKMDowNKAEoAzfzN/PT79Pv0/fT90QHRAWoEagT+A/4D9gD2AAT9BP1T+1P7l/yX/CgAKABnA2cD4wPjA5wBnAHZ/dn9r/uv+2v8a/yo/6j/aANoA7EEsQQUAxQDXP9c/2H8Yfw6/Dr8qf6p/mMCYwI+BD4EMwMzA8T/xP85/Dn8V/tX+0z9TP0iASIB3gPeA8kDyQMOAQ4BWP1Y/dD70Psr/Sv9xgDGAA8EDwSOBI4ERQJFAkj+SP7J+8n7QfxB/E3/Tf/rAusCGwQbBHACcAKx/rH+s/uz+5j7mPtQ/lD+WwJbAm0EbQSQA5ADRwBHANn82fwF/AX8/f39/c0BzQFrBGsEBQQFBAQBBAEc/Rz9bvtu+6r8qvwsACwAYgNiA9sD2wOVAZUByP3I/aL7ovtg/GD8mf+Z/1UDVQOeBJ4EBQMFA1f/V/9l/GX8RfxF/MD+wP5vAm8CRAREBDgDOAPO/87/SPxI/Gb7ZvtW/Vb9IwEjAcwDzAOuA64D/QD9AFP9U/3R+9H7LP0s/cIAwgAFBAUEfQR9BD0CPQJg/mD+7fvt+1/8X/xZ/1n/5QLlAg4EDgRnAmcCtf61/sH7wfuj+6P7P/4//j0CPQJSBFIEfAN8Az0APQDZ/Nn8CfwJ/P79/v3IAcgBagRqBBQEFAQVARUBM/0z/YT7hPu7/Lv8NAA0AGIDYgPZA9kDlgGWAcT9xP2Y+5j7WfxZ/I7/jv9EA0QDjASMBPkC+QJU/1T/Z/xn/Ev8S/zP/s/+fAJ8AkgESAQ1AzUD1f/V/1v8W/x6+3r7Yf1h/R4BHgG6A7oDiwOLA+YA5gBQ/VD92PvY+zL9Mv28ALwA9AP0A3MEcwQ5AjkCbP5s/g38Dfx7/Hv8av9q/+sC6wIPBA8EaAJoArz+vP7N+837rfut+zf+N/4hAiECNwQ3BGYDZgMxADEA1vzW/An8Cfz8/fz9wAHAAV0EXQQZBBkEJQElAUf9R/2Z+5n7yvzK/DkAOQBgA2AD1APUA5MBkwHN/c39mfuZ+1f8V/yE/4T/MAMwA3UEdQTrAusCVf9V/3f8d/xa/Fr83P7c/ocChwJIBEgEOgM6A97/3v9o/Gj8h/uH+2f9Z/0bARsBsAOwA3cDdwPNAM0AQ/1D/dL70vss/Sz9sgCyAOYD5gNmBGYEMwIzAnD+cP4m/Cb8l/yX/H3/ff/yAvICEQQRBGwCbALG/sb+3Pvc+7v7u/s7/jv+CwILAh4EHgRSA1IDKAAoANz83PwV/BX8Af4B/rYBtgFKBEoEDQQNBDMBMwFg/WD9tfu1+9783vw9AD0AVANUA8UDxQOPAY8B0f3R/Zb7lvtK/Er8df91/x0DHQNjBGME3gLeAlT/VP99/H38Y/xj/OD+4P6TApMCVQRVBEUDRQPs/+z/fPx8/Jn7mftz/XP9HQEdAaoDqgNtA20DuAC4ADf9N/3M+8z7Jv0m/aYApgDLA8sDHgQeBJ8BnwG1/bX9sfux+8f8x/xtAG0APAQ8BBUFFQWfAp8CDP4M/tf61/oj+yP7nP6c/g8DDwPpBOkELwMvA8f+x/4X+xf7BfsF+4n+if6oA6gDXQZdBgEFAQVQAFAAavtq+xX6FfrZ/Nn8CgIKAosFiwXbBNsEaQBpACD7IPsr+Sv5vPu8+3cBdwErBisGfgZ+Bm4CbgKZ/Jn8gvmC+TD7MPuZAJkA4wXjBfQG9AYwAzAD6/zr/Nr42vi3+bf58f7x/vEE8QQxBzEHRQRFBAX+Bf4Y+Rj5FfkV+fL98v12BHYEmgeaB3sFewVL/0v/d/l3+Un4SfiL/Iv8YQNhA9YH1ge7BrsG0ADQAEX6Rfre9973SftJ+ykCKQKKB4oHgQeBBwoCCgID+wP7ePd49wH6AfrcANwAJwcnB18IXwiXA5cDQfxB/I/3j/f1+PX4df91/2EGYQbPCM8I2gTaBGf9Z/2297b3+ff59/b99v1dBV0FCwkLCS0GLQbo/uj+aPho+Er3SveJ/In8MQQxBPsI+whFB0UHTgBOACL5Ivm39rf2EvsS+9gC2AKtCK0ITQhNCOYB5gFB+kH6kPaQ9s35zfltAW0BEggSCAoJCgleA14Dbvtu+5X2lfaQ+JD43f/d/zAHMAeKCYoJ2ATYBNr82vwA9wD3nPec90j+SP7dBd0FKAkoCXAFcAXV/dX9xffF98T3xPcP/g/+uwW7BZwJnAl9Bn0G1f7V/hD4EPjv9u/2d/x3/D4EPgTvCO8I3wbfBrv/u//Q+ND4A/cD9wf8B/zhA+EDLgkuCeEH4QfpAOkAd/l3+Z72nvbC+sL6egJ6Al0IXQgOCA4IrgGuASv6K/qx9rH2L/ov+toB2gFHCEcI1gjWCOUC5QIY+xj7ufa59j75PvmVAJUAZgdmB94I3gidA50D2PvY++r26var+Kv4yv/K/wQHBAdJCUkJuQS5BPX89fxa91r3GPgY+Kj+qP4KBgoGKQkpCV4FXgW//b/9rfet95j3mPfA/cD9ZAVkBVEJUQlWBlYG3/7f/kb4Rvg79zv3vvy+/G8EbwQICQgJ5QblBrn/uf/G+Mb46fbp9tb71vudA50D5gjmCK0HrQfbANsAkfmR+dL20vb5+vn6pAKkAncIdwgeCB4IvQG9ATn6Ofq29rb2Hvoe+rABsAENCA0IogiiCMYCxgIq+yr77fbt9nP5c/mxALEAZQdlB9MI0wihA6ED8vvy+wz3DPe6+Lr4sP+w/8cGxwYWCRYJlgSWBO787vxr92v3Mvgy+Lv+u/4RBhEGKgkqCWYFZgXU/dT9x/fH96r3qve8/bz9SAVIBSoJKgk3BjcG1v7W/lP4U/hS91L3z/zP/HMEcwQECQQJ5gbmBsj/yP/g+OD4APcA99v72/uJA4kDwgjCCIoHigfKAMoAovmi+fT29PYO+w77nAKcAlgIWAgDCAMIvwG/AVv6W/rl9uX2Ovo6+qUBpQHjB+MHdAh0CLcCtwIv+y/7//b/9oL5gvmzALMAWgdaB8gIyAiiA6IDBvwG/Cr3KvfQ+ND4sv+y/7QGtAb7CPsIhASEBO387fx493j3P/g/+Lv+u/4BBgEGFQkVCVwFXAXc/dz93vfe98H3wffB/cH9OgU6BRAJEAkkBiQG1f7V/mH4Yfh293b33Pzc/GAEYATeCN4IzAbMBs//z/8H+Qf5MPcw9/L78vt9A30DnAicCGgHaAfFAMUAr/mv+Qf3B/cX+xf7lAKUAkIIQgjvB+8HuwG7AWr6avr89vz2SPpI+qABoAHOB84HXAhcCK4CrgI3+zf7EvcS9475jvmuAK4ARwdHB7IIsgicA5wDE/wT/EP3Q/fm+Ob4tv+2/6cGpwboCOgIewR7BPb89vyO9473UvhS+MH+wf7lBeUF7AjsCEMFQwXn/ef9BfgF+Of35/fM/cz9IQUhBeUI5QgFBgUG1/7X/oH4gfiI94j34Pzg/FEEUQTFCMUIuQa5Bs//z/8Y+Rj5RvdG9/37/ft1A3UDiAiICFgHWAfFAMUAwfnB+R/3H/cl+yX7jgKOAjAIMAjdB90HuAG4AXr6evoU9xT3WPpY+p4BngG7B7sHSAhICKYCpgJC+0L7Jvcm95z5nPmqAKoAIgciB4YIhgiIA4gDI/wj/Gr3avcF+QX5tv+2/4YGhga9CL0IZwRnBAX9Bf2297b3d/h3+MT+xP7YBdgF1wjXCDgFOAXv/e/9G/gb+P73/vfU/dT9FgUWBdAI0Aj4BfgF3P7c/pb4lvid95335/zn/EYERgStCK0IpwanBs3/zf8n+Sf5Wvda9wX8BfxqA2oDcAhwCEMHQwfCAMIAz/nP+TT3NPcw+zD7hwKHAhsIGwi4B7gHsQGxAZb6lvpA90D3dfp1+pgBmAGZB5kHIggiCJwCnAJb+1v7UvdS97z5vPmoAKgAEQcRB3IIcgh/A38DLfwt/ID3gPcW+Rb5tf+1/3QGdAalCKUIWQRZBAr9Cv3J98n3h/iH+MX+xf7HBccFvgi+CCkFKQXz/fP9Lvgu+BL4EvjZ/dn9CQUJBbsIuwjrBesF4f7h/qv4q/i197X38vzy/DwEPASZCJkImAaYBtD/0P9L+Uv5hPeE9xn8GfxaA1oDRwhHCB8HHwe+AL4A7Pns+V33XfdF+0X7eAJ4AvEH8QeiB6IHqwGrAaH6ofpV91X3gfqB+pIBkgGEB4QHDQgNCJYClgJn+2f7afdp9835zfmnAKcAAAcAB14IXgh4A3gDOfw5/Jj3mPcq+Sr5uP+4/2UGZQaQCJAITwRPBBP9E/3f99/3m/ib+Mj+yP63BbcFpgimCBsFGwX2/fb9U/hT+Df4N/ji/eL97gTuBI4IjgjLBcsF5f7l/s34zfjd9933//z//CcEJwRvCG8IeAZ4BtH/0f9d+V35nPec9yX8JfxTA1MDNAg0CA8HDwe+AL4A/vn++Xb3dvdT+1P7cwJzAt0H3QeOB44HpwGnAbD6sPpr92v3j/qP+owBjAFuB24H9gf2B40CjQJy+3L7fvd+99v52/mjAKMA6wbrBkYIRghuA24DQvxC/K33rfdM+Uz5uf+5/0UGRQZnCGcIPAQ8BCT9JP0K+Ar4wvjC+ND+0P6cBZwFfQh9CAMFAwUD/gP+afhp+E34Tfjg/eD9sgSyBAEIAQgEBQQFSf5J/rv4u/iL+Iv4Jf4l/ikFKQXGCMYI9QX1BQH/Af/m+Ob4/vf+9x79Hv0UBBQECggKCLwFvAUa/xr/EPkQ+QH4AfgT/RP9OAQ4BIoIigiWBpYG9P/0/4r5ivnb99v3Zfxl/GADYAPSB9IHUAZQBgMAAwCx+bH51PfU9yn8KfwvAy8DAggCCPIG8gbTANMAT/pP+vL38vfA+8D7iwKLAnkHeQfHBscG8ADwAHD6cPrc99z3Zvtm+zICMgJqB2oHMAcwB6gBqAEc+xz7Kfgp+C77LvuzAbMB9gb2BgwHDAfSAdIBT/tP+yX4JfjS+tL6OwE7AbAGsAY3BzcHZAJkAvP78/uH+If4u/q7+tIA0gBFBkUGEQcRB48CjwJE/ET8sviy+IL6gvpRAFEA0QXRBfoG+gb8AvwC3fzd/CL5IvmI+oj6/v/+/20FbQXPBs8GLwMvAzf9N/1Z+Vn5Yvpi+oX/hf/zBPMEoAagBnUDdQO9/b39zfnN+Xz6fPo8/zz/jQSNBGYGZgabA5sDHf4d/hv6G/p2+nb60/7T/gkECQQYBhgGvAO8A5L+kv6S+pL6pfql+pv+m/6lA6UD0wXTBdID0gP1/vX+A/sD+9H60fpS/lL+HQMdA2QFZAXKA8oDWv9a/3r7evsR+xH7K/4r/q4CrgLZBNkESANIA/3+/f5X+1f7Ovs6+6b+pv5dA10DmgWaBfcD9wN7/3v/kfuR+yj7KPtN/k3+0ALQAvIE8gRRA1ED9P70/j/7P/sU+xT7ef55/jEDMQN0BXQF3gPeA3L/cv+Y+5j7PPs8+2v+a/7xAvECEAUQBWgDaAMA/wD/Pfs9+wb7Bvth/mH+EwMTA1YFVgXEA8QDYf9h/5L7kvtA+0D7eP54/gQDBAMlBSUFcgNyAw//D/9O+077D/sP+1n+Wf75AvkCMgUyBaYDpgNS/1L/k/uT+0v7S/uC/oL+CQMJAygFKAWEA4QDIP8g/1v7W/sV+xX7Wf5Z/vMC8wIoBSgFmQOZA0b/Rv+K+4r7RftF+4H+gf4MAwwDLwUvBY4DjgMq/yr/Y/tj+xv7G/ta/lr+7wLvAiAFIAWOA44DOv86/3/7f/s9+z37fP58/gsDCwMyBTIFlAOUAzT/NP95+3n7Mfsx+2X+Zf7qAuoCEwUTBYIDggM4/zj/hvuG+0X7Rft8/nz+AgMCAyYFJgWOA44DOv86/3/7f/s3+zf7af5p/uwC7AISBRIFfwN/AzP/M/+A+4D7Pvs++3b+dv78AvwCIgUiBYwDjAM7/zv/gfuB+zr7Ovtt/m3+8ALwAhUFFQWBA4EDM/8z/4D7gPs9+z37df51/vsC+wIhBSEFjAOMAz3/Pf+F+4X7Pvs++3X+df7rAusCCQUJBXkDeQM2/zb/ivuK+0f7R/t1/nX+7gLuAg8FDwV/A38DPP88/5D7kPtK+0r7df51/uwC7AIJBQkFeQN5Azb/Nv+K+4r7R/tH+3T+dP7uAu4CDgUOBX8DfwM9/z3/kfuR+037Tft4/nj+7gLuAgwFDAV8A3wDOf85/437jftJ+0n7dP50/u0C7QINBQ0FfQN9Azv/O/+P+4/7S/tL+3b+dv7tAu0C/QT9BHEDcQM6/zr/mPuY+1T7VPt4/nj+4wLjAv0E/QRyA3IDPP88/5v7m/tZ+1n7e/57/uYC5gIABQAFcwNzAzz/PP+a+5r7V/tX+3r+ev7lAuUC/gT+BHMDcwM9/z3/m/ub+1j7WPt7/nv+5QLlAv4E/gRyA3IDPP88/5n7mftW+1b7eP54/uMC4wL8BPwEcQNxAzv/O/+a+5r7V/tX+3r+ev7lAuUC/gT+BHIDcgM//z//p/un+2T7ZPt//n/+3QLdAvAE8ARpA2kDP/8//6j7qPtm+2b7f/5//t4C3gLxBPEEaQNpAz//P/+o+6j7Zftl+37+fv7cAtwC7gTuBGcDZwM9/z3/pvum+2T7ZPt9/n3+2wLbAu8E7wRoA2gDPv8+/6f7p/tl+2X7fv5+/tsC2wLvBO8EaANoAz//P/+o+6j7Zvtm+3/+f/7dAt0C8ATwBGkDaQNA/0D/qfup+3P7c/uE/oT+1QLVAuEE4QRfA18DQf9B/7T7tPty+3L7gv6C/tMC0wLgBOAEXgNeA0D/QP+z+7P7cftx+4L+gv7TAtMC4ATgBF0DXQNA/0D/tPu0+3L7cvuC/oL+1ALUAuEE4QRfA18DQv9C/7b7tvt0+3T7hP6E/tQC1ALhBOEEXwNfA0L/Qv+2+7b7dPt0+4P+g/7TAtMC4ATgBF4DXgNB/0H/tfu1+3L7cvuC/oL+ygLKAtEE0QRTA1MDQv9C/8D7wPt/+3/7hv6G/soCygLRBNEEVANUA0P/Q//B+8H7gfuB+4f+h/7LAssC0wTTBFUDVQNE/0T/wvvC+4H7gfuI/oj+zALMAtME0wRVA1UDRP9E/8L7wvuB+4H7iP6I/soCygLRBNEEVANUA0P/Q//B+8H7gPuA+4b+hv7KAsoC0ATQBFMDUwNC/0L/wfvB+4D7gPuG/ob+ygLKAtEE0QRKA0oDRv9G/877zvuO+477jP6M/sMCwwLEBMQESwNLA0b/Rv/P+8/7j/uP+4z+jP7DAsMCxATEBEoDSgNG/0b/z/vP+477jvuL/ov+wgLCAsMEwwRJA0kDRP9E/877zvuN+437i/6L/sECwQLCBMIESQNJA0T/RP/O+877jvuO+4v+i/7CAsICwwTDBEoDSgNG/0b/z/vP+4/7j/uN/o3+wwLDAsMEwwRLA0sDRv9G/9z73Pud+537kf6R/roCugK1BLUEQANAA0j/SP/b+9v7nPuc+5D+kP65ArkCswSzBD8DPwNH/0f/2/vb+5v7m/uP/o/+uAK4ArMEswQ/Az8DR/9H/9v72/uc+5z7kP6Q/roCugK0BLQEQANAA0n/Sf/d+937nfud+5H+kf66AroCtQS1BEADQANJ/0n/3fvd+537nfuQ/pD+ugK6ArQEtAQ/Az8DR/9H/9z73Puc+5z7k/6T/rACsAKlBKUENQM1A0n/Sf/n++f7qPuo+5P+k/6wArACpQSlBDUDNQNJ/0n/6Pvo+6r7qvuV/pX+sQKxAqUEpQQ2AzYDS/9L/+r76vur+6v7lv6W/rICsgKmBKYENgM2A0v/S//p++n7qvuq+5X+lf6wArACpASkBDUDNQNK/0r/6Pvo+6L7ovtp/mn+RgJGAgcEBwS4ArgCP/8//4H8gfyb/Jv8XP9c/9oC2gIjBCMEhQKFAg7/Dv93/Hf8jvyO/Bb/Fv85AjkCUQNRA+kB6QHk/uT+2vza/D/9P/2//7//lAKUAmEDYQPhAeEB9v72/hT9FP1o/Wj9nv+e/wsCCwKjAqMCRAFEAcL+wv5W/Vb93v3e/QEAAQAoAigClwKXAkcBRwH//v/+wf3B/S/+L/78//z/tAG0AfQB9AHEAMQA3/7f/vj9+P1//n/+JgAmAJ0BnQHMAcwBxwDHADP/M/99/n3+5P7k/igAKAA0ATQBQQFBAWYAZgAw/zD/sv6y/hb/Fv8gACAA8gDyAAMBAwFnAGcAjP+M/zP/M/9y/3L/HAAcAJkAmQCaAJoAMAAwAKj/qP9x/3H/k/+T//T/9P9AAEAAUwBTADcANwAIAAgA7P/s/+D/4P/i/+L/7f/t/wQABAAnACcAQABAAC8ALwDy//L/n/+f/4X/hf+7/7v/NQA1AJ8AnwCZAJkAJQAlAHn/ef80/zT/gv+C/0UARQDoAOgA2wDbACcAJwAo/yj/zP7M/kT/RP9kAGQARgFGATQBNAE/AD8A8P7w/n7+fv4g/yD/kgCSAKEBoQF4AXgBMwAzAJf+l/4b/hv+9P70/sAAwAD8AfwBvQG9ASsAKwBN/k3+xf3F/bL+sv6TAJMAwgHCAYcBhwEVABUAk/6T/l/+X/5+/37/TwFPASgCKAKKAYoBwv/C/yv+K/4A/gD+Nf81//4A/gDBAcEBIwEjAX3/ff9B/kH+a/5r/tX/1f+WAZYBHQIdAjkBOQFf/1//Iv4i/lL+Uv7C/8L/YAFgAbwBvAHCAMIA/v7+/g/+D/6O/o7+NgA2AMgByAH4AfgBzgDOAPj++P4c/hz+qP6o/k4ATgCqAaoBpQGlAVoAWgCa/pr+Af4B/s/+z/6fAJ8A5gHmAcABwAFUAFQAof6h/ij+KP4M/wz/0QDRANsB2wF3AXcB7P/s/1n+Wf4Y/hj+Lv8u/wABAAHrAesBbwFvAdL/0v9g/mD+SP5I/nr/ev83ATcB5wHnATUBNQF7/3v/Kv4q/j/+P/6b/5v/VQFVAeMB4wEUARQBVf9V/zL+Mv51/nX+7v/u/4sBiwHhAeEB4ADgABP/E/8V/hX+gf6B/hYAFgCbAZsBywHLAawArADo/uj+Hf4d/rf+t/5jAGMAwwHDAcEBwQF3AHcAtv62/hr+Gv7W/tb+jACMAMEBwQGXAZcBNQA1AJL+kv4k/iT+DP8M/9AA0ADdAd0BhgGGAQMAAwBz/nP+Lv4u/jn/Of/7APsA2wHbAVsBWwHA/8D/VP5U/j/+P/5y/3L/MgEyAecB5wE9AT0Bjf+N/0L+Qv5W/lb+qf+p/1YBVgHcAdwBCQEJAUz/TP8r/iv+bP5s/uH/4f99AX0B1wHXAd8A3wAc/xz/Jf4l/pD+kP4fAB8AlgGWAcEBwQGmAKYA6v7q/iL+Iv62/rb+VwBXALABsAGxAbEBdAB0AMP+w/4n/if+4/7j/pQAlADEAcQBmAGYATkAOQCY/pj+Kf4p/gv/C//GAMYAzwHPAXsBewH/////d/53/jX+Nf4+/z7//AD8ANgB2AFZAVkBw//D/1r+Wv5E/kT+cf9x/ygBKAHaAdoBMwEzAYv/i/9G/kb+W/5b/qv/q/9VAVUB2gHaAQsBCwFW/1b/PP48/nv+e/7k/+T/cgFyAckByQHXANcAIP8g/zD+MP6Z/pn+HgAeAJEBkQG8AbwBpgCmAO/+7/4q/ir+u/67/lYAVgCoAagBqAGoAW4AbgDE/sT+K/4r/uT+5P6PAI8AvAG8AZMBkwE5ADkAn/6f/jH+Mf4R/xH/xgDGAMsBywF2AXYBAAAAAH3+ff48/jz+Qf9B//gA+ADSAdIBVQFVAcb/xv9h/mH+S/5L/nb/dv8hASEBzQHNASoBKgGM/4z/UP5Q/mX+Zf6r/6v/SQFJAcoBygECAQIBV/9X/0H+Qf6A/oD+5P/k/24BbgHDAcMB1QDVACT/JP83/jf+n/6f/h4AHgCMAYwBtwG3AaQApAD1/vX+Mv4y/sH+wf5WAFYApAGkAaQBpAFuAG4Ayf7J/jL+Mv7o/uj+jQCNALUBtQGLAYsBNwA3AKL+ov43/jf+E/8T/8EAwQDDAcMBawFrAf////+I/oj+SP5I/kb/Rv/xAPEAxQHFAUsBSwHH/8f/bv5u/ln+Wf55/3n/HgEeAcgByAEoASgBkP+Q/1j+WP5t/m3+rf+t/0UBRQHEAcQB/gD+AFn/Wf9I/kj+hf6F/uT/5P9nAWcBuwG7AdAA0AAm/yb/Pf49/qL+ov4cABwAhQGFAa8BrwGgAKAA+P74/jn+Of7G/sb+VQBVAJ0BnQGdAZ0BbQBtAM/+z/46/jr+8f7x/ooAigCqAaoBggGCATYANgCt/q3+Rf5F/hv/G/+9AL0AtgG2AWUBZQH/////jf6N/k/+T/5I/0j/7ADsAL0BvQFFAUUBx//H/3L+cv5e/l7+ev96/xgBGAHAAcABIgEiAZH/kf9f/l/+c/5z/q//r/9BAUEBvgG+AfsA+wBd/13/UP5Q/oz+jP7m/+b/YwFjAbYBtgHOAM4AK/8r/0X+Rf6p/qn+HAAcAH8BfwGiAaIBnACcAP/+//5F/kX+zv7O/lEAUQCQAZABkAGQAWkAaQDW/tb+Rv5G/vT+9P6HAIcAogGiAXsBewE2ADYAs/6z/kz+TP4e/x7/ugC6ALABsAFhAWEBAAAAAJT+lP5W/lb+TP9M/+kA6QC3AbcBQgFCAcn/yf96/nr+Zf5l/nz/fP8UARQBuQG5AR4BHgGS/5L/ZP5k/nf+d/6v/6//OgE6AbUBtQH2APYAXv9e/1v+W/6W/pb+5f/l/1cBVwGpAakByADIADH/Mf9S/lL+s/6z/hsAGwB1AXUBnQGdAZoAmgAF/wX/Tv5O/tT+1P5RAFEAiwGLAYsBiwFoAGgA3P7c/k3+Tf74/vj+hQCFAJwBnAF1AXUBNAA0ALf+t/5R/lH+IP8g/7YAtgCoAagBWwFbAf////+Z/pn+XP5c/k7/Tv/mAOYAsAGwATwBPAHK/8r/gP6A/mv+a/5+/37/EQERAbMBswEaARoBlv+W/2v+a/5//n/+sf+x/zYBNgGwAbAB8wDzAGP/Y/9i/mL+nP6c/ub/5v9SAVIBoQGhAcQAxAAz/zP/WP5Y/rf+t/4aABoAbgFuAZUBlQGXAJcAB/8H/1P+U/7Y/tj+UABQAIQBhAF9AX0BOwA7AKD+oP47/jv+Qf9B/y4BLgFNAk0CzAHMAen/6f8B/gH+rf2t/QH/Af8sASwBMwIzAnMBcwFX/1f/p/2n/dD90P21/7X/FgIWAtgC2AKTAZMB/f79/kn9Sf2x/bH97f/t/zwCPAKhAqEC8QDxAD3+Pf7r/Ov86P3o/aMAowDyAvIC+QL5AsUAxQDi/eL9zvzO/DP+M/4rASsBMgMyA68CrwL6//r/Hf0d/YT8hPyL/ov+1wHXAaMDowOlAqUCiP+I/8r8yvyn/Kf8LP8s/4ACgALRA9EDLAIsAq7+rv4t/C38oPyg/Lb/tv8SAxID9AP0A8EBwQEV/hX+9/v3+wn9Cf2KAIoAswOzA/MD8wMVARUBWP1Y/bD7sPtk/WT9LgEuAQkECQSuA64DYwBjAL38vfyr+6v7C/4L/ggCCAJ4BHgEZQNlA6H/of8g/CD8qvuq+6X+pf6wArACnwSfBNsC2wLN/s3+o/uj++v76/t1/3X/cQNxA8YExgRLAksCCf4J/kj7SPtJ/En8PgA+AAIEAgSiBKIEhAGEATn9Of0J+wn70/zT/BoBGgGNBI0EbARsBMIAwgCN/I38/vr++or9iv3kAeQB0wTTBOUD5QPe/97/8vvy+yb7JvtG/kb+rAKsAg8FDwVbA1sDDf8N/3n7eft2+3b7HP8c/1oDWgPsBOwEbAJsAiL+Iv5i+2L7jPyM/JwAnABHBEcEngSeBCsBKwHT/NP82PrY+v38/fxYAVgBjASMBPkD+QMkACQAP/w//Fj7WPtg/mD+twK3AhAFEAVVA1UDBv8G/377fvuL+4v7K/8r/04DTgPGBMYELAIsAu797v0++z77cfxx/IQAhAA4BDgEpASkBFIBUgEW/Rb9I/sj+zf9N/1wAXABgwSDBN8D3wMJAAkAKPwo/EH7Qfs//j/+jQKNAusE6wRJA0kDHP8c/6/7r/vD+8P7VP9U/18DXwPHBMcENAI0Auj96P0s+yz7VvxW/GUAZQAbBBsEjQSNBEUBRQEV/RX9Lvsu+0v9S/2JAYkBnAScBPUD9QMZABkAL/wv/D77Pvs6/jr+bwJvAsEEwQQmAyYDEP8Q/7j7uPvV+9X7X/9f/18DXwPEBMQEPQI9AgH+Af5M+0z7a/xr/GEAYQAABAAEbARsBDEBMQET/RP9OPs4+1D9UP2BAYEBjQSNBO0D7QMkACQAS/xL/F37XftB/kH+cgJyAr4EvgQgAyADB/8H/677rvvL+8v7Vv9W/1kDWQPDBMMEQAJAAgj+CP5V+1X7dfx1/GoAagAGBAYEbwRvBCsBKwEd/R39R/tH+1T9VP1zAXMBcwRzBNgD2AMjACMAXvxe/Hb7dvtP/k/+bQJtAq4ErgQWAxYDDf8N/8H7wfva+9r7VP9U/0UDRQOpBKkEMgIyAg7+Dv5p+2n7hvyG/GsAawD4A/gDYARgBC8BLwEg/SD9SvtK+1X9Vf1yAXIBcARwBNUD1QMfAB8AW/xb/HT7dPtO/k7+bgJuArAEsAQYAxgDEP8Q/8T7xPvd+937WP9Y/zYDNgOSBJIEJQIlAhT+FP57+3v7k/yT/GcAZwDmA+YDTARMBCsBKwEv/S/9Yfth+2P9Y/1tAW0BXQRdBMMDwwMeAB4Aa/xr/Ij7iPtV/lX+YgJiApoEmgQKAwoDFf8V/9j72Pvx+/H7Wv9a/zcDNwOSBJIEJgImAhT+FP57+3v7kvyS/GYAZgDkA+QDSgRKBCkBKQEv/S/9Yfth+2P9Y/1uAW4BXQRdBMQDxAMfAB8AfPx8/Jz7nPtc/lz+VgJWAoQEhAT8AvwCGf8Z/+v76/sE/AT8Xv9e/ykDKQN/BH8EHQIdAh7+Hv6Q+5D7ovyi/GQAZADRA9EDNgQ2BCQBJAE7/Tv9dvt2+2/9b/1mAWYBSQRJBLIDsgMeAB4AfPx8/J37nftd/l3+VgJWAoQEhAT7AvsCGP8Y/+v76/sE/AT8Xf9d/ygDKAN+BH4EHQIdAh/+H/6S+5L7o/yj/GMAYwDAA8ADIwQjBB4BHgFI/Uj9i/uL+3v9e/1fAV8BNAQ0BKEDoQMeAB4AjfyN/LL7svtk/mT+SwJLAm4EbgTtAu0CHP8c//77/vsW/Bb8YP9g/xkDGQNpBGkEEwITAij+KP6n+6f7s/yz/GMAYwDAA8ADIwQjBB8BHwFJ/Un9jPuM+3z9fP1gAWABNAQ0BKADoAMeAB4AjfyN/LL7svtk/mT+SgJKAm0EbQTsAuwCHf8d/xH8Efwp/Cn8Yv9i/woDCgNTBFMECAIIAjD+MP67+7v7w/zD/GEAYQCuA64DDwQPBBoBGgFW/Vb9ovui+4j9iP1ZAVkBIAQgBI8DjwMeAB4Anvye/Mf7x/ts/mz+QAJAAlkEWQTeAt4CIf8h/xL8Evwq/Cr8Y/9j/wkDCQNSBFIECAIIAjD+MP67+7v7w/zD/GAAYACtA60DDQQNBBkBGQFW/Vb9ovui+4j9iP1ZAVkBDAQMBH4DfgMdAB0Ar/yv/Nz73Pt0/nT+NQI1AkQERATRAtECJv8m/yb8Jvw9/D38Zv9m//sC+wI9BD0E/gH+ATn+Of7Q+9D70vzS/F4AXgCbA5sD+gP6AxQBFAFj/WP9t/u3+5T9lP1SAVIBCwQLBH0DfQMdAB0Ar/yv/Nz73Pt0/nT+NAI0AkMEQwTRAtECJv8m/yb8Jvw9/D38Zv9m//sC+wI9BD0E/wH/ATr+Ov7m++b74/zj/F0AXQCIA4gD5gPmAw4BDgFw/XD9zPvM+6D9oP1LAUsB9gP2A2wDbAMcABwAv/y//PD78Pt7/nv+KQIpAi0ELQTCAsICKf8p/zn8OfxQ/FD8af9p/+wC7AIoBCgE9QH1AUP+Q/7m++b74/zj/F0AXQCJA4kD5gPmAw8BDwFx/XH9zfvN+6H9of1LAUsB9gP2A2sDawMcABwAwPzA/PH78ft7/nv+KAIoAhgEGAS0ArQCLv8u/0z8TPxi/GL8a/9r/9wC3AISBBIE6gHqAUv+S/77+/v78/zz/FsAWwB3A3cD0gPSAwkBCQF+/X794/vj+639rf1FAUUB4gPiA1oDWgMcABwA0fzR/Ab8BvyE/oT+HQIdAhcEFwSzArMCLv8u/038Tfxj/GP8bP9s/9wC3AISBBIE6gHqAUv+S/77+/v78/zz/FoAWgB1A3UD0QPRAwkBCQF//X/9+Pv4+7n9uf0+AT4BzgPOA0kDSQMcABwA4vzi/Bv8G/yL/ov+EwITAgIEAgSmAqYCM/8z/2D8YPx2/Hb8b/9v/80CzQL9A/0D4AHgAVT+VP4Q/BD8A/0D/VkAWQBjA2MDvQO9AwMBAwGN/Y39BfwF/ND90P1IAUgBsgOyA/sC+wLC/8L/tPy0/Ef8R/z7/vv+eQJ5AhYEFgRTAlMCy/7L/kD8QPzX/Nf8CAAIACgDKAOlA6UDFwEXAa79rv0J/An8sP2w/SYBJgG1A7UDOgM6AyEAIQAB/QH9UfxR/ML+wv4nAicC3gPeA1QCVALs/uz+V/xX/Lv8u/zH/8f/7gLuArkDuQNkAWQBBP4E/jr8Ovyf/Z/98QDxAIcDhwM8AzwDSQBJACf9J/1L/Ev8gv6C/tgB2AGxA7EDcgJyAjr/Ov+l/KX80fzR/KD/oP+1ArUCngOeA4oBigFF/kX+aPxo/JD9kP2aAJoAHQMdAw4DDgN3AHcAhv2G/Zj8mPx3/nf+jwGPAWADYANtAm0Chf+F/wz9DP0D/QP9bP9s/0cCRwI9Az0DjAGMAZj+mP7Q/ND8of2h/V8AXwDGAsYC4wLjAqkAqQDr/ev97/zv/HD+cP46AToB9gL2AkcCRwK7/7v/bv1u/UH9Qf1I/0j/4wHjAd8C3wKNAY0B8f7x/kb9Rv3T/dP9JwAnAFUCVQKPAo8CuwC7AFj+WP5m/Wb9hf6F/t8A3wBtAm0CAQIBAvT/9P/3/ff9tP20/UL/Qv90AXQBWwJbAmkBaQFH/0f/1P3U/ST+JP70//T/yAHIARICEgK9AL0Awv7C/uv96/2+/r7+qQCpAO4B7gGOAY4B0P/Q/yb+Jv4I/gj+ev96/3EBcQEoAigCNAE0ATv/O/8E/gT+dv52/j0APQDTAdMB2gHaAVkAWQBy/nL+3/3f/fP+8/7uAO4ACAIIAn8BfwGz/7P/Mv4y/j/+P/7E/8T/jwGPAQECAQLcANwA6P7o/ur96v2S/pL+bgBuAN8B3wG7AbsBKAAoAGj+aP4O/g7+R/9H/zQBNAETAhMCTwFPAWn/af8L/gv+S/5L/vH/8f+mAaYB6QHpAZ8AnwC5/rn+9f31/dL+0v6+AL4AAgICAqUBpQHt/+3/RP5E/hr+Gv53/3f/WAFYAQICAgIQARABJP8k/wX+Bf57/nv+NwA3AMYBxgHUAdQBaQBpAJr+mv4K/gr+DP8M/+4A7gD5AfkBbAFsAaX/pf8q/ir+OP44/rf/t/9+AX4B9AH0AdwA3AD6/vr+Bv4G/qv+q/56AHoA3wHfAbcBtwEnACcAa/5r/hD+EP4+/z7/HwEfAfsB+wE/AT8Baf9p/xn+Gf5b/lv++v/6/6cBpwHnAecBogCiAMT+xP4B/gH+1f7V/rEAsQDsAewBkgGSAeb/5v9T/lP+L/4v/oD/gP9NAU0B8gHyAQwBDAE2/zb/GP4Y/oj+iP43ADcAuQG5AcQBxAFhAGEAnf6d/hH+Ef4O/w7/5gDmAO0B7QFlAWUBq/+r/zr+Ov5H/kf+vP+8/3YBdgHoAegB1ADUAPz+/P4N/g3+rv6u/nIAcgDQAdABqwGrASYAJgB3/nf+H/4f/kf/R/8dAR0B8wHzAToBOgFu/27/Jf4l/mT+ZP74//j/kAGQAc4BzgGZAJkA0/7T/hr+Gv7k/uT+qwCrANcB1wGBAYEB6P/o/1/+X/46/jr+gv+C/0MBQwHjAeMBAgECATj/OP8i/iL+j/6P/jUANQCuAa4BugG6AWEAYQCn/qf+H/4f/hb/Fv/iAOIA4QHhAVwBXAGs/6z/RP5E/lH+Uf69/73/bQFtAdwB3AHQANAABP8E/xv+G/64/rj+cQBxAMUBxQGgAaABJAAkAID+gP41/jX+Tv9O/w0BDQHZAdkBKgEqAXX/df87/jv+eP54/vn/+f99AX0BtwG3AZIAkgDi/uL+Mv4y/vL+8v6iAKIAwAHAAW4BbgHq/+r/dP50/lH+Uf6J/4n/NAE0AcwBzAH3APcAQ/9D/zr+Ov6j/qP+MgAyAJkBmQGkAaQBWwBbALf+t/42/jb+IP8g/9YA1gDJAckBSgFKAbD/sP9a/lr+Zv5m/sD/wP9aAVoBxAHEAcYAxgAR/xH/M/4z/sj+yP5rAGsArwGvAYwBjAEjACMAk/6T/kH+Qf5Y/1j/AAEAAcIBwgEbARsBfP98/1P+U/6M/oz++f/5/3IBcgGrAasBjgCOAOn+6f49/j3++f75/p0AnQCzAbMBZAFkAer/6v9+/n7+XP5c/ov/i/8rASsBvwG/AfAA8ABI/0j/Rv5G/qz+rP4xADEAjgGOAZkBmQFZAFkAwf7B/kP+Q/4n/yf/0QDRAL4BvgFCAUIBs/+z/2b+Zv5y/nL+wf/B/1EBUQG4AbgBwADAABz/HP9L/kv+2P7Y/mUAZQCYAZgBdwF3ASEAIQCm/qb+WP5Y/lz/XP/5APkAtQG1ARMBEwGA/4D/X/5f/pb+lv76//r/aQFpAaABoAGKAIoA8f7x/kr+Sv4B/wH/mgCaAKgBqAFbAVsB6//r/4n+if5o/mj+jv+O/yMBIwGzAbMB6QDpAE3/Tf9S/lL+tf61/i8ALwCDAYMBjQGNAVYAVgDJ/sn+Tv5O/iz/LP/KAMoApQGlATABMAG3/7f/fP58/of+h/7F/8X/PwE/AaEBoQG2ALYAI/8j/1j+WP7h/uH+YwBjAI0BjQFtAW0BIAAgALD+sP5l/mX+Yf9h//IA8gCpAakBCwELAYP/g/9q/mr+oP6g/vn/+f9eAV4BlAGUAYYAhgD4/vj+Vv5W/gf/B/+VAJUAmwGbAVABUAHs/+z/lP6U/nP+c/6S/5L/GwEbAagBqAHjAOMAUv9S/17+Xv7H/sf+LQAtAG4BbgF4AXgBUgBSANv+2/5n/mf+Of85/78AvwCZAZkBJwEnAbn/uf+H/of+kf6R/sb/xv82ATYBlAGUAbEAsQAp/yn/Y/5j/uj+6P5fAF8AgQGBAWEBYQEfAB8Auv66/nD+cP5m/2b/6wDrAJ0BnQEEAQQBh/+H/3b+dv6r/qv++v/6/1UBVQGJAYkBgwCDAAD/AP9j/mP+D/8P/5AAkACPAY8BRwFHAez/7P+o/qj+if6J/pj/mP8KAQoBjwGPAdUA1QBb/1v/dv52/tD+0P4rACsAYgFiAWwBbAFPAE8A4/7j/nP+c/4//z//ugC6AI0BjQEfAR8Bu/+7/5L+kv6d/p3+yf/J/y0BLQGJAYkBrACsADD/MP9w/nD+8f7x/lwAXAB2AXYBVwFXAR4AHgDD/sP+fP58/mr/av/kAOQAkAGQAfwA/ACK/4r/gf6B/rT+tP76//r/QAFAAXEBcQF6AHoAD/8P/3v+e/4d/x3/iQCJAHkBeQE0ATQB7f/t/7P+s/6V/pX+nP+c/wMBAwGDAYMB0ADQAGH/Yf+C/oL+2v7a/isAKwBYAVgBYQFhAUwATADs/uz+f/5//kT/RP+0ALQAgAGAARYBFgG9/73/nf6d/qf+p/7K/8r/IwEjAX0BfQGrAKsARf9F/5P+k/4I/wj/TABMADkBOQEUARQBBAAEAO/+7/7X/tf+pv+m/8sAywA2ATYBsACwAJX/lf/u/u7+K/8r/x0AHQDpAOkA5gDmACMAIwA8/zz/Bv8G/5H/kf99AH0A6gDqAJ4AngDN/83/O/87/1T/VP/9//3/pACkALYAtgA4ADgAhf+F/0j/SP+X/5f/PQA9AJsAmwB5AHkA8//z/4X/hf+G/4b/6v/q/2AAYAB8AHwAOgA6AMj/yP+V/5X/tP+0/w8ADwBMAEwARgBGAAcABwDK/8r/wf/B/+f/5/8dAB0AMwAzACMAIwD9//3/5P/k/+P/4//z//P/AwADAAsACwAMAAwACQAJAAMAAwD2//b/6P/o/+n/6f/9//3/HwAfAC8ALwAcABwA7P/s/8T/xP/M/8z/AQABAEEAQQBKAEoAFwAXAMH/wf+d/53/x//H/ywALAByAHIAXABcAPT/9P+L/4v/hf+F/+P/4/9rAGsAlACUAEcARwCs/6z/XP9c/4v/i/8mACYApwCnAJwAnAAOAA4AZP9k/0P/Q/+6/7r/gQCBANUA1QCAAIAAr/+v/yD/IP9J/0n/EQARANUA1QDiAOIANQA1AEj/SP/+/v7+gv+C/4YAhgAUARQBwgDCAMD/wP/v/u/+A/8D/+v/6//1APUAKAEoAW4AbgBK/0r/0f7R/kz/TP9oAGgAGAEYAdcA1wDR/9H/8f7x/v3+/f7l/+X/8gDyACkBKQFvAG8AWP9Y/+T+5P5b/1v/bABsABQBFAHQANAA0P/Q//X+9f7//v/+3f/d/+EA4QAZARkBbABsAFj/WP/n/uf+YP9g/3EAcQAZARkB1QDVANP/0//1/vX+/f79/tr/2v/dAN0AEwETAWYAZgBV/1X/5f7l/mD/YP9zAHMAHQEdAdkA2QDY/9j/+v76/gD/AP/c/9z/3QDdABIBEgFkAGQAUf9R/+H+4f5d/13/cQBxABwBHAHSANIA2//b/wb/Bv8M/wz/3//f/9YA1gAJAQkBYABgAFX/Vf/p/un+YP9g/2oAagAQARAB0ADQANr/2v8H/wf/Dv8O/+L/4v/ZANkACwELAWIAYgBX/1f/6v7q/mD/YP9qAGoADgEOAc8AzwDZ/9n/Bv8G/w3/Df/i/+L/2QDZAAwBDAFjAGMAWP9Y/+r+6v5g/2D/aQBpAA0BDQHOAM4A2P/Y/wT/BP8L/wv/4f/h/9EA0QACAQIBXwBfAF//X//2/vb+Z/9n/2cAZwAFAQUBxwDHANn/2f8N/w3/FP8U/+H/4f/QANAAAgECAWAAYABf/1//9v72/mj/aP9nAGcABQEFAccAxwDZ/9n/Df8N/xT/FP/g/+D/zwDPAAABAAFeAF4AXv9e//X+9f5n/2f/ZwBnAAUBBQHHAMcA2v/a/w3/Df8V/xX/4f/h/9AA0AABAQEBXwBfAF//X//2/vb+bf9t/2MAYwD7APsAwADAANz/3P8X/xf/Hv8e/+P/4//IAMgA9wD3AFoAWgBk/2T///7//mz/bP9iAGIA+gD6AMAAwADb/9v/F/8X/x7/Hv/i/+L/yADIAPcA9wBbAFsAZP9k///+//5s/2z/YwBjAPsA+wDAAMAA3P/c/xj/GP8e/x7/4//j/8gAyAD3APcAWwBbAGX/Zf8A/wD/bf9t/2MAYwD7APsAwADAANv/2/8g/yD/Jv8m/+P/4//AAMAA7QDtAFcAVwBr/2v/Cv8K/3L/cv9eAF4A8ADwALgAuADd/93/IP8g/yb/Jv/j/+P/wADAAO0A7QBYAFgAa/9r/wr/Cv9z/3P/XwBfAPEA8QC4ALgA3f/d/yH/If8n/yf/5P/k/8AAwADtAO0AWABYAGv/a/8K/wr/c/9z/14AXgDwAPAAuAC4AN3/3f8g/yD/J/8n/+P/4/+/AL8A7QDtAFMAUwBx/3H/FP8U/3j/eP9aAFoA5wDnALEAsQDf/9//Kv8q/zD/MP/l/+X/uAC4AOMA4wBUAFQAcf9x/xX/Ff95/3n/WwBbAOcA5wCxALEA3//f/yr/Kv8w/zD/5f/l/7cAtwDjAOMAUwBTAHH/cf8U/xT/eP94/1oAWgDmAOYAsACwAN7/3v8q/yr/MP8w/+X/5f+3ALcA4wDjAFQAVABx/3H/Ff8V/3n/ef9bAFsA3QDdAKkAqQDg/+D/NP80/zn/Of/m/+b/sACwANkA2QBQAFAAeP94/x//H/9+/37/VgBWANwA3ACoAKgA4P/g/zP/M/85/zn/5v/m/68ArwDZANkAUABQAHf/d/8e/x7/fv9+/1YAVgDcANwAqACoAOD/4P80/zT/Of85/+b/5v+wALAA2QDZAFAAUAB4/3j/H/8f/3//f/9XAFcA3QDdAKkAqQDg/+D/NP80/zr/Ov/n/+f/pwCnAM8AzwBMAEwAff99/yn/Kf+E/4T/UgBSANIA0gCgAKAA4f/h/zz/PP9C/0L/5//n/6cApwDPAM8ATABMAH7/fv8p/yn/hf+F/1MAUwDSANIAoQChAOL/4v89/z3/Q/9D/+f/5/+oAKgAzwDPAE0ATQB+/37/Kf8p/4X/hf9SAFIA0gDSAKAAoADh/+H/PP88/0L/Qv/n/+f/pwCnAM8AzwBMAEwAff99/zP/M/+K/4r/TgBOAMgAyACZAJkA4v/i/0b/Rv9M/0z/6f/p/6AAoADFAMUASQBJAIT/hP80/zT/i/+L/08ATwDIAMgAmQCZAOP/4/9G/0b/TP9M/+n/6f+gAKAAxQDFAEgASACE/4T/M/8z/4r/iv9OAE4AyADIAJkAmQDj/+P/Rv9G/0v/S//o/+j/nwCfAMUAxQBIAEgAhP+E/zT/NP+L/4v/TwBPAMgAyACZAJkA5f/l/1D/UP9V/1X/6v/q/5gAmAC7ALsARQBFAIv/i/8+/z7/kf+R/0sASwC+AL4AkQCRAOT/5P9P/0//VP9U/+n/6f+XAJcAuwC7AEUARQCK/4r/Pf89/5D/kP9KAEoAvgC+AJEAkQDk/+T/T/9P/1T/VP/q/+r/mACYALsAuwBFAEUAi/+L/z7/Pv+R/5H/SwBLAL4AvgCSAJIA5f/l/1D/UP9V/1X/6v/q/5gAmACyALIAQQBBAJD/kP9I/0j/lv+W/0YARgCzALMAiQCJAOX/5f9Y/1j/Xf9d/+r/6v+PAI8AsQCxAEEAQQCQ/5D/SP9I/5b/lv9HAEcAtAC0AIoAigDm/+b/Wf9Z/17/Xv/r/+v/kACQALEAsQBCAEIAkf+R/0j/SP+X/5f/RwBHALQAtACKAIoA5v/m/1j/WP9d/13/6v/q/48AjwCxALEAQQBBAJD/kP9I/0j/lv+W/0YARgCpAKkAgQCBAOf/5/9i/2L/Zv9m/+z/7P+IAIgAqACoAD4APgCX/5f/U/9T/53/nf9DAEMAqgCqAIIAggDo/+j/Yv9i/2f/Z//s/+z/iACIAKUApQAxADEAh/+H/0//T/+2/7b/cwBzANMA0wCIAIgAw//D/zL/Mv9P/0//AQABAKwArACzALMAEwATAFH/Uf8n/yf/tf+1/5EAkQDyAPIAiwCLAKr/qv8d/x3/Wf9Z/ysAKwDPAM8AuQC5APr/+v80/zT/Gv8a/8P/w/+kAKQA8wDzAHEAcQCK/4r/EP8Q/2z/bP9TAFMA9gD2AMMAwwDi/+L/Ff8V/xH/Ef/a/9r/wwDDAPwA/ABUAFQAXv9e//X+9f54/3j/eAB4ABQBFAHBAMEAxv/G//3+/f4X/xf//v/+/+YA5gACAQIBNgA2ADf/N//j/uP+i/+L/5kAmQAnAScBsQCxAKP/o//m/ub+Mv8y/yIAIgD2APYA8gDyABQAFAAk/yT/7v7u/qr/qv+tAK0AHAEcAYsAiwCF/4X/5v7m/kT/RP9GAEYADwEPAekA6QD2//b/DP8M//T+9P7L/8v/ygDKAB0BHQFtAG0AY/9j/9z+3P5c/1z/aABoAB8BHwHXANcA1v/W//n++f4E/wT/7v/u/+QA5AAVARUBTABMAET/RP/a/tr+d/93/4YAhgAkASQBvAC8ALT/tP/s/uz+Gf8Z/xEAEQD4APgABwEHASoAKgAt/y3/5P7k/pj/mP+hAKEADgEOAZIAkgCc/5z/+/77/kP/Q/8vAC8A8ADwANYA1gD9//3/Lf8t/yD/IP/o/+j/ywDLAAMBAwFRAFEAXP9c/+/+7/50/3T/aABoAPkA+QCeAJ4Asv+y/wb/Bv87/zv/IgAiAPAA8ADuAO4AHAAcADj/OP8H/wf/uv+6/6QApAD9AP0AaABoAHX/df/0/vT+Y/9j/1gAWAACAQIBxADEANz/3P8Z/xn/Kf8p///////IAMgA4QDhAC0ALQBR/1H/Cv8K/5//n/+BAIEA8QDxAIEAgQCh/6H/E/8T/13/Xf86ADoA5wDnAMcAxwD3//f/MP8w/yH/If/a/9r/rwCvAOgA6ABKAEoAa/9r/wz/DP+L/4v/bwBvAPUA9QCeAJ4Av/+//xr/Gv9G/0b/GQAZANUA1QDTANMAEQARAED/QP8V/xX/v/+//5wAnADxAPEAaQBpAIf/h/8O/w7/c/9z/0wATADbANsAowCjANv/2/8y/zL/QP9A//n/+f+1ALUAzwDPACwALABk/2T/JP8k/63/rf99AH0A4wDjAHoAegCp/6n/I/8j/2b/Zv8xADEA0ADQALQAtAD1//X/QP9A/zT/NP/g/+D/pQClANoA2gBHAEcAef95/yD/IP+T/5P/ZABkAN8A3wCOAI4AwP/A/yj/KP9S/1L/FQAVAMQAxADEAMQAEQARAFL/Uv8r/yv/zP/M/4YAhgDNAM0AWQBZAJn/mf8y/zL/h/+H/0UARQDHAMcAlQCVAN7/3v9F/0X/U/9T//z//P+oAKgAvwC/ACkAKQBx/3H/Nf81/7P/s/9xAHEAzQDNAG0AbQCu/67/NP80/3P/c/8sACwAvwC/AKUApQD3//f/Uf9R/0b/Rv/k/+T/mACYAMcAxwBBAEEAhP+E/zL/Mv+c/5z/XABcAMwAzACDAIMAx//H/zz/PP9w/3D/EwATAKUApQCkAKQADgAOAG7/bv9O/07/z//P/3gAeAC5ALkATwBPAKL/ov9E/0T/kf+R/z4APgC1ALUAhwCHAOH/4f9W/1b/Yv9i//z//P+YAJgArgCuACUAJQB+/37/SP9I/7r/uv9nAGcAuwC7AGQAZAC3/7f/SP9I/4D/gP8pACkArgCuAJcAlwD4//j/Yf9h/1b/Vv/l/+X/iQCJALQAtAA6ADoAj/+P/1f/V/+u/67/SwBLAKcApwBqAGoA0P/Q/1//X/9+/37/EAAQAJMAkwCTAJMADQANAH3/ff9g/2D/1f/V/20AbQCnAKcASABIAKz/rP9Y/1j/nf+d/zgAOACjAKMAegB6AOX/5f9n/2f/cv9y//z//P+IAIgAnACcACEAIQCL/4v/Wv9a/8H/wf9cAFwAqACoAFkAWQC9/73/Wv9a/43/jf8kACQAnACcAIcAhwD5//n/gf+B/3n/ef/r/+v/bgBuAJEAkQAvAC8Apv+m/2v/a/+4/7j/QwBDAJQAlABfAF8A1v/W/3L/cv+N/43/DwAPAIMAgwCCAIIACwALAIv/i/9x/3H/2f/Z/2AAYACUAJQAPwA/ALX/tf9q/2r/qP+o/zEAMQCQAJAAbABsAOf/5/94/3j/gv+C//3//f96AHoAiwCLAB4AHgCY/5j/bf9t/8j/yP9SAFIAlQCVAFAAUADN/83/f/9//6f/p/8dAB0AegB6AGkAaQD6//r/kf+R/4n/if/t/+3/YABgAH4AfgApACkAsf+x/33/ff/A/8D/OgA6AIEAgQBSAFIA2//b/4P/g/+b/5v/DQANAHMAcwByAHIACgAKAJv/m/+E/4T/3v/e/1UAVQCCAIIAOAA4AL//v/9+/37/s/+z/ywALAB/AH8AXwBfAOr/6v+J/4n/kf+R//3//f9qAGoAeQB5ABYAFgCy/7L/kf+R/9b/1v89AD0AbwBvADsAOwDT/9P/kf+R/7P/s/8YABgAaABoAFoAWgD7//v/of+h/5v/m//w//D/UgBSAGwAbAAjACMAvf+9/5D/kP/K/8r/MgAyAG8AbwBHAEcA4f/h/5X/lf+p/6n/CwALAGIAYgBhAGEACAAIAKn/qf+V/5X/4//j/0gASABuAG4ALwAvAMf/x/+Q/5D/vv++/yUAJQBsAGwARABEAPH/8f+r/6v/sv+y//7//v9MAEwAVwBXABIAEgC//7//pP+k/93/3f8zADMAXQBdADIAMgDb/9v/pP+k/8D/wP8UABQAVgBWAEoASgD7//v/sP+w/6v/q//y//L/RABEAFoAWgAdAB0Ax//H/6L/ov/S/9L/KQApAFwAXAA7ADsA5v/m/6f/p/+4/7j/CQAJAFIAUgBRAFEABwAHALj/uP+n/6f/6P/o/zwAPABcAFwAIAAgANv/2/+2/7b/1P/U/xkAGQBIAEgANQA1APP/8/+8/7z/wf/B//7//v88ADwARQBFAA4ADgDM/8z/tv+2/+T/5P8oACgASgBKACcAJwDi/+L/tv+2/83/zf8QABAARQBFADwAPAD9//3/wf/B/73/vf/2//b/NwA3AEgASAAXABcA0//T/7b/tv/c/9z/IQAhAEoASgAvAC8A6//r/7j/uP/G/8b/BwAHAEEAQQAwADAABAAEANT/1P/K/8r/8f/x/yQAJAA3ADcAFwAXAOP/4//I/8j/3//f/xMAEwA2ADYAKQApAPf/9//N/83/0f/R//////8tAC0ANAA0AAsACwDZ/9n/yf/J/+v/6/8fAB8AOAA4AB4AHgDq/+r/yP/I/9n/2f8MAAwAMwAzACwALAD9//3/0P/Q/83/zf/4//j/KAAoADUANQARABEA3v/e/8j/yP/k/+T/GAAYACUAJQAYABgA9v/2/93/3f/j/+P/BAAEACEAIQAhACEAAwADAOP/4//d/93/9//3/xcAFwAiACIADAAMAOz/7P/d/93/7v/u/xAAEAAkACQAFwAXAPb/9v/f/9//5v/m/wQABAAeAB4AGwAbAP/////i/+L/3//f//n/+f8YABgAIAAgAAsACwDs/+z/4P/g//L/8v8RABEAIQAhABMAEwD1//X/4P/g/+n/6f8FAAUADgAOAAwADAD/////8//z//P/8///////CwALAA4ADgAEAAQA9v/2//H/8f/5//n/BwAHAA0ADQAHAAcA+f/5//H/8f/2//b/AwADAAwADAAKAAoA/v/+//T/9P/1//X//////woACgAMAAwAAwADAPf/9//0//T/+//7/wcABwAMAAwABgAGAPv/+//1//X/+f/5/wQABAALAAsACAAIAP7//v/2//b/9//3//////////////////////////////////////////////////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   unitAttack: "data:audio/wav;base64,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jf6E/oT+lf6V/tj+2P40/zT/sP+w/0QARADzAPMApAGkAWwCbAJoA2gDmASYBFYFVgV4BngGjAeMB4IIgghuCW4JTwpPCj8LPwswDDAMGg0aDfMN8w2zDrMOWQ9ZD88Pzw8aEBoQRhBGEFIQUhAqECoQ5w/nD6kPqQ9mD2YPIA8gD+QO5A6nDqcOcw5zDloOWg5TDlMOYQ5hDnIOcg6IDogOiQ6JDoYOhg6oDqgO0A7QDgsPCw9zD3MP1A/UD/4P/g/tD+0PyQ/JD68Prw+bD5sPgA+AD24Pbg9sD2wPvQ69DrwOvA6xDrEOmw6bDoMOgw5/Dn8OcQ5xDjMOMw7ZDdkNcA1wDfEM8QxCDEIMhguGC84KzgoICggKRQlFCWoIaghaB1oHfAZ8BpsFmwWxBLEEDwQPBGcDZwPAAsACNwI3Ar4BvgFtAW0BQAFAAS0BLQE2ATYBUAFQAYcBhwHKAcoBCwILAjcCNwJhAmECFgMWA+cD5wOYBJgENwU3BbgFuAU0BjQGngaeBu8G7waVBpUGtAa0BsYGxgbeBt4G1AbUBrcGtwaeBp4GdwZ3BkcGRwbyBfIFpQWlBWcFZwU8BTwFCAUIBeAE4ATWBNYEywTLBLQEtASiBKIEmASYBJkEmQSvBK8E2wTbBBMFEwViBWIFtgW2BewF7AUZBhkGUQZRBoMGgwamBqYGxwbHBusG6wb7BvsGAAcAB/8G/wYCBwIH/gb+BvQG9AbrBusG3gbeBuUG5QbtBu0G7QbtBqgGqAagBqAGggaCBmUGZQZZBlkGUgZSBmsGawaYBpgG2gbaBjEHMQeNB40H7gfuB1wIXAjXCNcIVwlXCdgJ2AliCmIK8wrzCo0LjQsYDBgMgQyBDOAM4AwwDTANZw1nDZcNlw2yDbINvw2/Da8Nrw1wDXANIA0gDboMugw4DDgMsAuwCxQLFAtiCmIKqAmoCe8I7wgnCCcIUgdSB3cGdwa5BbkFBgUGBXUEdQT3A/cDbQNtAz0DPQMvAy8DZANkA60DrQMLBAsEgASABAkFCQWSBZIFBwYHBosGiwYvBy8H4QfhB2AIYAimCKYI0QjRCOYI5gjZCNkInQidCDQINAijB6MH3AbcBvMF8wX0BPQE5QPlA74CvgKJAYkBawBrAHX/df+o/qj+3f3d/TD9MP0A/QD99Pz0/AP9A/0p/Sn9if2J/ST+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+P/6//r//v/+/wEAAQADAAMAAwADAAQABAAFAAUABwAHAAgACAAJAAkACgAKAAsACwALAAsADAAMAA0ADQAOAA4AEAAQAAsACwAMAAwADAAMAA0ADQAOAA4ADgAOAA8ADwAQABAAEQARABEAEQASABIAEgASABMAEwAUABQAFgAWABcAFwAZABkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
   cardDestruction: "data:audio/wav;base64,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4//E/6L/if91/2b/af90/5P/t//P/9v/9P8WAEcAYgBvAHIAdwBvAGYAWQBWAEcALwAfADIAVwBtAIIAkQCJAHUAXABEADIABwDV/6z/mv+O/5H/nv+q/7n/0P/u/w8AJAAjABwAIgArADEAMQBCAD0AMQASAOn/y//I/9L/3f/f/9D/vv+4/7P/nv+J/5b/sP/K/+L/7//u//X/+f/p/+D/1//U/8z/v//B/8H/y//M/8r/4f/8/w4ALwBRAGMAcQB9AHMAZgBPADQAIQAkACIAEAADAPT/7////wkACQALAAAA9//r/+L/5//t//v/BQAXACYAEgABAOz/5P/l/+n/4f/Z/9j/0//S/9P/1v/b/9r/3//q/wAAFwAoACIAEAAKABUAFwAQAAsAEAASAA8ADQASABYAHgAnACQAIQAfABMABwD9/+H/wP+s/7P/u/+//8T/yf/c/+r/7f/3/w8AJAAsACwAHgAXABEADwALABUAEwAMAPz/7P/z/wwAIQAoACEAJgAuAC0AIQAbAA4ABQD7//P/9/////r/7f/d/8n/wP+2/6//sv+1/8D/0P/g/+v/9v/+/xIAKQA9AFIAXQBZAFEAOQAqACEAIAAdAB0AIAAcAB8AJgAxADAAJAAcABwAEwAJAAIAAAAGABIAGgAWAAoA/v/s/+P/4//r//D/9v/9////+v/x/+z/6v/t/+//9f/8//3/+v/x/+D/1//g/+L/2//U/87/0P/a/+L/4//h/97/4f/n//H/+/8CAAQABQAEAAEA/f/8/wAAAQD9//j/9f/3//b/+v8JABMAFwAbACAAHgATAAUAAAACAAYAFAAcAB0AIQAmACsAKAAXAA4ABgD+//L/6v/o/+3/7//t//L/9P/s/+T/3//Y/9P/0P/T/9j/2f/e/+z/9f/5//3//v8FABQAJQAtACwAKgAlABsAEgAQABEAEQASABUAGQAeABwAGAAUAA0ABAD5/+3/6v/t/+7/9P/3//b/+f/9//z/9//x/+7/7//y//T/9//4//X/9f/3//j/+v/6//v/+v/6//r/+P/2//b/+v/9//3/+f/0//X/9f/1//X/+f/6//3/AAABAAMABwALAA4ADwANAAoACAAHAAQAAQD9//r/+f/6//z///////7/AAAEAAcABwAEAAIAAwADAAUABwAHAAYAAwABAP///f/7//n/9//1//X/9//7//7//v///wAAAAD//wAA///9//3//f/+//7///8AAAEAAQABAAEAAQABAAEAAAAAAAAAAAAAAA==",
@@ -2081,7 +2081,7 @@ function playSound(key: SoundKey, volume = 0.7) {
   try {
     const audio = new Audio(src)
     audio.volume = Math.max(0, Math.min(1, volume * _sfxVolumeRef))
-    audio.play().catch((e) ={
+    audio.play().catch((e) => {
       if (e?.name !== "NotAllowedError") console.warn("[Sound]", key, e?.message)
     })
   } catch {}
@@ -2108,10 +2108,10 @@ function startDuelOst() {
   if (!ost) return
   if (!ost.paused) return // already playing
   ost.currentTime = 0
-  ost.play().catch(() ={
+  ost.play().catch(() => {
     // Browser blocked autoplay — will start on next user interaction
-    const resume = () ={
-      ost.play().catch(() ={})
+    const resume = () => {
+      ost.play().catch(() => {})
       document.removeEventListener("click", resume)
       document.removeEventListener("keydown", resume)
       document.removeEventListener("touchstart", resume)
@@ -2122,11 +2122,11 @@ function startDuelOst() {
   })
 
   // Guard: when tab regains focus, keep duel OST playing and suppress menu music restart
-  const onVisible = () ={
+  const onVisible = () => {
     if (!document.hidden) {
       pauseMenuMusic()  // ensure menu music stays paused
       const o = getDuelOst()
-      if (o && o.paused) o.play().catch(() ={})
+      if (o && o.paused) o.play().catch(() => {})
     }
   }
   document.removeEventListener("visibilitychange", onVisible)
@@ -2147,7 +2147,7 @@ function stopDuelOst(fadeOut = true) {
   const startVol = ost.volume
   const steps = 30
   let step = 0
-  const interval = setInterval(() ={
+  const interval = setInterval(() => {
     step++
     if (!ost) { clearInterval(interval); return }
     ost.volume = Math.max(0, startVol * (1 - step / steps))
@@ -2324,7 +2324,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
 function StarfieldCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  useEffect(() ={
+  useEffect(() => {
     const cv = canvasRef.current
     if (!cv) return
     const ctx = cv.getContext("2d")!
@@ -2544,7 +2544,7 @@ function StarfieldCanvas() {
         // Rose/violet — left, very flat tilt=0.16, slow
         {x:.04,y:.55,r:W*.10, arms:3,tilt:.16,rotation:0.7,  spinSpeed:.000042,precPhase:5.8, precSpeed:.00020,c1:"rgba(255,105,185,1)",c2:"rgba(185,88,255,1)", cc:"rgba(210,60,195,",  cl:"#ffc8ee",dc:"rgba(45,5,55,1)"},
       ]
-      galaxyLayers = defs.map(d ={
+      galaxyLayers = defs.map(d => {
         const cv = makeGalaxy(d.r,d.arms,d.c1,d.c2,d.cc,d.cl,d.dc)
         return { cv, half:cv.width/2, x:d.x, y:d.y, tilt:d.tilt, rotation:d.rotation, spinSpeed:d.spinSpeed, precPhase:d.precPhase, precSpeed:d.precSpeed }
       })
@@ -2808,7 +2808,7 @@ function StarfieldCanvas() {
 
 interface GameResultScreenProps {
   result: "won" | "lost"
-  onBack: () =void
+  onBack: () => void
   rewardKind?: DuelRewardKind
   /** Duelo do Modo Campanha (História) — só aqui rola o drop de Livro de XP. */
   isCampaign?: boolean
@@ -2824,7 +2824,7 @@ export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: Gam
     gacha: number; gear: number; fragments: FragmentCounts; chest: ChestId | null
   } | null>(null)
 
-  useEffect(() ={
+  useEffect(() => {
     if (!isWon || !rewardKind || rewardsGrantedRef.current) return
     rewardsGrantedRef.current = true
     setDuelRewards(addDuelRewards(rewardKind))
@@ -2835,7 +2835,7 @@ export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: Gam
   const xpBookGrantedRef = useRef(false)
   const [xpBookDrop, setXpBookDrop] = useState<{ id: XPBookId; amount: number } | null>(null)
 
-  useEffect(() ={
+  useEffect(() => {
     if (!isWon || !isCampaign || xpBookGrantedRef.current) return
     xpBookGrantedRef.current = true
     setXpBookDrop(rollCampaignXPBook())
@@ -2848,13 +2848,13 @@ export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: Gam
   } | null>(null)
 
   // Listen for master XP event dispatched by grantMasterXP
-  useEffect(() ={
-    const handler = (e: Event) ={
+  useEffect(() => {
+    const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
       setMasterXPData(detail)
     }
     window.addEventListener("gpgame_master_xp", handler)
-    return () =window.removeEventListener("gpgame_master_xp", handler)
+    return () => window.removeEventListener("gpgame_master_xp", handler)
   }, [])
 
   return (
@@ -2872,9 +2872,9 @@ export function GameResultScreen({ result, onBack, rewardKind, isCampaign }: Gam
 
 // ─── Error Boundary for OnlineDuelScreen crashes ─────────────────────────────
 class OnlineDuelErrorBoundary extends Component<
-  { children: React.ReactNode; onBack: () =void },
+  { children: React.ReactNode; onBack: () => void },
   { hasError: boolean }
-{
+> {
   constructor(props: any) { super(props); this.state = { hasError: false } }
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(error: Error, info: any) {
@@ -2993,7 +2993,7 @@ function TrapChainsFX() {
     { rot: 33,  top: "48%", delay: 0.42, dir: 1 },
   ]
   // Estilhaços metálicos radiais no momento da quebra
-  const shards = Array.from({ length: 8 }).map((_, i) =({
+  const shards = Array.from({ length: 8 }).map((_, i) => ({
     px: Math.cos((i / 8) * Math.PI * 2 + 0.4) * (42 + (i % 3) * 18),
     py: Math.sin((i / 8) * Math.PI * 2 + 0.4) * (34 + (i % 3) * 14),
     rot: (i % 2 === 0 ? 1 : -1) * (70 + i * 28),
@@ -3001,7 +3001,7 @@ function TrapChainsFX() {
     w: 6 + (i % 3) * 3,
   }))
   // Brasas que sobem flutuando depois da quebra (em vez de faíscas geométricas)
-  const embers = Array.from({ length: 10 }).map((_, i) =({
+  const embers = Array.from({ length: 10 }).map((_, i) => ({
     x: (i - 4.5) * 11 + ((i * 7) % 5) - 2,
     drift: (i % 2 === 0 ? -1 : 1) * (7 + (i % 3) * 6),
     rise: 46 + (i % 4) * 15,
@@ -3010,7 +3010,7 @@ function TrapChainsFX() {
     hue: i % 3 === 0 ? "#fbbf24" : i % 3 === 1 ? "#f87171" : "#fde68a",
   }))
   // Faíscas de impacto: cada leva acompanha a chegada de uma corrente
-  const impactSparks = Array.from({ length: 12 }).map((_, i) =({
+  const impactSparks = Array.from({ length: 12 }).map((_, i) => ({
     x: Math.cos((i / 12) * Math.PI * 2 + 0.9) * (34 + (i % 4) * 12),
     y: Math.sin((i / 12) * Math.PI * 2 + 0.9) * (28 + (i % 3) * 10),
     delay: 0.12 + (i % 4) * 0.14 + (i % 3) * 0.03,
@@ -3038,7 +3038,7 @@ function TrapChainsFX() {
         <div className="trap-ring trap-ring--gold" style={{ animationDelay: "1.98s" }} />
       </div>
       {/* Correntes que envolvem a carta */}
-      {chains.map((c, i) =(
+      {chains.map((c, i) => (
         <div key={i} className="trap-chain-wrap"
           style={{
             top: c.top,
@@ -3054,7 +3054,7 @@ function TrapChainsFX() {
         <TrapPadlock />
       </div>
       {/* Faíscas radiais no impacto das correntes */}
-      {impactSparks.map((s, i) =(
+      {impactSparks.map((s, i) => (
         <div key={`sp-${i}`} className="trap-spark"
           style={{
             ["--sp-x" as any]: `${s.x}px`,
@@ -3064,7 +3064,7 @@ function TrapChainsFX() {
           }} />
       ))}
       {/* Arcos elétricos estalando nos elos durante a tensão */}
-      {arcs.map((a, i) =(
+      {arcs.map((a, i) => (
         <div key={`arc-${i}`} className="trap-arc"
           style={{ top: a.top, left: a.left, transform: `rotate(${a.rot}deg) scaleX(${a.flip})`, animationDelay: `${a.delay}s` }}>
           <svg viewBox="0 0 40 14" width="34" height="12" aria-hidden="true">
@@ -3075,7 +3075,7 @@ function TrapChainsFX() {
         </div>
       ))}
       {/* Estilhaços de metal voando na quebra */}
-      {shards.map((s, i) =(
+      {shards.map((s, i) => (
         <div key={i} className="trap-shard"
           style={{
             ["--sh-x" as any]: `${s.px}px`,
@@ -3086,7 +3086,7 @@ function TrapChainsFX() {
           }} />
       ))}
       {/* Brasas subindo após a quebra */}
-      {embers.map((p, i) =(
+      {embers.map((p, i) => (
         <div key={i} className="trap-ember"
           style={{
             ["--em-x" as any]: `${p.x}px`,
@@ -3190,7 +3190,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     visible: boolean
     cardName: string
     options: { id: string; label: string; description: string; image?: string }[]
-    onChoose: (optionId: string) =void
+    onChoose: (optionId: string) => void
     gridLayout?: boolean
   } | null>(null)
 
@@ -3199,8 +3199,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     visible: boolean
     title: string
     cards: GameCard[]
-    onSelect: (card: GameCard) =void
-    onCancel: () =void
+    onSelect: (card: GameCard) => void
+    onCancel: () => void
   } | null>(null)
 
   // Attack arrow state
@@ -3225,17 +3225,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const isDraggingRef = useRef(false) // Track drag state
   const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
 
-  const triggerScreenShake = useCallback((intensity: number = 5, duration: number = 150) ={
+  const triggerScreenShake = useCallback((intensity: number = 5, duration: number = 150) => {
     setScreenShake({ active: true, intensity })
-    setTimeout(() =setScreenShake({ active: false, intensity: 0 }), duration)
+    setTimeout(() => setScreenShake({ active: false, intensity: 0 }), duration)
   }, [])
 
-  const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) ={
+  const triggerExplosion = useCallback((targetX: number, targetY: number, element: string) => {
     const el = element?.toLowerCase().trim() || "neutral"
     const particles: Particle[] = []
 
     // Screen shake — heavier for earth/fire, lighter for others
-    const shakeMap: Record<string, number= { pyrus:7, fire:7, terra:8, subterra:8, darkus:5, darkness:5, dark:5, void:4 }
+    const shakeMap: Record<string, number> = { pyrus:7, fire:7, terra:8, subterra:8, darkus:5, darkness:5, dark:5, void:4 }
     triggerScreenShake(shakeMap[el] ?? 3, 130)
 
     // ── AQUOS ── water droplets with gravity arc
@@ -3346,9 +3346,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const effectId = `explosion-${Date.now()}`
     const startTime = Date.now()
-    setExplosionEffects((prev) =[...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
+    setExplosionEffects((prev) => [...prev, { id: effectId, x: targetX, y: targetY, element, particles, startTime }])
 
-    const flashColors: Record<string,string= {
+    const flashColors: Record<string,string> = {
       aquos:"rgba(0,191,255,0.45)", aquo:"rgba(0,191,255,0.45)",
       fire:"rgba(255,80,0,0.55)", pyrus:"rgba(255,80,0,0.55)",
       ventus:"rgba(100,220,50,0.4)",
@@ -3358,10 +3358,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       terra:"rgba(120,60,10,0.5)", subterra:"rgba(120,60,10,0.5)",
     }
     setImpactFlash({ active:true, color: flashColors[el] ?? "rgba(255,255,255,0.35)" })
-    setTimeout(() =setImpactFlash({ active:false, color:"#ffffff" }), 90)
+    setTimeout(() => setImpactFlash({ active:false, color:"#ffffff" }), 90)
 
-    setTimeout(() ={
-      setExplosionEffects((prev) =prev.filter((e) =e.id !== effectId))
+    setTimeout(() => {
+      setExplosionEffects((prev) => prev.filter((e) => e.id !== effectId))
     }, 1000)
   }, [triggerScreenShake])
 
@@ -3378,7 +3378,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // ── All missing state declarations ──
   const [diceAnimation, setDiceAnimation] = useState<{
     visible: boolean; rolling: boolean; result: number | null
-    cardName: string; onComplete: ((result: number) =void) | null
+    cardName: string; onComplete: ((result: number) => void) | null
   } | null>(null)
   const [lacerationAnimation, setLacerationAnimation] = useState(false)
   const [sinfoniaAnimation, setSinfoniaAnimation] = useState(false)
@@ -3446,7 +3446,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     elementGroup: 'aquos' | 'ventus' | 'fire' | 'darkness' | 'lightness'
     difficulty: Difficulty
   }
-  const [eventDuel] = useState<EventDuelInfo | null>(() ={
+  const [eventDuel] = useState<EventDuelInfo | null>(() => {
     if (typeof window === 'undefined') return null
     try {
       const raw = localStorage.getItem('gpgame_event_battle_pending')
@@ -3458,7 +3458,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   })
 
   /** Normaliza o elemento de uma carta para o mesmo grupo usado no deck builder. */
-  const normalizeElementGroup = (el: string): string ={
+  const normalizeElementGroup = (el: string): string => {
     const e = (el || '').toLowerCase().trim()
     if (['fire', 'pyrus'].includes(e)) return 'fire'
     if (['aquos', 'aquo', 'water'].includes(e)) return 'aquos'
@@ -3473,19 +3473,19 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
    * apenas cartas do elemento do treinamento. Cartas neutras (Void) entram
    * como reserva caso o elemento não tenha cartas suficientes.
    */
-  const buildEventBotDeck = (info: EventDuelInfo): DeckWithImages ={
+  const buildEventBotDeck = (info: EventDuelInfo): DeckWithImages => {
     const pool = (allCards ?? []) as GameCard[]
-    const elemental = pool.filter((c) =normalizeElementGroup(c.element) === info.elementGroup)
-    const neutral = pool.filter((c) =normalizeElementGroup(c.element) === 'void')
+    const elemental = pool.filter((c) => normalizeElementGroup(c.element) === info.elementGroup)
+    const neutral = pool.filter((c) => normalizeElementGroup(c.element) === 'void')
 
     // Prioriza unidades e tropas pra garantir que o bot tenha o que evocar,
     // depois completa com o suporte do mesmo elemento.
     const isFieldUnit = (c: GameCard) =>
       c.type === 'unit' || c.type === 'troops' || c.type === 'ultimateElemental'
     const units = elemental.filter(isFieldUnit)
-    const support = elemental.filter((c) =!isFieldUnit(c))
+    const support = elemental.filter((c) => !isFieldUnit(c))
 
-    const shuffle = <T,>(arr: T[]) =[...arr].sort(() =Math.random() - 0.5)
+    const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5)
     const picked: GameCard[] = [
       ...shuffle(units).slice(0, 13),
       ...shuffle(support).slice(0, 7),
@@ -3496,24 +3496,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     let fi = 0
     while (picked.length < 20 && fi < fallback.length) picked.push(fallback[fi++])
 
-    const withUniqueIds = picked.slice(0, 20).map((c, i) =({ ...c, id: `${c.id}-ev-${i}` }))
+    const withUniqueIds = picked.slice(0, 20).map((c, i) => ({ ...c, id: `${c.id}-ev-${i}` }))
     const tapPool = shuffle(elemental.filter(isFieldUnit))
-    const tapCards = tapPool.slice(0, 2).map((c, i) =({ ...c, id: `${c.id}-evtap-${i}` }))
+    const tapCards = tapPool.slice(0, 2).map((c, i) => ({ ...c, id: `${c.id}-evtap-${i}` }))
 
     return {
       id: `event-bot-${info.elementGroup}`,
       name: `Deck ${info.eventName}`,
       cards: withUniqueIds,
-      tapCards: tapCards.length 0 ? tapCards : undefined,
+      tapCards: tapCards.length > 0 ? tapCards : undefined,
     } as DeckWithImages
   }
 
   // Keep roguelikeConfig in a ref so startGame always reads the latest values
   const roguelikeConfigRef = useRef(roguelikeConfig)
-  useEffect(() ={ roguelikeConfigRef.current = roguelikeConfig })
+  useEffect(() => { roguelikeConfigRef.current = roguelikeConfig })
 
   // ── Auto-start for Draft mode and Roguelike mode ──
-  useEffect(() ={
+  useEffect(() => {
     if (draftDeck && !gameStarted) {
       const deck = draftDeck as DeckWithImages
       const cfg  = roguelikeConfigRef.current
@@ -3538,10 +3538,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // turno do bot ficam guardados em afterIntroRef e só disparam ao final —
   // assim nada acontece "por trás" da intro.
   const [duelIntro, setDuelIntro] = useState<DuelIntroOpponent | null>(null)
-  const afterIntroRef = useRef<(() =void) | null>(null)
+  const afterIntroRef = useRef<(() => void) | null>(null)
 
   /** Nome/ícone do oponente conforme o modo de jogo atual. */
-  const buildIntroOpponent = (diff: Difficulty): DuelIntroOpponent ={
+  const buildIntroOpponent = (diff: Difficulty): DuelIntroOpponent => {
     const diffLabel = diff === "easy" ? "Fácil" : diff === "medium" ? "Médio" : "Difícil"
 
     // 1. PvP online — nick real do adversário
@@ -3556,7 +3556,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const raw = typeof window !== "undefined" ? localStorage.getItem("gpgame_story_battle_pending") : null
       if (raw) {
         const { stageId } = JSON.parse(raw) as { stageId?: string }
-        const story: Record<string, DuelIntroOpponent= {
+        const story: Record<string, DuelIntroOpponent> = {
           c1b1:   { name: "Guardas de Camelot", subtitle: "Portões de Camelot", icon: "/images/guard1_normal_scene.png" },
           c1boss: { name: "Mefisto",            subtitle: "Boss Battle",        icon: "/images/arthur_rage_scene.png", isBoss: true },
         }
@@ -3581,7 +3581,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return { name: "Oponente", subtitle: `Treino ${diffLabel}`, icon: null }
   }
 
-  const handleIntroComplete = () ={
+  const handleIntroComplete = () => {
     setDuelIntro(null)
     const run = afterIntroRef.current
     afterIntroRef.current = null
@@ -3596,8 +3596,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const mpActionsPollRef     = useRef<NodeJS.Timeout | null>(null)
   const mpLastActionTimeRef  = useRef<string>("1970-01-01")
   const mpProcessedIdsRef    = useRef<Set<string>>(new Set())
-  const mpSendActionRef      = useRef<(a: OnlineDuelAction) =void>(() ={})
-  const mpHandleOpponentRef  = useRef<(a: OnlineDuelAction) =void>(() ={})
+  const mpSendActionRef      = useRef<(a: OnlineDuelAction) => void>(() => {})
+  const mpHandleOpponentRef  = useRef<(a: OnlineDuelAction) => void>(() => {})
 
   // Opponent playmat image URL (for online mode)
   const [opponentPlaymatImage, setOpponentPlaymatImage] = useState<string | null>(null)
@@ -3638,18 +3638,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const speedRef = useRef(1)                                 // always-fresh ref for closures
 
   // Keep speedRef in sync with gameSpeed state
-  useEffect(() ={ speedRef.current = gameSpeed }, [gameSpeed])
+  useEffect(() => { speedRef.current = gameSpeed }, [gameSpeed])
 
   // Sync sfx volume to module-level ref used by playSound
-  useEffect(() ={ _sfxVolumeRef = sfxVolume / 100 }, [sfxVolume])
+  useEffect(() => { _sfxVolumeRef = sfxVolume / 100 }, [sfxVolume])
 
   // Apply music volume to OST in real-time
-  useEffect(() ={
+  useEffect(() => {
     if (_duelOstAudio) _duelOstAudio.volume = musicVolume / 100 * 0.35
   }, [musicVolume])
 
   // Scaled setTimeout — uses speedRef so all delays respect current speed
-  const ST = useCallback((fn: () =void, ms: number) ={
+  const ST = useCallback((fn: () => void, ms: number) => {
     return setTimeout(fn, ms / speedRef.current)
   }, [])
 
@@ -3663,7 +3663,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   // Player avatar for LP panel
   const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string|null>(null)
-  useEffect(() ={
+  useEffect(() => {
     try {
       // Try several localStorage keys the game may use
       const cached = localStorage.getItem("gpgame_avatar_url")
@@ -3672,17 +3672,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       if (cached) { setPlayerAvatarUrl(cached); return }
     } catch {}
     // Fallback: load from Supabase profile
-    import("@/lib/supabase/client").then(({ createClient }) ={
+    import("@/lib/supabase/client").then(({ createClient }) => {
       const sb = createClient()
-      sb.auth.getUser().then(({ data: { user } }) ={
+      sb.auth.getUser().then(({ data: { user } }) => {
         if (!user) return
         sb.from("profiles").select("avatar_url").eq("id", user.id).single()
-          .then(({ data }) ={ if (data?.avatar_url) setPlayerAvatarUrl(data.avatar_url) })
+          .then(({ data }) => { if (data?.avatar_url) setPlayerAvatarUrl(data.avatar_url) })
       })
-    }).catch(() ={})
+    }).catch(() => {})
   }, [])
 
-  useEffect(() ={
+  useEffect(() => {
     if (prevPlayerLp.current === null) { prevPlayerLp.current = playerField.life; return }
     if (playerField.life === prevPlayerLp.current) return
     const delta = playerField.life - prevPlayerLp.current
@@ -3690,11 +3690,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     prevPlayerLp.current = playerField.life
     setPlayerLpDelta(delta)
     setPlayerLpAnim(type)
-    const t = setTimeout(() =setPlayerLpAnim(null), 800)
-    return () =clearTimeout(t)
+    const t = setTimeout(() => setPlayerLpAnim(null), 800)
+    return () => clearTimeout(t)
   }, [playerField.life])
 
-  useEffect(() ={
+  useEffect(() => {
     if (prevEnemyLp.current === null) { prevEnemyLp.current = enemyField.life; return }
     if (enemyField.life === prevEnemyLp.current) return
     const delta = enemyField.life - prevEnemyLp.current
@@ -3702,36 +3702,36 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     prevEnemyLp.current = enemyField.life
     setEnemyLpDelta(delta)
     setEnemyLpAnim(type)
-    const t = setTimeout(() =setEnemyLpAnim(null), 800)
-    return () =clearTimeout(t)
+    const t = setTimeout(() => setEnemyLpAnim(null), 800)
+    return () => clearTimeout(t)
   }, [enemyField.life])
 
   // ── AUTO-PLAY INTELIGENTE ──────────────────────────────────────────────────
   const autoPlayRef = useRef(false)
-  useEffect(() ={ autoPlayRef.current = autoPlay }, [autoPlay])
+  useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
 
   // Refs para ler estado atual dentro de callbacks sem deps stale
   const playerFieldRef = useRef(playerField)
   const enemyFieldRef  = useRef(enemyField)
   const normalSummonUsedRef = useRef(normalSummonUsed)
   const turnRef2 = useRef(turn)
-  useEffect(() ={ playerFieldRef.current = playerField },     [playerField])
-  useEffect(() ={ enemyFieldRef.current  = enemyField },      [enemyField])
-  useEffect(() ={ normalSummonUsedRef.current = normalSummonUsed }, [normalSummonUsed])
-  useEffect(() ={ turnRef2.current = turn },                  [turn])
+  useEffect(() => { playerFieldRef.current = playerField },     [playerField])
+  useEffect(() => { enemyFieldRef.current  = enemyField },      [enemyField])
+  useEffect(() => { normalSummonUsedRef.current = normalSummonUsed }, [normalSummonUsed])
+  useEffect(() => { turnRef2.current = turn },                  [turn])
 
-  useEffect(() ={
+  useEffect(() => {
     if (!autoPlay || !gameStarted || !isPlayerTurn || gameResult) return
 
     const spd = speedRef.current || 1
-    const D   = (ms: number) =ms / spd
+    const D   = (ms: number) => ms / spd
     let cancelled = false
 
     // Ataca com unidades em fila — sempre lê estado via refs
-    const fireAutoAttacks = (queue: number[]) ={
+    const fireAutoAttacks = (queue: number[]) => {
       if (cancelled || !autoPlayRef.current) return
       if (queue.length === 0) {
-        setTimeout(() ={ if (!cancelled) endTurn() }, D(500))
+        setTimeout(() => { if (!cancelled) endTurn() }, D(500))
         return
       }
 
@@ -3741,7 +3741,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const unit = pf.unitZone[unitIdx]
 
       if (!unit || unit.hasAttacked || !unit.canAttack || turnRef2.current <= unit.canAttackTurn) {
-        setTimeout(() =fireAutoAttacks(rest), D(100))
+        setTimeout(() => fireAutoAttacks(rest), D(100))
         return
       }
 
@@ -3750,13 +3750,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const startX = attackerRect ? attackerRect.left + attackerRect.width  / 2 : window.innerWidth  / 2
       const startY = attackerRect ? attackerRect.top  + attackerRect.height / 2 : window.innerHeight * 0.7
       const attackerDp   = unit.currentDp ?? unit.dp
-      const hasEnemyUnits = ef.unitZone.some(u =u !== null)
+      const hasEnemyUnits = ef.unitZone.some(u => u !== null)
 
       if (hasEnemyUnits) {
-        const cands    = ef.unitZone.map((u, i) =({ u, i })).filter(({ u }) =u !== null)
-        const beatable = cands.filter(({ u }) =u!.currentDp < attackerDp)
-        const pool     = beatable.length 0 ? beatable : cands
-        const target   = pool.reduce((w, cur) =cur.u!.currentDp < w.u!.currentDp ? cur : w)
+        const cands    = ef.unitZone.map((u, i) => ({ u, i })).filter(({ u }) => u !== null)
+        const beatable = cands.filter(({ u }) => u!.currentDp < attackerDp)
+        const pool     = beatable.length > 0 ? beatable : cands
+        const target   = pool.reduce((w, cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w)
         const targetIdx  = target.i
         const defender   = ef.unitZone[targetIdx]!
 
@@ -3766,24 +3766,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const targetY = tR ? tR.top  + tR.height / 2 : window.innerHeight * 0.3
 
         const newDefDp = (defender.currentDp ?? defender.dp) - attackerDp
-        setActiveProjectiles(prev =[...prev, { id: `ap-${Date.now()}-${unitIdx}`, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: false }])
+        setActiveProjectiles(prev => [...prev, { id: `ap-${Date.now()}-${unitIdx}`, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: false }])
         showEffectFeedback(`${unit.name} ataca ${defender.name}!`, "info")
 
-        setTimeout(() ={
+        setTimeout(() => {
           if (cancelled) return
-          setEnemyField(prev ={
+          setEnemyField(prev => {
             const z = [...prev.unitZone] as (FieldCard | null)[]
             const g = [...prev.graveyard]
             if (newDefDp <= 0) { triggerExplosion(targetX, targetY, unit.element || "neutral"); g.push(defender); z[targetIdx] = null }
             else               { z[targetIdx] = { ...defender, currentDp: newDefDp }; triggerExplosion(targetX, targetY, unit.element || "neutral") }
             return { ...prev, unitZone: z, graveyard: g }
           })
-          setPlayerField(prev ={
+          setPlayerField(prev => {
             const z = [...prev.unitZone] as (FieldCard | null)[]
             if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
             return { ...prev, unitZone: z }
           })
-          setTimeout(() ={ if (!cancelled) fireAutoAttacks(rest) }, D(400))
+          setTimeout(() => { if (!cancelled) fireAutoAttacks(rest) }, D(400))
         }, PROJECTILE_DURATION)
 
       } else {
@@ -3792,23 +3792,23 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const targetX = dR ? dR.left + dR.width  / 2 : window.innerWidth  / 2
         const targetY = dR ? dR.top  + dR.height / 2 : window.innerHeight * 0.25
 
-        setActiveProjectiles(prev =[...prev, { id: `ap-d-${Date.now()}-${unitIdx}`, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: true }])
+        setActiveProjectiles(prev => [...prev, { id: `ap-d-${Date.now()}-${unitIdx}`, startX, startY, targetX, targetY, element: unit.element || "neutral", attackerImage: unit.image, attackerName: unit.name, isDirect: true }])
         showEffectFeedback(`${unit.name} ataque direto! -${attackerDp}LP`, "warning")
 
-        setTimeout(() ={
+        setTimeout(() => {
           if (cancelled) return
-          setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
-          setPlayerField(prev ={
+          setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
+          setPlayerField(prev => {
             const z = [...prev.unitZone] as (FieldCard | null)[]
             if (z[unitIdx]) z[unitIdx] = { ...z[unitIdx]!, hasAttacked: true }
             return { ...prev, unitZone: z }
           })
-          setTimeout(() ={ if (!cancelled) fireAutoAttacks(rest) }, D(400))
+          setTimeout(() => { if (!cancelled) fireAutoAttacks(rest) }, D(400))
         }, PROJECTILE_DURATION)
       }
     }
 
-    const t = setTimeout(() ={
+    const t = setTimeout(() => {
       if (cancelled || !autoPlayRef.current || !isPlayerTurn) return
 
       if (phase === "draw") {
@@ -3816,21 +3816,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       } else if (phase === "main") {
         const pf        = playerFieldRef.current
-        const emptyUnit = pf.unitZone.findIndex(s =s === null)
-        const emptyFunc = pf.functionZone.findIndex(s =s === null)
+        const emptyUnit = pf.unitZone.findIndex(s => s === null)
+        const emptyFunc = pf.functionZone.findIndex(s => s === null)
 
         // ── 1. Invoca melhor Unidade / Tropa (se ainda não invocou) ──
         if (!normalSummonUsedRef.current && emptyUnit !== -1) {
           const best = pf.hand
-            .map((c, i) =({ c, i }))
-            .filter(({ c }) =(c.type === "unit" || c.type === "trooper" || c.type === "troops") && !isUltimateCard(c))
-            .sort((a, b) =(b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => (c.type === "unit" || c.type === "trooper" || c.type === "troops") && !isUltimateCard(c))
+            .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
           if (best) {
             const { c: card, i: handIdx } = best
             const fieldCard: FieldCard = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: turnRef2.current }
-            setPlayerField(prev ={
-              const newHand = prev.hand.filter((_, i) =i !== handIdx)
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
               const newZone = [...prev.unitZone] as (FieldCard | null)[]
               newZone[emptyUnit] = fieldCard
               return { ...prev, hand: newHand, unitZone: newZone }
@@ -3843,16 +3843,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // ── 2. Joga carta de Function/Ação/Magia na zona de função ──
         if (emptyFunc !== -1) {
           const funcCard = pf.hand
-            .map((c, i) =({ c, i }))
-            .filter(({ c }) =c.type === "action" || c.type === "magic" || c.type === "function")
-            .sort((a, b) =(b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "action" || c.type === "magic" || c.type === "function")
+            .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
           if (funcCard) {
             const { c: card, i: handIdx } = funcCard
-            const funcSlot = playerFieldRef.current.functionZone.findIndex(s =s === null)
+            const funcSlot = playerFieldRef.current.functionZone.findIndex(s => s === null)
             if (funcSlot !== -1) {
-              setPlayerField(prev ={
-                const newHand = prev.hand.filter((_, i) =i !== handIdx)
+              setPlayerField(prev => {
+                const newHand = prev.hand.filter((_, i) => i !== handIdx)
                 const newFZ   = [...prev.functionZone]
                 newFZ[funcSlot] = { ...card, isFaceDown: false }
                 return { ...prev, hand: newHand, functionZone: newFZ }
@@ -3863,18 +3863,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
 
         // ── 3. Joga Trap face-down na zona de função ──
-        const emptyFunc2 = playerFieldRef.current.functionZone.findIndex(s =s === null)
+        const emptyFunc2 = playerFieldRef.current.functionZone.findIndex(s => s === null)
         if (emptyFunc2 !== -1) {
           const trapCard = pf.hand
-            .map((c, i) =({ c, i }))
-            .filter(({ c }) =c.type === "trap")[0]
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "trap")[0]
 
           if (trapCard) {
             const { c: card, i: handIdx } = trapCard
-            setPlayerField(prev ={
-              const newHand = prev.hand.filter((_, i) =i !== handIdx)
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
               const newFZ   = [...prev.functionZone]
-              const slot    = newFZ.findIndex(s =s === null)
+              const slot    = newFZ.findIndex(s => s === null)
               if (slot !== -1) newFZ[slot] = { ...card, isFaceDown: true, turnSet: turnRef2.current }
               return { ...prev, hand: newHand, functionZone: newFZ }
             })
@@ -3885,13 +3885,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // ── 4. Joga Cenário se zona vazia ──
         if (!playerFieldRef.current.scenarioZone) {
           const scenCard = pf.hand
-            .map((c, i) =({ c, i }))
-            .filter(({ c }) =c.type === "scenario")[0]
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => c.type === "scenario")[0]
 
           if (scenCard) {
             const { c: card, i: handIdx } = scenCard
-            setPlayerField(prev ={
-              const newHand = prev.hand.filter((_, i) =i !== handIdx)
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
               return { ...prev, hand: newHand, scenarioZone: card }
             })
             showEffectFeedback(`AUTO: Cenário ${card.name}!`, "info")
@@ -3899,22 +3899,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
 
         // ── 5. Equipa Ultimate Gear se há unidade no campo ──
-        const hasUnit = playerFieldRef.current.unitZone.some(u =u !== null)
+        const hasUnit = playerFieldRef.current.unitZone.some(u => u !== null)
         if (hasUnit && playerFieldRef.current.ultimateZones?.some((z:FieldCard|null)=>z===null)) {
           const ugCard = pf.hand
-            .map((c, i) =({ c, i }))
-            .filter(({ c }) =isUltimateCard(c))[0]
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => isUltimateCard(c))[0]
 
           if (ugCard) {
             const { c: card, i: handIdx } = ugCard
-            setPlayerField(prev ={
-              const newHand = prev.hand.filter((_, i) =i !== handIdx)
-              return (() ={
-              const nextSlot = prev.ultimateZones.findIndex(z =z === null)
+            setPlayerField(prev => {
+              const newHand = prev.hand.filter((_, i) => i !== handIdx)
+              return (() => {
+              const nextSlot = prev.ultimateZones.findIndex(z => z === null)
               if (nextSlot === -1) return prev
               // Auto-equip: prefer the required unit, otherwise the first unit on field
               const autoCandidates = getEquipCandidates(card, prev.unitZone, prev.ultimateZones)
-              const autoTarget = autoCandidates.find(c =c.compatible)
+              const autoTarget = autoCandidates.find(c => c.compatible)
               if (!autoTarget) return prev
               const newZones = [...prev.ultimateZones] as (FieldCard|null)[]
               newZones[nextSlot] = {
@@ -3933,26 +3933,26 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
         }
 
-        setTimeout(() ={ if (!cancelled && autoPlayRef.current) advancePhase() }, D(700))
+        setTimeout(() => { if (!cancelled && autoPlayRef.current) advancePhase() }, D(700))
 
       } else if (phase === "battle") {
         const pf      = playerFieldRef.current
         const curTurn = turnRef2.current
-        // Usa SOMENTE !hasAttacked + turn canAttackTurn (ignora canAttack que pode estar stale)
+        // Usa SOMENTE !hasAttacked + turn > canAttackTurn (ignora canAttack que pode estar stale)
         const attackers = pf.unitZone
-          .map((u, i) =({ u, i }))
-          .filter(({ u }) =u && !u.hasAttacked && curTurn u.canAttackTurn)
-          .map(({ i }) =i)
+          .map((u, i) => ({ u, i }))
+          .filter(({ u }) => u && !u.hasAttacked && curTurn > u.canAttackTurn)
+          .map(({ i }) => i)
 
-        if (attackers.length 0) fireAutoAttacks(attackers)
-        else setTimeout(() ={ if (!cancelled) endTurn() }, D(400))
+        if (attackers.length > 0) fireAutoAttacks(attackers)
+        else setTimeout(() => { if (!cancelled) endTurn() }, D(400))
 
       } else {
         endTurn()
       }
     }, D(700))
 
-    return () ={ cancelled = true; clearTimeout(t) }
+    return () => { cancelled = true; clearTimeout(t) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, isPlayerTurn, gameStarted, gameResult, phase])
 
@@ -3968,7 +3968,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     { title:"Chuva de Meteoros",        emoji:"☄️", color:"rgba(239,68,68,0.9)",
       desc:"Meteoros caem! Uma unidade aleatória de cada lado é destruída!",
       run:()=>{
-        const destroyRandom = (prev: any) ={
+        const destroyRandom = (prev: any) => {
           const idxs = prev.unitZone.map((u:any,i:number)=>u?i:-1).filter((i:number)=>i!==-1)
           if(!idxs.length) return prev
           const ri = idxs[Math.floor(Math.random()*idxs.length)]
@@ -4065,16 +4065,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }},
   ]
 
-  useEffect(() ={
+  useEffect(() => {
     if (!catastropheMode || !gameStarted || gameResult || turn < catNextEventTurn) return
     const ev = catEvents[Math.floor(Math.random() * catEvents.length)]
     setCatastropheEvent({ title:ev.title, emoji:ev.emoji, description:ev.desc, color:ev.color })
-    const t1 = setTimeout(() =ev.run(), 2000 / speedRef.current)
-    const t2 = setTimeout(() ={
+    const t1 = setTimeout(() => ev.run(), 2000 / speedRef.current)
+    const t2 = setTimeout(() => {
       setCatastropheEvent(null)
       setCatNextEventTurn(turn + CAT_MIN + Math.floor(Math.random()*(CAT_MAX-CAT_MIN+1)))
     }, 4000 / speedRef.current)
-    return () ={ clearTimeout(t1); clearTimeout(t2) }
+    return () => { clearTimeout(t1); clearTimeout(t2) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turn, catastropheMode, gameStarted, gameResult])
 
@@ -4086,14 +4086,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const duelLogRef = useRef<HTMLDivElement>(null)
   const turnRef = useRef(turn)
   const isPlayerTurnRef = useRef(isPlayerTurn)
-  useEffect(() ={ turnRef.current = turn }, [turn])
-  useEffect(() ={ isPlayerTurnRef.current = isPlayerTurn }, [isPlayerTurn])
+  useEffect(() => { turnRef.current = turn }, [turn])
+  useEffect(() => { isPlayerTurnRef.current = isPlayerTurn }, [isPlayerTurn])
 
   const logEvent = useCallback((
     type: DuelLogEntry["type"],
     message: string,
     card?: { image?: string; name?: string; ability?: string; abilityDescription?: string; attackDescription?: string; attack?: string; dp?: number; element?: string; category?: string; cardType?: string }
-  ) ={
+  ) => {
     const entry: DuelLogEntry = {
       id: ++logIdRef.current,
       turn: turnRef.current,
@@ -4111,11 +4111,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       cardCategory: card?.category,
       cardType: card?.cardType,
     }
-    setDuelLog(prev ={
+    setDuelLog(prev => {
       const next = [...prev, entry]
-      return next.length 80 ? next.slice(next.length - 80) : next
+      return next.length > 80 ? next.slice(next.length - 80) : next
     })
-    setTimeout(() ={
+    setTimeout(() => {
       if (duelLogRef.current) {
         duelLogRef.current.scrollTop = duelLogRef.current.scrollHeight
       }
@@ -4150,9 +4150,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // Destruction sequencing: IDs of cards with an active on-field destruction animation.
   // DiscardAnimationManager delays graveyard animation until the field explosion finishes.
   const [destroyedCardIds, setDestroyedCardIds] = useState<Set<string>>(new Set())
-  const markDestroyed = useCallback((card: GameCard) ={
+  const markDestroyed = useCallback((card: GameCard) => {
     playSound("cardToGraveyard", 0.6)
-    setDestroyedCardIds(prev ={ const s = new Set(prev); s.add(card.id); return s })
+    setDestroyedCardIds(prev => { const s = new Set(prev); s.add(card.id); return s })
   }, [])
 
   const prevUnitZoneRef = useRef<(string | null)[]>([])
@@ -4167,19 +4167,19 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const nativeRotRef    = useRef(0)                  // lerped rotation
   const nativeDropRef   = useRef<{ type: "unit"|"function"|"scenario"|"ultimate"; index: number } | null>(null)
   const nativeCardRef   = useRef<{ index: number; card: GameCard } | null>(null)
-  const nativeCleanRef  = useRef<(() =void) | null>(null)  // cleanup fn
+  const nativeCleanRef  = useRef<(() => void) | null>(null)  // cleanup fn
 
-  useEffect(() ={
+  useEffect(() => {
     if (!playerField.ultimateZones.some(z=>z?.requiresUnit)) {
-      prevUnitZoneRef.current = playerField.unitZone.map((u) =u?.name || null); return
+      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null); return
     }
     for (const ug of playerField.ultimateZones.filter(z=>z?.requiresUnit)) { const requiredUnit = ug!.requiresUnit!; const ability = ug!.ability
-    const prevNames = prevUnitZoneRef.current; const currentNames = playerField.unitZone.map((u) =u?.name || null)
-    const wasPresent = prevNames.some((n) =n === requiredUnit); const isNowPresent = currentNames.some((n) =n === requiredUnit)
+    const prevNames = prevUnitZoneRef.current; const currentNames = playerField.unitZone.map((u) => u?.name || null)
+    const wasPresent = prevNames.some((n) => n === requiredUnit); const isNowPresent = currentNames.some((n) => n === requiredUnit)
     if (!wasPresent && isNowPresent) {
-      const unitIdx = playerField.unitZone.findIndex((u) =u && u.name === requiredUnit)
+      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
       if (unitIdx !== -1) {
-        setPlayerField((prev) ={
+        setPlayerField((prev) => {
           const newUnits = [...prev.unitZone]; const unit = newUnits[unitIdx]; if (!unit) return prev
           let bonus = 0; let msg = ""
           if (ability === "ODEN SWORD") { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
@@ -4192,7 +4192,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const fireCount = countFireUnitsUsed(prev); bonus = fireCount * 2
             setFornbrennaFireCount(fireCount); msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
           }
-          if (bonus 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
+          if (bonus > 0) newUnits[unitIdx] = { ...unit, currentDp: (unit as any).currentDp + bonus }
           if (msg) showEffectFeedback(msg, "success")
           return { ...prev, unitZone: newUnits as any }
         })
@@ -4203,16 +4203,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerField.unitZone, playerField.ultimateZones])
 
-  const handleAnimationComplete = useCallback((id: string) ={ setActiveProjectiles((prev) =prev.filter((p) =p.id !== id)) }, [])
-  const handleImpact = useCallback((id: string, x: number, y: number, element: string) ={
-    setActiveProjectiles((prev) =prev.filter((p) =p.id !== id)); triggerExplosion(x, y, element)
+  const handleAnimationComplete = useCallback((id: string) => { setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)) }, [])
+  const handleImpact = useCallback((id: string, x: number, y: number, element: string) => {
+    setActiveProjectiles((prev) => prev.filter((p) => p.id !== id)); triggerExplosion(x, y, element)
   }, [triggerExplosion])
   const gameResultRecordedRef = useRef(false)
-  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") ={
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error" | "info" | "warning") => {
     setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
-    setTimeout(() =setEffectFeedback(null), 2000)
+    setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
-  const showDrawAnimation = useCallback((card: GameCard) ={
+  const showDrawAnimation = useCallback((card: GameCard) => {
     const deckEl      = playerDeckRef.current
     const handEl      = handContainerRef.current
 
@@ -4242,41 +4242,41 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     // Arc peak: midway but lifted well above both points
-    const mx = (fx + tx) / 2 + (tx fx ? 30 : -30)
+    const mx = (fx + tx) / 2 + (tx > fx ? 30 : -30)
     const my = Math.min(fy, ty) - window.innerHeight * 0.18
 
     setDrawAnimation({ visible:true, cardName:card.name, cardImage:card.image, cardType:card.type,
       fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
-    setTimeout(() =setDrawAnimation(null), 1100)
+    setTimeout(() => setDrawAnimation(null), 1100)
   }, [playerDeckRef, handContainerRef, playerField.hand.length])
-  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) ={
+  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
     playSound("cardDestruction")
     setDestructionAnimation({ id: `destruction-${Date.now()}`, cardName: card.name, cardImage: card.image, x, y, element: card.element || "neutral" })
     markDestroyed(card)
-    setTimeout(() =setDestructionAnimation(null), 1200)
+    setTimeout(() => setDestructionAnimation(null), 1200)
   }, [markDestroyed])
-  const rollDice = useCallback((cardName: string): Promise<number={
-    return new Promise((resolve) ={
+  const rollDice = useCallback((cardName: string): Promise<number> => {
+    return new Promise((resolve) => {
       // Compute result immediately so the dice can start decelerating to the right face from frame 1
       const result = Math.floor(Math.random() * 6) + 1
       // rolling=true hides the result number; rolling=false reveals it
       // We pass result from the start so DiceCanvas3D can decelerate to the correct face immediately
       setDiceAnimation({ visible: true, rolling: true, result, cardName, onComplete: null })
       // After dice physics finishes decelerating (~1800ms), reveal the number
-      setTimeout(() ={
-        setDiceAnimation((prev) =prev ? { ...prev, rolling: false } : null)
+      setTimeout(() => {
+        setDiceAnimation((prev) => prev ? { ...prev, rolling: false } : null)
         // Close 1800ms after number is revealed (bounce plays during this time)
-        setTimeout(() ={ setDiceAnimation(null); resolve(result) }, 1800)
+        setTimeout(() => { setDiceAnimation(null); resolve(result) }, 1800)
       }, 2000)
     })
   }, [])
-  const resolveEffectWithDice = useCallback(async (effect: FunctionCardEffect, effectContext: EffectContext, targets: EffectTargets, cardName: string): Promise<EffectResult={
+  const resolveEffectWithDice = useCallback(async (effect: FunctionCardEffect, effectContext: EffectContext, targets: EffectTargets, cardName: string): Promise<EffectResult> => {
     if (effect.requiresDice) { const diceResult = await rollDice(cardName); return effect.resolve(effectContext, { ...targets, diceResult }) }
     return effect.resolve(effectContext, targets)
   }, [rollDice])
 
 
-  useEffect(() ={
+  useEffect(() => {
     if (explosionEffects.length === 0) {
       const canvas = explosionCanvasRef.current
       if (canvas) { const ctx = canvas.getContext("2d"); if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height) }
@@ -4291,20 +4291,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     let animationId: number
     const duration = 1000
 
-    const animate = () ={
+    const animate = () => {
       const now = Date.now()
       const activeEffects = activeParticlesRef.current
 
-      explosionEffects.forEach((effect) ={
+      explosionEffects.forEach((effect) => {
         if (!activeEffects.has(effect.id)) {
           activeEffects.set(effect.id, {
-            particles: effect.particles.map((p) =({ ...p })),
+            particles: effect.particles.map((p) => ({ ...p })),
             startTime: effect.startTime, element: effect.element, x: effect.x, y: effect.y
           })
         }
       })
       for (const [id, effect] of activeEffects.entries()) {
-        if (now - effect.startTime duration) activeEffects.delete(id)
+        if (now - effect.startTime > duration) activeEffects.delete(id)
       }
       if (activeEffects.size === 0) { ctx.clearRect(0,0,canvas.width,canvas.height); return }
       if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
@@ -4312,9 +4312,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
       ctx.clearRect(0,0,canvas.width,canvas.height)
 
-      activeEffects.forEach((effect) ={
+      activeEffects.forEach((effect) => {
         const elapsed = now - effect.startTime
-        if (elapsed duration) return
+        if (elapsed > duration) return
         const el = effect.element?.toLowerCase()
         const t = elapsed / duration // 0→1
         const cx = effect.x; const cy = effect.y
@@ -4336,7 +4336,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           ctx.closePath(); ctx.stroke(); ctx.restore()
           // Second thinner ring delayed
           const rt2 = Math.min(1, Math.max(0,(t-0.15)*3))
-          if (rt2 0) {
+          if (rt2 > 0) {
             ctx.save(); ctx.globalAlpha = (1-rt2)*0.35
             ctx.strokeStyle = "#40e0d0"; ctx.lineWidth = 1.5
             ctx.beginPath(); ctx.arc(cx, cy, rt2*45, 0, Math.PI*2); ctx.stroke(); ctx.restore()
@@ -4377,7 +4377,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           ctx.stroke()
           // Horizontal shockwave ellipse
           const sw = Math.min(1,(t-0.1)*2.5)
-          if (sw 0) {
+          if (sw > 0) {
             ctx.globalAlpha = (1-sw)*0.4
             ctx.strokeStyle = "#adff2f"; ctx.lineWidth = 2
             ctx.beginPath(); ctx.ellipse(cx,cy,sw*70,sw*22,0,0,Math.PI*2); ctx.stroke()
@@ -4397,7 +4397,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           for (let i = 0; i < 8; i++) {
             const ang = (Math.PI*2*i/8) + elapsed*0.003
             const len = 58*(1-dp)
-            if (len 2) {
+            if (len > 2) {
               ctx.strokeStyle = `rgba(${100+i*8},0,${130+i*5},0.5)`
               ctx.lineWidth = 1.5; ctx.beginPath()
               ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*len, cy+Math.sin(ang)*len)
@@ -4473,7 +4473,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           ctx.restore()
           // Dust cloud
           const dc = Math.min(1,(t-0.05)*3)
-          if (dc 0 && dc < 1) {
+          if (dc > 0 && dc < 1) {
             ctx.save()
             const grad = ctx.createRadialGradient(cx,cy+10,0,cx,cy+10,dc*55)
             grad.addColorStop(0,`rgba(160,90,20,${(1-dc)*0.4})`)
@@ -4483,7 +4483,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
 
         // ── Particles (shared) ──
-        effect.particles.forEach((p: any) ={
+        effect.particles.forEach((p: any) => {
           if (p.gravity) p.vy += p.gravity
           if (p.heat) p.vy += p.heat
           if (p.rotation !== undefined) p.rotation += (p.rv || 0.1)
@@ -4515,7 +4515,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // ── Central residual glow ──
         const ga = Math.max(0, 0.7 - t * 1.3)
-        if (ga 0) {
+        if (ga > 0) {
           const glowColor = getElementGlow(effect.element)
           const gr = ctx.createRadialGradient(cx,cy,0,cx,cy,70)
           gr.addColorStop(0, glowColor.replace("0.8", String(ga * 0.55)))
@@ -4528,11 +4528,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     animationId = requestAnimationFrame(animate)
-    return () =cancelAnimationFrame(animationId)
+    return () => cancelAnimationFrame(animationId)
   }, [explosionEffects])
 
 
-  const canPlayerAttack = () ={
+  const canPlayerAttack = () => {
     if (phase !== "battle") return false
     if (!isPlayerTurn) return false
     if (playerWentFirst) {
@@ -4544,7 +4544,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   // Cards that go in the Ultimate Zone (gear/weapons only)
   // Rei Arthur (ultimateGuardian) is a UNIT and goes in the Unit Zone
-  const isUltimateCard = (card: GameCard) ={
+  const isUltimateCard = (card: GameCard) => {
     if (card.name.toLowerCase().includes("rei arthur")) return false
     if (card.name.toLowerCase().includes("hrotti")) return false
     return (
@@ -4553,7 +4553,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     )
   }
 
-  const isUnitCard = (card: GameCard) ={
+  const isUnitCard = (card: GameCard) => {
     return (
       card.type === "unit" ||
       card.type === "ultimateGear" ||
@@ -4564,7 +4564,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Brotherhood Helpers
-  const isAvalonUnit = (card: GameCard) ={
+  const isAvalonUnit = (card: GameCard) => {
     const name = card.name.toLowerCase()
     return name.includes("arthur") || 
            name.includes("morgana") || 
@@ -4582,20 +4582,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
            name.includes("caveiro afogado") // typo fallback
   }
 
-  const isGreatOrderUnit = (card: GameCard) ={
+  const isGreatOrderUnit = (card: GameCard) => {
     const name = card.name.toLowerCase()
     return name.includes("fehnon") || name.includes("tsubasa")
   }
 
-  const isScandinavianAngel = (card: GameCard) ={
+  const isScandinavianAngel = (card: GameCard) => {
     return card.name.toLowerCase().includes("scandinavian angel")
   }
 
-  const isTormentaProminence = (card: GameCard) ={
+  const isTormentaProminence = (card: GameCard) => {
     return card.name.toLowerCase().includes("jaden")
   }
 
-  const isTroopUnit = (card: GameCard) ={
+  const isTroopUnit = (card: GameCard) => {
     // Cards can be Troop Units in two ways:
     // 1. type === "troops" (legacy explicit type)
     // 2. type === "unit" with "troop" anywhere in the category (e.g. "Darkness Troops unit")
@@ -4614,13 +4614,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     isEnemy: boolean,
     overridePlayerScenario?: GameCard | null,
     overrideEnemyScenario?: GameCard | null
-  ): number ={
+  ): number => {
     let dp = card.dp
     
     // Use the ownerField properly to check what continuous functions they have
-    const ownerFunctions = ownerField.functionZone.filter(f =f && !f.isFaceDown);
-    const hasAlvorada = ownerFunctions.some(f =f?.name === "Alvorada de Albion");
-    const hasGrandeOrdem = ownerFunctions.some(f =f?.name === "A Grande Ordem");
+    const ownerFunctions = ownerField.functionZone.filter(f => f && !f.isFaceDown);
+    const hasAlvorada = ownerFunctions.some(f => f?.name === "Alvorada de Albion");
+    const hasGrandeOrdem = ownerFunctions.some(f => f?.name === "A Grande Ordem");
 
     // Apply Brotherhood Function Auras
     if (hasGrandeOrdem) {
@@ -4643,7 +4643,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // ── LANCELOT: Virtude do Cavaleiro — +2DP if any Void unit on owner's field ──
     if (card.name.toLowerCase().includes("lancelot")) {
       const ownerUnitZone = isEnemy ? enemyField.unitZone : playerField.unitZone
-      const hasVoidUnit = ownerUnitZone.some(u =u !== null && u.id !== card.id && (u.element === "Void" || u.element === "Darkus"))
+      const hasVoidUnit = ownerUnitZone.some(u => u !== null && u.id !== card.id && (u.element === "Void" || u.element === "Darkus"))
       if (hasVoidUnit) dp += 2
     }
 
@@ -4656,7 +4656,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       { card: enemyScenario,  isPlayer: false }
     ]
 
-    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) ={
+    scenarios.forEach(({ card: scenario, isPlayer: scenarioOwnerIsPlayer }) => {
       if (!scenario) return
 
       const ability = scenario.ability
@@ -4693,7 +4693,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return Math.max(0, dp)
   }
 
-  const canUnitAttackNow = (card: FieldCard | null): boolean ={
+  const canUnitAttackNow = (card: FieldCard | null): boolean => {
     if (!card) return false
     if (phase !== "battle") return false
     if (!isPlayerTurn) return false
@@ -4704,30 +4704,30 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return true
   }
 
-  const cacheEnemyRects = useCallback(() ={
+  const cacheEnemyRects = useCallback(() => {
     const enemyUnitElements = document.querySelectorAll("[data-enemy-unit]")
-    enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) =el.getBoundingClientRect())
+    enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) => el.getBoundingClientRect())
   }, [])
 
   // Test audio files on first game start (dev helper)
-  const testAudioFiles = () ={
+  const testAudioFiles = () => {
     // Audio embedded as base64 — always available
     console.log("[Sound] ✅ Audio embedded, keys:", Object.keys(SOUND_DATA).join(", "))
   }
 
-  const startGame = (playerDeck: DeckWithImages, botDeckArg?: DeckWithImages, diff?: 'easy'|'medium'|'hard') ={
+  const startGame = (playerDeck: DeckWithImages, botDeckArg?: DeckWithImages, diff?: 'easy'|'medium'|'hard') => {
     const activeDifficulty = diff ?? difficulty
     const activeBotDeck = botDeckArg ?? selectedBotDeck ?? playerDeck
     setSelectedDeck(playerDeck)
     setDifficulty(activeDifficulty)
 
-    const playerFirst = Math.random() 0.5
+    const playerFirst = Math.random() > 0.5
     setPlayerWentFirst(playerFirst)
 
     const startingLP   = roguelikeConfigRef.current?.startingLP ?? roguelikeConfig?.startingLP ?? propStartingLP ?? 50
     const startingHand = roguelikeConfigRef.current?.startingHandSize ?? roguelikeConfig?.startingHandSize ?? 5
 
-    const shuffledDeck = [...playerDeck.cards].sort(() =Math.random() - 0.5)
+    const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
     let hand = shuffledDeck.slice(0, startingHand)
     let remainingDeck = shuffledDeck.slice(startingHand)
 
@@ -4752,7 +4752,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
     }
 
-    setPlayerField((prev) =({
+    setPlayerField((prev) => ({
       ...prev,
       hand,
       deck: remainingDeck,
@@ -4765,11 +4765,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       graveyard: [],
     }))
 
-    const shuffledBotDeck = [...activeBotDeck.cards].sort(() =Math.random() - 0.5)
+    const shuffledBotDeck = [...activeBotDeck.cards].sort(() => Math.random() - 0.5)
     const botHand = shuffledBotDeck.slice(0, 5)
     const botRemaining = shuffledBotDeck.slice(5)
 
-    setEnemyField((prev) =({
+    setEnemyField((prev) => ({
       ...prev,
       hand: botHand,
       deck: botRemaining,
@@ -4797,10 +4797,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // A OST e o primeiro turno do bot só começam DEPOIS da intro cinemática —
     // guardados aqui e disparados por handleIntroComplete().
-    afterIntroRef.current = () ={
+    afterIntroRef.current = () => {
       startDuelOst() // start background music
       if (mode === "bot" && !playerFirst) {
-        setTimeout(() =executeBotTurn(), 700)
+        setTimeout(() => executeBotTurn(), 700)
       }
       // For mode === "player": opponent state is driven by handleOpponentAction
     }
@@ -4811,10 +4811,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Called when multiplayer duel starts — initializes player deck, sets enemy as placeholder
-  const startOnlineDuel = (rd: OnlineRoomData) ={
+  const startOnlineDuel = (rd: OnlineRoomData) => {
     const myDeckRaw  = rd.isHost ? rd.hostDeck : rd.guestDeck
     const oppDeckRaw = rd.isHost ? rd.guestDeck : rd.hostDeck
-    const parseD = (raw: any): DeckWithImages | null ={
+    const parseD = (raw: any): DeckWithImages | null => {
       if (!raw) return null
       try {
         const d = typeof raw === "string" ? JSON.parse(raw) : raw
@@ -4831,7 +4831,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // Override enemy field with placeholder (opponent state comes via Supabase)
     if (oppDeck) {
-      setEnemyField(prev =({
+      setEnemyField(prev => ({
         ...prev,
         hand: Array(5).fill(null),
         deck: Array(Math.max(0, oppDeck.cards.length - 5)).fill(null),
@@ -4849,7 +4849,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // Broadcast my playmat to opponent
     const myPlaymat = myDeck ? getPlaymatForDeck(myDeck as any) : null
     if (myPlaymat?.image) {
-      setTimeout(async () ={
+      setTimeout(async () => {
         const sb = supabaseRef.current
         const playmatAction = {
           type: "playmat_sync",
@@ -4864,14 +4864,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           action_type: "playmat_sync",
           action_data: JSON.stringify(playmatAction),
           sequence_number: 1,
-        }).catch(() ={})
+        }).catch(() => {})
       }, 200)
     }
 
     // Broadcast initial draw — use direct call, 500ms delay to ensure subscription is up
     const initPlayerId = rd.isHost ? rd.hostId : (rd.guestId || "")
     const initDeckSize = myDeck.cards.length - 5
-    setTimeout(async () ={
+    setTimeout(async () => {
       const sb = supabaseRef.current
       if (!sb) return
       const action = { type: "draw", playerId: initPlayerId, data: { handSize: 5, deckSize: initDeckSize }, timestamp: Date.now() }
@@ -4885,12 +4885,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }, 500)
   }
 
-  const drawCard = () ={
+  const drawCard = () => {
     if (playerField.deck.length === 0) return
 
     const drawnCard = playerField.deck[0]
     showDrawAnimation(drawnCard)
-    setPlayerField((prev) =({
+    setPlayerField((prev) => ({
       ...prev,
       hand: [...prev.hand, drawnCard],
       deck: prev.deck.slice(1),
@@ -4899,7 +4899,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     mpBroadcast("draw", { handSize: playerField.hand.length + 1, deckSize: playerField.deck.length - 1 })
   }
 
-  const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) ={
+  const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
     if (!isPlayerTurn) return
     if (phase !== "main") return
 
@@ -4932,13 +4932,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         canAttackTurn: turn, // Store current turn when card is placed
       }
 
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         newUnitZone[slotIndex] = fieldCard
         return {
           ...prev,
           unitZone: newUnitZone,
-          hand: prev.hand.filter((_, i) =i !== cardIndex),
+          hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
       playSound("cardSummon")
@@ -4967,11 +4967,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // ── LOGI UR: Cinzas do Mundo — ao entrar em campo, +2DP a outra unidade (ou compra 1 carta) ──
       if (cardToPlace.name.toLowerCase().includes("logi") && cardToPlace.dp === 2) {
         // Use functional setter to read FRESH state after Logi was placed
-        setTimeout(() ={
-          setPlayerField(prev ={
+        setTimeout(() => {
+          setPlayerField(prev => {
             const otherUnits = prev.unitZone
-              .map((u, i) =({ u, i }))
-              .filter(({ u }) =u !== null && !u.name.toLowerCase().includes("logi"))
+              .map((u, i) => ({ u, i }))
+              .filter(({ u }) => u !== null && !u.name.toLowerCase().includes("logi"))
             if (otherUnits.length === 0) {
               // No other units — draw a card
               const drawn = prev.deck[0]
@@ -4991,19 +4991,19 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
             // Multiple options — show modal (read options from fresh state)
             const opts = otherUnits.slice(0, 4)
-            setTimeout(() ={
+            setTimeout(() => {
               setChoiceModal({
                 visible: true,
                 cardName: "Cinzas do Mundo — Escolha 1 unidade para receber +2DP",
-                options: opts.map(({ u, i }) =({
+                options: opts.map(({ u, i }) => ({
                   id: String(i),
                   label: u!.name,
                   description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
                 })),
-                onChoose: (optId) ={
+                onChoose: (optId) => {
                   setChoiceModal(null)
                   const idx = parseInt(optId)
-                  setPlayerField(prev2 ={
+                  setPlayerField(prev2 => {
                     const newUnits = [...prev2.unitZone]
                     if (newUnits[idx]) {
                       const chosen = newUnits[idx]!
@@ -5022,14 +5022,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       // ── VIVIAN: Abraço das Profundezas — ao entrar em campo, pode evocar unidade 2/3DP do deck ──
       if (cardToPlace.name.toLowerCase().includes("vivian") && !vivianAbracoUsed) {
-        setTimeout(() =activateVivianAbility(), 300)
+        setTimeout(() => activateVivianAbility(), 300)
       }
 
       // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
       if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
-        setTimeout(() ={
+        setTimeout(() => {
           const hasMefisto = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MEFISTO"))
-          if (hasMefisto && playerField.deck.length 0) {
+          if (hasMefisto && playerField.deck.length > 0) {
             setChoiceModal({
               visible: true,
               cardName: "O Preço da Coroa — Comprar 1 carta?",
@@ -5037,13 +5037,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 { id: "draw", label: "Comprar 1 carta", description: "Compre a carta do topo do deck" },
                 { id: "skip", label: "Não comprar", description: "Pular esta oportunidade" },
               ],
-              onChoose: (optId) ={
+              onChoose: (optId) => {
                 setChoiceModal(null)
                 if (optId === "draw") {
                   const drawn = playerField.deck[0]
                   if (drawn) {
                     showDrawAnimation(drawn)
-                    setPlayerField(prev =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+                    setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
                     showEffectFeedback(`O PREÇO DA COROA: ${drawn.name} comprada!`, "success")
                   }
                 }
@@ -5054,12 +5054,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
 
       if (cardToPlace.name.toLowerCase().includes("balin")) {
-        setTimeout(() ={
+        setTimeout(() => {
           const top3 = playerField.deck.slice(0, Math.min(3, playerField.deck.length))
           if (top3.length === 0) return
           if (top3.length === 1) {
             showDrawAnimation(top3[0])
-            setPlayerField((prev) =({
+            setPlayerField((prev) => ({
               ...prev,
               hand: [...prev.hand, top3[0]],
               deck: prev.deck.slice(1),
@@ -5070,18 +5070,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           setChoiceModal({
             visible: true,
             cardName: "Vigília Eterna — Escolha 1 carta",
-            options: top3.map((c, i) =({
+            options: top3.map((c, i) => ({
               id: String(i),
               label: c.name,
               description: c.rarity + " · " + (c.category || c.type),
             })),
-            onChoose: (optionId: string) ={
+            onChoose: (optionId: string) => {
               setChoiceModal(null)
               const pickedIdx = Number(optionId)
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const deckWithout = prev.deck.slice(top3.length)
                 const chosen = top3[pickedIdx]
-                const toBottom = top3.filter((_, i) =i !== pickedIdx)
+                const toBottom = top3.filter((_, i) => i !== pickedIdx)
                 showEffectFeedback(`Vigília Eterna: ${chosen.name} adicionada à mão!`, "success")
                 showDrawAnimation(chosen)
                 return {
@@ -5098,11 +5098,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // União da Grande Ordem check
       const cardNameLower = cardToPlace.name.toLowerCase()
       const isGreatOrderMember = cardNameLower.includes("fehnon") || cardNameLower.includes("morgana") || cardNameLower.includes("calem")
-      const hasGrandeOrdem = playerField.functionZone.some(f =f && !f.isFaceDown && f.name === "A Grande Ordem")
+      const hasGrandeOrdem = playerField.functionZone.some(f => f && !f.isFaceDown && f.name === "A Grande Ordem")
       
       if (hasGrandeOrdem && isGreatOrderMember) {
-         const searchedNames = ["fehnon", "morgana", "calem"].filter(m =!cardNameLower.includes(m))
-         const searchOptions = playerField.deck.filter(c =searchedNames.some(m =c.name.toLowerCase().includes(m)))
+         const searchedNames = ["fehnon", "morgana", "calem"].filter(m => !cardNameLower.includes(m))
+         const searchOptions = playerField.deck.filter(c => searchedNames.some(m => c.name.toLowerCase().includes(m)))
          
          const uniqueOptions: { id: string, label: string, description: string }[] = []
          const seenNames = new Set()
@@ -5113,7 +5113,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
          }
          
-         if (uniqueOptions.length 0) {
+         if (uniqueOptions.length > 0) {
            setChoiceModal({
              visible: true,
              cardName: "A Grande Ordem (União)",
@@ -5121,20 +5121,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                ...uniqueOptions,
                { id: "cancel", label: "Cancelar", description: "Não buscar nada" }
              ],
-             onChoose: (optionId: string) ={
+             onChoose: (optionId: string) => {
                setChoiceModal(null)
                if (optionId === "cancel") return
                
-               setPlayerField(prev ={
-                  const targetCardIndex = prev.deck.findIndex(c =c.id === optionId)
+               setPlayerField(prev => {
+                  const targetCardIndex = prev.deck.findIndex(c => c.id === optionId)
                   if (targetCardIndex === -1) return prev
                   
                   const cardToDraw = prev.deck[targetCardIndex]
                   const newDeck = [...prev.deck]
                   newDeck.splice(targetCardIndex, 1)
-                  newDeck.sort(() =Math.random() - 0.5) // Shuffle
+                  newDeck.sort(() => Math.random() - 0.5) // Shuffle
                   
-                  setTimeout(() =showEffectFeedback(`A Grande Ordem: ${cardToDraw.name} adicionado à mão!`, "success"), 500)
+                  setTimeout(() => showEffectFeedback(`A Grande Ordem: ${cardToDraw.name} adicionado à mão!`, "success"), 500)
                   return {
                     ...prev,
                     hand: [...prev.hand, cardToDraw],
@@ -5150,13 +5150,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       // Trap cards are placed face-down and not activated immediately
       if (cardToPlace.type === "trap") {
-        setPlayerField((prev) ={
+        setPlayerField((prev) => {
           const newFunctionZone = [...prev.functionZone]
           newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: true, turnSet: turn }
           return {
             ...prev,
             functionZone: newFunctionZone,
-            hand: prev.hand.filter((_, i) =i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
           }
         })
         playSound("cardSummon", 0.55)
@@ -5170,29 +5170,29 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // Special handling for Brotherhood Functions - they stay on field
       // Brotherhood cards always go face-up (never face-down)
       if (cardToPlace.name === "Alvorada de Albion" || cardToPlace.name === "A Grande Ordem") {
-        setPlayerField((prev) ={
+        setPlayerField((prev) => {
           const newFunctionZone = [...prev.functionZone]
           newFunctionZone[slotIndex] = { ...cardToPlace, isFaceDown: false }
           
-          let newHand = prev.hand.filter((_, i) =i !== cardIndex)
+          let newHand = prev.hand.filter((_, i) => i !== cardIndex)
           let newDeck = [...prev.deck]
           
           // Hora das Sombras: Draw a card when played
-          if (cardToPlace.name === "Alvorada de Albion" && newDeck.length 0) {
+          if (cardToPlace.name === "Alvorada de Albion" && newDeck.length > 0) {
             const drawnCard = newDeck[0]
             newDeck = newDeck.slice(1)
             newHand.push(drawnCard)
-            setTimeout(() =showEffectFeedback("Hora das Sombras: 1 carta comprada!", "success"), 500)
+            setTimeout(() => showEffectFeedback("Hora das Sombras: 1 carta comprada!", "success"), 500)
           }
 
           // A Grande Ordem: aplica +3DP imediatamente às unidades aliadas no campo
           let newUnitZone = [...prev.unitZone] as (FieldCard | null)[]
           if (cardToPlace.name === "A Grande Ordem") {
-            newUnitZone = newUnitZone.map(u ={
+            newUnitZone = newUnitZone.map(u => {
               if (!u) return null
               const n = u.name.toLowerCase()
               if (n.includes("fehnon") || n.includes("morgana") || n.includes("calem")) {
-                setTimeout(() =showEffectFeedback(`A Grande Ordem: ${u.name} +3DP!`, "success"), 400)
+                setTimeout(() => showEffectFeedback(`A Grande Ordem: ${u.name} +3DP!`, "success"), 400)
                 return { ...u, currentDp: (u.currentDp ?? u.dp) + 3 }
               }
               return u
@@ -5297,7 +5297,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           u && u.name.toLowerCase().includes("rei arthur") && u.dp === 2
         )
         const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas"]
-        const _isHealingCard = _healingCardIds.some(id =effectToUse.id?.includes(id)) ||
+        const _isHealingCard = _healingCardIds.some(id => effectToUse.id?.includes(id)) ||
           (cardToPlace.name.toLowerCase().includes("bandagem") || cardToPlace.name.toLowerCase().includes("cristal recuperador") ||
            cardToPlace.name.toLowerCase().includes("kit médico") || cardToPlace.name.toLowerCase().includes("soro recuperador"))
         if (_arthurSrOnField && _isHealingCard) {
@@ -5319,7 +5319,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             visible: true,
             cardName: cardToPlace.name,
             options: effectToUse.choiceOptions,
-            onChoose: (optionId: string) ={
+            onChoose: (optionId: string) => {
               setChoiceModal(null)
 
               // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
@@ -5327,9 +5327,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
                 if (result.success) {
                   showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
-                  setPlayerField((prev) =({
+                  setPlayerField((prev) => ({
                     ...prev,
-                    hand: prev.hand.filter((_, i) =i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }))
                 } else {
@@ -5349,9 +5349,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 selectedEnemyIndex: null,
                 chosenOption: optionId,
               })
-              setPlayerField((prev) =({
+              setPlayerField((prev) => ({
                 ...prev,
-                hand: prev.hand.filter((_, i) =i !== cardIndex),
+                hand: prev.hand.filter((_, i) => i !== cardIndex),
               }))
               setSelectedHandCard(null)
               setDraggedHandCard(null)
@@ -5362,15 +5362,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // FLECHA DE BALISTA: direct enemy unit selection, bypasses requiresTargets system entirely
         if (cardToPlace.name === "Flecha de Balista") {
-          const hasEnemyUnits = enemyField.unitZone.some((u) =u !== null)
+          const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
           if (!hasEnemyUnits) {
             showEffectFeedback("Flecha de Balista: O oponente não tem Unidades no campo!", "error")
             return
           }
           // Remove from hand, enter enemy selection mode
-          setPlayerField((prev) =({
+          setPlayerField((prev) => ({
             ...prev,
-            hand: prev.hand.filter((_, i) =i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
           }))
           setSelectedHandCard(null)
           setDraggedHandCard(null)
@@ -5388,7 +5388,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (effectToUse.requiresTargets && effectToUse.targetConfig) {
           // Determine the correct step based on target config
           // If only needs ally units (like dice cards), go straight to selectAlly
-          const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits 0
+          const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits > 0
           const initialStep = needsEnemyFirst ? "selectEnemy" : "selectAlly"
 
           setItemSelectionMode({
@@ -5398,9 +5398,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             selectedEnemyIndex: null,
             chosenOption: null,
           })
-          setPlayerField((prev) =({
+          setPlayerField((prev) => ({
             ...prev,
-            hand: prev.hand.filter((_, i) =i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
           }))
           setSelectedHandCard(null)
           setDraggedHandCard(null)
@@ -5412,15 +5412,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (result.success) {
           if (result.message === "PEDRA_AFIAR_SEARCH") {
             // Collect all Ultimate Gear cards in the player's deck
-            const ugCardsInDeck = playerField.deck.filter((c) =c.type === "ultimateGear")
+            const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
             if (ugCardsInDeck.length === 0) {
               showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
               return
             }
             // Remove card from hand now
-            setPlayerField((prev) =({
+            setPlayerField((prev) => ({
               ...prev,
-              hand: prev.hand.filter((_, i) =i !== cardIndex),
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
               graveyard: [...prev.graveyard, cardToPlace],
             }))
             setSelectedHandCard(null)
@@ -5430,12 +5430,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               visible: true,
               title: "Pedra de Afiar — Escolha uma Ultimate Gear",
               cards: ugCardsInDeck,
-              onSelect: (chosenCard) ={
+              onSelect: (chosenCard) => {
                 setDeckSearchModal(null)
-                setPlayerField((prev) ={
-                  const newDeck = prev.deck.filter((c) =c.id !== chosenCard.id)
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
                   // Shuffle deck
-                  for (let i = newDeck.length - 1; i 0; i--) {
+                  for (let i = newDeck.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
                   }
@@ -5443,7 +5443,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 })
                 showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
               },
-              onCancel: () =setDeckSearchModal(null),
+              onCancel: () => setDeckSearchModal(null),
             })
             return
           }
@@ -5460,9 +5460,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               return
             }
             // Remove card from hand and send to graveyard
-            setPlayerField((prev) =({
+            setPlayerField((prev) => ({
               ...prev,
-              hand: prev.hand.filter((_, i) =i !== cardIndex),
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
               graveyard: [...prev.graveyard, cardToPlace],
             }))
             setSelectedHandCard(null)
@@ -5472,11 +5472,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               visible: true,
               title: "Chamado da Távola — Escolha uma Unidade de Tropa",
               cards: troopCards,
-              onSelect: (chosenCard) ={
+              onSelect: (chosenCard) => {
                 setDeckSearchModal(null)
-                setPlayerField((prev) ={
-                  const newDeck = prev.deck.filter((c) =c.id !== chosenCard.id)
-                  for (let i = newDeck.length - 1; i 0; i--) {
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+                  for (let i = newDeck.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
                   }
@@ -5484,7 +5484,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 })
                 showEffectFeedback(`Chamado da Távola! ${chosenCard.name} convocada à mão! Deck embaralhado.`, "success")
               },
-              onCancel: () =setDeckSearchModal(null),
+              onCancel: () => setDeckSearchModal(null),
             })
             return
           }
@@ -5494,9 +5494,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // Remove card from hand and send to graveyard FIRST,
             // before opening the choice modal — prevents the card from
             // remaining in hand and being played again (the reported bug).
-            setPlayerField((prev) =({
+            setPlayerField((prev) => ({
               ...prev,
-              hand: prev.hand.filter((_, i) =i !== cardIndex),
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
               graveyard: [...prev.graveyard, cardToPlace],
             }))
             setSelectedHandCard(null)
@@ -5506,18 +5506,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               cardName: "Julgamento do Vazio Eterno — Escolha o alvo (5DP)",
               options: [
                 ...enemyField.unitZone
-                  .map((u, i) =u ? { id: `unit-${i}`, label: u.name, description: `Unidade ${i+1}: ${u.currentDp ?? u.dp}DP` } : null)
+                  .map((u, i) => u ? { id: `unit-${i}`, label: u.name, description: `Unidade ${i+1}: ${u.currentDp ?? u.dp}DP` } : null)
                   .filter(Boolean) as {id:string;label:string;description:string}[],
                 { id: "direct", label: "Ataque Direto ao LP", description: "Causa 5DP diretamente nos LP do oponente" },
               ],
-              onChoose: (choice) ={
+              onChoose: (choice) => {
                 setChoiceModal(null)
                 if (choice === "direct") {
-                  setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - 5) }))
+                  setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 5) }))
                   showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: 5DP direto ao oponente!", "warning")
                 } else {
                   const idx = parseInt(choice.replace("unit-", ""))
-                  setEnemyField(prev ={
+                  setEnemyField(prev => {
                     const newZone = [...prev.unitZone] as (FieldCard | null)[]
                     const target = newZone[idx]
                     if (!target) return prev
@@ -5544,29 +5544,29 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           // ORDEM DE LACERAÇÃO: trigger slash animation
           if (cardToPlace.name === "Ordem de Laceração") {
             setLacerationAnimation(true)
-            setTimeout(() =setLacerationAnimation(false), 1800)
+            setTimeout(() => setLacerationAnimation(false), 1800)
           }
           if (cardToPlace.name === "Sinfonia Relâmpago") {
             setSinfoniaAnimation(true)
-            setTimeout(() =setSinfoniaAnimation(false), 1500)
+            setTimeout(() => setSinfoniaAnimation(false), 1500)
           }
 
           // Special handling for Cristal Recuperador - draw a card and check if Function type
           if (result.needsDrawAndCheck) {
-            setTimeout(() ={
-              setPlayerField((prev) ={
+            setTimeout(() => {
+              setPlayerField((prev) => {
                 if (prev.deck.length === 0) {
                   showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
                   return {
                     ...prev,
-                    hand: prev.hand.filter((_, i) =i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
 
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
-                const newHand = [...prev.hand.filter((_, i) =i !== cardIndex), drawnCard]
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
 
                 // Check if drawn card is a Function type (item)
                 const isFunctionCard = drawnCard.type === "item"
@@ -5577,7 +5577,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 if (isFunctionCard) {
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
-                  if (bonusHeal 0) {
+                  if (bonusHeal > 0) {
                     showEffectFeedback(`Carta Function comprada! +1 LP bonus!`, "success")
                   }
                 } else {
@@ -5601,20 +5601,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
           // Special handling for Kit Médico Improvisado - draw and check if Unit type for bonus
           if (result.needsDrawAndCheckUnit) {
-            setTimeout(() ={
-              setPlayerField((prev) ={
+            setTimeout(() => {
+              setPlayerField((prev) => {
                 if (prev.deck.length === 0) {
                   showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
                   return {
                     ...prev,
-                    hand: prev.hand.filter((_, i) =i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
 
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
-                const newHand = [...prev.hand.filter((_, i) =i !== cardIndex), drawnCard]
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
 
                 // Check if drawn card is a Unit type
                 const isUnitCard = drawnCard.type === "unit"
@@ -5625,7 +5625,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 if (isUnitCard) {
                   const bonusHeal = Math.min(1, maxLife - finalLife)
                   finalLife = Math.min(finalLife + bonusHeal, maxLife)
-                  if (bonusHeal 0) {
+                  if (bonusHeal > 0) {
                     showEffectFeedback(`Carta Unidade comprada! +1 LP bonus!`, "success")
                   }
                 } else {
@@ -5649,20 +5649,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
           // Special handling for Soro Recuperador - just draw, no bonus check
           if (result.needsDrawOnly) {
-            setTimeout(() ={
-              setPlayerField((prev) ={
+            setTimeout(() => {
+              setPlayerField((prev) => {
                 if (prev.deck.length === 0) {
                   showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
                   return {
                     ...prev,
-                    hand: prev.hand.filter((_, i) =i !== cardIndex),
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
                     graveyard: [...prev.graveyard, cardToPlace],
                   }
                 }
 
                 const drawnCard = prev.deck[0]
                 const newDeck = prev.deck.slice(1)
-                const newHand = [...prev.hand.filter((_, i) =i !== cardIndex), drawnCard]
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
 
                 showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
 
@@ -5681,9 +5681,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
 
           // Send card to graveyard after resolution
-          setPlayerField((prev) =({
+          setPlayerField((prev) => ({
             ...prev,
-            hand: prev.hand.filter((_, i) =i !== cardIndex),
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
             graveyard: [...prev.graveyard, cardToPlace],
           }))
           mpBroadcast("use_function_card", { card: cardToPlace, source: "hand" })
@@ -5696,13 +5696,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
 
       // Fallback: place card in function zone without effect
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const newFunctionZone = [...prev.functionZone]
         newFunctionZone[slotIndex] = cardToPlace
         return {
           ...prev,
           functionZone: newFunctionZone,
-          hand: prev.hand.filter((_, i) =i !== cardIndex),
+          hand: prev.hand.filter((_, i) => i !== cardIndex),
         }
       })
       mpBroadcast("place_card", { zone: "function", index: slotIndex, card: cardToPlace, isTrap: false, source: "hand" })
@@ -5712,7 +5712,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setDraggedHandCard(null) // Clear drag state
   }
 
-  const placeScenarioCard = (forcedCardIndex?: number) ={
+  const placeScenarioCard = (forcedCardIndex?: number) => {
     if (!isPlayerTurn) return
     if (phase !== "main") return
 
@@ -5723,18 +5723,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (!cardToPlace || cardToPlace.type !== "scenario") return
     if (playerField.scenarioZone !== null) return
 
-    setPlayerField((prev) ={
-      const newHand = prev.hand.filter((_, i) =i !== cardIndex)
+    setPlayerField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
       let newDeck = prev.deck
       let finalScenarioZone = cardToPlace
 
       // Ruinas Abandonadas and Arena Escandinava: Draw 1 card when played
       if (cardToPlace.ability === "RUÍNAS ABANDONADAS" || cardToPlace.ability === "ARENA ESCANDINAVA") {
-        if (newDeck.length 0) {
+        if (newDeck.length > 0) {
           const drawn = newDeck[0]
           newDeck = newDeck.slice(1)
           newHand.push(drawn)
-          setTimeout(() ={
+          setTimeout(() => {
             showDrawAnimation(drawn)
             showEffectFeedback(`${cardToPlace.name}: Comprou 1 carta!`, "success")
           }, 300)
@@ -5747,22 +5747,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // calculateCardDP starts from base card.dp, so we compute:
       //   scenarioBonus = calculateCardDP(base) - card.dp
       // then add that delta to currentDp.
-      const getScenarioDelta = (u: FieldCard, isEnemy: boolean, pScenario: GameCard | null, eScenario: GameCard | null): number ={
+      const getScenarioDelta = (u: FieldCard, isEnemy: boolean, pScenario: GameCard | null, eScenario: GameCard | null): number => {
         const withScenario    = calculateCardDP(u, prev, isEnemy, pScenario, eScenario)
         const withoutScenario = calculateCardDP(u, prev, isEnemy, null, null)
         return withScenario - withoutScenario
       }
 
-      const updatedPlayerUnitZone = prev.unitZone.map(u ={
+      const updatedPlayerUnitZone = prev.unitZone.map(u => {
         if (!u) return null
         const delta = getScenarioDelta(u, false, finalScenarioZone, enemyField.scenarioZone)
         return { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + delta) }
       })
 
       // Also update enemy units
-      setEnemyField(enemyPrev =({
+      setEnemyField(enemyPrev => ({
         ...enemyPrev,
-        unitZone: enemyPrev.unitZone.map(u ={
+        unitZone: enemyPrev.unitZone.map(u => {
           if (!u) return null
           const withScenario    = calculateCardDP(u, enemyPrev, true, finalScenarioZone, enemyPrev.scenarioZone)
           const withoutScenario = calculateCardDP(u, enemyPrev, true, null, null)
@@ -5772,7 +5772,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }))
 
       if (cardToPlace.ability === "REINO DE CAMELOT" || cardToPlace.ability === "VILA DA PÓLVORA") {
-        setTimeout(() =showEffectFeedback(`${cardToPlace.name} ativado! O campo mudou!`, "success"), 500)
+        setTimeout(() => showEffectFeedback(`${cardToPlace.name} ativado! O campo mudou!`, "success"), 500)
       }
 
       return {
@@ -5806,23 +5806,23 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const normalizeCardName = (n: string | undefined | null): string =>
     (n || "").trim().toLowerCase().replace(/\s+/g, " ")
 
-  const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number ={
+  const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number => {
     const target = normalizeCardName(unitName)
     if (!target) return -1
     // Exact normalized match first
-    const exact = unitZone.findIndex((u) =u && normalizeCardName(u.name) === target)
+    const exact = unitZone.findIndex((u) => u && normalizeCardName(u.name) === target)
     if (exact !== -1) return exact
     // Fallback: tolerate minor data inconsistencies (e.g. "Mordred: O Usurpador" vs "Mordred")
-    return unitZone.findIndex((u) =u && (normalizeCardName(u.name).includes(target) || target.includes(normalizeCardName(u.name))))
+    return unitZone.findIndex((u) => u && (normalizeCardName(u.name).includes(target) || target.includes(normalizeCardName(u.name))))
   }
 
   // Helper: count fire element units in graveyard + field (already used)
-  const countFireUnitsUsed = (field: FieldState): number ={
+  const countFireUnitsUsed = (field: FieldState): number => {
     let count = 0
     // Graveyard fire units
-    count += field.graveyard.filter((c) =c.element === "Pyrus" && (c.type === "unit" || c.type === "ultimateGear" || c.type === "ultimateGuardian" || c.type === "ultimateElemental")).length
+    count += field.graveyard.filter((c) => c.element === "Pyrus" && (c.type === "unit" || c.type === "ultimateGear" || c.type === "ultimateGuardian" || c.type === "ultimateElemental")).length
     // Field fire units currently in play
-    field.unitZone.forEach((u) ={ if (u && u.element === "Pyrus") count++ })
+    field.unitZone.forEach((u) => { if (u && u.element === "Pyrus") count++ })
     return count
   }
 
@@ -5835,25 +5835,25 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     card: GameCard,
     unitZone: (FieldCard | null)[],
     ultimateZones?: (FieldCard | null)[],
-  ) ={
+  ) => {
     const required = normalizeCardName(card.requiresUnit)
     const zones = ultimateZones ?? []
     return unitZone
-      .map((unit, index) =({ unit, index }))
-      .filter((entry): entry is { unit: FieldCard; index: number } =entry.unit !== null)
-      .map(({ unit, index }) ={
+      .map((unit, index) => ({ unit, index }))
+      .filter((entry): entry is { unit: FieldCard; index: number } => entry.unit !== null)
+      .map(({ unit, index }) => {
         const name = normalizeCardName(unit.name)
         const matches = !required || name === required || name.includes(required) || required.includes(name)
         // Already carrying an Ultimate? Matched STRICTLY by slot index, never by name —
         // two copies of the same Unit (ex: dois Fehnon) são Unidades distintas e
         // cada uma pode receber a sua própria Ultimate.
-        const occupied = zones.some((z) =z !== null && z.equippedUnitIndex === index)
+        const occupied = zones.some((z) => z !== null && z.equippedUnitIndex === index)
         return { unit, index, compatible: matches && !occupied, occupied }
       })
   }
 
   /** Step 1: ask the player which unit should receive the Ultimate */
-  const requestUltimateEquip = (forcedCardIndex?: number, source: "hand" | "tap" = "hand") ={
+  const requestUltimateEquip = (forcedCardIndex?: number, source: "hand" | "tap" = "hand") => {
     if (!isPlayerTurn || phase !== "main") return
     const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
     if (cardIndex === null || cardIndex === undefined) return
@@ -5861,7 +5861,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const card = source === "hand" ? playerField.hand[cardIndex] : playerField.tap[cardIndex]
     if (!card || !isUltimateCard(card)) return
 
-    if (!playerField.ultimateZones.some(z =z === null)) {
+    if (!playerField.ultimateZones.some(z => z === null)) {
       showEffectFeedback(`Limite de ${MAX_ULTIMATE_SLOTS} Ultimates no campo!`, "error")
       return
     }
@@ -5871,8 +5871,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       showEffectFeedback("Você precisa de uma Unidade no campo para equipar uma Ultimate!", "error")
       return
     }
-    if (!candidates.some(c =c.compatible)) {
-      if (candidates.every(c =c.occupied)) {
+    if (!candidates.some(c => c.compatible)) {
+      if (candidates.every(c => c.occupied)) {
         showEffectFeedback("Cada Unidade pode ter apenas uma Ultimate equipada!", "error")
       } else {
         showEffectFeedback(`${card.name} só pode ser equipada em ${card.requiresUnit}!`, "error")
@@ -5884,7 +5884,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setUltimateEquipPrompt({ cardIndex, card, source })
   }
 
-  const placeUltimateCard = (forcedCardIndex?: number, equipUnitIndex?: number) ={
+  const placeUltimateCard = (forcedCardIndex?: number, equipUnitIndex?: number) => {
     if (!isPlayerTurn) return
     if (phase !== "main") return
 
@@ -5893,7 +5893,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const cardToPlace = playerField.hand[cardIndex]
     if (!cardToPlace || !isUltimateCard(cardToPlace)) return
-    if (!playerField.ultimateZones.some(z =z === null)) {
+    if (!playerField.ultimateZones.some(z => z === null)) {
       showEffectFeedback(`Limite de ${MAX_ULTIMATE_SLOTS} Ultimates no campo!`, "error")
       return
     }
@@ -5908,7 +5908,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // One Ultimate per Unit
     const targetCandidate = getEquipCandidates(cardToPlace, playerField.unitZone, playerField.ultimateZones)
-      .find(c =c.index === equipUnitIndex)
+      .find(c => c.index === equipUnitIndex)
     if (!targetCandidate || !targetCandidate.compatible) {
       showEffectFeedback(
         targetCandidate?.occupied
@@ -5929,8 +5929,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       equippedUnitName: chosenUnit?.name,
     }
 
-    setPlayerField((prev) ={
-      const newHand = prev.hand.filter((_, i) =i !== cardIndex)
+    setPlayerField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
       const requiredUnit = cardToPlace.requiresUnit
       const unitIdx = prev.unitZone[equipUnitIndex] ? equipUnitIndex : (requiredUnit ? findUnitByName(prev.unitZone, requiredUnit) : -1)
       const unitFound = unitIdx !== -1
@@ -5962,7 +5962,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           // Count fire units used so far
           const fireCount = countFireUnitsUsed(prev)
           const bonus = fireCount * 2
-          if (bonus 0) {
+          if (bonus > 0) {
             newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + bonus }
           }
           setFornbrennaFireCount(fireCount)
@@ -5985,14 +5985,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
 
       if (bonusMsg) {
-        setTimeout(() =showEffectFeedback(bonusMsg, "success"), 300)
+        setTimeout(() => showEffectFeedback(bonusMsg, "success"), 300)
       } else if (requiredUnit && !unitFound) {
-        setTimeout(() =showEffectFeedback(`${cardToPlace.name} equipada! Coloque ${requiredUnit} no campo para ativar.`, "success"), 300)
+        setTimeout(() => showEffectFeedback(`${cardToPlace.name} equipada! Coloque ${requiredUnit} no campo para ativar.`, "success"), 300)
       }
 
       return {
         ...prev,
-        ultimateZones: (() ={
+        ultimateZones: (() => {
               const nz = [...prev.ultimateZones] as (FieldCard|null)[]
               const slot = nz.findIndex(z=>z===null)
               if (slot !== -1) nz[slot] = fieldCard
@@ -6023,7 +6023,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Activate Ultimate Gear one-time ability
-  const activateUgAbility = (ugIndex?: number) ={
+  const activateUgAbility = (ugIndex?: number) => {
     if (!isPlayerTurn || phase !== "main") return
     if (playerUgAbilityUsed) return
     const __allUgs = playerField.ultimateZones.filter(z=>z!==null) as FieldCard[]
@@ -6051,7 +6051,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     if (isOdenSword) {
       // Check if opponent has function cards
-      const hasEnemyFunctions = enemyField.functionZone.some((f) =f !== null)
+      const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
         showEffectFeedback("Oponente nao tem cartas de Function no campo!", "error")
         return
@@ -6060,7 +6060,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       showEffectFeedback("Selecione uma Function inimiga para destruir!", "success")
     } else if (isTwilighAvalon) {
       // Check if opponent has any cards on field (units or functions)
-      const hasEnemyCards = enemyField.unitZone.some((u) =u !== null) || enemyField.functionZone.some((f) =f !== null)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
         return
@@ -6070,7 +6070,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     } else if (isMefisto) {
       // Once per duel: destroy any 1 card on opponent's field
       if (playerUgAbilityUsed) return
-      const hasEnemyCards = enemyField.unitZone.some((u) =u !== null) || enemyField.functionZone.some((f) =f !== null)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
         return
@@ -6078,7 +6078,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
     } else if (isVatnavordr) {
-      const hasEnemyCards = enemyField.unitZone.some((u) =u !== null) || enemyField.functionZone.some((f) =f !== null)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente não tem cartas no campo!", "error")
         return
@@ -6086,7 +6086,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
       showEffectFeedback("CONGELAMENTO DE VATNAVORDR: selecione uma carta inimiga para congelar!", "success")
     } else if (isYggdra) {
-      if (!enemyField.functionZone.some((f) =f !== null)) {
+      if (!enemyField.functionZone.some((f) => f !== null)) {
         showEffectFeedback("Oponente não tem cartas de Função no campo!", "error")
         return
       }
@@ -6098,7 +6098,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         showEffectFeedback("Julgamento Divino ja foi usado neste turno!", "error")
         return
       }
-      const hasEnemyUnits = enemyField.unitZone.some((u) =u !== null)
+      const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
       if (!hasEnemyUnits) {
         showEffectFeedback("Oponente nao tem Unidades no campo!", "error")
         return
@@ -6114,7 +6114,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // elsewhere). This adds a generic "ATIVAR" action for ANY face-down trap
   // sitting in the function zone, reusing the same FUNCTION_CARD_EFFECTS
   // registry already used when playing Action/Magic cards from hand.
-  const activateTrapCard = (slotIndex: number) ={
+  const activateTrapCard = (slotIndex: number) => {
     const card = playerField.functionZone[slotIndex]
     if (!card || !card.isFaceDown) return
 
@@ -6143,7 +6143,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     resolveTrapEffect(slotIndex)
   }
 
-  const resolveTrapEffect = (slotIndex: number, targets?: EffectTargets) ={
+  const resolveTrapEffect = (slotIndex: number, targets?: EffectTargets) => {
     const card = playerField.functionZone[slotIndex]
     if (!card) return
     const effect = getFunctionCardEffect(card)
@@ -6152,13 +6152,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // Reveal the trap face-up immediately for visual feedback, with a brief
     // "activation flash" animation (isRevealing) that clears itself after
-    setPlayerField((prev) ={
+    setPlayerField((prev) => {
       const nz = [...prev.functionZone]
       if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isFaceDown: false, isRevealing: true }
       return { ...prev, functionZone: nz }
     })
-    setTimeout(() ={
-      setPlayerField((prev) ={
+    setTimeout(() => {
+      setPlayerField((prev) => {
         const nz = [...prev.functionZone]
         if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isRevealing: false }
         return { ...prev, functionZone: nz }
@@ -6168,12 +6168,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const result = effect.resolve(effectContext, targets)
 
     if (result.success && result.message === "PEDRA_AFIAR_SEARCH") {
-      const ugCardsInDeck = playerField.deck.filter((c) =c.type === "ultimateGear")
+      const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
       if (ugCardsInDeck.length === 0) {
         showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
         return
       }
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const nz = [...prev.functionZone]
         const ng = [...prev.graveyard, card]
         nz[slotIndex] = null
@@ -6183,11 +6183,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         visible: true,
         title: "Pedra de Afiar — Escolha uma Ultimate Gear",
         cards: ugCardsInDeck,
-        onSelect: (chosenCard) ={
+        onSelect: (chosenCard) => {
           setDeckSearchModal(null)
-          setPlayerField((prev) ={
-            const newDeck = prev.deck.filter((c) =c.id !== chosenCard.id)
-            for (let i = newDeck.length - 1; i 0; i--) {
+          setPlayerField((prev) => {
+            const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+            for (let i = newDeck.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
               [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
             }
@@ -6195,7 +6195,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           })
           showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
         },
-        onCancel: () =setDeckSearchModal(null),
+        onCancel: () => setDeckSearchModal(null),
       })
       return
     }
@@ -6211,7 +6211,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         return
       }
       // Remove the function card from the zone and send to graveyard
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const nz = [...prev.functionZone]
         const ng = [...prev.graveyard, card]
         nz[slotIndex] = null
@@ -6221,12 +6221,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         visible: true,
         title: "Chamado da Távola — Escolha uma Unidade de Tropa",
         cards: troopCards,
-        onSelect: (chosenCard) ={
+        onSelect: (chosenCard) => {
           setDeckSearchModal(null)
-          setPlayerField((prev) ={
-            const newDeck = prev.deck.filter((c) =c.id !== chosenCard.id)
+          setPlayerField((prev) => {
+            const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
             // Shuffle remaining deck
-            for (let i = newDeck.length - 1; i 0; i--) {
+            for (let i = newDeck.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
               [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
             }
@@ -6234,13 +6234,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           })
           showEffectFeedback(`Chamado da Távola! ${chosenCard.name} convocada à mão! Deck embaralhado.`, "success")
         },
-        onCancel: () =setDeckSearchModal(null),
+        onCancel: () => setDeckSearchModal(null),
       })
       return
     }
 
     if (result.success && result.message === "JULGAMENTO_VAZIO_CHOOSE") {
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const nz = [...prev.functionZone]
         const ng = [...prev.graveyard, card]
         nz[slotIndex] = null
@@ -6251,18 +6251,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         cardName: "Julgamento do Vazio Eterno — Escolha o alvo (5DP)",
         options: [
           ...enemyField.unitZone
-            .map((u, i) =u ? { id: `unit-${i}`, label: u.name, description: `Unidade ${i+1}: ${u.currentDp ?? u.dp}DP` } : null)
+            .map((u, i) => u ? { id: `unit-${i}`, label: u.name, description: `Unidade ${i+1}: ${u.currentDp ?? u.dp}DP` } : null)
             .filter(Boolean) as {id:string;label:string;description:string}[],
           { id: "direct", label: "Ataque Direto ao LP", description: "Causa 5DP diretamente nos LP do oponente" },
         ],
-        onChoose: (choice) ={
+        onChoose: (choice) => {
           setChoiceModal(null)
           if (choice === "direct") {
-            setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - 5) }))
+            setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 5) }))
             showEffectFeedback("JULGAMENTO DO VAZIO ETERNO: 5DP direto ao oponente!", "warning")
           } else {
             const idx = parseInt(choice.replace("unit-", ""))
-            setEnemyField(prev ={
+            setEnemyField(prev => {
               const newZone = [...prev.unitZone] as (FieldCard | null)[]
               const target = newZone[idx]
               if (!target) return prev
@@ -6286,8 +6286,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // Standard case — show feedback, then move the spent trap to the graveyard
     showEffectFeedback(result.message || `${card.name} ativada!`, result.success ? "success" : "error")
     if (result.success) {
-      setTimeout(() ={
-        setPlayerField((prev) ={
+      setTimeout(() => {
+        setPlayerField((prev) => {
           const nz = [...prev.functionZone]
           const stillThere = nz[slotIndex]
           if (!stillThere) return prev
@@ -6298,7 +6298,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }, 900)
     } else {
       // Activation failed after reveal — flip back face-down
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const nz = [...prev.functionZone]
         if (nz[slotIndex]) nz[slotIndex] = { ...nz[slotIndex]!, isFaceDown: true }
         return { ...prev, functionZone: nz }
@@ -6307,14 +6307,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Handle UG target selection for enemy function cards (ODEN SWORD / MEFISTO)
-  const handleUgTargetEnemyFunction = (funcIndex: number) ={
+  const handleUgTargetEnemyFunction = (funcIndex: number) => {
     if (!ugTargetMode.active) return
     const funcCard = enemyField.functionZone[funcIndex]
     if (!funcCard) return
 
     if (ugTargetMode.type === "oden_sword" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       markDestroyed(funcCard)
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         const newFuncs = [...prev.functionZone]
         const destroyed = newFuncs[funcIndex]
         newFuncs[funcIndex] = null
@@ -6332,11 +6332,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Play a card from TAP (Tactical Access Pile)
-  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number, equipUnitIndex?: number) ={
+  const playCardFromTap = (cardIndex: number, zone: "unit" | "function" | "scenario" | "ultimate", targetIndex?: number, equipUnitIndex?: number) => {
     if (!isPlayerTurn || phase !== "main") return
 
     // Every 3 turns restriction
-    const isTapAvailable = turn 0 && turn % 3 === 0
+    const isTapAvailable = turn > 0 && turn % 3 === 0
     if (!isTapAvailable) {
       showEffectFeedback("TAP Pile disponivel apenas a cada 3 turnos!", "error")
       return
@@ -6358,7 +6358,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // One Ultimate per Unit
     if (zone === "ultimate" && equipUnitIndex !== undefined) {
       const tapCandidate = getEquipCandidates(card, playerField.unitZone, playerField.ultimateZones)
-        .find(c =c.index === equipUnitIndex)
+        .find(c => c.index === equipUnitIndex)
       if (!tapCandidate || !tapCandidate.compatible) {
         showEffectFeedback(
           tapCandidate?.occupied
@@ -6370,8 +6370,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
     }
 
-    setPlayerField((prev) ={
-      const newTap = prev.tap.filter((_, i) =i !== cardIndex)
+    setPlayerField((prev) => {
+      const newTap = prev.tap.filter((_, i) => i !== cardIndex)
 
       if (zone === "unit") {
         const newUnitZone = [...prev.unitZone]
@@ -6396,9 +6396,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       } else if (zone === "ultimate") {
         return {
           ...prev,
-          ultimateZones: (() ={
+          ultimateZones: (() => {
             const nz3 = [...prev.ultimateZones] as (FieldCard|null)[]
-            const slot3 = nz3.findIndex(z =z === null)
+            const slot3 = nz3.findIndex(z => z === null)
             if (slot3 !== -1) nz3[slot3] = {
               ...card,
               currentDp: card.dp,
@@ -6421,7 +6421,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   // Handle UG target selection for any enemy card (TWILIGH AVALON / MEFISTO)
   // Supports: unit | function | scenario | ultimate
-  const handleUgTargetEnemyCard = (type: "unit" | "function" | "scenario" | "ultimate", index: number) ={
+  const handleUgTargetEnemyCard = (type: "unit" | "function" | "scenario" | "ultimate", index: number) => {
     if (!ugTargetMode.active) return
 
     // Resolve target card
@@ -6437,7 +6437,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     if (ugTargetMode.type === "vatnavordr_messiham") {
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         if (type === "unit") {
           const zone = [...prev.unitZone]
           const unit = zone[index]
@@ -6460,7 +6460,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setUgTargetMode({ active: false, ugCard: null, type: null })
     } else if (ugTargetMode.type === "twiligh_avalon") {
       // Return card to opponent's hand; if it was a unit, deal 3 LP damage
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         let updated = { ...prev }
         if (type === "unit") {
           const newUnits = [...prev.unitZone]; newUnits[index] = null
@@ -6471,7 +6471,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         } else if (type === "scenario") {
           updated = { ...updated, scenarioZone: null, hand: [...prev.hand, targetCard] }
         } else if (type === "ultimate") {
-          updated = { ...updated, ultimateZones: prev.ultimateZones.map((z, zi) =(zi === index ? null : z)) as (FieldCard | null)[], hand: [...prev.hand, targetCard] }
+          updated = { ...updated, ultimateZones: prev.ultimateZones.map((z, zi) => (zi === index ? null : z)) as (FieldCard | null)[], hand: [...prev.hand, targetCard] }
         }
         if (type === "unit") updated = { ...updated, life: Math.max(0, updated.life - 3) }
         return updated
@@ -6485,7 +6485,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // Destroy the selected card on opponent's field
       const effectLabel = ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "MEFISTO FOLES"
       markDestroyed(targetCard)
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         let updated = { ...prev, graveyard: [...prev.graveyard, targetCard] }
         if (type === "unit") { const z = [...prev.unitZone]; z[index] = null; updated = { ...updated, unitZone: z as (FieldCard | null)[] } }
         else if (type === "function") { const z = [...prev.functionZone]; z[index] = null; updated = { ...updated, functionZone: z } }
@@ -6500,12 +6500,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Handle JULGAMENTO DIVINO: select enemy unit and reduce -1DP
-  const handleJulgamentoDivinoTarget = (unitIndex: number) ={
+  const handleJulgamentoDivinoTarget = (unitIndex: number) => {
     if (!ugTargetMode.active || ugTargetMode.type !== "julgamento_divino") return
     const unit = enemyField.unitZone[unitIndex]
     if (!unit) return
 
-    setEnemyField((prev) ={
+    setEnemyField((prev) => {
       const newUnits = [...prev.unitZone]
       const target = newUnits[unitIndex]
       if (!target) return prev
@@ -6530,7 +6530,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // CALEM LR: Julgamento do Vazio Eterno - destroy selected enemy unit or function
-  const handleJulgamentoVazioTarget = (type: "unit" | "function", index: number) ={
+  const handleJulgamentoVazioTarget = (type: "unit" | "function", index: number) => {
     if (!julgamentoVazioTargetMode.active) return
 
     const attackerIdx = julgamentoVazioTargetMode.attackerIndex
@@ -6539,7 +6539,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const target = enemyField.unitZone[index]
       if (!target) return
       markDestroyed(target)
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         const newUnits = [...prev.unitZone]
         newUnits[index] = null
         return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
@@ -6549,7 +6549,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const target = enemyField.functionZone[index]
       if (!target) return
       markDestroyed(target)
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         const newFunctions = [...prev.functionZone]
         newFunctions[index] = null
         return { ...prev, functionZone: newFunctions, graveyard: [...prev.graveyard, target] }
@@ -6559,7 +6559,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // Mark attacker as having attacked and fully reset attack arrow/drag state
     if (attackerIdx !== null) {
-      setPlayerField((prev) ={
+      setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[attackerIdx]) {
           newUnitZone[attackerIdx] = { ...newUnitZone[attackerIdx]!, hasAttacked: true }
@@ -6574,11 +6574,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Cancel UG target mode
-  const cancelUgTargetMode = () ={
+  const cancelUgTargetMode = () => {
     setUgTargetMode({ active: false, ugCard: null, type: null })
   }
 
-  const advancePhase = () ={
+  const advancePhase = () => {
     if (!isPlayerTurn) return
     if (phase === "draw") {
       // Compra uma carta automaticamente ao sair da fase de draw.
@@ -6587,10 +6587,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // dentro do setTimeout do modo automático.
       const currentDeck = playerFieldRef.current.deck
       console.log("[AUTO-DRAW DEBUG] deck.length via ref:", currentDeck.length, "| via closure:", playerField.deck.length)
-      if (currentDeck.length 0) {
+      if (currentDeck.length > 0) {
         const drawnCard = currentDeck[0]
         showDrawAnimation(drawnCard)
-        setPlayerField((prev) =({
+        setPlayerField((prev) => ({
           ...prev,
           hand: [...prev.hand, drawnCard],
           deck: prev.deck.slice(1),
@@ -6602,7 +6602,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       for (const __ugz of playerField.ultimateZones.filter(z=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
         const ullrIdx = findUnitByName(playerField.unitZone, __ugz!.requiresUnit!)
         if (ullrIdx !== -1) {
-          setPlayerField((prev) ={
+          setPlayerField((prev) => {
             const newUnits = [...prev.unitZone]
             const unit = newUnits[ullrIdx]
             if (unit) {
@@ -6620,7 +6620,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   const handleAttackStart = useCallback(
-    (index: number, e: React.MouseEvent | React.TouchEvent) ={
+    (index: number, e: React.MouseEvent | React.TouchEvent) => {
       if (!isPlayerTurn || phase !== "battle") return
 
       const unit = playerField.unitZone[index]
@@ -6655,7 +6655,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   )
 
   const handleAttackMove = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) ={
+    (e: React.MouseEvent | React.TouchEvent) => {
       if (!isDraggingRef.current || !attackState.isAttacking) return
 
       e.preventDefault()
@@ -6668,13 +6668,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // a full SVG re-render. Capping to one update per animation frame removes
       // redundant renders without making the line feel disconnected from the cursor.
       if (positionRef.current.rafId) cancelAnimationFrame(positionRef.current.rafId)
-      positionRef.current.rafId = requestAnimationFrame(() ={
-        setArrowPos((prev) =({ ...prev, x2: clientX, y2: clientY }))
+      positionRef.current.rafId = requestAnimationFrame(() => {
+        setArrowPos((prev) => ({ ...prev, x2: clientX, y2: clientY }))
       })
 
       // Throttled target detection
       const now = Date.now()
-      if (!positionRef.current.lastTargetCheck || now - positionRef.current.lastTargetCheck 50) {
+      if (!positionRef.current.lastTargetCheck || now - positionRef.current.lastTargetCheck > 50) {
         positionRef.current.lastTargetCheck = now
 
         const fieldRect = fieldRef.current?.getBoundingClientRect()
@@ -6696,20 +6696,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
           // Check for direct attack if no units
           if (!foundTarget) {
-            const hasEnemyUnits = enemyField.unitZone.some((u) =u !== null)
+            const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
             if (!hasEnemyUnits) {
               foundTarget = { type: "direct" }
             }
           }
         }
 
-        setAttackState((prev) =({ ...prev, targetInfo: foundTarget }))
+        setAttackState((prev) => ({ ...prev, targetInfo: foundTarget }))
       }
     },
     [attackState.isAttacking, enemyField.unitZone, setAttackState],
   )
 
-  const handleAttackEnd = useCallback(() ={
+  const handleAttackEnd = useCallback(() => {
     if (!isDraggingRef.current || animationInProgressRef.current) return
     isDraggingRef.current = false
     animationInProgressRef.current = true
@@ -6730,7 +6730,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (drawn) {
             const isUnit = ["unit","troops","trooper","ultimateGuardian","ultimateElemental"].includes(drawn.type)
             console.log("[FEHNON DEBUG] SR comprou:", drawn.name, "| type:", drawn.type, "| isUnit:", isUnit)
-            setPlayerField((prev) =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             if (isUnit) {
               setFehnonSrDouble(true)
@@ -6750,7 +6750,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","trooper","ultimateGuardian","ultimateElemental"].includes(drawn.type)
-            setPlayerField((prev) =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             // Only grant double attack if Protonix Sword is equipped (Singularidade Zero condition)
             const hasProtonixSword =
@@ -6775,7 +6775,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (drawn) {
             // "Unit or Action Function" = unit, troops, ultimates, or function cards
             const isUnitOrAction = ["unit","troops","trooper","ultimateGuardian","ultimateElemental","function","action"].includes(drawn.type)
-            setPlayerField((prev) =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             // Check ODEN SWORD is equipped on Fehnon LR (Laceração do Mundo requirement)
             const hasOdenSword =
@@ -6784,7 +6784,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               setFehnonLrDouble(true)
               fehnonDoubleTriggered = true
               setFehnonLrBonusDp(3)
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
                 if (newUnitZone[idx]) {
@@ -6815,18 +6815,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 3) {
           if (morganaSinfoniaLastTurn === null || turn - morganaSinfoniaLastTurn >= 3) {
             const destroyableEnemy = enemyField.functionZone
-              .map((f, i) =({ f, i }))
-              .filter(({ f }) =f !== null)
+              .map((f, i) => ({ f, i }))
+              .filter(({ f }) => f !== null)
               .slice(0, 2)
-            if (destroyableEnemy.length 0) {
+            if (destroyableEnemy.length > 0) {
               setMorganaSinfoniaLastTurn(turn)
               const discardCount = destroyableEnemy.length * 3
-              setEnemyField(prev ={
+              setEnemyField(prev => {
                 const newFuncs = [...prev.functionZone]
                 const newGrave = [...prev.graveyard]
                 const newDeck = [...prev.deck]
                 const newGraveFromDeck: typeof prev.graveyard[0][] = []
-                destroyableEnemy.forEach(({ i }) ={
+                destroyableEnemy.forEach(({ i }) => {
                   if (newFuncs[i]) { newGrave.push(newFuncs[i]!); newFuncs[i] = null }
                 })
                 // Discard top 3 per destroyed card
@@ -6845,10 +6845,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const stealableCards = enemyField.graveyard.filter(c =>
               c.type === "function" || c.type === "action" || c.type === "trap"
             )
-            if (stealableCards.length 0) {
+            if (stealableCards.length > 0) {
               setMorganaDiscordiaLastTurn(turn)
               // Show choice modal to pick which graveyard card to steal
-              const options = stealableCards.slice(0, 6).map((c, i) =({
+              const options = stealableCards.slice(0, 6).map((c, i) => ({
                 id: String(i),
                 label: c.name,
                 description: `${c.type} · ${c.element || "Neutro"}`,
@@ -6857,20 +6857,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 visible: true,
                 cardName: "Sinfonia da Discórdia — Escolha 1 carta do cemitério inimigo",
                 options,
-                onChoose: (optionId: string) ={
+                onChoose: (optionId: string) => {
                   setChoiceModal(null)
                   const idx = parseInt(optionId)
                   const stolen = stealableCards[idx]
                   if (!stolen) return
                   // Remove from enemy graveyard, shuffle into player deck, enemy loses 2LP
-                  setEnemyField(prev ={
+                  setEnemyField(prev => {
                     const newGrave = [...prev.graveyard]
-                    const removeIdx = newGrave.findIndex(c =c.id === stolen.id)
+                    const removeIdx = newGrave.findIndex(c => c.id === stolen.id)
                     if (removeIdx !== -1) newGrave.splice(removeIdx, 1)
                     return { ...prev, graveyard: newGrave, life: Math.max(0, prev.life - 2) }
                   })
-                  setPlayerField(prev ={
-                    const newDeck = [...prev.deck, stolen].sort(() =Math.random() - 0.5)
+                  setPlayerField(prev => {
+                    const newDeck = [...prev.deck, stolen].sort(() => Math.random() - 0.5)
                     return { ...prev, deck: newDeck }
                   })
                   showEffectFeedback(`SINFONIA DA DISCÓRDIA: "${stolen.name}" roubada e embaralhada no seu deck! Oponente -2LP!`, "success")
@@ -6882,13 +6882,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // ── MR. P: A Pena é Mais Forte que a Espada — seleciona 1 carta da mão do oponente para descartar ──
         if (attacker.name.toLowerCase().includes("mr. p") || attacker.name.toLowerCase().includes("mr p") || attacker.name.toLowerCase().includes("penguim")) {
-          if (enemyField.hand.length 0) {
+          if (enemyField.hand.length > 0) {
             // Bot hand is unknown — discard random card (bot doesn't reveal hand)
             const randIdx = Math.floor(Math.random() * enemyField.hand.length)
             const discarded = enemyField.hand[randIdx]
-            setEnemyField(prev =({
+            setEnemyField(prev => ({
               ...prev,
-              hand: prev.hand.filter((_, i) =i !== randIdx),
+              hand: prev.hand.filter((_, i) => i !== randIdx),
               graveyard: [...prev.graveyard, discarded],
             }))
             showEffectFeedback(`A PENA É MAIS FORTE: ${discarded.name} descartada da mão do oponente!`, "success")
@@ -6902,15 +6902,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn1 = playerField.deck[0]
           if (drawn1) {
             const isVentus1 = drawn1.element === "Ventus" || drawn1.element === "Wind"
-            setPlayerField(prev =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn1] }))
+            setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn1] }))
             showDrawAnimation(drawn1)
             showEffectFeedback(`VEREDICTO DE ULLR: ${drawn1.name} comprada!${isVentus1 ? " É Ventus! Compra mais 1!" : ""}`, isVentus1 ? "success" : "info")
             if (isVentus1) {
               const drawn2 = playerField.deck[1] // index 1 since deck[0] was drawn1
               if (drawn2) {
-                setPlayerField(prev =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn2] }))
+                setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn2] }))
                 showDrawAnimation(drawn2)
-                setTimeout(() =showEffectFeedback(`VEREDICTO DE ULLR: ${drawn2.name} (bônus Ventus)!`, "success"), 400)
+                setTimeout(() => showEffectFeedback(`VEREDICTO DE ULLR: ${drawn2.name} (bônus Ventus)!`, "success"), 400)
               }
             }
           }
@@ -6919,24 +6919,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // ── ULLR UR: Flecha de Skadi — antes de atacar, pode destruir 1 unidade inimiga com 2DP (uma vez) ──
         if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 3 && !ullrUrFlechaUsed) {
           const twoDpTargets = enemyField.unitZone
-            .map((u,i) =({u,i}))
-            .filter(({u}) =u !== null && (u.currentDp ?? u.dp) === 2)
-          if (twoDpTargets.length 0) {
+            .map((u,i) => ({u,i}))
+            .filter(({u}) => u !== null && (u.currentDp ?? u.dp) === 2)
+          if (twoDpTargets.length > 0) {
             setChoiceModal({
               visible: true,
               cardName: "Flecha de Skadi — Destruir 1 unidade inimiga com 2DP?",
               options: [
-                ...twoDpTargets.slice(0,4).map(({u,i}) =({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP`, image: u!.image })),
+                ...twoDpTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP`, image: u!.image })),
                 { id: "skip", label: "Não usar", description: "Atacar normalmente" },
               ],
-              onChoose: (optId) ={
+              onChoose: (optId) => {
                 setChoiceModal(null)
                 if (optId === "skip") return
                 const idx = parseInt(optId)
                 const target = enemyField.unitZone[idx]
                 if (!target) return
                 markDestroyed(target)
-                setEnemyField(prev ={
+                setEnemyField(prev => {
                   const newUnits = [...prev.unitZone]
                   newUnits[idx] = null
                   return { ...prev, unitZone: newUnits as (FieldCard|null)[], graveyard: [...prev.graveyard, target] }
@@ -6957,14 +6957,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         let _devorarRanThisAttack = false
         if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 2) {
           if (logiUrDevorarLastTurn === null || turn - logiUrDevorarLastTurn >= 3) {
-            const hasEnemyUnits = enemyField.unitZone.some(u =u !== null)
+            const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
             if (hasEnemyUnits) {
               setLogiUrDevorarLastTurn(turn)
               _devorarRanThisAttack = true
-              setEnemyField(prev ={
+              setEnemyField(prev => {
                 const newUnits = [...prev.unitZone]
                 const newGrave = [...prev.graveyard]
-                prev.unitZone.forEach((u, i) ={
+                prev.unitZone.forEach((u, i) => {
                   if (!u) return
                   const newDp = (u.currentDp ?? u.dp) - 2
                   if (newDp <= 0) {
@@ -6985,11 +6985,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // ── HROTTI SR: Corte do Medo Rúnico — antes de atacar, todas unidades inimigas -1DP (a cada 2 turnos na fase de batalha) ──
         if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 2) {
           if (hrottiSrAttackLastTurn === null || turn - hrottiSrAttackLastTurn >= 2) {
-            const hasEnemyUnits = enemyField.unitZone.some(u =u !== null)
+            const hasEnemyUnits = enemyField.unitZone.some(u => u !== null)
             if (hasEnemyUnits) {
-              setEnemyField(prev =({
+              setEnemyField(prev => ({
                 ...prev,
-                unitZone: prev.unitZone.map(u =u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 1) } : null) as (FieldCard|null)[],
+                unitZone: prev.unitZone.map(u => u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 1) } : null) as (FieldCard|null)[],
               }))
               setHrottiSrAttackLastTurn(turn)
               showEffectFeedback("CORTE DO MEDO RÚNICO: Todas as unidades inimigas -1DP!", "warning")
@@ -7003,7 +7003,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const target = enemyField.unitZone[attackState.targetInfo.index]
             if (target && (target.currentDp ?? target.dp) <= 3) {
               const attackerIdx = attackState.attackerIndex!
-              setPlayerField(prev ={
+              setPlayerField(prev => {
                 const newUnits = [...prev.unitZone]
                 if (newUnits[attackerIdx]) {
                   const h = newUnits[attackerIdx]!
@@ -7027,11 +7027,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (drawn) {
             const isTroop = drawn.type === "troops" || drawn.type === "trooper" ||
               (drawn.type === "unit" && typeof (drawn as any).category === "string" && (drawn as any).category.toLowerCase().includes("troop"))
-            setPlayerField(prev =({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
+            setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             setMordredCamlannUsed(true)
             if (isTroop) {
-              setPlayerField(prev ={
+              setPlayerField(prev => {
                 const newUnits = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
                 if (newUnits[idx]) newUnits[idx] = { ...newUnits[idx]!, currentDp: (newUnits[idx]!.currentDp ?? newUnits[idx]!.dp) + 2 }
@@ -7052,7 +7052,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               drawn.type === "troops" || drawn.type === "trooper" ||
               (drawn.type === "unit" && typeof (drawn as any).category === "string" && (drawn as any).category.toLowerCase().includes("troop"))
             )
-            setPlayerField((prev) ={
+            setPlayerField((prev) => {
               const newDeck = [...prev.deck.slice(1)]
               const newHand = [...prev.hand, drawn]
               const newUnitZone = [...prev.unitZone]
@@ -7074,7 +7074,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","ultimateGuardian","ultimateElemental"].includes(drawn.type)
-            setPlayerField((prev) ={
+            setPlayerField((prev) => {
               const newDeck = [...prev.deck.slice(1)]
               const newHand = [...prev.hand, drawn]
               return { ...prev, deck: newDeck, hand: newHand }
@@ -7093,38 +7093,38 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // ── REI ARTHUR UR 3DP: Veredito do Rei Tirano — antes de atacar, descarte 1 carta → destrua 1 unidade inimiga (a cada 2 turnos) ──
         if (attacker.name.toLowerCase().includes("rei arthur") && (attacker.dp === 3 || (attacker.currentDp ?? attacker.dp) === 3)) {
           if (arthurUrVeredito === null || turn - arthurUrVeredito >= 2) {
-            const hasHandCards = playerField.hand.length 0
-            const hasEnemyTargets = enemyField.unitZone.some(u =u !== null)
+            const hasHandCards = playerField.hand.length > 0
+            const hasEnemyTargets = enemyField.unitZone.some(u => u !== null)
             if (hasHandCards && hasEnemyTargets) {
               // Show hand selection to discard, then enemy unit selection
               setChoiceModal({
                 visible: true,
                 cardName: "Veredito do Rei Tirano — Descarte 1 carta para destruir 1 unidade inimiga",
                 options: [
-                  ...playerField.hand.slice(0, 6).map((c, i) =({ id: String(i), label: c.name, description: c.type, image: c.image })),
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type, image: c.image })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
                 ],
-                onChoose: (optId) ={
+                onChoose: (optId) => {
                   setChoiceModal(null)
                   if (optId === "skip") return
                   const discardIdx = parseInt(optId)
                   const discarded = playerField.hand[discardIdx]
                   if (!discarded) return
                   // Discard the card
-                  setPlayerField(prev =({
+                  setPlayerField(prev => ({
                     ...prev,
-                    hand: prev.hand.filter((_, i) =i !== discardIdx),
+                    hand: prev.hand.filter((_, i) => i !== discardIdx),
                     graveyard: [...prev.graveyard, discarded],
                   }))
                   setArthurUrVeredito(turn)
                   // Now select enemy unit to destroy
                   const enemyTargets = enemyField.unitZone
-                    .map((u, i) =({u, i}))
-                    .filter(({u}) =u !== null)
+                    .map((u, i) => ({u, i}))
+                    .filter(({u}) => u !== null)
                   if (enemyTargets.length === 1) {
                     const target = enemyTargets[0].u!
                     markDestroyed(target)
-                    setEnemyField(prev ={
+                    setEnemyField(prev => {
                       const newUnits = [...prev.unitZone]
                       newUnits[enemyTargets[0].i] = null
                       return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
@@ -7134,14 +7134,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     setChoiceModal({
                       visible: true,
                       cardName: "Veredito do Rei Tirano — Escolha a unidade inimiga para destruir",
-                      options: enemyTargets.slice(0,4).map(({u,i}) =({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP`, image: u!.image })),
-                      onChoose: (targetId) ={
+                      options: enemyTargets.slice(0,4).map(({u,i}) => ({ id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP`, image: u!.image })),
+                      onChoose: (targetId) => {
                         setChoiceModal(null)
                         const tIdx = parseInt(targetId)
                         const target = enemyField.unitZone[tIdx]
                         if (!target) return
                         markDestroyed(target)
-                        setEnemyField(prev ={
+                        setEnemyField(prev => {
                           const newUnits = [...prev.unitZone]
                           newUnits[tIdx] = null
                           return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
@@ -7159,34 +7159,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         // ── REI ARTHUR LR 4DP: Cálice do Monarca — antes de atacar, descarte 1 carta → destrua 2 unidades inimigas; se carta mágica → +2DP (a cada 2 turnos) ──
         if (attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 4) {
           if (arthurLrCalice === null || turn - arthurLrCalice >= 2) {
-            const hasHandCards = playerField.hand.length 0
-            const enemyUnitCount = enemyField.unitZone.filter(u =u !== null).length
-            if (hasHandCards && enemyUnitCount 0) {
+            const hasHandCards = playerField.hand.length > 0
+            const enemyUnitCount = enemyField.unitZone.filter(u => u !== null).length
+            if (hasHandCards && enemyUnitCount > 0) {
               setChoiceModal({
                 visible: true,
                 cardName: "Cálice do Monarca — Descarte 1 carta para destruir 2 unidades inimigas",
                 gridLayout: true,
                 options: [
-                  ...playerField.hand.slice(0, 6).map((c, i) =({ id: String(i), label: c.name, description: c.type, image: c.image })),
+                  ...playerField.hand.slice(0, 6).map((c, i) => ({ id: String(i), label: c.name, description: c.type, image: c.image })),
                   { id: "skip", label: "Não usar", description: "Atacar normalmente" },
                 ],
-                onChoose: (optId) ={
+                onChoose: (optId) => {
                   setChoiceModal(null)
                   if (optId === "skip") return
                   const discardIdx = parseInt(optId)
                   const discarded = playerField.hand[discardIdx]
                   if (!discarded) return
                   const isMagic = discarded.type === "function" || discarded.type === "action"
-                  setPlayerField(prev =({
+                  setPlayerField(prev => ({
                     ...prev,
-                    hand: prev.hand.filter((_, i) =i !== discardIdx),
+                    hand: prev.hand.filter((_, i) => i !== discardIdx),
                     graveyard: [...prev.graveyard, discarded],
                   }))
                   setArthurLrCalice(turn)
                   // +2DP if discarded card is magic
                   if (isMagic) {
                     const attackerIdx = attackState.attackerIndex!
-                    setPlayerField(prev ={
+                    setPlayerField(prev => {
                       const newUnits = [...prev.unitZone]
                       if (newUnits[attackerIdx]) {
                         const cur = newUnits[attackerIdx]!
@@ -7197,15 +7197,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     showEffectFeedback("CÁLICE DO MONARCA: Carta mágica! Arthur +2DP!", "success")
                   }
                   // Destroy up to 2 enemy units
-                  const enemyTargetPool = enemyField.unitZone.map((u,i) =({u,i})).filter(({u}) =u !== null)
+                  const enemyTargetPool = enemyField.unitZone.map((u,i) => ({u,i})).filter(({u}) => u !== null)
                   const toDestroy = enemyTargetPool.slice(0, Math.min(2, enemyTargetPool.length))
-                  toDestroy.forEach(({u, i}) ={
+                  toDestroy.forEach(({u, i}) => {
                     if (u) markDestroyed(u)
                   })
-                  setEnemyField(prev ={
+                  setEnemyField(prev => {
                     const newUnits = [...prev.unitZone]
                     const newGrave = [...prev.graveyard]
-                    toDestroy.forEach(({u, i}) ={
+                    toDestroy.forEach(({u, i}) => {
                       if (newUnits[i]) { newGrave.push(newUnits[i]!); newUnits[i] = null }
                     })
                     return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: newGrave }
@@ -7224,13 +7224,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const _miguelEquipped = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
         if (_isCalemLr && _miguelEquipped) {
           const grave = playerField.graveyard
-          const lastCard = grave.length 0 ? grave[grave.length - 1] : null
+          const lastCard = grave.length > 0 ? grave[grave.length - 1] : null
           const triggerTypes = ["unit","troops","ultimateGuardian","ultimateElemental","function","action"]
           const _triggered = lastCard && triggerTypes.includes(lastCard.type)
           if (_triggered) {
             const enemyHasCards =
-              enemyField.unitZone.some(u =u !== null) ||
-              enemyField.functionZone.some(f =f !== null)
+              enemyField.unitZone.some(u => u !== null) ||
+              enemyField.functionZone.some(f => f !== null)
             if (enemyHasCards) {
               // Freeze the attack, open target selector
               const savedAttackerIdx = attackState.attackerIndex!
@@ -7242,7 +7242,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               return
             } else {
               // No enemy cards left → +4DP bonus, attack still proceeds
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const idx = attackState.attackerIndex!
                 if (idx !== null && newUnitZone[idx]) {
@@ -7291,7 +7291,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         playSound("unitAttack")
         const projId = `proj-${Date.now()}-${currentAttackId}`
-        setActiveProjectiles((prev) =[
+        setActiveProjectiles((prev) => [
           ...prev,
           { 
             id: projId, 
@@ -7326,39 +7326,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const diffX = (targetX - startX) * 0.42
         const diffY = (targetY - startY) * 0.42
         
-        setTimeout(() ={
+        setTimeout(() => {
           // Phase 1: quick anticipation pull-back (windup)
-          setCardAnimations(prev =({
+          setCardAnimations(prev => ({
             ...prev,
             [key]: `__transition:transform 60ms cubic-bezier(0.4,0,1,1)||translate3d(${-diffX * 0.15}px,${-diffY * 0.15}px,0) scale(1.05)`
           }))
 
           // Phase 2: fast lunge toward target
-          setTimeout(() ={
-            setCardAnimations(prev =({
+          setTimeout(() => {
+            setCardAnimations(prev => ({
               ...prev,
               [key]: `__transition:transform 180ms cubic-bezier(0.2,0,0.4,1)||translate3d(${diffX}px,${diffY}px,0) scale(1.14) rotate(${Math.random() * 6 - 3}deg)`
             }))
           }, 65)
 
           // Phase 3: smooth spring return
-          setTimeout(() ={
-            setCardAnimations(prev =({
+          setTimeout(() => {
+            setCardAnimations(prev => ({
               ...prev,
               [key]: `__transition:transform 240ms cubic-bezier(0.34,1.56,0.64,1)||translate3d(0px,0px,0) scale(1)`
             }))
           }, 250)
 
           // Cleanup
-          setTimeout(() ={
-            setCardAnimations(prev ={ const n={...prev}; delete n[key]; return n })
+          setTimeout(() => {
+            setCardAnimations(prev => { const n={...prev}; delete n[key]; return n })
           }, 500)
         }, CARD_JUMP_DELAY)
 
         // Hide arrow immediately — before any animation
         setAttackState({ isAttacking: false, attackerIndex: attackState.attackerIndex, targetInfo: attackState.targetInfo })
 
-        setTimeout(() ={
+        setTimeout(() => {
           // Reset fully after projectile lands
           if (attackState.targetInfo!.type === "unit" && attackState.targetInfo!.index !== undefined) {
             // If Devorar o Mundo ran this cycle, the closure's enemyField is stale.
@@ -7373,20 +7373,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const _morganaTrapBlock = playerField.unitZone.some(u =>
                 u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)
               )
-              const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f =f?.id === "portao-da-fortaleza" && f.isFaceDown)
+              const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
               if (trapPortaoIndex !== -1) {
-                setEnemyField(prev ={
+                setEnemyField(prev => {
                   const newFuncs = [...prev.functionZone]
                   newFuncs[trapPortaoIndex] = { ...newFuncs[trapPortaoIndex]!, isFaceDown: false }
                   const newHand = [...prev.hand]
-                  if (newHand.length 0) {
+                  if (newHand.length > 0) {
                     const discardIdx = Math.floor(Math.random() * newHand.length)
                     const discarded = newHand.splice(discardIdx, 1)[0]
                     return { ...prev, functionZone: newFuncs, hand: newHand, graveyard: [...prev.graveyard, discarded] }
                   }
                   return { ...prev, functionZone: newFuncs }
                 })
-                setPlayerField(prev ={
+                setPlayerField(prev => {
                   const newUnitZone = [...prev.unitZone]
                   newUnitZone[attackState.attackerIndex!] = null
                   return { ...prev, unitZone: newUnitZone, hand: [...prev.hand, attacker] }
@@ -7402,15 +7402,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const newDefenderDp = defenderDp - attackerDp
 
               // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
-              if (attackerDp 0) {
-                const trapContraAtaqueIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f =f?.id === "contra-ataque-surpresa" && f.isFaceDown)
+              if (attackerDp > 0) {
+                const trapContraAtaqueIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "contra-ataque-surpresa" && f.isFaceDown)
                 if (trapContraAtaqueIndex !== -1) {
-                  setEnemyField(prev ={
+                  setEnemyField(prev => {
                     const newFuncs = [...prev.functionZone]
                     newFuncs[trapContraAtaqueIndex] = { ...newFuncs[trapContraAtaqueIndex]!, isFaceDown: false }
                     return { ...prev, functionZone: newFuncs }
                   })
-                  setPlayerField(prev =({
+                  setPlayerField(prev => ({
                     ...prev,
                     life: Math.max(0, prev.life - attackerDp)
                   }))
@@ -7423,7 +7423,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const targetRect = targetElement?.getBoundingClientRect()
 
               // Recompute damage using fresh enemy state via functional updater
-              setEnemyField((prev) ={
+              setEnemyField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 const newGraveyard = [...prev.graveyard]
                 // Re-check from fresh prev state — Devorar may have already destroyed this unit
@@ -7442,7 +7442,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       targetRect.left + targetRect.width / 2,
                       targetRect.top + targetRect.height / 2
                     )
-                    setTimeout(() ={
+                    setTimeout(() => {
                       triggerExplosion(
                         targetRect.left + targetRect.width / 2,
                         targetRect.top + targetRect.height / 2,
@@ -7475,23 +7475,23 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               // ── FEHNON SR 2DP: Fluxo de Ruptura — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) {
-                setTimeout(() ={
-                  setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - 2) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("FLUXO DE RUPTURA: 2DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
               // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 2) {
-                setTimeout(() ={
-                  setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - 3) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 3) }))
                   showEffectFeedback("ECLIPSE DE AVALON: 3DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
               // ── FEHNON UR 3DP: Singularidade Zero — ao destruir unidade: +2DP até o final do turno ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) {
-                setPlayerField((prev) ={
+                setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
                   const idx = attackState.attackerIndex!
                   if (newUnitZone[idx]) {
@@ -7500,27 +7500,27 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   }
                   return { ...prev, unitZone: newUnitZone }
                 })
-                setFehnonUrSingBonus(prev =prev + 2)
+                setFehnonUrSingBonus(prev => prev + 2)
                 showEffectFeedback("SINGULARIDADE ZERO: Fehnon UR +2DP até o final do turno!", "success")
               }
 
               // ── FEHNON LR 4DP: Ruptura do Núcleo Supremo — ao destruir unidade: 2DP dano direto ──
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) {
-                setTimeout(() ={
-                  setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - 2) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 2) }))
                   showEffectFeedback("RUPTURA DO NÚCLEO SUPREMO: 2DP de dano direto ao oponente!", "warning")
                 }, 500)
               }
 
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 2) {
-                setTimeout(() ={
-                  setEnemyField((prev) =({ ...prev, life: Math.max(0, prev.life - 1) }))
+                setTimeout(() => {
+                  setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
                   showEffectFeedback("VÁCUO DE ESSÊNCIA: 1DP de dano direto ao oponente!", "warning")
                 }, 600)
               }
 
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) {
-                setPlayerField((prev) ={
+                setPlayerField((prev) => {
                   const newUnitZone = [...prev.unitZone]
                   const idx = attackState.attackerIndex!
                   if (newUnitZone[idx]) {
@@ -7536,7 +7536,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 // Legião do Guardião Alado requires Miguel Arcanjo equipped
                 const hasMiguelArcanjo = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
                 if (hasMiguelArcanjo) {
-                  setPlayerField((prev) ={
+                  setPlayerField((prev) => {
                     const newUnitZone = [...prev.unitZone]
                     const idx = attackState.attackerIndex!
                     if (newUnitZone[idx]) {
@@ -7552,34 +7552,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               // ── LOGI SR: Incêndio Vivo — ao destruir unidade, Logi pode atacar novamente ──
               const isLogiSrKill = newDefenderDp <= 0 && attacker.name.toLowerCase().includes("logi") && attacker.dp === 1
               if (isLogiSrKill) {
-                setLogiSrKillsThisBattle(prev =prev + 1)
+                setLogiSrKillsThisBattle(prev => prev + 1)
                 showEffectFeedback("INCÊNDIO VIVO: Logi destruiu uma unidade! Pode atacar novamente!", "success")
               }
 
               // ─�� LOGI SR: Explosão de Muspell — após ataque, +1DP a unidade de fogo no campo ──
               if (attacker.name.toLowerCase().includes("logi") && attacker.dp === 1) {
                 const fireUnits = playerField.unitZone
-                  .map((u, i) =({ u, i }))
-                  .filter(({ u }) =u !== null && (u.element === "Pyrus" || u.element === "Fire") && !u.name.toLowerCase().includes("logi"))
+                  .map((u, i) => ({ u, i }))
+                  .filter(({ u }) => u !== null && (u.element === "Pyrus" || u.element === "Fire") && !u.name.toLowerCase().includes("logi"))
                 if (fireUnits.length === 1) {
                   const { u, i } = fireUnits[0]
-                  setPlayerField(prev ={
+                  setPlayerField(prev => {
                     const nz = [...prev.unitZone]
                     if (nz[i]) nz[i] = { ...nz[i]!, currentDp: (nz[i]!.currentDp ?? nz[i]!.dp) + 1 }
                     return { ...prev, unitZone: nz as (FieldCard|null)[] }
                   })
                   showEffectFeedback(`EXPLOSÃO DE MUSPELL: ${u!.name} +1DP até o final da fase de batalha!`, "success")
-                } else if (fireUnits.length 1) {
+                } else if (fireUnits.length > 1) {
                   setChoiceModal({
                     visible: true,
                     cardName: "Explosão de Muspell — Escolha 1 unidade de fogo para +1DP",
-                    options: fireUnits.slice(0, 4).map(({ u, i }) =({
+                    options: fireUnits.slice(0, 4).map(({ u, i }) => ({
                       id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`, image: u!.image
                     })),
-                    onChoose: (optId) ={
+                    onChoose: (optId) => {
                       setChoiceModal(null)
                       const idx = parseInt(optId)
-                      setPlayerField(prev ={
+                      setPlayerField(prev => {
                         const nz = [...prev.unitZone]
                         if (nz[idx]) nz[idx] = { ...nz[idx]!, currentDp: (nz[idx]!.currentDp ?? nz[idx]!.dp) + 1 }
                         return { ...prev, unitZone: nz as (FieldCard|null)[] }
@@ -7598,7 +7598,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 console.log("[FEHNON DEBUG] keepAttackReady (ataque em unidade):", keepAttackReady, "| fehnonDoubleTriggered:", fehnonDoubleTriggered, "| atacante:", attacker.name, attacker.dp+"DP")
               }
 
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
                 newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
                 return { ...prev, unitZone: newUnitZone }
@@ -7613,17 +7613,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // instead of re-querying the fixed [data-direct-attack] zone — keeps the
             // explosion landing exactly where the projectile actually traveled to.
             triggerExplosion(targetX, targetY, attacker.element || "neutral")
-            setEnemyField((prev) =({
+            setEnemyField((prev) => ({
               ...prev,
               life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
             }))
 
             // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
             if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
-              const hasEnemyLight = enemyField.unitZone.some(u =u && (u.element === "Haos" || u.element === "Light" || u.element === "Lightness"))
+              const hasEnemyLight = enemyField.unitZone.some(u => u && (u.element === "Haos" || u.element === "Light" || u.element === "Lightness"))
               const drain = hasEnemyLight ? 2 : 1
-              setTimeout(() ={
-                setPlayerField(prev =({ ...prev, life: prev.life + drain }))
+              setTimeout(() => {
+                setPlayerField(prev => ({ ...prev, life: prev.life + drain }))
                 showEffectFeedback(`ACORDE DO ABISMO: Morgana drena ${drain}LP!${hasEnemyLight ? " (Unidade Luz inimiga — drenagem dobrada!)" : ""}`, "success")
               }, 400)
             }
@@ -7631,7 +7631,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // ── HROTTI LR: Ira Maelstrom — after dealing direct battle damage ──
             if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 4 && !hrottiLrIraUsed) {
               setHrottiLrIraUsed(true)
-              setTimeout(() =activateHrottiLrIra(), 500)
+              setTimeout(() => activateHrottiLrIra(), 500)
             }
 
             const keepReadyDirect =
@@ -7640,7 +7640,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               console.log("[FEHNON DEBUG] keepReadyDirect (ataque direto):", keepReadyDirect, "| fehnonDoubleTriggered:", fehnonDoubleTriggered, "| atacante:", attacker.name, attacker.dp+"DP")
             }
 
-            setPlayerField((prev) ={
+            setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
               newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepReadyDirect }
               return { ...prev, unitZone: newUnitZone }
@@ -7650,7 +7650,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) setFehnonLrDouble(false)
           }
           setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
-          setTimeout(() ={
+          setTimeout(() => {
             animationInProgressRef.current = false
           }, 100)
         }, PROJECTILE_DURATION)
@@ -7665,22 +7665,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, enemyField.graveyard, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, morganaEclipseLastTurn, morganaSinfoniaLastTurn, morganaDiscordiaLastTurn, setEnemyField, setPlayerField, setAttackState, showEffectFeedback, setChoiceModal])
 
   // ── Global 0DP Sweep — any unit that reaches 0 or below DP is auto-destroyed ──
-  useEffect(() ={
+  useEffect(() => {
     if (!gameStarted) return
 
     // Player units
-    const playerHasZeroDp = playerField.unitZone.some(u =u !== null && (u.currentDp ?? u.dp) <= 0)
+    const playerHasZeroDp = playerField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
     if (playerHasZeroDp) {
-      setPlayerField(prev ={
+      setPlayerField(prev => {
         let changed = false
-        const newUnits = prev.unitZone.map(u ={
-          if (!u || (u.currentDp ?? u.dp) 0) return u
+        const newUnits = prev.unitZone.map(u => {
+          if (!u || (u.currentDp ?? u.dp) > 0) return u
           markDestroyed(u)
           changed = true
           return null
         })
         if (!changed) return prev
-        const destroyed = prev.unitZone.filter(u =u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
+        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
         return {
           ...prev,
           unitZone: newUnits as (FieldCard | null)[],
@@ -7690,18 +7690,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     // Enemy units
-    const enemyHasZeroDp = enemyField.unitZone.some(u =u !== null && (u.currentDp ?? u.dp) <= 0)
+    const enemyHasZeroDp = enemyField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
     if (enemyHasZeroDp) {
-      setEnemyField(prev ={
+      setEnemyField(prev => {
         let changed = false
-        const newUnits = prev.unitZone.map(u ={
-          if (!u || (u.currentDp ?? u.dp) 0) return u
+        const newUnits = prev.unitZone.map(u => {
+          if (!u || (u.currentDp ?? u.dp) > 0) return u
           markDestroyed(u)
           changed = true
           return null
         })
         if (!changed) return prev
-        const destroyed = prev.unitZone.filter(u =u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
+        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
         return {
           ...prev,
           unitZone: newUnits as (FieldCard | null)[],
@@ -7710,15 +7710,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       })
     }
   }, [
-    playerField.unitZone.map(u =u?.currentDp ?? u?.dp ?? 0).join(','),
-    enemyField.unitZone.map(u =u?.currentDp ?? u?.dp ?? 0).join(','),
+    playerField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
+    enemyField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
   ])
 
   // ── Lancelot: Virtude do Cavaleiro — recalc DP when field changes ──
-  useEffect(() ={
-    setPlayerField(prev ={
-      const hasVoidUnit = prev.unitZone.some(u =u !== null && (u.element === "Void" || u.element === "Darkus"))
-      const newUnitZone = prev.unitZone.map(u ={
+  useEffect(() => {
+    setPlayerField(prev => {
+      const hasVoidUnit = prev.unitZone.some(u => u !== null && (u.element === "Void" || u.element === "Darkus"))
+      const newUnitZone = prev.unitZone.map(u => {
         if (!u || !u.name.toLowerCase().includes("lancelot")) return u
         // recalc without Void bonus first, then re-apply
         const baseCalc = calculateCardDP(u, { ...prev, unitZone: prev.unitZone }, false)
@@ -7726,22 +7726,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       })
       return { ...prev, unitZone: newUnitZone as (FieldCard | null)[] }
     })
-  }, [playerField.unitZone.map(u =u?.id).join(',')])
+  }, [playerField.unitZone.map(u => u?.id).join(',')])
 
   // ── Morgana UR 3DP: Domínio Eterno — block traps while on field ──
-  useEffect(() ={
-    const hasMorganaUr = playerField.unitZone.some(u =u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
+  useEffect(() => {
+    const hasMorganaUr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
     setMorganaTrapBlocked(hasMorganaUr)
   }, [playerField.unitZone])
 
   // ── Morgana LR 4DP: Domínio de Horizontes — block all actions+traps while on field ──
-  useEffect(() ={
-    const hasMorganaLr = playerField.unitZone.some(u =u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
+  useEffect(() => {
+    const hasMorganaLr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
     setMorganaActionBlocked(hasMorganaLr)
   }, [playerField.unitZone])
 
   // ── Merlin: Visão Além do Agora ──
-  const activateMerlinAbility = () ={
+  const activateMerlinAbility = () => {
     if (merlinUsed) { showEffectFeedback("Visão Além do Agora já foi usada neste duelo!", "error"); return }
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
@@ -7749,17 +7749,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setMerlinUsed(true)
 
     // Each card in top5 is tagged with its original index so selection maps back cleanly
-    const tagged = top5.map((card, idx) =({ card, idx }))
+    const tagged = top5.map((card, idx) => ({ card, idx }))
 
     if (top5.length <= 2) {
       // Fewer than 3 cards ��� all go to hand
-      setPlayerField(prev =({
+      setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, ...top5],
         deck: prev.deck.slice(top5.length),
       }))
-      top5.forEach(card =showDrawAnimation(card))
-      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c =c.name).join(", ")} adicionadas!`, "success")
+      top5.forEach(card => showDrawAnimation(card))
+      showEffectFeedback(`VISÃO ALÉM DO AGORA: ${top5.map(c => c.name).join(", ")} adicionadas!`, "success")
       return
     }
 
@@ -7767,39 +7767,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setChoiceModal({
       visible: true,
       cardName: "Visão Além do Agora — Escolha a 1ª carta para a mão",
-      options: tagged.map(({ card, idx }) =({
+      options: tagged.map(({ card, idx }) => ({
         id: String(idx),
         label: card.name,
         description: `${card.type}${card.dp ? ` · ${card.dp}DP` : ''}`,
       })),
-      onChoose: (firstIdStr) ={
+      onChoose: (firstIdStr) => {
         const firstIdx = parseInt(firstIdStr)
         const firstCard = top5[firstIdx]
 
         // Pick 2nd card from the remaining
-        const remainingTagged = tagged.filter(({ idx }) =idx !== firstIdx)
+        const remainingTagged = tagged.filter(({ idx }) => idx !== firstIdx)
         setChoiceModal({
           visible: true,
           cardName: `Visão Além do Agora — Escolha a 2ª carta (${firstCard.name} escolhida)`,
-          options: remainingTagged.map(({ card, idx }) =({
+          options: remainingTagged.map(({ card, idx }) => ({
             id: String(idx),
             label: card.name,
             description: `${card.type}${card.dp ? ` · ${card.dp}DP` : ''}`,
           })),
-          onChoose: (secondIdStr) ={
+          onChoose: (secondIdStr) => {
             setChoiceModal(null)
             const secondIdx = parseInt(secondIdStr)
             const chosenIndices = new Set([firstIdx, secondIdx])
-            const chosenCards = top5.filter((_, i) =chosenIndices.has(i))
-            const bottomCards = top5.filter((_, i) =!chosenIndices.has(i))
-            setPlayerField(prev =({
+            const chosenCards = top5.filter((_, i) => chosenIndices.has(i))
+            const bottomCards = top5.filter((_, i) => !chosenIndices.has(i))
+            setPlayerField(prev => ({
               ...prev,
               hand: [...prev.hand, ...chosenCards],
               deck: [...prev.deck.slice(top5.length), ...bottomCards],
             }))
-            chosenCards.forEach(card =showDrawAnimation(card))
+            chosenCards.forEach(card => showDrawAnimation(card))
             showEffectFeedback(
-              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c =c.name).join(", ")} adicionadas à mão!`,
+              `VISÃO ALÉM DO AGORA: ${chosenCards.map(c => c.name).join(", ")} adicionadas à mão!`,
               "success"
             )
           },
@@ -7809,7 +7809,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Oswin: Lucro na Crise ──
-  const activateOswinAbility = () ={
+  const activateOswinAbility = () => {
     if (oswinUsed) { showEffectFeedback("Lucro na Crise já foi usada neste duelo!", "error"); return }
     const top5 = playerField.deck.slice(0, Math.min(5, playerField.deck.length))
     if (top5.length === 0) { showEffectFeedback("Deck vazio!", "error"); return }
@@ -7819,15 +7819,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const itemCards = top5.filter(c =>
       c.type === "function" || c.type === "action" || (c.category && c.category.toLowerCase().includes("item"))
     )
-    const hasItems = itemCards.length 0
+    const hasItems = itemCards.length > 0
     const maxChoose = hasItems ? Math.min(2, itemCards.length) : 1
     const pool = hasItems ? itemCards : top5
 
     if (pool.length === 1) {
-      setPlayerField(prev =({
+      setPlayerField(prev => ({
         ...prev,
         hand: [...prev.hand, pool[0]],
-        deck: [...prev.deck.slice(top5.length), ...top5.filter(c =c !== pool[0])],
+        deck: [...prev.deck.slice(top5.length), ...top5.filter(c => c !== pool[0])],
       }))
       showDrawAnimation(pool[0])
       showEffectFeedback(`LUCRO NA CRISE: ${pool[0].name} adicionada à mão!`, "success")
@@ -7837,28 +7837,28 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const pickCount = maxChoose
     const picks: number[] = []
 
-    const pickNext = () ={
+    const pickNext = () => {
       if (picks.length >= pickCount) {
-        const chosenCards = picks.map(i =pool[i])
-        const bottomCards = top5.filter(c =!chosenCards.includes(c))
-        setPlayerField(prev =({
+        const chosenCards = picks.map(i => pool[i])
+        const bottomCards = top5.filter(c => !chosenCards.includes(c))
+        setPlayerField(prev => ({
           ...prev,
           hand: [...prev.hand, ...chosenCards],
           deck: [...prev.deck.slice(5), ...bottomCards],
         }))
-        chosenCards.forEach(c =showDrawAnimation(c))
+        chosenCards.forEach(c => showDrawAnimation(c))
         showEffectFeedback(`LUCRO NA CRISE: ${chosenCards.map(c=>c.name).join(", ")} adicionadas à mão!`, "success")
         return
       }
-      const available = pool.filter((_, i) =!picks.includes(i))
+      const available = pool.filter((_, i) => !picks.includes(i))
       setChoiceModal({
         visible: true,
         cardName: `Lucro na Crise — Escolha carta ${picks.length + 1}/${pickCount}${hasItems ? " (Itens encontrados!)" : ""}`,
-        options: available.map((c, i) ={
+        options: available.map((c, i) => {
           const origIdx = pool.indexOf(c)
           return { id: String(origIdx), label: c.name, description: c.type + (c.dp ? ` · ${c.dp}DP` : ''), image: c.image }
         }),
-        onChoose: (optId) ={
+        onChoose: (optId) => {
           setChoiceModal(null)
           picks.push(parseInt(optId))
           pickNext()
@@ -7869,10 +7869,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Mr. P: Manuscrito de Guerra — (optional) select enemy unit, -2DP ──
-  const activateMrPAbility = () ={
+  const activateMrPAbility = () => {
     const enemyTargets = enemyField.unitZone
-      .map((u, i) =({ u, i }))
-      .filter(({ u }) =u !== null)
+      .map((u, i) => ({ u, i }))
+      .filter(({ u }) => u !== null)
     if (enemyTargets.length === 0) {
       showEffectFeedback("Nenhuma unidade inimiga no campo!", "error")
       return
@@ -7881,18 +7881,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       visible: true,
       cardName: "Manuscrito de Guerra — Selecione uma unidade inimiga para -2DP",
       options: [
-        ...enemyTargets.slice(0, 4).map(({ u, i }) =({
+        ...enemyTargets.slice(0, 4).map(({ u, i }) => ({
           id: String(i),
           label: u!.name,
           description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0, (u!.currentDp ?? u!.dp) - 2)}DP`,
         })),
         { id: "skip", label: "Não usar", description: "Pular este efeito" },
       ],
-      onChoose: (optId) ={
+      onChoose: (optId) => {
         setChoiceModal(null)
         if (optId === "skip") return
         const idx = parseInt(optId)
-        setEnemyField(prev ={
+        setEnemyField(prev => {
           const newUnits = [...prev.unitZone]
           if (newUnits[idx]) {
             const u = newUnits[idx]!
@@ -7902,15 +7902,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         })
         setMrPManuscritoUsed(true)
         mpBroadcast("ability_used", { ability: "mrp", targetIndex: idx, dpChange: -2 })
-        showEffectFeedback(`MANUSCRITO DE GUERRA: ${enemyTargets.find(t =t.i === idx)?.u?.name} -2DP!`, "success")
+        showEffectFeedback(`MANUSCRITO DE GUERRA: ${enemyTargets.find(t => t.i === idx)?.u?.name} -2DP!`, "success")
       },
     })
   }
 
   // ── Vivian: Abraço das Profundezas — on summon, special-summon a 2 or 3DP unit from deck ──
-  const activateVivianAbility = () ={
+  const activateVivianAbility = () => {
     if (vivianAbracoUsed) return
-    const emptySlot = playerField.unitZone.findIndex(s =s === null)
+    const emptySlot = playerField.unitZone.findIndex(s => s === null)
     if (emptySlot === -1) {
       showEffectFeedback("Campo cheio! Não é possível evocar mais unidades.", "error")
       return
@@ -7922,18 +7922,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       showEffectFeedback("Nenhuma unidade de 2 ou 3DP no deck!", "info")
       return
     }
-    const uniqueByName = candidates.filter((c, i, arr) =arr.findIndex(x =x.name === c.name) === i)
+    const uniqueByName = candidates.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i)
     setChoiceModal({
       visible: true,
       cardName: "Abraço das Profundezas — Escolha uma unidade (2 ou 3DP) do deck para evocar",
-      options: uniqueByName.slice(0, 6).map((c, i) =({
+      options: uniqueByName.slice(0, 6).map((c, i) => ({
         id: c.id,
         label: c.name,
         description: `${c.dp}DP · ${c.element || "Neutro"}`,
       })),
-      onChoose: (cardId) ={
+      onChoose: (cardId) => {
         setChoiceModal(null)
-        const chosen = playerField.deck.find(c =c.id === cardId)
+        const chosen = playerField.deck.find(c => c.id === cardId)
         if (!chosen) return
         const fieldCard: FieldCard = {
           ...chosen,
@@ -7942,15 +7942,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           hasAttacked: false,
           canAttackTurn: turn,
         }
-        setPlayerField(prev ={
+        setPlayerField(prev => {
           const newUnitZone = [...prev.unitZone]
-          const slot = newUnitZone.findIndex(s =s === null)
+          const slot = newUnitZone.findIndex(s => s === null)
           if (slot === -1) return prev
           newUnitZone[slot] = fieldCard
           return {
             ...prev,
             unitZone: newUnitZone as (FieldCard | null)[],
-            deck: prev.deck.filter(c =c.id !== cardId),
+            deck: prev.deck.filter(c => c.id !== cardId),
           }
         })
         setVivianAbracoUsed(true)
@@ -7960,18 +7960,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Hrotti SR: Avareza de Fafnir — discard own field cards for +1DP each (every 3 turns) ──
-  const activateHrottiSrAbility = () ={
+  const activateHrottiSrAbility = () => {
     if (hrottiSrLastTurn !== null && turn - hrottiSrLastTurn < 3) {
       showEffectFeedback(`Avareza de Fafnir disponível no turno ${hrottiSrLastTurn + 3}!`, "error"); return
     }
 
     // Build field options from current playerField (now safe — called fresh from key lookup)
     const fieldOptions: { id: string; label: string; description: string }[] = []
-    playerField.unitZone.forEach((u, i) ={
+    playerField.unitZone.forEach((u, i) => {
       if (u && !u.name.toLowerCase().includes("hrotti"))
         fieldOptions.push({ id: `unit-${i}`, label: u.name, description: `Unidade · ${u.currentDp ?? u.dp}DP` })
     })
-    playerField.functionZone.forEach((f, i) ={
+    playerField.functionZone.forEach((f, i) => {
       if (f)
         fieldOptions.push({ id: `func-${i}`, label: f.name, description: `Function${f.isFaceDown ? ' (face-down)' : ''}` })
     })
@@ -7983,16 +7983,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     const selected: string[] = []
 
-    const applyDiscard = () ={
+    const applyDiscard = () => {
         if (selected.length === 0) { showEffectFeedback("Nenhuma carta selecionada.", "info"); return }
         const bonus = selected.length
-        setPlayerField(prev ={
+        setPlayerField(prev => {
           const newUnitZone = [...prev.unitZone]
           const newFuncZone = [...prev.functionZone]
           let newScenario = prev.scenarioZone
           let newUltimateArr = [...prev.ultimateZones] as (FieldCard|null)[]
           const newGrave = [...prev.graveyard]
-          selected.forEach(sel ={
+          selected.forEach(sel => {
             if (sel.startsWith('unit-')) {
               const idx = parseInt(sel.replace('unit-', ''))
               if (newUnitZone[idx]) { newGrave.push(newUnitZone[idx]!); newUnitZone[idx] = null }
@@ -8006,7 +8006,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
           })
           // +1DP per card discarded to Hrotti SR
-          const hrottiIdx = newUnitZone.findIndex(u =u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
+          const hrottiIdx = newUnitZone.findIndex(u => u && u.name.toLowerCase().includes("hrotti") && u.dp === 2)
           if (hrottiIdx !== -1 && newUnitZone[hrottiIdx]) {
             const h = newUnitZone[hrottiIdx]!
             newUnitZone[hrottiIdx] = { ...h, currentDp: (h.currentDp ?? h.dp) + bonus }
@@ -8018,16 +8018,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         showEffectFeedback(`AVAREZA DE FAFNIR: ${bonus} carta(s) descartada(s)! Hrotti +${bonus}DP!`, "success")
       }
 
-      const showPicker = () ={
-        const available = fieldOptions.filter(o =!selected.includes(o.id))
+      const showPicker = () => {
+        const available = fieldOptions.filter(o => !selected.includes(o.id))
         setChoiceModal({
           visible: true,
           cardName: `Avareza de Fafnir — Escolha cartas para descartar (${selected.length} selecionadas)`,
           options: [
-            ...available.map(o =({ id: o.id, label: o.label, description: o.description })),
-            { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
+            ...available.map(o => ({ id: o.id, label: o.label, description: o.description })),
+            { id: '__confirm__', label: `✓ Confirmar (${selected.length} carta${selected.length !== 1 ? 's' : ''})`, description: selected.length > 0 ? `+${selected.length}DP para Hrotti` : 'Selecione ao menos 1' },
           ],
-          onChoose: (optId) ={
+          onChoose: (optId) => {
             setChoiceModal(null)
             if (optId === '__confirm__') { applyDiscard(); return }
             selected.push(optId)
@@ -8039,7 +8039,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Hrotti UR: Herança de Andvaranaut — nullify all Ultimate Gear effects for 3 turns (once ever) ──
-  const activateHrottiUrAbility = () ={
+  const activateHrottiUrAbility = () => {
     if (hrottiUrUsed) { showEffectFeedback("Herança de Andvaranaut já foi usada!", "error"); return }
     mpBroadcast("ability_used", { ability: "hrottiUr" })
     setHrottiUrUsed(true)
@@ -8048,11 +8048,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Hrotti LR: Ira Maelstrom — after dealing battle damage: shuffle top of enemy deck to bottom; look at own top ──
-  const activateHrottiLrIra = () ={
+  const activateHrottiLrIra = () => {
     // Move enemy's top deck card to bottom
-    if (enemyField.deck.length 0) {
+    if (enemyField.deck.length > 0) {
       const top = enemyField.deck[0]
-      setEnemyField(prev =({
+      setEnemyField(prev => ({
         ...prev,
         deck: [...prev.deck.slice(1), top],
       }))
@@ -8068,10 +8068,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           { id: 'keep', label: 'Manter no topo', description: `${ownTop.name} permanece no topo` },
           { id: 'bottom', label: 'Enviar ao fundo', description: `${ownTop.name} vai ao fundo do seu deck` },
         ],
-        onChoose: (optId) ={
+        onChoose: (optId) => {
           setChoiceModal(null)
           if (optId === 'bottom') {
-            setPlayerField(prev =({
+            setPlayerField(prev => ({
               ...prev,
               deck: [...prev.deck.slice(1), prev.deck[0]],
             }))
@@ -8084,21 +8084,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Ullr SR: Marca da Caçada — choose enemy unit, Ventus -2DP / other -1DP (once per main phase) ──
-  const activateUllrSrAbility = () ={
-    const enemyTargets = enemyField.unitZone.map((u,i) =({u,i})).filter(({u}) =u !== null)
+  const activateUllrSrAbility = () => {
+    const enemyTargets = enemyField.unitZone.map((u,i) => ({u,i})).filter(({u}) => u !== null)
     if (enemyTargets.length === 0) { showEffectFeedback("Nenhuma unidade inimiga no campo!", "error"); return }
     setChoiceModal({
       visible: true,
       cardName: "Marca da Caçada — Selecione uma unidade inimiga como alvo",
-      options: enemyTargets.slice(0,4).map(({u,i}) ={
+      options: enemyTargets.slice(0,4).map(({u,i}) => {
         const isVentus = u!.element === "Ventus" || u!.element === "Wind"
         const dpLoss = isVentus ? 2 : 1
         return { id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0,(u!.currentDp ?? u!.dp)-dpLoss)}DP${isVentus ? " (Ventus: -2DP)" : " (-1DP)"}`, image: u!.image }
       }),
-      onChoose: (optId) ={
+      onChoose: (optId) => {
         setChoiceModal(null)
         const idx = parseInt(optId)
-        setEnemyField(prev ={
+        setEnemyField(prev => {
           const newUnits = [...prev.unitZone]
           const u = newUnits[idx]
           if (!u) return prev
@@ -8108,7 +8108,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
         })
         setUllrSrMarcaUsed(true)
-        const tgt = enemyTargets.find(t =t.i === idx)
+        const tgt = enemyTargets.find(t => t.i === idx)
         const isVentus = tgt?.u?.element === "Ventus" || tgt?.u?.element === "Wind"
         mpBroadcast("ability_used", { ability: "ullrSr", targetIndex: idx, dpChange: isVentus ? -2 : -1 })
         showEffectFeedback(`MARCA DA CAÇADA: ${tgt?.u?.name} ${isVentus ? "-2DP (Ventus)" : "-1DP"}!`, "success")
@@ -8117,14 +8117,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // ── Ullr UR: Juramento Eterno — all Wind/Ventus units +2DP (or +3DP with Ullrbogi), every 4 turns ──
-  const activateUllrUrAbility = () ={
+  const activateUllrUrAbility = () => {
     if (ullrUrJuramentoLastTurn !== null && turn - ullrUrJuramentoLastTurn < 4) {
       showEffectFeedback(`Juramento Eterno disponível no turno ${ullrUrJuramentoLastTurn + 4}!`, "error"); return
     }
     const hasUllrbogi = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("ULLRBOGI"))
     const bonus = hasUllrbogi ? 3 : 2
-    setPlayerField(prev ={
-      const newUnits = prev.unitZone.map(u ={
+    setPlayerField(prev => {
+      const newUnits = prev.unitZone.map(u => {
         if (!u) return null
         if (u.element === "Ventus" || u.element === "Wind") {
           return { ...u, currentDp: (u.currentDp ?? u.dp) + bonus }
@@ -8139,15 +8139,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // Cleanup on unmount
-  useEffect(() ={
-    return () ={
+  useEffect(() => {
+    return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
       }
     }
   }, [])
 
-  const handleHandCardDragStart = (index: number, e: React.MouseEvent | React.TouchEvent) ={
+  const handleHandCardDragStart = (index: number, e: React.MouseEvent | React.TouchEvent) => {
     if (!isPlayerTurn || phase !== "main") return
     const card = playerField.hand[index]
     if (!card) return
@@ -8168,7 +8168,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setSelectedHandCard(index)
 
     // Prime ghost position before first frame
-    requestAnimationFrame(() ={
+    requestAnimationFrame(() => {
       if (draggedCardRef.current) {
         draggedCardRef.current.style.transition = "none"
         draggedCardRef.current.style.transform  =
@@ -8177,7 +8177,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
 
     // ── rAF loop: pure GPU transform at 60 fps, zero React overhead ─────────
-    const rAFLoop = () ={
+    const rAFLoop = () => {
       const el = draggedCardRef.current
       if (!el) return
       const { x, y } = nativePosRef.current
@@ -8193,7 +8193,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     rafIdRef.current = requestAnimationFrame(rAFLoop)
 
     // ── Native move handler – updates refs only, never calls setState ────────
-    const onMove = (ev: MouseEvent | TouchEvent) ={
+    const onMove = (ev: MouseEvent | TouchEvent) => {
       if (ev.cancelable) ev.preventDefault()
       const cx = "touches" in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX
       const cy = "touches" in ev ? (ev as TouchEvent).touches[0].clientY : (ev as MouseEvent).clientY
@@ -8216,7 +8216,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const sSlot = el.closest("[data-player-scenario-slot]")
         const gSlot = el.closest("[data-player-ultimate-slot]")
         if (gSlot && isUltimateCard(nc.card)) {
-          if (playerField.ultimateZones.some(z =z === null)) { found = { type: "ultimate", index: 0 }; break }
+          if (playerField.ultimateZones.some(z => z === null)) { found = { type: "ultimate", index: 0 }; break }
         } else if (uSlot && isUnitCard(nc.card) && !isUltimateCard(nc.card)) {
           const si = Number.parseInt(uSlot.getAttribute("data-player-unit-slot") || "0")
           if (!playerField.unitZone[si]) { found = { type: "unit", index: si }; break }
@@ -8234,7 +8234,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     // ── Native end handler ───────────────────────────────────────────────────
-    const onEnd = () ={
+    const onEnd = () => {
       cancelAnimationFrame(rafIdRef.current)
       document.removeEventListener("mousemove", onMove)
       document.removeEventListener("touchmove", onMove)
@@ -8242,7 +8242,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       handleHandCardDragEndNative()
     }
 
-    nativeCleanRef.current = () ={
+    nativeCleanRef.current = () => {
       cancelAnimationFrame(rafIdRef.current)
       document.removeEventListener("mousemove", onMove)
       document.removeEventListener("touchmove", onMove)
@@ -8257,9 +8257,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   // handleHandCardDragMove kept as no-op (native listener handles everything)
-  const handleHandCardDragMove = (_e: React.MouseEvent | React.TouchEvent) ={ /* handled natively */ }
+  const handleHandCardDragMove = (_e: React.MouseEvent | React.TouchEvent) => { /* handled natively */ }
 
-  const handleHandCardDragEndNative = () ={
+  const handleHandCardDragEndNative = () => {
     const nc = nativeCardRef.current
     const dt = nativeDropRef.current
     if (!nc) { setDropTarget(null); setDraggedHandCard(null); return }
@@ -8283,7 +8283,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const tx = targetRect.left + targetRect.width  / 2
         const ty = targetRect.top  + targetRect.height / 2
         setDroppingCard({ card: nc.card, targetX: tx, targetY: ty })
-        setTimeout(() =setDroppingCard(null), 500)
+        setTimeout(() => setDroppingCard(null), 500)
       }
     }
 
@@ -8293,17 +8293,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setDropTarget(null)
   }
 
-  const handleHandCardDragEnd = () ={
+  const handleHandCardDragEnd = () => {
     nativeCleanRef.current?.()
     handleHandCardDragEndNative()
   }
 
     // Card inspection handlers (press and hold to view)
-  const handleCardPressStart = (card: GameCard) ={
+  const handleCardPressStart = (card: GameCard) => {
     if (cardPressTimer.current) {
       clearTimeout(cardPressTimer.current)
     }
-    cardPressTimer.current = setTimeout(() ={
+    cardPressTimer.current = setTimeout(() => {
       setInspectedCard(card)
       setLogCardDetail({
         image: card.image || "",
@@ -8319,7 +8319,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }, 300) // 300ms hold to inspect
   }
 
-  const handleCardPressEnd = () ={
+  const handleCardPressEnd = () => {
     if (cardPressTimer.current) {
       clearTimeout(cardPressTimer.current)
       cardPressTimer.current = null
@@ -8327,39 +8327,39 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   /** Resolve which unit slot an Ultimate is attached to (index stored on equip, name as fallback). */
-  const resolveEquippedUnitIndex = (ult: FieldCard, unitZone: (FieldCard | null)[]) ={
+  const resolveEquippedUnitIndex = (ult: FieldCard, unitZone: (FieldCard | null)[]) => {
     if (typeof ult.equippedUnitIndex === "number" && unitZone[ult.equippedUnitIndex]) {
       return ult.equippedUnitIndex
     }
     // Fallback por nome só quando existe UMA única Unidade com aquele nome no campo,
     // senão não há como saber qual das cópias (ex: dois Fehnon) está equipada.
-    const uniqueMatch = (rawName?: string) ={
+    const uniqueMatch = (rawName?: string) => {
       if (!rawName) return null
       const target = normalizeCardName(rawName)
       const hits = unitZone
-        .map((u, idx) =({ u, idx }))
-        .filter(({ u }) =u !== null && normalizeCardName(u.name) === target)
+        .map((u, idx) => ({ u, idx }))
+        .filter(({ u }) => u !== null && normalizeCardName(u.name) === target)
       return hits.length === 1 ? hits[0].idx : null
     }
     return uniqueMatch(ult.equippedUnitName) ?? uniqueMatch(ult.requiresUnit)
   }
 
   /** Press & hold an Ultimate card → highlight the equip chain (gear ring on both cards). */
-  const handleChainPressStart = (side: "player" | "enemy", ult: FieldCard, ultimateIndex: number) ={
+  const handleChainPressStart = (side: "player" | "enemy", ult: FieldCard, ultimateIndex: number) => {
     const unitZone = side === "player" ? playerField.unitZone : enemyField.unitZone
     setEquipChainHighlight({ side, ultimateIndex, unitIndex: resolveEquippedUnitIndex(ult, unitZone) })
   }
 
-  const handleChainPressEnd = () =setEquipChainHighlight(null)
+  const handleChainPressEnd = () => setEquipChainHighlight(null)
 
   // Solta o destaque mesmo que o dedo/mouse seja liberado fora da carta
-  useEffect(() ={
+  useEffect(() => {
     if (!equipChainHighlight) return
-    const clear = () =setEquipChainHighlight(null)
+    const clear = () => setEquipChainHighlight(null)
     window.addEventListener("mouseup", clear)
     window.addEventListener("touchend", clear)
     window.addEventListener("touchcancel", clear)
-    return () ={
+    return () => {
       window.removeEventListener("mouseup", clear)
       window.removeEventListener("touchend", clear)
       window.removeEventListener("touchcancel", clear)
@@ -8367,42 +8367,42 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [equipChainHighlight])
 
   // ── Bot difficulty helpers ──
-  const botShouldPlayCard = () ={
+  const botShouldPlayCard = () => {
     // easy: 50% chance to skip playing a card; medium: always; hard: always + prioritize
-    if (difficulty === 'easy') return Math.random() 0.5
+    if (difficulty === 'easy') return Math.random() > 0.5
     return true
   }
-  const botShouldAttack = () ={
+  const botShouldAttack = () => {
     // easy: 40% chance to skip attacking; medium: 80%; hard: always
-    if (difficulty === 'easy') return Math.random() 0.6
-    if (difficulty === 'medium') return Math.random() 0.2
+    if (difficulty === 'easy') return Math.random() > 0.6
+    if (difficulty === 'medium') return Math.random() > 0.2
     return true
   }
   // Hard: pick best attacker (highest DP), Medium: random, Easy: random
-  const botPickAttacker = (units: (FieldCard|null)[]) ={
-    const available = units.map((u,i) =({u,i})).filter(({u}) =u && !u.hasAttacked)
+  const botPickAttacker = (units: (FieldCard|null)[]) => {
+    const available = units.map((u,i) => ({u,i})).filter(({u}) => u && !u.hasAttacked)
     if (available.length === 0) return -1
     if (difficulty === 'hard') {
       return available.reduce((best, cur) =>
-        (cur.u!.currentDp best.u!.currentDp) ? cur : best
+        (cur.u!.currentDp > best.u!.currentDp) ? cur : best
       ).i
     }
     return available[Math.floor(Math.random() * available.length)].i
   }
   // Hard: pick weakest enemy target; Medium: random; Easy: random
-  const botPickTarget = (units: (FieldCard|null)[], attackerDp: number) ={
-    const targets = units.map((u,i) =({u,i})).filter(({u}) =u !== null)
+  const botPickTarget = (units: (FieldCard|null)[], attackerDp: number) => {
+    const targets = units.map((u,i) => ({u,i})).filter(({u}) => u !== null)
     if (targets.length === 0) return -1
     if (difficulty === 'hard') {
       // Prefer targets Calem can beat; else pick weakest
-      const beatable = targets.filter(({u}) =u!.currentDp < attackerDp)
-      const pool = beatable.length 0 ? beatable : targets
-      return pool.reduce((w, cur) =cur.u!.currentDp < w.u!.currentDp ? cur : w).i
+      const beatable = targets.filter(({u}) => u!.currentDp < attackerDp)
+      const pool = beatable.length > 0 ? beatable : targets
+      return pool.reduce((w, cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
     }
     return targets[Math.floor(Math.random() * targets.length)].i
   }
 
-  const executeBotTurn = () ={
+  const executeBotTurn = () => {
     // ── MORGANA SR 2DP: Ressonância em Eclipse — if active, enemy cannot draw ──
     const _eclipseActive = morganaEclipseActive && (turn - morganaEclipseActive.turn === 1)
     if (_eclipseActive) {
@@ -8410,7 +8410,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setMorganaEclipseActive(null)
     }
 
-    if (!_eclipseActive && enemyField.deck.length 0) {
+    if (!_eclipseActive && enemyField.deck.length > 0) {
       // Trigger enemy draw animation (card back only — player cannot see)
       const deckEl  = enemyDeckRef.current
       const fieldEl = fieldRef.current
@@ -8423,17 +8423,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const mx = (fx + tx) / 2
         const my = Math.max(fy, ty) + window.innerHeight * 0.10
         setEnemyDrawAnimation({ fromX:fx, fromY:fy, midX:mx, midY:my, toX:tx, toY:ty })
-        setTimeout(() =setEnemyDrawAnimation(null), 1100)
+        setTimeout(() => setEnemyDrawAnimation(null), 1100)
       }
-      setEnemyField((prev) =({
+      setEnemyField((prev) => ({
         ...prev,
         hand: [...prev.hand, prev.deck[0]],
         deck: prev.deck.slice(1),
       }))
     } // end !_eclipseActive
 
-    setTimeout(() ={
-      setEnemyField((prev) ={
+    setTimeout(() => {
+      setEnemyField((prev) => {
         let newHand = [...prev.hand]
         const newUnitZone = [...prev.unitZone]
         const newFunctionZone = [...prev.functionZone]
@@ -8465,7 +8465,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const drawn = prev.deck[0]
               if (drawn) {
                 newHand.push(drawn)
-                setEnemyField(e =({ ...e, deck: e.deck.slice(1) }))
+                setEnemyField(e => ({ ...e, deck: e.deck.slice(1) }))
                 // ── MORGANA LR 4DP: Domínio de Horizontes — bot cannot activate function cards ──
         const _morganaLrBlock = playerField.unitZone.some(u =>
           u && u.name.toLowerCase().includes("morgana") && u.dp === 4
@@ -8495,7 +8495,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
             // Apply passive DP bonus to matching unit if present
             if (card.requiresUnit) {
-              const matchIdx = newUnitZone.findIndex((u) =u && u.name === card.requiresUnit)
+              const matchIdx = newUnitZone.findIndex((u) => u && u.name === card.requiresUnit)
               if (matchIdx !== -1 && newUnitZone[matchIdx]) {
                 const unit = newUnitZone[matchIdx]!
                 let bonus = 0
@@ -8506,11 +8506,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 else if (card.ability === "MEFISTO") { bonus = 2 }
                 else if (card.ability === "FORNBRENNA") {
                   // Count fire units in enemy graveyard
-                  const fireCount = prev.graveyard.filter((c) =c.element === "Pyrus" && (c.type === "unit")).length
+                  const fireCount = prev.graveyard.filter((c) => c.element === "Pyrus" && (c.type === "unit")).length
                   bonus = fireCount * 2
                 }
                 // ULLRBOGI: no immediate bonus, only during battle
-                if (bonus 0) {
+                if (bonus > 0) {
                   newUnitZone[matchIdx] = { ...unit, currentDp: unit.currentDp + bonus }
                 }
               }
@@ -8531,8 +8531,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             if (!botShouldPlayCard()) continue  // difficulty: easy may skip
             const emptySlot = difficulty === 'hard'
               // Hard: prefer strongest unit in highest slot
-              ? newUnitZone.findIndex((s) =s === null)
-              : newUnitZone.findIndex((s) =s === null)
+              ? newUnitZone.findIndex((s) => s === null)
+              : newUnitZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newUnitZone[emptySlot] = {
                 ...card,
@@ -8576,14 +8576,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (_morganaLrBlockFuncs || _hrottiLrTidalBlock) continue  // Morgana LR or Hrotti LR blocks bot from playing functions
 
           const cardNameLower = card.name.toLowerCase()
-          const isContinuous = continuousFunctionNames.some(n =cardNameLower.includes(n))
+          const isContinuous = continuousFunctionNames.some(n => cardNameLower.includes(n))
           const isTrap = card.type === "trap"
 
           if (isContinuous) {
-            const emptySlot = newFunctionZone.findIndex((s) =s === null)
+            const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newFunctionZone[emptySlot] = { ...card, isFaceDown: false }
-              newHand = newHand.filter((_, idx) =idx !== i)
+              newHand = newHand.filter((_, idx) => idx !== i)
               logEvent("play", `Oponente jogou ${card.name}`, {
                 image: card.image,
                 name: card.name,
@@ -8596,13 +8596,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 category: (card as any).category,
                 cardType: card.type,
               })
-              setTimeout(() =showEffectFeedback(`Bot jogou: ${card.name}!`, "warning"), 300)
+              setTimeout(() => showEffectFeedback(`Bot jogou: ${card.name}!`, "warning"), 300)
             }
           } else if (isTrap) {
-            const emptySlot = newFunctionZone.findIndex((s) =s === null)
+            const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newFunctionZone[emptySlot] = { ...card, isFaceDown: true, turnSet: turn }
-              newHand = newHand.filter((_, idx) =idx !== i)
+              newHand = newHand.filter((_, idx) => idx !== i)
               logEvent("play", `Oponente posicionou uma carta virada para baixo`, { name: card.name })
             }
           } else {
@@ -8614,15 +8614,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // do bot sem aplicar o efeito).
             const isMagicOrItem = card.type === "magic" || (card as any).category === "Item Funcion Card"
             const trapEscudoIdx = playerField.functionZone.findIndex(
-              f =f?.id === "escudo-de-mana" && f.isFaceDown
+              f => f?.id === "escudo-de-mana" && f.isFaceDown
             )
             if (isMagicOrItem && trapEscudoIdx !== -1) {
               // Reveal trap, negate the bot card, both go to graveyard
-              setPlayerField((pf) ={
+              setPlayerField((pf) => {
                 const nz = [...pf.functionZone]
                 if (nz[trapEscudoIdx]) nz[trapEscudoIdx] = { ...nz[trapEscudoIdx]!, isFaceDown: false }
-                setTimeout(() ={
-                  setPlayerField((pf2) ={
+                setTimeout(() => {
+                  setPlayerField((pf2) => {
                     const nz2 = [...pf2.functionZone]
                     nz2[trapEscudoIdx] = null
                     return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, nz[trapEscudoIdx]!] }
@@ -8630,9 +8630,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 }, 800)
                 return { ...pf, functionZone: nz }
               })
-              setEnemyField(e =({ ...e, graveyard: [...e.graveyard, card] }))
-              newHand = newHand.filter((_, idx) =idx !== i)
-              setTimeout(() =showEffectFeedback(`Armadilha Ativada! Escudo de Mana anulou ${card.name}!`, "success"), 200)
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
+              setTimeout(() => showEffectFeedback(`Armadilha Ativada! Escudo de Mana anulou ${card.name}!`, "success"), 200)
               continue
             }
 
@@ -8641,14 +8641,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // Efeito: anula a carta, uma unidade do bot perde -2DP (ou bot revela mão).
             const isActionFunc = card.type === "action" || (card as any).category === "Action Funcion Card"
             const trapBrincIdx = playerField.functionZone.findIndex(
-              f =f?.id === "brincadeira-de-mau-gosto" && f.isFaceDown
+              f => f?.id === "brincadeira-de-mau-gosto" && f.isFaceDown
             )
             if (isActionFunc && trapBrincIdx !== -1) {
-              setPlayerField((pf) ={
+              setPlayerField((pf) => {
                 const nz = [...pf.functionZone]
                 if (nz[trapBrincIdx]) nz[trapBrincIdx] = { ...nz[trapBrincIdx]!, isFaceDown: false }
-                setTimeout(() ={
-                  setPlayerField((pf2) ={
+                setTimeout(() => {
+                  setPlayerField((pf2) => {
                     const nz2 = [...pf2.functionZone]
                     nz2[trapBrincIdx] = null
                     return { ...pf2, functionZone: nz2, graveyard: [...pf2.graveyard, nz[trapBrincIdx]!] }
@@ -8657,12 +8657,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 return { ...pf, functionZone: nz }
               })
               // Negate the card
-              setEnemyField(e =({ ...e, graveyard: [...e.graveyard, card] }))
-              newHand = newHand.filter((_, idx) =idx !== i)
+              setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+              newHand = newHand.filter((_, idx) => idx !== i)
               // Apply -2DP to a bot unit, or reveal hand if no units
-              const botUnitIdx = prev.unitZone.findIndex(u =u !== null)
+              const botUnitIdx = prev.unitZone.findIndex(u => u !== null)
               if (botUnitIdx !== -1) {
-                setEnemyField(e ={
+                setEnemyField(e => {
                   const uz = [...e.unitZone]
                   const u = uz[botUnitIdx]
                   if (!u) return e
@@ -8670,10 +8670,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   uz[botUnitIdx] = { ...u, currentDp: newDp }
                   return { ...e, unitZone: uz as (FieldCard | null)[] }
                 })
-                setTimeout(() =showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name} e causou -2DP em ${prev.unitZone[botUnitIdx]?.name || "unidade"}!`, "success"), 200)
+                setTimeout(() => showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name} e causou -2DP em ${prev.unitZone[botUnitIdx]?.name || "unidade"}!`, "success"), 200)
               } else {
                 // No bot units — reveal hand (show feedback)
-                setTimeout(() =showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name}! Oponente não tem unidades — mão revelada!`, "success"), 200)
+                setTimeout(() => showEffectFeedback(`Armadilha Ativada! Brincadeira de Mau Gosto anulou ${card.name}! Oponente não tem unidades — mão revelada!`, "success"), 200)
               }
               continue
             }
@@ -8695,9 +8695,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   const result = effect.resolve(effectContext, {})
                   if (result.success) {
                     // Card goes to graveyard after activation
-                    setEnemyField(e =({ ...e, graveyard: [...e.graveyard, card] }))
-                    newHand = newHand.filter((_, idx) =idx !== i)
-                    setTimeout(() =showEffectFeedback(`Bot ativou: ${card.name}!`, "warning"), 200)
+                    setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+                    newHand = newHand.filter((_, idx) => idx !== i)
+                    setTimeout(() => showEffectFeedback(`Bot ativou: ${card.name}!`, "warning"), 200)
                   }
                 }
                 // If needs targets or dice — bot can't handle them, skip (don't place in zone)
@@ -8706,16 +8706,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               }
             } else {
               // No registered effect — don't place in function zone, just skip
-              newHand = newHand.filter((_, idx) =idx !== i)
+              newHand = newHand.filter((_, idx) => idx !== i)
             }
           }
         }
 
         // Bot plays cards from TAP if space exists and hand is low or no units
-        if (prev.tap.length 0) {
-          const emptyUnitSlot = newUnitZone.findIndex(s =s === null)
+        if (prev.tap.length > 0) {
+          const emptyUnitSlot = newUnitZone.findIndex(s => s === null)
           if (emptyUnitSlot !== -1) {
-            const tapUnitIdx = prev.tap.findIndex(c =isUnitCard(c) && !isUltimateCard(c))
+            const tapUnitIdx = prev.tap.findIndex(c => isUnitCard(c) && !isUltimateCard(c))
             if (tapUnitIdx !== -1) {
               const card = prev.tap[tapUnitIdx]
               newUnitZone[emptyUnitSlot] = {
@@ -8730,7 +8730,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
 
           if (!newUltimateZone) {
-            const tapUltIdx = prev.tap.findIndex(c =isUltimateCard(c))
+            const tapUltIdx = prev.tap.findIndex(c => isUltimateCard(c))
             if (tapUltIdx !== -1) {
               const card = prev.tap[tapUltIdx]
               newUltimateZone = {
@@ -8748,7 +8748,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         // Place the newly created ultimate card (from hand or TAP) into the first empty slot
         if (newUltimateZone) {
-          const emptyUgSlot = newUltimateZones.findIndex(z =z === null)
+          const emptyUgSlot = newUltimateZones.findIndex(z => z === null)
           if (emptyUgSlot !== -1) newUltimateZones[emptyUgSlot] = newUltimateZone
         }
 
@@ -8762,13 +8762,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
       })
 
-      setTimeout(() ={
+      setTimeout(() => {
         const botCanAttack = (playerWentFirst ? turn >= 2 : turn >= 3) && botShouldAttack()
 
         // Bot ULLRBOGI: +3 DP to Ullr during battle phase
-        setEnemyField((prevEnemy) ={
+        setEnemyField((prevEnemy) => {
           for (const __eugz of (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
-            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null) =u && u.name === __eugz!.requiresUnit)
+            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null) => u && u.name === __eugz!.requiresUnit)
             if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
               const newUnits = [...prevEnemy.unitZone]
               newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: newUnits[ullrIdx]!.currentDp + 3 }
@@ -8779,20 +8779,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         })
 
         // Bot also uses one-time UG abilities (ODEN SWORD and TWILIGH AVALON)
-        setEnemyField((prevEnemy) ={
+        setEnemyField((prevEnemy) => {
           const __eugs = (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z!==null) as FieldCard[]
           if (!__eugs.length || enemyUgAbilityUsed) return prevEnemy
           const ug = __eugs[0]
           const requiredUnit = ug.requiresUnit
           if (!requiredUnit) return prevEnemy
-          const hasUnit = prevEnemy.unitZone.some((u) =u && u.name === requiredUnit)
+          const hasUnit = prevEnemy.unitZone.some((u) => u && u.name === requiredUnit)
           if (!hasUnit) return prevEnemy
 
           if (ug.ability === "ODEN SWORD") {
             // Destroy a player function card
-            const funcIdx = playerField.functionZone.findIndex((f) =f !== null)
+            const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
             if (funcIdx !== -1) {
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newFuncs = [...prev.functionZone]
                 const destroyed = newFuncs[funcIdx]
                 newFuncs[funcIdx] = null
@@ -8805,14 +8805,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // Return a player unit to hand and deal 3 damage
             // MIGUEL ARCANJO protection: skip Calem Hidenori
             const isCalemProtected = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
-            const unitIdx = playerField.unitZone.findIndex((u) =u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
+            const unitIdx = playerField.unitZone.findIndex((u) => u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
             if (unitIdx !== -1) {
               const unit = playerField.unitZone[unitIdx]
               // ── GALAHAD: Coraç��o Imaculado — immune to card effect removal ──
               if (unit?.name.toLowerCase().includes("galahad")) {
                 showEffectFeedback("CORAÇÃO IMACULADO: Galahad é imune a efeitos! Bot TWILIGH AVALON falhou.", "error")
               } else {
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const returned = newUnits[unitIdx]
                 newUnits[unitIdx] = null
@@ -8831,8 +8831,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // Destroy any player card (unit or function) - once per duel
             // MIGUEL ARCANJO protection: skip Calem Hidenori
             const isCalemProtected = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MIGUEL ARCANJO"))
-            const unitIdx = playerField.unitZone.findIndex((u) =u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
-            const funcIdx = playerField.functionZone.findIndex((f) =f !== null)
+            const unitIdx = playerField.unitZone.findIndex((u) => u !== null && !(isCalemProtected && u.name === "Calem Hidenori"))
+            const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
             const targetIdx = unitIdx !== -1 ? unitIdx : -1
             if (targetIdx !== -1) {
               const destroyedUnit = playerField.unitZone[targetIdx]
@@ -8843,20 +8843,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 setEnemyUgAbilityUsed(true)
                 return prev
               }
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
                 const destroyed = newUnits[targetIdx]
                 newUnits[targetIdx] = null
                 // ── LANCELOT: Virtude do Cavaleiro — recovery on destroy by effect ──
                 if (destroyed && destroyed.name.toLowerCase().includes("lancelot")) {
-                  const funcCards = prev.graveyard.filter(gc =gc.type === "function" || gc.type === "trap" || gc.type === "action")
-                  if (funcCards.length 0) {
+                  const funcCards = prev.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                  if (funcCards.length > 0) {
                     const first = funcCards[0]
-                    setTimeout(() =showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${first.name} recuperada do cemitério!`, "success"), 700)
+                    setTimeout(() => showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${first.name} recuperada do cemitério!`, "success"), 700)
                     return {
                       ...prev,
                       unitZone: newUnits as (FieldCard | null)[],
-                      graveyard: destroyed ? [...prev.graveyard.filter(gc =gc.id !== first.id), destroyed] : prev.graveyard,
+                      graveyard: destroyed ? [...prev.graveyard.filter(gc => gc.id !== first.id), destroyed] : prev.graveyard,
                       hand: [...prev.hand, first],
                     }
                   }
@@ -8866,7 +8866,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               setEnemyUgAbilityUsed(true)
               showEffectFeedback(`Bot MEFISTO FOLES: Unidade destruida!`, "error")
             } else if (funcIdx !== -1) {
-              setPlayerField((prev) ={
+              setPlayerField((prev) => {
                 const newFuncs = [...prev.functionZone]
                 const destroyed = newFuncs[funcIdx]
                 newFuncs[funcIdx] = null
@@ -8884,15 +8884,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           // Each call reads live state via setEnemyField/setPlayerField, avoiding stale closures.
           const attackerIndices = difficulty === 'hard'
             ? [...enemyField.unitZone.keys()]
-                .filter(i =enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
-                .sort((a,b) =(enemyField.unitZone[b]?.currentDp ?? 0) - (enemyField.unitZone[a]?.currentDp ?? 0))
+                .filter(i => enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
+                .sort((a,b) => (enemyField.unitZone[b]?.currentDp ?? 0) - (enemyField.unitZone[a]?.currentDp ?? 0))
             : [...enemyField.unitZone.keys()]
-                .filter(i =enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
-                .sort(() =Math.random() - 0.5)
+                .filter(i => enemyField.unitZone[i] && !enemyField.unitZone[i]!.hasAttacked)
+                .sort(() => Math.random() - 0.5)
 
           const destroyedPlayerSlots = new Set<number>()
 
-          const fireBotAttack = (remaining: number[]) ={
+          const fireBotAttack = (remaining: number[]) => {
             if (remaining.length === 0) return
 
             const [unitIdx, ...rest] = remaining
@@ -8915,21 +8915,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             const currentPlayerUnits = playerField.unitZone
             // ── REI ARTHUR UR 3DP: Presença Esmagadora — bot units with 3 or 4 DP cannot target him ──
             // ── REI ARTHUR LR 4DP: O Preço da Coroa — bot units with 5 or 6 DP cannot target him ──
-            const _arthurUrBlocker = (attackerDp: number, targetUnit: FieldCard | null) ={
+            const _arthurUrBlocker = (attackerDp: number, targetUnit: FieldCard | null) => {
               if (!targetUnit || !targetUnit.name.toLowerCase().includes("rei arthur")) return false
               if (targetUnit.dp === 3 && (attackerDp === 3 || attackerDp === 4)) return true
               if (targetUnit.dp === 4 && (attackerDp === 5 || attackerDp === 6)) return true
               return false
             }
             const playerUnitIndex = difficulty === 'hard'
-              ? (() ={
-                  const cands = currentPlayerUnits.map((u,i) =({u,i})).filter(({u,i}) =>
+              ? (() => {
+                  const cands = currentPlayerUnits.map((u,i) => ({u,i})).filter(({u,i}) =>
                     u !== null && !destroyedPlayerSlots.has(i) && !_arthurUrBlocker(unit.currentDp ?? unit.dp, u as FieldCard)
                   )
                   if (cands.length === 0) return -1
-                  const beatable = cands.filter(({u}) =u!.currentDp < unit.currentDp)
-                  const pool = beatable.length 0 ? beatable : cands
-                  return pool.reduce((w,cur) =cur.u!.currentDp < w.u!.currentDp ? cur : w).i
+                  const beatable = cands.filter(({u}) => u!.currentDp < unit.currentDp)
+                  const pool = beatable.length > 0 ? beatable : cands
+                  return pool.reduce((w,cur) => cur.u!.currentDp < w.u!.currentDp ? cur : w).i
                 })()
               : currentPlayerUnits.findIndex((u,i) =>
                   u !== null && !destroyedPlayerSlots.has(i) && !_arthurUrBlocker(unit.currentDp ?? unit.dp, u as FieldCard)
@@ -8952,16 +8952,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               // Efeito: nega o ataque, devolve a unidade atacante à mão do bot,
               // e o jogador descarta 1 carta da mão para ativar.
               const trapPortaoPlayerIdx = playerField.functionZone.findIndex(
-                f =f?.id === "portao-da-fortaleza" && f.isFaceDown
+                f => f?.id === "portao-da-fortaleza" && f.isFaceDown
               )
               if (trapPortaoPlayerIdx !== -1) {
                 // Reveal trap
-                setPlayerField(prev ={
+                setPlayerField(prev => {
                   const nz = [...prev.functionZone]
                   if (nz[trapPortaoPlayerIdx]) nz[trapPortaoPlayerIdx] = { ...nz[trapPortaoPlayerIdx]!, isFaceDown: false }
                   // Discard one random card from hand as cost
                   const newHand = [...prev.hand]
-                  if (newHand.length 0) {
+                  if (newHand.length > 0) {
                     const discardIdx = Math.floor(Math.random() * newHand.length)
                     const discarded = newHand.splice(discardIdx, 1)[0]
                     return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
@@ -8969,14 +8969,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   return { ...prev, functionZone: nz }
                 })
                 // Return the attacking unit back to bot's hand
-                setEnemyField(prev ={
+                setEnemyField(prev => {
                   const u2 = [...prev.unitZone]
                   const returned = u2[unitIdx]
                   u2[unitIdx] = null
                   return { ...prev, unitZone: u2 as (FieldCard | null)[], hand: returned ? [...prev.hand, returned] : prev.hand }
                 })
                 showEffectFeedback(`Armadilha Ativada! Portão da Fortaleza negou o ataque de ${unit.name} e o devolveu à mão do oponente!`, "success")
-                setTimeout(() =fireBotAttack(rest), 600)
+                setTimeout(() => fireBotAttack(rest), 600)
                 return
               }
 
@@ -8984,7 +8984,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               // Fire projectile — ONLY this unit
               const projId = `bot-proj-${Date.now()}-${unitIdx}`
-              setActiveProjectiles(prev =[...prev, {
+              setActiveProjectiles(prev => [...prev, {
                 id: projId, startX, startY, targetX, targetY,
                 element: unit.element || "neutral",
                 attackerImage: unit.image,
@@ -8994,34 +8994,34 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
               // Card jump on defender
               const jumpKey = `player-${playerUnitIndex}`
-              setTimeout(() ={
+              setTimeout(() => {
                 const dx = (startX - targetX) * 0.25
                 const dy = (startY - targetY) * 0.25
-                setCardAnimations(prev =({ ...prev, [jumpKey]: `translate3d(${dx}px,${dy}px,0) scale(0.95) rotate(${Math.random()*4-2}deg)` }))
-                setTimeout(() =setCardAnimations(prev ={ const n={...prev}; delete n[jumpKey]; return n }), 350)
+                setCardAnimations(prev => ({ ...prev, [jumpKey]: `translate3d(${dx}px,${dy}px,0) scale(0.95) rotate(${Math.random()*4-2}deg)` }))
+                setTimeout(() => setCardAnimations(prev => { const n={...prev}; delete n[jumpKey]; return n }), 350)
               }, 150)
 
               if (newDefenderDp <= 0) destroyedPlayerSlots.add(playerUnitIndex)
 
               // Apply damage after projectile lands, then chain next attack
-              setTimeout(() ={
+              setTimeout(() => {
                 // ── TRAP CHECK: CONTRA-ATAQUE SURPRESA ───────────────────────
                 // Quando a unidade do jogador recebe dano de batalha, o bot recebe
                 // o mesmo valor de dano nos LP.
                 const trapContraIdx = playerField.functionZone.findIndex(
-                  f =f?.id === "contra-ataque-surpresa" && f.isFaceDown
+                  f => f?.id === "contra-ataque-surpresa" && f.isFaceDown
                 )
                 if (trapContraIdx !== -1) {
-                  setPlayerField(prev ={
+                  setPlayerField(prev => {
                     const nz = [...prev.functionZone]
                     if (nz[trapContraIdx]) nz[trapContraIdx] = { ...nz[trapContraIdx]!, isFaceDown: false }
                     return { ...prev, functionZone: nz }
                   })
-                  setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
+                  setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - attackerDp) }))
                   showEffectFeedback(`Armadilha Ativada! Contra-Ataque Surpresa! ${unit.name} causou ${attackerDp} de dano de volta ao oponente!`, "success")
                 }
 
-                setPlayerField((prevPlayer) ={
+                setPlayerField((prevPlayer) => {
                   const newUnitZone = [...prevPlayer.unitZone]
                   const newGrave = [...prevPlayer.graveyard]
                   let newUltimateZonesP = [...(prevPlayer.ultimateZones||EMPTY_ULTIMATE_ZONES())] as (FieldCard|null)[]
@@ -9038,14 +9038,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       newUltimateZonesP[__ugDestroyIdx] = null
                     }
                     if (defender.name.toLowerCase().includes("morgana") && defender.dp === 3) {
-                      setTimeout(() ={ setEnemyField(prev =({ ...prev, life: Math.max(0, prev.life - 3) })); showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning") }, 400)
+                      setTimeout(() => { setEnemyField(prev => ({ ...prev, life: Math.max(0, prev.life - 3) })); showEffectFeedback("DOMÍNIO ETERNO: Morgana removida! Oponente -3LP!", "warning") }, 400)
                     }
                     if (defender.name.toLowerCase().includes("lancelot")) {
-                      setTimeout(() ={
-                        setPlayerField(prevP ={
-                          const funcs = prevP.graveyard.filter(gc =gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                      setTimeout(() => {
+                        setPlayerField(prevP => {
+                          const funcs = prevP.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
                           if (funcs.length === 0) { showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info"); return prevP }
-                          if (funcs.length === 1) { showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcs[0].name} recuperada!`, "success"); return { ...prevP, hand: [...prevP.hand, funcs[0]], graveyard: prevP.graveyard.filter(gc =gc.id !== funcs[0].id) } }
+                          if (funcs.length === 1) { showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcs[0].name} recuperada!`, "success"); return { ...prevP, hand: [...prevP.hand, funcs[0]], graveyard: prevP.graveyard.filter(gc => gc.id !== funcs[0].id) } }
                           setChoiceModal({ visible:true, cardName:"Virtude do Cavaleiro — Recuperar 1 Function", options: funcs.slice(0,6).map((gc,i)=>({id:String(i),label:gc.name,description:gc.type+" · "+(gc.element||"Neutro")})), onChoose:(optId)=>{ setChoiceModal(null); const ch=funcs[parseInt(optId)]; if(!ch)return; setPlayerField(p2=>({...p2,hand:[...p2.hand,ch],graveyard:p2.graveyard.filter(gc=>gc.id!==ch.id)})); showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${ch.name} recuperada!`,"success") } })
                           return prevP
                         })
@@ -9059,14 +9059,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 })
 
                 // Mark this unit as attacked
-                setEnemyField(prev ={
+                setEnemyField(prev => {
                   const u2 = [...prev.unitZone]
                   if (u2[unitIdx]) u2[unitIdx] = { ...u2[unitIdx]!, hasAttacked: true }
                   return { ...prev, unitZone: u2 as (FieldCard | null)[] }
                 })
 
                 // Fire next attack after a short pause
-                setTimeout(() =fireBotAttack(rest), 400)
+                setTimeout(() => fireBotAttack(rest), 400)
               }, PROJECTILE_DURATION)
 
             } else {
@@ -9079,35 +9079,35 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               // ── TRAP CHECK: PORTÃO DA FORTALEZA (ataque direto) ──────────────
               // Portão também ativa em ataque direto — nega e devolve à mão
               const trapPortaoDirectIdx = playerField.functionZone.findIndex(
-                f =f?.id === "portao-da-fortaleza" && f.isFaceDown
+                f => f?.id === "portao-da-fortaleza" && f.isFaceDown
               )
               if (trapPortaoDirectIdx !== -1) {
-                setPlayerField(prev ={
+                setPlayerField(prev => {
                   const nz = [...prev.functionZone]
                   if (nz[trapPortaoDirectIdx]) nz[trapPortaoDirectIdx] = { ...nz[trapPortaoDirectIdx]!, isFaceDown: false }
                   const newHand = [...prev.hand]
-                  if (newHand.length 0) {
+                  if (newHand.length > 0) {
                     const discardIdx = Math.floor(Math.random() * newHand.length)
                     const discarded = newHand.splice(discardIdx, 1)[0]
                     return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
                   }
                   return { ...prev, functionZone: nz }
                 })
-                setEnemyField(prev ={
+                setEnemyField(prev => {
                   const u2 = [...prev.unitZone]
                   const returned = u2[unitIdx]
                   u2[unitIdx] = null
                   return { ...prev, unitZone: u2 as (FieldCard | null)[], hand: returned ? [...prev.hand, returned] : prev.hand }
                 })
                 showEffectFeedback(`Armadilha Ativada! Portão da Fortaleza negou o ataque direto de ${unit.name}!`, "success")
-                setTimeout(() =fireBotAttack(rest), 600)
+                setTimeout(() => fireBotAttack(rest), 600)
                 return
               }
 
               showEffectFeedback(`${unit.name} ataque direto!`, "warning")
 
               const projId = `bot-direct-${Date.now()}-${unitIdx}`
-              setActiveProjectiles(prev =[...prev, {
+              setActiveProjectiles(prev => [...prev, {
                 id: projId, startX, startY, targetX, targetY,
                 element: unit.element || "neutral",
                 attackerImage: unit.image,
@@ -9115,15 +9115,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 isDirect: true,
               }])
 
-              setTimeout(() ={
+              setTimeout(() => {
                 const directDmg = unit.currentDp ?? unit.dp
-                setPlayerField(prev =({ ...prev, life: Math.max(0, prev.life - directDmg) }))
-                setEnemyField(prev ={
+                setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - directDmg) }))
+                setEnemyField(prev => {
                   const u2 = [...prev.unitZone]
                   if (u2[unitIdx]) u2[unitIdx] = { ...u2[unitIdx]!, hasAttacked: true }
                   return { ...prev, unitZone: u2 as (FieldCard | null)[] }
                 })
-                setTimeout(() =fireBotAttack(rest), 400)
+                setTimeout(() => fireBotAttack(rest), 400)
               }, PROJECTILE_DURATION)
             }
           }
@@ -9133,9 +9133,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
 
         // Bot ULLRBOGI: remove +3 DP when leaving battle phase
-        setEnemyField((prevEnemy) ={
+        setEnemyField((prevEnemy) => {
           for (const __eugz of (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
-            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null) =u && u.name === __eugz!.requiresUnit)
+            const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null) => u && u.name === __eugz!.requiresUnit)
             if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
               const newUnits = [...prevEnemy.unitZone]
               newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: Math.max(0, newUnits[ullrIdx]!.currentDp - 3) }
@@ -9145,31 +9145,31 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           return prevEnemy
         })
 
-        setTimeout(() ={
-          setTurn((prev) =prev + 1)
+        setTimeout(() => {
+          setTurn((prev) => prev + 1)
           setPhase("draw")
           setIsPlayerTurn(true)
 
           // Reset attack status and enable attacking for units that can now attack
-          setPlayerField((prev) =({
+          setPlayerField((prev) => ({
             ...prev,
             unitZone: prev.unitZone.map((unit) =>
-              unit ? { ...unit, hasAttacked: false, canAttack: turn unit.canAttackTurn } : null,
+              unit ? { ...unit, hasAttacked: false, canAttack: turn > unit.canAttackTurn } : null,
             ),
-            ultimateZones: prev.ultimateZones.map(uz =uz ? { ...uz, hasAttacked: false, canAttack: turn (uz.canAttackTurn ?? 0) } : null) as (FieldCard|null)[],
+            ultimateZones: prev.ultimateZones.map(uz => uz ? { ...uz, hasAttacked: false, canAttack: turn > (uz.canAttackTurn ?? 0) } : null) as (FieldCard|null)[],
           }))
-          setEnemyField((prev) =({
+          setEnemyField((prev) => ({
             // Also reset enemy units for the next turn if it becomes their turn
             ...prev,
-            unitZone: prev.unitZone.map((unit) =(unit ? { ...unit, hasAttacked: false, canAttack: true } : null)),
-            ultimateZones: prev.ultimateZones.map(uz =uz ? { ...uz, hasAttacked: false, canAttack: true } : null) as (FieldCard|null)[],
+            unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false, canAttack: true } : null)),
+            ultimateZones: prev.ultimateZones.map(uz => uz ? { ...uz, hasAttacked: false, canAttack: true } : null) as (FieldCard|null)[],
           }))
         }, 500)
       }, 800)
     }, 500)
   }
 
-  const endTurn = () ={
+  const endTurn = () => {
     setPhase("end")
 
     // ── ULLRBOGI: remove +3 DP from Ullr when leaving battle phase ──
@@ -9177,7 +9177,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     for (const __ugRR of playerField.ultimateZones.filter(z=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
         const ullrIdx = findUnitByName(playerField.unitZone, __ugRR!.requiresUnit!)
       if (ullrIdx !== -1) {
-        setPlayerField((prev) ={
+        setPlayerField((prev) => {
           const newUnits = [...prev.unitZone]
           const unit = newUnits[ullrIdx]
           if (unit) {
@@ -9203,16 +9203,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setFehnonLrBonusDp(0)
     setFehnonUrSingBonus(0)
 
-    setPlayerField((prev) =({
+    setPlayerField((prev) => ({
       ...prev,
-      unitZone: prev.unitZone.map((unit) ={
+      unitZone: prev.unitZone.map((unit) => {
         if (!unit) return null
         // Fehnon UR: remove ONLY the Singularidade Zero temp bonus (not all buffs)
-        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3 && fehnonUrSingBonus 0) {
+        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3 && fehnonUrSingBonus > 0) {
           return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonUrSingBonus) }
         }
         // Fehnon LR: remove only the battle-phase bonus
-        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp 0) {
+        if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp > 0) {
           return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
         }
         // dados-da-calamidade debuff (scheduled for next turn)
@@ -9229,22 +9229,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }),
     }))
 
-    setTimeout(() ={
+    setTimeout(() => {
       const nextTurn = turn + 1
       setTurn(nextTurn)
       setIsPlayerTurn(false)
       setPhase("draw")
       logEvent("turn", `— Turno ${nextTurn} — Vez do Oponente —`)
 
-      setEnemyField((prev) =({
+      setEnemyField((prev) => ({
         ...prev,
         unitZone: prev.unitZone.map((unit) =>
-          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn unit.canAttackTurn } : null,
+          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
       }))
 
       if (mode === "bot") {
-        setTimeout(() =executeBotTurn(), 1000)
+        setTimeout(() => executeBotTurn(), 1000)
       } else if (mode === "player" && onlineRoomData) {
         const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
         setNormalSummonUsed(false)
@@ -9261,7 +9261,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   //  MULTIPLAYER LAYER — active when mode === "player" && onlinePhase === "duel"
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const mpSendAction = useCallback(async (action: OnlineDuelAction) ={
+  const mpSendAction = useCallback(async (action: OnlineDuelAction) => {
     const sb = supabaseRef.current
     const rd = onlineRoomDataRef.current
     console.log("[MP] sendAction called:", action.type, "| sb:", !!sb, "| rd:", !!rd)
@@ -9282,24 +9282,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
   }, [])  // no deps — reads from refs
 
-  useEffect(() ={ mpSendActionRef.current = mpSendAction }, [mpSendAction])
-  useEffect(() ={ onlineRoomDataRef.current = onlineRoomData }, [onlineRoomData])
+  useEffect(() => { mpSendActionRef.current = mpSendAction }, [mpSendAction])
+  useEffect(() => { onlineRoomDataRef.current = onlineRoomData }, [onlineRoomData])
 
   // NOTE: Uses NO external state in deps — all state reads go through functional updaters
   // This prevents stale closure issues entirely.
-  const mpHandleOpponentAction = useCallback((action: OnlineDuelAction) ={
+  const mpHandleOpponentAction = useCallback((action: OnlineDuelAction) => {
     // Dedup by timestamp+type (unique per action sent)
     const uid = `${action.type}-${action.timestamp}-${action.playerId}`
     if (mpProcessedIdsRef.current.has(uid)) return
     mpProcessedIdsRef.current.add(uid)
     // Keep set small
-    if (mpProcessedIdsRef.current.size 500) mpProcessedIdsRef.current.clear()
+    if (mpProcessedIdsRef.current.size > 500) mpProcessedIdsRef.current.clear()
 
     switch (action.type) {
 
       // ── Opponent drew a card ──────────────────────────────────────────────
       case "draw":
-        setEnemyField(prev =({
+        setEnemyField(prev => ({
           ...prev,
           hand: Array(action.data.handSize ?? prev.hand.length + 1).fill(null),
           deck: Array(action.data.deckSize ?? Math.max(0, prev.deck.length - 1)).fill(null),
@@ -9312,12 +9312,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const src  = action.data.source || "hand"
         const rmCard = (prev: any) =>
           src === "tap"
-            ? prev.tap.filter((t: any) =t?.id !== card.id)
+            ? prev.tap.filter((t: any) => t?.id !== card.id)
             : prev.tap
 
         if (action.data.zone === "unit") {
-          setTurn(currentTurn ={
-            setEnemyField(prev ={
+          setTurn(currentTurn => {
+            setEnemyField(prev => {
               const nUZ = [...prev.unitZone]
               nUZ[action.data.index] = {
                 ...card, currentDp: card.dp,
@@ -9332,7 +9332,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             return currentTurn // don't change turn
           })
         } else if (action.data.zone === "function") {
-          setEnemyField(prev ={
+          setEnemyField(prev => {
             const nFZ = [...prev.functionZone]
             nFZ[action.data.index] = action.data.isTrap
               ? { ...card, isFaceDown: true, isSettingDown: true, turnSet: turn }
@@ -9344,16 +9344,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }
           })
         } else if (action.data.zone === "scenario") {
-          setEnemyField(prev =({
+          setEnemyField(prev => ({
             ...prev, scenarioZone: card,
             hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
             tap: rmCard(prev),
           }))
         } else if (action.data.zone === "ultimate") {
-          setTurn(currentTurn ={
-            setEnemyField(prev =({
+          setTurn(currentTurn => {
+            setEnemyField(prev => ({
               ...prev,
-              ultimateZones: (() ={ const nz4=[...prev.ultimateZones]as(FieldCard|null)[]; const s4=nz4.findIndex(z=>z===null); if(s4!==-1)nz4[s4]={...card,currentDp:card.dp,canAttack:false,hasAttacked:false,canAttackTurn:currentTurn}; return nz4 })(),
+              ultimateZones: (() => { const nz4=[...prev.ultimateZones]as(FieldCard|null)[]; const s4=nz4.findIndex(z=>z===null); if(s4!==-1)nz4[s4]={...card,currentDp:card.dp,canAttack:false,hasAttacked:false,canAttackTurn:currentTurn}; return nz4 })(),
               hand: src === "tap" ? prev.hand : prev.hand.slice(0, -1),
               tap: rmCard(prev),
             }))
@@ -9367,7 +9367,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       case "attack": {
         const { attackerIndex, targetType, targetIndex, damage, attackerCard } = action.data
         // Resolve DOM positions immediately (not in stale closure)
-        const getElPos = (sel: string) ={
+        const getElPos = (sel: string) => {
           const el = document.querySelector(sel)
           if (!el) return null
           const r = el.getBoundingClientRect()
@@ -9382,11 +9382,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           : getElPos(`[data-player-unit-slot="${targetIndex}"]`)
 
         // Show projectile animation
-        setEnemyField(prev ={
+        setEnemyField(prev => {
           const attacker = attackerCard ?? prev.unitZone[attackerIndex]
           if (attacker && tgt) {
             const pId = `opp-${Date.now()}`
-            setActiveProjectiles((pp: any[]) =[...pp, {
+            setActiveProjectiles((pp: any[]) => [...pp, {
               id: pId, startX: sX, startY: sY,
               targetX: tgt.x, targetY: tgt.y,
               element: attacker.element || "neutral",
@@ -9402,11 +9402,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         })
 
         // Apply damage after animation
-        setTimeout(() ={
+        setTimeout(() => {
           if (targetType === "direct") {
-            setPlayerField(prev =({ ...prev, life: Math.max(0, prev.life - damage) }))
+            setPlayerField(prev => ({ ...prev, life: Math.max(0, prev.life - damage) }))
           } else {
-            setPlayerField(prev ={
+            setPlayerField(prev => {
               const nUZ = [...prev.unitZone]
               const t = nUZ[targetIndex]
               if (!t) return prev
@@ -9426,17 +9426,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // ── Opponent ended their turn ────────────────���────────────────────────
       case "end_turn":
         setIsPlayerTurn(true)
-        setTurn(prev =prev + 1)
+        setTurn(prev => prev + 1)
         setPhase("draw")
         setNormalSummonUsed(false)
-        setPlayerField(prev =({
+        setPlayerField(prev => ({
           ...prev,
           unitZone: prev.unitZone.map(u =>
             u ? { ...u, canAttack: true, hasAttacked: false } : null
           ),
-          ultimateZones: prev.ultimateZones.map(uz =uz ? { ...uz, canAttack: true, hasAttacked: false } : null) as (FieldCard|null)[],
+          ultimateZones: prev.ultimateZones.map(uz => uz ? { ...uz, canAttack: true, hasAttacked: false } : null) as (FieldCard|null)[],
         }))
-        setEnemyField(prev =({
+        setEnemyField(prev => ({
           ...prev,
           unitZone: prev.unitZone.map(u =>
             u ? { ...u, hasAttacked: false } : null
@@ -9446,7 +9446,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       // ── Opponent used a function/item card ────────────────────────────────
       case "use_function_card":
-        setEnemyField(prev =({
+        setEnemyField(prev => ({
           ...prev,
           hand: prev.hand.slice(0, -1),
           graveyard: action.data.card
@@ -9455,14 +9455,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }))
         // If card damaged player's life
         if (action.data.lifeDamage) {
-          setPlayerField(prev =({
+          setPlayerField(prev => ({
             ...prev,
             life: Math.max(0, prev.life - action.data.lifeDamage),
           }))
         }
         // If card destroyed a player unit
         if (action.data.destroyPlayerUnitIndex !== undefined) {
-          setPlayerField(prev ={
+          setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
             const u = nUZ[action.data.destroyPlayerUnitIndex]
             if (u) { nUZ[action.data.destroyPlayerUnitIndex] = null; return { ...prev, unitZone: nUZ, graveyard: [...prev.graveyard, u] } }
@@ -9471,7 +9471,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         // If card debuffed a player unit
         if (action.data.debuffPlayerUnit !== undefined && action.data.dpChange) {
-          setPlayerField(prev ={
+          setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
             const u = nUZ[action.data.debuffPlayerUnit]
             if (u) nUZ[action.data.debuffPlayerUnit] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + action.data.dpChange) }
@@ -9482,10 +9482,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       // ── Opponent moved TAP card to hand ───────────��───────────────────────
       case "tap_to_hand":
-        setEnemyField(prev =({
+        setEnemyField(prev => ({
           ...prev,
           hand: [...prev.hand, null as any],
-          tap: prev.tap.filter((t: any) =t?.id !== action.data.card?.id),
+          tap: prev.tap.filter((t: any) => t?.id !== action.data.card?.id),
         }))
         break
 
@@ -9499,7 +9499,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const ab = action.data.ability
         // Ullr SR: debuffs a player unit
         if (ab === "ullrSr") {
-          setPlayerField(prev ={
+          setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
             const idx = action.data.targetIndex
             if (idx !== undefined && nUZ[idx]) {
@@ -9510,9 +9510,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         // Ullr UR: buffs enemy Ventus units
         if (ab === "ullrUr") {
-          setEnemyField(prev =({
+          setEnemyField(prev => ({
             ...prev,
-            unitZone: prev.unitZone.map(u ={
+            unitZone: prev.unitZone.map(u => {
               if (!u) return null
               if (u.element === "Ventus" || u.element === "Wind")
                 return { ...u, currentDp: (u.currentDp ?? u.dp) + (action.data.bonus ?? 2) }
@@ -9522,7 +9522,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         // MrP: debuffs a player unit (-2DP)
         if (ab === "mrp" && action.data.targetIndex !== undefined) {
-          setPlayerField(prev ={
+          setPlayerField(prev => {
             const nUZ = [...prev.unitZone]
             const u = nUZ[action.data.targetIndex]
             if (u) nUZ[action.data.targetIndex] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) + (action.data.dpChange ?? -2)) }
@@ -9543,7 +9543,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // ── Full field sync — applies everything the sender broadcasts ─────────
       case "field_sync": {
         const d = action.data
-        setEnemyField(prev ={
+        setEnemyField(prev => {
           const upd: any = { ...prev }
           if (d.myLife      !== undefined) upd.life         = d.myLife
           if (d.myUnits     !== undefined) upd.unitZone     = d.myUnits
@@ -9558,10 +9558,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
           // Legacy fields
           if (d.oppLife !== undefined) {
-            setPlayerField(p =({ ...p, life: d.oppLife }))
+            setPlayerField(p => ({ ...p, life: d.oppLife }))
           }
           if (d.playerUnitZone !== undefined) {
-            setPlayerField(p =({ ...p, unitZone: d.playerUnitZone }))
+            setPlayerField(p => ({ ...p, unitZone: d.playerUnitZone }))
           }
           return upd
         })
@@ -9570,10 +9570,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
   }, [])  // Empty deps — all state mutations use functional updaters
 
-  useEffect(() ={ mpHandleOpponentRef.current = mpHandleOpponentAction }, [mpHandleOpponentAction])
+  useEffect(() => { mpHandleOpponentRef.current = mpHandleOpponentAction }, [mpHandleOpponentAction])
 
   // Subscribe to opponent actions + chat (only when online duel is active)
-  useEffect(() ={
+  useEffect(() => {
     if (mode !== "player" || !gameStarted || !onlineRoomData) return
     const sb = supabaseRef.current
     if (!sb) return
@@ -9582,12 +9582,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     console.log("[MP] Starting subscription. roomId:", roomId, "| myId:", myId)
     // Fetch any actions already in DB (in case we missed some)
-    ;(async () ={
+    ;(async () => {
       const { data: existing } = await sb
         .from("duel_actions").select("*")
         .eq("room_id", roomId).neq("player_id", myId)
         .order("created_at", { ascending: true }).limit(50)
-      if (existing && existing.length 0) {
+      if (existing && existing.length > 0) {
         console.log("[MP] Found", existing.length, "existing actions on subscribe")
         for (const row of existing) {
           let d = row.action_data
@@ -9605,7 +9605,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         event: "INSERT", schema: "public",
         table: "duel_actions",
         // No server-side filter — filter client-side to avoid RLS/replica issues
-      }, (payload: any) ={
+      }, (payload: any) => {
         const row = payload.new
         // Only process actions for this room from opponent
         if (row.room_id !== roomId) return
@@ -9616,13 +9616,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         mpHandleOpponentRef.current(data)
         mpLastActionTimeRef.current = row.created_at
       })
-      .subscribe((status: string) ={
+      .subscribe((status: string) => {
         console.log("[MP] Realtime subscription status:", status)
       })
     mpActionsChannelRef.current = ch
 
     // Polling fallback 400ms
-    mpActionsPollRef.current = setInterval(async () ={
+    mpActionsPollRef.current = setInterval(async () => {
       const { data: rows, error: pollErr } = await sb
         .from("duel_actions").select("*")
         .eq("room_id", roomId)
@@ -9630,7 +9630,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         .order("created_at", { ascending: true })
         .limit(20)
       if (pollErr) { console.error("[MP] Poll error:", pollErr.message); return }
-      if (rows && rows.length 0) {
+      if (rows && rows.length > 0) {
         console.log("[MP] Poll found", rows.length, "action(s)")
         for (const row of rows) {
           let d = row.action_data
@@ -9643,20 +9643,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // Chat
     sb.from("duel_chat").select("*").eq("room_id", roomId)
       .order("created_at", { ascending: true })
-      .then(({ data }) ={ if (data) setMpChat(data) })
+      .then(({ data }) => { if (data) setMpChat(data) })
 
     const chatCh = sb
       .channel(`duel-chat-${roomId}-${Date.now()}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
         table: "duel_chat", filter: `room_id=eq.${roomId}`,
-      }, (payload: any) ={
-        setMpChat(prev =prev.find(m =m.id === payload.new.id) ? prev : [...prev, payload.new])
+      }, (payload: any) => {
+        setMpChat(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
       })
       .subscribe()
     mpChatChannelRef.current = chatCh
 
-    return () ={
+    return () => {
       ch.unsubscribe()
       chatCh.unsubscribe()
       if (mpActionsPollRef.current) clearInterval(mpActionsPollRef.current)
@@ -9664,13 +9664,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [mode, gameStarted, onlineRoomData?.roomId])
 
   // Auto-scroll chat
-  useEffect(() ={
+  useEffect(() => {
     if (mpChatRef.current) mpChatRef.current.scrollTop = mpChatRef.current.scrollHeight
   }, [mpChat])
 
 
   // Helper: broadcast an action only in online mode
-  const mpBroadcast = useCallback((type: string, data: any) ={
+  const mpBroadcast = useCallback((type: string, data: any) => {
     const rd = onlineRoomDataRef.current
     if (!rd) { console.warn("[MP] mpBroadcast called but no roomData"); return }
     const myId = rd.isHost ? rd.hostId : (rd.guestId || "")
@@ -9680,7 +9680,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
 
   // Helper: broadcast full field sync for complex effects  
-  const mpFieldSync = useCallback((opts?: { myLife?: number; oppLife?: number; myUnits?: any; oppUnits?: any }) ={
+  const mpFieldSync = useCallback((opts?: { myLife?: number; oppLife?: number; myUnits?: any; oppUnits?: any }) => {
     if (!onlineRoomDataRef.current) return
     mpBroadcast("field_sync", {
       myLife:         opts?.myLife,
@@ -9690,7 +9690,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
   }, [mpBroadcast])
 
-  const mpSendChat = async () ={
+  const mpSendChat = async () => {
     if (!mpChatInput.trim() || !supabase || !onlineRoomData) return
     const msg = mpChatInput.trim()
     setMpChatInput("")
@@ -9708,14 +9708,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // ── Broadcast field state after every significant change (online mode only) ──
   // This catches ALL state changes regardless of whether we added a specific broadcast
   const mpLastSyncRef = useRef<string>("")
-  useEffect(() ={
+  useEffect(() => {
     if (mode !== "player" || !gameStarted || !onlineRoomDataRef.current) return
     
     // Build a compact state snapshot to detect real changes
     const snapshot = JSON.stringify({
       myLife: playerField.life,
-      myUnits: playerField.unitZone.map(u =u ? { id: u.id, dp: u.currentDp ?? u.dp, hasAttacked: u.hasAttacked } : null),
-      myFuncs: playerField.functionZone.map(f =f ? { id: f.id, isFaceDown: (f as any).isFaceDown } : null),
+      myUnits: playerField.unitZone.map(u => u ? { id: u.id, dp: u.currentDp ?? u.dp, hasAttacked: u.hasAttacked } : null),
+      myFuncs: playerField.functionZone.map(f => f ? { id: f.id, isFaceDown: (f as any).isFaceDown } : null),
       myScenario: playerField.scenarioZone?.id,
       myUltimate: playerField.ultimateZones.map(z=>z?.id ?? null),
       myGravLen: playerField.graveyard.length,
@@ -9728,7 +9728,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     
     // Broadcast full player field to opponent
     const myPlaymatImg = selectedDeck ? getPlaymatForDeck(selectedDeck as any)?.image ?? null : null
-    const t = setTimeout(() ={
+    const t = setTimeout(() => {
       mpBroadcast("field_sync", {
         myLife:         playerField.life,
         myUnits:        playerField.unitZone,
@@ -9741,7 +9741,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         myPlaymatImage: myPlaymatImg,
       })
     }, 80)
-    return () =clearTimeout(t)
+    return () => clearTimeout(t)
   }, [
     mode, gameStarted,
     playerField.life,
@@ -9753,16 +9753,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     playerField.hand.length,
   ])
 
-  const endEnemyTurn = () ={
+  const endEnemyTurn = () => {
     setPhase("end")
 
-    setEnemyField((prev) =({
+    setEnemyField((prev) => ({
       ...prev,
-      unitZone: prev.unitZone.map((unit) =(unit ? { ...unit, hasAttacked: false } : null)),
+      unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false } : null)),
     }))
 
     // Bot ULLRBOGI: remove +3 DP from Ullr when ending turn (leaving battle phase)
-    setEnemyField((prevEnemy) ={
+    setEnemyField((prevEnemy) => {
       for (const __eugRR of (prevEnemy.ultimateZones||[]).filter((z:FieldCard|null)=>z?.ability?.toUpperCase().includes("ULLRBOGI")&&z?.requiresUnit)) {
             const ullrIdx = prevEnemy.unitZone.findIndex((u:FieldCard|null)=>u&&u.name===__eugRR!.requiresUnit)
         if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
@@ -9774,7 +9774,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return prevEnemy
     })
 
-    setTimeout(() ={
+    setTimeout(() => {
       const nextTurn = turn + 1
       setTurn(nextTurn)
       setIsPlayerTurn(true)
@@ -9782,17 +9782,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setJulgamentoDivinoUsedThisTurn(false)
       logEvent("turn", `— Turno ${nextTurn} — Sua Vez —`)
 
-      setPlayerField((prev) =({
+      setPlayerField((prev) => ({
         ...prev,
         unitZone: prev.unitZone.map((unit) =>
-          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn unit.canAttackTurn } : null,
+          unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
         ultimateZones: (prev.ultimateZones||EMPTY_ULTIMATE_ZONES()).map((uz:FieldCard|null)=>uz?{...uz,hasAttacked:false,canAttack:nextTurn>(uz.canAttackTurn??0)}:null)as(FieldCard|null)[],
       }))
     }, 500)
   }
 
-  const surrender = () ={
+  const surrender = () => {
     playSound("reject", 0.8)
     stopDuelOst()
     mpBroadcast("surrender", {})
@@ -9801,7 +9801,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     try {
       const masters = loadMastersFromStorage()
       const xpGain  = calcMasterXP({ won: false, opponentLevel: 1, duelMode: mode === "bot" ? "pve" : "pvp" })
-      const updated = masters.map(m ={
+      const updated = masters.map(m => {
         if (!m.isActive) return m
         let xp = m.currentXP + xpGain
         let level = m.currentLevel
@@ -9823,7 +9823,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     })
   }
 
-  const handleEnemyUnitSelect = (index: number) ={
+  const handleEnemyUnitSelect = (index: number) => {
     if (!itemSelectionMode.active || itemSelectionMode.step !== "selectEnemy") return
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
@@ -9837,7 +9837,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const newDp = Math.max(0, currentDp - 2)
       const isDestroyed = newDp <= 0
 
-      setEnemyField((prev) ={
+      setEnemyField((prev) => {
         const newUnitZone = [...prev.unitZone]
         const newGraveyard = [...prev.graveyard]
         if (isDestroyed) {
@@ -9849,7 +9849,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
       })
 
-      setPlayerField((prev) =({
+      setPlayerField((prev) => ({
         ...prev,
         graveyard: [...prev.graveyard, cardToUse],
       }))
@@ -9893,10 +9893,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
 
         // Use async resolve for dice cards
-        resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) ={
+        resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
           if (result.success) {
             showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
-            setPlayerField((prev) =({
+            setPlayerField((prev) => ({
               ...prev,
               graveyard: [...prev.graveyard, cardToUse],
             }))
@@ -9908,14 +9908,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
     }
 
-    setItemSelectionMode((prev) =({
+    setItemSelectionMode((prev) => ({
       ...prev,
       step: "selectAlly",
       selectedEnemyIndex: index,
     }))
   }
 
-  const handleAllyUnitSelect = (index: number) ={
+  const handleAllyUnitSelect = (index: number) => {
     if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
     if (!itemSelectionMode.itemCard) return
 
@@ -10021,10 +10021,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
 
       // Use async resolve for dice cards
-      resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) ={
+      resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
         if (result.success) {
           showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
-          setPlayerField((prev) =({
+          setPlayerField((prev) => ({
             ...prev,
             graveyard: [...prev.graveyard, cardToUse],
           }))
@@ -10043,9 +10043,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
   }
 
-  const cancelItemSelection = () ={
+  const cancelItemSelection = () => {
     if (itemSelectionMode.itemCard) {
-      setPlayerField((prev) =({
+      setPlayerField((prev) => ({
         ...prev,
         hand: [...prev.hand, itemSelectionMode.itemCard!],
       }))
@@ -10053,15 +10053,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
   }
 
-  useEffect(() ={
+  useEffect(() => {
     if (!gameStarted || gameResultRecordedRef.current) return
 
-    const grantMasterXP = (won: boolean) ={
+    const grantMasterXP = (won: boolean) => {
       try {
         const masters  = loadMastersFromStorage()
         const xpGain   = calcMasterXP({ won, opponentLevel: 1, duelMode: mode === "bot" ? "pve" : "pvp" })
-        const prevActive = masters.find(m =m.isActive)
-        const updated  = masters.map(m ={
+        const prevActive = masters.find(m => m.isActive)
+        const updated  = masters.map(m => {
           if (!m.isActive) return m
           // Stop gaining XP at max level
           if (m.currentLevel >= m.maxLevel) return m
@@ -10078,8 +10078,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         saveMastersToStorage(updated)
 
         // Dispatch XP event so duel result screen can show it
-        const active = updated.find(m =m.isActive)
-        const leveledUp = active && prevActive && active.currentLevel prevActive.currentLevel
+        const active = updated.find(m => m.isActive)
+        const leveledUp = active && prevActive && active.currentLevel > prevActive.currentLevel
         window.dispatchEvent(new CustomEvent("gpgame_master_xp", {
           detail: {
             masterName: active?.name ?? "",
@@ -10127,8 +10127,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   if (mode === "player" && onlinePhase === "lobby") {
     return (
       <MultiplayerLobby
-        onBack={() =setOnlinePhase(null)}
-        onStartDuel={(rd) ={
+        onBack={() => setOnlinePhase(null)}
+        onStartDuel={(rd) => {
           setOnlineRoomData(rd)
           setOnlinePhase("duel")
           // Start game immediately — no separate screen needed
@@ -10148,7 +10148,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 to-black">
         <div className="flex items-center justify-between p-4 bg-black/60 border-b border-white/10">
-          <Button onClick={setupStep === 'selectDeck' ? onBack : () =setSetupStep(setupStep === 'selectBotDeck' ? (mode === 'bot' ? 'selectDifficulty' : 'selectDeck') : 'selectDeck')} variant="ghost" className="text-white">
+          <Button onClick={setupStep === 'selectDeck' ? onBack : () => setSetupStep(setupStep === 'selectBotDeck' ? (mode === 'bot' ? 'selectDifficulty' : 'selectDeck') : 'selectDeck')} variant="ghost" className="text-white">
             <ArrowLeft className="mr-2 h-5 w-5" />
             {setupStep === 'selectDeck' ? t("back") : "Voltar"}
           </Button>
@@ -10173,7 +10173,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         {/* Progress indicator (bot mode only, fora dos eventos) */}
         {mode === 'bot' && !eventDuel && (
           <div className="flex justify-center gap-3 pt-4 pb-2">
-            {['Seu Deck','Dificuldade','Deck Inimigo'].map((label,i) ={
+            {['Seu Deck','Dificuldade','Deck Inimigo'].map((label,i) => {
               const stepIdx = setupStep === 'selectDeck' ? 0 : setupStep === 'selectDifficulty' ? 1 : 2
               return (
                 <div key={i} className={`flex items-center gap-1.5 text-xs font-semibold transition-all ${i === stepIdx ? 'text-cyan-300' : i < stepIdx ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -10203,10 +10203,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <p className="text-slate-400">Crie um deck primeiro no menu Construir Deck!</p>
               ) : (
                 <div className="grid gap-3 w-full max-w-md">
-                  {typedDecks.map((deck) =(
+                  {typedDecks.map((deck) => (
                     <button
                       key={deck.id}
-                      onClick={() ={
+                      onClick={() => {
                         setPendingPlayerDeck(deck)
                         // Duelo de evento: dificuldade e deck do oponente já
                         // definidos pela fase → começa imediatamente.
@@ -10239,10 +10239,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <p className="text-slate-400 text-sm">Como o oponente deve jogar?</p>
               </div>
               <div className="grid gap-4 w-full max-w-md">
-                {difficulties.map(d =(
+                {difficulties.map(d => (
                   <button
                     key={d.id}
-                    onClick={() ={ setDifficulty(d.id); setSetupStep('selectBotDeck') }}
+                    onClick={() => { setDifficulty(d.id); setSetupStep('selectBotDeck') }}
                     className={`w-full flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r border transition-all text-left ${d.color}`}
                   >
                     <span className="text-3xl">{d.emoji}</span>
@@ -10265,7 +10265,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
               <div className="grid gap-3 w-full max-w-md">
                 <button
-                  onClick={() ={ setSelectedBotDeck(null); startGame(pendingPlayerDeck!, undefined, difficulty) }}
+                  onClick={() => { setSelectedBotDeck(null); startGame(pendingPlayerDeck!, undefined, difficulty) }}
                   className="w-full h-14 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 border border-slate-500/30 hover:border-purple-500/40 transition-all text-left"
                 >
                   <span className="text-xl">🎲</span>
@@ -10274,10 +10274,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     <div className="text-xs text-slate-500">O Bot usa um deck aleatório</div>
                   </div>
                 </button>
-                {typedDecks.map((deck) =(
+                {typedDecks.map((deck) => (
                   <button
                     key={deck.id}
-                    onClick={() ={ setSelectedBotDeck(deck); startGame(pendingPlayerDeck!, deck, difficulty) }}
+                    onClick={() => { setSelectedBotDeck(deck); startGame(pendingPlayerDeck!, deck, difficulty) }}
                     className="w-full h-14 flex items-center gap-4 px-5 rounded-xl bg-gradient-to-r from-red-900/40 to-red-800/30 hover:from-red-800/60 hover:to-red-700/40 border border-red-500/20 hover:border-red-500/50 transition-all text-left group"
                   >
                     <Swords className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform" />
@@ -10303,7 +10303,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     // ── Story Mode: save result and redirect back ─────────────────────────────
-    const storyBattle = (() ={
+    const storyBattle = (() => {
       if (typeof window === "undefined") return null
       try {
         const raw = localStorage.getItem("gpgame_story_battle_pending")
@@ -10318,7 +10318,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
 
     // ── Event Mode: recompensas próprias por dificuldade da fase ──────────────
-    const eventBattle = (() ={
+    const eventBattle = (() => {
       if (typeof window === "undefined") return null
       try {
         const raw = localStorage.getItem("gpgame_event_battle_pending")
@@ -10340,7 +10340,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           }
         : mode === "player" ? "pvp" : "normal"
 
-    return <GameResultScreen result={gameResult} rewardKind={rewardKind} isCampaign={!!storyBattle && !eventBattle} onBack={() ={
+    return <GameResultScreen result={gameResult} rewardKind={rewardKind} isCampaign={!!storyBattle && !eventBattle} onBack={() => {
       if (mode === "player") {
         setOnlinePhase("lobby")
         setGameResult(null)
@@ -10362,36 +10362,36 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       style={{
         background: "#04030d",
       }}
-      onMouseMove={(e) ={
+      onMouseMove={(e) => {
         handleAttackMove(e)
         handleHandCardDragMove(e)
       }}
-      onMouseUp={() ={
+      onMouseUp={() => {
         handleAttackEnd()
         handleHandCardDragEnd()
       }}
-      onMouseLeave={() ={
+      onMouseLeave={() => {
         handleAttackEnd()
         handleHandCardDragEnd()
       }}
-      onTouchMove={(e) ={
+      onTouchMove={(e) => {
         handleAttackMove(e)
         handleHandCardDragMove(e)
       }}
-      onTouchEnd={() ={
+      onTouchEnd={() => {
         handleAttackEnd()
         handleHandCardDragEnd()
       }}
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
-      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() =setFreezeAnimationCard(null)} />}
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
       <ScenarioRevealOverlay
         playerScenario={playerField.scenarioZone}
         enemyScenario={enemyField.scenarioZone}
       />
-      {activeProjectiles.map((proj) =(
+      {activeProjectiles.map((proj) => (
         <ElementalAttackAnimation
           key={proj.id}
           {...proj}
@@ -10440,7 +10440,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         />
       )}
 
-      {attackState.isAttacking && (() ={
+      {attackState.isAttacking && (() => {
         const aimUnit = attackState.attackerIndex !== null ? playerField.unitZone[attackState.attackerIndex] : null
         const aimEl = normalizeElement(aimUnit?.element || "neutral")
         const aimPal = getElementPalette(aimEl)
@@ -10543,10 +10543,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <span className="hud-turnbanner-text">{isPlayerTurn ? t("yourTurn") : t("enemyTurn")}</span>
           </div>
           {/* Morgana passive effects indicator */}
-          {playerField.unitZone.some(u =u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)) && (
+          {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)) && (
             <div className="hud-chip" style={{"--chip-c":"#b49ae0"} as React.CSSProperties}>
               <span className="hud-chip-dot" aria-hidden="true" />
-              {playerField.unitZone.some(u =u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
+              {playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 4)
                 ? "Actions+Traps bloqueados"
                 : "Traps bloqueadas"}
             </div>
@@ -10560,7 +10560,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         {/* ── Speed & Auto indicators + Pause button ── */}
         <div className="flex items-center gap-1.5 ml-2">
           {/* Speed badge */}
-          {gameSpeed 1 && (
+          {gameSpeed > 1 && (
             <div className="hud-chip" style={{"--chip-c":"#e5c46f"} as React.CSSProperties}>
               {gameSpeed}x
             </div>
@@ -10573,7 +10573,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           )}
           {/* Pause / Menu button */}
           <button
-            onClick={() ={ setShowPauseMenu(true); setShowAudioSettings(false) }}
+            onClick={() => { setShowPauseMenu(true); setShowAudioSettings(false) }}
             className="w-8 h-8 flex items-center justify-center border transition-all"
             style={{
               background:"linear-gradient(180deg, rgba(20,16,10,0.9), rgba(8,8,14,0.92))",
@@ -10591,7 +10591,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {/* Enemy hand (card backs) — fixed height to prevent layout jitter on draw */}
       <div className="relative z-10 flex justify-center" style={{ height: 44, alignItems: "center" }}>
         <div className="flex gap-1" style={{ position: "relative" }}>
-          {enemyField.hand.map((_, i) =(
+          {enemyField.hand.map((_, i) => (
             <div
               key={i}
               className="w-6 h-8 rounded-[3px] shadow-md relative overflow-hidden"
@@ -10621,7 +10621,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <p className="gp-panel-title">Detalhe</p>
           <span className="gp-head-rule" aria-hidden="true" />
         </div>
-        {(inspectedCard || logCardDetail) ? (() ={
+        {(inspectedCard || logCardDetail) ? (() => {
           const card: any = inspectedCard || logCardDetail
           return (
             <div key={card.name} className="panel-detail-in gp-scroll flex-1 overflow-y-auto px-3.5 pb-4 space-y-3">
@@ -10635,13 +10635,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <div className="space-y-2.5">
                 <p className="gp-card-name">{card.name}</p>
 
-                {(card.dp 0 || card.element || card.category) && (
+                {(card.dp > 0 || card.element || card.category) && (
                   <div className="gp-meta">
-                    {card.dp 0 && (() ={
+                    {card.dp > 0 && (() => {
                       const cur = inspectedCard ? (inspectedCard as any).currentDp : undefined
                       const shown = cur !== undefined ? cur : card.dp
                       const tone = cur === undefined || cur === card.dp ? "var(--gp-ink)"
-                        : cur card.dp ? "#7fb069" : "#c9736b"
+                        : cur > card.dp ? "#7fb069" : "#c9736b"
                       return (
                         <span className="gp-meta-item">
                           <span className="gp-meta-key">DP</span>
@@ -10649,8 +10649,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         </span>
                       )
                     })()}
-                    {card.element && (() ={
-                      const elMap: Record<string, string= {
+                    {card.element && (() => {
+                      const elMap: Record<string, string> = {
                         Aquos: "#6aa9c9", Pyrus: "#c9805a", Ventus: "#7fa87a",
                         Subterra: "#b08d5c", Haos: "#cbb277", Lightness: "#cbb277",
                         Darkus: "#8f86ab", Darkness: "#8f86ab",
@@ -10717,7 +10717,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             </span>
           )}
           <button
-            onClick={() =setIsLogOpen(v =!v)}
+            onClick={() => setIsLogOpen(v => !v)}
             className="gp-collapse ml-auto flex-shrink-0"
             title={isLogOpen ? "Recolher log" : "Expandir log"}
             aria-label={isLogOpen ? "Recolher log" : "Expandir log"}
@@ -10729,8 +10729,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <div ref={duelLogRef} className="gp-scroll flex-1 overflow-y-auto px-3.5 pb-4">
             {duelLog.length === 0 ? (
               <p className="gp-empty mt-6">As ações do duelo aparecerão aqui.</p>
-            ) : duelLog.map(entry ={
-              const typeMeta: Record<string, { label: string; color: string }= {
+            ) : duelLog.map(entry => {
+              const typeMeta: Record<string, { label: string; color: string }> = {
                 draw:   { label: "Compra", color: "var(--gp-muted)" },
                 play:   { label: entry.isPlayerTurn ? "Jogada" : "Jogada do Bot", color: entry.isPlayerTurn ? "var(--gp-cyan)" : "#e0857a" },
                 attack: { label: "Ataque", color: "var(--gp-accent)" },
@@ -10753,7 +10753,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   {entry.cardImage && (
                     <button className="gp-log-thumb"
                       title={entry.cardName || "Ver detalhe"}
-                      onClick={() =setLogCardDetail({
+                      onClick={() => setLogCardDetail({
                         image: entry.cardImage!,
                         name: entry.cardName || "",
                         ability: entry.cardAbility,
@@ -10966,7 +10966,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           position: absolute; left: 0; right: 0; top: 50%;
           height: 2px; margin-top: -1px; overflow: hidden; pointer-events: none;
         }
-        .db-seam-spark i {
+        .db-seam-spark > i {
           position: absolute; top: 0; left: 0; height: 100%; width: 34%;
           background: linear-gradient(90deg, transparent, rgba(255,244,214,0.85), transparent);
           animation: db-seam-run 9s cubic-bezier(0.45,0,0.55,1) infinite;
@@ -11014,7 +11014,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         @media (prefers-reduced-motion: reduce) {
           .db-sigil::before, .db-sigil::after,
-          .db-seam-spark i, .db-rune::after { animation: none; }
+          .db-seam-spark > i, .db-rune::after { animation: none; }
         }
         /* Nitidez (supersampling 2x): dentro do contexto 3D, cada carta
            animada vira uma textura de GPU rasterizada no tamanho pequeno
@@ -11651,8 +11651,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       `}</style>
 
       {/* ── OVERLAY ÉPICO DE ATIVAÇÃO DE TRAP: vinheta + banner ── */}
-      {(() ={
-        const revealingTrap = playerField.functionZone.find((c) =(c as FunctionZoneCard)?.isRevealing)
+      {(() => {
+        const revealingTrap = playerField.functionZone.find((c) => (c as FunctionZoneCard)?.isRevealing)
         if (!revealingTrap) return null
         return (
           <>
@@ -11731,7 +11731,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             )}
 
             {/* Player Playmat Background (bottom half) */}
-            {(() ={
+            {(() => {
               const playmat = selectedDeck ? getPlaymatForDeck(selectedDeck) : null
               if (playmat) {
                 return (
@@ -11782,14 +11782,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       ref={enemyGraveyardRef}
                       className="w-16 h-24 text-sm text-purple-300 flex items-center justify-center cursor-pointer transition-all hover:scale-105"
                       style={{background:"rgba(60,12,110,0.82)",border:"1px solid rgba(150,80,220,0.45)",fontWeight:900,fontSize:18}}
-                      onClick={() =setGraveyardView("enemy")}
+                      onClick={() => setGraveyardView("enemy")}
                     >
                       {enemyField.graveyard.length}
                     </div>
                     <div ref={enemyDeckRef} className="w-16 h-24 relative">
-                      {enemyField.deck.length 0 ? (
+                      {enemyField.deck.length > 0 ? (
                         <>
-                          {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) =(
+                          {[...Array(Math.min(Math.ceil(enemyField.deck.length / 6), 6))].map((_, i) => (
                             <div
                               key={i}
                               className="absolute inset-0 border border-black/40 shadow-sm overflow-hidden bg-red-900"
@@ -11822,7 +11822,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <div
                     className="w-16 h-24 text-[10px] text-white flex flex-col items-center justify-center font-black cursor-pointer transition-all hover:scale-105"
                     style={{background:"rgba(185,65,0,0.90)",border:"1px solid rgba(240,120,30,0.55)"}}
-                    onClick={() =setTapView("enemy")}
+                    onClick={() => setTapView("enemy")}
                   >
                     <span className="opacity-70">TAP</span>
                     <span>{enemyField.tap.length}</span>
@@ -11842,7 +11842,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       ["--float-dur" as any]: "4.4s",
                       ["--float-x" as any]: "2.5px",
                     }}
-                    onClick={() ={
+                    onClick={() => {
                       if (ugTargetMode.active && enemyField.scenarioZone && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg")) {
                         handleUgTargetEnemyCard("scenario", 0)
                       }
@@ -11854,10 +11854,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         alt={enemyField.scenarioZone.name}
                         fill quality={100} sizes="180px"
                         className="object-contain"
-                        onMouseDown={() =handleCardPressStart(enemyField.scenarioZone!)}
+                        onMouseDown={() => handleCardPressStart(enemyField.scenarioZone!)}
                         onMouseUp={handleCardPressEnd}
                         onMouseLeave={handleCardPressEnd}
-                        onTouchStart={() =handleCardPressStart(enemyField.scenarioZone!)}
+                        onTouchStart={() => handleCardPressStart(enemyField.scenarioZone!)}
                         onTouchEnd={handleCardPressEnd}
                       />
                     ) : (
@@ -11865,15 +11865,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     )}
                   </div>
                   {/* Enemy Ultimate Zone — up to MAX_ULTIMATE_SLOTS stacked Ultimates */}
-                  {(() ={
+                  {(() => {
                     const eults = enemyField.ultimateZones
-                      .map((c, i) =({ c, i }))
-                      .filter((e): e is { c: FieldCard; i: number } =e.c !== null)
+                      .map((c, i) => ({ c, i }))
+                      .filter((e): e is { c: FieldCard; i: number } => e.c !== null)
                     const targetable = ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg")
                     const STEP_X = 8
                     const STEP_Y = 4
                     const focusIdx =
-                      enemyUltimateFocus !== null && eults.some(u =u.i === enemyUltimateFocus)
+                      enemyUltimateFocus !== null && eults.some(u => u.i === enemyUltimateFocus)
                         ? enemyUltimateFocus
                         : eults.length ? eults[eults.length - 1].i : null
                     return (
@@ -11897,12 +11897,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           {!eults.length && <span className="text-emerald-500/40 text-[8px] text-center leading-tight">ULTIMATE</span>}
                         </div>
 
-                        {eults.map(({ c, i }, order) ={
+                        {eults.map(({ c, i }, order) => {
                           const isFocused = focusIdx === i
                           return (
                             <div
                               key={`euz-${c.id}-${i}`}
-                              onClick={() ={
+                              onClick={() => {
                                 if (targetable) handleUgTargetEnemyCard("ultimate", i)
                                 else setEnemyUltimateFocus(isFocused ? null : i)
                               }}
@@ -11923,12 +11923,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             >
                               <Image src={c.image || "/placeholder.svg"} alt={c.name} fill quality={100} sizes="180px"
                                 className="object-contain"
-                                onMouseDown={() ={ handleCardPressStart(c); handleChainPressStart("enemy", c, i) }}
-                                onMouseUp={() ={ handleCardPressEnd(); handleChainPressEnd() }}
-                                onMouseLeave={() ={ handleCardPressEnd(); handleChainPressEnd() }}
-                                onTouchStart={() ={ handleCardPressStart(c); handleChainPressStart("enemy", c, i) }}
-                                onTouchEnd={() ={ handleCardPressEnd(); handleChainPressEnd() }}
-                                onTouchCancel={() ={ handleCardPressEnd(); handleChainPressEnd() }}
+                                onMouseDown={() => { handleCardPressStart(c); handleChainPressStart("enemy", c, i) }}
+                                onMouseUp={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onMouseLeave={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchStart={() => { handleCardPressStart(c); handleChainPressStart("enemy", c, i) }}
+                                onTouchEnd={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchCancel={() => { handleCardPressEnd(); handleChainPressEnd() }}
                               />
                               {equipChainHighlight?.side === "enemy" && equipChainHighlight.ultimateIndex === i && (
                                 <EquipChainOverlay reverse />
@@ -11947,14 +11947,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <div className="flex flex-col gap-2" data-enemy-zones="true">
                 {/* Enemy Function Zone */}
                 <div className="flex justify-center items-center gap-2">
-                  {enemyField.functionZone.map((card, i) ={
+                  {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
                       ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg"
                     )
                     return (
                       <div
                         key={i}
-                        onClick={() ={
+                        onClick={() => {
                           if (ugTargetMode.active && ugTargetMode.type === "oden_sword" && card) {
                             // Oden Sword destroys function cards only
                             handleUgTargetEnemyFunction(i)
@@ -12003,11 +12003,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
                 {/* Enemy Unit Zone */}
                 <div className="flex justify-center items-center gap-2">
-                  {enemyField.unitZone.map((card, i) =(
+                  {enemyField.unitZone.map((card, i) => (
                     <div
                       key={i}
                       data-enemy-unit={i}
-                      onClick={() ={
+                      onClick={() => {
                         if (mrpTargetMode && card) {
                           handleMrpTarget(i)
                         } else if (ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto" || ugTargetMode.type === "vatnavordr_messiham" || ugTargetMode.type === "yggdra_nidhogg") && card) {
@@ -12055,10 +12055,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             alt={card.name}
                             fill quality={100} sizes="180px"
                             className="object-contain"
-                            onMouseDown={() =handleCardPressStart(card)}
+                            onMouseDown={() => handleCardPressStart(card)}
                             onMouseUp={handleCardPressEnd}
                             onMouseLeave={handleCardPressEnd}
-                            onTouchStart={() =handleCardPressStart(card)}
+                            onTouchStart={() => handleCardPressStart(card)}
                             onTouchEnd={handleCardPressEnd}
                           />
                           <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
@@ -12092,13 +12092,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       ATAQUE DIRETO
                     </span>
                   ) : (
-                    (["draw","main","battle"] as const).map((p, pi) ={
+                    (["draw","main","battle"] as const).map((p, pi) => {
                       const active = phase === p
                       const cMap = { draw:"#93c5fd", main:"#fbbf24", battle:"#fca5a5" }
                       const lMap = { draw:"COMPRA", main:"PRINCIPAL", battle:"BATALHA" }
                       return (
                         <React.Fragment key={p}>
-                          {pi 0 && <span className="mx-1 w-2.5 h-px" style={{background:"rgba(180,146,72,0.4)"}} aria-hidden="true" />}
+                          {pi > 0 && <span className="mx-1 w-2.5 h-px" style={{background:"rgba(180,146,72,0.4)"}} aria-hidden="true" />}
                           <span
                             className="text-[7px] font-black tracking-[0.16em] uppercase transition-all duration-300 whitespace-nowrap"
                             style={{
@@ -12122,7 +12122,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <div className="flex flex-col gap-2">
                 {/* Player Unit Zone */}
                 <div className="flex justify-center items-center gap-2">
-                  {playerField.unitZone.map((card, i) ={
+                  {playerField.unitZone.map((card, i) => {
                     const isDropTarget =
                       draggedHandCard &&
                       isUnitCard(draggedHandCard.card) &&
@@ -12143,7 +12143,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) ||
                       (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
                     )
-                    const getAbilityFn = (): (() =void) | null ={
+                    const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
@@ -12159,13 +12159,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <div
                         key={i}
                         data-player-unit-slot={i}
-                        onClick={() ={
+                        onClick={() => {
                           if (selectedHandCard !== null) {
                             placeCard("unit", i)
                           } else if (itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card) {
                             handleAllyUnitSelect(i)
                           } else if (hasAbility && getAbilityFn()) {
-                            setUnitAbilityConfirm({ name: card!.name, abilityKey: (() ={
+                            setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
                           if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
                           if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
@@ -12204,12 +12204,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           ["--float-rot" as any]: `${((i * 6 + 3) % 8 - 3.5) * 0.3}deg`,
                           ["--float-dur" as any]: `${3.5 + ((i * 3 + 2) % 7) * 0.33}s`,
                           ["--float-x" as any]: `${((i * 5 + 2) % 6 - 2.5) * 1.5}px`,
-                          transform: (() ={
+                          transform: (() => {
                             const v = cardAnimations[`player-${i}`]
                             if (!v) return undefined
                             return v.startsWith('__transition:') ? v.split('||')[1] : v
                           })(),
-                          transition: (() ={
+                          transition: (() => {
                             const v = cardAnimations[`player-${i}`]
                             if (!v || !v.startsWith('__transition:')) return 'transform 0.08s ease'
                             return v.split('__transition:')[1].split('||')[0]
@@ -12239,7 +12239,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               alt={card.name}
                               fill quality={100} sizes="180px"
                               className="object-contain"
-                              onMouseDown={(e) ={
+                              onMouseDown={(e) => {
                                 if (canAttack && !hasAbility) {
                                   handleAttackStart(i, e)
                                 } else {
@@ -12248,7 +12248,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               }}
                               onMouseUp={handleCardPressEnd}
                               onMouseLeave={handleCardPressEnd}
-                              onTouchStart={(e) ={
+                              onTouchStart={(e) => {
                                 if (canAttack && !hasAbility) {
                                   handleAttackStart(i, e)
                                 } else {
@@ -12284,7 +12284,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
                 {/* Player Function Zone */}
                 <div className="flex justify-center items-center gap-2">
-                  {playerField.functionZone.map((card, i) ={
+                  {playerField.functionZone.map((card, i) => {
                     const isDropTarget =
                       draggedHandCard &&
                       !isUnitCard(draggedHandCard.card) &&
@@ -12295,7 +12295,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       <div
                         key={i}
                         data-player-func-slot={i}
-                        onClick={() =selectedHandCard !== null && placeCard("function", i)}
+                        onClick={() => selectedHandCard !== null && placeCard("function", i)}
                         className={`w-[69px] h-24 border-2 flex items-center justify-center cursor-pointer transition-all duration-75 relative overflow-visible ${card ? "gp-card-float" : ""} ${(card as FunctionZoneCard)?.isRevealing ? "trap-activating" : ""} ${dropTarget?.type === "function" && dropTarget?.index === i && !card
                           ? "border-green-400 scale-115 ring-2 ring-green-400/60 animate-pulse"
                           : isDropTarget
@@ -12331,10 +12331,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                 alt="Face down card"
                                 fill quality={100} sizes="180px"
                                 className="object-cover"
-                                onMouseDown={() =handleCardPressStart(card)}
+                                onMouseDown={() => handleCardPressStart(card)}
                                 onMouseUp={handleCardPressEnd}
                                 onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() =handleCardPressStart(card)}
+                                onTouchStart={() => handleCardPressStart(card)}
                                 onTouchEnd={handleCardPressEnd}
                               />
                             </div>
@@ -12345,10 +12345,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                 alt={card.name}
                                 fill quality={100} sizes="180px"
                                 className="object-contain"
-                                onMouseDown={() =handleCardPressStart(card)}
+                                onMouseDown={() => handleCardPressStart(card)}
                                 onMouseUp={handleCardPressEnd}
                                 onMouseLeave={handleCardPressEnd}
-                                onTouchStart={() =handleCardPressStart(card)}
+                                onTouchStart={() => handleCardPressStart(card)}
                                 onTouchEnd={handleCardPressEnd}
                               />
                             </div>
@@ -12361,14 +12361,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         )}
                         {/* Manual activation button for face-down Trap cards — only shown when
                             this specific trap's canActivate() currently allows it */}
-                        {card && card.isFaceDown && card.type === "trap" && (() ={
+                        {card && card.isFaceDown && card.type === "trap" && (() => {
                           const effect = getFunctionCardEffect(card)
                           if (!effect) return false
                           const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField })
                           return check.canActivate
                         })() && (
                           <button
-                            onClick={(e) ={ e.stopPropagation(); activateTrapCard(i) }}
+                            onClick={(e) => { e.stopPropagation(); activateTrapCard(i) }}
                             className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 animate-pulse whitespace-nowrap z-10"
                             style={{ border: "1px solid rgba(239,68,68,0.6)" }}
                           >
@@ -12387,7 +12387,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   {/* Player Scenario Zone - Horizontal slot, aligned with unit zone */}
                   <div
                     data-player-scenario-slot
-                    onClick={() =selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
+                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
                     className={`h-16 w-24 bg-amber-900/30 border-2 flex items-center justify-center relative overflow-visible transition-all duration-75 ${playerField.scenarioZone ? "gp-card-float" : ""} ${dropTarget?.type === "scenario" && !playerField.scenarioZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
                       : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
@@ -12409,10 +12409,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         alt={playerField.scenarioZone.name}
                         fill quality={100} sizes="180px"
                         className="object-contain"
-                        onMouseDown={() =handleCardPressStart(playerField.scenarioZone!)}
+                        onMouseDown={() => handleCardPressStart(playerField.scenarioZone!)}
                         onMouseUp={handleCardPressEnd}
                         onMouseLeave={handleCardPressEnd}
-                        onTouchStart={() =handleCardPressStart(playerField.scenarioZone!)}
+                        onTouchStart={() => handleCardPressStart(playerField.scenarioZone!)}
                         onTouchEnd={handleCardPressEnd}
                       />
                     ) : (
@@ -12420,24 +12420,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     )}
                   </div>
                   {/* Player Ultimate Zone — up to MAX_ULTIMATE_SLOTS stacked Ultimates */}
-                  {(() ={
+                  {(() => {
                     const ults = playerField.ultimateZones
-                      .map((c, i) =({ c, i }))
-                      .filter((e): e is { c: FieldCard; i: number } =e.c !== null)
-                    const hasRoom = playerField.ultimateZones.some(z =z === null)
+                      .map((c, i) => ({ c, i }))
+                      .filter((e): e is { c: FieldCard; i: number } => e.c !== null)
+                    const hasRoom = playerField.ultimateZones.some(z => z === null)
                     const selHand = selectedHandCard !== null ? playerField.hand[selectedHandCard] : null
                     const canClickPlace = !!(hasRoom && selHand && isUltimateCard(selHand))
                     const canDrop = hasRoom && (dropTarget?.type === "ultimate" || canClickPlace)
                     const STEP_X = 8
                     const STEP_Y = 4
                     const focusIdx =
-                      playerUltimateFocus !== null && ults.some(u =u.i === playerUltimateFocus)
+                      playerUltimateFocus !== null && ults.some(u => u.i === playerUltimateFocus)
                         ? playerUltimateFocus
                         : ults.length ? ults[ults.length - 1].i : null
                     return (
                       <div
                         data-player-ultimate-slot="0"
-                        onClick={() =canClickPlace && placeUltimateCard()}
+                        onClick={() => canClickPlace && placeUltimateCard()}
                         className={`relative ${ults.length ? "gp-card-float" : ""}`}
                         style={{
                           width: 69 + STEP_X * Math.max(0, ults.length - 1),
@@ -12467,20 +12467,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         )}
 
                         {/* Stacked Ultimate cards — straight offset, no diagonal tilt */}
-                        {ults.map(({ c, i }, order) ={
+                        {ults.map(({ c, i }, order) => {
                           const isFocused = focusIdx === i
                           const n = (c.name || "").toLowerCase()
                           const a = (c.ability || "").toUpperCase()
                           const isVatnavordr = c.id === "vatnavordr-messiham-ur" || a.includes("VATNAVORDR") || a.includes("CONGELAMENTO DE VATNAVORDR") || n.includes("vatnavordr")
                           const isYggdra = c.id === "yggdra-nidhogg-ur" || a.includes("NIDHOGG") || a.includes("DESTRUIÇÃO DE NIDHOGG") || n.includes("nidhogg")
                           const requiredName = c.requiresUnit || (isVatnavordr ? "Hrotti" : isYggdra ? "Logi" : "")
-                          const unitOnField = isVatnavordr || isYggdra || !requiredName || playerField.unitZone.some((unit) =unit && (isVatnavordr ? unit.name.toLowerCase().includes("hrotti") : isYggdra ? unit.name.toLowerCase().includes("logi") : unit.name === requiredName))
+                          const unitOnField = isVatnavordr || isYggdra || !requiredName || playerField.unitZone.some((unit) => unit && (isVatnavordr ? unit.name.toLowerCase().includes("hrotti") : isYggdra ? unit.name.toLowerCase().includes("logi") : unit.name === requiredName))
                           const canActivate = isVatnavordr || isYggdra || a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto")
                           const canJudge = a.includes("MIGUEL ARCANJO") || n.includes("miguel arcanjo")
                           return (
                             <div
                               key={`puz-${c.id}-${i}`}
-                              onClick={(e) ={ e.stopPropagation(); setPlayerUltimateFocus(isFocused ? null : i) }}
+                              onClick={(e) => { e.stopPropagation(); setPlayerUltimateFocus(isFocused ? null : i) }}
                               className={`absolute w-[69px] h-24 border transition-all duration-150 ${
                                 isFocused ? "border-emerald-300 shadow-lg shadow-emerald-500/40" : "border-black/50"
                               }`}
@@ -12497,24 +12497,24 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             >
                               <Image src={c.image || "/placeholder.svg"} alt={c.name} fill quality={100} sizes="180px"
                                 className="object-contain"
-                                onMouseDown={() ={ handleCardPressStart(c); handleChainPressStart("player", c, i) }}
-                                onMouseUp={() ={ handleCardPressEnd(); handleChainPressEnd() }}
-                                onMouseLeave={() ={ handleCardPressEnd(); handleChainPressEnd() }}
-                                onTouchStart={() ={ handleCardPressStart(c); handleChainPressStart("player", c, i) }}
-                                onTouchEnd={() ={ handleCardPressEnd(); handleChainPressEnd() }}
-                                onTouchCancel={() ={ handleCardPressEnd(); handleChainPressEnd() }}
+                                onMouseDown={() => { handleCardPressStart(c); handleChainPressStart("player", c, i) }}
+                                onMouseUp={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onMouseLeave={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchStart={() => { handleCardPressStart(c); handleChainPressStart("player", c, i) }}
+                                onTouchEnd={() => { handleCardPressEnd(); handleChainPressEnd() }}
+                                onTouchCancel={() => { handleCardPressEnd(); handleChainPressEnd() }}
                               />
                               {equipChainHighlight?.side === "player" && equipChainHighlight.ultimateIndex === i && (
                                 <EquipChainOverlay reverse />
                               )}
                               {isPlayerTurn && (phase === "main" || phase === "draw") && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
-                                <button onClick={e ={ e.stopPropagation(); activateUgAbility(i) }}
+                                <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
                                   className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-30 text-center">
                                   ⚡ ATIVAR
                                 </button>
                               )}
                               {isFocused && isPlayerTurn && phase === "main" && !julgamentoDivinoUsedThisTurn && !ugTargetMode.active && canJudge && unitOnField && (
-                                <button onClick={e ={ e.stopPropagation(); activateUgAbility(i) }}
+                                <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
                                   className="absolute bottom-0 inset-x-0 bg-blue-500/90 hover:bg-blue-400 text-white text-[7px] font-bold py-0.5 rounded-b animate-pulse z-30 text-center">
                                   ✦ JULGAMENTO
                                 </button>
@@ -12530,9 +12530,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <div className="flex gap-1.5">
                   <div className="flex flex-col gap-1.5">
                     <div ref={playerDeckRef} className="w-16 h-24 relative">
-                      {playerField.deck.length 0 ? (
+                      {playerField.deck.length > 0 ? (
                         <>
-                          {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) =(
+                          {[...Array(Math.min(Math.ceil(playerField.deck.length / 6), 6))].map((_, i) => (
                             <div
                               key={i}
                               className="absolute inset-0 border border-black/40 shadow-sm overflow-hidden bg-blue-900"
@@ -12565,14 +12565,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       ref={playerGraveyardRef}
                       className="w-16 h-24 text-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105"
                       style={{background:"rgba(60,12,110,0.82)",border:"1px solid rgba(150,80,220,0.45)",color:"rgba(200,160,255,0.9)",fontWeight:900}}
-                      onClick={() =setGraveyardView("player")}
+                      onClick={() => setGraveyardView("player")}
                     >
                       {playerField.graveyard.length}
                     </div>
                   </div>
                     {/* TAP Pile Button with availability glow and card preview */}
-                    {(() ={
-                      const isTapAvailable = turn 0 && turn % 3 === 0 && isPlayerTurn && phase === "main" && playerField.tap.length 0
+                    {(() => {
+                      const isTapAvailable = turn > 0 && turn % 3 === 0 && isPlayerTurn && phase === "main" && playerField.tap.length > 0
                       return (
                         <div className="relative group/tap">
                           <div
@@ -12584,7 +12584,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               background: isTapAvailable ? "rgba(200,72,0,0.92)" : "rgba(40,22,6,0.72)",
                               border: isTapAvailable ? "1px solid rgba(251,146,60,0.55)" : "1px solid rgba(80,50,15,0.30)",
                             }}
-                            onClick={() =setTapView("player")}
+                            onClick={() => setTapView("player")}
                           >
                             {isTapAvailable && (
                               <div className="absolute -inset-1 bg-orange-500/20 pointer-events-none" />
@@ -12597,9 +12597,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           </div>
 
                           {/* TAP Card Preview - Only shown when available */}
-                          {isTapAvailable && playerField.tap.length 0 && (
+                          {isTapAvailable && playerField.tap.length > 0 && (
                             <div className="absolute left-full top-0 ml-4 flex gap-1 animate-in slide-in-from-left-4 fade-in duration-500 pointer-events-none">
-                              {playerField.tap.slice(0, 3).map((card, idx) =(
+                              {playerField.tap.slice(0, 3).map((card, idx) => (
                                 <div 
                                   key={idx} 
                                   className="w-10 h-14 border border-orange-500/50 overflow-hidden shadow-lg shadow-black/50 bg-slate-900"
@@ -12612,7 +12612,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                                 </div>
                               ))}
-                              {playerField.tap.length 3 && (
+                              {playerField.tap.length > 3 && (
                                 <div className="w-6 h-14 flex items-center justify-center text-[8px] font-black text-orange-400 bg-black/40 border border-orange-500/20 backdrop-blur-sm -ml-4">
                                   +{playerField.tap.length - 3}
                                 </div>
@@ -12637,7 +12637,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         {/* Player Hand - PROMINENT display */}
         <div className="flex justify-center mt-0 min-h-28">
           <div ref={handContainerRef} className="flex gap-5 items-end">
-            {playerField.hand.map((card, i) ={
+            {playerField.hand.map((card, i) => {
               const offset = i - (playerField.hand.length - 1) / 2
               const rotation = offset * 2.2
               const translateY = Math.abs(offset) * 3
@@ -12650,14 +12650,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 : card.type === "scenario"
                   ? playerField.scenarioZone === null
                   : isUnitCard(card)
-                    ? playerField.unitZone.some(slot =slot === null) && !normalSummonUsed
-                    : playerField.functionZone.some(slot =slot === null)
+                    ? playerField.unitZone.some(slot => slot === null) && !normalSummonUsed
+                    : playerField.functionZone.some(slot => slot === null)
               const canPlay = isPlayerTurn && phase === "main" && hasSpaceInZone
 
               return (
                 <div
                   key={`hand-${card.id}-${i}`}
-                  onMouseDown={(e) ={
+                  onMouseDown={(e) => {
                     handleCardPressStart(card)
                     if (canPlay) {
                       handleHandCardDragStart(i, e)
@@ -12665,14 +12665,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   }}
                   onMouseUp={handleCardPressEnd}
                   onMouseLeave={handleCardPressEnd}
-                  onTouchStart={(e) ={
+                  onTouchStart={(e) => {
                     handleCardPressStart(card)
                     if (canPlay) {
                       handleHandCardDragStart(i, e)
                     }
                   }}
                   onTouchEnd={handleCardPressEnd}
-                  onClick={() ={
+                  onClick={() => {
                     handleCardPressEnd()
                     if (canPlay && !draggedHandCard) {
                       setSelectedHandCard(i === selectedHandCard ? null : i)
@@ -12888,13 +12888,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           background: rgba(255,255,255,0.07);
           clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%);
         }
-        .lp-bar i {
+        .lp-bar > i {
           position: absolute; inset: 0 auto 0 0; display: block;
           background: linear-gradient(90deg, var(--bar-a), var(--bar-b));
           box-shadow: 0 0 8px var(--bar-b);
           transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background 0.4s;
         }
-        .lp-bar--low i { animation: lp-bar-panic 1.1s ease-in-out infinite; }
+        .lp-bar--low > i { animation: lp-bar-panic 1.1s ease-in-out infinite; }
         @keyframes lp-bar-panic { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.7); } }
 
         /* ══ BOTÃO DE FASE — placa de ação forjada ══ */
@@ -12927,16 +12927,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
         @media (prefers-reduced-motion: reduce) {
           .hud-turnbanner-edge, .phase-btn::after, .lp-avatar::before,
-          .hud-chip--alert, .lp-bar--low i { animation: none; }
+          .hud-chip--alert, .lp-bar--low > i { animation: none; }
         }
       `}</style>
 
       {/* ── LP OPONENTE — fixed, canto superior esquerdo da arena (círculo verde cima) ── */}
-      {gameStarted && (() ={
+      {gameStarted && (() => {
         const maxLp = Math.max(50, roguelikeConfig?.startingLP ?? 0, propStartingLP ?? 0, enemyField.life)
         const pct = Math.max(0, Math.min(100, (enemyField.life / maxLp) * 100))
-        const barA = pct 50 ? "#e8756a" : pct 25 ? "#e5a44f" : "#ef4444"
-        const barB = pct 50 ? "#c94a3e" : pct 25 ? "#d97706" : "#b91c1c"
+        const barA = pct > 50 ? "#e8756a" : pct > 25 ? "#e5a44f" : "#ef4444"
+        const barB = pct > 50 ? "#c94a3e" : pct > 25 ? "#d97706" : "#b91c1c"
         return (
         <div className="fixed z-30" style={{ top: "8px", left: `calc(clamp(130px,16vw,210px) + 14px)` }}>
           <div className={`lp-plate lp-plate--foe ${
@@ -12976,11 +12976,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       })()}
 
       {/* ── LP JOGADOR — fixed, canto inferior direito da arena (círculo verde baixo) ── */}
-      {gameStarted && (() ={
+      {gameStarted && (() => {
         const maxLp = Math.max(50, roguelikeConfig?.startingLP ?? 0, propStartingLP ?? 0, playerField.life)
         const pct = Math.max(0, Math.min(100, (playerField.life / maxLp) * 100))
-        const barA = pct 50 ? "#6aa3e8" : pct 25 ? "#e5a44f" : "#ef4444"
-        const barB = pct 50 ? "#3b82f6" : pct 25 ? "#d97706" : "#b91c1c"
+        const barA = pct > 50 ? "#6aa3e8" : pct > 25 ? "#e5a44f" : "#ef4444"
+        const barB = pct > 50 ? "#3b82f6" : pct > 25 ? "#d97706" : "#b91c1c"
         return (
         <div className="fixed z-30" style={{ bottom: "10px", right: `calc(clamp(140px,17vw,230px) + 16px)` }}>
           <div className={`lp-plate lp-plate--ally ${
@@ -13158,11 +13158,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       {graveyardView && (
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85"
-          onClick={() =setGraveyardView(null)}
+          onClick={() => setGraveyardView(null)}
         >
           <div
             className="relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 p-6 max-w-md w-full mx-4"
-            onClick={(e) =e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-purple-400 font-bold text-xl mb-4 text-center">
               {graveyardView === "player" ? "Seu Cemiterio" : "Cemiterio do Oponente"}
@@ -13172,12 +13172,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 <p className="text-gray-400 text-center py-8">Nenhuma carta no cemiterio</p>
               ) : (
                 <div className="grid grid-cols-4 gap-2">
-                  {(graveyardView === "player" ? playerField.graveyard : enemyField.graveyard).map((card, i) =(
+                  {(graveyardView === "player" ? playerField.graveyard : enemyField.graveyard).map((card, i) => (
                     <div
                       key={i}
                       className="relative w-16 h-22 border-2 border-purple-500/50 overflow-hidden bg-slate-800 cursor-pointer hover:border-purple-400 hover:scale-105 transition-all"
                       style={{ height: '88px' }}
-                      onClick={() ={
+                      onClick={() => {
                         setInspectedCard(card)
                         setLogCardDetail({
                           image: graveyardView === "player" ? (getActiveSkin(card.image || "") || "") : (card.image || ""),
@@ -13208,7 +13208,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               )}
             </div>
             <Button
-              onClick={() =setGraveyardView(null)}
+              onClick={() => setGraveyardView(null)}
               size="sm"
               variant="outline"
               className="mt-4 w-full bg-transparent text-purple-400 border-purple-500/50 hover:bg-purple-500/20"
@@ -13329,7 +13329,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const rolling = diceAnimation.rolling
         const r       = diceAnimation.result  // always set from frame 1
 
-        const TIER: Record<number,{col:string,bg:string,border:string,label:string,icon:string,name:string}= {
+        const TIER: Record<number,{col:string,bg:string,border:string,label:string,icon:string,name:string}> = {
           1:{col:'#f87171',bg:'rgba(239,68,68,.14)', border:'rgba(239,68,68,.6)', label:'RESULTADO BAIXO', icon:'💀',name:'red'},
           2:{col:'#f87171',bg:'rgba(239,68,68,.14)', border:'rgba(239,68,68,.6)', label:'RESULTADO BAIXO', icon:'💀',name:'red'},
           3:{col:'#facc15',bg:'rgba(234,179,8,.14)',  border:'rgba(234,179,8,.6)',  label:'RESULTADO BOM',   icon:'⚡',name:'yellow'},
@@ -13574,7 +13574,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           </svg>
 
           {/* ── Sword-cut air distortion ripples ── */}
-          {[0, 1, 2, 3, 4].map((i) =(
+          {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={`ripple-${i}`}
               className="absolute laceration-ripple"
@@ -13592,7 +13592,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           ))}
 
           {/* ── Impact sparks where blades land ── */}
-          {[...Array(16)].map((_, i) =(
+          {[...Array(16)].map((_, i) => (
             <div
               key={i}
               className="absolute laceration-spark"
@@ -13706,7 +13706,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             </div>
 
             {/* Shatter fragments */}
-            {[...Array(12)].map((_, i) =(
+            {[...Array(12)].map((_, i) => (
               <div
                 key={i}
                 className={`destruction-fragment destruction-fragment-${i + 1}`}
@@ -13744,10 +13744,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <div className="p-3 max-h-80 overflow-y-auto flex flex-col gap-2.5">
               {choiceModal.gridLayout ? (
                 <div className="grid grid-cols-3 gap-2">
-                  {choiceModal.options.map((option) =(
+                  {choiceModal.options.map((option) => (
                     <button
                       key={option.id}
-                      onClick={() ={ playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
+                      onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
                       className={`bg-gradient-to-b ${option.id === 'skip' ? 'from-slate-600 to-slate-700 hover:from-slate-500 col-span-3' : 'from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600'} text-white font-bold py-2 px-2 rounded-lg border border-purple-400/40 transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[60px]`}
                     >
                       <div className="text-[11px] font-bold leading-tight text-center">{option.label}</div>
@@ -13756,12 +13756,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   ))}
                 </div>
               ) : (
-                choiceModal.options.map((option) =(
+                choiceModal.options.map((option) => (
                   option.image ? (
                     /* Card-style row (with image) — matches deckSearchModal look */
                     <button
                       key={option.id}
-                      onClick={() ={ playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
+                      onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
                       className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-purple-900/35 hover:border-purple-400/40 transition-all text-left group"
                     >
                       <div className="flex-shrink-0 w-10 h-14 rounded overflow-hidden border border-white/15 shadow-md">
@@ -13779,7 +13779,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     /* Text-only row (no image) */
                     <button
                       key={option.id}
-                      onClick={() ={ playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
+                      onClick={() => { playSound("confirm", 0.5); choiceModal.onChoose(option.id) }}
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105 text-left"
                     >
                       <div className="text-sm font-bold">{option.label}</div>
@@ -13793,7 +13793,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             {/* Cancel */}
             <div className="px-3 pb-3">
               <button
-                onClick={() =setChoiceModal(null)}
+                onClick={() => setChoiceModal(null)}
                 className="w-full py-2 rounded-lg border border-red-500/40 text-red-400 text-sm font-semibold hover:bg-red-950/40 transition-colors"
               >
                 Cancelar
@@ -13815,10 +13815,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
             {/* Card list */}
             <div className="p-4 max-h-72 overflow-y-auto flex flex-col gap-3">
-              {deckSearchModal.cards.map((card) =(
+              {deckSearchModal.cards.map((card) => (
                 <button
                   key={card.id}
-                  onClick={() =deckSearchModal.onSelect(card)}
+                  onClick={() => deckSearchModal.onSelect(card)}
                   className="flex items-center gap-3 bg-slate-700/60 hover:bg-amber-900/40 border border-slate-600/50 hover:border-amber-500/60 rounded-xl p-3 transition-all group text-left"
                 >
                   {/* Card image */}
@@ -13896,11 +13896,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         <div
           className="fixed inset-0 z-[90] flex items-center justify-center"
           style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-          onClick={() =setUnitAbilityConfirm(null)}
+          onClick={() => setUnitAbilityConfirm(null)}
         >
           <div
             className="relative bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl border-2 border-emerald-500/60 shadow-2xl shadow-emerald-900/40 p-6 max-w-xs w-full mx-4 text-center"
-            onClick={e =e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             {/* Glow accent */}
             <div className="absolute inset-0 rounded-2xl bg-emerald-500/5 pointer-events-none" />
@@ -13909,7 +13909,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <div className="text-slate-300 text-sm mb-5">Ativar Efeito de Habilidade?</div>
             <div className="flex gap-3 justify-center">
               <button
-                onClick={() ={
+                onClick={() => {
                   playSound("confirm")
                   const key = unitAbilityConfirm?.abilityKey
                   setUnitAbilityConfirm(null)
@@ -13926,7 +13926,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 ✓ Sim
               </button>
               <button
-                onClick={() ={ playSound("reject", 0.5); setUnitAbilityConfirm(null) }}
+                onClick={() => { playSound("reject", 0.5); setUnitAbilityConfirm(null) }}
                 className="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition-colors"
               >
                 ✗ Não
@@ -13940,7 +13940,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/60 rounded-xl px-4 py-3 text-center">
           <h3 className="text-yellow-300 font-bold text-sm mb-1">MANUSCRITO DE GUERRA</h3>
           <p className="text-yellow-200/80 text-xs mb-2">Selecione 1 unidade inimiga para -2DP</p>
-          <button onClick={() =setMrpTargetMode(false)} className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold">CANCELAR</button>
+          <button onClick={() => setMrpTargetMode(false)} className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold">CANCELAR</button>
         </div>
       )}
 
@@ -13949,7 +13949,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           <h3 className="text-violet-300 font-bold text-sm mb-1">JULGAMENTO DO VAZIO ETERNO</h3>
           <p className="text-violet-200/80 text-xs mb-2">Selecione 1 carta inimiga para destruir</p>
           <button
-            onClick={() ={ setJulgamentoVazioTargetMode({ active: false, attackerIndex: null }); animationInProgressRef.current = false }}
+            onClick={() => { setJulgamentoVazioTargetMode({ active: false, attackerIndex: null }); animationInProgressRef.current = false }}
             className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
           >
             CANCELAR
@@ -13964,7 +13964,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           </h3>
           <p className="text-red-200/80 text-xs mb-2">Selecione 1 unidade inimiga como alvo</p>
           <button
-            onClick={() =setTrapTargetMode({ active: false, slotIndex: null })}
+            onClick={() => setTrapTargetMode({ active: false, slotIndex: null })}
             className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
           >
             CANCELAR
@@ -13976,14 +13976,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
-            {(() ={
+            {(() => {
               const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
               const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais") || cardId.includes("dados-da-calamidade")
 
               if (isDiceCard) {
                 return (
                   <p className="text-white text-sm">
-                    Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</spanpara rolar o dado
+                    Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para rolar o dado
                   </p>
                 )
               }
@@ -13992,10 +13992,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 return (
                   <p className="text-white text-sm">
                     {itemSelectionMode.chosenOption === "flecha_direct"
-                      ? <>Selecione uma <span className="text-red-400 font-bold">Unidade Inimiga</span— dano de <span className="text-orange-400 font-bold">2DP</spanignorando Traps</>
+                      ? <>Selecione uma <span className="text-red-400 font-bold">Unidade Inimiga</span> — dano de <span className="text-orange-400 font-bold">2DP</span> ignorando Traps</>
                       : itemSelectionMode.chosenOption === "debuff"
-                        ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</spanpara reduzir <span className="text-red-400 font-bold">-2 DP</span></>
-                        : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</spanpara aplicar o efeito</>
+                        ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+                        : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
                     }
                   </p>
                 )
@@ -14004,8 +14004,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               return (
                 <p className="text-white text-sm">
                   {itemSelectionMode.chosenOption === "buff"
-                    ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</spanou <span className="text-cyan-400 font-bold">Jaden Hainaegi</spanpara receber <span className="text-green-400 font-bold">+2 DP</span></>
-                    : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</spanpara aplicar o efeito</>
+                    ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
+                    : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para aplicar o efeito</>
                   }
                 </p>
               )
@@ -14037,7 +14037,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() =setTapView(null)}
+                onClick={() => setTapView(null)}
                 className="text-slate-500 hover:text-white hover:bg-white/5 rounded-full w-12 h-12 transition-all"
               >
                 <X className="w-8 h-8" />
@@ -14046,8 +14046,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-10 scrollbar-hide">
-              {(() ={
-                const isAvailable = turn 0 && turn % 3 === 0 && isPlayerTurn && phase === "main"
+              {(() => {
+                const isAvailable = turn > 0 && turn % 3 === 0 && isPlayerTurn && phase === "main"
                 const activeTap = tapView === "player" ? playerField.tap : enemyField.tap
 
                 if (activeTap.length === 0) {
@@ -14063,16 +14063,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-10 justify-items-center">
-                    {activeTap.map((card, i) ={
+                    {activeTap.map((card, i) => {
                       const isPlayable = tapView === "player" && isAvailable
                       return (
                         <div 
                           key={i} 
                           className="relative group perspective-1000"
-                          onMouseDown={() =handleCardPressStart(card)}
+                          onMouseDown={() => handleCardPressStart(card)}
                           onMouseUp={handleCardPressEnd}
                           onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() =handleCardPressStart(card)}
+                          onTouchStart={() => handleCardPressStart(card)}
                           onTouchEnd={handleCardPressEnd}
                         >
                           <div
@@ -14080,11 +14080,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               ? "border-orange-500/40 cursor-pointer group-hover:scale-110 group-hover:-translate-y-4 group-hover:border-orange-400 group-hover:shadow-[0_20px_40px_rgba(249,115,22,0.3)] shadow-[0_0_20px_rgba(249,115,22,0.1)]"
                               : "border-slate-800/50 opacity-40 grayscale-[0.8]"
                               }`}
-                            onClick={() ={
+                            onClick={() => {
                               if (isPlayable) {
                                 // Add card to hand and remove from TAP
-                                setPlayerField((prev) ={
-                                  const newTap = prev.tap.filter((_, idx) =idx !== i)
+                                setPlayerField((prev) => {
+                                  const newTap = prev.tap.filter((_, idx) => idx !== i)
                                   return { ...prev, tap: newTap, hand: [...prev.hand, card] }
                                 })
                                 mpBroadcast("tap_to_hand", { card, index: i })
@@ -14137,7 +14137,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <div className={`px-2.5 py-1 rounded text-xs font-semibold ${isPlayerTurn ? "bg-blue-500/15 text-blue-300" : "bg-red-500/15 text-red-300"}`}>
               Turno {turn} — {isPlayerTurn ? "Seu Turno" : "Oponente"}
             </div>
-            <button onClick={() =setShowDuelLog(false)}
+            <button onClick={() => setShowDuelLog(false)}
               aria-label="Fechar log"
               className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
@@ -14146,8 +14146,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             </button>
           </div>
           <div ref={duelLogRef} className="flex-1 overflow-y-auto p-3 space-y-1.5">
-            {duelLog.map(entry ={
-              const mMeta: Record<string, { label: string; color: string; dot: string }= {
+            {duelLog.map(entry => {
+              const mMeta: Record<string, { label: string; color: string; dot: string }> = {
                 draw:   { label: "Compra", color: "text-slate-300",  dot: "#94a3b8" },
                 play:   { label: "Jogada", color: entry.isPlayerTurn ? "text-cyan-300" : "text-red-300", dot: entry.isPlayerTurn ? "#22d3ee" : "#f87171" },
                 attack: { label: "Ataque", color: "text-amber-300",  dot: "#fbbf24" },
@@ -14229,10 +14229,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
            ── PAUSE MENU ──
       ─��──────────────────────────────────���──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
-      {ultimateEquipPrompt && (() ={
+      {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
         const candidates = getEquipCandidates(card, playerField.unitZone, playerField.ultimateZones)
-        const close = () =setUltimateEquipPrompt(null)
+        const close = () => setUltimateEquipPrompt(null)
         return (
           <div className="fixed inset-0 z-[9100] flex items-center justify-center p-4"
             style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}>
@@ -14255,11 +14255,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
 
               <div className="p-3 flex flex-col gap-2 max-h-[55vh] overflow-y-auto">
-                {candidates.map(({ unit, index, compatible, occupied }) =(
+                {candidates.map(({ unit, index, compatible, occupied }) => (
                   <button
                     key={`equip-${index}`}
                     disabled={!compatible}
-                    onClick={() ={
+                    onClick={() => {
                       close()
                       if (source === "hand") placeUltimateCard(cardIndex, index)
                       else playCardFromTap(cardIndex, "ultimate", undefined, index)
@@ -14311,8 +14311,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               <div className="flex items-center gap-2">
                 {/* Speed selector */}
                 <div className="flex gap-1">
-                  {([1,2,4] as const).map(s =(
-                    <button key={s} onClick={() ={ setGameSpeed(s); speedRef.current = s }}
+                  {([1,2,4] as const).map(s => (
+                    <button key={s} onClick={() => { setGameSpeed(s); speedRef.current = s }}
                       className={`w-8 h-7 rounded text-[11px] font-black transition-all border ${
                         gameSpeed===s ? "bg-amber-500 border-amber-400 text-white" : "bg-white/[0.05] border-white/[0.08] text-slate-400 hover:text-white"
                       }`}>
@@ -14320,7 +14320,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     </button>
                   ))}
                 </div>
-                <button onClick={() =setShowPauseMenu(false)}
+                <button onClick={() => setShowPauseMenu(false)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.08] text-slate-500 hover:text-white hover:bg-white/10 transition-all">
                   ✕
                 </button>
@@ -14331,13 +14331,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <div className="p-3 space-y-2">
 
               {/* Resume */}
-              <button onClick={() =setShowPauseMenu(false)}
+              <button onClick={() => setShowPauseMenu(false)}
                 className="w-full py-3 rounded-xl border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-bold text-sm flex items-center gap-3 px-4 transition-all">
                 <span className="text-xl">▶</span>Voltar à Partida
               </button>
 
               {/* Auto play toggle */}
-              <button onClick={() =setAutoPlay(p =!p)}
+              <button onClick={() => setAutoPlay(p => !p)}
                 className={`w-full py-3 rounded-xl border font-bold text-sm flex items-center gap-3 px-4 transition-all ${
                   autoPlay ? "border-cyan-500/40 text-cyan-300 bg-cyan-900/20" : "border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.05]"
                 }`}>
@@ -14361,9 +14361,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   }`}>{gameSpeed === 1 ? "Normal" : `${gameSpeed}×`}</span>
                 </div>
                 <div className="flex gap-2 relative">
-                  {([1,2,4] as const).map(s =(
+                  {([1,2,4] as const).map(s => (
                     <button key={s}
-                      onClick={() ={ setGameSpeed(s); speedRef.current = s }}
+                      onClick={() => { setGameSpeed(s); speedRef.current = s }}
                       className={`flex-1 py-2 rounded-xl text-sm font-black border-2 transition-all duration-200 relative overflow-hidden ${
                         gameSpeed === s
                           ? s === 4 ? "bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/30 scale-105"
@@ -14374,7 +14374,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       {s === 1 ? "1×" : `${s}×`}
                       {gameSpeed === s && (
                         <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                          {Array.from({length: s}).map((_, i) =(
+                          {Array.from({length: s}).map((_, i) => (
                             <span key={i} className="w-1 h-1 rounded-full bg-white/60" />
                           ))}
                         </span>
@@ -14390,13 +14390,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
 
               {/* Audio settings */}
-              <button onClick={() =setShowAudioSettings(true)}
+              <button onClick={() => setShowAudioSettings(true)}
                 className="w-full py-3 rounded-xl border border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.05] font-bold text-sm flex items-center gap-3 px-4 transition-all">
                 <span className="text-xl">🔊</span>Configurações de Áudio
               </button>
 
               {/* Surrender */}
-              <button onClick={() ={ setShowPauseMenu(false); surrender() }}
+              <button onClick={() => { setShowPauseMenu(false); surrender() }}
                 className="w-full py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold text-sm flex items-center gap-3 px-4 transition-all">
                 <span className="text-xl">🏳️</span>Desistir do Duelo
               </button>
@@ -14413,7 +14413,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             style={{background:"linear-gradient(160deg,#0d1117,#0a0e1a)"}}>
 
             <div className="px-5 py-4 border-b border-white/[0.07] flex items-center gap-3">
-              <button onClick={() =setShowAudioSettings(false)}
+              <button onClick={() => setShowAudioSettings(false)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.08] text-slate-400 hover:text-white transition-all text-xs">
                 ←
               </button>
@@ -14430,7 +14430,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <span className="text-amber-300 text-sm font-black">{musicVolume}%</span>
                 </div>
                 <input type="range" min={0} max={100} value={musicVolume}
-                  onChange={e =setMusicVolume(Number(e.target.value))}
+                  onChange={e => setMusicVolume(Number(e.target.value))}
                   className="w-full accent-amber-400 cursor-pointer" />
               </div>
 
@@ -14443,12 +14443,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   <span className="text-cyan-300 text-sm font-black">{sfxVolume}%</span>
                 </div>
                 <input type="range" min={0} max={100} value={sfxVolume}
-                  onChange={e =setSfxVolume(Number(e.target.value))}
+                  onChange={e => setSfxVolume(Number(e.target.value))}
                   className="w-full accent-cyan-400 cursor-pointer" />
               </div>
 
               {/* Visual FX toggle */}
-              <button onClick={() =setShowVisualFX(p =!p)}
+              <button onClick={() => setShowVisualFX(p => !p)}
                 className={`w-full py-3 rounded-xl border font-bold text-sm flex items-center gap-3 px-4 transition-all ${
                   showVisualFX ? "border-purple-500/40 text-purple-300 bg-purple-900/20" : "border-white/[0.08] text-slate-500 hover:text-slate-300"
                 }`}>
@@ -14459,7 +14459,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 </span>
               </button>
 
-              <button onClick={() ={ setShowAudioSettings(false); setShowPauseMenu(false) }}
+              <button onClick={() => { setShowAudioSettings(false); setShowPauseMenu(false) }}
                 className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-all">
                 Salvar e Fechar
               </button>
@@ -14661,10 +14661,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             <div className="fixed bottom-20 right-4 z-[500] w-72 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden" style={{height:"320px"}}>
               <div className="flex items-center justify-between px-3 py-2 bg-slate-800 border-b border-slate-700">
                 <span className="text-white text-sm font-bold">Chat Online</span>
-                <button onClick={() =setMpShowChat(false)} className="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+                <button onClick={() => setMpShowChat(false)} className="text-slate-400 hover:text-white text-lg leading-none">✕</button>
               </div>
               <div ref={mpChatRef} className="flex-1 overflow-y-auto p-2 space-y-1">
-                {mpChat.map(msg ={
+                {mpChat.map(msg => {
                   const myId = onlineRoomData?.isHost ? onlineRoomData.hostId : (onlineRoomData?.guestId || "")
                   return (
                     <div key={msg.id} className={`text-xs p-1.5 rounded ${msg.sender_id === myId ? "bg-amber-900/40 text-amber-200 text-right" : "bg-slate-800 text-slate-200"}`}>
@@ -14674,8 +14674,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 })}
               </div>
               <div className="flex gap-1 p-2 border-t border-slate-700">
-                <Input value={mpChatInput} onChange={e =setMpChatInput(e.target.value)}
-                  onKeyDown={e =e.key === "Enter" && mpSendChat()}
+                <Input value={mpChatInput} onChange={e => setMpChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && mpSendChat()}
                   placeholder="Mensagem..." className="flex-1 h-8 text-xs bg-slate-800 border-slate-600 text-white" />
                 <button onClick={mpSendChat} className="px-2 py-1 bg-amber-600 hover:bg-amber-500 rounded text-white">
                   <Send className="w-3 h-3" />
@@ -14683,12 +14683,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               </div>
             </div>
           )}
-          <button onClick={() =setMpShowChat(v =!v)}
+          <button onClick={() => setMpShowChat(v => !v)}
             className="fixed bottom-4 right-4 z-[500] w-12 h-12 bg-amber-600 hover:bg-amber-500 rounded-full shadow-lg flex items-center justify-center transition-all">
             <MessageCircle className="w-5 h-5 text-white" />
-            {mpChat.length 0 && (
+            {mpChat.length > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                {mpChat.length 9 ? "9+" : mpChat.length}
+                {mpChat.length > 9 ? "9+" : mpChat.length}
               </span>
             )}
           </button>
