@@ -84,6 +84,59 @@ interface FieldState {
   life: number
 }
 
+// Case-insensitive element comparison (card data uses "Fire", "Aquos", etc.)
+const isElement = (element: string | undefined, target: string): boolean =>
+  (element || "").trim().toLowerCase() === target.toLowerCase()
+
+/**
+ * Ally targets can live in the Unit zone or the Ultimate zone. To keep the
+ * existing single-index selection API (`allyUnitIndices`), the Ultimate slot is
+ * addressed with a virtual index.
+ */
+const ULTIMATE_TARGET_INDEX = 100
+
+// Resolves a virtual ally index into the actual zone + card it points to.
+const resolveAllyTarget = (
+  field: Pick<FieldState, "unitZone" | "ultimateZone">,
+  index: number,
+): { unit: FieldCard; zone: "unit" | "ultimate" } | null => {
+  if (index === ULTIMATE_TARGET_INDEX) {
+    return field.ultimateZone ? { unit: field.ultimateZone, zone: "ultimate" } : null
+  }
+  const unit = field.unitZone[index] ?? null
+  return unit ? { unit, zone: "unit" } : null
+}
+
+// True when any ally card on the field (Unit zone OR Ultimate zone) matches the element.
+const hasElementOnField = (
+  field: Pick<FieldState, "unitZone" | "ultimateZone">,
+  element: string,
+): boolean =>
+  field.unitZone.some((u) => u !== null && isElement(u.element, element)) ||
+  (field.ultimateZone !== null && isElement(field.ultimateZone.element, element))
+
+// Applies a DP bonus that expires at the end of the current turn.
+const applyTempDpBuff = (unit: FieldCard | null, amount: number): FieldCard | null => {
+  if (!unit) return null
+  return {
+    ...unit,
+    currentDp: (unit.currentDp ?? unit.dp) + amount,
+    tempDpBuff: ((unit as any).tempDpBuff ?? 0) + amount,
+  } as FieldCard
+}
+
+// Applies a temporary DP buff to a virtual ally index, in whichever zone it lives.
+const applyTempDpBuffToZone = <T extends FieldState>(field: T, index: number, amount: number): T => {
+  if (index === ULTIMATE_TARGET_INDEX) {
+    if (!field.ultimateZone) return field
+    return { ...field, ultimateZone: applyTempDpBuff(field.ultimateZone, amount) }
+  }
+  const newUnitZone = [...field.unitZone] as (FieldCard | null)[]
+  if (!newUnitZone[index]) return field
+  newUnitZone[index] = applyTempDpBuff(newUnitZone[index], amount)
+  return { ...field, unitZone: newUnitZone }
+}
+
 interface AttackState {
   isAttacking: boolean
   attackerIndex: number | null
@@ -1214,13 +1267,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     name: "Chamas de Eldfjall",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Fire"), reason: "Você precisa ter uma unidade Fire" }),
+    canActivate: (context) => ({ canActivate: hasElementOnField(context.playerField, "fire"), reason: "Você precisa ter uma unidade Fire" }),
     resolve: (context, targets) => {
       const index = targets?.allyUnitIndices?.[0]
-      const unit = index === undefined ? null : context.playerField.unitZone[index]
-      if (!unit || unit.element !== "Fire") return { success: false, message: "Escolha uma unidade Fire" }
-      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
-      return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
+      const target = index === undefined ? null : resolveAllyTarget(context.playerField, index)
+      if (!target || !isElement(target.unit.element, "fire")) return { success: false, message: "Escolha uma unidade Fire" }
+      context.setPlayerField((prev) => applyTempDpBuffToZone(prev, index!, 3))
+      return { success: true, message: `${target.unit.name} ganhou +3 DP até o fim do turno!` }
     },
   },
   "maelstrom-boreal": {
@@ -1228,13 +1281,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     name: "Maelstrom Boreal",
     requiresTargets: true,
     targetConfig: { allyUnits: 1 },
-    canActivate: (context) => ({ canActivate: context.playerField.unitZone.some((u) => u?.element === "Aquos"), reason: "Você precisa ter uma unidade Aquos" }),
+    canActivate: (context) => ({ canActivate: hasElementOnField(context.playerField, "aquos"), reason: "Você precisa ter uma unidade Aquos" }),
     resolve: (context, targets) => {
       const index = targets?.allyUnitIndices?.[0]
-      const unit = index === undefined ? null : context.playerField.unitZone[index]
-      if (!unit || unit.element !== "Aquos") return { success: false, message: "Escolha uma unidade Aquos" }
-      context.setPlayerField((prev) => { const zone = [...prev.unitZone]; zone[index!] = { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 3 } as FieldCard; return { ...prev, unitZone: zone } })
-      return { success: true, message: `${unit.name} ganhou +3 DP até o fim do turno!` }
+      const target = index === undefined ? null : resolveAllyTarget(context.playerField, index)
+      if (!target || !isElement(target.unit.element, "aquos")) return { success: false, message: "Escolha uma unidade Aquos" }
+      context.setPlayerField((prev) => applyTempDpBuffToZone(prev, index!, 3))
+      return { success: true, message: `${target.unit.name} ganhou +3 DP até o fim do turno!` }
     },
   },
   "dualidade-do-caos-nordico": {
@@ -6838,10 +6891,21 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const endTurn = () => {
     setPhase("end")
 
+    // Reverts "until end of turn" DP buffs (Chamas de Eldfjall, Maelstrom Boreal, ...)
+    const expireTempBuff = <T extends FieldCard>(card: T): T => {
+      const tempAmount = (card as any).tempDpBuff as number | undefined
+      if (!tempAmount || tempAmount <= 0) return card
+      const cur = card.currentDp ?? card.dp
+      const reverted = { ...card, currentDp: Math.max(0, cur - tempAmount) } as any
+      delete reverted.tempDpBuff
+      showEffectFeedback(`${card.name}: buff temporário de +${tempAmount}DP expirou`, "info")
+      return reverted
+    }
+
     setPlayerField((prev) => ({
       ...prev,
-      unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false } : null)),
-      ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, hasAttacked: false } : null,
+      unitZone: prev.unitZone.map((unit) => (unit ? expireTempBuff({ ...unit, hasAttacked: false }) : null)),
+      ultimateZone: prev.ultimateZone ? expireTempBuff({ ...prev.ultimateZone, hasAttacked: false }) : null,
     }))
 
     setTimeout(() => {
@@ -7039,8 +7103,10 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
 
-    const allyUnit = playerField.unitZone[index]
-    if (!allyUnit) return
+    // `index` may be the virtual Ultimate-zone index, so resolve across both zones
+    const allyTarget = resolveAllyTarget(playerField, index)
+    if (!allyTarget) return
+    const allyUnit = allyTarget.unit
 
     // For Véu dos Laços Cruzados buff, check if unit is Fehnon or Jaden
     if (isVeuBuff && allyUnit.name !== "Fehnon Hoskie" && allyUnit.name !== "Jaden Hainaegi") {
@@ -7985,14 +8051,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                   {/* Player Ultimate Zone - single green slot below scenario */}
                   <div
                     data-player-ultimate-slot
-                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
+                    onClick={() => {
+                      // While an effect is picking an ally target, the Ultimate unit is a valid target too
+                      if (itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && playerField.ultimateZone) {
+                        handleAllyUnitSelect(ULTIMATE_TARGET_INDEX)
+                        return
+                      }
+                      if (selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])) placeUltimateCard()
+                    }}
                     className={`w-16 h-24 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-75 ${dropTarget?.type === "ultimate" && !playerField.ultimateZone
                       ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                      : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
-                        ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
-                        : draggedHandCard && isUltimateCard(draggedHandCard.card)
-                          ? "border-emerald-400/50 bg-emerald-500/20"
-                          : "border-emerald-600/40"
+                      : itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && playerField.ultimateZone
+                        ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
+                        : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
+                          ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
+                          : draggedHandCard && isUltimateCard(draggedHandCard.card)
+                            ? "border-emerald-400/50 bg-emerald-500/20"
+                            : "border-emerald-600/40"
                       }`}
                   >
                     {playerField.ultimateZone ? (
@@ -9181,6 +9256,16 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                         ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
                         : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
                     }
+                  </p>
+                )
+              }
+
+              if (cardId === "chamas-de-eldfjall" || cardId === "maelstrom-boreal") {
+                const el = cardId === "chamas-de-eldfjall" ? "Fire" : "Aquos"
+                const elColor = cardId === "chamas-de-eldfjall" ? "text-orange-400" : "text-cyan-400"
+                return (
+                  <p className="text-white text-sm">
+                    Clique em uma unidade <span className={`${elColor} font-bold`}>{el}</span> sua (Zona de Unidades ou Ultimate) para receber <span className="text-green-400 font-bold">+3 DP</span>
                   </p>
                 )
               }
