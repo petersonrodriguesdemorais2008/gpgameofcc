@@ -62,9 +62,15 @@ interface FieldCard extends GameCard {
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
   frozenUntilTurn?: number
-}
-
-interface FunctionZoneCard extends GameCard {
+  /** PRESSÁGIO DE LOGI — Queimadura: turnos restantes de -1DP */
+  burnTurnsLeft?: number
+  /** VISÃO DO HROTTI — DP forçado a 0 até o final deste turno */
+  dpZeroUntilTurn?: number
+  /** DP salvo antes de um efeito de "DP reduzido a 0" */
+  dpBeforeZero?: number
+  }
+  
+  interface FunctionZoneCard extends GameCard {
   frozenUntilTurn?: number
   isFaceDown?: boolean
   isRevealing?: boolean
@@ -204,9 +210,11 @@ interface EffectContext {
   enemyField: FieldState
   setPlayerField: React.Dispatch<React.SetStateAction<FieldState>>
   setEnemyField: React.Dispatch<React.SetStateAction<FieldState>>
-}
-
-interface EffectTargets {
+  /** Turno atual do duelo — informado pelos chamadores quando disponível */
+  turn?: number
+  }
+  
+  interface EffectTargets {
   enemyUnitIndices?: number[]
   allyUnitIndices?: number[]
   chosenOption?: string
@@ -1235,6 +1243,78 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     requiresTargets: false,
     canActivate: () => ({ canActivate: true }),
     resolve: () => ({ success: true, message: "Armadilha ativada: Brincadeira de Mau Gosto!" }),
+  },
+  "visao-do-hrotti": {
+    id: "visao-do-hrotti",
+    name: "VISÃO DO HROTTI",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      if (!context.enemyField.unitZone.some((u) => u !== null)) {
+        return { canActivate: false, reason: "Oponente não tem unidade em campo para congelar" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined || !context.enemyField.unitZone[idx]) {
+        return { success: false, message: "Escolha uma unidade inimiga válida." }
+      }
+      const targetName = context.enemyField.unitZone[idx]!.name
+      const turn = context.turn ?? 0
+      context.setEnemyField((prev) => {
+        const zone = [...prev.unitZone]
+        const unit = zone[idx]
+        if (unit) {
+          zone[idx] = {
+            ...unit,
+            frozenUntilTurn: turn + 2,
+            dpZeroUntilTurn: turn + 2,
+            dpBeforeZero: unit.dpBeforeZero ?? (unit.currentDp ?? unit.dp),
+            currentDp: 0,
+            canAttack: false,
+          }
+        }
+        return { ...prev, unitZone: zone as (FieldCard | null)[] }
+      })
+      return {
+        success: true,
+        message: `VISÃO DO HROTTI: efeito negado! ${targetName} congelada e com DP reduzido a 0 até o fim do próximo turno!`,
+      }
+    },
+  },
+  "pressagio-de-logi": {
+    id: "pressagio-de-logi",
+    name: "PRESSÁGIO DE LOGI",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasLogi = context.playerField.unitZone.some(
+        (u) => u !== null && u.name.toLowerCase().includes("logi"),
+      )
+      if (!hasLogi) return { canActivate: false, reason: "Você precisa controlar o Logi no seu campo" }
+      if (!context.enemyField.unitZone.some((u) => u !== null)) {
+        return { canActivate: false, reason: "Oponente não tem unidade em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined || !context.enemyField.unitZone[idx]) {
+        return { success: false, message: "Escolha uma unidade inimiga válida." }
+      }
+      const targetName = context.enemyField.unitZone[idx]!.name
+      context.setEnemyField((prev) => {
+        const zone = [...prev.unitZone]
+        const unit = zone[idx]
+        if (unit) zone[idx] = { ...unit, burnTurnsLeft: 2 }
+        return { ...prev, unitZone: zone as (FieldCard | null)[] }
+      })
+      return {
+        success: true,
+        message: `PRESSÁGIO DE LOGI: ${targetName} entrou em Queimadura (-1DP por turno, 2 turnos)!`,
+      }
+    },
   },
 
   // ========== NEW ACTION FUNCTION CARDS ==========
