@@ -857,6 +857,21 @@ const ALL_CARDS: Card[] = [
     requiresUnit: "Scandinavian Angel Hrotti",
   },
   {
+    id: "gram-sword-ur",
+    name: "GRAM SWORD",
+    image: "/images/cards/gram-sword.png",
+    rarity: "UR",
+    type: "ultimateGear",
+    element: "Aquos",
+    dp: 0,
+    ability: "Poder da Gram Sword",
+    abilityDescription:
+      "Quando equipada em SCANDINAVIAN ANGEL Hrotti, Hrotti ganha +2DP. Você pode selecionar e mandar para o Cemitério um Card do campo do oponente. Esta segunda habilidade pode ser ativada somente uma única vez.",
+    attack: "—",
+    category: "Aquos Ultimate Gear",
+    requiresUnit: "Scandinavian Angel Hrotti",
+  },
+  {
     id: "yggdra-nidhogg-ur",
     name: "YGGDRA NIDHOGG",
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/YGGDRA%20NIDHOGG-vQtHkdJrrtpx8g0lIBPxdksaGCZpRw.png",

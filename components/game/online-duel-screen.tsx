@@ -3677,7 +3677,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) => el.getBoundingClientRect())
   }, [])
 
-  // ─── initGame: called once on mount for multiplayer ────────────────────────
+  // ─── initGame: called once on mount for multiplayer ─────��──────────────────
   const initGame = (playerDeck: DeckWithImages, opponentDeck: DeckWithImages | null) => {
     // Safety: ensure cards is always an array
     const safeCards = Array.isArray(playerDeck.cards) ? playerDeck.cards : []
@@ -4604,6 +4604,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         } else if (ability === "Destruição de Nidhogg") {
           newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 3 }
           bonusMsg = `${requiredUnit} +3 DP! (Yggdra Nidhogg)`
+        } else if (cardToPlace.id === "gram-sword-ur" || ability === "Poder da Gram Sword") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${unit.name} +2 DP! (Gram Sword)`
         }
       }
 
@@ -4639,13 +4642,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!playerField.ultimateZone) return
 
     const ug = playerField.ultimateZone
-  const requiredUnit = ug.requiresUnit || ug.requiresEquip || (ug.id === "vatnavordr-messiham-ur" ? "Hrotti" : ug.id === "yggdra-nidhogg-ur" ? "Logi" : "")
+  const requiredUnit = ug.requiresUnit || ug.requiresEquip || (ug.id === "vatnavordr-messiham-ur" || ug.id === "gram-sword-ur" ? "Hrotti" : ug.id === "yggdra-nidhogg-ur" ? "Logi" : "")
   if (!requiredUnit) return
 
   // Os nomes podem variar entre decks locais e partidas sincronizadas.
   const unitIdx = playerField.unitZone.findIndex((unit) => {
     if (!unit) return false
-    if (ug.id === "vatnavordr-messiham-ur") return unit.name.toLowerCase().includes("hrotti")
+    if (ug.id === "vatnavordr-messiham-ur" || ug.id === "gram-sword-ur") return unit.name.toLowerCase().includes("hrotti")
     if (ug.id === "yggdra-nidhogg-ur") return unit.name.toLowerCase().includes("logi")
     return unit.name === requiredUnit
   })
@@ -4654,7 +4657,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     return
   }
 
-    if (ug.ability === "ODEN SWORD") {
+    if (ug.id === "gram-sword-ur" || ug.name?.toLowerCase().includes("gram sword")) {
+      const hasEnemyCards = enemyField.unitZone.some(Boolean) || enemyField.functionZone.some(Boolean) || !!enemyField.scenarioZone || !!enemyField.ultimateZone
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente não tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "gram_sword" })
+      showEffectFeedback("GRAM SWORD: selecione qualquer carta no campo inimigo para enviar ao Cemitério!", "success")
+    } else if (ug.ability === "ODEN SWORD") {
       // Check if opponent has function cards
       const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
