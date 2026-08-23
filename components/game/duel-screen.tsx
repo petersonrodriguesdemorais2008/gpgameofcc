@@ -241,7 +241,7 @@ interface FunctionCardEffect {
   name: string
   requiresTargets: boolean
   requiresChoice?: boolean
-  choiceOptions?: { id: string; label: string; description: string }[]
+  choiceOptions?: { id: string; label: string; description: string; noTarget?: boolean }[]
   targetConfig?: {
     enemyUnits?: number
     allyUnits?: number
@@ -279,6 +279,29 @@ interface EffectResult {
   needsDrawAndCheckUnit?: boolean
   needsDrawOnly?: boolean
   currentLife?: number
+}
+
+// Case-insensitive element comparison (card data uses "Fire", "Aquos", etc.)
+const isElement = (element: string | undefined, target: string): boolean =>
+  (element || "").trim().toLowerCase() === target.toLowerCase()
+
+// Troop Unit detection — mirrors the "Chamado da Távola" search rule
+const isTroopCard = (card: GameCard): boolean =>
+  card.type === "troops" ||
+  card.type === "trooper" ||
+  (card.type === "unit" &&
+    typeof (card as any).category === "string" &&
+    (card as any).category.toLowerCase().includes("troop"))
+
+// Applies a DP bonus that expires at the end of the current turn.
+// The accumulated amount is tracked in `tempDpBuff` and reverted in endTurn().
+const applyTempDpBuff = (unit: FieldCard | null, amount: number): FieldCard | null => {
+  if (!unit) return null
+  return {
+    ...unit,
+    currentDp: (unit.currentDp ?? unit.dp) + amount,
+    tempDpBuff: ((unit as any).tempDpBuff ?? 0) + amount,
+  } as FieldCard
 }
 
 // Registry of all Function card effects
@@ -1931,6 +1954,256 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const idx = targets?.allyUnitIndices?.[0]
       const unitName = idx !== undefined ? (context.playerField.unitZone[idx]?.name ?? "unidade") : "unidade"
       return { success: true, message: `Cálice de Vinho Sagrado: +1LP restaurado! ${unitName} recebeu +1DP!` }
+    },
+  },
+
+  // ========== NORDIC ACTION FUNCTION CARDS ==========
+
+  "chamas-de-eldfjall": {
+    id: "chamas-de-eldfjall",
+    name: "CHAMAS DE ELDFJALL",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasFire = context.playerField.unitZone.some((u) => u !== null && isElement(u.element, "fire"))
+      if (!hasFire) {
+        return { canActivate: false, reason: "Nenhuma unidade do elemento Fire no seu campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const allyIndex = targets?.allyUnitIndices?.[0]
+      if (allyIndex === undefined) return { success: false, message: "Selecione uma unidade Fire" }
+      const unit = context.playerField.unitZone[allyIndex]
+      if (!unit) return { success: false, message: "Unidade nao encontrada" }
+      if (!isElement(unit.element, "fire")) {
+        return { success: false, message: "A unidade escolhida nao e do elemento Fire" }
+      }
+
+      const currentDp = unit.currentDp ?? unit.dp
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        newUnitZone[allyIndex] = applyTempDpBuff(newUnitZone[allyIndex], 3)
+        return { ...prev, unitZone: newUnitZone }
+      })
+      return { success: true, message: `${unit.name} +3DP ate o fim do turno! (${currentDp} -> ${currentDp + 3})` }
+    },
+  },
+
+  "maelstrom-boreal": {
+    id: "maelstrom-boreal",
+    name: "MAELSTROM BOREAL",
+    requiresTargets: true,
+    targetConfig: { allyUnits: 1 },
+    canActivate: (context) => {
+      const hasAquos = context.playerField.unitZone.some((u) => u !== null && isElement(u.element, "aquos"))
+      if (!hasAquos) {
+        return { canActivate: false, reason: "Nenhuma unidade do elemento Aquos no seu campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const allyIndex = targets?.allyUnitIndices?.[0]
+      if (allyIndex === undefined) return { success: false, message: "Selecione uma unidade Aquos" }
+      const unit = context.playerField.unitZone[allyIndex]
+      if (!unit) return { success: false, message: "Unidade nao encontrada" }
+      if (!isElement(unit.element, "aquos")) {
+        return { success: false, message: "A unidade escolhida nao e do elemento Aquos" }
+      }
+
+      const currentDp = unit.currentDp ?? unit.dp
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        newUnitZone[allyIndex] = applyTempDpBuff(newUnitZone[allyIndex], 3)
+        return { ...prev, unitZone: newUnitZone }
+      })
+      return { success: true, message: `${unit.name} +3DP ate o fim do turno! (${currentDp} -> ${currentDp + 3})` }
+    },
+  },
+
+  "colapso-da-bifrost": {
+    id: "colapso-da-bifrost",
+    name: "COLAPSO DA BIFROST",
+    requiresTargets: false,
+    canActivate: (context) => {
+      if (!context.enemyField.scenarioZone) {
+        return { canActivate: false, reason: "O oponente nao tem carta de Cenario ativa" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const scenario = context.enemyField.scenarioZone
+      if (!scenario) return { success: false, message: "Nenhum Cenario para destruir" }
+
+      const currentLife = context.enemyField.life
+      const newLife = Math.max(0, currentLife - 2)
+      context.setEnemyField((prev) => ({
+        ...prev,
+        scenarioZone: null,
+        graveyard: prev.scenarioZone ? [...prev.graveyard, prev.scenarioZone] : prev.graveyard,
+        life: Math.max(0, prev.life - 2),
+      }))
+      return { success: true, message: `${scenario.name} destruido! Oponente -2LP (${currentLife} -> ${newLife})` }
+    },
+  },
+
+  "forja-de-brokk-e-eitri": {
+    id: "forja-de-brokk-e-eitri",
+    name: "FORJA DE BROKK E EITRI",
+    requiresTargets: false,
+    canActivate: (context) => {
+      if (context.playerField.life <= 5) {
+        return { canActivate: false, reason: "LP insuficiente para pagar 5LP" }
+      }
+      if (!context.playerField.deck.some((c) => c.type === "ultimateGear")) {
+        return { canActivate: false, reason: "Nenhuma Ultimate Gear no seu Deck" }
+      }
+      return { canActivate: true }
+    },
+    // Handled by the deck-search flow in the activation dispatcher
+    resolve: () => ({ success: true, message: "FORJA_BROKK_SEARCH" }),
+  },
+
+  "chamado-ao-banquete-nordico": {
+    id: "chamado-ao-banquete-nordico",
+    name: "CHAMADO AO BANQUETE NÓRDICO",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const hasTarget = context.playerField.graveyard.some(
+        (c) => isTroopCard(c) && (isElement(c.element, "aquos") || isElement(c.element, "fire")),
+      )
+      if (!hasTarget) {
+        return { canActivate: false, reason: "Nenhuma Unidade de Tropa Aquos ou Fire no seu Cemiterio" }
+      }
+      if (!context.playerField.unitZone.some((u) => u === null)) {
+        return { canActivate: false, reason: "Nao ha espaco livre na Zona de Unidades" }
+      }
+      return { canActivate: true }
+    },
+    // Handled by the graveyard-search flow in the activation dispatcher
+    resolve: () => ({ success: true, message: "BANQUETE_NORDICO_REVIVE" }),
+  },
+
+  "dualidade-do-caos-nordico": {
+    id: "dualidade-do-caos-nordico",
+    name: "DUALIDADE DO CAOS NÓRDICO",
+    requiresTargets: true,
+    requiresChoice: true,
+    choiceOptions: [
+      { id: "nordic_draw", label: "Comprar 1 carta", description: "Compre uma carta do seu Deck", noTarget: true },
+      { id: "destroy_unit", label: "Destruir Unidade", description: "Destrua uma unidade do oponente com menos de 5DP" },
+    ],
+    canActivate: (context) => {
+      const hasAngel = context.playerField.unitZone.some(
+        (u) => u !== null && (u.name?.toLowerCase().includes("logi") || u.name?.toLowerCase().includes("hrotti")),
+      )
+      if (!hasAngel) {
+        return { canActivate: false, reason: "Voce precisa ter Scandinavian Angel Logi ou Hrotti no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+
+      if (chosenOption === "nordic_draw") {
+        if (context.playerField.deck.length === 0) {
+          return { success: false, message: "Seu Deck esta vazio" }
+        }
+        const drawnCard = context.playerField.deck[0]
+        context.setPlayerField((prev) => {
+          if (prev.deck.length === 0) return prev
+          return { ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, prev.deck[0]] }
+        })
+        return { success: true, message: `Voce comprou ${drawnCard.name}!` }
+      }
+
+      if (chosenOption === "destroy_unit") {
+        const enemyIndex = targets?.enemyUnitIndices?.[0]
+        if (enemyIndex === undefined) return { success: false, message: "Selecione uma unidade inimiga" }
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        if (!enemyUnit) return { success: false, message: "Unidade inimiga nao encontrada" }
+
+        const enemyDp = enemyUnit.currentDp ?? enemyUnit.dp
+        if (enemyDp >= 5) {
+          return { success: false, message: `${enemyUnit.name} tem ${enemyDp}DP — escolha uma unidade com menos de 5DP` }
+        }
+
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          const newGraveyard = [...prev.graveyard]
+          if (newUnitZone[enemyIndex]) newGraveyard.push(newUnitZone[enemyIndex]!)
+          newUnitZone[enemyIndex] = null
+          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+        })
+        return { success: true, message: `${enemyUnit.name} (${enemyDp}DP) foi destruida!` }
+      }
+
+      return { success: false, message: "Escolha uma opcao" }
+    },
+  },
+
+  "rivalidade-de-destinos-azuis": {
+    id: "rivalidade-de-destinos-azuis",
+    name: "RIVALIDADE DE DESTINOS AZUIS",
+    requiresTargets: true,
+    requiresChoice: true,
+    choiceOptions: [
+      { id: "destroy_unit", label: "Destruir Unidade", description: "Destrua uma unidade do oponente com menos de 4DP" },
+      { id: "destroy_function", label: "Destruir Funcao", description: "Destrua uma carta de Funcao do oponente", noTarget: true },
+    ],
+    canActivate: (context) => {
+      const hasUnit = context.playerField.unitZone.some(
+        (u) => u !== null && (u.name?.toLowerCase().includes("fehnon") || u.name?.toLowerCase().includes("hrotti")),
+      )
+      if (!hasUnit) {
+        return { canActivate: false, reason: "Voce precisa ter Fehnon Hoskie ou Scandinavian Angel Hrotti no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+
+      if (chosenOption === "destroy_function") {
+        const functionIndex = context.enemyField.functionZone.findIndex((c) => c !== null)
+        if (functionIndex === -1) {
+          return { success: false, message: "O oponente nao tem cartas de Funcao no campo" }
+        }
+        const functionCard = context.enemyField.functionZone[functionIndex]!
+        context.setEnemyField((prev) => {
+          const newFunctionZone = [...prev.functionZone]
+          const removed = newFunctionZone[functionIndex]
+          newFunctionZone[functionIndex] = null
+          return {
+            ...prev,
+            functionZone: newFunctionZone,
+            graveyard: removed ? [...prev.graveyard, removed] : prev.graveyard,
+          }
+        })
+        return { success: true, message: `Carta de Funcao ${functionCard.name} do oponente foi destruida!` }
+      }
+
+      if (chosenOption === "destroy_unit") {
+        const enemyIndex = targets?.enemyUnitIndices?.[0]
+        if (enemyIndex === undefined) return { success: false, message: "Selecione uma unidade inimiga" }
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        if (!enemyUnit) return { success: false, message: "Unidade inimiga nao encontrada" }
+
+        const enemyDp = enemyUnit.currentDp ?? enemyUnit.dp
+        if (enemyDp >= 4) {
+          return { success: false, message: `${enemyUnit.name} tem ${enemyDp}DP — escolha uma unidade com menos de 4DP` }
+        }
+
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          const newGraveyard = [...prev.graveyard]
+          if (newUnitZone[enemyIndex]) newGraveyard.push(newUnitZone[enemyIndex]!)
+          newUnitZone[enemyIndex] = null
+          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+        })
+        return { success: true, message: `${enemyUnit.name} (${enemyDp}DP) foi destruida!` }
+      }
+
+      return { success: false, message: "Escolha uma opcao" }
     },
   },
 }
@@ -5322,9 +5595,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             onChoose: (optionId: string) => {
               setChoiceModal(null)
 
-              // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
-              if (optionId === "lp") {
-                const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
+              // Options that need no target (LP damage, card draw, function destruction) resolve immediately
+              const chosenOptionDef = effectToUse.choiceOptions?.find((o) => o.id === optionId)
+              if (optionId === "lp" || chosenOptionDef?.noTarget) {
+                const result = effectToUse.resolve(effectContext, { chosenOption: optionId })
                 if (result.success) {
                   showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
                   setPlayerField((prev) => ({
@@ -5442,6 +5716,99 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
                 })
                 showEffectFeedback(`Pedra de Afiar! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+              },
+              onCancel: () => setDeckSearchModal(null),
+            })
+            return
+          }
+
+          // ── FORJA DE BROKK E EITRI: pay 5LP, search deck for an Ultimate Gear ──
+          if (result.message === "FORJA_BROKK_SEARCH") {
+            const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
+            if (ugCardsInDeck.length === 0) {
+              showEffectFeedback("Nenhuma Ultimate Gear no Deck!", "error")
+              return
+            }
+            if (playerField.life <= 5) {
+              showEffectFeedback("LP insuficiente para pagar 5LP!", "error")
+              return
+            }
+            // Pay the 5LP cost, discard the action card and remove it from hand
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
+              graveyard: [...prev.graveyard, cardToPlace],
+              life: Math.max(0, prev.life - 5),
+            }))
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            showEffectFeedback("Forja de Brokk e Eitri: você pagou 5LP!", "info")
+            setDeckSearchModal({
+              visible: true,
+              title: "Forja de Brokk e Eitri — Escolha uma Ultimate Gear",
+              cards: ugCardsInDeck,
+              onSelect: (chosenCard) => {
+                setDeckSearchModal(null)
+                setPlayerField((prev) => {
+                  const newDeck = prev.deck.filter((c) => c.id !== chosenCard.id)
+                  for (let i = newDeck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+                  }
+                  return { ...prev, hand: [...prev.hand, chosenCard], deck: newDeck }
+                })
+                showEffectFeedback(`Forja de Brokk e Eitri! ${chosenCard.name} adicionada à mão! Deck embaralhado.`, "success")
+              },
+              onCancel: () => setDeckSearchModal(null),
+            })
+            return
+          }
+
+          // ── CHAMADO AO BANQUETE NÓRDICO: revive an Aquos/Fire Troop Unit from the graveyard ──
+          if (result.message === "BANQUETE_NORDICO_REVIVE") {
+            const revivable = playerField.graveyard.filter(
+              (c) => isTroopCard(c) && (isElement(c.element, "aquos") || isElement(c.element, "fire")),
+            )
+            if (revivable.length === 0) {
+              showEffectFeedback("Nenhuma Unidade de Tropa Aquos ou Fire no Cemitério!", "error")
+              return
+            }
+            const freeSlot = playerField.unitZone.findIndex((u) => u === null)
+            if (freeSlot === -1) {
+              showEffectFeedback("Não há espaço livre na Zona de Unidades!", "error")
+              return
+            }
+            setPlayerField((prev) => ({
+              ...prev,
+              hand: prev.hand.filter((_, i) => i !== cardIndex),
+              graveyard: [...prev.graveyard, cardToPlace],
+            }))
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            setDeckSearchModal({
+              visible: true,
+              title: "Chamado ao Banquete Nórdico — Reviva uma Unidade de Tropa",
+              cards: revivable,
+              onSelect: (chosenCard) => {
+                setDeckSearchModal(null)
+                setPlayerField((prev) => {
+                  const slot = prev.unitZone.findIndex((u) => u === null)
+                  if (slot === -1) return prev
+                  const newUnitZone = [...prev.unitZone]
+                  newUnitZone[slot] = {
+                    ...chosenCard,
+                    currentDp: chosenCard.dp,
+                    canAttack: false,
+                    hasAttacked: false,
+                    canAttackTurn: turn,
+                  } as FieldCard
+                  return {
+                    ...prev,
+                    unitZone: newUnitZone,
+                    graveyard: prev.graveyard.filter((c) => c.id !== chosenCard.id),
+                  }
+                })
+                showEffectFeedback(`Chamado ao Banquete Nórdico! ${chosenCard.name} retornou ao campo!`, "success")
               },
               onCancel: () => setDeckSearchModal(null),
             })
@@ -9215,6 +9582,15 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp > 0) {
           return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
         }
+        // Temporary "until end of turn" DP buffs (Chamas de Eldfjall, Maelstrom Boreal, ...)
+        if ((unit as any).tempDpBuff > 0) {
+          const tempAmount = (unit as any).tempDpBuff as number
+          const cur = unit.currentDp ?? unit.dp
+          const reverted = { ...unit, hasAttacked: false, currentDp: Math.max(0, cur - tempAmount) } as any
+          delete reverted.tempDpBuff
+          showEffectFeedback(`${unit.name}: buff temporário de +${tempAmount}DP expirou`, "info")
+          return reverted
+        }
         // dados-da-calamidade debuff (scheduled for next turn)
         if ((unit as any).calamidadeDebuffTurn === turn + 1) {
           const cur = (unit as any).currentDp || unit.dp
@@ -9865,7 +10241,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
     const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
       || itemSelectionMode.itemCard?.name === "Flecha de Balista"
-    if ((itemSelectionMode.chosenOption === "debuff" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
+    if ((itemSelectionMode.chosenOption === "debuff" || itemSelectionMode.chosenOption === "destroy_unit" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
         effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
@@ -9927,7 +10303,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const isVeuBuff = itemSelectionMode.chosenOption === "buff"
 
     // For cards that ONLY target an ally
-    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot" || itemSelectionMode.itemCard?.name === "Troca de Guarda"
+    const isAllyOnlyCard = itemSelectionMode.itemCard?.name === "Ventos de Camelot"
+      || itemSelectionMode.itemCard?.name === "Troca de Guarda"
+      || cardId === "chamas-de-eldfjall"
+      || cardId === "maelstrom-boreal"
 
     // Skip the selectedEnemyIndex check for dice cards, buff options, and ally-only cards
     if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard && !isAllyOnlyCard) return
