@@ -857,6 +857,21 @@ const ALL_CARDS: Card[] = [
     requiresUnit: "Scandinavian Angel Hrotti",
   },
   {
+    id: "gram-sword-ur",
+    name: "GRAM SWORD",
+    image: "/images/cards/gram-sword.png",
+    rarity: "UR",
+    type: "ultimateGear",
+    element: "Aquos",
+    dp: 0,
+    ability: "Poder da Gram Sword",
+    abilityDescription:
+      "Quando equipada em SCANDINAVIAN ANGEL Hrotti, Hrotti ganha +2DP. Você pode selecionar e mandar para o Cemitério um Card do campo do oponente. Esta segunda habilidade pode ser ativada somente uma única vez.",
+    attack: "—",
+    category: "Aquos Ultimate Gear",
+    requiresUnit: "Scandinavian Angel Hrotti",
+  },
+  {
     id: "yggdra-nidhogg-ur",
     name: "YGGDRA NIDHOGG",
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/YGGDRA%20NIDHOGG-vQtHkdJrrtpx8g0lIBPxdksaGCZpRw.png",
@@ -1702,6 +1717,90 @@ const ALL_CARDS: Card[] = [
     ability: "Presságio de Logi",
     abilityDescription:
       "Ativada quando o oponente equipa uma Ultimate Gear em uma Unidade dele, ou quando tenta curar uma unidade, Se você controlar o Logi no seu campo, a unidade inimiga também entra no estado de Queimadura (perde -1DP no início de cada turno do oponente durante 2 turnos, se chegar a 0, a Unidade é destruída e mandada para o cemitério.)",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "podio-da-humilhacao",
+    name: "PÓDIO DA HUMILHAÇÃO",
+    image: "/images/cards/podio-da-humilhacao.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Pódio da Humilhação",
+    abilityDescription:
+      "Ativada quando o oponente usa uma Item Function para curar LP ou aumentar o DP de uma unidade. O efeito do item é invertido. Se o item iria curar, ele causa aquele valor como dano. Se iria dar um bônus de DP, ele se torna uma penalidade de DP. Após o uso, a unidade alvo do oponente não pode receber buffs de outras Functions até o final do próximo turno.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "neblina-de-niflheim",
+    name: "NEBLINA DE NIFLHEIM",
+    image: "/images/cards/neblina-de-niflheim.png",
+    rarity: "UR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Neblina de Niflheim",
+    abilityDescription:
+      "Ativada quando o oponente destrói 2 ou mais Unidades suas no mesmo turno. Você pode escolher uma Unidade da Irmandade SCANDINAVIAN ANGELS no seu Cemitério e invocá-la diretamente no seu campo. Além disso, o seu oponente não pode declarar ataques no próximo turno.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "o-preco-do-caolho",
+    name: "O PREÇO DO CAOLHO",
+    image: "/images/cards/o-preco-do-caolho.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "O Preço do Caolho",
+    abilityDescription:
+      "Ativada quando o oponente joga uma Magic Function. Pague 2LP e negue completamente a ativação da carta ou habilidade do oponente. Se a carta de Scenario Arena Escandinava estiver ativa no seu campo, você também compra 1 carta do topo do seu deck.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "chamado-das-valquirias",
+    name: "CHAMADO DAS VALQUÍRIAS",
+    image: "/images/cards/chamado-das-valquirias.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Chamado das Valquírias",
+    abilityDescription:
+      "Ativada quando uma Unidade do seu campo da Irmandade SCANDINAVIAN ANGELS é destruída por um ataque da Unidade do Oponente. A Unidade do Oponente perde -4DP. Se o DP da Unidade do Oponente chegar a 0 por conta desse efeito, ela é destruída e mandada para o Cemitério, e você ganha +2LP.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "emboscada-dos-berserkers",
+    name: "EMBOSCADA DOS BERSERKERS",
+    image: "/images/cards/emboscada-dos-berserkers.png",
+    rarity: "SR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Emboscada dos Berserkers",
+    abilityDescription:
+      "Ativada quando sua Unidade Ativa, ou você diretamente recebe dano de uma Magic Funcion ou de um ataque inimigo. Reduza o dano recebido pela metade, mas caso você tenha uma Unidade do elemento Fire ou Darkness na sua mão, você revela essa Unidade ao oponente, e todo o dano do oponente é anulado.",
+    attack: "",
+    category: "Trap Funcion Card",
+  },
+  {
+    id: "armadilha-de-gelo",
+    name: "ARMADILHA DE GELO",
+    image: "/images/cards/armadilha-de-gelo.png",
+    rarity: "UR",
+    type: "trap",
+    element: "Void",
+    dp: 0,
+    ability: "Armadilha de Gelo",
+    abilityDescription:
+      "Ativada quando uma Unidade inimiga declara um ataque. O ataque é cancelado e a unidade atacante fica no estado Congelada. Uma unidade congelada não pode atacar nem usar habilidades relacionadas a ela; o controlador só consegue descongelá-la se descartar uma carta da mão.",
     attack: "",
     category: "Trap Funcion Card",
   },
@@ -3911,7 +4010,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_guild_id")
       localStorage.removeItem("gpgame_kicked_from")
 
-      // ── Daily check-in & misc ─────────────────────────────────────────────
+      // ── Daily check-in & misc ���────────────────────────────────────────────
       localStorage.removeItem("gpgame_checkin")
       localStorage.removeItem("gpgame_last_checkin")
 

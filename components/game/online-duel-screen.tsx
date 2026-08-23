@@ -62,6 +62,10 @@ interface FieldCard extends GameCard {
   hasAttacked: boolean
   canAttackTurn: number // Made required, not optional
   frozenUntilTurn?: number
+  /** ARMADILHA DE GELO — exige descarte para descongelar. */
+  frozenByIceTrap?: boolean
+  /** PÓDIO DA HUMILHAÇÃO — bloqueia buffs de Functions. */
+  functionBuffBlockedUntilTurn?: number
   /** PRESSÁGIO DE LOGI — Queimadura: turnos restantes de -1DP */
   burnTurnsLeft?: number
   /** VISÃO DO HROTTI — DP forçado a 0 até o final deste turno */
@@ -1422,6 +1426,91 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "podio-da-humilhacao": {
+    id: "podio-da-humilhacao",
+    name: "PÓDIO DA HUMILHAÇÃO",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Oponente não possui unidade alvo" }),
+    resolve: (context, targets) => {
+      const index = targets?.enemyUnitIndices?.[0]
+      const target = index === undefined ? null : context.enemyField.unitZone[index]
+      if (!target || index === undefined) return { success: false, message: "Selecione uma unidade inimiga" }
+      context.setEnemyField((prev) => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === index && u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 2), functionBuffBlockedUntilTurn: (context.turn ?? 0) + 2 } : u) }))
+      return { success: true, message: `PÓDIO DA HUMILHAÇÃO inverteu o bônus de ${target.name} para -2DP!` }
+    },
+  },
+  "neblina-de-niflheim": {
+    id: "neblina-de-niflheim",
+    name: "NEBLINA DE NIFLHEIM",
+    requiresTargets: false,
+    canActivate: (context) => ({
+      canActivate: context.playerField.unitZone.some(u => u === null) && context.playerField.graveyard.some(c => c.type === "unit" && c.name.toLowerCase().includes("scandinavian angel")),
+      reason: "É necessário ter espaço no campo e uma SCANDINAVIAN ANGEL no Cemitério",
+    }),
+    resolve: (context) => {
+      context.setPlayerField((prev) => {
+        const graveIndex = prev.graveyard.findIndex(c => c.type === "unit" && c.name.toLowerCase().includes("scandinavian angel"))
+        const zoneIndex = prev.unitZone.findIndex(u => u === null)
+        if (graveIndex < 0 || zoneIndex < 0) return prev
+        const angel = prev.graveyard[graveIndex]
+        const units = [...prev.unitZone]
+        units[zoneIndex] = { ...angel, currentDp: angel.dp, canAttack: false, hasAttacked: false, canAttackTurn: context.turn ?? 0 }
+        return { ...prev, unitZone: units, graveyard: prev.graveyard.filter((_, i) => i !== graveIndex) }
+      })
+      return { success: true, message: "NEBLINA DE NIFLHEIM invocou uma SCANDINAVIAN ANGEL e bloqueou os ataques do oponente!" }
+    },
+  },
+  "o-preco-do-caolho": {
+    id: "o-preco-do-caolho",
+    name: "O PREÇO DO CAOLHO",
+    requiresTargets: false,
+    canActivate: (context) => ({ canActivate: context.playerField.life > 2, reason: "Você precisa ter mais de 2LP" }),
+    resolve: (context) => {
+      context.setPlayerField((prev) => {
+        const draw = prev.scenarioZone?.id === "arena-escandinava" ? prev.deck[0] : undefined
+        return { ...prev, life: prev.life - 2, deck: draw ? prev.deck.slice(1) : prev.deck, hand: draw ? [...prev.hand, draw] : prev.hand }
+      })
+      return { success: true, message: "O PREÇO DO CAOLHO pagou 2LP e negou a Magic Function!" }
+    },
+  },
+
+  "chamado-das-valquirias": {
+    id: "chamado-das-valquirias", name: "CHAMADO DAS VALQUÍRIAS", requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Não há atacante válido" }),
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined) return { success: false, message: "Selecione o atacante" }
+      let destroyed = false
+      context.setEnemyField(prev => {
+        const units = [...prev.unitZone]; const attacker = units[idx]
+        if (!attacker) return prev
+        const dp = Math.max(0, (attacker.currentDp ?? attacker.dp) - 4); destroyed = dp === 0
+        units[idx] = destroyed ? null : { ...attacker, currentDp: dp }
+        return { ...prev, unitZone: units, graveyard: destroyed ? [...prev.graveyard, attacker] : prev.graveyard }
+      })
+      if (destroyed) context.setPlayerField(prev => ({ ...prev, life: prev.life + 2 }))
+      return { success: true, message: `CHAMADO DAS VALQUÍRIAS: -4DP!${destroyed ? " Atacante destruído; +2LP!" : ""}` }
+    },
+  },
+  "emboscada-dos-berserkers": {
+    id: "emboscada-dos-berserkers", name: "EMBOSCADA DOS BERSERKERS", requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: () => ({ success: true, message: "EMBOSCADA DOS BERSERKERS preparada para reduzir ou anular dano." }),
+  },
+  "armadilha-de-gelo": {
+    id: "armadilha-de-gelo", name: "ARMADILHA DE GELO", requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Não há atacante válido" }),
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      if (idx === undefined) return { success: false, message: "Selecione o atacante" }
+      context.setEnemyField(prev => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === idx && u ? { ...u, canAttack: false, hasAttacked: true, frozenUntilTurn: Number.MAX_SAFE_INTEGER, frozenByIceTrap: true } : u) }))
+      return { success: true, message: "ARMADILHA DE GELO cancelou o ataque e congelou a unidade!" }
+    },
+  },
+
   "investida-coordenada": {
     id: "investida-coordenada",
     name: "Investida Coordenada",
@@ -2050,7 +2139,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ──────────────────────────
+        // ── PHASE 2: SETTLE  spring 360ms ────────────────────────���─
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -3588,7 +3677,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     enemyUnitRectsRef.current = Array.from(enemyUnitElements).map((el) => el.getBoundingClientRect())
   }, [])
 
-  // ─── initGame: called once on mount for multiplayer ────────────────────────
+  // ─── initGame: called once on mount for multiplayer ─────��──────────────────
   const initGame = (playerDeck: DeckWithImages, opponentDeck: DeckWithImages | null) => {
     // Safety: ensure cards is always an array
     const safeCards = Array.isArray(playerDeck.cards) ? playerDeck.cards : []
@@ -4515,6 +4604,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         } else if (ability === "Destruição de Nidhogg") {
           newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 3 }
           bonusMsg = `${requiredUnit} +3 DP! (Yggdra Nidhogg)`
+        } else if (cardToPlace.id === "gram-sword-ur" || ability === "Poder da Gram Sword") {
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${unit.name} +2 DP! (Gram Sword)`
         }
       }
 
@@ -4550,13 +4642,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!playerField.ultimateZone) return
 
     const ug = playerField.ultimateZone
-  const requiredUnit = ug.requiresUnit || ug.requiresEquip || (ug.id === "vatnavordr-messiham-ur" ? "Hrotti" : ug.id === "yggdra-nidhogg-ur" ? "Logi" : "")
+  const requiredUnit = ug.requiresUnit || ug.requiresEquip || (ug.id === "vatnavordr-messiham-ur" || ug.id === "gram-sword-ur" ? "Hrotti" : ug.id === "yggdra-nidhogg-ur" ? "Logi" : "")
   if (!requiredUnit) return
 
   // Os nomes podem variar entre decks locais e partidas sincronizadas.
   const unitIdx = playerField.unitZone.findIndex((unit) => {
     if (!unit) return false
-    if (ug.id === "vatnavordr-messiham-ur") return unit.name.toLowerCase().includes("hrotti")
+    if (ug.id === "vatnavordr-messiham-ur" || ug.id === "gram-sword-ur") return unit.name.toLowerCase().includes("hrotti")
     if (ug.id === "yggdra-nidhogg-ur") return unit.name.toLowerCase().includes("logi")
     return unit.name === requiredUnit
   })
@@ -4565,7 +4657,15 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     return
   }
 
-    if (ug.ability === "ODEN SWORD") {
+    if (ug.id === "gram-sword-ur" || ug.name?.toLowerCase().includes("gram sword")) {
+      const hasEnemyCards = enemyField.unitZone.some(Boolean) || enemyField.functionZone.some(Boolean) || !!enemyField.scenarioZone || !!enemyField.ultimateZone
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente não tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "gram_sword" })
+      showEffectFeedback("GRAM SWORD: selecione qualquer carta no campo inimigo para enviar ao Cemitério!", "success")
+    } else if (ug.ability === "ODEN SWORD") {
       // Check if opponent has function cards
       const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
@@ -5754,7 +5854,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 }, 500)
               }
 
-              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ──
+              // ── REI ARTHUR SR 2DP: Eclipse de Avalon — ao destruir unidade → 3DP dano direto ��─
               if (newDefenderDp <= 0 && attacker.name.toLowerCase().includes("rei arthur") && attacker.dp === 2) {
                 setTimeout(() => {
                   setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 3) }))
