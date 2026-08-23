@@ -1422,6 +1422,55 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  "podio-da-humilhacao": {
+    id: "podio-da-humilhacao",
+    name: "PÓDIO DA HUMILHAÇÃO",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => ({ canActivate: context.enemyField.unitZone.some(Boolean), reason: "Oponente não possui unidade alvo" }),
+    resolve: (context, targets) => {
+      const index = targets?.enemyUnitIndices?.[0]
+      const target = index === undefined ? null : context.enemyField.unitZone[index]
+      if (!target || index === undefined) return { success: false, message: "Selecione uma unidade inimiga" }
+      context.setEnemyField((prev) => ({ ...prev, unitZone: prev.unitZone.map((u, i) => i === index && u ? { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 2), functionBuffBlockedUntilTurn: (context.turn ?? 0) + 2 } : u) }))
+      return { success: true, message: `PÓDIO DA HUMILHAÇÃO inverteu o bônus de ${target.name} para -2DP!` }
+    },
+  },
+  "neblina-de-niflheim": {
+    id: "neblina-de-niflheim",
+    name: "NEBLINA DE NIFLHEIM",
+    requiresTargets: false,
+    canActivate: (context) => ({
+      canActivate: context.playerField.unitZone.some(u => u === null) && context.playerField.graveyard.some(c => c.type === "unit" && c.name.toLowerCase().includes("scandinavian angel")),
+      reason: "É necessário ter espaço no campo e uma SCANDINAVIAN ANGEL no Cemitério",
+    }),
+    resolve: (context) => {
+      context.setPlayerField((prev) => {
+        const graveIndex = prev.graveyard.findIndex(c => c.type === "unit" && c.name.toLowerCase().includes("scandinavian angel"))
+        const zoneIndex = prev.unitZone.findIndex(u => u === null)
+        if (graveIndex < 0 || zoneIndex < 0) return prev
+        const angel = prev.graveyard[graveIndex]
+        const units = [...prev.unitZone]
+        units[zoneIndex] = { ...angel, currentDp: angel.dp, canAttack: false, hasAttacked: false, canAttackTurn: context.turn ?? 0 }
+        return { ...prev, unitZone: units, graveyard: prev.graveyard.filter((_, i) => i !== graveIndex) }
+      })
+      return { success: true, message: "NEBLINA DE NIFLHEIM invocou uma SCANDINAVIAN ANGEL e bloqueou os ataques do oponente!" }
+    },
+  },
+  "o-preco-do-caolho": {
+    id: "o-preco-do-caolho",
+    name: "O PREÇO DO CAOLHO",
+    requiresTargets: false,
+    canActivate: (context) => ({ canActivate: context.playerField.life > 2, reason: "Você precisa ter mais de 2LP" }),
+    resolve: (context) => {
+      context.setPlayerField((prev) => {
+        const draw = prev.scenarioZone?.id === "arena-escandinava" ? prev.deck[0] : undefined
+        return { ...prev, life: prev.life - 2, deck: draw ? prev.deck.slice(1) : prev.deck, hand: draw ? [...prev.hand, draw] : prev.hand }
+      })
+      return { success: true, message: "O PREÇO DO CAOLHO pagou 2LP e negou a Magic Function!" }
+    },
+  },
+
   "investida-coordenada": {
     id: "investida-coordenada",
     name: "Investida Coordenada",

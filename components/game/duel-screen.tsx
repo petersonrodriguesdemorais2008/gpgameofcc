@@ -158,6 +158,8 @@ interface FieldCard extends GameCard {
   dpZeroUntilTurn?: number
   /** DP saved before a "DP reduced to 0" effect, restored when it expires */
   dpBeforeZero?: number
+  /** PÓDIO DA HUMILHAÇÃO — bloqueia buffs vindos de Functions até este turno. */
+  functionBuffBlockedUntilTurn?: number
   /** For Ultimate cards: which unit on the field this Ultimate is equipped to */
   equippedUnitName?: string
   equippedUnitIndex?: number
@@ -336,9 +338,10 @@ const hasElementOnField = (
 
 // Applies a DP bonus that expires at the end of the current turn.
 // The accumulated amount is tracked in `tempDpBuff` and reverted in endTurn().
-const applyTempDpBuff = (unit: FieldCard | null, amount: number): FieldCard | null => {
-  if (!unit) return null
-  return {
+  const applyTempDpBuff = (unit: FieldCard | null, amount: number): FieldCard | null => {
+    if (!unit) return null
+    if (amount > 0 && unit.functionBuffBlockedUntilTurn !== undefined) return unit
+    return {
     ...unit,
     currentDp: (unit.currentDp ?? unit.dp) + amount,
     tempDpBuff: ((unit as any).tempDpBuff ?? 0) + amount,
@@ -1501,6 +1504,73 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         success: true,
         message: `Armadilha Ativada! VISÃO DO HROTTI congelou ${targetName} e reduziu seu DP a 0 até o fim do próximo turno!`,
       }
+    },
+  },
+  "podio-da-humilhacao": {
+    id: "podio-da-humilhacao",
+    name: "PÓDIO DA HUMILHAÇÃO",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => context.enemyField.unitZone.some(Boolean)
+      ? { canActivate: true }
+      : { canActivate: false, reason: "Oponente não tem unidade para receber a inversão" },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      const target = idx === undefined ? null : context.enemyField.unitZone[idx]
+      if (!target || idx === undefined) return { success: false, message: "Escolha uma unidade inimiga válida." }
+      context.setEnemyField((prev) => {
+        const units = [...prev.unitZone]
+        const unit = units[idx]
+        if (unit) units[idx] = { ...unit, currentDp: Math.max(0, (unit.currentDp ?? unit.dp) - 2), functionBuffBlockedUntilTurn: (context.turn ?? 0) + 2 } as FieldCard
+        return { ...prev, unitZone: units }
+      })
+      return { success: true, message: `PÓDIO DA HUMILHAÇÃO inverteu o bônus: ${target.name} perdeu 2DP e não pode receber buffs de Functions até o fim do próximo turno!` }
+    },
+  },
+  "neblina-de-niflheim": {
+    id: "neblina-de-niflheim",
+    name: "NEBLINA DE NIFLHEIM",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const hasAngel = context.playerField.graveyard.some((c) => (c.type === "unit" || c.type === "troops") && c.name.toLowerCase().includes("scandinavian angel"))
+      const hasSpace = context.playerField.unitZone.some((u) => u === null)
+      if (!hasAngel) return { canActivate: false, reason: "Não há uma Unidade SCANDINAVIAN ANGELS no Cemitério" }
+      if (!hasSpace) return { canActivate: false, reason: "Não há zona de Unidade livre" }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      let summoned = ""
+      context.setPlayerField((prev) => {
+        const graveIndex = prev.graveyard.findIndex((c) => isUnitCard(c) && c.name.toLowerCase().includes("scandinavian angel"))
+        const zoneIndex = prev.unitZone.findIndex((u) => u === null)
+        if (graveIndex === -1 || zoneIndex === -1) return prev
+        const card = prev.graveyard[graveIndex]
+        summoned = card.name
+        const units = [...prev.unitZone]
+        units[zoneIndex] = { ...card, currentDp: card.dp, canAttack: false, hasAttacked: false, canAttackTurn: context.turn ?? 0 }
+        return { ...prev, unitZone: units, graveyard: prev.graveyard.filter((_, i) => i !== graveIndex) }
+      })
+      return { success: true, message: `NEBLINA DE NIFLHEIM invocou ${summoned || "uma Scandinavian Angel"} e encerrou os ataques do oponente!` }
+    },
+  },
+  "o-preco-do-caolho": {
+    id: "o-preco-do-caolho",
+    name: "O PREÇO DO CAOLHO",
+    requiresTargets: false,
+    canActivate: (context) => context.playerField.life > 2
+      ? { canActivate: true }
+      : { canActivate: false, reason: "Você precisa ter mais de 2LP para pagar o custo" },
+    resolve: (context) => {
+      context.setPlayerField((prev) => {
+        const draw = prev.scenarioZone?.id === "arena-escandinava" && prev.deck.length > 0
+        return {
+          ...prev,
+          life: Math.max(0, prev.life - 2),
+          deck: draw ? prev.deck.slice(1) : prev.deck,
+          hand: draw ? [...prev.hand, prev.deck[0]] : prev.hand,
+        }
+      })
+      return { success: true, message: "O PREÇO DO CAOLHO: 2LP pagos; a Magic Function foi negada!" }
     },
   },
   "pressagio-de-logi": {
@@ -4098,7 +4168,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return () => clearTimeout(t)
   }, [enemyField.life])
 
-  // ── AUTO-PLAY INTELIGENTE ──────────────────────────────────────────────────
+  // ── AUTO-PLAY INTELIGENTE ──────────────��───────────────────────────────────
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
 
@@ -9293,7 +9363,64 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           } else {
             // Action function — activate effect and send to graveyard (don't place in zone)
 
-            // ── TRAP CHECK: ESCUDO DE MANA ──────���─����───────────���───────────────
+            // ── NOVAS TRAPS: O PREÇO DO CAOLHO / PÓDIO DA HUMILHAÇÃO ─────────
+            const trapCaolhoIdx = playerField.functionZone.findIndex(
+              f => f?.id === "o-preco-do-caolho" && f.isFaceDown
+            )
+            const magicCannotBeNegatedByTrap = card.id === "sinfonia-relampago"
+            if (card.type === "magic" && !magicCannotBeNegatedByTrap && trapCaolhoIdx !== -1 && playerField.life > 2) {
+              const activate = window.confirm(`Ativar O PREÇO DO CAOLHO contra ${card.name}? Você pagará 2LP.`)
+              if (activate) {
+                const arenaActive = playerField.scenarioZone?.id === "arena-escandinava"
+                consumePlayerTrap(trapCaolhoIdx)
+                setPlayerField(pf => {
+                  const drawn = arenaActive ? pf.deck[0] : undefined
+                  if (drawn) setTimeout(() => showDrawAnimation(drawn), 100)
+                  return {
+                    ...pf,
+                    life: Math.max(0, pf.life - 2),
+                    deck: drawn ? pf.deck.slice(1) : pf.deck,
+                    hand: drawn ? [...pf.hand, drawn] : pf.hand,
+                  }
+                })
+                setEnemyField(e => ({ ...e, graveyard: [...e.graveyard, card] }))
+                newHand = newHand.filter((_, idx) => idx !== i)
+                showEffectFeedback(`O PREÇO DO CAOLHO negou ${card.name}!${arenaActive ? " Arena Escandinava: você comprou 1 carta." : ""}`, "success")
+                continue
+              }
+            }
+
+            const itemDescription = `${card.abilityDescription || ""} ${card.ability || ""}`.toLowerCase()
+            const isHealingItem = (card as any).category === "Item Funcion Card" && /(cura|curar|recuper|\+\d+\s*lp)/.test(itemDescription)
+            const isDpBuffItem = (card as any).category === "Item Funcion Card" && /(\+\d+\s*dp|aument|bônus.*dp|bonus.*dp)/.test(itemDescription)
+            const trapPodioIdx = playerField.functionZone.findIndex(
+              f => f?.id === "podio-da-humilhacao" && f.isFaceDown
+            )
+            if ((isHealingItem || isDpBuffItem) && trapPodioIdx !== -1) {
+              const activate = window.confirm(`Ativar PÓDIO DA HUMILHAÇÃO contra ${card.name} e inverter o efeito?`)
+              if (activate) {
+                const parsedValue = Number(itemDescription.match(/\+?(\d+)\s*(?:lp|dp)/)?.[1] || 2)
+                consumePlayerTrap(trapPodioIdx)
+                if (isHealingItem) {
+                  setEnemyField(e => ({ ...e, life: Math.max(0, e.life - parsedValue), graveyard: [...e.graveyard, card] }))
+                } else {
+                  setEnemyField(e => {
+                    const units = [...e.unitZone]
+                    const targetIdx = units.reduce((best, u, idx) => u && (best === -1 || (u.currentDp ?? u.dp) > (units[best]!.currentDp ?? units[best]!.dp)) ? idx : best, -1)
+                    if (targetIdx !== -1 && units[targetIdx]) {
+                      const u = units[targetIdx]!
+                      units[targetIdx] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - parsedValue), functionBuffBlockedUntilTurn: turn + 2 }
+                    }
+                    return { ...e, unitZone: units, graveyard: [...e.graveyard, card] }
+                  })
+                }
+                newHand = newHand.filter((_, idx) => idx !== i)
+                showEffectFeedback(`PÓDIO DA HUMILHAÇÃO inverteu ${card.name}!`, "success")
+                continue
+              }
+            }
+
+            // ── TRAP CHECK: ESCUDO DE MANA ─────────────────────────────────────
             // Ativa quando o bot usa Magic Function ou Item Function de dano.
             // Efeito: anula o efeito da carta e a destrói (manda para o cemitério
             // do bot sem aplicar o efeito).
@@ -9626,6 +9753,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   .sort(() => Math.random() - 0.5)
 
           const destroyedPlayerSlots = new Set<number>()
+          let neblinaActivated = false
 
           const fireBotAttack = (remaining: number[]) => {
             if (remaining.length === 0) return
@@ -9736,7 +9864,33 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 setTimeout(() => setCardAnimations(prev => { const n={...prev}; delete n[jumpKey]; return n }), 350)
               }, 150)
 
-              if (newDefenderDp <= 0) destroyedPlayerSlots.add(playerUnitIndex)
+              if (newDefenderDp <= 0) {
+                destroyedPlayerSlots.add(playerUnitIndex)
+                const trapNeblinaIdx = playerField.functionZone.findIndex(
+                  f => f?.id === "neblina-de-niflheim" && f.isFaceDown
+                )
+                if (!neblinaActivated && destroyedPlayerSlots.size >= 2 && trapNeblinaIdx !== -1) {
+                  const hasAngel = playerField.graveyard.some(c => isUnitCard(c) && c.name.toLowerCase().includes("scandinavian angel"))
+                    || defender.name.toLowerCase().includes("scandinavian angel")
+                  const hasSpace = playerField.unitZone.some((u, idx) => u === null || destroyedPlayerSlots.has(idx))
+                  if (hasAngel && hasSpace && window.confirm("Ativar NEBLINA DE NIFLHEIM? Invoque uma SCANDINAVIAN ANGEL do Cemitério e encerre os ataques do oponente.")) {
+                    neblinaActivated = true
+                    consumePlayerTrap(trapNeblinaIdx)
+                    setTimeout(() => {
+                      setPlayerField(pf => {
+                        const graveIndex = pf.graveyard.findIndex(c => isUnitCard(c) && c.name.toLowerCase().includes("scandinavian angel"))
+                        const zoneIndex = pf.unitZone.findIndex(u => u === null)
+                        if (graveIndex === -1 || zoneIndex === -1) return pf
+                        const angel = pf.graveyard[graveIndex]
+                        const units = [...pf.unitZone]
+                        units[zoneIndex] = { ...angel, currentDp: calculateCardDP(angel, pf, false), canAttack: false, hasAttacked: false, canAttackTurn: turn }
+                        showEffectFeedback(`NEBLINA DE NIFLHEIM invocou ${angel.name}! O restante dos ataques foi bloqueado.`, "success")
+                        return { ...pf, unitZone: units, graveyard: pf.graveyard.filter((_, idx) => idx !== graveIndex) }
+                      })
+                    }, PROJECTILE_DURATION + 50)
+                  }
+                }
+              }
 
               // Apply damage after projectile lands, then chain next attack
               setTimeout(() => {
@@ -9800,8 +9954,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   return { ...prev, unitZone: u2 as (FieldCard | null)[] }
                 })
 
-                // Fire next attack after a short pause
-                setTimeout(() => fireBotAttack(rest), 400)
+                // Fire next attack after a short pause, unless Neblina encerrou a fase.
+                if (!neblinaActivated) setTimeout(() => fireBotAttack(rest), 400)
               }, PROJECTILE_DURATION)
 
             } else {
