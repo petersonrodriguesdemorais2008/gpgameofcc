@@ -15,6 +15,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ElementalAttackAnimation, type AttackAnimationProps } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import { FreezeCardAnimation } from "./freeze-card-animation"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import { CHESTS, type ChestId } from "@/lib/chests"
 
@@ -2073,7 +2074,7 @@ function StarfieldCanvas() {
       nebBlob(OW*.12,OH*.80, OW*.24,OH*.16, -.30, "rgba(60,30,200,1)",  .15,.08)
       nebBlob(OW*.10,OH*.82, OW*.14,OH*.10, -.22, "rgba(100,60,255,1)", .20,.10)
 
-      // ── LAYER 3: Bright emission cores (HII regions) ──
+      // �������������─ LAYER 3: Bright emission cores (HII regions) ──
       nebBlob(OW*.30,OH*.38, OW*.06,OH*.04, .18, "rgba(255,150,255,1)", .55,.30)
       nebBlob(OW*.77,OH*.22, OW*.05,OH*.03,-.15, "rgba(100,230,255,1)", .58,.32)
       nebBlob(OW*.50,OH*.79, OW*.05,OH*.03, .08, "rgba(255,180,80,1)",  .52,.28)
@@ -2366,7 +2367,7 @@ function StarfieldCanvas() {
       ctx.restore()
     }
 
-    /* ── Runtime particles ── */
+    /* ── Runtime particles ─��� */
     type Dust    = {x:number;y:number;vx:number;vy:number;s:number;a:number;col:string;ph:number;fr:number}
     type Sparkle = {x:number;y:number;s:number;ph:number;fr:number;col:string}
     type Shoot   = {x:number;y:number;vx:number;vy:number;len:number;alpha:number;dec:number;col:string;w:number}
@@ -2851,6 +2852,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
   const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
@@ -3829,7 +3831,18 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
       const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
+      const extraFunctionEffectIds = new Set([
+    "chamado-ao-banquete-nordico",
+    "chamas-de-eldfjall",
+    "maelstrom-boreal",
+    "dualidade-do-caos-nordico",
+    "colapso-da-bifrost",
+    "forja-de-brokk-e-eitri",
+    "rivalidade-de-destinos-azuis",
+  ])
+  const hasExtraFunctionEffect = extraFunctionEffectIds.has(getBaseCardId(cardToPlace.id))
+
+  if (effect || hasExtraFunctionEffect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -4288,7 +4301,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // Helper: find index of a unit by name in a unit zone
   const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number => {
-    return unitZone.findIndex((u) => u && u.name === unitName)
+    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "")
+    const expected = normalize(unitName)
+    return unitZone.findIndex((u) => {
+      if (!u) return false
+      const actual = normalize(u.name)
+      return actual === expected || actual.includes(expected) || expected.includes(actual)
+    })
   }
 
   // Helper: count fire element units in graveyard + field (already used)
@@ -4395,8 +4414,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       data: { zone: "ultimate", card: cardToPlace, source: "hand" },
       timestamp: Date.now(),
     })
-    // Reset one-time ability flag for a new UG
-    setPlayerUgAbilityUsed(false)
+    // A habilidade Ultimate é única por duelo; equipar outra carta não reinicia o uso.
     setSelectedHandCard(null)
     setDraggedHandCard(null)
   }
@@ -4408,15 +4426,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!playerField.ultimateZone) return
 
     const ug = playerField.ultimateZone
-    const requiredUnit = ug.requiresUnit
-    if (!requiredUnit) return
+  const requiredUnit = ug.requiresUnit || ug.requiresEquip || (ug.id === "vatnavordr-messiham-ur" ? "Hrotti" : ug.id === "yggdra-nidhogg-ur" ? "Logi" : "")
+  if (!requiredUnit) return
 
-    // Check if the required unit is on the field
-    const unitIdx = findUnitByName(playerField.unitZone, requiredUnit)
-    if (unitIdx === -1) {
-      showEffectFeedback(`${requiredUnit} precisa estar no campo!`, "error")
-      return
-    }
+  // Os nomes podem variar entre decks locais e partidas sincronizadas.
+  const unitIdx = playerField.unitZone.findIndex((unit) => {
+    if (!unit) return false
+    if (ug.id === "vatnavordr-messiham-ur") return unit.name.toLowerCase().includes("hrotti")
+    if (ug.id === "yggdra-nidhogg-ur") return unit.name.toLowerCase().includes("logi")
+    return unit.name === requiredUnit
+  })
+  if (unitIdx === -1) {
+    showEffectFeedback(`${requiredUnit} precisa estar no campo!`, "error")
+    return
+  }
 
     if (ug.ability === "ODEN SWORD") {
       // Check if opponent has function cards
@@ -4446,7 +4469,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "mefisto" })
       showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
-    } else if (ug.ability === "Congelamento de Vatnavordr") {
+    } else if (ug.id === "vatnavordr-messiham-ur" || ug.name?.toLowerCase().includes("vatnavordr") || ug.ability === "Congelamento de Vatnavordr") {
       const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyCards) {
         showEffectFeedback("Oponente nao tem cartas no campo!", "error")
@@ -4454,7 +4477,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
       showEffectFeedback("VATNAVORDR MESSIHAM: selecione uma carta inimiga para congelar!", "success")
-    } else if (ug.ability === "Destruição de Nidhogg") {
+    } else if (ug.id === "yggdra-nidhogg-ur" || ug.name?.toLowerCase().includes("nidhogg") || ug.ability === "Destruição de Nidhogg") {
       const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
       if (!hasEnemyFunctions) {
         showEffectFeedback("Oponente nao tem cartas de Função no campo!", "error")
@@ -4584,7 +4607,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         if (func) functions[index] = { ...func, frozenUntilTurn: turn + 2 } as FunctionZoneCard
         return { ...prev, functionZone: functions }
       })
-      showEffectFeedback(`VATNAVORDR MESSIHAM: ${target.name} congelada!${type === "unit" ? " -2 LP no oponente!" : ""}`, "success")
+      setFreezeAnimationCard(target.name)
+      showEffectFeedback(`CONGELAMENTO DE VATNAVORDR: ${target.name} congelada!${type === "unit" ? " -2 LP no oponente!" : ""}`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     } else if (ugTargetMode.type === "twiligh_avalon") {
@@ -4628,6 +4652,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setUgTargetMode({ active: false, ugCard: null, type: null })
     } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       // MEFISTO/YGGDRA: destroy the selected card on opponent's field
+      const effectLabel = ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "MEFISTO FOLES"
       if (type === "unit") {
         const unit = enemyField.unitZone[index]
         if (!unit) return
@@ -4642,7 +4667,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
           }
         })
-        showEffectFeedback(`MEFISTO FOLES: ${unit.name} destruida!`, "success")
+        showEffectFeedback(`${effectLabel}: ${unit.name} destruída!`, "success")
       } else {
         const func = enemyField.functionZone[index]
         if (!func) return
@@ -4657,7 +4682,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
           }
         })
-        showEffectFeedback(`MEFISTO FOLES: ${func.name} destruida!`, "success")
+        showEffectFeedback(`${effectLabel}: ${func.name} destruída!`, "success")
       }
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
@@ -6745,7 +6770,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     }, 400)
   }, [supabase, roomData.roomId, playerId])
 
-  // ─── Online chat ─────────────────────────────────────────────────────────
+  // ─── Online chat ────────────────────────────────────────────────────���────
   const subscribeToChat = useCallback(() => {
     if (!supabase) return
     if (chatChannelRef.current) chatChannelRef.current.unsubscribe()
@@ -7245,6 +7270,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
       <ScenarioRevealOverlay
         playerScenario={playerField.scenarioZone}
@@ -7994,13 +8020,12 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                           {playerField.ultimateZone.currentDp} DP
                         </div>
                         {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON, MEFISTO) */}
-                        {isMyTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
-                          playerField.ultimateZone.requiresUnit &&
-                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
+                        {isMyTurn && (phase === "main" || phase === "draw") && !playerUgAbilityUsed && !ugTargetMode.active &&
+                          (playerField.ultimateZone.id === "vatnavordr-messiham-ur" || playerField.ultimateZone.id === "yggdra-nidhogg-ur" || playerField.ultimateZone.name?.toLowerCase().includes("vatnavordr") || playerField.ultimateZone.name?.toLowerCase().includes("nidhogg") || playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON" || playerField.ultimateZone.ability === "MEFISTO" || playerField.ultimateZone.ability === "Congelamento de Vatnavordr" || playerField.ultimateZone.ability === "Destruição de Nidhogg") &&
+                          ((playerField.ultimateZone.id === "vatnavordr-messiham-ur" || playerField.ultimateZone.id === "yggdra-nidhogg-ur" || playerField.ultimateZone.name?.toLowerCase().includes("vatnavordr") || playerField.ultimateZone.name?.toLowerCase().includes("nidhogg")) || ((playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip) && findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit || playerField.ultimateZone.requiresEquip || "") !== -1)) && (
                             <button
                               onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
-                              className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
+                              className="absolute top-1 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
                             >
                               ATIVAR
                             </button>
@@ -9428,7 +9453,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }
         .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* ── SINFONIA RELÂMPAGO CSS ── */
+        /* ─�� SINFONIA RELÂMPAGO CSS ── */
         @keyframes sinBg    { 0%{opacity:.4} 50%{opacity:.15} 100%{opacity:0} }
         @keyframes sinBolt  { 0%{opacity:1}  40%{opacity:.7}  70%{opacity:.2}  85%,100%{opacity:0} }
         @keyframes sinNote  { 0%{opacity:1;transform:scale(.5) translateY(6px)} 25%{opacity:1;transform:scale(1.25) translateY(-5px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-18px)} 100%{opacity:0;transform:scale(.7) translateY(-35px)} }

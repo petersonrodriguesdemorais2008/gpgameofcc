@@ -23,6 +23,7 @@ import { MultiplayerLobby } from "./multiplayer-lobby"
 import { ElementalAttackAnimation, type AttackAnimationProps, getElementPalette, normalizeElement } from "./elemental-attack-animation"
 import { DiscardAnimationManager } from "./card-discard-animation"
 import FieldCardFX from "./field-card-fx"
+import { FreezeCardAnimation } from "./freeze-card-animation"
 import ScenarioRevealOverlay from "./scenario-reveal-overlay"
 import DuelIntroOverlay, { type DuelIntroOpponent } from "./duel-intro-overlay"
  import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
@@ -3389,6 +3390,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [tapView, setTapView] = useState<"player" | "enemy" | null>(null)
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
   const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false)
+  const [freezeAnimationCard, setFreezeAnimationCard] = useState<string | null>(null)
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
@@ -3427,7 +3429,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [fehnonUrSingBonus, setFehnonUrSingBonus] = useState(0) // Tracks Singularidade Zero temp +DP (reset each turn)
 
 
-  // ── Pre-game setup state ──
+  // ── Pre-game setup state ─��
   type Difficulty = 'easy' | 'medium' | 'hard'
   const [setupStep, setSetupStep] = useState<'selectDeck' | 'selectDifficulty' | 'selectBotDeck'>('selectDeck')
   const [pendingPlayerDeck, setPendingPlayerDeck] = useState<DeckWithImages | null>(null)
@@ -6015,9 +6017,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       cardType: cardToPlace.type,
     })
     mpBroadcast("place_card", { zone: "ultimate", card: cardToPlace, source: "hand" })
-    // Reset one-time ability flag for a new UG
-    setPlayerUgAbilityUsed(false)
-    setSelectedHandCard(null)
+  // A habilidade Ultimate é única por duelo; equipar outra carta não reinicia o uso.
+  setSelectedHandCard(null)
     setDraggedHandCard(null)
   }
 
@@ -6045,8 +6046,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const isTwilighAvalon = ugAbilityUpper.includes("TWILIGH") || ugNameLower.includes("twiligh") || ugNameLower.includes("twilight avalon")
     const isMefisto       = ugAbilityUpper.includes("MEFISTO") || ugNameLower.includes("mefisto")
     const isMiguelArcanjo = ugAbilityUpper.includes("MIGUEL ARCANJO") || ugNameLower.includes("miguel arcanjo")
-    const isVatnavordr = ugAbilityUpper.includes("VATNAVORDR") || ugNameLower.includes("vatnavordr")
-    const isYggdra = ugAbilityUpper.includes("NIDHOGG") || ugNameLower.includes("nidhogg")
+    const isVatnavordr = ug.id === "vatnavordr-messiham-ur" || ugAbilityUpper.includes("VATNAVORDR") || ugAbilityUpper.includes("CONGELAMENTO DE VATNAVORDR") || ugNameLower.includes("vatnavordr")
+    const isYggdra = ug.id === "yggdra-nidhogg-ur" || ugAbilityUpper.includes("NIDHOGG") || ugAbilityUpper.includes("DESTRUIÇÃO DE NIDHOGG") || ugNameLower.includes("nidhogg")
 
     if (isOdenSword) {
       // Check if opponent has function cards
@@ -6083,7 +6084,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         return
       }
       setUgTargetMode({ active: true, ugCard: ug, type: "vatnavordr_messiham" })
-      showEffectFeedback("VATNAVORDR MESSIHAM: clique em uma carta inimiga para congelar!", "success")
+      showEffectFeedback("CONGELAMENTO DE VATNAVORDR: selecione uma carta inimiga para congelar!", "success")
     } else if (isYggdra) {
       if (!enemyField.functionZone.some((f) => f !== null)) {
         showEffectFeedback("Oponente não tem cartas de Função no campo!", "error")
@@ -6453,7 +6454,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         return prev
       })
-      showEffectFeedback(`VATNAVORDR MESSIHAM: ${targetCard.name} congelada!${type === "unit" ? " 2 LP de dano causado." : ""}`, "success")
+      setFreezeAnimationCard(targetCard.name)
+      showEffectFeedback(`CONGELAMENTO DE VATNAVORDR: ${targetCard.name} congelada!${type === "unit" ? " 2 LP de dano causado." : ""}`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     } else if (ugTargetMode.type === "twiligh_avalon") {
@@ -6481,6 +6483,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     } else if (ugTargetMode.type === "mefisto" || ugTargetMode.type === "yggdra_nidhogg") {
       // Destroy the selected card on opponent's field
+      const effectLabel = ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG" : "MEFISTO FOLES"
       markDestroyed(targetCard)
       setEnemyField((prev) => {
         let updated = { ...prev, graveyard: [...prev.graveyard, targetCard] }
@@ -6490,7 +6493,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         else if (type === "ultimate") updated = { ...updated, ultimateZones: updated.ultimateZones.map((z:FieldCard|null)=>z?.id === targetCard.id ? null : z) as (FieldCard|null)[] }
         return updated
       })
-      showEffectFeedback(`MEFISTO FOLES: ${targetCard.name} destruida!`, "success")
+      showEffectFeedback(`${effectLabel}: ${targetCard.name} destruída!`, "success")
       setPlayerUgAbilityUsed(true)
       setUgTargetMode({ active: false, ugCard: null, type: null })
     }
@@ -10382,6 +10385,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     >
       {/* Animated starfield — sits at z-0 behind all UI */}
       <StarfieldCanvas />
+      {freezeAnimationCard && <FreezeCardAnimation cardName={freezeAnimationCard} onComplete={() => setFreezeAnimationCard(null)} />}
       {/* Animação cinematográfica quando uma carta de CENÁRIO entra em campo (jogador ou oponente) */}
       <ScenarioRevealOverlay
         playerScenario={playerField.scenarioZone}
@@ -11704,7 +11708,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               "inset 0 0 90px rgba(0,0,0,0.55)",
           }}
         >
-          {/* ── Playmat: laje de obsidiana + nebulosa + runas ── */}
+          {/* ���─ Playmat: laje de obsidiana + nebulosa + runas ── */}
           <div className="absolute inset-0"
             style={{
               background: "linear-gradient(180deg, rgba(17,9,26,0.96) 0%, rgba(11,9,28,0.96) 48%, rgba(6,11,26,0.96) 100%)",
@@ -12467,8 +12471,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           const isFocused = focusIdx === i
                           const n = (c.name || "").toLowerCase()
                           const a = (c.ability || "").toUpperCase()
-                          const unitOnField = !c.requiresUnit || findUnitByName(playerField.unitZone, c.requiresUnit) !== -1
-                          const canActivate = (a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto"))
+                          const isVatnavordr = c.id === "vatnavordr-messiham-ur" || a.includes("VATNAVORDR") || a.includes("CONGELAMENTO DE VATNAVORDR") || n.includes("vatnavordr")
+                          const isYggdra = c.id === "yggdra-nidhogg-ur" || a.includes("NIDHOGG") || a.includes("DESTRUIÇÃO DE NIDHOGG") || n.includes("nidhogg")
+                          const requiredName = c.requiresUnit || (isVatnavordr ? "Hrotti" : isYggdra ? "Logi" : "")
+                          const unitOnField = isVatnavordr || isYggdra || !requiredName || playerField.unitZone.some((unit) => unit && (isVatnavordr ? unit.name.toLowerCase().includes("hrotti") : isYggdra ? unit.name.toLowerCase().includes("logi") : unit.name === requiredName))
+                          const canActivate = isVatnavordr || isYggdra || a.includes("ODEN SWORD") || n.includes("oden sword") || a.includes("TWILIGH") || n.includes("twiligh") || a.includes("MEFISTO") || n.includes("mefisto")
                           const canJudge = a.includes("MIGUEL ARCANJO") || n.includes("miguel arcanjo")
                           return (
                             <div
@@ -12500,7 +12507,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                               {equipChainHighlight?.side === "player" && equipChainHighlight.ultimateIndex === i && (
                                 <EquipChainOverlay reverse />
                               )}
-                              {isFocused && isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
+                              {isPlayerTurn && (phase === "main" || phase === "draw") && !playerUgAbilityUsed && !ugTargetMode.active && canActivate && unitOnField && (
                                 <button onClick={e => { e.stopPropagation(); activateUgAbility(i) }}
                                   className="absolute top-0 inset-x-0 bg-yellow-500/90 hover:bg-yellow-400 text-black text-[7px] font-bold py-0.5 rounded-t animate-pulse z-30 text-center">
                                   ⚡ ATIVAR
@@ -14220,7 +14227,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ──────────────────────────────────────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��─────────────────────────────────────────────────────────────────── */}
+      ─��──────────────────────────────────���──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
@@ -14499,7 +14506,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           to   { opacity:1; }
         }
 
-        /* ── ORDEM DE LACERAÇÃO — sword slash animation ── */
+        /* ── ORDEM DE LACERAÇÃO — sword slash animation ─��� */
         @keyframes lacerationBgFlash {
           0%   { opacity: 0; }
           6%   { opacity: 1; }
@@ -14615,7 +14622,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         .laceration-burst { animation: lacerationBurst 1.8s cubic-bezier(0.2,0.8,0.3,1) forwards; }
 
-        /* ── SINFONIA RELÂMPAGO CSS ── */
+        /* ── SINFONIA RELÂMPAGO CSS ���─ */
         @keyframes sinBg    { 0%{opacity:.4} 50%{opacity:.15} 100%{opacity:0} }
         @keyframes sinBolt  { 0%{opacity:1}  40%{opacity:.7}  70%{opacity:.2}  85%,100%{opacity:0} }
         @keyframes sinNote  { 0%{opacity:1;transform:scale(.5) translateY(6px)} 25%{opacity:1;transform:scale(1.25) translateY(-5px)} 55%{opacity:1;transform:scale(1) translateY(0)} 80%{opacity:.4;transform:scale(1) translateY(-18px)} 100%{opacity:0;transform:scale(.7) translateY(-35px)} }

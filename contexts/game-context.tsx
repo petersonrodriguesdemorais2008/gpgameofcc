@@ -854,7 +854,7 @@ const ALL_CARDS: Card[] = [
     abilityDescription: "Quando equipado em Hrotti, Hrotti ganha +2 DP. Selecione uma carta inimiga para congelá-la até o final do próximo turno do oponente. Se o alvo for uma unidade, cause também 2 DP de dano direto ao LP do oponente. Esta habilidade só pode ser ativada uma vez por duelo.",
     attack: "—",
     category: "Aquos Ultimate Gear",
-    requiresUnit: "Scandinavian Angel Hrotti",
+    requiresUnit: "Hrotti",
   },
   {
     id: "yggdra-nidhogg-ur",
