@@ -1788,13 +1788,15 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
 const getBaseCardId = (cardId: string): string => {
-  // Card IDs in deck are formatted as: "original-id-deck-timestamp"
-  // We need to extract just "original-id"
-  const deckSuffixIndex = cardId.lastIndexOf("-deck-")
-  if (deckSuffixIndex !== -1) {
-    return cardId.substring(0, deckSuffixIndex)
+  // Card IDs can carry suffixes added at deck-build or event/draft setup time:
+  // "original-id-deck-<ts>", "original-id-tap-<ts>", "original-id-ev-<i>", "original-id-evtap-<i>"
+  // Strip ALL known suffixes so effect lookups and card comparisons work in every mode.
+  let id = cardId
+  for (const sep of ["-deck-", "-evtap-", "-ev-", "-tap-"]) {
+    const idx = id.lastIndexOf(sep)
+    if (idx !== -1) id = id.substring(0, idx)
   }
-  return cardId
+  return id
 }
 
 // Helper function to get effect for a card - also checks by card name
@@ -1988,7 +1990,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
           rx=snapRX; ry=snapRY
           cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
 
-          // ── PHASE 3: BOUNCE  800ms ──────────────────────────────
+          // ── PHASE 3: BOUNCE  800ms ──────────────────────────���───
           const BOUNCE=800; let bt0:number|null=null
           function bounceFrame(ts:number){
             if(!bt0) bt0=ts
