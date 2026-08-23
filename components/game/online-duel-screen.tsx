@@ -3831,18 +3831,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       const isDadosCalamidade = cardToPlace.name === "Dados da Calamidade"
       const isChamadoDaTavola = cardToPlace.name === "Chamado da Távola"
 
-      const extraFunctionEffectIds = new Set([
-    "chamado-ao-banquete-nordico",
-    "chamas-de-eldfjall",
-    "maelstrom-boreal",
-    "dualidade-do-caos-nordico",
-    "colapso-da-bifrost",
-    "forja-de-brokk-e-eitri",
-    "rivalidade-de-destinos-azuis",
-  ])
-  const hasExtraFunctionEffect = extraFunctionEffectIds.has(getBaseCardId(cardToPlace.id))
-
-  if (effect || hasExtraFunctionEffect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
