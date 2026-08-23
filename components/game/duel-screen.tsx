@@ -14249,7 +14249,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             {ugTargetMode.type === "oden_sword" ? "ODEN SWORD"
               : ugTargetMode.type === "twiligh_avalon" ? "TWILIGH AVALON"
                 : ugTargetMode.type === "mefisto" ? "MEFISTO FÓLES"
-                  : "JULGAMENTO DIVINO"}
+                  : ugTargetMode.type === "vatnavordr_messiham" ? "CONGELAMENTO DE VATNAVORDR"
+                    : ugTargetMode.type === "yggdra_nidhogg" ? "YGGDRA NIDHOGG"
+                      : "JULGAMENTO DIVINO"}
           </h3>
           <p className="text-yellow-200/80 text-xs mb-2">
             {ugTargetMode.type === "oden_sword"
@@ -14258,7 +14260,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 ? "Selecione 1 carta inimiga para destruir"
                 : ugTargetMode.type === "julgamento_divino"
                   ? "Selecione uma Unidade inimiga para -1DP"
-                  : "Selecione uma carta inimiga para devolver a mao"
+                  : ugTargetMode.type === "vatnavordr_messiham"
+                    ? "Selecione uma carta inimiga para congelar"
+                    : ugTargetMode.type === "yggdra_nidhogg"
+                      ? "Selecione uma carta de Função inimiga para destruir"
+                      : "Selecione uma carta inimiga para devolver a mao"
             }
           </p>
           <button
