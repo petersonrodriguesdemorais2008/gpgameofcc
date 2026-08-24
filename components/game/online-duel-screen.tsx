@@ -2145,7 +2145,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ───────────────────���────���─
+        // ── PHASE 2: SETTLE  spring 360ms ───────────────────�����────���─
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -6018,7 +6018,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             }
 
             // ── PIROMANTES DE LABAREDA: Fogo Compartilhado — outra Unidade de Fogo causou dano direto ──
-            if (isElement(attacker.element, "fire") && attacker.id !== "piromantes-labareda-r") {
+            if ((isElement(attacker.element, "fire") || isElement(attacker.element, "pyrus")) && attacker.id !== "piromantes-labareda-r") {
               // Identifica os Piromantes dentro do updater: usar índices do closure pode
               // aplicar o buff na carta errada se o campo mudou durante a animação.
               let buffed = 0
@@ -6167,7 +6167,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (!priest || newCardSummonsRef.current.has(summonKey)) return
     const candidates = playerField.unitZone
       .map((u, index) => ({ u, index }))
-      .filter(({ u, index }) => u && index !== priestIndex && isElement(u.element, "darkus"))
+      .filter(({ u, index }) => u && index !== priestIndex && (isElement(u.element, "darkus") || isElement(u.element, "darkness") || isElement(u.element, "void")))
     // Só marca como resolvido quando há alvos — senão o efeito nunca mais poderia disparar.
     if (!candidates.length) return
     newCardSummonsRef.current.add(summonKey)

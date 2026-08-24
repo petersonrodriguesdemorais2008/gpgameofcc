@@ -2166,7 +2166,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  // ── CÁLICE DE VINHO SAGRADO ��� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
+  // ── CÁLICE DE VINHO SAGRADO ����� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
   "calice-de-vinho-sagrado": {
     id: "calice-de-vinho-sagrado",
     name: "Cálice de Vinho Sagrado",
@@ -4038,7 +4038,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [onlineRoomData, setOnlineRoomData] = useState<OnlineRoomData|null>(null)
   const onlineRoomDataRef = useRef<OnlineRoomData|null>(null) // always latest, safe in callbacks
 
-  // ── INTRO CINEMÁTICA DO DUELO ──────────────────���──────────────────────────
+  // ── INTRO CINEMÁTICA DO DUELO ──────────────────���─────────���────────────────
   // Antes do duelo começar de verdade: fala do Mestre ativo (áudio
   // <master>_voice_2_introduel.mp3 + balão sincronizado) e o choque
   // "jogador × oponente". Enquanto o overlay está no ar, a OST e o primeiro
@@ -5390,6 +5390,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const shuffledDeck = [...playerDeck.cards].sort(() => Math.random() - 0.5)
     let hand = shuffledDeck.slice(0, startingHand)
     let remainingDeck = shuffledDeck.slice(startingHand)
+
+    // [v0 TEST — REMOVER] injeção temporária p/ verificação dos efeitos das cartas R
+    const V0_TEST_CARDS: GameCard[] = [
+      { id: "thoren-mareen-r", name: "Thoren e Mareen, os Exploradores de Névoa", image: "/images/cards/thoren-mareen.png", rarity: "R", type: "troops", element: "Aquos", dp: 1, ability: "Sinais da Maré", abilityDescription: "Enquanto esta carta estiver em campo, todas as Unidades Aquos do seu campo ganham +2 DP.", attack: "Domínio do Fiorde", category: "Aquos Troops unit" } as any,
+      { id: "vaelor-mestre-emboscada-r", name: "Vaelor, o Mestre da Emboscada", image: "/images/cards/vaelor-mestre-emboscada.png", rarity: "R", type: "troops", element: "Ventus", dp: 1, ability: "Terreno Favorável", abilityDescription: "Após atacar, você pode retornar esta unidade para a mão.", attack: "Avanço Calculado", category: "Ventus Troops unit" } as any,
+      { id: "piromantes-labareda-r", name: "Piromantes de Labareda", image: "/images/cards/piromantes-labareda.png", rarity: "R", type: "troops", element: "Fire", dp: 1, ability: "Fogo Compartilhado", abilityDescription: "Sempre que outra Unidade de Fogo do seu campo causar dano direto aos LP do oponente, esta carta ganha +1 DP.", attack: "Coroa de Fogo", category: "Fire Troops unit" } as any,
+      { id: "runi-mercador-fiordes-r", name: "Rúni, o Mercador dos Fiordes", image: "/images/cards/runi-mercador-fiordes.png", rarity: "R", type: "troops", element: "Aquos", dp: 1, ability: "Troca Justa", abilityDescription: "Uma vez por turno, você pode descartar uma carta da sua mão e comprar uma nova carta.", attack: "Taxa de Passagem", category: "Aquos Troops unit" } as any,
+      { id: "runista-odin-r", name: "Runista de Odin", image: "/images/cards/runista-odin.png", rarity: "R", type: "troops", element: "Haos", dp: 1, ability: "Runa da Revelação", abilityDescription: "Uma vez por turno, você pode descartar uma carta. Se fizer isso, compre 2 cartas.", attack: "Escrita do Destino", category: "Lightness Troops unit" } as any,
+      { id: "sacerdote-olho-perdido-r", name: "Sacerdote do Olho Perdido", image: "/images/cards/sacerdote-olho-perdido.png", rarity: "R", type: "troops", element: "Darkus", dp: 1, ability: "Oferta da Sabedoria Profunda", abilityDescription: "Ao entrar em campo, escolha até duas outras Unidades Darkness do seu campo; elas ganham +2 DP.", attack: "Olhar que Perfura Destinos", category: "Darkness Troops unit" } as any,
+      { id: "v0-test-pyrus", name: "Teste Pyrus", image: "/placeholder.svg", rarity: "R", type: "unit", element: "Pyrus", dp: 2, ability: "", abilityDescription: "", attack: "", category: "Fire unit" } as any,
+      { id: "v0-test-darkus", name: "Teste Void", image: "/placeholder.svg", rarity: "R", type: "unit", element: "Void", dp: 2, ability: "", abilityDescription: "", attack: "", category: "Darkness unit" } as any,
+    ]
+    hand = [...V0_TEST_CARDS, ...hand]
+    // [/v0 TEST]
 
     // Garante ao menos 1 carta jogável no unitZone na mão inicial — sem
     // isso, o embaralhamento puro podia entregar uma mão sem NENHUMA carta
@@ -8389,7 +8403,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }))
 
             // ── PIROMANTES DE LABAREDA: outra unidade Fire causou dano direto ──
-            if (attacker.id !== "piromantes-labareda-r" && isElement(attacker.element, "fire")) {
+            if (attacker.id !== "piromantes-labareda-r" && (isElement(attacker.element, "fire") || isElement(attacker.element, "pyrus"))) {
               setPlayerField(prev => {
                 const unitZone = prev.unitZone.map(unit => unit?.id === "piromantes-labareda-r"
                   ? { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 1 }
@@ -8540,7 +8554,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (!priest || newCardSummonsRef.current.has(summonKey)) return
     const candidates = playerField.unitZone
       .map((u, index) => ({ u, index }))
-      .filter(({ u, index }) => u && index !== priestIndex && (isElement(u.element, "darkus") || isElement(u.element, "darkness")))
+      .filter(({ u, index }) => u && index !== priestIndex && (isElement(u.element, "darkus") || isElement(u.element, "darkness") || isElement(u.element, "void")))
     // Só marca como resolvido quando há alvos — senão o efeito nunca mais poderia disparar
     if (!candidates.length) return
     newCardSummonsRef.current.add(summonKey)
