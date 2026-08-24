@@ -2145,7 +2145,7 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
         if(p < 1){ rafRef.current=requestAnimationFrame(decelFrame); return }
 
-        // ── PHASE 2: SETTLE  spring 360ms ────────────────────────���─
+        // ── PHASE 2: SETTLE  spring 360ms ───────────────────���────���─
         const snapRX  = Math.round(finalRX/360)*360 + target.rx
         const snapRY  = Math.round(finalRY/360)*360 + target.ry
         const fRX = rx, fRY = ry
@@ -3107,7 +3107,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   // ── Pre-game setup state ──
 
 
-  // ── Multiplayer state ──
+  // ���─ Multiplayer state ──
   // ── Ullr states ──
   const [ullrSrMarcaUsed, setUllrSrMarcaUsed] = useState(false)                      // Marca da Caçada — once per duel (or cooldown?) — description says always active, treat as once per main phase
   const [ullrUrJuramentoLastTurn, setUllrUrJuramentoLastTurn] = useState<number|null>(null)  // Juramento Eterno — every 4 turns
@@ -6165,20 +6165,44 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     // o efeito de entrada em campo precisa disparar de novo.
     const summonKey = `sacerdote-olho-perdido-r@${priestIndex}`
     if (!priest || newCardSummonsRef.current.has(summonKey)) return
-    const targets = playerField.unitZone
+    const candidates = playerField.unitZone
       .map((u, index) => ({ u, index }))
       .filter(({ u, index }) => u && index !== priestIndex && isElement(u.element, "darkus"))
-      .slice(0, 2)
     // Só marca como resolvido quando há alvos — senão o efeito nunca mais poderia disparar.
-    if (!targets.length) return
+    if (!candidates.length) return
     newCardSummonsRef.current.add(summonKey)
-    setPlayerField(prev => ({
-      ...prev,
-      unitZone: prev.unitZone.map((u, index) => targets.some(t => t.index === index) && u
-        ? { ...u, currentDp: (u.currentDp ?? u.dp) + 2, priestBonus: (u.priestBonus ?? 0) + 2 }
-        : u) as (FieldCard | null)[],
+    const applyBonus = (indices: number[]) => {
+      setPlayerField(prev => ({
+        ...prev,
+        unitZone: prev.unitZone.map((u, index) => indices.includes(index) && u
+          ? { ...u, currentDp: (u.currentDp ?? u.dp) + 2, priestBonus: (u.priestBonus ?? 0) + 2 }
+          : u) as (FieldCard | null)[],
+      }))
+      const names = candidates.filter(c => indices.includes(c.index)).map(c => c.u!.name).join(" e ")
+      showEffectFeedback(`OFERTA DA SABEDORIA: ${names} recebe${indices.length > 1 ? "m" : ""} +2 DP!`, "success")
+    }
+    if (candidates.length <= 2) { applyBonus(candidates.map(c => c.index)); return }
+    // Mais de 2 unidades Darkness: o jogador ESCOLHE as duas que recebem o bônus
+    const buildOptions = (list: typeof candidates) => list.map(({ u, index }) => ({
+      id: String(index),
+      label: u!.name,
+      description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
     }))
-    showEffectFeedback(`OFERTA DA SABEDORIA: ${targets.map(t => t.u!.name).join(" e ")} recebem +2 DP!`, "success")
+    setChoiceModal({
+      visible: true,
+      cardName: "Oferta da Sabedoria — escolha a 1ª Unidade Darkness (+2 DP)",
+      options: buildOptions(candidates),
+      onChoose: first => {
+        setChoiceModal(null)
+        const firstIndex = Number(first)
+        setChoiceModal({
+          visible: true,
+          cardName: "Oferta da Sabedoria — escolha a 2ª Unidade Darkness (+2 DP)",
+          options: buildOptions(candidates.filter(c => c.index !== firstIndex)),
+          onChoose: second => { setChoiceModal(null); applyBonus([firstIndex, Number(second)]) },
+        })
+      },
+    })
   }, [playerField.unitZone.map(u => u?.id).join(",")])
 
   // ── RÚNI / RUNISTA DE ODIN: descarte 1 carta e compre 1 (Rúni) ou 2 (Runista) ──
@@ -8268,6 +8292,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                               <div className="absolute top-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center">
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
+                            )}
+                            {/* Botão ATIVAR — efeitos opcionais visíveis abaixo da carta */}
+                            {isMyTurn && phase === "main" && playerField.hand.length > 0 &&
+                              ((card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn) ||
+                                (card.id === "runista-odin-r" && runistaAbilityTurn !== turn)) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  activateTradeAbility(card.id as "runi-mercador-fiordes-r" | "runista-odin-r")
+                                }}
+                                className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-30 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold tracking-wider px-2.5 py-0.5 rounded-full shadow-lg shadow-emerald-900/60 animate-pulse whitespace-nowrap border border-emerald-300/50"
+                              >
+                                ATIVAR
+                              </button>
                             )}
                           </>
                         )}
