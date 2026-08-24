@@ -76,6 +76,8 @@ interface FieldCard extends GameCard {
   thorenAuraBonus?: number
   /** OFERTA DA SABEDORIA PROFUNDA (Sacerdote do Olho Perdido) — bônus recebido. */
   priestBonus?: number
+  /** FOGO COMPARTILHADO (Piromantes de Labareda) — bônus acumulado de dano direto. */
+  piromantesBonus?: number
   }
   
   interface FunctionZoneCard extends GameCard {
@@ -6017,19 +6019,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
             // ── PIROMANTES DE LABAREDA: Fogo Compartilhado — outra Unidade de Fogo causou dano direto ──
             if (isElement(attacker.element, "fire") && attacker.id !== "piromantes-labareda-r") {
-              const pyromancers = playerField.unitZone
-                .map((u, index) => ({ u, index }))
-                .filter(({ u }) => u?.id === "piromantes-labareda-r")
-              if (pyromancers.length) {
-                setPlayerField(prev => ({
-                  ...prev,
-                  unitZone: prev.unitZone.map((u, index) =>
-                    u && pyromancers.some(p => p.index === index)
-                      ? { ...u, currentDp: (u.currentDp ?? u.dp) + 1 }
-                      : u) as (FieldCard | null)[],
-                }))
-                setTimeout(() => showEffectFeedback("FOGO COMPARTILHADO: Piromantes de Labareda ganha +1 DP!", "success"), 300)
-              }
+              // Identifica os Piromantes dentro do updater: usar índices do closure pode
+              // aplicar o buff na carta errada se o campo mudou durante a animação.
+              let buffed = 0
+              setPlayerField(prev => {
+                const unitZone = prev.unitZone.map(u => {
+                  if (u?.id !== "piromantes-labareda-r") return u
+                  buffed++
+                  return { ...u, currentDp: (u.currentDp ?? u.dp) + 1, piromantesBonus: (u.piromantesBonus ?? 0) + 1 }
+                }) as (FieldCard | null)[]
+                return buffed ? { ...prev, unitZone } : prev
+              })
+              setTimeout(() => {
+                if (buffed) showEffectFeedback("FOGO COMPARTILHADO: Piromantes de Labareda ganha +1 DP!", "success")
+              }, 300)
             }
 
             // ── HROTTI LR: Ira Maelstrom — after dealing direct battle damage ──
@@ -6156,14 +6159,19 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // ── SACERDOTE DO OLHO PERDIDO: Oferta da Sabedoria Profunda — até 2 Unidades Darkness +2DP ──
   useEffect(() => {
-    const priest = playerField.unitZone.find(u => u?.id === "sacerdote-olho-perdido-r")
-    if (!priest || newCardSummonsRef.current.has(priest.id)) return
-    newCardSummonsRef.current.add(priest.id)
+    const priestIndex = playerField.unitZone.findIndex(u => u?.id === "sacerdote-olho-perdido-r")
+    const priest = priestIndex >= 0 ? playerField.unitZone[priestIndex] : null
+    // A flag é por instância (id + posição): se o Sacerdote for destruído e reinvocado,
+    // o efeito de entrada em campo precisa disparar de novo.
+    const summonKey = `sacerdote-olho-perdido-r@${priestIndex}`
+    if (!priest || newCardSummonsRef.current.has(summonKey)) return
     const targets = playerField.unitZone
       .map((u, index) => ({ u, index }))
-      .filter(({ u }) => u && u.id !== priest.id && isElement(u.element, "darkus"))
+      .filter(({ u, index }) => u && index !== priestIndex && isElement(u.element, "darkus"))
       .slice(0, 2)
+    // Só marca como resolvido quando há alvos — senão o efeito nunca mais poderia disparar.
     if (!targets.length) return
+    newCardSummonsRef.current.add(summonKey)
     setPlayerField(prev => ({
       ...prev,
       unitZone: prev.unitZone.map((u, index) => targets.some(t => t.index === index) && u
@@ -6187,20 +6195,27 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       onChoose: option => {
         setChoiceModal(null)
         const handIndex = Number(option)
-        setPlayerField(prev => {
-          const discarded = prev.hand[handIndex]
-          if (!discarded) return prev
-          const drawn = prev.deck.slice(0, drawCount)
-          drawn.forEach(showDrawAnimation)
-          return {
-            ...prev,
-            hand: [...prev.hand.filter((_, i) => i !== handIndex), ...drawn],
-            deck: prev.deck.slice(drawn.length),
-            graveyard: [...prev.graveyard, discarded],
-          }
-        })
+        const discarded = playerField.hand[handIndex]
+        if (!discarded) return
+        // O baralho precisa ter cartas suficientes: não vale descartar e não comprar nada.
+        const drawn = playerField.deck.slice(0, drawCount)
+        if (drawn.length < drawCount) {
+          showEffectFeedback(
+            `Seu baralho não tem ${drawCount} carta${drawCount > 1 ? "s" : ""} para comprar!`,
+            "error",
+          )
+          return
+        }
+        setPlayerField(prev => ({
+          ...prev,
+          hand: [...prev.hand.filter((_, i) => i !== handIndex), ...drawn],
+          deck: prev.deck.slice(drawn.length),
+          graveyard: [...prev.graveyard, discarded],
+        }))
+        // Animações são efeitos colaterais: rodam fora do updater, que deve ser puro.
+        drawn.forEach(showDrawAnimation)
         if (isRunista) setRunistaAbilityTurn(turn); else setRuniAbilityTurn(turn)
-        showEffectFeedback(`${drawCount} carta${drawCount > 1 ? "s" : ""} comprada${drawCount > 1 ? "s" : ""}!`, "success")
+        showEffectFeedback(`${discarded.name} descartada — ${drawCount} carta${drawCount > 1 ? "s" : ""} comprada${drawCount > 1 ? "s" : ""}!`, "success")
       },
     })
   }
