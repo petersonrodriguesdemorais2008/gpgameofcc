@@ -72,6 +72,10 @@ interface FieldCard extends GameCard {
   dpZeroUntilTurn?: number
   /** DP salvo antes de um efeito de "DP reduzido a 0" */
   dpBeforeZero?: number
+  /** SINAIS DA MARÉ (Thoren e Mareen) — bônus de aura Aquos aplicado atualmente. */
+  thorenAuraBonus?: number
+  /** OFERTA DA SABEDORIA PROFUNDA (Sacerdote do Olho Perdido) — bônus recebido. */
+  priestBonus?: number
   }
   
   interface FunctionZoneCard extends GameCard {
@@ -3122,6 +3126,11 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   // ── Unit ability confirmation modal ──
   const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null>(null)
 
+  // ── Novas cartas R (Troops) ──
+  const [runiAbilityTurn, setRuniAbilityTurn] = useState<number|null>(null)      // Troca Justa — 1x por turno
+  const [runistaAbilityTurn, setRunistaAbilityTurn] = useState<number|null>(null) // Runa da Revelação — 1x por turno
+  const newCardSummonsRef = useRef<Set<string>>(new Set())                       // efeitos de entrada em campo já resolvidos
+
   // ── Mr. P / Vivian effect states ──
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
   const [mrpTargetMode, setMrpTargetMode] = useState(false)  // true while player is picking enemy unit
@@ -5978,6 +5987,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
               if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
               if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) { setFehnonLrDouble(false) }
+
+              maybeReturnVaelor(attacker, attackState.attackerIndex!)
             }
           } else if (attackState.targetInfo!.type === "direct") {
             const directZone = document.querySelector("[data-direct-attack]")
@@ -6004,6 +6015,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               }, 400)
             }
 
+            // ── PIROMANTES DE LABAREDA: Fogo Compartilhado — outra Unidade de Fogo causou dano direto ──
+            if (isElement(attacker.element, "fire") && attacker.id !== "piromantes-labareda-r") {
+              const pyromancers = playerField.unitZone
+                .map((u, index) => ({ u, index }))
+                .filter(({ u }) => u?.id === "piromantes-labareda-r")
+              if (pyromancers.length) {
+                setPlayerField(prev => ({
+                  ...prev,
+                  unitZone: prev.unitZone.map((u, index) =>
+                    u && pyromancers.some(p => p.index === index)
+                      ? { ...u, currentDp: (u.currentDp ?? u.dp) + 1 }
+                      : u) as (FieldCard | null)[],
+                }))
+                setTimeout(() => showEffectFeedback("FOGO COMPARTILHADO: Piromantes de Labareda ganha +1 DP!", "success"), 300)
+              }
+            }
+
             // ── HROTTI LR: Ira Maelstrom — after dealing direct battle damage ──
             if (attacker.name.toLowerCase().includes("hrotti") && attacker.dp === 4 && !hrottiLrIraUsed) {
               setHrottiLrIraUsed(true)
@@ -6023,6 +6051,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
             if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
             if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) setFehnonLrDouble(false)
+
+            maybeReturnVaelor(attacker, attackState.attackerIndex!)
           }
           setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
           setTimeout(() => {
@@ -6103,9 +6133,110 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     })
   }, [playerField.unitZone.map(u => u?.id).join(',')])
 
+  // ── THOREN E MAREEN: Sinais da Maré — aura contínua de +2DP nas Unidades Aquos ──
+  useEffect(() => {
+    setPlayerField(prev => {
+      const thorenCount = prev.unitZone.filter(u => u?.id === "thoren-mareen-r").length
+      let changed = false
+      const unitZone = prev.unitZone.map(unit => {
+        if (!unit) return unit
+        const previousAura = unit.thorenAuraBonus ?? 0
+        const nextAura = isElement(unit.element, "aquos") ? thorenCount * 2 : 0
+        if (previousAura === nextAura) return unit
+        changed = true
+        return {
+          ...unit,
+          currentDp: Math.max(0, (unit.currentDp ?? unit.dp) - previousAura + nextAura),
+          thorenAuraBonus: nextAura,
+        }
+      }) as (FieldCard | null)[]
+      return changed ? { ...prev, unitZone } : prev
+    })
+  }, [playerField.unitZone.map(u => `${u?.id}:${u?.thorenAuraBonus ?? 0}`).join(",")])
+
+  // ── SACERDOTE DO OLHO PERDIDO: Oferta da Sabedoria Profunda — até 2 Unidades Darkness +2DP ──
+  useEffect(() => {
+    const priest = playerField.unitZone.find(u => u?.id === "sacerdote-olho-perdido-r")
+    if (!priest || newCardSummonsRef.current.has(priest.id)) return
+    newCardSummonsRef.current.add(priest.id)
+    const targets = playerField.unitZone
+      .map((u, index) => ({ u, index }))
+      .filter(({ u }) => u && u.id !== priest.id && isElement(u.element, "darkus"))
+      .slice(0, 2)
+    if (!targets.length) return
+    setPlayerField(prev => ({
+      ...prev,
+      unitZone: prev.unitZone.map((u, index) => targets.some(t => t.index === index) && u
+        ? { ...u, currentDp: (u.currentDp ?? u.dp) + 2, priestBonus: (u.priestBonus ?? 0) + 2 }
+        : u) as (FieldCard | null)[],
+    }))
+    showEffectFeedback(`OFERTA DA SABEDORIA: ${targets.map(t => t.u!.name).join(" e ")} recebem +2 DP!`, "success")
+  }, [playerField.unitZone.map(u => u?.id).join(",")])
+
+  // ── RÚNI / RUNISTA DE ODIN: descarte 1 carta e compre 1 (Rúni) ou 2 (Runista) ──
+  const activateTradeAbility = (cardId: "runi-mercador-fiordes-r" | "runista-odin-r") => {
+    const usedTurn = cardId === "runi-mercador-fiordes-r" ? runiAbilityTurn : runistaAbilityTurn
+    if (usedTurn === turn) { showEffectFeedback("Esta habilidade já foi usada neste turno!", "error"); return }
+    if (!playerField.hand.length) { showEffectFeedback("Você não tem cartas na mão para descartar!", "error"); return }
+    const isRunista = cardId === "runista-odin-r"
+    const drawCount = isRunista ? 2 : 1
+    setChoiceModal({
+      visible: true,
+      cardName: `${isRunista ? "Runa da Revelação" : "Troca Justa"} — escolha uma carta para descartar`,
+      options: playerField.hand.map((c, i) => ({ id: String(i), label: c.name, description: c.type })),
+      onChoose: option => {
+        setChoiceModal(null)
+        const handIndex = Number(option)
+        setPlayerField(prev => {
+          const discarded = prev.hand[handIndex]
+          if (!discarded) return prev
+          const drawn = prev.deck.slice(0, drawCount)
+          drawn.forEach(showDrawAnimation)
+          return {
+            ...prev,
+            hand: [...prev.hand.filter((_, i) => i !== handIndex), ...drawn],
+            deck: prev.deck.slice(drawn.length),
+            graveyard: [...prev.graveyard, discarded],
+          }
+        })
+        if (isRunista) setRunistaAbilityTurn(turn); else setRuniAbilityTurn(turn)
+        showEffectFeedback(`${drawCount} carta${drawCount > 1 ? "s" : ""} comprada${drawCount > 1 ? "s" : ""}!`, "success")
+      },
+    })
+  }
+
+  // ── VAELOR, O MESTRE DA EMBOSCADA: Terreno Favorável — após atacar, pode voltar para a mão ──
+  const maybeReturnVaelor = (attacker: FieldCard, vaelorIndex: number) => {
+    if (attacker.id !== "vaelor-mestre-emboscada-r") return
+    setTimeout(() => {
+      setChoiceModal({
+        visible: true,
+        cardName: "Terreno Favorável — retornar Vaelor para a mão?",
+        options: [
+          { id: "yes", label: "Sim, retornar para a mão", description: "Vaelor sai do campo e volta para a sua mão" },
+          { id: "no", label: "Não, permanecer em campo", description: "Vaelor continua no campo de batalha" },
+        ],
+        onChoose: option => {
+          setChoiceModal(null)
+          if (option !== "yes") return
+          setPlayerField(prev => {
+            const returning = prev.unitZone[vaelorIndex]
+            if (!returning || returning.id !== "vaelor-mestre-emboscada-r") return prev
+            const unitZone = [...prev.unitZone]
+            unitZone[vaelorIndex] = null
+            const { currentDp, canAttack, hasAttacked, canAttackTurn, thorenAuraBonus, priestBonus, ...baseCard } = returning as any
+            return { ...prev, unitZone: unitZone as (FieldCard | null)[], hand: [...prev.hand, baseCard] }
+          })
+          newCardSummonsRef.current.delete("vaelor-mestre-emboscada-r")
+          showEffectFeedback("TERRENO FAVORÁVEL: Vaelor retornou para a sua mão!", "success")
+        },
+      })
+    }, 400)
+  }
+
   // ── Morgana UR 3DP: Domínio Eterno — block traps while on field ──
   useEffect(() => {
-    const hasMorganaUr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
+  const hasMorganaUr = playerField.unitZone.some(u => u && u.name.toLowerCase().includes("morgana") && u.dp === 3)
     setMorganaTrapBlocked(hasMorganaUr)
   }, [playerField.unitZone])
 
@@ -8008,10 +8139,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                       (cardName.includes("hrotti") && card.dp === 2 && (hrottiSrLastTurn === null || turn - hrottiSrLastTurn >= 3)) ||
                       (cardName.includes("hrotti") && card.dp === 3 && !hrottiUrUsed) ||
                       (cardName.includes("ullr") && card.dp === 2 && !ullrSrMarcaUsed) ||
-                      (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4))
+                      (cardName.includes("ullr") && card.dp === 3 && (ullrUrJuramentoLastTurn === null || turn - ullrUrJuramentoLastTurn >= 4)) ||
+                      (card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn && playerField.hand.length > 0) ||
+                      (card.id === "runista-odin-r" && runistaAbilityTurn !== turn && playerField.hand.length > 0)
                     )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
+                      if (card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn && playerField.hand.length > 0) return () => activateTradeAbility("runi-mercador-fiordes-r")
+                      if (card.id === "runista-odin-r" && runistaAbilityTurn !== turn && playerField.hand.length > 0) return () => activateTradeAbility("runista-odin-r")
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
@@ -8033,6 +8168,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                             handleAllyUnitSelect(i)
                           } else if (hasAbility && getAbilityFn()) {
                             setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
+                          if (card.id === 'runi-mercador-fiordes-r' && runiAbilityTurn !== turn && playerField.hand.length > 0) return 'runi'
+                          if (card.id === 'runista-odin-r' && runistaAbilityTurn !== turn && playerField.hand.length > 0) return 'runista'
                           if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
                           if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
@@ -9369,7 +9506,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 onClick={() => {
                   const key = unitAbilityConfirm?.abilityKey
                   setUnitAbilityConfirm(null)
-                  if (key === 'merlin') activateMerlinAbility()
+                  if (key === 'runi') activateTradeAbility('runi-mercador-fiordes-r')
+                  else if (key === 'runista') activateTradeAbility('runista-odin-r')
+                  else if (key === 'merlin') activateMerlinAbility()
                   else if (key === 'oswin') activateOswinAbility()
                   else if (key === 'mrp') activateMrPAbility()
                   else if (key === 'hrottiSr') activateHrottiSrAbility()
