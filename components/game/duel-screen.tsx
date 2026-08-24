@@ -2166,7 +2166,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  // ── CÁLICE DE VINHO SAGRADO — Item: restaura 1LP e dá +1DP a uma unidade aliada ──
+  // ── CÁLICE DE VINHO SAGRADO ��� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
   "calice-de-vinho-sagrado": {
     id: "calice-de-vinho-sagrado",
     name: "Cálice de Vinho Sagrado",
@@ -4135,6 +4135,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [unitAbilityConfirm, setUnitAbilityConfirm] = useState<{name:string; abilityKey:string} | null>(null)
   const [runiAbilityTurn, setRuniAbilityTurn] = useState<number | null>(null)
   const [runistaAbilityTurn, setRunistaAbilityTurn] = useState<number | null>(null)
+  // Vaelor: após atacar, o jogador PODE ativar o retorno para a mão (opção ATIVAR abaixo da carta)
+  const [vaelorReturnPendingIndex, setVaelorReturnPendingIndex] = useState<number | null>(null)
   const newCardSummonsRef = useRef<Set<string>>(new Set())
 
   // ── Pause menu / HUD settings ──
@@ -4216,7 +4218,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return () => clearTimeout(t)
   }, [enemyField.life])
 
-  // ── AUTO-PLAY INTELIGENTE ──────────────��───────────────────────────────────
+  // ── AUTO-PLAY INTELIGENTE ─────────���────��───────────────────────────────────
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
 
@@ -8371,15 +8373,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
               if (fehnonUrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 3) { setFehnonUrDouble(false); setFehnonUrUsedDoubleThisTurn(true) }
               if (fehnonLrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 4) { setFehnonLrDouble(false) }
-              if (attacker.id === "vaelor-mestre-emboscada-r" && window.confirm("AVANÇO CALCULADO: retornar Vaelor para a mão após o ataque?")) {
-                setPlayerField(prev => {
-                  const unitZone = [...prev.unitZone]
-                  const returning = unitZone[attackState.attackerIndex!]
-                  if (!returning) return prev
-                  unitZone[attackState.attackerIndex!] = null
-                  return { ...prev, unitZone, hand: [...prev.hand, { ...returning, hasAttacked: false }] }
-                })
-                showEffectFeedback("AVANÇO CALCULADO: Vaelor retornou para a mão!", "success")
+              if (attacker.id === "vaelor-mestre-emboscada-r") {
+                setVaelorReturnPendingIndex(attackState.attackerIndex!)
+                showEffectFeedback("AVANÇO CALCULADO: você pode ATIVAR o retorno de Vaelor para a mão!", "info")
               }
             }
           } else if (attackState.targetInfo!.type === "direct") {
@@ -8401,6 +8397,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 return { ...prev, unitZone }
               })
               showEffectFeedback("FOGO COMPARTILHADO: Piromantes de Labareda ganham +1 DP!", "success")
+            }
+
+            // ── VAELOR: Avanço Calculado — após ataque direto, pode retornar para a mão ──
+            if (attacker.id === "vaelor-mestre-emboscada-r") {
+              setVaelorReturnPendingIndex(attackState.attackerIndex!)
+              showEffectFeedback("AVANÇO CALCULADO: você pode ATIVAR o retorno de Vaelor para a mão!", "info")
             }
 
             // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
@@ -8531,22 +8533,67 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [playerField.unitZone.map(u => `${u?.id}:${(u as any)?.thorenAuraBonus ?? 0}`).join(",")])
 
   useEffect(() => {
-    const priest = playerField.unitZone.find(u => u?.id === "sacerdote-olho-perdido-r")
-    if (!priest || newCardSummonsRef.current.has(priest.id)) return
-    newCardSummonsRef.current.add(priest.id)
-    const targets = playerField.unitZone
+    const priestIndex = playerField.unitZone.findIndex(u => u?.id === "sacerdote-olho-perdido-r")
+    const priest = priestIndex >= 0 ? playerField.unitZone[priestIndex] : null
+    // Flag por instância (id + posição): se o Sacerdote for destruído e reinvocado, o efeito dispara de novo
+    const summonKey = `sacerdote-olho-perdido-r@${priestIndex}`
+    if (!priest || newCardSummonsRef.current.has(summonKey)) return
+    const candidates = playerField.unitZone
       .map((u, index) => ({ u, index }))
-      .filter(({ u }) => u && u.id !== priest.id && (isElement(u.element, "darkus") || isElement(u.element, "darkness")))
-      .slice(0, 2)
-    if (!targets.length) return
-    setPlayerField(prev => ({
-      ...prev,
-      unitZone: prev.unitZone.map((u, index) => targets.some(t => t.index === index) && u
-        ? { ...u, currentDp: (u.currentDp ?? u.dp) + 2, priestBonus: ((u as any).priestBonus ?? 0) + 2 }
-        : u) as (FieldCard | null)[],
+      .filter(({ u, index }) => u && index !== priestIndex && (isElement(u.element, "darkus") || isElement(u.element, "darkness")))
+    // Só marca como resolvido quando há alvos — senão o efeito nunca mais poderia disparar
+    if (!candidates.length) return
+    newCardSummonsRef.current.add(summonKey)
+    const applyBonus = (indices: number[]) => {
+      setPlayerField(prev => ({
+        ...prev,
+        unitZone: prev.unitZone.map((u, index) => indices.includes(index) && u
+          ? { ...u, currentDp: (u.currentDp ?? u.dp) + 2, priestBonus: ((u as any).priestBonus ?? 0) + 2 }
+          : u) as (FieldCard | null)[],
+      }))
+      const names = candidates.filter(c => indices.includes(c.index)).map(c => c.u!.name).join(" e ")
+      showEffectFeedback(`OFERTA DA SABEDORIA: ${names} recebe${indices.length > 1 ? "m" : ""} +2 DP!`, "success")
+    }
+    if (candidates.length <= 2) { applyBonus(candidates.map(c => c.index)); return }
+    // Mais de 2 unidades Darkness: o jogador ESCOLHE as duas que recebem o bônus
+    const buildOptions = (list: typeof candidates) => list.map(({ u, index }) => ({
+      id: String(index),
+      label: u!.name,
+      description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 2}DP`,
+      image: u!.image,
     }))
-    showEffectFeedback(`OFERTA DA SABEDORIA: ${targets.map(t => t.u!.name).join(" e ")} recebem +2 DP!`, "success")
+    setChoiceModal({
+      visible: true,
+      cardName: "Oferta da Sabedoria — escolha a 1ª Unidade Darkness (+2 DP)",
+      options: buildOptions(candidates),
+      onChoose: first => {
+        setChoiceModal(null)
+        const firstIndex = Number(first)
+        setChoiceModal({
+          visible: true,
+          cardName: "Oferta da Sabedoria — escolha a 2ª Unidade Darkness (+2 DP)",
+          options: buildOptions(candidates.filter(c => c.index !== firstIndex)),
+          onChoose: second => { setChoiceModal(null); applyBonus([firstIndex, Number(second)]) },
+        })
+      },
+    })
   }, [playerField.unitZone.map(u => u?.id).join(",")])
+
+  // ── VAELOR: Avanço Calculado — ativação opcional do retorno para a mão ──
+  const activateVaelorReturn = () => {
+    if (vaelorReturnPendingIndex === null) return
+    const idx = vaelorReturnPendingIndex
+    setVaelorReturnPendingIndex(null)
+    setPlayerField(prev => {
+      const returning = prev.unitZone[idx]
+      if (!returning || returning.id !== "vaelor-mestre-emboscada-r") return prev
+      const unitZone = [...prev.unitZone]
+      unitZone[idx] = null
+      const { currentDp, hasAttacked, canAttackTurn, thorenAuraBonus, priestBonus, ...baseCard } = returning as any
+      return { ...prev, unitZone: unitZone as (FieldCard | null)[], hand: [...prev.hand, baseCard] }
+    })
+    showEffectFeedback("AVANÇO CALCULADO: Vaelor retornou para a mão!", "success")
+  }
 
   const activateTradeAbility = (cardId: "runi-mercador-fiordes-r" | "runista-odin-r") => {
     const usedTurn = cardId === "runi-mercador-fiordes-r" ? runiAbilityTurn : runistaAbilityTurn
@@ -10268,6 +10315,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   const endTurn = () => {
     setPhase("end")
+
+    // Vaelor: a janela opcional de retorno para a mão expira no fim do turno
+    setVaelorReturnPendingIndex(null)
 
     // ── PRESSÁGIO DE LOGI / VISÃO DO HROTTI — efeitos aplicados nas unidades do jogador ──
     // Queimadura: -1DP por turno (destrói ao chegar a 0). DP zerado: restaura ao expirar.
@@ -13455,6 +13505,28 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
                             )}
+                            {/* Botão ATIVAR — efeitos opcionais visíveis abaixo da carta */}
+                            {(() => {
+                              const showActivate =
+                                (isPlayerTurn && phase === "main" && card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn && playerField.hand.length > 0) ||
+                                (isPlayerTurn && phase === "main" && card.id === "runista-odin-r" && runistaAbilityTurn !== turn && playerField.hand.length > 0) ||
+                                (card.id === "vaelor-mestre-emboscada-r" && vaelorReturnPendingIndex === i)
+                              if (!showActivate) return null
+                              return (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    playSound("confirm")
+                                    if (card.id === "runi-mercador-fiordes-r") activateTradeAbility("runi-mercador-fiordes-r")
+                                    else if (card.id === "runista-odin-r") activateTradeAbility("runista-odin-r")
+                                    else activateVaelorReturn()
+                                  }}
+                                  className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-30 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold tracking-wider px-2.5 py-0.5 rounded-full shadow-lg shadow-emerald-900/60 animate-pulse whitespace-nowrap border border-emerald-300/50"
+                                >
+                                  ATIVAR
+                                </button>
+                              )
+                            })()}
                           </>
                         )}
                         {!card && isDropTarget && (
@@ -15720,7 +15792,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           to   { opacity:1; }
         }
 
-        /* ── ORDEM DE LACERAÇÃO — sword slash animation ─��� */
+        /* ── ORDEM DE LACERAÇÃO — sword slash animation ������ */
         @keyframes lacerationBgFlash {
           0%   { opacity: 0; }
           6%   { opacity: 1; }
