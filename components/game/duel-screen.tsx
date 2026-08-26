@@ -270,6 +270,8 @@ interface EffectContext {
   setEnemyField: React.Dispatch<React.SetStateAction<FieldState>>
   /** Current duel turn — available when the caller provides it */
   turn?: number
+  /** Último dano recebido pelo jogador (usado por O PORTAL DA YGGDRASIL) */
+  lastDamageToPlayer?: number
   showEffectFeedback?: (message: string, type: "success" | "error" | "warning" | "info") => void
 }
 
@@ -1649,6 +1651,90 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         message: `Armadilha Ativada! PRESSÁGIO DE LOGI colocou ${targetName} em Queimadura por 2 turnos (-1DP por turno)!`,
       }
     },
+  },
+  "o-portal-da-yggdrasil": {
+    id: "o-portal-da-yggdrasil",
+    name: "O PORTAL DA YGGDRASIL",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const dmg = context.lastDamageToPlayer ?? 0
+      if (dmg <= 0) {
+        return { canActivate: false, reason: "Ative apenas depois de receber dano de uma Magic Function ou de um ataque" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const dmg = context.lastDamageToPlayer ?? 0
+      if (dmg <= 0) return { success: false, message: "Nenhum dano recente para refletir." }
+      context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - dmg) }))
+      // Sentinela: resolveTrapEffect abre a visualização do topo do deck inimigo
+      return { success: true, message: `YGGDRASIL_REFLECT|${dmg}` }
+    },
+  },
+  "o-sol-da-meia-noite": {
+    id: "o-sol-da-meia-noite",
+    name: "O SOL DA MEIA-NOITE",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const enemyUnits = context.enemyField.unitZone.filter(Boolean).length
+      const playerUnits = context.playerField.unitZone.filter(Boolean).length
+      if (enemyUnits <= playerUnits) {
+        return { canActivate: false, reason: "O oponente precisa ter mais Unidades que você" }
+      }
+      const hasTarget = context.enemyField.unitZone.some((u) => u && (u.currentDp ?? u.dp) <= 5)
+      if (!hasTarget) return { canActivate: false, reason: "Nenhuma Unidade inimiga com no máximo 5DP" }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      const unit = idx === undefined ? null : context.enemyField.unitZone[idx]
+      if (!unit) return { success: false, message: "Escolha uma unidade inimiga válida." }
+      const dp = unit.currentDp ?? unit.dp
+      if (dp > 5) return { success: false, message: `${unit.name} tem mais de 5DP — escolha outra Unidade.` }
+      context.setPlayerField((prev) => ({ ...prev, life: prev.life + dp }))
+      return { success: true, message: `O SOL DA MEIA-NOITE: você ganhou ${dp} LP (DP de ${unit.name})!` }
+    },
+  },
+  "percepcao-de-skadi": {
+    id: "percepcao-de-skadi",
+    name: "PERCEPÇÃO DE SKADI",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) =>
+      context.enemyField.unitZone.some(Boolean)
+        ? { canActivate: true }
+        : { canActivate: false, reason: "Ative quando o oponente jogar uma Unidade no campo dele" },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      const unit = idx === undefined ? null : context.enemyField.unitZone[idx]
+      if (!unit || idx === undefined) return { success: false, message: "Escolha uma unidade inimiga válida." }
+      context.setEnemyField((prev) => {
+        const zone = [...prev.unitZone]
+        const target = zone[idx]
+        if (!target) return prev
+        const newDp = (target.currentDp ?? target.dp) - 2
+        if (newDp <= 0) {
+          zone[idx] = null
+          return { ...prev, unitZone: zone as (FieldCard | null)[], graveyard: [...prev.graveyard, target] }
+        }
+        zone[idx] = { ...target, currentDp: newDp }
+        return { ...prev, unitZone: zone as (FieldCard | null)[] }
+      })
+      // Sentinela: resolveTrapEffect revela a mão inimiga para escolher 2 descartes
+      return { success: true, message: `SKADI_REVEAL|${unit.name}` }
+    },
+  },
+  "a-lanca-que-tudo-perfura": {
+    id: "a-lanca-que-tudo-perfura",
+    name: "A LANÇA QUE TUDO PERFURA",
+    requiresTargets: false,
+    canActivate: (context) =>
+      context.playerField.unitZone.some(Boolean)
+        ? { canActivate: true }
+        : { canActivate: false, reason: "Você precisa de uma Unidade em campo para atacar" },
+    // Sentinela: resolveTrapEffect arma o efeito para a próxima Trap de negação
+    resolve: () => ({ success: true, message: "LANCA_PERFURA_ARM" }),
   },
 
   // ========== NEW ACTION FUNCTION CARDS ==========
@@ -4860,6 +4946,31 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [turn])
 
   /**
+   * O PORTAL DA YGGDRASIL — guarda o último dano sofrido pelo jogador para que
+   * a armadilha possa refletir exatamente o mesmo valor nos LP do oponente.
+   */
+  const previousPlayerLifeRef = useRef(playerField.life)
+  const lastDamageToPlayerRef = useRef(0)
+  const lastDamageTurnRef = useRef(-99)
+  useEffect(() => {
+    if (playerField.life < previousPlayerLifeRef.current) {
+      lastDamageToPlayerRef.current = previousPlayerLifeRef.current - playerField.life
+      lastDamageTurnRef.current = turn
+    }
+    previousPlayerLifeRef.current = playerField.life
+  }, [playerField.life, turn])
+
+  /**
+   * Só considera o dano "recente" se ele aconteceu no turno atual ou no turno
+   * imediatamente anterior — evita refletir dano antigo muitos turnos depois.
+   */
+  const getRecentDamageToPlayer = () =>
+    turn - lastDamageTurnRef.current <= 1 ? lastDamageToPlayerRef.current : 0
+
+  /** A LANÇA QUE TUDO PERFURA — armada até que uma Trap tente negar seu ataque */
+  const lancaPerfuraArmedRef = useRef(false)
+
+  /**
    * PRESSÁGIO DE LOGI — coloca a unidade inimiga alvo em estado de Queimadura
    * (-1DP no início de cada turno do oponente, por 2 turnos).
    * Exige que o jogador controle o Logi no campo.
@@ -5760,7 +5871,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         setTimeout(() => activateVivianAbility(), 300)
       }
 
-      // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
+      // ─��� REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
       if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
         setTimeout(() => {
           const hasMefisto = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MEFISTO"))
@@ -6969,7 +7080,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return
     }
 
-    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback }
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback, lastDamageToPlayer: getRecentDamageToPlayer() }
     const { canActivate, reason } = effect.canActivate(effectContext)
     if (!canActivate) {
       showEffectFeedback(`${card.name}: ${reason}`, "error")
@@ -6993,7 +7104,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (!card) return
     const effect = getFunctionCardEffect(card)
     if (!effect) return
-    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback }
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback, lastDamageToPlayer: getRecentDamageToPlayer() }
 
     // Reveal the trap face-up immediately for visual feedback, with a brief
     // "activation flash" animation (isRevealing) that clears itself after
@@ -7011,6 +7122,94 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }, 2700)
 
     const result = effect.resolve(effectContext, targets)
+
+    // Consome a armadilha gasta (zona -> cemitério) para as novas Traps UR
+    const sendSpentTrapToGraveyard = () => {
+      setPlayerField((prev) => {
+        const nz = [...prev.functionZone]
+        const spent = nz[slotIndex]
+        if (!spent) return prev
+        nz[slotIndex] = null
+        return { ...prev, functionZone: nz, graveyard: [...prev.graveyard, spent] }
+      })
+    }
+
+    // ── O PORTAL DA YGGDRASIL: dano refletido + reordenar o topo do deck inimigo ──
+    if (result.success && result.message?.startsWith("YGGDRASIL_REFLECT")) {
+      const reflected = Number(result.message.split("|")[1] || 0)
+      lastDamageToPlayerRef.current = 0
+      sendSpentTrapToGraveyard()
+      showEffectFeedback(`O PORTAL DA YGGDRASIL refletiu ${reflected} de dano nos LP do oponente!`, "success")
+      const topCards = enemyField.deck.slice(0, 3)
+      if (topCards.length === 0) return
+      setTimeout(() => {
+        setDeckSearchModal({
+          visible: true,
+          title: "O PORTAL DA YGGDRASIL — Escolha a carta que ficará no topo do deck do oponente",
+          cards: topCards,
+          onSelect: (chosen) => {
+            setDeckSearchModal(null)
+            setEnemyField((prev) => {
+              const top = prev.deck.slice(0, topCards.length)
+              const rest = prev.deck.slice(topCards.length)
+              let pick = top.findIndex((c) => c === chosen)
+              if (pick === -1) pick = top.findIndex((c) => c.id === chosen.id)
+              if (pick === -1) return prev
+              const reordered = [top[pick], ...top.filter((_, i) => i !== pick)]
+              return { ...prev, deck: [...reordered, ...rest] }
+            })
+            showEffectFeedback(`${chosen.name} foi devolvida ao topo do deck do oponente!`, "info")
+          },
+          onCancel: () => setDeckSearchModal(null),
+        })
+      }, 700)
+      return
+    }
+
+    // ── PERCEPÇÃO DE SKADI: revela a mão inimiga e descarta 2 cartas ──
+    if (result.success && result.message?.startsWith("SKADI_REVEAL")) {
+      const unitName = result.message.split("|")[1] || "a unidade inimiga"
+      sendSpentTrapToGraveyard()
+      showEffectFeedback(`PERCEPÇÃO DE SKADI: ${unitName} recebeu -2DP! Mão do oponente revelada.`, "success")
+      const discardStep = (remaining: number, pool: GameCard[]) => {
+        if (remaining <= 0 || pool.length === 0) return
+        setDeckSearchModal({
+          visible: true,
+          title: `PERCEPÇÃO DE SKADI — Escolha a ${remaining === 2 ? "1ª" : "2ª"} carta que o oponente vai descartar`,
+          cards: pool,
+          onSelect: (chosen) => {
+            setDeckSearchModal(null)
+            setEnemyField((prev) => {
+              let handIdx = prev.hand.findIndex((c) => c === chosen)
+              if (handIdx === -1) handIdx = prev.hand.findIndex((c) => c.id === chosen.id)
+              if (handIdx === -1) return prev
+              const discarded = prev.hand[handIdx]
+              return {
+                ...prev,
+                hand: prev.hand.filter((_, i) => i !== handIdx),
+                graveyard: [...prev.graveyard, discarded],
+              }
+            })
+            showEffectFeedback(`${chosen.name} foi descartada ao cemitério do oponente!`, "info")
+            setTimeout(() => discardStep(remaining - 1, pool.filter((c) => c !== chosen)), 500)
+          },
+          onCancel: () => setDeckSearchModal(null),
+        })
+      }
+      setTimeout(() => discardStep(2, [...enemyField.hand]), 700)
+      return
+    }
+
+    // ── A LANÇA QUE TUDO PERFURA: arma a negação da próxima Trap defensiva ──
+    if (result.success && result.message === "LANCA_PERFURA_ARM") {
+      lancaPerfuraArmedRef.current = true
+      sendSpentTrapToGraveyard()
+      showEffectFeedback(
+        "A LANÇA QUE TUDO PERFURA está armada! A próxima Trap que negar seu ataque será anulada e o oponente perderá 1 LP.",
+        "success",
+      )
+      return
+    }
 
     if (result.success && result.message === "PEDRA_AFIAR_SEARCH") {
       const ugCardsInDeck = playerField.deck.filter((c) => c.type === "ultimateGear")
@@ -8219,7 +8418,22 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)
               )
               const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
-              if (trapPortaoIndex !== -1) {
+              // ── A LANÇA QUE TUDO PERFURA: anula a Trap que negaria o ataque ──
+              if (trapPortaoIndex !== -1 && lancaPerfuraArmedRef.current) {
+                lancaPerfuraArmedRef.current = false
+                setEnemyField(prev => {
+                  const newFuncs = [...prev.functionZone]
+                  const negated = newFuncs[trapPortaoIndex]
+                  newFuncs[trapPortaoIndex] = null
+                  return {
+                    ...prev,
+                    functionZone: newFuncs,
+                    life: Math.max(0, prev.life - 1),
+                    graveyard: negated ? [...prev.graveyard, negated] : prev.graveyard,
+                  }
+                })
+                showEffectFeedback("A LANÇA QUE TUDO PERFURA anulou a Trap do oponente e causou 1 de dano direto aos LP dele!", "success")
+              } else if (trapPortaoIndex !== -1) {
                 setEnemyField(prev => {
                   const newFuncs = [...prev.functionZone]
                   newFuncs[trapPortaoIndex] = { ...newFuncs[trapPortaoIndex]!, isFaceDown: false }
@@ -13690,7 +13904,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {card && card.isFaceDown && card.type === "trap" && (() => {
                           const effect = getFunctionCardEffect(card)
                           if (!effect) return false
-                          const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField })
+                          const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField, turn, lastDamageToPlayer: getRecentDamageToPlayer() })
                           return check.canActivate
                         })() && (
                           <button
@@ -15585,7 +15799,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ─────────────────────────────────��────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��──────────────────────────────────���──────────────────────��───────── */}
+      ─��─────────────────────────────────������──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
