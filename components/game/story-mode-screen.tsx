@@ -1591,10 +1591,10 @@ const MAP_NODES: MapNodeDef[] = [
 //  nova posição sempre que o jogador avança de fase.
 
 const PAWN_SPRITE = "/images/player-storymode.png"
-const PAWN_W = 54          // largura do sprite
-const PAWN_H = 54          // altura do sprite
-const PAWN_OFFSET_X = -86  // deslocamento à esquerda do centro do nó
-const PAWN_OFFSET_Y = -56  // deslocamento acima do centro do nó (pés na trilha)
+const PAWN_W = 74          // largura do sprite
+const PAWN_H = 74          // altura do sprite
+const PAWN_OFFSET_X = -96  // deslocamento à esquerda do centro do nó
+const PAWN_OFFSET_Y = -74  // deslocamento acima do centro do nó (pés na trilha)
 
 function PlayerPawn({ x, y }: { x: number; y: number }) {
   const prev = useRef({ x, y })
@@ -1623,9 +1623,9 @@ function PlayerPawn({ x, y }: { x: number; y: number }) {
       {/* Sombra elíptica no chão */}
       <div style={{
         position: "absolute",
-        left: PAWN_OFFSET_X + PAWN_W / 2 - 15,
-        top: PAWN_OFFSET_Y + PAWN_H - 6,
-        width: 30, height: 9, borderRadius: "50%",
+        left: PAWN_OFFSET_X + PAWN_W / 2 - 20,
+        top: PAWN_OFFSET_Y + PAWN_H - 8,
+        width: 40, height: 11, borderRadius: "50%",
         background: "radial-gradient(50% 50%, rgba(0,0,0,0.55), transparent 72%)",
         animation: walking ? "storyPawnShadow .44s ease-in-out infinite" : undefined,
       }}/>
@@ -1633,9 +1633,9 @@ function PlayerPawn({ x, y }: { x: number; y: number }) {
       {/* Halo de posição atual */}
       <div style={{
         position: "absolute",
-        left: PAWN_OFFSET_X + PAWN_W / 2 - 20,
-        top: PAWN_OFFSET_Y + PAWN_H - 13,
-        width: 40, height: 40, borderRadius: "50%",
+        left: PAWN_OFFSET_X + PAWN_W / 2 - 26,
+        top: PAWN_OFFSET_Y + PAWN_H - 17,
+        width: 52, height: 52, borderRadius: "50%",
         border: "2px solid rgba(94,205,245,0.85)",
         transform: "scaleY(0.38)",
         animation: "storyPawnRing 2.1s ease-out infinite",
