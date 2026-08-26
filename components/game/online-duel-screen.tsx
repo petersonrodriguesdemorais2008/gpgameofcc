@@ -2050,7 +2050,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         u !== null && (u.type === "unit" || u.type === "ultimateElemental" || u.type === "ultimateGuardian")
       )
       if (!hasMainUnit) {
-        return { canActivate: false, reason: "Você precisa ter uma Unidade Principal no campo" }
+        return { canActivate: false, reason: "Voc�� precisa ter uma Unidade Principal no campo" }
       }
       return { canActivate: true }
     },
@@ -5819,6 +5819,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           },
         ])
 
+        // ── MIRA PREPARADA (Atiradores Rúnicos): atacou → perde o bônus de "não atacar" neste turno ──
+        if (attacker.id === "atiradores-runicos-r") miraAttackedRef.current.add(attackState.attackerIndex!)
+
         // ── Broadcast attack to opponent ──
         sendActionRef.current({
           type: "attack",
@@ -7255,8 +7258,19 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               const nGY = [...prev.graveyard]
               const t = nUZ[targetIndex]
               if (t) {
-                t.currentDp -= damage
-                if (t.currentDp <= 0) { nGY.push(t); nUZ[targetIndex] = null }
+                const tDp = t.currentDp ?? t.dp
+                // ── GLÓDRIM: Calor Persistente — sobrevive ao 1º ataque recebido em cada turno ──
+                // A proteção só é consumida se o golpe realmente fosse destruir a carta.
+                if (t.id === "glodrim-slime-nordico-r" && t.glodrimShieldUsedTurn !== turn && tDp - damage <= 0) {
+                  nUZ[targetIndex] = { ...t, glodrimShieldUsedTurn: turn }
+                  setTimeout(() => {
+                    showEffectFeedback(`CALOR PERSISTENTE: ${t.name} resistiu ao primeiro ataque deste turno!`, "success")
+                  }, 0)
+                  return { ...prev, unitZone: nUZ, graveyard: nGY }
+                }
+                const nextDp = tDp - damage
+                if (nextDp <= 0) { nGY.push(t); nUZ[targetIndex] = null }
+                else nUZ[targetIndex] = { ...t, currentDp: nextDp }
               }
               return { ...prev, unitZone: nUZ, graveyard: nGY }
             })
@@ -7544,7 +7558,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       ultimateZone: prev.ultimateZone ? expireTempBuff({ ...prev.ultimateZone, hasAttacked: false }) : null,
     }))
 
-    // ── ATIRADORES RÚNICOS: Mira Preparada — não atacou neste turno, ganha +1DP ──
+    // ── ATIRADORES R��NICOS: Mira Preparada — não atacou neste turno, ganha +1DP ──
     setPlayerField(prev => {
       const rewarded: string[] = []
       const unitZone = prev.unitZone.map((unit, index) => {
