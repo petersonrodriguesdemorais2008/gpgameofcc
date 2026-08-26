@@ -1326,6 +1326,105 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
     },
   },
+  "o-portal-da-yggdrasil": {
+    id: "o-portal-da-yggdrasil",
+    name: "O PORTAL DA YGGDRASIL",
+    requiresTargets: false,
+    canActivate: () => ({ canActivate: true }),
+    resolve: (context) => {
+      const strongest = context.enemyField.unitZone.reduce(
+        (max: FieldCard | null, u) => (u && (!max || (u.currentDp ?? u.dp) > (max.currentDp ?? max.dp)) ? u : max),
+        null,
+      )
+      const damage = strongest ? (strongest.currentDp ?? strongest.dp) : 2
+      context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - damage) }))
+      return {
+        success: true,
+        message: `O PORTAL DA YGGDRASIL refletiu ${damage} de dano nos LP do oponente e revelou o topo do deck dele!`,
+      }
+    },
+  },
+  "o-sol-da-meia-noite": {
+    id: "o-sol-da-meia-noite",
+    name: "O SOL DA MEIA-NOITE",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const enemyUnits = context.enemyField.unitZone.filter(Boolean).length
+      const playerUnits = context.playerField.unitZone.filter(Boolean).length
+      if (enemyUnits <= playerUnits) {
+        return { canActivate: false, reason: "O oponente precisa ter mais Unidades que você" }
+      }
+      if (!context.enemyField.unitZone.some((u) => u && (u.currentDp ?? u.dp) <= 5)) {
+        return { canActivate: false, reason: "Nenhuma Unidade inimiga com no máximo 5DP" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      const unit = idx === undefined ? null : context.enemyField.unitZone[idx]
+      if (!unit) return { success: false, message: "Escolha uma unidade inimiga válida." }
+      const dp = unit.currentDp ?? unit.dp
+      if (dp > 5) return { success: false, message: `${unit.name} tem mais de 5DP — escolha outra Unidade.` }
+      context.setPlayerField((prev) => ({ ...prev, life: prev.life + dp }))
+      return { success: true, message: `O SOL DA MEIA-NOITE: você ganhou ${dp} LP (DP de ${unit.name})!` }
+    },
+  },
+  "percepcao-de-skadi": {
+    id: "percepcao-de-skadi",
+    name: "PERCEPÇÃO DE SKADI",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) =>
+      context.enemyField.unitZone.some((u) => u !== null)
+        ? { canActivate: true }
+        : { canActivate: false, reason: "Ative quando o oponente jogar uma Unidade no campo dele" },
+    resolve: (context, targets) => {
+      const idx = targets?.enemyUnitIndices?.[0]
+      const unit = idx === undefined ? null : context.enemyField.unitZone[idx]
+      if (!unit || idx === undefined) return { success: false, message: "Escolha uma unidade inimiga válida." }
+      let discarded = 0
+      context.setEnemyField((prev) => {
+        const zone = [...prev.unitZone]
+        const target = zone[idx]
+        const graveyard = [...prev.graveyard]
+        const hand = [...prev.hand]
+        const toDiscard = hand.splice(0, Math.min(2, hand.length))
+        discarded = toDiscard.length
+        graveyard.push(...toDiscard)
+        if (target) {
+          const newDp = (target.currentDp ?? target.dp) - 2
+          if (newDp <= 0) {
+            zone[idx] = null
+            graveyard.push(target)
+          } else {
+            zone[idx] = { ...target, currentDp: newDp }
+          }
+        }
+        return { ...prev, unitZone: zone as (FieldCard | null)[], hand, graveyard }
+      })
+      return {
+        success: true,
+        message: `PERCEPÇÃO DE SKADI: ${discarded || 2} cartas descartadas da mão do oponente e ${unit.name} recebeu -2DP!`,
+      }
+    },
+  },
+  "a-lanca-que-tudo-perfura": {
+    id: "a-lanca-que-tudo-perfura",
+    name: "A LANÇA QUE TUDO PERFURA",
+    requiresTargets: false,
+    canActivate: (context) =>
+      context.playerField.unitZone.some((u) => u !== null)
+        ? { canActivate: true }
+        : { canActivate: false, reason: "Você precisa de uma Unidade em campo para atacar" },
+    resolve: (context) => {
+      context.setEnemyField((prev) => ({ ...prev, life: Math.max(0, prev.life - 1) }))
+      return {
+        success: true,
+        message: "A LANÇA QUE TUDO PERFURA: a Trap de negação do oponente foi anulada e ele perdeu 1 LP!",
+      }
+    },
+  },
 
   // ========== NEW ACTION FUNCTION CARDS ==========
 
@@ -7552,7 +7651,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             ...prev,
             graveyard: [...prev.graveyard, cardToUse],
           }))
-          // ── Broadcast item card use ──
+          // ─��� Broadcast item card use ──
           sendActionRef.current({
             type: "use_function_card", playerId,
             data: {
