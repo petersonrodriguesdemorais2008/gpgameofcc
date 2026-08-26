@@ -4951,12 +4951,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
    */
   const previousPlayerLifeRef = useRef(playerField.life)
   const lastDamageToPlayerRef = useRef(0)
+  const lastDamageTurnRef = useRef(-99)
   useEffect(() => {
     if (playerField.life < previousPlayerLifeRef.current) {
       lastDamageToPlayerRef.current = previousPlayerLifeRef.current - playerField.life
+      lastDamageTurnRef.current = turn
     }
     previousPlayerLifeRef.current = playerField.life
-  }, [playerField.life])
+  }, [playerField.life, turn])
+
+  /**
+   * Só considera o dano "recente" se ele aconteceu no turno atual ou no turno
+   * imediatamente anterior — evita refletir dano antigo muitos turnos depois.
+   */
+  const getRecentDamageToPlayer = () =>
+    turn - lastDamageTurnRef.current <= 1 ? lastDamageToPlayerRef.current : 0
 
   /** A LANÇA QUE TUDO PERFURA — armada até que uma Trap tente negar seu ataque */
   const lancaPerfuraArmedRef = useRef(false)
@@ -5862,7 +5871,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         setTimeout(() => activateVivianAbility(), 300)
       }
 
-      // ── REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
+      // ─��� REI ARTHUR LR 4DP: O Preço da Coroa — ao entrar em campo, opção de comprar 1 carta ──
       if (cardToPlace.name.toLowerCase().includes("rei arthur") && cardToPlace.dp === 4) {
         setTimeout(() => {
           const hasMefisto = playerField.ultimateZones.some(z=>z?.ability?.toUpperCase().includes("MEFISTO"))
@@ -7071,7 +7080,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       return
     }
 
-    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback, lastDamageToPlayer: lastDamageToPlayerRef.current }
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback, lastDamageToPlayer: getRecentDamageToPlayer() }
     const { canActivate, reason } = effect.canActivate(effectContext)
     if (!canActivate) {
       showEffectFeedback(`${card.name}: ${reason}`, "error")
@@ -7095,7 +7104,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (!card) return
     const effect = getFunctionCardEffect(card)
     if (!effect) return
-    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback, lastDamageToPlayer: lastDamageToPlayerRef.current }
+    const effectContext: EffectContext = { playerField, enemyField, setPlayerField, setEnemyField, turn, showEffectFeedback, lastDamageToPlayer: getRecentDamageToPlayer() }
 
     // Reveal the trap face-up immediately for visual feedback, with a brief
     // "activation flash" animation (isRevealing) that clears itself after
@@ -13895,7 +13904,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {card && card.isFaceDown && card.type === "trap" && (() => {
                           const effect = getFunctionCardEffect(card)
                           if (!effect) return false
-                          const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField })
+                          const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField, turn, lastDamageToPlayer: getRecentDamageToPlayer() })
                           return check.canActivate
                         })() && (
                           <button
@@ -15790,7 +15799,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ─────────────────────────────────��────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��──────────────────────────────────���──────────────────────��───────── */}
+      ─��─────────────────────────────────������──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
