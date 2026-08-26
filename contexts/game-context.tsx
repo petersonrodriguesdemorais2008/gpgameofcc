@@ -1477,6 +1477,32 @@ const ALL_CARDS: Card[] = [
     category: "Item Funcion Card",
   },
   {
+    id: "hidromel-dos-deuses",
+    name: "Hidromel dos Deuses",
+    image: "/images/cards/hidromel-dos-deuses.png",
+    rarity: "SR",
+    type: "item",
+    element: "Haos",
+    dp: 0,
+    ability: "Néctar Divino",
+    abilityDescription: "Restaure 5LP de sua Vida total.",
+    attack: "",
+    category: "Item Funcion Card",
+  },
+  {
+    id: "machado-de-arremesso",
+    name: "Machado de Arremesso",
+    image: "/images/cards/machado-de-arremesso.png",
+    rarity: "SR",
+    type: "item",
+    element: "Pyrus",
+    dp: 0,
+    ability: "Arremesso Flamejante",
+    abilityDescription: "Cause 3DP de dano diretamente a uma Unidade do oponente.",
+    attack: "",
+    category: "Item Funcion Card",
+  },
+  {
     id: "pedra-de-afiar",
     name: "Pedra de Afiar",
     image: "/images/cards/Pedra_de_Afiar.png",
@@ -4067,7 +4093,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("gpgame_card_skins")
       localStorage.removeItem("gpgame_active_skins")
 
-      // ── Titles & pending packs ────────────────────────────────────────────
+      // ── Titles & pending packs ──────────────────────────────────────���─────
       localStorage.removeItem("gpgame_titles")
       localStorage.removeItem("gpgame_pending_packs")
 

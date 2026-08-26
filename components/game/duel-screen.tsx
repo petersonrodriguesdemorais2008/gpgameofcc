@@ -2114,6 +2114,81 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  // ── HIDROMEL DOS DEUSES — Item: restaura 5LP da Vida total do jogador ──
+  "hidromel-dos-deuses": {
+    id: "hidromel-dos-deuses",
+    name: "Hidromel dos Deuses",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const maxLife = 50
+      if (context.playerField.life >= maxLife) {
+        return { canActivate: false, reason: "Seus LP já estão no máximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const maxLife = 50
+      const healAmount = 5
+      const before = context.playerField.life
+      const after = Math.min(before + healAmount, maxLife)
+
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: Math.min(prev.life + healAmount, maxLife),
+      }))
+
+      return {
+        success: true,
+        message: `Hidromel dos Deuses! +${after - before} LP restaurado! (${before} → ${after})`,
+        healAmount: after - before,
+      }
+    },
+  },
+
+  // ── MACHADO DE ARREMESSO — Item: 3DP de dano direto a uma Unidade inimiga ──
+  "machado-de-arremesso": {
+    id: "machado-de-arremesso",
+    name: "Machado de Arremesso",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "O oponente não tem Unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma Unidade inimiga" }
+      }
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+      if (!enemyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 3)
+      const isDestroyed = newDp <= 0
+
+      context.setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (isDestroyed) {
+          newGraveyard.push(enemyUnit)
+          newUnitZone[enemyIndex] = null
+        } else {
+          newUnitZone[enemyIndex] = { ...enemyUnit, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
+      })
+
+      if (isDestroyed) {
+        return { success: true, message: `Machado de Arremesso! 3DP em ${enemyUnit.name} — destruída!` }
+      }
+      return { success: true, message: `Machado de Arremesso! ${enemyUnit.name} -3DP! (${currentDp} → ${newDp})` }
+    },
+  },
+
   "pedra-de-afiar": {
     id: "pedra-de-afiar",
     name: "Pedra de Afiar",
@@ -2166,7 +2241,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  // ── CÁLICE DE VINHO SAGRADO ����� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
+  // ── CÁLICE DE VINHO SAGRADO ������� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
   "calice-de-vinho-sagrado": {
     id: "calice-de-vinho-sagrado",
     name: "Cálice de Vinho Sagrado",
@@ -5391,20 +5466,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     let hand = shuffledDeck.slice(0, startingHand)
     let remainingDeck = shuffledDeck.slice(startingHand)
 
-    // [v0 TEST — REMOVER] injeção temporária p/ verificação dos efeitos das cartas R
-    const V0_TEST_CARDS: GameCard[] = [
-      { id: "thoren-mareen-r", name: "Thoren e Mareen, os Exploradores de Névoa", image: "/images/cards/thoren-mareen.png", rarity: "R", type: "troops", element: "Aquos", dp: 1, ability: "Sinais da Maré", abilityDescription: "Enquanto esta carta estiver em campo, todas as Unidades Aquos do seu campo ganham +2 DP.", attack: "Domínio do Fiorde", category: "Aquos Troops unit" } as any,
-      { id: "vaelor-mestre-emboscada-r", name: "Vaelor, o Mestre da Emboscada", image: "/images/cards/vaelor-mestre-emboscada.png", rarity: "R", type: "troops", element: "Ventus", dp: 1, ability: "Terreno Favorável", abilityDescription: "Após atacar, você pode retornar esta unidade para a mão.", attack: "Avanço Calculado", category: "Ventus Troops unit" } as any,
-      { id: "piromantes-labareda-r", name: "Piromantes de Labareda", image: "/images/cards/piromantes-labareda.png", rarity: "R", type: "troops", element: "Fire", dp: 1, ability: "Fogo Compartilhado", abilityDescription: "Sempre que outra Unidade de Fogo do seu campo causar dano direto aos LP do oponente, esta carta ganha +1 DP.", attack: "Coroa de Fogo", category: "Fire Troops unit" } as any,
-      { id: "runi-mercador-fiordes-r", name: "Rúni, o Mercador dos Fiordes", image: "/images/cards/runi-mercador-fiordes.png", rarity: "R", type: "troops", element: "Aquos", dp: 1, ability: "Troca Justa", abilityDescription: "Uma vez por turno, você pode descartar uma carta da sua mão e comprar uma nova carta.", attack: "Taxa de Passagem", category: "Aquos Troops unit" } as any,
-      { id: "runista-odin-r", name: "Runista de Odin", image: "/images/cards/runista-odin.png", rarity: "R", type: "troops", element: "Haos", dp: 1, ability: "Runa da Revelação", abilityDescription: "Uma vez por turno, você pode descartar uma carta. Se fizer isso, compre 2 cartas.", attack: "Escrita do Destino", category: "Lightness Troops unit" } as any,
-      { id: "sacerdote-olho-perdido-r", name: "Sacerdote do Olho Perdido", image: "/images/cards/sacerdote-olho-perdido.png", rarity: "R", type: "troops", element: "Darkus", dp: 1, ability: "Oferta da Sabedoria Profunda", abilityDescription: "Ao entrar em campo, escolha até duas outras Unidades Darkness do seu campo; elas ganham +2 DP.", attack: "Olhar que Perfura Destinos", category: "Darkness Troops unit" } as any,
-      { id: "v0-test-pyrus", name: "Teste Pyrus", image: "/placeholder.svg", rarity: "R", type: "unit", element: "Pyrus", dp: 2, ability: "", abilityDescription: "", attack: "", category: "Fire unit" } as any,
-      { id: "v0-test-darkus", name: "Teste Void", image: "/placeholder.svg", rarity: "R", type: "unit", element: "Void", dp: 2, ability: "", abilityDescription: "", attack: "", category: "Darkness unit" } as any,
-    ]
-    hand = [...V0_TEST_CARDS, ...hand]
-    // [/v0 TEST]
-
     // Garante ao menos 1 carta jogável no unitZone na mão inicial — sem
     // isso, o embaralhamento puro podia entregar uma mão sem NENHUMA carta
     // assim, travando qualquer fluxo (tutorial ou jogo normal) que dependa
@@ -5918,8 +5979,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const isVeredito = cardToPlace.name === "Veredito do Rei Tirano"
       const isJulgamentoVazio = cardToPlace.name === "Julgamento do Vazio Eterno"
       const isCaliceVinho    = cardToPlace.name === "Cálice de Vinho Sagrado"
+      const isHidromelDeuses = cardToPlace.name === "Hidromel dos Deuses"
+      const isMachadoArremesso = cardToPlace.name === "Machado de Arremesso"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazio || isCaliceVinho) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazio || isCaliceVinho || isHidromelDeuses || isMachadoArremesso) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -5950,6 +6013,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           else if (isVeredito) effectToUse = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
           else if (isJulgamentoVazio) effectToUse = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
           else if (isCaliceVinho)    effectToUse = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
+          else if (isHidromelDeuses) effectToUse = FUNCTION_CARD_EFFECTS["hidromel-dos-deuses"]
+          else if (isMachadoArremesso) effectToUse = FUNCTION_CARD_EFFECTS["machado-de-arremesso"]
         }
 
         if (!effectToUse) return // Safety check
@@ -5970,7 +6035,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const _arthurSrOnField = enemyField.unitZone.some(u =>
           u && u.name.toLowerCase().includes("rei arthur") && u.dp === 2
         )
-        const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas"]
+        const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","hidromel-dos-deuses"]
         const _isHealingCard = _healingCardIds.some(id => effectToUse.id?.includes(id)) ||
           (cardToPlace.name.toLowerCase().includes("bandagem") || cardToPlace.name.toLowerCase().includes("cristal recuperador") ||
            cardToPlace.name.toLowerCase().includes("kit médico") || cardToPlace.name.toLowerCase().includes("soro recuperador"))
@@ -8403,7 +8468,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }))
 
             // ── PIROMANTES DE LABAREDA: outra unidade Fire causou dano direto ──
-            if (attacker.id !== "piromantes-labareda-r" && (isElement(attacker.element, "fire") || isElement(attacker.element, "pyrus"))) {
+            // Só dispara se o Piromantes REALMENTE estiver em campo — antes o feedback
+            // aparecia mesmo sem nenhum Piromantes, dando a impressão de efeito fantasma.
+            if (
+              attacker.id !== "piromantes-labareda-r" &&
+              (isElement(attacker.element, "fire") || isElement(attacker.element, "pyrus")) &&
+              playerField.unitZone.some(u => u?.id === "piromantes-labareda-r")
+            ) {
               setPlayerField(prev => {
                 const unitZone = prev.unitZone.map(unit => unit?.id === "piromantes-labareda-r"
                   ? { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 1 }
@@ -9665,7 +9736,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // ── TRAP CHECK: PRESSÁGIO DE LOGI (oponente tenta curar) ─────────
             // Ativa quando o bot usa uma carta de cura. A carta resolve normalmente,
             // mas a unidade inimiga entra em Queimadura.
-            const __healingIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","calice-de-vinho-sagrado"]
+            const __healingIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","calice-de-vinho-sagrado","hidromel-dos-deuses"]
             if (__healingIds.some(id => card.id?.includes(id))) {
               triggerPressagioDeLogi(`${card.name} — tentativa de cura`)
             }
@@ -11094,6 +11165,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
     const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
       || itemSelectionMode.itemCard?.name === "Flecha de Balista"
+      || itemSelectionMode.itemCard?.name === "Machado de Arremesso"
     if ((itemSelectionMode.chosenOption === "debuff" || itemSelectionMode.chosenOption === "destroy_unit" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
@@ -11242,6 +11314,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
       else if (isChamadoDaTavola2) effect = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
       else if (itemSelectionMode.itemCard.name === "Veredito do Rei Tirano") effect = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
+      else if (itemSelectionMode.itemCard.name === "Hidromel dos Deuses") effect = FUNCTION_CARD_EFFECTS["hidromel-dos-deuses"]
+      else if (itemSelectionMode.itemCard.name === "Machado de Arremesso") effect = FUNCTION_CARD_EFFECTS["machado-de-arremesso"]
     }
 
     if (effect) {
@@ -13375,7 +13449,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const cardName = card?.name.toLowerCase() ?? ''
                     // Only cards with a MANUAL main-phase ability get the green glow.
                     // Attack-triggered effects (Arthur Veredito/Cálice, Mordred Camlann) do NOT need a click — they fire automatically when the player drags to attack.
-                    const hasAbility = card && isPlayerTurn && phase === "main" && (
+                    // Vaelor: a janela de retorno abre DEPOIS de atacar (fase de batalha),
+                    // então ela não pode ficar presa ao phase === "main" das demais.
+                    const hasVaelorReturn = !!card && isPlayerTurn && card.id === "vaelor-mestre-emboscada-r" && vaelorReturnPendingIndex === i
+                    const hasAbility = hasVaelorReturn || card && isPlayerTurn && phase === "main" && (
                       (cardName.includes("merlin") && !merlinUsed) ||
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
@@ -13388,6 +13465,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
+                      if (hasVaelorReturn) return activateVaelorReturn
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
@@ -13411,6 +13489,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             handleAllyUnitSelect(i)
                           } else if (hasAbility && getAbilityFn()) {
                             setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
+                          if (hasVaelorReturn) return 'vaelor'
                           if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
                           if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
@@ -13519,28 +13598,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
                             )}
-                            {/* Botão ATIVAR — efeitos opcionais visíveis abaixo da carta */}
-                            {(() => {
-                              const showActivate =
-                                (isPlayerTurn && phase === "main" && card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn && playerField.hand.length > 0) ||
-                                (isPlayerTurn && phase === "main" && card.id === "runista-odin-r" && runistaAbilityTurn !== turn && playerField.hand.length > 0) ||
-                                (card.id === "vaelor-mestre-emboscada-r" && vaelorReturnPendingIndex === i)
-                              if (!showActivate) return null
-                              return (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    playSound("confirm")
-                                    if (card.id === "runi-mercador-fiordes-r") activateTradeAbility("runi-mercador-fiordes-r")
-                                    else if (card.id === "runista-odin-r") activateTradeAbility("runista-odin-r")
-                                    else activateVaelorReturn()
-                                  }}
-                                  className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-30 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold tracking-wider px-2.5 py-0.5 rounded-full shadow-lg shadow-emerald-900/60 animate-pulse whitespace-nowrap border border-emerald-300/50"
-                                >
-                                  ATIVAR
-                                </button>
-                              )
-                            })()}
                           </>
                         )}
                         {!card && isDropTarget && (
@@ -15210,6 +15267,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   else if (key === 'ullrUr') activateUllrUrAbility()
   else if (key === 'runi') activateTradeAbility('runi-mercador-fiordes-r')
   else if (key === 'runista') activateTradeAbility('runista-odin-r')
+  else if (key === 'vaelor') activateVaelorReturn()
   }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
               >
