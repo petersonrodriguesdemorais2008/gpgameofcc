@@ -165,7 +165,21 @@ interface FieldCard extends GameCard {
   /** For Ultimate cards: which unit on the field this Ultimate is equipped to */
   equippedUnitName?: string
   equippedUnitIndex?: number
-}
+  /** SINAIS DA MARÉ (Thoren e Mareen) — bônus de aura Aquos aplicado atualmente. */
+  thorenAuraBonus?: number
+  /** OFERTA DA SABEDORIA (Sacerdote do Olho Perdido) — bônus recebido. */
+  priestBonus?: number
+  /** CHAMADO DO RELÂMPAGO (Guias do Mjolnir) — bônus de aura por controlar outra Unidade. */
+  mjolnirAuraBonus?: number
+  /** MIRA PREPARADA (Atiradores Rúnicos) — bônus acumulado por não atacar. */
+  miraBonus?: number
+  /** OLHOS DE HUGIN E MUNIN (Corvos Vigia) — bônus permanente recebido. */
+  corvosBonus?: number
+  /** BÊNÇÃO DOS CAÍDOS (Comandante de Valhalla) — bônus válido só na fase de batalha atual. */
+  valhallaPhaseBonus?: number
+  /** CALOR PERSISTENTE (Glódrim) — turno em que a proteção do 1º ataque já foi usada. */
+  glodrimShieldUsedTurn?: number
+  }
 
 /** Max Ultimate cards that can be equipped on the field at the same time */
 const MAX_ULTIMATE_SLOTS = 4
@@ -4299,6 +4313,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // Vaelor: após atacar, o jogador PODE ativar o retorno para a mão (opção ATIVAR abaixo da carta)
   const [vaelorReturnPendingIndex, setVaelorReturnPendingIndex] = useState<number | null>(null)
   const newCardSummonsRef = useRef<Set<string>>(new Set())
+
+  // ── Novas Troops nórdicas (R) ──
+  // Oráculos de Asgard: Destino Adiado — espiar o topo do deck do oponente (1x no início do turno)
+  const [oraculosPeekTurn, setOraculosPeekTurn] = useState<number | null>(null)
+  // Comandante de Valhalla: Bênção dos Caídos — 1x por fase de batalha
+  const [valhallaBlessingTurn, setValhallaBlessingTurn] = useState<number | null>(null)
+  // Corvos Vigia: Olhos de Hugin e Munin — buff de entrada em campo, ainda não usado por instância
+  // (usa newCardSummonsRef, igual ao Sacerdote do Olho Perdido)
+  // Atiradores Rúnicos: quais índices atacaram neste turno (para o bônus de "não atacar")
+  const miraAttackedRef = useRef<Set<number>>(new Set())
 
   // ── Pause menu / HUD settings ──
   const [showPauseMenu, setShowPauseMenu]   = useState(false)
@@ -8697,6 +8721,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 setVaelorReturnPendingIndex(attackState.attackerIndex!)
                 showEffectFeedback("AVANÇO CALCULADO: você pode ATIVAR o retorno de Vaelor para a mão!", "info")
               }
+              // MIRA PREPARADA: atacou → perde o direito ao bônus de "não atacar" neste turno
+              if (attacker.id === "atiradores-runicos-r") miraAttackedRef.current.add(attackState.attackerIndex!)
             }
           } else if (attackState.targetInfo!.type === "direct") {
             // Reuse the already-computed targetX/targetY (the exact arrow-release point)
@@ -8730,6 +8756,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               setVaelorReturnPendingIndex(attackState.attackerIndex!)
               showEffectFeedback("AVANÇO CALCULADO: você pode ATIVAR o retorno de Vaelor para a mão!", "info")
             }
+
+            // MIRA PREPARADA: atacou → sem bônus de "não atacar" neste turno
+            if (attacker.id === "atiradores-runicos-r") miraAttackedRef.current.add(attackState.attackerIndex!)
 
             // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
             if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
@@ -8904,6 +8933,160 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       },
     })
   }, [playerField.unitZone.map(u => u?.id).join(",")])
+
+  // ── GLÓDRIM: Calor Persistente — quando for destruído, compre 1 carta ──
+  // Um observador global do cemitério cobre TODAS as formas de destruição
+  // (batalha, sweep de 0DP, efeitos de cartas), sem duplicar a compra.
+  const glodrimDeathsHandledRef = useRef(0)
+  useEffect(() => {
+    if (!gameStarted) return
+    const totalInGrave = playerField.graveyard.filter(c => c.id === "glodrim-slime-nordico-r").length
+    if (totalInGrave <= glodrimDeathsHandledRef.current) {
+      // Mantém sincronizado se o cemitério for reduzido (revive / retorno ao deck)
+      glodrimDeathsHandledRef.current = totalInGrave
+      return
+    }
+    const newDeaths = totalInGrave - glodrimDeathsHandledRef.current
+    glodrimDeathsHandledRef.current = totalInGrave
+    setPlayerField(prev => {
+      const drawn = prev.deck.slice(0, newDeaths)
+      if (!drawn.length) return prev
+      setTimeout(() => {
+        drawn.forEach(showDrawAnimation)
+        showEffectFeedback(`CALOR PERSISTENTE: Glódrim foi destruído — você comprou ${drawn.length} carta${drawn.length > 1 ? "s" : ""}!`, "success")
+      }, 300)
+      return { ...prev, hand: [...prev.hand, ...drawn], deck: prev.deck.slice(drawn.length) }
+    })
+  }, [gameStarted, playerField.graveyard.length])
+
+  // ── GUIAS DO MJOLNIR: Chamado do Relâmpago — +1DP enquanto houver OUTRA Unidade sua ──
+  // Aura contínua: entra e sai automaticamente conforme o campo muda.
+  useEffect(() => {
+    setPlayerField(prev => {
+      const totalUnits = prev.unitZone.filter(u => u !== null).length
+      let changed = false
+      const unitZone = prev.unitZone.map(unit => {
+        if (!unit || unit.id !== "guias-do-mjolnir-r") return unit
+        const previous = unit.mjolnirAuraBonus ?? 0
+        // "outra Unidade" = existe pelo menos 1 unidade além do próprio Guia
+        const next = totalUnits >= 2 ? 1 : 0
+        if (previous === next) return unit
+        changed = true
+        return {
+          ...unit,
+          currentDp: Math.max(0, (unit.currentDp ?? unit.dp) - previous + next),
+          mjolnirAuraBonus: next,
+        }
+      }) as (FieldCard | null)[]
+      return changed ? { ...prev, unitZone } : prev
+    })
+  }, [playerField.unitZone.map(u => `${u?.id ?? "_"}:${u?.mjolnirAuraBonus ?? 0}`).join(",")])
+
+  // ── CORVOS VIGIA: Olhos de Hugin e Munin — ao entrar em campo, 2 Unidades Darkness +1DP ──
+  useEffect(() => {
+    const corvosIndex = playerField.unitZone.findIndex(u => u?.id === "corvos-vigia-r")
+    if (corvosIndex < 0) return
+    const summonKey = `corvos-vigia-r@${corvosIndex}`
+    if (newCardSummonsRef.current.has(summonKey)) return
+    const candidates = playerField.unitZone
+      .map((u, index) => ({ u, index }))
+      .filter(({ u, index }) => u && index !== corvosIndex && (isElement(u.element, "darkus") || isElement(u.element, "darkness")))
+    // Sem alvos: não marca como resolvido, para poder disparar quando um alvo aparecer
+    if (!candidates.length) return
+    newCardSummonsRef.current.add(summonKey)
+    const applyBonus = (indices: number[]) => {
+      setPlayerField(prev => ({
+        ...prev,
+        unitZone: prev.unitZone.map((u, index) => indices.includes(index) && u
+          ? { ...u, currentDp: (u.currentDp ?? u.dp) + 1, corvosBonus: (u.corvosBonus ?? 0) + 1 }
+          : u) as (FieldCard | null)[],
+      }))
+      const names = candidates.filter(c => indices.includes(c.index)).map(c => c.u!.name).join(" e ")
+      showEffectFeedback(`OLHOS DE HUGIN E MUNIN: ${names} recebe${indices.length > 1 ? "m" : ""} +1 DP!`, "success")
+    }
+    if (candidates.length <= 2) { applyBonus(candidates.map(c => c.index)); return }
+    const buildOptions = (list: typeof candidates) => list.map(({ u, index }) => ({
+      id: String(index),
+      label: u!.name,
+      description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`,
+      image: u!.image,
+    }))
+    setChoiceModal({
+      visible: true,
+      cardName: "Olhos de Hugin e Munin — escolha a 1ª Unidade Darkness (+1 DP)",
+      options: buildOptions(candidates),
+      onChoose: first => {
+        setChoiceModal(null)
+        const firstIndex = Number(first)
+        setChoiceModal({
+          visible: true,
+          cardName: "Olhos de Hugin e Munin — escolha a 2ª Unidade Darkness (+1 DP)",
+          options: buildOptions(candidates.filter(c => c.index !== firstIndex)),
+          onChoose: second => { setChoiceModal(null); applyBonus([firstIndex, Number(second)]) },
+        })
+      },
+    })
+  }, [playerField.unitZone.map(u => u?.id).join(",")])
+
+  // ── ORÁCULOS DE ASGARD: Destino Adiado — espia o topo do deck do oponente ──
+  const activateOraculosPeek = () => {
+    if (oraculosPeekTurn === turn) { showEffectFeedback("Destino Adiado já foi usado neste turno!", "error"); return }
+    const topCard = enemyField.deck[0]
+    if (!topCard) { showEffectFeedback("O deck do oponente está vazio!", "error"); return }
+    setOraculosPeekTurn(turn)
+    setChoiceModal({
+      visible: true,
+      cardName: `Destino Adiado — topo do deck do oponente: ${topCard.name}`,
+      options: [
+        { id: "keep", label: "Deixar no topo", description: `${topCard.name} continua sendo a próxima compra do oponente`, image: topCard.image },
+        { id: "bottom", label: "Mandar para o fundo", description: `${topCard.name} vai para o fundo do deck do oponente`, image: topCard.image },
+      ],
+      onChoose: option => {
+        setChoiceModal(null)
+        if (option === "bottom") {
+          setEnemyField(prev => {
+            if (!prev.deck.length) return prev
+            const [top, ...rest] = prev.deck
+            return { ...prev, deck: [...rest, top] }
+          })
+          showEffectFeedback(`DESTINO ADIADO: ${topCard.name} foi para o fundo do deck do oponente!`, "success")
+        } else {
+          showEffectFeedback(`DESTINO ADIADO: ${topCard.name} permanece no topo.`, "info")
+        }
+      },
+    })
+  }
+
+  // ── COMANDANTE DE VALHALLA: Bênção dos Caídos — +1DP só nesta fase de batalha ──
+  const activateValhallaBlessing = () => {
+    if (valhallaBlessingTurn === turn) { showEffectFeedback("Bênção dos Caídos já foi usada nesta fase!", "error"); return }
+    const candidates = playerField.unitZone
+      .map((u, index) => ({ u, index }))
+      .filter(({ u }) => u !== null)
+    if (!candidates.length) { showEffectFeedback("Nenhuma Unidade sua em campo!", "error"); return }
+    const applyBlessing = (index: number) => {
+      setValhallaBlessingTurn(turn)
+      setPlayerField(prev => ({
+        ...prev,
+        unitZone: prev.unitZone.map((u, i) => i === index && u
+          ? { ...u, currentDp: (u.currentDp ?? u.dp) + 1, valhallaPhaseBonus: (u.valhallaPhaseBonus ?? 0) + 1 }
+          : u) as (FieldCard | null)[],
+      }))
+      showEffectFeedback(`BÊNÇÃO DOS CAÍDOS: ${playerField.unitZone[index]?.name} +1 DP somente nesta fase!`, "success")
+    }
+    if (candidates.length === 1) { applyBlessing(candidates[0].index); return }
+    setChoiceModal({
+      visible: true,
+      cardName: "Bênção dos Caídos — escolha 1 Unidade sua (+1 DP nesta fase)",
+      options: candidates.map(({ u, index }) => ({
+        id: String(index),
+        label: u!.name,
+        description: `${u!.currentDp ?? u!.dp}DP → ${(u!.currentDp ?? u!.dp) + 1}DP`,
+        image: u!.image,
+      })),
+      onChoose: option => { setChoiceModal(null); applyBlessing(Number(option)) },
+    })
+  }
 
   // ── VAELOR: Avanço Calculado — ativação opcional do retorno para a mão ──
   const activateVaelorReturn = () => {
@@ -9451,7 +9634,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       }
     }
 
-    // ── Native end handler ───────────────────────────────────────────────────
+    // ── Native end handler ──────────────────────────────���────────────────────
     const onEnd = () => {
       cancelAnimationFrame(rafIdRef.current)
       document.removeEventListener("mousemove", onMove)
@@ -10346,6 +10529,23 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   showEffectFeedback(`EMBOSCADA DOS BERSERKERS reduziu o dano de ${attackerDp} para ${finalAttackDamage}!`, "success")
                 }
               }
+              // ── GLÓDRIM: Calor Persistente — sobrevive ao 1º ataque recebido em cada turno ──
+              // A proteção só entra em ação se o ataque REALMENTE destruiria a carta.
+              const glodrimShields =
+                defender.id === "glodrim-slime-nordico-r" &&
+                defender.glodrimShieldUsedTurn !== turn &&
+                defenderDp - finalAttackDamage <= 0
+              if (glodrimShields) {
+                setPlayerField(prev => {
+                  const zone = [...prev.unitZone]
+                  const g = zone[playerUnitIndex]
+                  if (g) zone[playerUnitIndex] = { ...g, glodrimShieldUsedTurn: turn }
+                  return { ...prev, unitZone: zone as (FieldCard | null)[] }
+                })
+                showEffectFeedback(`CALOR PERSISTENTE: ${defender.name} resistiu ao primeiro ataque deste turno!`, "success")
+                setTimeout(() => fireBotAttack(rest), 600)
+                return
+              }
               const newDefenderDp = defenderDp - finalAttackDamage
 
               const targetEl = document.querySelector(`[data-player-unit-slot="${playerUnitIndex}"]`)
@@ -10642,6 +10842,51 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     // Vaelor: a janela opcional de retorno para a mão expira no fim do turno
     setVaelorReturnPendingIndex(null)
+
+    // ── ATIRADORES RÚNICOS: Mira Preparada — não atacou neste turno, ganha +1DP ──
+    // O bônus é permanente (acumula a cada turno em que a unidade se mantém parada).
+    setPlayerField(prev => {
+      const rewarded: string[] = []
+      const unitZone = prev.unitZone.map((unit, index) => {
+        if (!unit || unit.id !== "atiradores-runicos-r") return unit
+        if (miraAttackedRef.current.has(index)) return unit
+        rewarded.push(unit.name)
+        return { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 1, miraBonus: (unit.miraBonus ?? 0) + 1 }
+      }) as (FieldCard | null)[]
+      if (!rewarded.length) return prev
+      setTimeout(() => showEffectFeedback(`MIRA PREPARADA: ${rewarded.join(", ")} +1 DP por não atacar!`, "success"), 250)
+      return { ...prev, unitZone }
+    })
+    miraAttackedRef.current.clear()
+
+    // ── COMANDANTE DE VALHALLA: Bênção dos Caídos só valia nesta fase de batalha ──
+    setPlayerField(prev => {
+      const hasBlessing = prev.unitZone.some(u => (u?.valhallaPhaseBonus ?? 0) > 0)
+      if (!hasBlessing) return prev
+      const unitZone = prev.unitZone.map(unit => {
+        const bonus = unit?.valhallaPhaseBonus ?? 0
+        if (!unit || bonus <= 0) return unit
+        const reverted = { ...unit, currentDp: Math.max(0, (unit.currentDp ?? unit.dp) - bonus) }
+        delete reverted.valhallaPhaseBonus
+        return reverted
+      }) as (FieldCard | null)[]
+      setTimeout(() => showEffectFeedback("BÊNÇÃO DOS CAÍDOS: o bônus da fase de batalha expirou.", "info"), 250)
+      return { ...prev, unitZone }
+    })
+    setValhallaBlessingTurn(null)
+
+    // ── GLÓDRIM: Calor Persistente — a proteção do 1º ataque recarrega a cada turno ──
+    setPlayerField(prev => {
+      const needsReset = prev.unitZone.some(u => u?.id === "glodrim-slime-nordico-r" && u.glodrimShieldUsedTurn !== undefined)
+      if (!needsReset) return prev
+      const unitZone = prev.unitZone.map(unit => {
+        if (!unit || unit.id !== "glodrim-slime-nordico-r" || unit.glodrimShieldUsedTurn === undefined) return unit
+        const reset = { ...unit }
+        delete reset.glodrimShieldUsedTurn
+        return reset
+      }) as (FieldCard | null)[]
+      return { ...prev, unitZone }
+    })
 
     // ── PRESSÁGIO DE LOGI / VISÃO DO HROTTI — efeitos aplicados nas unidades do jogador ──
     // Queimadura: -1DP por turno (destrói ao chegar a 0). DP zerado: restaura ao expirar.
@@ -13691,7 +13936,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     // Vaelor: a janela de retorno abre DEPOIS de atacar (fase de batalha),
                     // então ela não pode ficar presa ao phase === "main" das demais.
                     const hasVaelorReturn = !!card && isPlayerTurn && card.id === "vaelor-mestre-emboscada-r" && vaelorReturnPendingIndex === i
-                    const hasAbility = hasVaelorReturn || card && isPlayerTurn && phase === "main" && (
+                    // Oráculos de Asgard: "no início do seu turno" → disponível nas fases draw/main
+                    const hasOraculosPeek = !!card && isPlayerTurn && card.id === "oraculos-de-asgard-r" &&
+                      (phase === "draw" || phase === "main") && oraculosPeekTurn !== turn && enemyField.deck.length > 0
+                    // Comandante de Valhalla: "no início do combate" → só na fase de batalha
+                    const hasValhallaBlessing = !!card && isPlayerTurn && card.id === "comandante-de-valhalla-r" &&
+                      phase === "battle" && valhallaBlessingTurn !== turn
+                    const hasAbility = hasVaelorReturn || hasOraculosPeek || hasValhallaBlessing || card && isPlayerTurn && phase === "main" && (
                       (cardName.includes("merlin") && !merlinUsed) ||
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
@@ -13705,6 +13956,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
                       if (hasVaelorReturn) return activateVaelorReturn
+                      if (hasOraculosPeek) return activateOraculosPeek
+                      if (hasValhallaBlessing) return activateValhallaBlessing
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
@@ -13729,6 +13982,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                           } else if (hasAbility && getAbilityFn()) {
                             setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
                           if (hasVaelorReturn) return 'vaelor'
+                          if (hasOraculosPeek) return 'oraculos'
+                          if (hasValhallaBlessing) return 'valhalla'
                           if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
                           if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
@@ -15509,6 +15764,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   else if (key === 'runi') activateTradeAbility('runi-mercador-fiordes-r')
   else if (key === 'runista') activateTradeAbility('runista-odin-r')
   else if (key === 'vaelor') activateVaelorReturn()
+  else if (key === 'oraculos') activateOraculosPeek()
+  else if (key === 'valhalla') activateValhallaBlessing()
   }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
               >
