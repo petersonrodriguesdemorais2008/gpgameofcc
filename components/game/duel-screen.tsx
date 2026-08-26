@@ -5391,20 +5391,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     let hand = shuffledDeck.slice(0, startingHand)
     let remainingDeck = shuffledDeck.slice(startingHand)
 
-    // [v0 TEST — REMOVER] injeção temporária p/ verificação dos efeitos das cartas R
-    const V0_TEST_CARDS: GameCard[] = [
-      { id: "thoren-mareen-r", name: "Thoren e Mareen, os Exploradores de Névoa", image: "/images/cards/thoren-mareen.png", rarity: "R", type: "troops", element: "Aquos", dp: 1, ability: "Sinais da Maré", abilityDescription: "Enquanto esta carta estiver em campo, todas as Unidades Aquos do seu campo ganham +2 DP.", attack: "Domínio do Fiorde", category: "Aquos Troops unit" } as any,
-      { id: "vaelor-mestre-emboscada-r", name: "Vaelor, o Mestre da Emboscada", image: "/images/cards/vaelor-mestre-emboscada.png", rarity: "R", type: "troops", element: "Ventus", dp: 1, ability: "Terreno Favorável", abilityDescription: "Após atacar, você pode retornar esta unidade para a mão.", attack: "Avanço Calculado", category: "Ventus Troops unit" } as any,
-      { id: "piromantes-labareda-r", name: "Piromantes de Labareda", image: "/images/cards/piromantes-labareda.png", rarity: "R", type: "troops", element: "Fire", dp: 1, ability: "Fogo Compartilhado", abilityDescription: "Sempre que outra Unidade de Fogo do seu campo causar dano direto aos LP do oponente, esta carta ganha +1 DP.", attack: "Coroa de Fogo", category: "Fire Troops unit" } as any,
-      { id: "runi-mercador-fiordes-r", name: "Rúni, o Mercador dos Fiordes", image: "/images/cards/runi-mercador-fiordes.png", rarity: "R", type: "troops", element: "Aquos", dp: 1, ability: "Troca Justa", abilityDescription: "Uma vez por turno, você pode descartar uma carta da sua mão e comprar uma nova carta.", attack: "Taxa de Passagem", category: "Aquos Troops unit" } as any,
-      { id: "runista-odin-r", name: "Runista de Odin", image: "/images/cards/runista-odin.png", rarity: "R", type: "troops", element: "Haos", dp: 1, ability: "Runa da Revelação", abilityDescription: "Uma vez por turno, você pode descartar uma carta. Se fizer isso, compre 2 cartas.", attack: "Escrita do Destino", category: "Lightness Troops unit" } as any,
-      { id: "sacerdote-olho-perdido-r", name: "Sacerdote do Olho Perdido", image: "/images/cards/sacerdote-olho-perdido.png", rarity: "R", type: "troops", element: "Darkus", dp: 1, ability: "Oferta da Sabedoria Profunda", abilityDescription: "Ao entrar em campo, escolha até duas outras Unidades Darkness do seu campo; elas ganham +2 DP.", attack: "Olhar que Perfura Destinos", category: "Darkness Troops unit" } as any,
-      { id: "v0-test-pyrus", name: "Teste Pyrus", image: "/placeholder.svg", rarity: "R", type: "unit", element: "Pyrus", dp: 2, ability: "", abilityDescription: "", attack: "", category: "Fire unit" } as any,
-      { id: "v0-test-darkus", name: "Teste Void", image: "/placeholder.svg", rarity: "R", type: "unit", element: "Void", dp: 2, ability: "", abilityDescription: "", attack: "", category: "Darkness unit" } as any,
-    ]
-    hand = [...V0_TEST_CARDS, ...hand]
-    // [/v0 TEST]
-
     // Garante ao menos 1 carta jogável no unitZone na mão inicial — sem
     // isso, o embaralhamento puro podia entregar uma mão sem NENHUMA carta
     // assim, travando qualquer fluxo (tutorial ou jogo normal) que dependa
@@ -8403,7 +8389,13 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             }))
 
             // ── PIROMANTES DE LABAREDA: outra unidade Fire causou dano direto ──
-            if (attacker.id !== "piromantes-labareda-r" && (isElement(attacker.element, "fire") || isElement(attacker.element, "pyrus"))) {
+            // Só dispara se o Piromantes REALMENTE estiver em campo — antes o feedback
+            // aparecia mesmo sem nenhum Piromantes, dando a impressão de efeito fantasma.
+            if (
+              attacker.id !== "piromantes-labareda-r" &&
+              (isElement(attacker.element, "fire") || isElement(attacker.element, "pyrus")) &&
+              playerField.unitZone.some(u => u?.id === "piromantes-labareda-r")
+            ) {
               setPlayerField(prev => {
                 const unitZone = prev.unitZone.map(unit => unit?.id === "piromantes-labareda-r"
                   ? { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 1 }
@@ -13375,7 +13367,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const cardName = card?.name.toLowerCase() ?? ''
                     // Only cards with a MANUAL main-phase ability get the green glow.
                     // Attack-triggered effects (Arthur Veredito/Cálice, Mordred Camlann) do NOT need a click — they fire automatically when the player drags to attack.
-                    const hasAbility = card && isPlayerTurn && phase === "main" && (
+                    // Vaelor: a janela de retorno abre DEPOIS de atacar (fase de batalha),
+                    // então ela não pode ficar presa ao phase === "main" das demais.
+                    const hasVaelorReturn = !!card && isPlayerTurn && card.id === "vaelor-mestre-emboscada-r" && vaelorReturnPendingIndex === i
+                    const hasAbility = hasVaelorReturn || card && isPlayerTurn && phase === "main" && (
                       (cardName.includes("merlin") && !merlinUsed) ||
                       (cardName.includes("oswin") && !oswinUsed) ||
                       ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) ||
@@ -13388,6 +13383,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   )
                     const getAbilityFn = (): (() => void) | null => {
                       if (!card) return null
+                      if (hasVaelorReturn) return activateVaelorReturn
                       if (cardName.includes("merlin") && !merlinUsed) return activateMerlinAbility
                       if (cardName.includes("oswin") && !oswinUsed) return activateOswinAbility
                       if ((cardName.includes("mr. p") || cardName.includes("mr p") || cardName.includes("penguim")) && !mrPManuscritoUsed) return activateMrPAbility
@@ -13411,6 +13407,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                             handleAllyUnitSelect(i)
                           } else if (hasAbility && getAbilityFn()) {
                             setUnitAbilityConfirm({ name: card!.name, abilityKey: (() => {
+                          if (hasVaelorReturn) return 'vaelor'
                           if (cardName.includes('merlin') && !merlinUsed) return 'merlin'
                           if (cardName.includes('oswin') && !oswinUsed) return 'oswin'
                           if ((cardName.includes('mr. p') || cardName.includes('mr p') || cardName.includes('penguim')) && !mrPManuscritoUsed) return 'mrp'
@@ -13519,28 +13516,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                                 T{(card as FieldCard).canAttackTurn + 1}
                               </div>
                             )}
-                            {/* Botão ATIVAR — efeitos opcionais visíveis abaixo da carta */}
-                            {(() => {
-                              const showActivate =
-                                (isPlayerTurn && phase === "main" && card.id === "runi-mercador-fiordes-r" && runiAbilityTurn !== turn && playerField.hand.length > 0) ||
-                                (isPlayerTurn && phase === "main" && card.id === "runista-odin-r" && runistaAbilityTurn !== turn && playerField.hand.length > 0) ||
-                                (card.id === "vaelor-mestre-emboscada-r" && vaelorReturnPendingIndex === i)
-                              if (!showActivate) return null
-                              return (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    playSound("confirm")
-                                    if (card.id === "runi-mercador-fiordes-r") activateTradeAbility("runi-mercador-fiordes-r")
-                                    else if (card.id === "runista-odin-r") activateTradeAbility("runista-odin-r")
-                                    else activateVaelorReturn()
-                                  }}
-                                  className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-30 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold tracking-wider px-2.5 py-0.5 rounded-full shadow-lg shadow-emerald-900/60 animate-pulse whitespace-nowrap border border-emerald-300/50"
-                                >
-                                  ATIVAR
-                                </button>
-                              )
-                            })()}
                           </>
                         )}
                         {!card && isDropTarget && (
@@ -15210,6 +15185,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   else if (key === 'ullrUr') activateUllrUrAbility()
   else if (key === 'runi') activateTradeAbility('runi-mercador-fiordes-r')
   else if (key === 'runista') activateTradeAbility('runista-odin-r')
+  else if (key === 'vaelor') activateVaelorReturn()
   }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors shadow-lg shadow-emerald-900/50"
               >
