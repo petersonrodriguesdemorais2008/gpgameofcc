@@ -7074,6 +7074,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const card = playerField.functionZone[slotIndex]
     if (!card || !card.isFaceDown) return
 
+    // Regra de Trap: não pode ser ativada no mesmo turno em que foi baixada
+    if (card.turnSet !== undefined && card.turnSet === turn) {
+      showEffectFeedback(`${card.name}: Traps só podem ser ativadas a partir do próximo turno!`, "error")
+      return
+    }
+
     const effect = getFunctionCardEffect(card)
     if (!effect) {
       showEffectFeedback(`${card.name}: efeito não encontrado!`, "error")
@@ -8417,7 +8423,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const _morganaTrapBlock = playerField.unitZone.some(u =>
                 u && u.name.toLowerCase().includes("morgana") && (u.dp === 3 || u.dp === 4)
               )
-              const trapPortaoIndex = _morganaTrapBlock ? -1 : enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
+              // Portão da Fortaleza exige descartar 1 carta da mão como custo — sem carta, não ativa
+              const trapPortaoIndex = (_morganaTrapBlock || enemyField.hand.length === 0) ? -1 : enemyField.functionZone.findIndex(f => f?.id === "portao-da-fortaleza" && f.isFaceDown)
               // ── A LANÇA QUE TUDO PERFURA: anula a Trap que negaria o ataque ──
               if (trapPortaoIndex !== -1 && lancaPerfuraArmedRef.current) {
                 lancaPerfuraArmedRef.current = false
@@ -8445,6 +8452,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   }
                   return { ...prev, functionZone: newFuncs }
                 })
+                // Consome a trap gasta: remove da zona e envia ao cemitério do bot
+                setTimeout(() => {
+                  setEnemyField(prev => {
+                    const nz = [...prev.functionZone]
+                    const spent = nz[trapPortaoIndex]
+                    if (!spent || spent.id !== "portao-da-fortaleza") return prev
+                    nz[trapPortaoIndex] = null
+                    return { ...prev, functionZone: nz, graveyard: [...prev.graveyard, spent] }
+                  })
+                }, 800)
                 setPlayerField(prev => {
                   const newUnitZone = [...prev.unitZone]
                   newUnitZone[attackState.attackerIndex!] = null
@@ -8469,6 +8486,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     newFuncs[trapContraAtaqueIndex] = { ...newFuncs[trapContraAtaqueIndex]!, isFaceDown: false }
                     return { ...prev, functionZone: newFuncs }
                   })
+                  // Consome a trap gasta: remove da zona e envia ao cemitério do bot
+                  setTimeout(() => {
+                    setEnemyField(prev => {
+                      const nz = [...prev.functionZone]
+                      const spent = nz[trapContraAtaqueIndex]
+                      if (!spent || spent.id !== "contra-ataque-surpresa") return prev
+                      nz[trapContraAtaqueIndex] = null
+                      return { ...prev, functionZone: nz, graveyard: [...prev.graveyard, spent] }
+                    })
+                  }, 800)
                   setPlayerField(prev => ({
                     ...prev,
                     life: Math.max(0, prev.life - attackerDp)
@@ -10348,22 +10375,20 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               // "Portão da Fortaleza" está face-down na função zone do JOGADOR.
               // Efeito: nega o ataque, devolve a unidade atacante à mão do bot,
               // e o jogador descarta 1 carta da mão para ativar.
-              const trapPortaoPlayerIdx = playerField.functionZone.findIndex(
+              // Portão da Fortaleza exige descartar 1 carta da mão como custo — sem carta, não ativa
+              const trapPortaoPlayerIdx = playerField.hand.length === 0 ? -1 : playerField.functionZone.findIndex(
                 f => f?.id === "portao-da-fortaleza" && f.isFaceDown
               )
-              if (trapPortaoPlayerIdx !== -1) {
-                // Reveal trap
+              if (trapPortaoPlayerIdx !== -1 && window.confirm(`Ativar PORTÃO DA FORTALEZA contra o ataque de ${unit.name}? (custo: descartar 1 carta da mão)`)) {
+                // Consome a trap (revela e envia ao cemitério)
+                consumePlayerTrap(trapPortaoPlayerIdx)
+                // Custo: descarta 1 carta aleatória da mão
                 setPlayerField(prev => {
-                  const nz = [...prev.functionZone]
-                  if (nz[trapPortaoPlayerIdx]) nz[trapPortaoPlayerIdx] = { ...nz[trapPortaoPlayerIdx]!, isFaceDown: false }
-                  // Discard one random card from hand as cost
                   const newHand = [...prev.hand]
-                  if (newHand.length > 0) {
-                    const discardIdx = Math.floor(Math.random() * newHand.length)
-                    const discarded = newHand.splice(discardIdx, 1)[0]
-                    return { ...prev, functionZone: nz, hand: newHand, graveyard: [...prev.graveyard, discarded] }
-                  }
-                  return { ...prev, functionZone: nz }
+                  if (newHand.length === 0) return prev
+                  const discardIdx = Math.floor(Math.random() * newHand.length)
+                  const discarded = newHand.splice(discardIdx, 1)[0]
+                  return { ...prev, hand: newHand, graveyard: [...prev.graveyard, discarded] }
                 })
                 // Return the attacking unit back to bot's hand
                 setEnemyField(prev => {
@@ -13902,6 +13927,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         {/* Manual activation button for face-down Trap cards — only shown when
                             this specific trap's canActivate() currently allows it */}
                         {card && card.isFaceDown && card.type === "trap" && (() => {
+                          // Traps não podem ser ativadas no mesmo turno em que foram baixadas
+                          if (card.turnSet !== undefined && card.turnSet === turn) return false
                           const effect = getFunctionCardEffect(card)
                           if (!effect) return false
                           const check = effect.canActivate({ playerField, enemyField, setPlayerField, setEnemyField, turn, lastDamageToPlayer: getRecentDamageToPlayer() })
