@@ -2114,6 +2114,81 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
+  // ── HIDROMEL DOS DEUSES — Item: restaura 5LP da Vida total do jogador ──
+  "hidromel-dos-deuses": {
+    id: "hidromel-dos-deuses",
+    name: "Hidromel dos Deuses",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const maxLife = 50
+      if (context.playerField.life >= maxLife) {
+        return { canActivate: false, reason: "Seus LP já estão no máximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const maxLife = 50
+      const healAmount = 5
+      const before = context.playerField.life
+      const after = Math.min(before + healAmount, maxLife)
+
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: Math.min(prev.life + healAmount, maxLife),
+      }))
+
+      return {
+        success: true,
+        message: `Hidromel dos Deuses! +${after - before} LP restaurado! (${before} → ${after})`,
+        healAmount: after - before,
+      }
+    },
+  },
+
+  // ── MACHADO DE ARREMESSO — Item: 3DP de dano direto a uma Unidade inimiga ──
+  "machado-de-arremesso": {
+    id: "machado-de-arremesso",
+    name: "Machado de Arremesso",
+    requiresTargets: true,
+    targetConfig: { enemyUnits: 1 },
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "O oponente não tem Unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma Unidade inimiga" }
+      }
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+      if (!enemyUnit) return { success: false, message: "Unidade não encontrada" }
+
+      const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
+      const newDp = Math.max(0, currentDp - 3)
+      const isDestroyed = newDp <= 0
+
+      context.setEnemyField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        const newGraveyard = [...prev.graveyard]
+        if (isDestroyed) {
+          newGraveyard.push(enemyUnit)
+          newUnitZone[enemyIndex] = null
+        } else {
+          newUnitZone[enemyIndex] = { ...enemyUnit, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], graveyard: newGraveyard }
+      })
+
+      if (isDestroyed) {
+        return { success: true, message: `Machado de Arremesso! 3DP em ${enemyUnit.name} — destruída!` }
+      }
+      return { success: true, message: `Machado de Arremesso! ${enemyUnit.name} -3DP! (${currentDp} → ${newDp})` }
+    },
+  },
+
   "pedra-de-afiar": {
     id: "pedra-de-afiar",
     name: "Pedra de Afiar",
@@ -2166,7 +2241,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     },
   },
 
-  // ── CÁLICE DE VINHO SAGRADO ����� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
+  // ── CÁLICE DE VINHO SAGRADO ������� Item: restaura 1LP e dá +1DP a uma unidade aliada ──
   "calice-de-vinho-sagrado": {
     id: "calice-de-vinho-sagrado",
     name: "Cálice de Vinho Sagrado",
@@ -5904,8 +5979,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const isVeredito = cardToPlace.name === "Veredito do Rei Tirano"
       const isJulgamentoVazio = cardToPlace.name === "Julgamento do Vazio Eterno"
       const isCaliceVinho    = cardToPlace.name === "Cálice de Vinho Sagrado"
+      const isHidromelDeuses = cardToPlace.name === "Hidromel dos Deuses"
+      const isMachadoArremesso = cardToPlace.name === "Machado de Arremesso"
 
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazio || isCaliceVinho) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo || isInvestidaCoordenada || isLacosDaOrdem || isEstrategiaReal || isVentosDeCamelot || isTrocaDeGuarda || isFlechaDeBalista || isPedraDeAfiar || isDadosCalamidade || isChamadoDaTavola || isVeredito || isJulgamentoVazio || isCaliceVinho || isHidromelDeuses || isMachadoArremesso) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -5936,6 +6013,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           else if (isVeredito) effectToUse = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
           else if (isJulgamentoVazio) effectToUse = FUNCTION_CARD_EFFECTS["julgamento-do-vazio-eterno"]
           else if (isCaliceVinho)    effectToUse = FUNCTION_CARD_EFFECTS["calice-de-vinho-sagrado"]
+          else if (isHidromelDeuses) effectToUse = FUNCTION_CARD_EFFECTS["hidromel-dos-deuses"]
+          else if (isMachadoArremesso) effectToUse = FUNCTION_CARD_EFFECTS["machado-de-arremesso"]
         }
 
         if (!effectToUse) return // Safety check
@@ -5956,7 +6035,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         const _arthurSrOnField = enemyField.unitZone.some(u =>
           u && u.name.toLowerCase().includes("rei arthur") && u.dp === 2
         )
-        const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas"]
+        const _healingCardIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","hidromel-dos-deuses"]
         const _isHealingCard = _healingCardIds.some(id => effectToUse.id?.includes(id)) ||
           (cardToPlace.name.toLowerCase().includes("bandagem") || cardToPlace.name.toLowerCase().includes("cristal recuperador") ||
            cardToPlace.name.toLowerCase().includes("kit médico") || cardToPlace.name.toLowerCase().includes("soro recuperador"))
@@ -9657,7 +9736,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // ── TRAP CHECK: PRESSÁGIO DE LOGI (oponente tenta curar) ─────────
             // Ativa quando o bot usa uma carta de cura. A carta resolve normalmente,
             // mas a unidade inimiga entra em Queimadura.
-            const __healingIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","calice-de-vinho-sagrado"]
+            const __healingIds = ["bandagem-restauradora","cristal-recuperador","kit-medico-improvisado","soro-recuperador","bandagens-duplas","calice-de-vinho-sagrado","hidromel-dos-deuses"]
             if (__healingIds.some(id => card.id?.includes(id))) {
               triggerPressagioDeLogi(`${card.name} — tentativa de cura`)
             }
@@ -11086,6 +11165,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // If this is Véu dos Laços Cruzados with "debuff" option, OR Investida Coordenada, resolve immediately
     const isEnemyOnlyCard = itemSelectionMode.itemCard?.name === "Investida Coordenada"
       || itemSelectionMode.itemCard?.name === "Flecha de Balista"
+      || itemSelectionMode.itemCard?.name === "Machado de Arremesso"
     if ((itemSelectionMode.chosenOption === "debuff" || itemSelectionMode.chosenOption === "destroy_unit" || isEnemyOnlyCard) && itemSelectionMode.itemCard) {
       let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
       if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
@@ -11234,6 +11314,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       else if (isDadosCalamidade2) effect = FUNCTION_CARD_EFFECTS["dados-da-calamidade"]
       else if (isChamadoDaTavola2) effect = FUNCTION_CARD_EFFECTS["chamado-da-tavola"]
       else if (itemSelectionMode.itemCard.name === "Veredito do Rei Tirano") effect = FUNCTION_CARD_EFFECTS["veredito-do-rei-tirano"]
+      else if (itemSelectionMode.itemCard.name === "Hidromel dos Deuses") effect = FUNCTION_CARD_EFFECTS["hidromel-dos-deuses"]
+      else if (itemSelectionMode.itemCard.name === "Machado de Arremesso") effect = FUNCTION_CARD_EFFECTS["machado-de-arremesso"]
     }
 
     if (effect) {
