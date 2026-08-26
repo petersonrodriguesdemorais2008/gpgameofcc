@@ -1585,6 +1585,87 @@ const MAP_NODES: MapNodeDef[] = [
 ]
 
 
+// ─── Player Pawn: bonequinho que caminha pelo mapa ───────────────────────────
+//
+//  Fica ao LADO do nó atual (nunca em cima dele) e desliza suavemente até a
+//  nova posição sempre que o jogador avança de fase.
+
+const PAWN_SPRITE = "/images/player-storymode.png"
+const PAWN_W = 54          // largura do sprite
+const PAWN_H = 54          // altura do sprite
+const PAWN_OFFSET_X = -86  // deslocamento à esquerda do centro do nó
+const PAWN_OFFSET_Y = -56  // deslocamento acima do centro do nó (pés na trilha)
+
+function PlayerPawn({ x, y }: { x: number; y: number }) {
+  const prev = useRef({ x, y })
+  const [facing, setFacing]   = useState<1 | -1>(1)
+  const [walking, setWalking] = useState(false)
+
+  useEffect(() => {
+    const p = prev.current
+    if (p.x === x && p.y === y) return
+    setFacing(x < p.x ? -1 : 1)
+    setWalking(true)
+    prev.current = { x, y }
+    const t = setTimeout(() => setWalking(false), 1250)
+    return () => clearTimeout(t)
+  }, [x, y])
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "absolute", left: `${x}%`, top: `${y}%`,
+        width: 0, height: 0, zIndex: 14, pointerEvents: "none",
+        transition: "left 1.15s cubic-bezier(.42,.02,.32,1), top 1.15s cubic-bezier(.42,.02,.32,1)",
+      }}
+    >
+      {/* Sombra elíptica no chão */}
+      <div style={{
+        position: "absolute",
+        left: PAWN_OFFSET_X + PAWN_W / 2 - 15,
+        top: PAWN_OFFSET_Y + PAWN_H - 6,
+        width: 30, height: 9, borderRadius: "50%",
+        background: "radial-gradient(50% 50%, rgba(0,0,0,0.55), transparent 72%)",
+        animation: walking ? "storyPawnShadow .44s ease-in-out infinite" : undefined,
+      }}/>
+
+      {/* Halo de posição atual */}
+      <div style={{
+        position: "absolute",
+        left: PAWN_OFFSET_X + PAWN_W / 2 - 20,
+        top: PAWN_OFFSET_Y + PAWN_H - 13,
+        width: 40, height: 40, borderRadius: "50%",
+        border: "2px solid rgba(94,205,245,0.85)",
+        transform: "scaleY(0.38)",
+        animation: "storyPawnRing 2.1s ease-out infinite",
+      }}/>
+
+      {/* Sprite */}
+      <div style={{
+        position: "absolute", left: PAWN_OFFSET_X, top: PAWN_OFFSET_Y,
+        width: PAWN_W, height: PAWN_H,
+        animation: walking
+          ? "storyPawnWalk .44s ease-in-out infinite"
+          : "storyPawnIdle 2.6s ease-in-out infinite",
+      }}>
+        <img
+          src={PAWN_SPRITE || "/placeholder.svg"}
+          alt=""
+          onError={e => { e.currentTarget.style.display = "none" }}
+          style={{
+            width: "100%", height: "100%", objectFit: "contain",
+            imageRendering: "pixelated",
+            transform: `scaleX(${facing})`,
+            filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.75)) drop-shadow(0 0 9px rgba(94,205,245,0.45))",
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+
 // ─── Board Map View (static — no zoom/pan) ───────────────────────────────────
 
 function StoryMapView({
@@ -1634,6 +1715,8 @@ function StoryMapView({
     return null
   })()
   const playerNodeId = lastCompletedId ?? null
+  const playerNode =
+    MAP_NODES.find(n => (playerNodeId === null ? n.stageId === null : n.stageId === playerNodeId)) ?? MAP_NODES[0]
 
   const isAccessible = (stageId: string) => {
     const idx = stages.findIndex(s => s.id === stageId)
@@ -1994,6 +2077,9 @@ function StoryMapView({
         )
       })}
 
+      {/* ── Bonequinho do jogador: caminha ao lado do nó alcançado ── */}
+      {playerNode && <PlayerPawn x={playerNode.x} y={playerNode.y}/>}
+
       {/* ── Top header (barra tática angular) ── */}
       <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:50,
         background:"linear-gradient(180deg,rgba(4,5,8,0.94) 0%,rgba(4,5,8,0.86) 100%)",
@@ -2187,6 +2273,25 @@ function StoryMapView({
         @keyframes storyBounce {
           0%, 100% { transform: translateY(0);    }
           50%       { transform: translateY(-4px); }
+        }
+        @keyframes storyPawnIdle {
+          0%, 100% { transform: translateY(0);      }
+          50%      { transform: translateY(-2px);   }
+        }
+        @keyframes storyPawnWalk {
+          0%   { transform: translateY(0)    rotate(-2deg); }
+          25%  { transform: translateY(-5px) rotate(0deg);  }
+          50%  { transform: translateY(0)    rotate(2deg);  }
+          75%  { transform: translateY(-5px) rotate(0deg);  }
+          100% { transform: translateY(0)    rotate(-2deg); }
+        }
+        @keyframes storyPawnShadow {
+          0%, 100% { transform: scale(1);      opacity: 0.85; }
+          50%      { transform: scale(0.7);    opacity: 0.45; }
+        }
+        @keyframes storyPawnRing {
+          0%   { transform: scaleY(0.38) scale(0.75); opacity: 0.85; }
+          100% { transform: scaleY(0.38) scale(1.6);  opacity: 0;    }
         }
         @keyframes storyFlow {
           to { stroke-dashoffset: -135; }
