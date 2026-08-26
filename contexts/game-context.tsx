@@ -41,6 +41,12 @@ export interface Card {
   category: string
   requiresEquip?: string
   requiresUnit?: string
+  /**
+   * Ultimate Guardians "elementais" (Ísgrimm Fenrir, Skuggi Draugr, Ragna
+   * Gullinkambi) não pedem uma Unidade específica como requiresUnit — eles
+   * podem ser equipados em QUALQUER Unidade do elemento indicado aqui.
+   */
+  requiresElement?: string
   isFaceDown?: boolean
 }
 
@@ -1326,6 +1332,51 @@ const ALL_CARDS: Card[] = [
     attack: "",
     category: "Darkness Ultimate Guardian",
     requiresUnit: "Rei Arthur",
+  },
+  {
+    id: "isgrimm-fenrir",
+    name: "Ultimate Guardian: Ísgrimm Fenrir",
+    image: "/images/cards/isgrimm-fenrir.png",
+    rarity: "UR",
+    type: "ultimateGear",
+    element: "Ventus",
+    dp: 0,
+    ability: "ISGRIMM FENRIR",
+    abilityDescription:
+      "Quando está equipado em Unidade Ventus, ele concede os seguintes efeitos: a Unidade Ventus ganha +2DP. Quando a Unidade Ventus ataca, você pode selecionar uma Carta de Unidade Ventus do seu campo e ela ganha +2DP — esse efeito não pode ser aplicado na Unidade em que esse Guardião está equipado.",
+    attack: "",
+    category: "Ventus Ultimate Guardian",
+    requiresElement: "Ventus",
+  },
+  {
+    id: "skuggi-draugr",
+    name: "Ultimate Guardian: Skuggi Draugr",
+    image: "/images/cards/skuggi-draugr.png",
+    rarity: "UR",
+    type: "ultimateGear",
+    element: "Darkus",
+    dp: 0,
+    ability: "SKUGGI DRAUGR",
+    abilityDescription:
+      "Quando está equipado em Unidade Darkness, ele concede os seguintes efeitos: a Unidade Darkness ganha +3DP. Uma vez por turno, você pode pegar uma carta do seu cemitério que já foi destruída e adicioná-la ao topo do seu deck.",
+    attack: "",
+    category: "Darkness Ultimate Guardian",
+    requiresElement: "Darkus",
+  },
+  {
+    id: "ragna-gullinkambi",
+    name: "Ultimate Guardian: Ragna Gullinkambi",
+    image: "/images/cards/ragna-gullinkambi.png",
+    rarity: "UR",
+    type: "ultimateGear",
+    element: "Haos",
+    dp: 0,
+    ability: "RAGNA GULLINKAMBI",
+    abilityDescription:
+      "Quando está equipado em Unidade Lightness, ele concede os seguintes efeitos: a Unidade Lightness ganha +3DP. No início de cada turno do jogador, coloque 1 Marcador de Presságio nessa carta (máx. 5). A cada Marcador de Presságio: compre uma carta. Com 5 Marcadores de Presságio: todas as cartas do campo do oponente são destruídas. Após isso acontecer, o marcador recomeça.",
+    attack: "",
+    category: "Lightness Ultimate Guardian",
+    requiresElement: "Haos",
   },
   // SCENARIO CARDS
   {
@@ -4206,7 +4257,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // ── Masters system ────────────────��────────────────────────────────────
       localStorage.removeItem("gpgame_masters_v1")
 
-      // ── Story Mode (Campanha) ─────────────────────────────────────────���────
+      // ── Story Mode (Campanha) ���────────────────────────────────────────���────
       localStorage.removeItem("gpgame_story_progress")
       localStorage.removeItem("gpgame_story_battle_pending")
 

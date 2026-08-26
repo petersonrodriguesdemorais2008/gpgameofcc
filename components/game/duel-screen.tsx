@@ -179,6 +179,12 @@ interface FieldCard extends GameCard {
   valhallaPhaseBonus?: number
   /** CALOR PERSISTENTE (Glódrim) — turno em que a proteção do 1º ataque já foi usada. */
   glodrimShieldUsedTurn?: number
+  /** RAGNA GULLINKAMBI — Marcadores de Presságio acumulados nesta carta (máx. 5). */
+  presagioCounters?: number
+  /** RAGNA GULLINKAMBI — último turno em que os marcadores foram adicionados. */
+  presagioLastTurn?: number
+  /** SKUGGI DRAUGR — último turno em que o efeito de reciclagem foi usado. */
+  skuggiUsedTurn?: number
   }
 
 /** Max Ultimate cards that can be equipped on the field at the same time */
@@ -4086,6 +4092,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [julgamentoVazioTargetMode, setJulgamentoVazioTargetMode] = useState<{ active: boolean; attackerIndex: number | null }>({ active: false, attackerIndex: null })
   const [trapTargetMode, setTrapTargetMode] = useState<{ active: boolean; slotIndex: number | null }>({ active: false, slotIndex: null })
   const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0)
+  // ── ÍSGRIMM FENRIR: ao atacar, escolher outra Unidade Ventus do próprio campo p/ +2 DP ──
+  const [fenrirBoostMode, setFenrirBoostMode] = useState<{
+    active: boolean
+    /** Unidade equipada com o Guardião — não pode receber o bônus */
+    excludeUnitIndex: number
+  } | null>(null)
+  // ── SKUGGI DRAUGR: seleção de carta do cemitério para o topo do deck ──
+  const [skuggiGraveyardPick, setSkuggiGraveyardPick] = useState<{ ultimateIndex: number } | null>(null)
   // ── Ultimate equip flow: ask which unit the Ultimate should be equipped to ──
   const [ultimateEquipPrompt, setUltimateEquipPrompt] = useState<{
     cardIndex: number
@@ -6795,8 +6809,35 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   /**
+   * Os elementos aparecem com nomes diferentes em `element` (Ventus/Darkus/Haos)
+   * e em `category` (Ventus/Darkness/Lightness), então cada elemento carrega
+   * uma lista de apelidos aceitos.
+   */
+  const ELEMENT_ALIASES: Record<string, string[]> = {
+    ventus: ["ventus", "wind"],
+    darkus: ["darkus", "darkness"],
+    haos: ["haos", "lightness"],
+    aquos: ["aquos", "water"],
+    pyrus: ["pyrus", "fire"],
+    fire: ["pyrus", "fire"],
+    terra: ["terra", "earth"],
+    void: ["void"],
+  }
+
+  /** A carta pertence ao elemento pedido (checa `element` e `category`)? */
+  const cardMatchesElement = (card: GameCard | FieldCard | null, element?: string) => {
+    if (!card || !element) return false
+    const aliases = ELEMENT_ALIASES[element.toLowerCase()] ?? [element.toLowerCase()]
+    const el = (card.element || "").toLowerCase()
+    const cat = ((card as any).category || "").toLowerCase()
+    return aliases.some((a) => el === a || cat.includes(a))
+  }
+
+  /**
    * Which units on the field are valid targets for a given Ultimate card.
    * If the card declares `requiresUnit`, only that unit is allowed (blocked otherwise).
+   * Se declarar `requiresElement` (Ísgrimm Fenrir / Skuggi Draugr / Ragna
+   * Gullinkambi), QUALQUER Unidade daquele elemento é alvo válido.
    * Each unit can hold only ONE Ultimate — units that already have one are blocked.
    */
   const getEquipCandidates = (
@@ -6805,13 +6846,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     ultimateZones?: (FieldCard | null)[],
   ) => {
     const required = normalizeCardName(card.requiresUnit)
+    const requiredElement = (card as any).requiresElement as string | undefined
     const zones = ultimateZones ?? []
     return unitZone
       .map((unit, index) => ({ unit, index }))
       .filter((entry): entry is { unit: FieldCard; index: number } => entry.unit !== null)
       .map(({ unit, index }) => {
         const name = normalizeCardName(unit.name)
-        const matches = !required || name === required || name.includes(required) || required.includes(name)
+        const matches = requiredElement
+          ? cardMatchesElement(unit, requiredElement)
+          : !required || name === required || name.includes(required) || required.includes(name)
         // Already carrying an Ultimate? Matched STRICTLY by slot index, never by name —
         // two copies of the same Unit (ex: dois Fehnon) são Unidades distintas e
         // cada uma pode receber a sua própria Ultimate.
@@ -6843,7 +6887,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       if (candidates.every(c => c.occupied)) {
         showEffectFeedback("Cada Unidade pode ter apenas uma Ultimate equipada!", "error")
       } else {
-        showEffectFeedback(`${card.name} só pode ser equipada em ${card.requiresUnit}!`, "error")
+        showEffectFeedback(
+          (card as any).requiresElement
+            ? `${card.name} só pode ser equipada em uma Unidade ${(card as any).requiresElement}!`
+            : `${card.name} só pode ser equipada em ${card.requiresUnit}!`,
+          "error",
+        )
       }
       return
     }
@@ -6907,7 +6956,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       let newUnitZone = [...prev.unitZone]
       let bonusMsg = ""
 
-      if (unitFound && requiredUnit) {
+      const requiredElement = (cardToPlace as any).requiresElement as string | undefined
+
+      if (requiredElement && newUnitZone[equipUnitIndex]) {
+        // Ultimate Guardians elementais: bônus fixo de DP na Unidade equipada
+        const unit = newUnitZone[equipUnitIndex]!
+        const abilityUpper = (cardToPlace.ability || "").toUpperCase()
+        const gain = abilityUpper.includes("ISGRIMM") || abilityUpper.includes("FENRIR") ? 2 : 3
+        newUnitZone[equipUnitIndex] = { ...unit, currentDp: unit.currentDp + gain }
+        bonusMsg = `${unit.name} +${gain} DP! (${cardToPlace.name})`
+      } else if (unitFound && requiredUnit) {
         const unit = newUnitZone[unitIdx]!
         const ability = cardToPlace.ability
 
@@ -7872,6 +7930,31 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               showEffectFeedback("LACERAÇÃO DO MUNDO: Carta comprada! (Equipe ODEN SWORD para o efeito completo)", "info")
             } else {
               showEffectFeedback("LACERAÇÃO DO MUNDO: Carta comprada!", "info")
+            }
+          }
+        }
+
+        // ── ÍSGRIMM FENRIR: quando a Unidade Ventus equipada ataca, outra Unidade
+        // Ventus do seu campo ganha +2 DP (nunca a própria Unidade equipada) ──
+        {
+          const attackerIdxFenrir = attackState.attackerIndex!
+          const hasFenrir = playerField.ultimateZones.some(
+            (z) =>
+              z &&
+              ((z.ability || "").toUpperCase().includes("ISGRIMM") ||
+                (z.ability || "").toUpperCase().includes("FENRIR") ||
+                (z.name || "").toUpperCase().includes("FENRIR")) &&
+              z.equippedUnitIndex === attackerIdxFenrir,
+          )
+          if (hasFenrir) {
+            const targets = playerField.unitZone.filter(
+              (u, i) => u && i !== attackerIdxFenrir && cardMatchesElement(u, "ventus"),
+            )
+            if (targets.length > 0) {
+              setFenrirBoostMode({ active: true, excludeUnitIndex: attackerIdxFenrir })
+              showEffectFeedback("ÍSGRIMM FENRIR: selecione outra Unidade Ventus do seu campo para +2 DP!", "success")
+            } else {
+              showEffectFeedback("ÍSGRIMM FENRIR: nenhuma outra Unidade Ventus no campo.", "info")
             }
           }
         }
@@ -11324,7 +11407,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         break
 
-      // ── Full field sync — applies everything the sender broadcasts ─────────
+      // ─�� Full field sync — applies everything the sender broadcasts ─────────
       case "field_sync": {
         const d = action.data
         setEnemyField(prev => {
@@ -13975,7 +14058,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                         key={i}
                         data-player-unit-slot={i}
                         onClick={() => {
-                          if (selectedHandCard !== null) {
+                          if (fenrirBoostMode?.active && card) {
+                            resolveFenrirBoost(i)
+                          } else if (selectedHandCard !== null) {
                             placeCard("unit", i)
                           } else if (itemSelectionMode.active && itemSelectionMode.step === "selectAlly" && card) {
                             handleAllyUnitSelect(i)
@@ -16083,7 +16168,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ─────────────────────────────────��────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��─────────────────────────────────������──────────────────────��───────── */}
+      ─��───────��─────────────────────────������──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
