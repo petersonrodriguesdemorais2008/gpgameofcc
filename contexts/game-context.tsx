@@ -385,6 +385,8 @@ interface GameContextType {
   addStaminaBottles: (amount: number) => void
   /** Consome 1 garrafa e recupera stamina. Só funciona faltando 10+ de stamina; retorna false caso contrário. */
   useStaminaBottle: () => boolean
+  /** Consome N garrafas SEM recuperar stamina (presentes de Vínculo do Mestre). Retorna false se faltar. */
+  spendStaminaBottles: (amount: number) => boolean
   /** Livros de XP: itens que concedem XP a um Mestre escolhido (dropam em Duelos do Modo Campanha). */
   xpBooks: XPBookCounts
   /** Soma livros ao inventário. */
@@ -4206,7 +4208,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // ── Masters system ────────────────��────────────────────────────────────
       localStorage.removeItem("gpgame_masters_v1")
 
-      // ── Story Mode (Campanha) ─────────────────────────────────────────���────
+      // ── Story Mode (Campanha) ���────────────────────────────────────────���────
       localStorage.removeItem("gpgame_story_progress")
       localStorage.removeItem("gpgame_story_battle_pending")
 

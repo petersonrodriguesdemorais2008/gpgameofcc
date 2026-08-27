@@ -1,6 +1,7 @@
 // ─── masters-data.ts ──────────────────────────────────────────────────────────
 
 import { CHESTS, type ChestId } from "./chests"
+import { grantBondXP, BOND_XP_PER_MATCH } from "./master-bond"
 
 export type MasterElement = "Aquos" | "Darkus" | "Ventus" | "Pyrus" | "Haos" | "Subterra" | "Vazio"
 export type MasterRarity  = "R" | "SR" | "UR" | "LR"
@@ -351,6 +352,10 @@ export function grantMasterDuelXP(opts: {
 
     const active = updated.find(m => m.isActive)
     const leveledUp = !!(active && prevActive && active.currentLevel > prevActive.currentLevel)
+
+    // Afinidade: o Mestre ativo também ganha XP de Vínculo por ser usado na partida
+    if (active) grantBondXP(active.id, BOND_XP_PER_MATCH)
+
     window.dispatchEvent(new CustomEvent("gpgame_master_xp", {
       detail: {
         masterId: active?.id ?? "",
