@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import {
   ArrowLeft, Check, Lock, ChevronRight, Swords, Trophy, Skull, Flag, Layers, Target, Gift, Sparkles,
-  BookOpen, X, Minus, Plus,
+  BookOpen, X, Minus, Plus, Search, ArrowDownWideNarrow, HelpCircle, Heart, Package, Coins, Award,
 } from "lucide-react"
 import { useGame } from "@/contexts/game-context"
 import { PackOpeningOverlay } from "./pack-opening-overlay"
@@ -21,6 +21,20 @@ import {
 import { CHESTS } from "@/lib/chests"
 import { ALL_XP_BOOK_IDS, XP_BOOKS, type XPBookId } from "@/lib/xp-books"
 import { getRuneProgress, loadUnlockedRunes } from "@/lib/runes"
+import {
+  BOND_MAX_LEVEL,
+  BOND_XP_PER_MATCH,
+  BOND_XP_PER_BOTTLE,
+  type BondRewardDef,
+  type BondProgress,
+  bondRewardsFor,
+  computeBondLevel,
+  getMasterBond,
+  grantBondXP,
+  markBondRewardClaimed,
+  claimableBondCount,
+  unlockPlayerTitle,
+} from "@/lib/master-bond"
 import { RunesPanel } from "./runes-panel"
 import { getSfxVolume, getMenuMusicMuted } from "./main-menu"
 
@@ -66,6 +80,11 @@ function rarityStyle(r: string) {
   if (r === "UR") return { color:"#fbbf24", bg:"rgba(251,191,36,0.14)",  label:"Ultra Raro" }
   if (r === "SR") return { color:"#a78bfa", bg:"rgba(167,139,250,0.14)", label:"Super Raro" }
   return { color:"#94a3b8", bg:"rgba(148,163,184,0.12)", label:"Raro" }
+}
+
+// ─── Busca sem acento / sem caixa ─────────────────────────────────────────────
+function normalizeText(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
 
 // ─── Ornamental divider ───────────────────────────────────────────────────────
@@ -162,15 +181,25 @@ function MasterTile({ master, isSelected, onClick }: {
         position:"relative", cursor:"pointer", border:"none", background:"none",
         padding:0, textAlign:"left", flexShrink:0, width:148,
         outline:"none",
+        // O selecionado sobe e ganha brilho — diferença imediata do apenas ATIVO
+        transform: isSelected ? "translateY(-3px)" : "none",
+        transition:"transform 0.32s cubic-bezier(0.22,1,0.36,1)",
+        zIndex: isSelected ? 2 : 1,
       }}>
       <div style={{
         position:"relative", overflow:"hidden",
         clipPath:"polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)",
         background: isSelected
-          ? `linear-gradient(160deg,${master.accentColor}50,${master.accentColor}14 40%,${master.accentColor}38)`
-          : "rgba(255,255,255,0.07)",
-        padding:1.5,
-        transition:"background 0.3s",
+          ? `linear-gradient(160deg,${master.accentColor},${master.accentColor}55 42%,${master.accentColor}dd)`
+          : master.isActive
+            ? "rgba(52,211,153,0.30)"
+            : "rgba(255,255,255,0.07)",
+        padding: isSelected ? 2.5 : 1.5,
+        transition:"background 0.3s, padding 0.3s, box-shadow 0.35s",
+        boxShadow: isSelected
+          ? `0 0 0 1px ${master.accentColor}66, 0 10px 30px ${master.accentColor}55`
+          : "none",
+        animation: isSelected ? "gpTileSelGlow 2.6s ease-in-out infinite" : undefined,
       }}>
         <div style={{
           position:"relative", overflow:"hidden",
@@ -193,11 +222,22 @@ function MasterTile({ master, isSelected, onClick }: {
               style={{
                 position:"absolute", inset:0, width:"100%", height:"100%",
                 objectFit:"cover", objectPosition:"center top",
-                filter: isSelected ? "saturate(1.08)" : "saturate(0.75) brightness(0.82)",
-                transition:"transform 0.5s cubic-bezier(0.22,1,0.36,1), filter 0.3s",
+                filter: isSelected
+                  ? `saturate(1.18) brightness(1.08) drop-shadow(0 0 16px ${master.accentColor}70)`
+                  : "saturate(0.7) brightness(0.72)",
+                transition:"transform 0.5s cubic-bezier(0.22,1,0.36,1), filter 0.35s",
               }}
               onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
             />
+            {/* brilho de seleção sobre a foto — só no Mestre em foco */}
+            {isSelected && (
+              <div aria-hidden="true" style={{
+                position:"absolute", inset:0, pointerEvents:"none",
+                background:`radial-gradient(ellipse 90% 60% at 50% 100%, ${master.accentColor}4d 0%, transparent 68%)`,
+                mixBlendMode:"screen",
+                animation:"gpTileArtGlow 2.6s ease-in-out infinite",
+              }}/>
+            )}
             <div style={{
               position:"absolute", left:0, right:0, bottom:0, height:64,
               background:"linear-gradient(transparent, #0a080e)",
@@ -1369,6 +1409,22 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
   const [heroKey,      setHeroKey]      = useState(0)
   const [activating,   setActivating]   = useState<Master | null>(null)
 
+  // ── Filtros / busca do rail inferior ──────────────────────────────────────
+  const [elementFilter, setElementFilter] = useState<string | null>(null)
+  const [rarityFilter,  setRarityFilter]  = useState<string | null>(null)
+  const [sortByLevel,   setSortByLevel]   = useState(false)
+  const [searchOpen,    setSearchOpen]    = useState(false)
+  const [searchQuery,   setSearchQuery]   = useState("")
+
+  // ── Ajuda de XP (antigo painel "Como ganhar XP") ──────────────────────────
+  const [xpHelpOpen, setXpHelpOpen] = useState(false)
+  const xpHelpRef = useRef<HTMLDivElement | null>(null)
+
+  // ── Vínculo / Afinidade ───────────────────────────────────────────────────
+  const [bondMaster,  setBondMaster]  = useState<Master | null>(null)
+  const [giftMaster,  setGiftMaster]  = useState<Master | null>(null)
+  const [bondVersion, setBondVersion] = useState(0)
+
   useEffect(() => {
     const loaded = loadMastersFromStorage()
     setMasters(loaded)
@@ -1388,6 +1444,61 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
     setSelectedId(id)
     setHeroKey(k => k + 1)
   }
+
+  // ── Filtros do rail ────────────────────────────────────────────────────────
+  // Só oferecemos chips de elemento/raridade que existem na coleção atual.
+  const availableElements = useMemo(
+    () => Array.from(new Set(masters.map(m => m.element))),
+    [masters],
+  )
+  const availableRarities = useMemo(
+    () => (["LR","UR","SR","R"] as const).filter(r => masters.some(m => m.rarity === r)),
+    [masters],
+  )
+
+  const filteredMasters = useMemo(() => {
+    const q = normalizeText(searchQuery.trim())
+    let list = masters.filter(m => {
+      if (elementFilter && m.element !== elementFilter) return false
+      if (rarityFilter  && m.rarity  !== rarityFilter)  return false
+      if (q && !normalizeText(m.name).includes(q) && !normalizeText(m.fullName).includes(q)) return false
+      return true
+    })
+    if (sortByLevel) list = [...list].sort((a, b) => b.currentLevel - a.currentLevel)
+    return list
+  }, [masters, elementFilter, rarityFilter, searchQuery, sortByLevel])
+
+  const filtersActive = elementFilter !== null || rarityFilter !== null || sortByLevel || searchQuery.trim() !== ""
+
+  const clearFilters = () => {
+    setElementFilter(null)
+    setRarityFilter(null)
+    setSortByLevel(false)
+    setSearchQuery("")
+    setSearchOpen(false)
+  }
+
+  // ── Sincroniza os badges de Vínculo com o XP ganho em partidas/presentes ───
+  useEffect(() => {
+    const onBond = () => setBondVersion(v => v + 1)
+    window.addEventListener("gpgame_master_bond", onBond)
+    return () => window.removeEventListener("gpgame_master_bond", onBond)
+  }, [])
+
+  // Fecha o popover de ajuda de XP ao clicar fora ou pressionar Escape
+  useEffect(() => {
+    if (!xpHelpOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (xpHelpRef.current && !xpHelpRef.current.contains(e.target as Node)) setXpHelpOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setXpHelpOpen(false) }
+    window.addEventListener("mousedown", onDown)
+    window.addEventListener("keydown", onKey)
+    return () => {
+      window.removeEventListener("mousedown", onDown)
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [xpHelpOpen])
 
   // Sincroniza com XP ganho em duelos (grantMasterDuelXP) OU com Livros de XP
   // usados manualmente (grantMasterXPManual) — este último pode alvejar um
@@ -1552,11 +1663,41 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
       : `${claimedLevels.length} recompensa${claimedLevels.length > 1 ? "s" : ""} recebida${claimedLevels.length > 1 ? "s" : ""}!`)
   }
 
+  // ── Resgate de recompensa de Vínculo ──────────────────────────────────────
+  const handleClaimBondReward = useCallback((master: Master, reward: BondRewardDef) => {
+    markBondRewardClaimed(master.id, reward.level)
+
+    if (reward.type === "pack" && reward.packId) {
+      setPackToOpen(reward.packId)
+
+    } else if (reward.type === "gacha_coins" && reward.amount) {
+      const newTotal = coins + reward.amount
+      setCoins(newTotal)
+      try { localStorage.setItem("gearperks-coins", String(newTotal)) } catch {}
+      showToast(`+${reward.amount} Gacha Coins adicionados!`)
+
+    } else if (reward.type === "title" && reward.title) {
+      unlockPlayerTitle(reward.title)
+      showToast(`Título desbloqueado: ${reward.title}`)
+
+    } else {
+      showToast(`${reward.label} recebido!`)
+    }
+    setBondVersion(v => v + 1)
+  }, [coins, setCoins])
+
   const el  = selectedMaster ? elementStyle(selectedMaster.element) : null
   const rar = selectedMaster ? rarityStyle(selectedMaster.rarity)   : null
   const claimableCount = selectedMaster
     ? selectedMaster.rewards.filter(r => r.level <= selectedMaster.currentLevel && !r.claimed).length
     : 0
+
+  // Recompensas de Vínculo prontas para resgate (recalcula a cada evento de bond)
+  const bondClaimable = useMemo(
+    () => (selectedMaster ? claimableBondCount(selectedMaster.id, selectedMaster.name) : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedMaster?.id, selectedMaster?.name, bondVersion],
+  )
 
   return (
     <div style={{
@@ -1925,6 +2066,65 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
                       <span style={{ fontSize:11, color: selectedMaster.accentColor, fontWeight:800, fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" }}>
                         {selectedMaster.currentXP} / {selectedMaster.xpToNext} XP
                       </span>
+
+                      {/* Ajuda "Como ganhar XP" — antes era um painel fixo no dock */}
+                      <div ref={xpHelpRef} style={{ position:"relative", flexShrink:0, display:"flex" }}>
+                        <button
+                          onClick={() => setXpHelpOpen(o => !o)}
+                          aria-label="Como ganhar XP"
+                          aria-expanded={xpHelpOpen}
+                          style={{
+                            width:19, height:19, borderRadius:"50%", padding:0, cursor:"pointer",
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            background: xpHelpOpen ? "rgba(232,201,109,0.20)" : "rgba(255,255,255,0.05)",
+                            border:`1px solid ${xpHelpOpen ? "rgba(232,201,109,0.55)" : "rgba(255,255,255,0.14)"}`,
+                            color: xpHelpOpen ? "#e8c96d" : "#8b93a1",
+                            transition:"all 0.2s",
+                          }}
+                        >
+                          <HelpCircle size={12}/>
+                        </button>
+
+                        {xpHelpOpen && (
+                          <div role="dialog" aria-label="Fontes de XP" style={{
+                            position:"absolute", bottom:"calc(100% + 10px)", left:"50%",
+                            transform:"translateX(-42%)", zIndex:60, width:302,
+                            background:"linear-gradient(170deg,#120e1a 0%,#08060c 100%)",
+                            border:"1px solid rgba(232,201,109,0.26)", borderRadius:13,
+                            padding:"13px 14px 14px",
+                            boxShadow:"0 18px 46px rgba(0,0,0,0.66)",
+                            animation:"gpRiseIn 0.2s ease both",
+                          }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
+                              <span style={{
+                                fontSize:9.5, fontWeight:800, color:"#e8c96d",
+                                textTransform:"uppercase", letterSpacing:"0.2em",
+                              }}>Como ganhar XP</span>
+                              <div style={{ flex:1, height:1, background:"linear-gradient(90deg,rgba(232,201,109,0.4),transparent)" }}/>
+                            </div>
+                            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
+                              {XP_SOURCES.map(({ Icon, name, xp }) => (
+                                <div key={name} style={{
+                                  display:"flex", alignItems:"center", gap:7,
+                                  background:"rgba(255,255,255,0.03)",
+                                  border:"1px solid rgba(255,255,255,0.06)",
+                                  borderRadius:8, padding:"6px 8px",
+                                }}>
+                                  <Icon size={12} color="#c9ad5c" style={{ flexShrink:0 }}/>
+                                  <div style={{ minWidth:0 }}>
+                                    <div style={{ fontSize:10, color:"#aab2c0", fontWeight:700, whiteSpace:"nowrap" }}>{name}</div>
+                                    <div style={{ fontSize:9.5, color:"#e8c96d", fontWeight:800, fontVariantNumeric:"tabular-nums" }}>{xp} XP</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <p style={{ fontSize:10, color:"#5b6270", margin:"11px 0 0", lineHeight:1.5 }}>
+                              Apenas o Mestre <strong style={{ color:"#8b93a1" }}>ATIVO</strong> recebe XP nas partidas.
+                              Use Livros de XP para evoluir os demais.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                       {ALL_XP_BOOK_IDS.some(id => (xpBooks[id] ?? 0) > 0) && selectedMaster.currentLevel < selectedMaster.maxLevel && (
                         <button onClick={() => setXpBooksMaster(selectedMaster)} className="gp-cta" style={{
                           display:"flex", alignItems:"center", gap:5, flexShrink:0,
@@ -1985,6 +2185,27 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           }}>
             <Sparkles size={14} color={selectedMaster.accentColor}/> Rota de Runas
           </button>
+          <button onClick={() => setBondMaster(selectedMaster)} className="gp-cta" style={{
+            display:"flex", alignItems:"center", gap:8, position:"relative",
+            background:"rgba(255,255,255,0.04)",
+            border:"1px solid rgba(244,114,182,0.42)",
+            clipPath:"polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%)",
+            padding:"12px 22px", cursor:"pointer", color:"#e7e4dd",
+            fontWeight:900, fontSize:12.5, letterSpacing:"0.06em", textTransform:"uppercase",
+          }}>
+            <Heart size={14} color="#f472b6"/> Vínculo
+            {bondClaimable > 0 && (
+              <span style={{
+                position:"absolute", top:-8, right:-4,
+                minWidth:20, height:20, borderRadius:"50%", padding:"0 5px",
+                background:"linear-gradient(135deg,#a3742a,#e8c96d)",
+                color:"#0c0a06", fontWeight:900, fontSize:11,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                boxShadow:"0 0 14px rgba(232,201,109,0.7)",
+                animation:"gpPulseSoft 2s ease-in-out infinite",
+              }}>{bondClaimable}</span>
+            )}
+          </button>
           {!selectedMaster.isActive && (
             <button onClick={() => handleActivate(selectedMaster.id)} className="gp-cta" style={{
                     display:"flex", alignItems:"center", gap:7,
@@ -2012,67 +2233,164 @@ export default function MasterScreen({ onBack }: MasterScreenProps) {
           backdropFilter:"blur(18px)",
           padding:"14px 24px 16px",
         }}>
-          <div style={{ display:"flex", gap:24, alignItems:"stretch", flexWrap:"wrap" }}>
-            {/* selector rail */}
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+          <div style={{ display:"flex", gap:24, alignItems:"stretch" }}>
+            {/* selector rail — agora ocupa a largura total do dock */}
+            <div style={{ display:"flex", flexDirection:"column", gap:8, flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
                 <span style={{
                   fontSize:9.5, fontWeight:800, color:"#6d7482",
-                  textTransform:"uppercase", letterSpacing:"0.22em",
+                  textTransform:"uppercase", letterSpacing:"0.22em", flexShrink:0,
                 }}>Mestres</span>
-                <div style={{ width:52, height:1, background:"linear-gradient(90deg,rgba(232,201,109,0.4),transparent)" }}/>
-              </div>
-              <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:2 }}>
-                {masters.map(m => (
-                  <MasterTile
-                    key={m.id}
-                    master={m}
-                    isSelected={selectedId === m.id}
-                    onClick={() => selectMaster(m.id)}
+                <div style={{ width:34, height:1, background:"linear-gradient(90deg,rgba(232,201,109,0.4),transparent)", flexShrink:0 }}/>
+
+                {/* ── Filtros por elemento ── */}
+                <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                  {availableElements.map(elName => {
+                    const tint = elementStyle(elName).color
+                    const on = elementFilter === elName
+                    return (
+                      <button
+                        key={elName}
+                        onClick={() => setElementFilter(on ? null : elName)}
+                        title={elName}
+                        aria-label={`Filtrar por ${elName}`}
+                        aria-pressed={on}
+                        style={{
+                          width:18, height:18, borderRadius:"50%", padding:0, cursor:"pointer",
+                          background: on ? tint : `${tint}38`,
+                          border:`1px solid ${on ? tint : `${tint}66`}`,
+                          boxShadow: on ? `0 0 0 2px ${tint}33, 0 0 10px ${tint}88` : "none",
+                          transition:"all 0.2s",
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+
+                <div style={{ width:1, height:16, background:"rgba(255,255,255,0.1)", flexShrink:0 }}/>
+
+                {/* ── Filtros por raridade ── */}
+                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  {availableRarities.map(r => {
+                    const rs = rarityStyle(r)
+                    const on = rarityFilter === r
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setRarityFilter(on ? null : r)}
+                        title={rs.label}
+                        aria-pressed={on}
+                        style={{
+                          padding:"3px 7px", cursor:"pointer",
+                          fontSize:9, fontWeight:900, letterSpacing:"0.1em",
+                          color: on ? "#0c0a06" : rs.color,
+                          background: on ? rs.color : rs.bg,
+                          border:`1px solid ${rs.color}${on ? "" : "44"}`,
+                          clipPath:"polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%)",
+                          transition:"all 0.2s",
+                        }}
+                      >{r}</button>
+                    )
+                  })}
+                </div>
+
+                <div style={{ width:1, height:16, background:"rgba(255,255,255,0.1)", flexShrink:0 }}/>
+
+                {/* ── Ordenar por nível ── */}
+                <button
+                  onClick={() => setSortByLevel(s => !s)}
+                  title="Ordenar por nível"
+                  aria-label="Ordenar por nível"
+                  aria-pressed={sortByLevel}
+                  style={{
+                    width:24, height:22, padding:0, cursor:"pointer", flexShrink:0,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    background: sortByLevel ? "rgba(232,201,109,0.20)" : "rgba(255,255,255,0.04)",
+                    border:`1px solid ${sortByLevel ? "rgba(232,201,109,0.55)" : "rgba(255,255,255,0.1)"}`,
+                    borderRadius:6, color: sortByLevel ? "#e8c96d" : "#8b93a1",
+                    transition:"all 0.2s",
+                  }}
+                ><ArrowDownWideNarrow size={12}/></button>
+
+                {/* ── Busca expansível ── */}
+                <div style={{ display:"flex", alignItems:"center", gap:0, flexShrink:0 }}>
+                  <button
+                    onClick={() => {
+                      if (searchOpen) { setSearchOpen(false); setSearchQuery("") }
+                      else setSearchOpen(true)
+                    }}
+                    title="Pesquisar por nome"
+                    aria-label="Pesquisar por nome"
+                    aria-expanded={searchOpen}
+                    style={{
+                      width:24, height:22, padding:0, cursor:"pointer",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      background: searchOpen ? "rgba(232,201,109,0.20)" : "rgba(255,255,255,0.04)",
+                      border:`1px solid ${searchOpen ? "rgba(232,201,109,0.55)" : "rgba(255,255,255,0.1)"}`,
+                      borderRadius:6, color: searchOpen ? "#e8c96d" : "#8b93a1",
+                      transition:"all 0.2s",
+                    }}
+                  >{searchOpen ? <X size={12}/> : <Search size={12}/>}</button>
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Nome do Mestre..."
+                    aria-label="Pesquisar Mestre por nome"
+                    autoFocus={searchOpen}
+                    style={{
+                      width: searchOpen ? 150 : 0,
+                      opacity: searchOpen ? 1 : 0,
+                      marginLeft: searchOpen ? 7 : 0,
+                      padding: searchOpen ? "4px 9px" : "4px 0",
+                      height:22, boxSizing:"border-box",
+                      background:"rgba(255,255,255,0.05)",
+                      border:`1px solid ${searchOpen ? "rgba(255,255,255,0.14)" : "transparent"}`,
+                      borderRadius:6, color:"#e7e4dd", fontSize:10.5, fontFamily:SANS,
+                      outline:"none",
+                      transition:"width 0.26s cubic-bezier(0.22,1,0.36,1), opacity 0.2s, margin-left 0.26s, padding 0.26s",
+                    }}
                   />
-                ))}
+                </div>
+
+                {/* ── Contador + limpar ── */}
+                {filtersActive && (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                    <span style={{ fontSize:9.5, color:"#565d6b", fontWeight:700, fontVariantNumeric:"tabular-nums" }}>
+                      {filteredMasters.length} de {masters.length}
+                    </span>
+                    <button
+                      onClick={clearFilters}
+                      style={{
+                        background:"none", border:"none", padding:0, cursor:"pointer",
+                        fontSize:9.5, fontWeight:800, color:"#e8c96d",
+                        textTransform:"uppercase", letterSpacing:"0.1em",
+                      }}
+                    >Limpar</button>
+                  </div>
+                )}
               </div>
+
+              {filteredMasters.length === 0 ? (
+                <div style={{
+                  display:"flex", alignItems:"center", gap:9, height:212,
+                  fontSize:11.5, color:"#565d6b",
+                }}>
+                  <Search size={14}/> Nenhum Mestre encontrado com esses filtros.
+                </div>
+              ) : (
+                <div style={{ display:"flex", gap:12, overflowX:"auto", padding:"4px 2px 6px" }}>
+                  {filteredMasters.map(m => (
+                    <MasterTile
+                      key={m.id}
+                      master={m}
+                      isSelected={selectedId === m.id}
+                      onClick={() => selectMaster(m.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* XP guide */}
-            <div style={{ flex:1, minWidth:260, display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-                <span style={{
-                  fontSize:9.5, fontWeight:800, color:"#6d7482",
-                  textTransform:"uppercase", letterSpacing:"0.22em",
-                }}>Como ganhar XP</span>
-                <div style={{ width:52, height:1, background:"linear-gradient(90deg,rgba(232,201,109,0.4),transparent)" }}/>
-              </div>
-              <div style={{
-                flex:1, display:"grid",
-                gridTemplateColumns:"repeat(auto-fit, minmax(118px, 1fr))",
-                gap:8, alignContent:"start",
-              }}>
-                {XP_SOURCES.map(({ Icon, name, xp }) => (
-                  <div key={name} className="gp-xp-card" style={{
-                    display:"flex", alignItems:"center", gap:9,
-                    background:"rgba(255,255,255,0.025)",
-                    border:"1px solid rgba(255,255,255,0.05)",
-                    clipPath:"polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px)",
-                    padding:"9px 11px",
-                  }}>
-                    <div style={{
-                      width:28, height:28, flexShrink:0,
-                      background:"rgba(232,201,109,0.07)",
-                      border:"1px solid rgba(232,201,109,0.14)",
-                      clipPath:"polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                    }}>
-                      <Icon size={13} color="#c9ad5c"/>
-                    </div>
-                    <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:11, color:"#aab2c0", fontWeight:700, whiteSpace:"nowrap" }}>{name}</div>
-                      <div style={{ fontSize:10, color:"#e8c96d", fontWeight:800, fontVariantNumeric:"tabular-nums" }}>{xp} XP</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>
