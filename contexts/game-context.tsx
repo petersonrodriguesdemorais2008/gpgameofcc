@@ -3003,6 +3003,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true
   }, [staminaBottles, stamina, playerProfile.level])
 
+  // Gasta garrafas SEM recuperar stamina — usado para presentear Mestres
+  // (XP de Afinidade/Vínculo). Nada é debitado se o estoque for insuficiente.
+  const spendStaminaBottles = useCallback(
+    (amount: number) => {
+      const cost = Math.floor(amount)
+      if (!Number.isFinite(cost) || cost <= 0) return false
+      if (staminaBottles < cost) return false
+      setStaminaBottles((prev) => Math.max(0, prev - cost))
+      return true
+    },
+    [staminaBottles],
+  )
+
   // ── Livros de XP ─────────────────────────────────────────────────────────────
   const addXPBooks = useCallback((gain: XPBookCounts) => {
     const clean = normalizeXPBookCounts(gain)
@@ -4307,6 +4320,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     staminaBottles,
     addStaminaBottles,
     useStaminaBottle,
+    spendStaminaBottles,
     xpBooks,
     addXPBooks,
     getXPBookCount,
