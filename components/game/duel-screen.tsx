@@ -5684,7 +5684,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
     startGame(myDeck, parseD(oppDeckRaw) ?? myDeck, undefined)
 
-    // Override enemy field with placeholder (opponent state comes via Supabase)
+    // Override enemy field with placeholder (opponent state comes via Neon REST)
     if (oppDeck) {
       setEnemyField(prev => ({
         ...prev,
@@ -15172,7 +15172,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         )
       })()}
 
-      {/* Ordem de Laceração — Blue Slash Animation */}
+      {/* Ordem de Laceraç��o — Blue Slash Animation */}
 
 
       {lacerationAnimation && (
