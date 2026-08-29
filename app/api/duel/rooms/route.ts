@@ -21,9 +21,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Requisicao invalida" }, { status: 400 })
   }
 
-  const hostId = typeof body.hostId === "string" ? body.hostId : null
-  const hostName = typeof body.hostName === "string" && body.hostName.trim() ? body.hostName.trim() : "Jogador"
-  const hostAvatarUrl = typeof body.hostAvatarUrl === "string" ? body.hostAvatarUrl : null
+  const rawHostId = typeof body.hostId === "string" ? body.hostId.trim() : ""
+  const hostId = rawHostId.length > 0 && rawHostId.length <= 50 ? rawHostId : rawHostId.length > 50 ? rawHostId.slice(0, 50) : null
+  const hostName = typeof body.hostName === "string" && body.hostName.trim() ? body.hostName.trim().slice(0, 100) : "Jogador"
+  const hostAvatarUrl = typeof body.hostAvatarUrl === "string" ? body.hostAvatarUrl.slice(0, 2000) : null
   const hostDeck = body.hostDeck ?? null
 
   if (!hostId) {
