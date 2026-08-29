@@ -4388,7 +4388,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return () => clearTimeout(t)
   }, [enemyField.life])
 
-  // ── AUTO-PLAY INTELIGENTE ─────────���────��───────────────────────────────────
+  // ── AUTO-PLAY INTELIGENTE ─────────���────��────────��──────────────────────────
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
 
@@ -4894,6 +4894,54 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
     setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  RAGNA GULLINKAMBI — Marcadores de Presságio (início de cada turno do jogador)
+  // ═══════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!isPlayerTurn || phase !== "draw") return
+    if (ragnaLastTurnRef.current === turn) return
+    if (!playerField.ultimateZones.some((z) => z?.id === "ragna-gullinkambi")) return
+    ragnaLastTurnRef.current = turn
+
+    const next = Math.min(5, ragnaOmen + 1)
+    setRagnaOmen(next)
+
+    // A cada Marcador de Presságio: compre uma carta.
+    setPlayerField((prev) => {
+      const amount = Math.min(next, prev.deck.length)
+      if (amount <= 0) return prev
+      return { ...prev, hand: [...prev.hand, ...prev.deck.slice(0, amount)], deck: prev.deck.slice(amount) }
+    })
+    showEffectFeedback(`Ragna Gullinkambi: ${next} Presságio(s) — compre ${next} carta(s)!`, "success")
+
+    // Com 5 Marcadores: destrói todo o campo do oponente e o marcador recomeça.
+    if (next >= 5) {
+      setTimeout(() => {
+        setEnemyField((prev) => {
+          const destroyed: GameCard[] = [
+            ...prev.unitZone.filter(Boolean),
+            ...prev.ultimateZones.filter(Boolean),
+            ...prev.functionZone.filter(Boolean),
+            ...(prev.equipZone ? [prev.equipZone] : []),
+            ...(prev.scenarioZone ? [prev.scenarioZone] : []),
+          ] as GameCard[]
+          return {
+            ...prev,
+            unitZone: prev.unitZone.map(() => null),
+            ultimateZones: EMPTY_ULTIMATE_ZONES(),
+            functionZone: prev.functionZone.map(() => null),
+            equipZone: null,
+            scenarioZone: null,
+            graveyard: [...prev.graveyard, ...destroyed],
+          }
+        })
+        setRagnaOmen(0)
+        showEffectFeedback("Ragnarök de Gullinkambi: o campo do oponente foi destruído!", "success")
+      }, 700)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlayerTurn, phase, turn, ragnaOmen, playerField.ultimateZones])
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  NOVAS ARMADILHAS — VISÃO DO HROTTI / PRESSÁGIO DE LOGI
@@ -13835,7 +13883,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     // Oráculos de Asgard: "no início do seu turno" → disponível nas fases draw/main
                     const hasOraculosPeek = !!card && isPlayerTurn && card.id === "oraculos-de-asgard-r" &&
                       (phase === "draw" || phase === "main") && oraculosPeekTurn !== turn && enemyField.deck.length > 0
-                    // Comandante de Valhalla: "no início do combate" → só na fase de batalha
+                    // Comandante de Valhalla: "no in��cio do combate" → só na fase de batalha
                     const hasValhallaBlessing = !!card && isPlayerTurn && card.id === "comandante-de-valhalla-r" &&
                       phase === "battle" && valhallaBlessingTurn !== turn
                     const hasAbility = hasVaelorReturn || hasOraculosPeek || hasValhallaBlessing || card && isPlayerTurn && phase === "main" && (
