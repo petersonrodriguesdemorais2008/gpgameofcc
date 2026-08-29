@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Simple pass-through middleware - Supabase auth disabled temporarily
-  // The game doesn't require authentication to run
+  // O jogo usa playerId local para o PVP; não há sessão externa neste middleware.
   return NextResponse.next()
 }
 

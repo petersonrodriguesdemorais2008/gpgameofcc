@@ -4388,7 +4388,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     return () => clearTimeout(t)
   }, [enemyField.life])
 
-  // ── AUTO-PLAY INTELIGENTE ─────────���────��───────────────────────────────────
+  // ── AUTO-PLAY INTELIGENTE ─────────���────��────────��──────────────────────────
   const autoPlayRef = useRef(false)
   useEffect(() => { autoPlayRef.current = autoPlay }, [autoPlay])
 
@@ -4894,6 +4894,54 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setEffectFeedback({ active: true, message, type: type === "info" || type === "warning" ? "error" : type })
     setTimeout(() => setEffectFeedback(null), 2000)
   }, [])
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  RAGNA GULLINKAMBI — Marcadores de Presságio (início de cada turno do jogador)
+  // ═══════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!isPlayerTurn || phase !== "draw") return
+    if (ragnaLastTurnRef.current === turn) return
+    if (!playerField.ultimateZones.some((z) => z?.id === "ragna-gullinkambi")) return
+    ragnaLastTurnRef.current = turn
+
+    const next = Math.min(5, ragnaOmen + 1)
+    setRagnaOmen(next)
+
+    // A cada Marcador de Presságio: compre uma carta.
+    setPlayerField((prev) => {
+      const amount = Math.min(next, prev.deck.length)
+      if (amount <= 0) return prev
+      return { ...prev, hand: [...prev.hand, ...prev.deck.slice(0, amount)], deck: prev.deck.slice(amount) }
+    })
+    showEffectFeedback(`Ragna Gullinkambi: ${next} Presságio(s) — compre ${next} carta(s)!`, "success")
+
+    // Com 5 Marcadores: destrói todo o campo do oponente e o marcador recomeça.
+    if (next >= 5) {
+      setTimeout(() => {
+        setEnemyField((prev) => {
+          const destroyed: GameCard[] = [
+            ...prev.unitZone.filter(Boolean),
+            ...prev.ultimateZones.filter(Boolean),
+            ...prev.functionZone.filter(Boolean),
+            ...(prev.equipZone ? [prev.equipZone] : []),
+            ...(prev.scenarioZone ? [prev.scenarioZone] : []),
+          ] as GameCard[]
+          return {
+            ...prev,
+            unitZone: prev.unitZone.map(() => null),
+            ultimateZones: EMPTY_ULTIMATE_ZONES(),
+            functionZone: prev.functionZone.map(() => null),
+            equipZone: null,
+            scenarioZone: null,
+            graveyard: [...prev.graveyard, ...destroyed],
+          }
+        })
+        setRagnaOmen(0)
+        showEffectFeedback("Ragnarök de Gullinkambi: o campo do oponente foi destruído!", "success")
+      }, 700)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlayerTurn, phase, turn, ragnaOmen, playerField.ultimateZones])
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  NOVAS ARMADILHAS — VISÃO DO HROTTI / PRESSÁGIO DE LOGI
@@ -11312,14 +11360,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     let cursor = 0
     let since = "1970-01-01T00:00:00.000Z"
     const poll = async () => {
-      const actionsRes = await fetch(`/api/duel/rooms/${roomId}/actions?after=${cursor}&excludePlayerId=${encodeURIComponent(myId)}`)
+      // Never filter by player in SQL: own actions can have a higher cursor than
+      // the opponent's, and filtering them would make us skip the opponent forever.
+      const actionsRes = await fetch(`/api/duel/rooms/${roomId}/actions?after=${cursor}`)
       if (actionsRes.ok) {
         const { actions } = await actionsRes.json()
         for (const row of actions ?? []) {
           cursor = Math.max(cursor, Number(row.cursorId ?? 0))
+          if (row.playerId === myId) continue
           let data = row.actionData
           if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
-          mpHandleOpponentRef.current(data)
+          if (data && typeof data === "object") mpHandleOpponentRef.current(data)
         }
       }
       const chatRes = await fetch(`/api/duel/rooms/${roomId}/chat?since=${encodeURIComponent(since)}`)
@@ -12476,7 +12527,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       <style>{`
         /* ── Cartas do campo: flutuação sutil + sombra que "respira" com o movimento ──
            delay NEGATIVO (calc(-1 * var)) = a animação já nasce "em andamento" na fase
-           certa pra cada carta, então o movimento começa na hora (sem espera de ~2s),
+           certa pra cada carta, então o movimento come��a na hora (sem espera de ~2s),
            mas continua dessincronizado entre as cartas. */
         @keyframes gp-float {
           0%, 100% {
@@ -13832,7 +13883,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     // Oráculos de Asgard: "no início do seu turno" → disponível nas fases draw/main
                     const hasOraculosPeek = !!card && isPlayerTurn && card.id === "oraculos-de-asgard-r" &&
                       (phase === "draw" || phase === "main") && oraculosPeekTurn !== turn && enemyField.deck.length > 0
-                    // Comandante de Valhalla: "no início do combate" → só na fase de batalha
+                    // Comandante de Valhalla: "no in��cio do combate" → só na fase de batalha
                     const hasValhallaBlessing = !!card && isPlayerTurn && card.id === "comandante-de-valhalla-r" &&
                       phase === "battle" && valhallaBlessingTurn !== turn
                     const hasAbility = hasVaelorReturn || hasOraculosPeek || hasValhallaBlessing || card && isPlayerTurn && phase === "main" && (
