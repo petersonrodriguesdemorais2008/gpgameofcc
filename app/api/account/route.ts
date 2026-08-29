@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { randomBytes, scryptSync, timingSafeEqual, randomUUID } from "crypto"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { db } from "@/lib/db"
+import { gameAccounts } from "@/lib/db/schema"
+import { eq } from "drizzle-orm"
 
 // ---------- Password hashing (scrypt com salt) ----------
 function hashPassword(password: string): string {
@@ -63,6 +65,11 @@ function validProgress(progress: unknown): boolean {
   }
 }
 
+// Código de erro do Postgres para violação de restrição única
+function isUniqueViolation(err: unknown): boolean {
+  return Boolean(err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "23505")
+}
+
 export async function POST(request: Request) {
   let body: Record<string, unknown>
   try {
@@ -80,15 +87,6 @@ export async function POST(request: Request) {
   }
 
   const action = body.action
-  let supabase
-  try {
-    supabase = createAdminClient()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Servidor nao configurado. Tente novamente mais tarde." },
-      { status: 500 },
-    )
-  }
 
   try {
     // ---------- REGISTRAR COM EMAIL ----------
@@ -107,36 +105,37 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Progresso invalido" }, { status: 400 })
       }
 
-      const { data: existing } = await supabase
-        .from("game_accounts")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle()
+      const [existing] = await db
+        .select({ id: gameAccounts.id })
+        .from(gameAccounts)
+        .where(eq(gameAccounts.email, email))
+        .limit(1)
 
       if (existing) {
         return NextResponse.json({ success: false, error: "Este email ja esta registrado" }, { status: 409 })
       }
 
       const token = generateSessionToken()
-      const now = new Date().toISOString()
-      const { error } = await supabase.from("game_accounts").insert({
-        id: randomUUID(),
-        email,
-        password_hash: hashPassword(body.password),
-        session_token: token,
-        progress: body.progress ?? null,
-        last_saved: now,
-      })
+      const now = new Date()
 
-      if (error) {
-        if (error.code === "23505") {
+      try {
+        await db.insert(gameAccounts).values({
+          id: randomUUID(),
+          email,
+          passwordHash: hashPassword(body.password),
+          sessionToken: token,
+          progress: (body.progress ?? null) as any,
+          lastSaved: now,
+        })
+      } catch (error) {
+        if (isUniqueViolation(error)) {
           return NextResponse.json({ success: false, error: "Este email ja esta registrado" }, { status: 409 })
         }
         console.error("[account] register error:", error)
         return NextResponse.json({ success: false, error: "Erro ao criar conta. Tente novamente." }, { status: 500 })
       }
 
-      return NextResponse.json({ success: true, token, lastSaved: now })
+      return NextResponse.json({ success: true, token, lastSaved: now.toISOString() })
     }
 
     // ---------- ENTRAR COM EMAIL ----------
@@ -146,27 +145,32 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Email ou senha invalidos" }, { status: 400 })
       }
 
-      const { data: account } = await supabase
-        .from("game_accounts")
-        .select("id, password_hash, progress, last_saved")
-        .eq("email", email)
-        .maybeSingle()
+      const [account] = await db
+        .select({
+          id: gameAccounts.id,
+          passwordHash: gameAccounts.passwordHash,
+          progress: gameAccounts.progress,
+          lastSaved: gameAccounts.lastSaved,
+        })
+        .from(gameAccounts)
+        .where(eq(gameAccounts.email, email))
+        .limit(1)
 
       if (!account) {
         return NextResponse.json({ success: false, error: "Conta nao encontrada" }, { status: 404 })
       }
-      if (!verifyPassword(body.password, account.password_hash)) {
+      if (!verifyPassword(body.password, account.passwordHash)) {
         return NextResponse.json({ success: false, error: "Senha incorreta" }, { status: 401 })
       }
 
       const token = generateSessionToken()
-      await supabase.from("game_accounts").update({ session_token: token }).eq("id", account.id)
+      await db.update(gameAccounts).set({ sessionToken: token }).where(eq(gameAccounts.id, account.id))
 
       return NextResponse.json({
         success: true,
         token,
         progress: account.progress,
-        lastSaved: account.last_saved,
+        lastSaved: account.lastSaved,
       })
     }
 
@@ -183,30 +187,31 @@ export async function POST(request: Request) {
       }
 
       const token = generateSessionToken()
-      const now = new Date().toISOString()
+      const now = new Date()
       const passwordHash = hashPassword(body.password)
 
       // Tenta até 5 vezes em caso de colisão de código (extremamente raro)
       for (let attempt = 0; attempt < 5; attempt++) {
         const code = generateUniqueCode()
-        const { error } = await supabase.from("game_accounts").insert({
-          id: randomUUID(),
-          unique_code: code,
-          password_hash: passwordHash,
-          session_token: token,
-          progress: body.progress ?? null,
-          last_saved: now,
-        })
-
-        if (!error) {
-          return NextResponse.json({ success: true, token, code, lastSaved: now })
-        }
-        if (error.code !== "23505") {
-          console.error("[account] register-code error:", error)
-          return NextResponse.json(
-            { success: false, error: "Erro ao criar conta. Tente novamente." },
-            { status: 500 },
-          )
+        try {
+          await db.insert(gameAccounts).values({
+            id: randomUUID(),
+            uniqueCode: code,
+            passwordHash,
+            sessionToken: token,
+            progress: (body.progress ?? null) as any,
+            lastSaved: now,
+          })
+          return NextResponse.json({ success: true, token, code, lastSaved: now.toISOString() })
+        } catch (error) {
+          if (!isUniqueViolation(error)) {
+            console.error("[account] register-code error:", error)
+            return NextResponse.json(
+              { success: false, error: "Erro ao criar conta. Tente novamente." },
+              { status: 500 },
+            )
+          }
+          // colisão de código único — tenta de novo com outro código
         }
       }
       return NextResponse.json({ success: false, error: "Erro ao gerar codigo. Tente novamente." }, { status: 500 })
@@ -219,27 +224,32 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Codigo ou senha invalidos" }, { status: 400 })
       }
 
-      const { data: account } = await supabase
-        .from("game_accounts")
-        .select("id, password_hash, progress, last_saved")
-        .eq("unique_code", code)
-        .maybeSingle()
+      const [account] = await db
+        .select({
+          id: gameAccounts.id,
+          passwordHash: gameAccounts.passwordHash,
+          progress: gameAccounts.progress,
+          lastSaved: gameAccounts.lastSaved,
+        })
+        .from(gameAccounts)
+        .where(eq(gameAccounts.uniqueCode, code))
+        .limit(1)
 
       if (!account) {
         return NextResponse.json({ success: false, error: "Codigo nao encontrado" }, { status: 404 })
       }
-      if (!verifyPassword(body.password, account.password_hash)) {
+      if (!verifyPassword(body.password, account.passwordHash)) {
         return NextResponse.json({ success: false, error: "Senha incorreta" }, { status: 401 })
       }
 
       const token = generateSessionToken()
-      await supabase.from("game_accounts").update({ session_token: token }).eq("id", account.id)
+      await db.update(gameAccounts).set({ sessionToken: token }).where(eq(gameAccounts.id, account.id))
 
       return NextResponse.json({
         success: true,
         token,
         progress: account.progress,
-        lastSaved: account.last_saved,
+        lastSaved: account.lastSaved,
       })
     }
 
@@ -250,11 +260,16 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Sessao invalida" }, { status: 401 })
       }
 
-      const { data: account } = await supabase
-        .from("game_accounts")
-        .select("email, unique_code, progress, last_saved")
-        .eq("session_token", token)
-        .maybeSingle()
+      const [account] = await db
+        .select({
+          email: gameAccounts.email,
+          uniqueCode: gameAccounts.uniqueCode,
+          progress: gameAccounts.progress,
+          lastSaved: gameAccounts.lastSaved,
+        })
+        .from(gameAccounts)
+        .where(eq(gameAccounts.sessionToken, token))
+        .limit(1)
 
       if (!account) {
         return NextResponse.json({ success: false, error: "Sessao expirada. Entre novamente." }, { status: 401 })
@@ -263,9 +278,9 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         email: account.email,
-        code: account.unique_code,
+        code: account.uniqueCode,
         progress: account.progress,
-        lastSaved: account.last_saved,
+        lastSaved: account.lastSaved,
       })
     }
 
@@ -279,22 +294,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Progresso invalido" }, { status: 400 })
       }
 
-      const now = new Date().toISOString()
-      const { data, error } = await supabase
-        .from("game_accounts")
-        .update({ progress: body.progress ?? null, last_saved: now })
-        .eq("session_token", token)
-        .select("id")
-
-      if (error) {
+      const now = new Date()
+      let updatedId: string | null = null
+      try {
+        const rows = await db
+          .update(gameAccounts)
+          .set({ progress: (body.progress ?? null) as any, lastSaved: now })
+          .where(eq(gameAccounts.sessionToken, token))
+          .returning({ id: gameAccounts.id })
+        updatedId = rows[0]?.id ?? null
+      } catch (error) {
         console.error("[account] save error:", error)
         return NextResponse.json({ success: false, error: "Erro ao salvar. Tente novamente." }, { status: 500 })
       }
-      if (!data || data.length === 0) {
+      if (!updatedId) {
         return NextResponse.json({ success: false, error: "Sessao expirada. Entre novamente." }, { status: 401 })
       }
 
-      return NextResponse.json({ success: true, lastSaved: now })
+      return NextResponse.json({ success: true, lastSaved: now.toISOString() })
     }
 
     return NextResponse.json({ success: false, error: "Acao desconhecida" }, { status: 400 })
