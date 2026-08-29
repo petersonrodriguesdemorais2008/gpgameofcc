@@ -371,18 +371,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       : roomData.isHost ? roomData.hostId : (roomData.guestId || crypto.randomUUID())
     
     try {
-      const { error: insertError } = await supabase
-        .from("duel_chat")
-        .insert({
-          room_id: roomData.roomId,
-          sender_id: senderUUID,
-          sender_name: playerProfile.name || "Jogador",
-          message: message,
-        })
-      
-      if (insertError) {
-        console.error("[v0] Error sending message:", insertError)
-      }
+      const res = await fetch(`/api/duel/rooms/${roomData.roomId}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ senderId: senderUUID, senderName: playerProfile.name || "Jogador", message }) })
+      if (!res.ok) throw new Error("Falha ao enviar mensagem")
     } catch (err) {
       console.error("[v0] Exception sending message:", err)
     }
@@ -403,33 +393,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
     const newReadyState = !isReady
     setIsReady(newReadyState)
     
-    const updateField = roomData.isHost ? "host_ready" : "guest_ready"
-    
-    // Update ready state in database
-    const { error: updateError } = await supabase
-      .from("duel_rooms")
-      .update({ [updateField]: newReadyState })
-      .eq("id", roomData.roomId)
-    
-    if (updateError) {
-      console.log("[v0] Error updating ready state:", updateError)
-      setIsReady(!newReadyState) // Revert on error
-      return
-    }
-    
-    // Re-fetch room state to check if both players are ready (avoids race condition)
-    const { data: currentRoom } = await supabase
-      .from("duel_rooms")
-      .select("host_ready, guest_ready")
-      .eq("id", roomData.roomId)
-      .single()
-    
-    if (currentRoom && currentRoom.host_ready && currentRoom.guest_ready) {
-      // Both ready - start the duel
-      await supabase
-        .from("duel_rooms")
-        .update({ status: "playing" })
-        .eq("id", roomData.roomId)
+    try {
+      const res = await fetch(`/api/duel/rooms/${roomData.roomId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(roomData.isHost ? { hostReady: newReadyState } : { guestReady: newReadyState }) })
+      if (!res.ok) throw new Error("Falha ao atualizar prontidão")
+    } catch (err) {
+      console.error("[v0] Error updating ready state:", err)
+      setIsReady(!newReadyState)
     }
   }
 
@@ -446,36 +415,7 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
 
   // Leave room
   const leaveRoom = async () => {
-    if (roomData) {
-      if (roomData.isHost) {
-        // Delete the room if host leaves
-        await supabase
-          .from("duel_rooms")
-          .delete()
-          .eq("id", roomData.roomId)
-      } else {
-        // Remove guest from room
-        await supabase
-          .from("duel_rooms")
-          .update({
-            guest_id: null,
-            guest_name: null,
-            guest_deck: null,
-            guest_ready: false,
-            status: "waiting",
-          })
-          .eq("id", roomData.roomId)
-      }
-    }
-    
-    // Cleanup subscriptions
-    if (channelRef.current) {
-      channelRef.current.unsubscribe()
-    }
-    if (roomChannelRef.current) {
-      roomChannelRef.current.unsubscribe()
-    }
-    
+    if (roomData) await fetch(`/api/duel/rooms/${roomData.roomId}?isHost=${roomData.isHost}`, { method: "DELETE" })
     onBack()
   }
 
@@ -485,40 +425,6 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
   }, [chatMessages])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe()
-      }
-      if (roomChannelRef.current) {
-        roomChannelRef.current.unsubscribe()
-      }
-    }
-  }, [])
-
-  // Check if other player is ready
-  const otherPlayerReady = roomData?.isHost ? roomData.guestReady : roomData?.hostReady
-
-  // Render unavailable screen if Supabase is not configured
-  if (supabaseUnavailable) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 p-4">
-        <div className="max-w-md mx-auto">
-          <Button variant="ghost" onClick={onBack} className="text-white mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-          <div className="text-center py-12">
-            <Users className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Multiplayer Indisponivel</h2>
-            <p className="text-slate-400">O modo multiplayer requer conexao com o servidor. Por favor, tente novamente mais tarde.</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Render choice screen
   if (screen === "choice") {

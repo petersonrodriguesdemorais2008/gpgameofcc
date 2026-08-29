@@ -15,8 +15,6 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Swords, X, MessageCircle, Send } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
-import { createClient } from "@/lib/supabase/client"
-import type { RealtimeChannel } from "@supabase/supabase-js"
 import { trackDuelResult } from "@/lib/mission-tracker"
 import { loadMastersFromStorage, saveMastersToStorage, calcMasterXP, xpRequiredForLevel } from "@/lib/masters-data"
 import { MultiplayerLobby } from "./multiplayer-lobby"
@@ -4270,12 +4268,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     run?.()
   }
 
-  // ── Multiplayer Supabase layer ────────────────────────────────────────────
-  const supabaseRef = useRef(createClient())  // created once, never changes
-  const supabase = supabaseRef.current
-  const mpActionsChannelRef  = useRef<RealtimeChannel | null>(null)
-  const mpChatChannelRef     = useRef<RealtimeChannel | null>(null)
-  const mpActionsPollRef     = useRef<NodeJS.Timeout | null>(null)
+  // ── Multiplayer REST layer ────────────────────────────────────────────────
+  const mpActionsPollRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const mpLastActionTimeRef  = useRef<string>("1970-01-01")
   const mpProcessedIdsRef    = useRef<Set<string>>(new Set())
   const mpSendActionRef      = useRef<(a: OnlineDuelAction) => void>(() => {})
@@ -4368,15 +4362,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         || localStorage.getItem("gpgame_profile_avatar")
       if (cached) { setPlayerAvatarUrl(cached); return }
     } catch {}
-    // Fallback: load from Supabase profile
-    import("@/lib/supabase/client").then(({ createClient }) => {
-      const sb = createClient()
-      sb.auth.getUser().then(({ data: { user } }) => {
-        if (!user) return
-        sb.from("profiles").select("avatar_url").eq("id", user.id).single()
-          .then(({ data }) => { if (data?.avatar_url) setPlayerAvatarUrl(data.avatar_url) })
-      })
-    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -5716,43 +5701,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }
     // Host goes first
     setIsPlayerTurn(rd.isHost)
-    // Broadcast my playmat to opponent
-    const myPlaymat = myDeck ? getPlaymatForDeck(myDeck as any) : null
-    if (myPlaymat?.image) {
-      setTimeout(async () => {
-        const sb = supabaseRef.current
-        const playmatAction = {
-          type: "playmat_sync",
-          playerId: rd.isHost ? rd.hostId : (rd.guestId || ""),
-          data: { playmatImage: myPlaymat.image },
-          timestamp: Date.now(),
-        }
-        if (!sb) return
-        await sb.from("duel_actions").insert({
-          room_id: rd.roomId,
-          player_id: rd.isHost ? rd.hostId : (rd.guestId || ""),
-          action_type: "playmat_sync",
-          action_data: JSON.stringify(playmatAction),
-          sequence_number: 1,
-        }).catch(() => {})
-      }, 200)
-    }
-
-    // Broadcast initial draw — use direct call, 500ms delay to ensure subscription is up
-    const initPlayerId = rd.isHost ? rd.hostId : (rd.guestId || "")
-    const initDeckSize = myDeck.cards.length - 5
-    setTimeout(async () => {
-      const sb = supabaseRef.current
-      if (!sb) return
-      const action = { type: "draw", playerId: initPlayerId, data: { handSize: 5, deckSize: initDeckSize }, timestamp: Date.now() }
-      try {
-        await sb.from("duel_actions").insert({
-          room_id: rd.roomId, player_id: initPlayerId,
-          action_type: "draw", action_data: JSON.stringify(action),
-          sequence_number: action.timestamp,
-        })
-      } catch {}
-    }, 500)
+    // Broadcast initial multiplayer state via REST actions.
+  const myPlaymat = myDeck ? getPlaymatForDeck(myDeck as any) : null
+  const initPlayerId = rd.isHost ? rd.hostId : (rd.guestId || "")
+  const postInitialAction = (action: OnlineDuelAction) => fetch(`/api/duel/rooms/${rd.roomId}/actions`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ playerId: initPlayerId, actionType: action.type, actionData: action, sequenceNumber: 1 }),
+  }).catch(() => {})
+  if (myPlaymat?.image) setTimeout(() => postInitialAction({ type: "playmat_sync", playerId: initPlayerId, data: { playmatImage: myPlaymat.image }, timestamp: Date.now() }), 200)
+  const initDeckSize = myDeck.cards.length - 5
+  setTimeout(() => postInitialAction({ type: "draw", playerId: initPlayerId, data: { handSize: 5, deckSize: initDeckSize }, timestamp: Date.now() }), 500)
   }
 
   const drawCard = () => {
@@ -11046,24 +11004,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   // ══════════════════════════════��════════════════════════════════════════════
 
   const mpSendAction = useCallback(async (action: OnlineDuelAction) => {
-    const sb = supabaseRef.current
     const rd = onlineRoomDataRef.current
-    console.log("[MP] sendAction called:", action.type, "| sb:", !!sb, "| rd:", !!rd)
-    if (!sb || !rd) { console.warn("[MP] sendAction ABORTED ��� missing sb or rd"); return }
-    const mpId = rd.isHost ? rd.hostId : (rd.guestId || "")
-    // Use a safe sequence number (not timestamp — too large for integer column)
-    const { error } = await sb.from("duel_actions").insert({
-      room_id: rd.roomId,
-      player_id: mpId,
-      action_type: action.type,
-      action_data: JSON.stringify(action),
-      sequence_number: 1,
+    if (!rd) return
+    const playerId = rd.isHost ? rd.hostId : (rd.guestId || "")
+    const response = await fetch(`/api/duel/rooms/${rd.roomId}/actions`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId, actionType: action.type, actionData: action, sequenceNumber: 1 }),
     })
-    if (error) {
-      console.error("[MP] sendAction INSERT failed:", error.message, error.details)
-    } else {
-      console.log("[MP] sendAction INSERT OK:", action.type)
-    }
+    if (!response.ok) console.error("[v0] Falha ao sincronizar ação PVP")
   }, [])  // no deps — reads from refs
 
   useEffect(() => { mpSendActionRef.current = mpSendAction }, [mpSendAction])
@@ -11324,7 +11272,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         }
         break
 
-      // ── Full field sync — applies everything the sender broadcasts ─────────
+      // ─�� Full field sync — applies everything the sender broadcasts ─────────
       case "field_sync": {
         const d = action.data
         setEnemyField(prev => {
@@ -11356,93 +11304,40 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
   useEffect(() => { mpHandleOpponentRef.current = mpHandleOpponentAction }, [mpHandleOpponentAction])
 
-  // Subscribe to opponent actions + chat (only when online duel is active)
+  // Poll opponent actions and chat through the Neon-backed REST API.
   useEffect(() => {
     if (mode !== "player" || !gameStarted || !onlineRoomData) return
-    const sb = supabaseRef.current
-    if (!sb) return
     const roomId = onlineRoomData.roomId
     const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
-
-    console.log("[MP] Starting subscription. roomId:", roomId, "| myId:", myId)
-    // Fetch any actions already in DB (in case we missed some)
-    ;(async () => {
-      const { data: existing } = await sb
-        .from("duel_actions").select("*")
-        .eq("room_id", roomId).neq("player_id", myId)
-        .order("created_at", { ascending: true }).limit(50)
-      if (existing && existing.length > 0) {
-        console.log("[MP] Found", existing.length, "existing actions on subscribe")
-        for (const row of existing) {
-          let d = row.action_data
-          if (typeof d === "string") { try { d = JSON.parse(d) } catch {} }
-          mpHandleOpponentRef.current(d)
-          mpLastActionTimeRef.current = row.created_at
+    let cursor = 0
+    let since = "1970-01-01T00:00:00.000Z"
+    const poll = async () => {
+      const actionsRes = await fetch(`/api/duel/rooms/${roomId}/actions?after=${cursor}&excludePlayerId=${encodeURIComponent(myId)}`)
+      if (actionsRes.ok) {
+        const { actions } = await actionsRes.json()
+        for (const row of actions ?? []) {
+          cursor = Math.max(cursor, Number(row.cursorId ?? 0))
+          let data = row.actionData
+          if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
+          mpHandleOpponentRef.current(data)
         }
       }
-    })()
-    
-    // Realtime channel
-    const ch = sb
-      .channel(`duel-actions-${roomId}-${Date.now()}`)
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public",
-        table: "duel_actions",
-        // No server-side filter — filter client-side to avoid RLS/replica issues
-      }, (payload: any) => {
-        const row = payload.new
-        // Only process actions for this room from opponent
-        if (row.room_id !== roomId) return
-        if (row.player_id === myId) return
-        console.log("[MP] Realtime received:", row.action_type, "from opponent")
-        let data = row.action_data
-        if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
-        mpHandleOpponentRef.current(data)
-        mpLastActionTimeRef.current = row.created_at
-      })
-      .subscribe((status: string) => {
-        console.log("[MP] Realtime subscription status:", status)
-      })
-    mpActionsChannelRef.current = ch
-
-    // Polling fallback 400ms
-    mpActionsPollRef.current = setInterval(async () => {
-      const { data: rows, error: pollErr } = await sb
-        .from("duel_actions").select("*")
-        .eq("room_id", roomId)
-        .neq("player_id", myId)
-        .order("created_at", { ascending: true })
-        .limit(20)
-      if (pollErr) { console.error("[MP] Poll error:", pollErr.message); return }
-      if (rows && rows.length > 0) {
-        console.log("[MP] Poll found", rows.length, "action(s)")
-        for (const row of rows) {
-          let d = row.action_data
-          if (typeof d === "string") { try { d = JSON.parse(d) } catch {} }
-          mpHandleOpponentRef.current(d)
+      const chatRes = await fetch(`/api/duel/rooms/${roomId}/chat?since=${encodeURIComponent(since)}`)
+      if (chatRes.ok) {
+        const { messages } = await chatRes.json()
+        if (messages?.length) {
+          setMpChat(prev => {
+            const ids = new Set(prev.map(m => m.id))
+            return [...prev, ...messages.filter((m: OnlineChatMsg) => !ids.has(m.id))]
+          })
+          const last = messages[messages.length - 1]
+          since = last.createdAt ?? last.created_at
         }
       }
-    }, 400)
-
-    // Chat
-    sb.from("duel_chat").select("*").eq("room_id", roomId)
-      .order("created_at", { ascending: true })
-      .then(({ data }) => { if (data) setMpChat(data) })
-
-    const chatCh = sb
-      .channel(`duel-chat-${roomId}-${Date.now()}`)
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public",
-        table: "duel_chat", filter: `room_id=eq.${roomId}`,
-      }, (payload: any) => {
-        setMpChat(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
-      })
-      .subscribe()
-    mpChatChannelRef.current = chatCh
-
+    }
+    void poll()
+    mpActionsPollRef.current = setInterval(() => { void poll() }, 700)
     return () => {
-      ch.unsubscribe()
-      chatCh.unsubscribe()
       if (mpActionsPollRef.current) clearInterval(mpActionsPollRef.current)
     }
   }, [mode, gameStarted, onlineRoomData?.roomId])
@@ -11475,16 +11370,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [mpBroadcast])
 
   const mpSendChat = async () => {
-    if (!mpChatInput.trim() || !supabase || !onlineRoomData) return
+    if (!mpChatInput.trim() || !onlineRoomData) return
     const msg = mpChatInput.trim()
     setMpChatInput("")
     const myId = onlineRoomData.isHost ? onlineRoomData.hostId : (onlineRoomData.guestId || "")
     const myName = onlineRoomData.isHost ? onlineRoomData.hostName : (onlineRoomData.guestName || "Jogador")
-    await supabase.from("duel_chat").insert({
-      room_id: onlineRoomData.roomId,
-      sender_id: myId,
-      sender_name: myName,
-      message: msg,
+    await fetch(`/api/duel/rooms/${onlineRoomData.roomId}/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderId: myId, senderName: myName, message: msg }),
     })
   }
 
@@ -16083,7 +15976,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
       {/* ─────────────────────────────────��────────────────���──────────────────
            ── PAUSE MENU ──
-      ─��─────────────────────────────────������──────────────────────��───────── */}
+      ─��───────��─────────────────────────������──────────────────────��───────── */}
       {/* ─── ULTIMATE EQUIP PROMPT — choose which unit receives the Ultimate ─── */}
       {ultimateEquipPrompt && (() => {
         const { card, cardIndex, source } = ultimateEquipPrompt
