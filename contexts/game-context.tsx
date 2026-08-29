@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext, useState, useRef, useCallback, type ReactNode, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { FRAGMENTS, normalizeFragmentCounts, type FragmentCounts, type FragmentId } from "@/lib/fragments"
 import { STAMINA_BOTTLE_MIN_MISSING, STAMINA_BOTTLE_REFILL_AMOUNT } from "@/lib/stamina-bottle"
 import {

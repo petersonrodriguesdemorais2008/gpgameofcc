@@ -11312,14 +11312,17 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     let cursor = 0
     let since = "1970-01-01T00:00:00.000Z"
     const poll = async () => {
-      const actionsRes = await fetch(`/api/duel/rooms/${roomId}/actions?after=${cursor}&excludePlayerId=${encodeURIComponent(myId)}`)
+      // Never filter by player in SQL: own actions can have a higher cursor than
+      // the opponent's, and filtering them would make us skip the opponent forever.
+      const actionsRes = await fetch(`/api/duel/rooms/${roomId}/actions?after=${cursor}`)
       if (actionsRes.ok) {
         const { actions } = await actionsRes.json()
         for (const row of actions ?? []) {
           cursor = Math.max(cursor, Number(row.cursorId ?? 0))
+          if (row.playerId === myId) continue
           let data = row.actionData
           if (typeof data === "string") { try { data = JSON.parse(data) } catch {} }
-          mpHandleOpponentRef.current(data)
+          if (data && typeof data === "object") mpHandleOpponentRef.current(data)
         }
       }
       const chatRes = await fetch(`/api/duel/rooms/${roomId}/chat?since=${encodeURIComponent(since)}`)
@@ -12476,7 +12479,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       <style>{`
         /* ── Cartas do campo: flutuação sutil + sombra que "respira" com o movimento ──
            delay NEGATIVO (calc(-1 * var)) = a animação já nasce "em andamento" na fase
-           certa pra cada carta, então o movimento começa na hora (sem espera de ~2s),
+           certa pra cada carta, então o movimento come��a na hora (sem espera de ~2s),
            mas continua dessincronizado entre as cartas. */
         @keyframes gp-float {
           0%, 100% {
