@@ -6,11 +6,24 @@ import { db } from "@/lib/db"
 import { playerProfiles } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10",
-})
+// Instanciado sob demanda: no build/preview as chaves da Stripe podem nao existir,
+// e criar o client no escopo do modulo quebra o bundle inteiro.
+function getStripe(): Stripe | null {
+  const secretKey = process.env.STRIPE_SECRET_KEY
+  if (!secretKey) return null
+  // Sem apiVersion: usa a versao padrao do SDK instalado.
+  return new Stripe(secretKey)
+}
 
 export async function POST(req: NextRequest) {
+  const stripe = getStripe()
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+  if (!stripe || !webhookSecret) {
+    console.error("[Stripe Webhook] STRIPE_SECRET_KEY ou STRIPE_WEBHOOK_SECRET ausente")
+    return NextResponse.json({ error: "Stripe nao configurado" }, { status: 503 })
+  }
+
   const rawBody = await req.text()
   const sig = req.headers.get("stripe-signature")
 
