@@ -53,7 +53,11 @@ export async function POST(request: Request) {
       const isUnique = Boolean(error && typeof error === "object" && "code" in error && (error as any).code === "23505")
       if (!isUnique) {
         console.error("[duel/rooms] create error:", error)
-        return NextResponse.json({ error: "Erro ao criar sala" }, { status: 500 })
+        const details = error instanceof Error ? error.message : "Falha desconhecida no banco de dados"
+        return NextResponse.json(
+          { error: "Não foi possível criar a sala.", details },
+          { status: 500 },
+        )
       }
       // colisão de room_code — tenta outro código
     }
