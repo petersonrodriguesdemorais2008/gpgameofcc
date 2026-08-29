@@ -53,8 +53,12 @@ export async function POST(request: Request) {
     } catch (error) {
       const isUnique = Boolean(error && typeof error === "object" && "code" in error && (error as any).code === "23505")
       if (!isUnique) {
-        console.error("[duel/rooms] create error:", error)
-        const details = error instanceof Error ? error.message : "Falha desconhecida no banco de dados"
+        // error.message do drizzle geralmente é só o wrapper "Failed query: ...".
+        // A causa real (erro de conexão, timeout, etc.) fica em error.cause.
+        const cause = error instanceof Error ? (error.cause as Error | undefined) : undefined
+        console.error("[duel/rooms] create error:", error, "cause:", cause)
+        const details =
+          cause?.message ?? (error instanceof Error ? error.message : "Falha desconhecida no banco de dados")
         return NextResponse.json(
           { error: "Não foi possível criar a sala.", details },
           { status: 500 },
