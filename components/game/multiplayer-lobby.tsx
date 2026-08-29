@@ -84,10 +84,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
     setError(null)
 
     try {
-      // Generate a valid UUID for the host if playerId is not a valid UUID
-      const hostUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId)
-        ? playerId
-        : crypto.randomUUID()
+      // O Neon aceita o playerId persistente como texto (não precisa ser UUID).
+      const hostUUID = playerId || crypto.randomUUID()
 
       const res = await fetch("/api/duel/rooms", {
         method: "POST",
@@ -103,8 +101,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       const json = await res.json()
 
       if (!res.ok || !json.room) {
-        console.error("[v0] Error creating room:", json.error)
-        setError(`Erro ao criar sala: ${json.error || "Tente novamente."}`)
+        console.error("[v0] Error creating room:", json.error, json.details)
+        setError(`Erro ao criar sala: ${json.error || "Tente novamente."}${json.details ? ` (${json.details})` : ""}`)
         setIsLoading(false)
         return
       }
@@ -425,6 +423,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
   }, [chatMessages])
+
+  const otherPlayerReady = roomData
+    ? roomData.isHost
+      ? roomData.guestReady
+      : roomData.hostReady
+    : false
 
   // Render choice screen
   if (screen === "choice") {
