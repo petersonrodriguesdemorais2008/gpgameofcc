@@ -416,7 +416,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
 
       // Get ORIGINAL DP (base dp, not currentDp which may have buffs/debuffs)
       const dpBonus = enemyUnit.dp
-      const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
+      const allyCurrentDp = allyUnit.currentDp ?? allyUnit.dp
       const newDp = allyCurrentDp + dpBonus
 
       context.setPlayerField((prev) => {
@@ -568,7 +568,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         life: Math.min(prev.life + healAmount, maxLife),
         unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
-          return { ...unit, currentDp: (unit.currentDp || unit.dp) + 1 }
+          return { ...unit, currentDp: (unit.currentDp ?? unit.dp) + 1 }
         }),
       }))
 
@@ -638,7 +638,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           return { success: false, message: "Selecione Fehnon Hoskie ou Jaden Hainaegi" }
         }
 
-        const currentDp = allyUnit.currentDp || allyUnit.dp
+        const currentDp = allyUnit.currentDp ?? allyUnit.dp
         const newDp = currentDp + 2
 
         context.setPlayerField((prev) => {
@@ -666,7 +666,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           return { success: false, message: "Unidade inimiga nao encontrada" }
         }
 
-        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
         const newDp = Math.max(0, currentDp - 2)
 
         context.setEnemyField((prev) => {
@@ -709,7 +709,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         unitZone: prev.unitZone.map((unit) => {
           if (unit === null) return null
           unitsHit++
-          const currentDp = unit.currentDp || unit.dp
+          const currentDp = unit.currentDp ?? unit.dp
           const newDp = Math.max(0, currentDp - 1)
           return {
             ...unit,
@@ -887,7 +887,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           return { success: false, message: "Unidade inimiga nao encontrada" }
         }
 
-        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
         const newDp = Math.max(0, currentDp - 3)
         const isDestroyed = newDp <= 0
 
@@ -971,7 +971,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
           return { success: false, message: "Unidade inimiga nao encontrada" }
         }
 
-        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
         const newDp = Math.max(0, currentDp - 4)
         const isDestroyed = newDp <= 0
 
@@ -1106,7 +1106,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
 
       const diceResult = targets.diceResult || 1
-      const currentDp = allyUnit.currentDp || allyUnit.dp
+      const currentDp = allyUnit.currentDp ?? allyUnit.dp
 
       if (diceResult >= 1 && diceResult <= 3) {
         // 1-3: -3 DP
@@ -1217,7 +1217,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
 
       const diceResult = targets.diceResult || 1
-      const currentDp = allyUnit.currentDp || allyUnit.dp
+      const currentDp = allyUnit.currentDp ?? allyUnit.dp
       let dpBonus = 0
       let bonusMessage = ""
 
@@ -1336,7 +1336,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
 
       const diceResult = targets.diceResult || 1
-      const currentDp = allyUnit.currentDp || allyUnit.dp
+      const currentDp = allyUnit.currentDp ?? allyUnit.dp
       let dpBonus = 0
       let bonusMessage = ""
 
@@ -1801,7 +1801,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { success: false, message: "Unidade inimiga não encontrada" }
       }
 
-      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
       const newDp = Math.max(0, currentDp - 2)
 
       context.setEnemyField((prev) => {
@@ -1895,7 +1895,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
               const unit = newUnitZone[firstUnitIndex]!
               newUnitZone[firstUnitIndex] = {
                 ...unit,
-                currentDp: (unit.currentDp || unit.dp) + 2,
+                currentDp: (unit.currentDp ?? unit.dp) + 2,
               }
             }
             return {
@@ -2091,7 +2091,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const allyUnit = context.playerField.unitZone[allyIndex]
       if (!allyUnit) return { success: false, message: "Unidade não encontrada" }
       const diceResult = targets.diceResult || 1
-      const currentDp = (allyUnit as any).currentDp || allyUnit.dp
+      const currentDp = (allyUnit as any).currentDp ?? allyUnit.dp
       if (diceResult <= 2) {
         const newDp = Math.max(0, currentDp - 5)
         const isDestroyed = newDp <= 0
@@ -2186,7 +2186,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const enemyUnit = context.enemyField.unitZone[enemyIndex]
       if (!enemyUnit) return { success: false, message: "Unidade não encontrada" }
 
-      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
       const newDp = Math.max(0, currentDp - 2)
       const isDestroyed = newDp <= 0
 
@@ -3140,7 +3140,7 @@ function StarfieldCanvas() {
       oc.globalAlpha=1
     }
 
-    /* ── Per-galaxy canvas — arms drawn flat, tilt applied per-frame ── */
+    /* ���─ Per-galaxy canvas — arms drawn flat, tilt applied per-frame ── */
     function makeGalaxy(r:number, arms:number,
       col1:string, col2:string, coreCol:string, clusterCol:string, dustCol:string
     ): HTMLCanvasElement {
@@ -4850,6 +4850,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const prevUnitZoneRef = useRef<(string | null)[]>([])
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const animationInProgressRef = useRef(false)
+  const endTurnLockRef = useRef(false)
   const attackIdRef = useRef(0)
   const draggedCardRef = useRef<HTMLDivElement>(null)
   const dragPosRef    = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
@@ -5651,6 +5652,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setPhase("draw")
     setIsPlayerTurn(playerFirst)
     // Reset per-game state flags
+    gameResultRecordedRef.current = false
+    endTurnLockRef.current = false
+    animationInProgressRef.current = false
+    setGameResult(null)
     setVivianAbracoUsed(false)
     setUgAbilityUsed(false)
     setJulgamentoDivinoUsedThisTurn(false)
@@ -5700,7 +5705,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         hand: Array(5).fill(null),
         deck: Array(Math.max(0, oppDeck.cards.length - 5)).fill(null),
         tap:  oppDeck.tapCards ? [...oppDeck.tapCards] : [],
-        life: 50,
+        life: propStartingLP ?? 50,
         unitZone: [null, null, null, null],
         functionZone: [null, null, null, null],
         scenarioZone: null,
@@ -7624,16 +7629,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       // Usa playerFieldRef (igual o fireAutoAttacks já faz) em vez da closure
       // playerField, que pode estar desatualizada quando isso é chamado de
       // dentro do setTimeout do modo automático.
-      const currentDeck = playerFieldRef.current.deck
-      console.log("[AUTO-DRAW DEBUG] deck.length via ref:", currentDeck.length, "| via closure:", playerField.deck.length)
-      if (currentDeck.length > 0) {
-        const drawnCard = currentDeck[0]
+      const current = playerFieldRef.current
+      if (current.deck.length > 0) {
+        const drawnCard = current.deck[0]
         showDrawAnimation(drawnCard)
         setPlayerField((prev) => ({
           ...prev,
           hand: [...prev.hand, drawnCard],
           deck: prev.deck.slice(1),
         }))
+        logEvent("draw", "Você comprou uma carta")
+        if (mode === "player" && onlineRoomDataRef.current) {
+          mpBroadcast("draw", { handSize: current.hand.length + 1, deckSize: current.deck.length - 1 })
+        }
+      } else {
+        showEffectFeedback("Deck vazio — nenhuma carta comprada", "warning")
       }
       setPhase("main")
     } else if (phase === "main") {
@@ -7665,6 +7675,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const unit = playerField.unitZone[index]
       if (!unit || unit.hasAttacked) return
       if (turn <= unit.canAttackTurn) return
+      if ((unit.frozenUntilTurn ?? -1) >= turn) return
+      if (animationInProgressRef.current) return
 
       e.preventDefault()
       e.stopPropagation()
@@ -7770,7 +7782,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn = playerField.deck[0]
           if (drawn) {
             const isUnit = ["unit","troops","trooper","ultimateGuardian","ultimateElemental"].includes(drawn.type)
-            console.log("[FEHNON DEBUG] SR comprou:", drawn.name, "| type:", drawn.type, "| isUnit:", isUnit)
             setPlayerField((prev) => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
             if (isUnit) {
@@ -7780,8 +7791,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             } else {
               showEffectFeedback("LACERAÇÃO: Carta comprada!", "info")
             }
-          } else {
-            console.log("[FEHNON DEBUG] SR: deck vazio, nada comprado")
           }
         }
 
@@ -7830,7 +7839,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 const idx = attackState.attackerIndex!
                 if (newUnitZone[idx]) {
                   const cur = newUnitZone[idx]!
-                  newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
+                  newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp ?? cur.dp) + 3 }
                 }
                 return { ...prev, unitZone: newUnitZone }
               })
@@ -8100,7 +8109,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               const idx = attackState.attackerIndex!
               if (isVoidTroop && newUnitZone[idx]) {
                 const cur = newUnitZone[idx]!
-                newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 1 }
+                newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp ?? cur.dp) + 1 }
               }
               return { ...prev, deck: newDeck, hand: newHand, unitZone: newUnitZone }
             })
@@ -8464,8 +8473,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 return
               }
 
-              const attackerDp = attacker.currentDp || attacker.dp
-              const defenderDp = defender.currentDp || defender.dp
+              const attackerDp = attacker.currentDp ?? attacker.dp
+              const defenderDp = defender.currentDp ?? defender.dp
               const newDefenderDp = defenderDp - attackerDp
 
               // CHECK ENEMY TRAPS - CONTRA-ATAQUE SURPRESA
@@ -8527,17 +8536,18 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                       )
                     }, 400)
                   }
-                  newGraveyard.push(defender)
+                  newGraveyard.push(freshDefender)
                   newUnitZone[targetIndex] = null
                   // ── Equipped Ultimate Gear is destroyed together with its unit ──
-                  const __ugDestroyIdx = newUltimateZones.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(defender.name))
+                  const __ugDestroyIdx = newUltimateZones.findIndex(z=>z && normalizeCardName(z.requiresUnit)===normalizeCardName(freshDefender.name))
                   if (__ugDestroyIdx !== -1) {
-                    newGraveyard.push(newUltimateZones[__ugDestroyIdx]!)
-                    showEffectFeedback(`${newUltimateZones[__ugDestroyIdx]!.name} foi destruída junto com ${defender.name}!`, "error")
+                    const destroyedGear = newUltimateZones[__ugDestroyIdx]!
+                    newGraveyard.push(destroyedGear)
+                    setTimeout(() => showEffectFeedback(`${destroyedGear.name} foi destruída junto com ${freshDefender.name}!`, "error"), 0)
                     newUltimateZones[__ugDestroyIdx] = null
                   }
                 } else {
-                  newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
+                  newUnitZone[targetIndex] = { ...freshDefender, currentDp: freshNewDefenderDp }
                   if (targetRect) {
                     triggerExplosion(
                       targetRect.left + targetRect.width / 2,
@@ -8573,7 +8583,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   const idx = attackState.attackerIndex!
                   if (newUnitZone[idx]) {
                     const cur = newUnitZone[idx]!
-                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 2 }
+                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp ?? cur.dp) + 2 }
                   }
                   return { ...prev, unitZone: newUnitZone }
                 })
@@ -8602,7 +8612,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   const idx = attackState.attackerIndex!
                   if (newUnitZone[idx]) {
                     const cur = newUnitZone[idx]!
-                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 2 }
+                    newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp ?? cur.dp) + 2 }
                   }
                   return { ...prev, unitZone: newUnitZone }
                 })
@@ -8618,7 +8628,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     const idx = attackState.attackerIndex!
                     if (newUnitZone[idx]) {
                       const cur = newUnitZone[idx]!
-                      newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp || cur.dp) + 3 }
+                      newUnitZone[idx] = { ...cur, currentDp: (cur.currentDp ?? cur.dp) + 3 }
                     }
                     return { ...prev, unitZone: newUnitZone }
                   })
@@ -8671,13 +8681,12 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 (isLogiSrKill) ||
                 (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) ||
                 fehnonDoubleTriggered
-              if (attacker.name.toLowerCase().includes("fehnon")) {
-                console.log("[FEHNON DEBUG] keepAttackReady (ataque em unidade):", keepAttackReady, "| fehnonDoubleTriggered:", fehnonDoubleTriggered, "| atacante:", attacker.name, attacker.dp+"DP")
-              }
-
               setPlayerField((prev) => {
                 const newUnitZone = [...prev.unitZone]
-                newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepAttackReady }
+                // Preserva o estado ATUAL da unidade (buffs aplicados durante este ataque),
+                // em vez de sobrescrever com o snapshot capturado no início do arraste.
+                const liveAttacker = newUnitZone[attackState.attackerIndex!] ?? attacker
+                newUnitZone[attackState.attackerIndex!] = { ...liveAttacker, hasAttacked: !keepAttackReady }
                 return { ...prev, unitZone: newUnitZone }
               })
               if (calemUrDoubleAttack && attacker.name.toLowerCase().includes("calem") && attacker.dp === 3) setCalemUrDoubleAttack(false)
@@ -8698,7 +8707,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             triggerExplosion(targetX, targetY, attacker.element || "neutral")
             setEnemyField((prev) => ({
               ...prev,
-              life: Math.max(0, prev.life - (attacker.currentDp || attacker.dp)),
+              life: Math.max(0, prev.life - (attacker.currentDp ?? attacker.dp)),
             }))
 
             // ── PIROMANTES DE LABAREDA: outra unidade Fire causou dano direto ──
@@ -8745,13 +8754,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
             const keepReadyDirect =
               fehnonDoubleTriggered
-            if (attacker.name.toLowerCase().includes("fehnon")) {
-              console.log("[FEHNON DEBUG] keepReadyDirect (ataque direto):", keepReadyDirect, "| fehnonDoubleTriggered:", fehnonDoubleTriggered, "| atacante:", attacker.name, attacker.dp+"DP")
-            }
-
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
-              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: !keepReadyDirect }
+              const liveAttacker = newUnitZone[attackState.attackerIndex!] ?? attacker
+              newUnitZone[attackState.attackerIndex!] = { ...liveAttacker, hasAttacked: !keepReadyDirect }
               return { ...prev, unitZone: newUnitZone }
             })
             if (fehnonSrDouble && attacker.name.toLowerCase().includes("fehnon") && attacker.dp === 2) setFehnonSrDouble(false)
@@ -8774,50 +8780,27 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [attackState, playerField.unitZone, playerField.deck, playerField.graveyard, playerField.hand, enemyField.unitZone, enemyField.functionZone, enemyField.graveyard, triggerExplosion, turn, pulsoNulidadeLastUsedTurn, impactoSemFeLastUsedTurn, calemUrDoubleAttack, fehnonSrDouble, fehnonUrDouble, fehnonUrUsedDoubleThisTurn, fehnonLrDouble, fehnonLrBonusDp, morganaEclipseLastTurn, morganaSinfoniaLastTurn, morganaDiscordiaLastTurn, setEnemyField, setPlayerField, setAttackState, showEffectFeedback, setChoiceModal])
 
   // ── Global 0DP Sweep — any unit that reaches 0 or below DP is auto-destroyed ──
+  // Unidades com DP zerado TEMPORARIAMENTE (VISÃO DO HROTTI → dpZeroUntilTurn)
+  // não são destruídas: o DP delas é restaurado quando o efeito expira.
   useEffect(() => {
     if (!gameStarted) return
 
-    // Player units
-    const playerHasZeroDp = playerField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
-    if (playerHasZeroDp) {
-      setPlayerField(prev => {
-        let changed = false
-        const newUnits = prev.unitZone.map(u => {
-          if (!u || (u.currentDp ?? u.dp) > 0) return u
-          markDestroyed(u)
-          changed = true
-          return null
-        })
-        if (!changed) return prev
-        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
-        return {
-          ...prev,
-          unitZone: newUnits as (FieldCard | null)[],
-          graveyard: [...prev.graveyard, ...destroyed],
-        }
-      })
+    const isSweepable = (u: FieldCard | null): u is FieldCard =>
+      u !== null && (u.currentDp ?? u.dp) <= 0 && u.dpZeroUntilTurn === undefined
+
+    const sweep = (prev: FieldState): FieldState => {
+      const destroyed = prev.unitZone.filter(isSweepable)
+      if (destroyed.length === 0) return prev
+      destroyed.forEach(markDestroyed)
+      return {
+        ...prev,
+        unitZone: prev.unitZone.map(u => (isSweepable(u) ? null : u)) as (FieldCard | null)[],
+        graveyard: [...prev.graveyard, ...destroyed],
+      }
     }
 
-    // Enemy units
-    const enemyHasZeroDp = enemyField.unitZone.some(u => u !== null && (u.currentDp ?? u.dp) <= 0)
-    if (enemyHasZeroDp) {
-      setEnemyField(prev => {
-        let changed = false
-        const newUnits = prev.unitZone.map(u => {
-          if (!u || (u.currentDp ?? u.dp) > 0) return u
-          markDestroyed(u)
-          changed = true
-          return null
-        })
-        if (!changed) return prev
-        const destroyed = prev.unitZone.filter(u => u !== null && (u.currentDp ?? u.dp) <= 0) as FieldCard[]
-        return {
-          ...prev,
-          unitZone: newUnits as (FieldCard | null)[],
-          graveyard: [...prev.graveyard, ...destroyed],
-        }
-      })
-    }
+    if (playerField.unitZone.some(isSweepable)) setPlayerField(sweep)
+    if (enemyField.unitZone.some(isSweepable)) setEnemyField(sweep)
   }, [
     playerField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
     enemyField.unitZone.map(u => u?.currentDp ?? u?.dp ?? 0).join(','),
@@ -10419,6 +10402,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     const u = enemyField.unitZone[i]
     if (!u || u.hasAttacked) return false
     if ((u.frozenUntilTurn ?? -1) >= turn) return false
+    // Mesma regra do jogador: unidade só ataca a partir do turno seguinte à invocação
+    if (turn <= u.canAttackTurn) return false
+    if ((u.currentDp ?? u.dp) <= 0) return false
     return true
   }
   const attackerIndices = difficulty === 'hard'
@@ -10806,6 +10792,10 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   const endTurn = () => {
+    // Evita encerrar o turno duas vezes (duplo clique / auto-play + clique) ou no
+    // meio de uma animação de ataque, o que duplicaria o turno do bot.
+    if (!isPlayerTurn || endTurnLockRef.current || animationInProgressRef.current) return
+    endTurnLockRef.current = true
     setPhase("end")
 
     // Vaelor: a janela opcional de retorno para a mão expira no fim do turno
@@ -10939,11 +10929,11 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (!unit) return null
         // Fehnon UR: remove ONLY the Singularidade Zero temp bonus (not all buffs)
         if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 3 && fehnonUrSingBonus > 0) {
-          return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonUrSingBonus) }
+          return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp ?? unit.dp) - fehnonUrSingBonus) }
         }
         // Fehnon LR: remove only the battle-phase bonus
         if (unit.name.toLowerCase().includes("fehnon") && unit.dp === 4 && fehnonLrBonusDp > 0) {
-          return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp || unit.dp) - fehnonLrBonusDp) }
+          return { ...unit, hasAttacked: false, currentDp: Math.max(unit.dp, (unit.currentDp ?? unit.dp) - fehnonLrBonusDp) }
         }
         // Temporary "until end of turn" DP buffs (Chamas de Eldfjall, Maelstrom Boreal, ...)
         if ((unit as any).tempDpBuff > 0) {
@@ -10951,14 +10941,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const cur = unit.currentDp ?? unit.dp
           const reverted = { ...unit, hasAttacked: false, currentDp: Math.max(0, cur - tempAmount) } as any
           delete reverted.tempDpBuff
-          showEffectFeedback(`${unit.name}: buff temporário de +${tempAmount}DP expirou`, "info")
+          setTimeout(() => showEffectFeedback(`${unit.name}: buff temporário de +${tempAmount}DP expirou`, "info"), 0)
           return reverted
         }
         // dados-da-calamidade debuff (scheduled for next turn)
         if ((unit as any).calamidadeDebuffTurn === turn + 1) {
-          const cur = (unit as any).currentDp || unit.dp
+          const cur = (unit as any).currentDp ?? unit.dp
           const newDp = Math.max(0, cur - 5)
-          showEffectFeedback(`Dados da Calamidade: ${unit.name} −5DP!`, "error")
+          setTimeout(() => showEffectFeedback(`Dados da Calamidade: ${unit.name} −5DP!`, "error"), 0)
           const updated = { ...unit, currentDp: newDp, hasAttacked: false } as any
           delete updated.calamidadeDebuffTurn
           return updated
@@ -10974,7 +10964,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const cur = uz.currentDp ?? uz.dp
           const reverted = { ...uz, currentDp: Math.max(0, cur - tempAmount) } as any
           delete reverted.tempDpBuff
-          showEffectFeedback(`${uz.name}: buff temporário de +${tempAmount}DP expirou`, "info")
+          setTimeout(() => showEffectFeedback(`${uz.name}: buff temporário de +${tempAmount}DP expirou`, "info"), 0)
           return reverted
         }
         return uz
@@ -10982,6 +10972,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     }))
 
     setTimeout(() => {
+      endTurnLockRef.current = false
       const nextTurn = turn + 1
       setTurn(nextTurn)
       setIsPlayerTurn(false)
@@ -11480,6 +11471,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   const surrender = () => {
+    // Não registra derrota duas vezes nem após o duelo já ter terminado
+    if (gameResult || gameResultRecordedRef.current) return
+    gameResultRecordedRef.current = true
     playSound("reject", 0.8)
     stopDuelOst()
     mpBroadcast("surrender", {})
@@ -11520,7 +11514,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const cardToUse = itemSelectionMode.itemCard
       setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
 
-      const currentDp = enemyUnit.currentDp || enemyUnit.dp
+      const currentDp = enemyUnit.currentDp ?? enemyUnit.dp
       const newDp = Math.max(0, currentDp - 2)
       const isDestroyed = newDp <= 0
 
@@ -11825,6 +11819,16 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [playerField.life, enemyField.life, gameStarted, mode, selectedDeck?.name])
 
 
+  // Roguelike/Draft: dispara o callback de vitória UMA vez, fora do render
+  const onWinFiredRef = useRef(false)
+  useEffect(() => {
+    if (gameResult === "won" && onWin && !onWinFiredRef.current) {
+      onWinFiredRef.current = true
+      onWin()
+    }
+    if (!gameResult) onWinFiredRef.current = false
+  }, [gameResult, onWin])
+
   // ── VS JOGADOR: show MultiplayerLobby ──────────────────────────────────
   if (mode === "player" && onlinePhase === "lobby") {
     return (
@@ -11998,9 +12002,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }
 
   if (gameResult) {
-    // If roguelike/draft provided an onWin callback, call it on victory
+    // If roguelike/draft provided an onWin callback, it is fired by the
+    // useEffect above (never during render) — just render nothing here.
     if (gameResult === "won" && onWin) {
-      onWin()
       return null
     }
 
