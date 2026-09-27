@@ -425,7 +425,7 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
             {isLoggedIn ? t("signedInAs") : t("playingAsGuest")}
           </p>
           <p className="truncate text-sm font-semibold text-sky-100">
-            {isLoggedIn ? accountAuth?.playerName || accountAuth?.uniqueCode : t("playingAsGuest")}
+            {isLoggedIn ? accountAuth?.email || accountAuth?.uniqueCode : t("playingAsGuest")}
           </p>
         </div>
       </div>

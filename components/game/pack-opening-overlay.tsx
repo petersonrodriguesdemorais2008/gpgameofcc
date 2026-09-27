@@ -59,7 +59,7 @@ export function PackOpeningOverlay({ packId, onClose }: PackOpeningOverlayProps)
   const [revealZoomedCard, setRevealZoomedCard] = useState<{image:string;name:string;rarity:string}|null>(null)
 
   const canvasRef    = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | undefined>(undefined)
 
   // Pack image based on packId
   const packImage = packId === "anl" ? "/images/gacha/pack-anl.png" : "/images/gacha/pack-fsg.png"

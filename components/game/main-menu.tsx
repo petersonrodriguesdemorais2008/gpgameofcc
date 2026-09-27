@@ -1353,7 +1353,8 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const fxCanvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return
+    if (!canvasRef.current) return
+    const canvas: HTMLCanvasElement = canvasRef.current
     const ctx = canvas.getContext("2d"); if (!ctx) return
     let animId: number
     const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight }

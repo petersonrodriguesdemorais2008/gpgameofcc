@@ -344,7 +344,7 @@ export type DuelRewardKind =
 
 interface GameContextType {
   coins: number
-  setCoins: (coins: number) => void
+  setCoins: (coins: number | ((prev: number) => number)) => void
   addCoins: (amount: number) => void
   addFP: (amount: number) => void
   gearCoins: number

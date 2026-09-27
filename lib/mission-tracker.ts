@@ -39,6 +39,7 @@ const K = {
   login_d:    () => `gpgame_mt_login_${getTodayStr()}`,
   deck_d:     () => `gpgame_mt_deck_${getTodayStr()}`,
   deck_w:     () => `gpgame_mt_deck_w_${getWeekStartStr()}`,
+  deck_total:     "gpgame_mt_deck_total",
 }
 
 // ─── Generic helpers ──────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ export function trackDailyLogin(): void {
 export function trackDeckEdit(): void {
   sb(K.deck_d())
   sb(K.deck_w())
+  ai(K.deck_total)
 }
 
 // ─── Public read functions ────────────────────────────────────────────────────
@@ -119,4 +121,5 @@ export const getMissionProgress = {
   // Deck
   deckEditToday: () => rb(K.deck_d()),
   deckEditWeek:  () => rb(K.deck_w()),
+  deckEditTotal: () => ri(K.deck_total),
 }

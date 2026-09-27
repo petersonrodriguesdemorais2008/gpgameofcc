@@ -315,7 +315,6 @@ const isElement = (element: string | undefined, target: string): boolean =>
 // Troop Unit detection — mirrors the "Chamado da Távola" search rule
 const isTroopCard = (card: GameCard): boolean =>
   card.type === "troops" ||
-  card.type === "trooper" ||
   (card.type === "unit" &&
     typeof (card as any).category === "string" &&
     (card as any).category.toLowerCase().includes("troop"))
@@ -1557,7 +1556,7 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     resolve: (context) => {
       let summoned = ""
       context.setPlayerField((prev) => {
-        const graveIndex = prev.graveyard.findIndex((c) => isUnitCard(c) && c.name.toLowerCase().includes("scandinavian angel"))
+        const graveIndex = prev.graveyard.findIndex((c) => (c.type === "unit" || c.type === "troops") && c.name.toLowerCase().includes("scandinavian angel"))
         const zoneIndex = prev.unitZone.findIndex((u) => u === null)
         if (graveIndex === -1 || zoneIndex === -1) return prev
         const card = prev.graveyard[graveIndex]
@@ -2055,7 +2054,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       // A Troop Unit is: type==="troops"|"trooper"  OR  type==="unit" with "troop" in category
       const isTroop = (c: any) =>
         c.type === "troops" ||
-        c.type === "trooper" ||
         (c.type === "unit" && typeof c.category === "string" && c.category.toLowerCase().includes("troop"))
       const hasTroop = context.playerField.deck.some(isTroop)
       if (!hasTroop) {
@@ -2066,7 +2064,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
     resolve: (context) => {
       const isTroop = (c: any) =>
         c.type === "troops" ||
-        c.type === "trooper" ||
         (c.type === "unit" && typeof c.category === "string" && c.category.toLowerCase().includes("troop"))
       const troops = context.playerField.deck.filter(isTroop)
       if (troops.length === 0) {
@@ -2748,8 +2745,6 @@ const SOUND_DATA: Record<string, string> = {
 
 type SoundKey = keyof typeof SOUND_DATA
 
-type SoundKey = keyof typeof SOUNDS
-
 // No preload needed — audio is embedded as base64
 
 let _sfxVolumeRef = 0.7   // 0-1, updated from component state
@@ -2848,9 +2843,9 @@ function DiceCanvas3D({ result, onSettled }: DiceCanvas3DProps & { onSettled?: (
   const rafRef  = useRef<number>(0)
 
   useEffect(()=>{
-    const rig  = rigRef.current
-    const cube = cubeRef.current
-    if(!rig||!cube) return
+    if(!rigRef.current||!cubeRef.current) return
+    const rig:  HTMLDivElement = rigRef.current
+    const cube: HTMLDivElement = cubeRef.current
 
     const lerp  = (a:number,b:number,t:number)=>a+(b-a)*t
 
@@ -3005,8 +3000,8 @@ function StarfieldCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    const cv = canvasRef.current
-    if (!cv) return
+    if (!canvasRef.current) return
+    const cv: HTMLCanvasElement = canvasRef.current
     const ctx = cv.getContext("2d")!
     let W = 0, H = 0
 
@@ -4074,7 +4069,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean; ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | "vatnavordr_messiham" | "yggdra_nidhogg" | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto" | "julgamento_divino" | "vatnavordr_messiham" | "yggdra_nidhogg" | "gram_sword" | null
   }>({ active: false, ugCard: null, type: null })
   const [julgamentoDivinoUsedThisTurn, setJulgamentoDivinoUsedThisTurn] = useState(false)
   const [pulsoNulidadeLastUsedTurn, setPulsoNulidadeLastUsedTurn] = useState<number | null>(null)
@@ -4505,7 +4500,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (!normalSummonUsedRef.current && emptyUnit !== -1) {
           const best = pf.hand
             .map((c, i) => ({ c, i }))
-            .filter(({ c }) => (c.type === "unit" || c.type === "trooper" || c.type === "troops") && !isUltimateCard(c))
+            .filter(({ c }) => (c.type === "unit" || c.type === "troops") && !isUltimateCard(c))
             .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
           if (best) {
@@ -4526,7 +4521,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (emptyFunc !== -1) {
           const funcCard = pf.hand
             .map((c, i) => ({ c, i }))
-            .filter(({ c }) => c.type === "action" || c.type === "magic" || c.type === "function")
+            .filter(({ c }) => c.type === "action" || c.type === "magic")
             .sort((a, b) => (b.c.dp ?? 0) - (a.c.dp ?? 0))[0]
 
           if (funcCard) {
@@ -4805,6 +4800,21 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
   }, [])
   const [mrPManuscritoUsed, setMrPManuscritoUsed] = useState(false)  // Manuscrito de Guerra — once per duel (optional)
   const [mrpTargetMode, setMrpTargetMode] = useState(false)  // true while player is picking enemy unit
+  const handleMrpTarget = (idx: number) => {
+    setMrpTargetMode(false)
+    let targetName = ""
+    setEnemyField(prev => {
+      const newUnits = [...prev.unitZone]
+      const u = newUnits[idx]
+      if (!u) return prev
+      targetName = u.name
+      newUnits[idx] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - 2) }
+      return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+    })
+    setMrPManuscritoUsed(true)
+    mpBroadcast("ability_used", { ability: "mrp", targetIndex: idx, dpChange: -2 })
+    showEffectFeedback(`MANUSCRITO DE GUERRA: ${targetName || "unidade inimiga"} -2DP!`, "success")
+  }
   const [vivianAbracoUsed, setVivianAbracoUsed] = useState(false)    // Abraço das Profundezas — on summon
   const [ugAbilityUsed, setUgAbilityUsed] = useState(false)         // Ultimate Guardian one-time ability used    // Abraço das Profundezas — on summon
 
@@ -5456,7 +5466,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     // 2. type === "unit" with "troop" anywhere in the category (e.g. "Darkness Troops unit")
     return (
       card.type === "troops" ||
-      card.type === "trooper" ||
       (card.type === "unit" &&
         typeof (card as any).category === "string" &&
         (card as any).category.toLowerCase().includes("troop"))
@@ -5932,7 +5941,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
          const searchedNames = ["fehnon", "morgana", "calem"].filter(m => !cardNameLower.includes(m))
          const searchOptions = playerField.deck.filter(c => searchedNames.some(m => c.name.toLowerCase().includes(m)))
          
-         const uniqueOptions: { id: string, label: string, description: string }[] = []
+         const uniqueOptions: { id: string, label: string, description: string, image?: string }[] = []
          const seenNames = new Set()
          for (const c of searchOptions) {
             if (!seenNames.has(c.name)) {
@@ -6378,7 +6387,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           if (result.message === "CHAMADA_TAVOLA_SEARCH") {
             const isTroop = (c: GameCard) =>
               c.type === "troops" ||
-              c.type === "trooper" ||
               (c.type === "unit" && typeof (c as any).category === "string" && (c as any).category.toLowerCase().includes("troop"))
             const troopCards = playerField.deck.filter(isTroop)
             if (troopCards.length === 0) {
@@ -7235,7 +7243,6 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     if (result.success && result.message === "CHAMADA_TAVOLA_SEARCH") {
       const isTroop = (c: GameCard) =>
         c.type === "troops" ||
-        c.type === "trooper" ||
         ((c.type === "unit") && typeof (c as any).category === "string" && (c as any).category.toLowerCase().includes("troop"))
       const troopCards = playerField.deck.filter(isTroop)
       if (troopCards.length === 0) {
@@ -7666,12 +7673,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
 
       isDraggingRef.current = true
+      if (positionRef.current.rafId) cancelAnimationFrame(positionRef.current.rafId)
       positionRef.current = {
         startX: clientX,
         startY: clientY,
         currentX: clientX,
         currentY: clientY,
         lastTargetCheck: 0,
+        rafId: 0,
       }
 
       cacheEnemyRects()
@@ -7875,7 +7884,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 4) {
           if (morganaDiscordiaLastTurn === null || turn - morganaDiscordiaLastTurn >= 2) {
             const stealableCards = enemyField.graveyard.filter(c =>
-              c.type === "function" || c.type === "action" || c.type === "trap"
+              c.type === "action" || c.type === "trap"
             )
             if (stealableCards.length > 0) {
               setMorganaDiscordiaLastTurn(turn)
@@ -7933,7 +7942,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("ullr") && attacker.dp === 2) {
           const drawn1 = playerField.deck[0]
           if (drawn1) {
-            const isVentus1 = drawn1.element === "Ventus" || drawn1.element === "Wind"
+            const isVentus1 = drawn1.element === "Ventus"
             setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn1] }))
             showDrawAnimation(drawn1)
             showEffectFeedback(`VEREDICTO DE ULLR: ${drawn1.name} comprada!${isVentus1 ? " É Ventus! Compra mais 1!" : ""}`, isVentus1 ? "success" : "info")
@@ -8057,7 +8066,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
         if (attacker.name.toLowerCase().includes("mordred") && !mordredCamlannUsed) {
           const drawn = playerField.deck[0]
           if (drawn) {
-            const isTroop = drawn.type === "troops" || drawn.type === "trooper" ||
+            const isTroop = drawn.type === "troops" ||
               (drawn.type === "unit" && typeof (drawn as any).category === "string" && (drawn as any).category.toLowerCase().includes("troop"))
             setPlayerField(prev => ({ ...prev, deck: prev.deck.slice(1), hand: [...prev.hand, drawn] }))
             showDrawAnimation(drawn)
@@ -8081,7 +8090,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const drawn = playerField.deck[0]
           if (drawn) {
             const isVoidTroop = drawn.element === "Void" && (
-              drawn.type === "troops" || drawn.type === "trooper" ||
+              drawn.type === "troops" ||
               (drawn.type === "unit" && typeof (drawn as any).category === "string" && (drawn as any).category.toLowerCase().includes("troop"))
             )
             setPlayerField((prev) => {
@@ -8208,7 +8217,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                   const discardIdx = parseInt(optId)
                   const discarded = playerField.hand[discardIdx]
                   if (!discarded) return
-                  const isMagic = discarded.type === "function" || discarded.type === "action"
+                  const isMagic = discarded.type === "action"
                   setPlayerField(prev => ({
                     ...prev,
                     hand: prev.hand.filter((_, i) => i !== discardIdx),
@@ -8396,8 +8405,8 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             // If Devorar o Mundo ran this cycle, the closure's enemyField is stale.
             // We use prev.unitZone inside the setEnemyField updater to get fresh state.
             // For the outer guard, if Devorar ran, we skip the stale check and let the updater handle it.
-            const defender = _devorarRanThisAttack
-              ? (enemyField.unitZone[attackState.targetInfo!.index] ?? { name: '__devorar_check__' })
+            const defender: FieldCard | null = _devorarRanThisAttack
+              ? (enemyField.unitZone[attackState.targetInfo!.index] ?? ({ name: '__devorar_check__' } as FieldCard))
               : enemyField.unitZone[attackState.targetInfo!.index]
             if (defender) {
               // CHECK ENEMY TRAPS - PORTÃO DA FORTALEZA
@@ -8720,7 +8729,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
 
             // ── MORGANA SR 2DP: Acorde do Abismo — ataque direto drena vida ──
             if (attacker.name.toLowerCase().includes("morgana") && attacker.dp === 2) {
-              const hasEnemyLight = enemyField.unitZone.some(u => u && (u.element === "Haos" || u.element === "Light" || u.element === "Lightness"))
+              const hasEnemyLight = enemyField.unitZone.some(u => u && (u.element === "Haos"))
               const drain = hasEnemyLight ? 2 : 1
               setTimeout(() => {
                 setPlayerField(prev => ({ ...prev, life: prev.life + drain }))
@@ -9176,7 +9185,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setOswinUsed(true)
     // Item cards: type "function" cards that are items (by name or category)
     const itemCards = top5.filter(c =>
-      c.type === "function" || c.type === "action" || (c.category && c.category.toLowerCase().includes("item"))
+      c.type === "action" || (c.category && c.category.toLowerCase().includes("item"))
     )
     const hasItems = itemCards.length > 0
     const maxChoose = hasItems ? Math.min(2, itemCards.length) : 1
@@ -9360,8 +9369,9 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               if (newFuncZone[idx]) { newGrave.push(newFuncZone[idx]!); newFuncZone[idx] = null }
             } else if (sel === 'scenario') {
               if (newScenario) { newGrave.push(newScenario); newScenario = null }
-            } else if (sel === 'ultimate') {
-              if (newUltimate) { newGrave.push(newUltimate); newUltimate = null }
+            } else if (sel.startsWith('ultimate-')) {
+              const idx = parseInt(sel.replace('ultimate-', ''))
+              if (newUltimateArr[idx]) { newGrave.push(newUltimateArr[idx]!); newUltimateArr[idx] = null }
             }
           })
           // +1DP per card discarded to Hrotti SR
@@ -9450,7 +9460,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
       visible: true,
       cardName: "Marca da Caçada — Selecione uma unidade inimiga como alvo",
       options: enemyTargets.slice(0,4).map(({u,i}) => {
-        const isVentus = u!.element === "Ventus" || u!.element === "Wind"
+        const isVentus = u!.element === "Ventus"
         const dpLoss = isVentus ? 2 : 1
         return { id: String(i), label: u!.name, description: `${u!.currentDp ?? u!.dp}DP → ${Math.max(0,(u!.currentDp ?? u!.dp)-dpLoss)}DP${isVentus ? " (Ventus: -2DP)" : " (-1DP)"}`, image: u!.image }
       }),
@@ -9461,14 +9471,14 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
           const newUnits = [...prev.unitZone]
           const u = newUnits[idx]
           if (!u) return prev
-          const isVentus = u.element === "Ventus" || u.element === "Wind"
+          const isVentus = u.element === "Ventus"
           const dpLoss = isVentus ? 2 : 1
           newUnits[idx] = { ...u, currentDp: Math.max(0, (u.currentDp ?? u.dp) - dpLoss) }
           return { ...prev, unitZone: newUnits as (FieldCard|null)[] }
         })
         setUllrSrMarcaUsed(true)
         const tgt = enemyTargets.find(t => t.i === idx)
-        const isVentus = tgt?.u?.element === "Ventus" || tgt?.u?.element === "Wind"
+        const isVentus = tgt?.u?.element === "Ventus"
         mpBroadcast("ability_used", { ability: "ullrSr", targetIndex: idx, dpChange: isVentus ? -2 : -1 })
         showEffectFeedback(`MARCA DA CAÇADA: ${tgt?.u?.name} ${isVentus ? "-2DP (Ventus)" : "-1DP"}!`, "success")
       },
@@ -9485,7 +9495,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
     setPlayerField(prev => {
       const newUnits = prev.unitZone.map(u => {
         if (!u) return null
-        if (u.element === "Ventus" || u.element === "Wind") {
+        if (u.element === "Ventus") {
           return { ...u, currentDp: (u.currentDp ?? u.dp) + bonus }
         }
         return u
@@ -10363,7 +10373,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
               if (playerField.unitZone[targetIdx]?.name.toLowerCase().includes("galahad")) {
                 showEffectFeedback("CORAÇÃO IMACULADO: Galahad é imune a efeitos de destruição!", "error")
                 setEnemyUgAbilityUsed(true)
-                return prev
+                return prevEnemy
               }
               setPlayerField((prev) => {
                 const newUnits = [...prev.unitZone]
@@ -10371,7 +10381,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                 newUnits[targetIdx] = null
                 // ── LANCELOT: Virtude do Cavaleiro — recovery on destroy by effect ──
                 if (destroyed && destroyed.name.toLowerCase().includes("lancelot")) {
-                  const funcCards = prev.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                  const funcCards = prev.graveyard.filter(gc => gc.type === "trap" || gc.type === "action")
                   if (funcCards.length > 0) {
                     const first = funcCards[0]
                     setTimeout(() => showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${first.name} recuperada do cemitério!`, "success"), 700)
@@ -10669,7 +10679,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
                     if (defender.name.toLowerCase().includes("lancelot")) {
                       setTimeout(() => {
                         setPlayerField(prevP => {
-                          const funcs = prevP.graveyard.filter(gc => gc.type === "function" || gc.type === "trap" || gc.type === "action")
+                          const funcs = prevP.graveyard.filter(gc => gc.type === "trap" || gc.type === "action")
                           if (funcs.length === 0) { showEffectFeedback("VIRTUDE DO CAVALEIRO: Nenhuma Function no cemitério!", "info"); return prevP }
                           if (funcs.length === 1) { showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${funcs[0].name} recuperada!`, "success"); return { ...prevP, hand: [...prevP.hand, funcs[0]], graveyard: prevP.graveyard.filter(gc => gc.id !== funcs[0].id) } }
                           setChoiceModal({ visible:true, cardName:"Virtude do Cavaleiro — Recuperar 1 Function", options: funcs.slice(0,6).map((gc,i)=>({id:String(i),label:gc.name,description:gc.type+" · "+(gc.element||"Neutro")})), onChoose:(optId)=>{ setChoiceModal(null); const ch=funcs[parseInt(optId)]; if(!ch)return; setPlayerField(p2=>({...p2,hand:[...p2.hand,ch],graveyard:p2.graveyard.filter(gc=>gc.id!==ch.id)})); showEffectFeedback(`VIRTUDE DO CAVALEIRO: ${ch.name} recuperada!`,"success") } })
@@ -11246,7 +11256,7 @@ export function DuelScreen({ mode, onBack, onWin, draftDeck, draftDifficulty, st
             ...prev,
             unitZone: prev.unitZone.map(u => {
               if (!u) return null
-              if (u.element === "Ventus" || u.element === "Wind")
+              if (u.element === "Ventus")
                 return { ...u, currentDp: (u.currentDp ?? u.dp) + (action.data.bonus ?? 2) }
               return u
             }) as any,
