@@ -295,7 +295,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
 
   const getDeckTypeCounts = (cards: Card[]) => ({
     unit:    cards.filter(c => c.type === "unit").length,
-    trooper: cards.filter(c => c.type === "trooper" || c.type === "troops" || c.category?.toLowerCase().includes("troop")).length,
+    trooper: cards.filter(c => c.type === "troops" || c.category?.toLowerCase().includes("troop")).length,
     function: cards.filter(c => ["magic","action","trap","item","scenario","brotherhood"].includes(c.type)).length,
     ultimate: cards.filter(c => ["ultimateGear","ultimateGuardian","ultimateElemental"].includes(c.type)).length,
   })

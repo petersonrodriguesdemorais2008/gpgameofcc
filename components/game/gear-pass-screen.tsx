@@ -177,6 +177,7 @@ function buildMissions(): PassMission[] {
     srTotal:      getMissionProgress.srTotal(),
     loginToday:   getMissionProgress.loginToday(),
     deckEditWeek: getMissionProgress.deckEditWeek(),
+    deckEditTotal: getMissionProgress.deckEditTotal(),
   }
 
   return [
@@ -253,9 +254,9 @@ function buildMissions(): PassMission[] {
       description: "Edite um deck hoje",
       type: "daily",
       points: 40,
-      progress: g.deckEditWeek >= 1 ? 1 : 0,
+      progress: g.deckEditWeek ? 1 : 0,
       goal: 1,
-      completed: g.deckEditWeek >= 1,
+      completed: g.deckEditWeek,
       claimed: false,
     },
     {
@@ -418,9 +419,9 @@ function buildMissions(): PassMission[] {
       description: "Edite ou crie decks 3 vezes neste Passe",
       type: "limited",
       points: 250,
-      progress: Math.min(g.deckEditWeek * 1, 3),
+      progress: Math.min(g.deckEditTotal, 3),
       goal: 3,
-      completed: (g.deckEditWeek * 1) >= 3,
+      completed: g.deckEditTotal >= 3,
       claimed: false,
       expiresIn: "29d",
     },
@@ -478,9 +479,9 @@ function buildMissions(): PassMission[] {
       description: "Edite ou crie decks 10 vezes neste Passe",
       type: "limited",
       points: 450,
-      progress: Math.min(g.deckEditWeek * 1, 10),
+      progress: Math.min(g.deckEditTotal, 10),
       goal: 10,
-      completed: (g.deckEditWeek * 1) >= 10,
+      completed: g.deckEditTotal >= 10,
       claimed: false,
       expiresIn: "29d",
     },
@@ -550,9 +551,9 @@ function buildMissions(): PassMission[] {
       description: "Edite ou crie decks 5 vezes neste Passe",
       type: "limited",
       points: 300,
-      progress: Math.min(g.deckEditWeek * 1, 5),
+      progress: Math.min(g.deckEditTotal, 5),
       goal: 5,
-      completed: (g.deckEditWeek * 1) >= 5,
+      completed: g.deckEditTotal >= 5,
       claimed: false,
       expiresIn: "29d",
     },
@@ -742,7 +743,7 @@ export default function GearPassScreen({ onBack }: GearPassScreenProps) {
   const [packRarityTier, setPackRarityTier] = useState<"normal" | "rare" | "epic" | "legendary">("normal")
   const [packScreenShake, setPackScreenShake] = useState(false)
   const packCanvasRef = useRef<HTMLCanvasElement>(null)
-  const packAnimationRef = useRef<number>()
+  const packAnimationRef = useRef<number | undefined>(undefined)
   const [packList, setPackList] = useState<{ id: number; cards: Card[]; highestRarity: "R"|"SR"|"UR"|"LR" }[]>([])
   const [packCurrentIndex, setPackCurrentIndex] = useState(0)
   const [packPhase, setPackPhase] = useState<"entering"|"floating"|"shaking"|"opening"|"revealing"|"done">("entering")

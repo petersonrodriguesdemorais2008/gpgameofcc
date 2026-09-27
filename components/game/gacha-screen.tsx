@@ -179,7 +179,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const [screenShake, setScreenShake] = useState(false)
   const [raritySpecialShake, setRaritySpecialShake] = useState(false) // physical shake only, no extra white flash
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Daily gacha state

@@ -62,7 +62,7 @@ const TAB_BG: Record<string,string> = {
 // Particle canvas for achievements
 function AchievementParticles({ active }: { active: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
-  const raf  = useRef<number>()
+  const raf  = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (!active) return
     const c = ref.current; if (!c) return

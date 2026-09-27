@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useLanguage } from "@/contexts/language-context"
-import { useGame, type Card, isTroopUnit } from "@/contexts/game-context"
+import { useGame, type Card } from "@/contexts/game-context"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Search, X, Sparkles } from "lucide-react"
